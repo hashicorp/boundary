@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -35,7 +34,6 @@ const (
 	caCertsField        = "attributes.ca_cert"
 	clientCertField     = "attributes.client_certificate"
 	clientCertKeyField  = "attributes.certificate_key"
-	domain              = "credential"
 )
 
 var (
@@ -167,11 +165,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 			return nil, err
 		}
 
-		filterable, err := subtypes.Filterable(item)
-		if err != nil {
-			return nil, err
-		}
-		if filter.Match(filterable) {
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -484,7 +478,7 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 		out.ScopeId = in.GetScopeId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = subtypes.SubtypeFromId(domain, in.GetPublicId()).String()
+		out.Type = credential.SubtypeFromId(in.GetPublicId()).String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -511,7 +505,7 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
 	if outputFields.Has(globals.AttributesField) {
-		switch subtypes.SubtypeFromId(domain, in.GetPublicId()) {
+		switch credential.SubtypeFromId(in.GetPublicId()) {
 		case vault.Subtype:
 			vaultIn, ok := in.(*vault.CredentialStore)
 			if !ok {
@@ -542,8 +536,9 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 				attrs.ClientCertificateKeyHmac = base64.RawURLEncoding.EncodeToString(cc.GetCertificateKeyHmac())
 			}
 
-			out.Attrs = &pb.CredentialStore_VaultCredentialStoreAttributes{
-				VaultCredentialStoreAttributes: attrs,
+			var err error
+			if out.Attributes, err = handlers.ProtoToStruct(attrs); err != nil {
+				return nil, errors.WrapDeprecated(err, op)
 			}
 		}
 	}
@@ -560,7 +555,10 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 		opts = append(opts, vault.WithDescription(in.GetDescription().GetValue()))
 	}
 
-	attrs := in.GetVaultCredentialStoreAttributes()
+	attrs := &pb.VaultCredentialStoreAttributes{}
+	if err := handlers.StructToProto(in.GetAttributes(), attrs); err != nil {
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to parse the attributes"))
+	}
 	if attrs.GetTlsServerName() != nil {
 		opts = append(opts, vault.WithTlsServerName(attrs.GetTlsServerName().GetValue()))
 	}
@@ -618,13 +616,13 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
-		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
+		switch credential.SubtypeFromType(req.GetItem().GetType()) {
 		case vault.Subtype:
-			attrs := req.GetItem().GetVaultCredentialStoreAttributes()
-			if attrs == nil {
-				badFields[globals.AttributesField] = "Attributes are required for creating a vault credential store"
+			attrs := &pb.VaultCredentialStoreAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[globals.AttributesField] = fmt.Sprintf("Attribute fields do not match the expected format. Got %#v", req.GetItem().GetAttributes().AsMap())
+				break
 			}
-
 			if attrs.GetAddress().GetValue() == "" {
 				badFields[addressField] = "Field required for creating a vault credential store."
 			}
@@ -661,35 +659,37 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch credential.SubtypeFromId(req.GetId()) {
 		case vault.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.Subtype {
+			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != vault.Subtype {
 				badFields["type"] = "Cannot modify resource type."
 			}
-			attrs := req.GetItem().GetVaultCredentialStoreAttributes()
-			if attrs != nil {
-				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), addressField) &&
-					attrs.GetAddress().GetValue() == "" {
-					badFields[addressField] = "This is a required field and cannot be unset."
-				}
-				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultTokenField) &&
-					attrs.GetToken().GetValue() == "" {
-					badFields[vaultTokenField] = "This is a required field and cannot be unset."
-				}
-				if attrs.GetTokenHmac() != "" {
-					badFields[vaultTokenHmacField] = "This is a read only field."
-				}
+			attrs := &pb.VaultCredentialStoreAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
+				break
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), addressField) &&
+				attrs.GetAddress().GetValue() == "" {
+				badFields[addressField] = "This is a required field and cannot be unset."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultTokenField) &&
+				attrs.GetToken().GetValue() == "" {
+				badFields[vaultTokenField] = "This is a required field and cannot be unset."
+			}
+			if attrs.GetTokenHmac() != "" {
+				badFields[vaultTokenHmacField] = "This is a read only field."
+			}
 
-				// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
-				_, err := decodePemBlocks(attrs.GetCaCert().GetValue())
-				if attrs.GetCaCert() != nil && err != nil {
-					badFields[caCertsField] = "Incorrectly formatted value."
-				}
+			// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
+			_, err := decodePemBlocks(attrs.GetCaCert().GetValue())
+			if attrs.GetCaCert() != nil && err != nil {
+				badFields[caCertsField] = "Incorrectly formatted value."
+			}
 
-				_, _, err = extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
-				if err != nil {
-					badFields[clientCertField] = fmt.Sprintf("Invalid values: %q", err.Error())
-				}
+			_, _, err = extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
+			if err != nil {
+				badFields[clientCertField] = fmt.Sprintf("Invalid values: %q", err.Error())
 			}
 		}
 		return badFields

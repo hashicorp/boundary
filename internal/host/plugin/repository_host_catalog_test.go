@@ -687,7 +687,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateCatalogRequest.CurrentCatalog.GetAttributes(), protocmp.Transform()))
+			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateCatalogRequest.CurrentCatalog.Attributes, protocmp.Transform()))
 		}
 	}
 
@@ -695,7 +695,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
-			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateCatalogRequest.NewCatalog.GetAttributes(), protocmp.Transform()))
+			assert.Empty(cmp.Diff(mustStruct(want), gotOnUpdateCatalogRequest.NewCatalog.Attributes, protocmp.Transform()))
 		}
 	}
 

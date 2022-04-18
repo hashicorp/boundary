@@ -261,6 +261,8 @@ func Test_EventerFromContext(t *testing.T) {
 }
 
 func Test_WriteObservation(t *testing.T) {
+	event.TestEnableEventing(t, true)
+
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
 
@@ -503,6 +505,7 @@ func Test_WriteObservation(t *testing.T) {
 }
 
 func Test_Filtering(t *testing.T) {
+	event.TestEnableEventing(t, true)
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
@@ -628,6 +631,8 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 }
 
 func Test_WriteAudit(t *testing.T) {
+	event.TestEnableEventing(t, true)
+
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
 	now := time.Now()
@@ -965,6 +970,8 @@ func Test_WriteAudit(t *testing.T) {
 }
 
 func Test_WriteError(t *testing.T) {
+	event.TestEnableEventing(t, true)
+
 	// this test and its subtests cannot be run in parallel because of it's
 	// dependency on the sysEventer
 	now := time.Now()

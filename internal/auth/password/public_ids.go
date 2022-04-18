@@ -1,6 +1,7 @@
 package password
 
 import (
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/intglobals"
@@ -8,7 +9,7 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register("auth", Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
+	if err := auth.Register(Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
 		panic(err)
 	}
 }

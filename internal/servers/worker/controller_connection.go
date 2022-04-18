@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers/worker/internal/metric"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
@@ -116,7 +115,6 @@ func (w *Worker) createClientConn(addr string) error {
 	cc, err := grpc.DialContext(w.baseContext,
 		fmt.Sprintf("%s:///%s", res.Scheme(), addr),
 		grpc.WithResolvers(res),
-		grpc.WithUnaryInterceptor(metric.InstrumentClusterClient()),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
 		grpc.WithContextDialer(w.controllerDialerFunc()),

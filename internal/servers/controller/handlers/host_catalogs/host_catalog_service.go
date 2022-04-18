@@ -197,13 +197,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 			return nil, err
 		}
 
-		// This comes last so that we can use item fields in the filter after
-		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
-		if err != nil {
-			return nil, err
-		}
-		if filter.Match(filterable) {
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -402,7 +396,7 @@ func (s Service) DeleteHostCatalog(ctx context.Context, req *pbs.DeleteHostCatal
 func (s Service) getFromRepo(ctx context.Context, id string) (host.Catalog, *plugins.PluginInfo, error) {
 	var plg *plugins.PluginInfo
 	var cat host.Catalog
-	switch subtypes.SubtypeFromId("host", id) {
+	switch host.SubtypeFromId(id) {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -524,7 +518,7 @@ func (s Service) createPluginInRepo(ctx context.Context, projId string, req *pbs
 
 func (s Service) createInRepo(ctx context.Context, projId string, req *pbs.CreateHostCatalogRequest) (hc host.Catalog, info *plugins.PluginInfo, err error) {
 	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromType("host", req.GetItem().GetType()) {
+	switch host.SubtypeFromType(req.GetItem().GetType()) {
 	case static.Subtype:
 		hc, err = s.createStaticInRepo(ctx, projId, req.GetItem())
 	default:
@@ -588,7 +582,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, projId, id string, mask
 
 func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.UpdateHostCatalogRequest) (hc host.Catalog, plg *plugins.PluginInfo, err error) {
 	const op = "host_catalogs.(Service).updateInRepo"
-	switch subtypes.SubtypeFromId("host", req.GetId()) {
+	switch host.SubtypeFromId(req.GetId()) {
 	case static.Subtype:
 		hc, err = s.updateStaticInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	case plugin.Subtype:
@@ -600,7 +594,7 @@ func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.Updat
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "host_catalogs.(Service).deleteFromRepo"
 	rows := 0
-	switch subtypes.SubtypeFromId("host", id) {
+	switch host.SubtypeFromId(id) {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -646,7 +640,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 	default:
-		switch subtypes.SubtypeFromId("host", id) {
+		switch host.SubtypeFromId(id) {
 		case static.Subtype:
 			repo, err := s.staticRepoFn()
 			if err != nil {
@@ -763,9 +757,7 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 				return nil, errors.Wrap(ctx, err, op)
 			}
 			if len(attrs.GetFields()) > 0 {
-				out.Attrs = &pb.HostCatalog_Attributes{
-					Attributes: attrs,
-				}
+				out.Attributes = attrs
 			}
 		}
 	}
@@ -830,7 +822,7 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 		if req.GetItem().GetSecretsHmac() != "" {
 			badFields[globals.SecretsHmacField] = "This is a read only field."
 		}
-		switch subtypes.SubtypeFromType("host", req.GetItem().GetType()) {
+		switch host.SubtypeFromType(req.GetItem().GetType()) {
 		case static.Subtype:
 		case plugin.Subtype:
 			if req.GetItem().GetPlugin() != nil {
@@ -857,16 +849,16 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 		if req.GetItem().GetSecretsHmac() != "" {
 			badFields[globals.SecretsHmacField] = "This is a read only field."
 		}
-		switch subtypes.SubtypeFromId("host", req.GetId()) {
+		switch host.SubtypeFromId(req.GetId()) {
 		case static.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType("host", req.GetItem().GetType()) != static.Subtype {
+			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != static.Subtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetPlugin() != nil {
 				badFields[globals.PluginField] = "This field is unused for this type of host catalog."
 			}
 		case plugin.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType("host", req.GetItem().GetType()) != plugin.Subtype {
+			if req.GetItem().GetType() != "" && host.SubtypeFromType(req.GetItem().GetType()) != plugin.Subtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetPlugin() != nil {

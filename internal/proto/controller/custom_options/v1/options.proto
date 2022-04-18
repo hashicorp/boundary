@@ -15,20 +15,6 @@ extend google.protobuf.FieldOptions {
 	// generate_sdk_option is a directive used when generating the SDK to
 	// indicate that an option should be created for the field
 	bool generate_sdk_option = 85412;
-
-	// subtype is used for oneOf attribute subtypes, to identify that we only need to parse attributes
-	// of oneOf once and not for each option when generating the API
-	// This will serve as a JSON key, used to transform that into the key the protobuf expects
-	string subtype = 85555;
-
-  // subtype_source_id is used to indicate that a field provided an id that can be used
-  // to determine the subtype of a message.
-  bool subtype_source_id = 85556;
-}
-
-extend google.protobuf.FileOptions {
-  // domain is used to associate the messages in a file with a domain package.
-  string domain = 85556;
 }
 
 message MaskMapping {

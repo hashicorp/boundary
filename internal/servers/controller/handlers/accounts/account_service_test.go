@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -24,7 +25,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/stretchr/testify/assert"
@@ -32,11 +32,10 @@ import (
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-const domain = "auth"
 
 var (
 	pwAuthorizedActions = []string{
@@ -131,16 +130,14 @@ func TestGet(t *testing.T) {
 	pwA := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 
 	pwWireAccount := pb.Account{
-		Id:           pwA.GetPublicId(),
-		AuthMethodId: pwA.GetAuthMethodId(),
-		CreatedTime:  pwA.GetCreateTime().GetTimestamp(),
-		UpdatedTime:  pwA.GetUpdateTime().GetTimestamp(),
-		Scope:        &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-		Version:      1,
-		Type:         password.Subtype.String(),
-		Attrs: &pb.Account_PasswordAccountAttributes{
-			&pb.PasswordAccountAttributes{LoginName: pwA.GetLoginName()},
-		},
+		Id:                pwA.GetPublicId(),
+		AuthMethodId:      pwA.GetAuthMethodId(),
+		CreatedTime:       pwA.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       pwA.GetUpdateTime().GetTimestamp(),
+		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:           1,
+		Type:              password.Subtype.String(),
+		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(pwA.GetLoginName())}},
 		AuthorizedActions: pwAuthorizedActions,
 	}
 
@@ -165,12 +162,10 @@ func TestGet(t *testing.T) {
 		Scope:        &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:      1,
 		Type:         oidc.Subtype.String(),
-		Attrs: &pb.Account_OidcAccountAttributes{
-			&pb.OidcAccountAttributes{
-				Issuer:  oidcAm.GetIssuer(),
-				Subject: "test-subject",
-			},
-		},
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"issuer":  structpb.NewStringValue(oidcAm.GetIssuer()),
+			"subject": structpb.NewStringValue("test-subject"),
+		}},
 		AuthorizedActions: oidcAuthorizedActions,
 		ManagedGroupIds:   []string{mg.GetPublicId()},
 	}
@@ -226,7 +221,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			if subtypes.SubtypeFromId(domain, tc.req.Id) == oidc.Subtype {
+			if auth.SubtypeFromId(tc.req.Id) == oidc.Subtype {
 				// Set up managed groups before getting. First get the current
 				// managed group to make sure we have the right version.
 				oidcRepo, err := oidcRepoFn()
@@ -272,16 +267,14 @@ func TestListPassword(t *testing.T) {
 	var wantSomeAccounts []*pb.Account
 	for _, aa := range password.TestMultipleAccounts(t, conn, amSomeAccounts.GetPublicId(), 3) {
 		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
-			Id:           aa.GetPublicId(),
-			AuthMethodId: aa.GetAuthMethodId(),
-			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
-			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
-			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-			Version:      1,
-			Type:         "password",
-			Attrs: &pb.Account_PasswordAccountAttributes{
-				PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
-			},
+			Id:                aa.GetPublicId(),
+			AuthMethodId:      aa.GetAuthMethodId(),
+			CreatedTime:       aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
+			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:           1,
+			Type:              "password",
+			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
 			AuthorizedActions: pwAuthorizedActions,
 		})
 	}
@@ -289,16 +282,14 @@ func TestListPassword(t *testing.T) {
 	var wantOtherAccounts []*pb.Account
 	for _, aa := range password.TestMultipleAccounts(t, conn, amOtherAccounts.GetPublicId(), 3) {
 		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
-			Id:           aa.GetPublicId(),
-			AuthMethodId: aa.GetAuthMethodId(),
-			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
-			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
-			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-			Version:      1,
-			Type:         "password",
-			Attrs: &pb.Account_PasswordAccountAttributes{
-				&pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
-			},
+			Id:                aa.GetPublicId(),
+			AuthMethodId:      aa.GetAuthMethodId(),
+			CreatedTime:       aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       aa.GetUpdateTime().GetTimestamp(),
+			Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:           1,
+			Type:              "password",
+			Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"login_name": structpb.NewStringValue(aa.GetLoginName())}},
 			AuthorizedActions: pwAuthorizedActions,
 		})
 	}
@@ -334,7 +325,7 @@ func TestListPassword(t *testing.T) {
 			name: "Filter Some Accounts",
 			req: &pbs.ListAccountsRequest{
 				AuthMethodId: amSomeAccounts.GetPublicId(),
-				Filter:       fmt.Sprintf(`"/item/attributes/login_name"==%q`, wantSomeAccounts[1].GetPasswordAccountAttributes().LoginName),
+				Filter:       fmt.Sprintf(`"/item/attributes/login_name"==%q`, wantSomeAccounts[1].Attributes.AsMap()["login_name"]),
 			},
 			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
 			skipAnon: true,
@@ -378,7 +369,7 @@ func TestListPassword(t *testing.T) {
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
-				assert.Nil(g.Attrs)
+				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)
 				assert.Nil(g.UpdatedTime)
 				assert.Empty(g.Version)
@@ -425,12 +416,10 @@ func TestListOidc(t *testing.T) {
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
 			Type:         oidc.Subtype.String(),
-			Attrs: &pb.Account_OidcAccountAttributes{
-				&pb.OidcAccountAttributes{
-					Issuer:  amSomeAccounts.GetIssuer(),
-					Subject: subId,
-				},
-			},
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"issuer":  structpb.NewStringValue(amSomeAccounts.GetIssuer()),
+				"subject": structpb.NewStringValue(subId),
+			}},
 			AuthorizedActions: oidcAuthorizedActions,
 		})
 	}
@@ -447,12 +436,10 @@ func TestListOidc(t *testing.T) {
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
 			Type:         oidc.Subtype.String(),
-			Attrs: &pb.Account_OidcAccountAttributes{
-				&pb.OidcAccountAttributes{
-					Issuer:  amOtherAccounts.GetIssuer(),
-					Subject: subId,
-				},
-			},
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"issuer":  structpb.NewStringValue(amOtherAccounts.GetIssuer()),
+				"subject": structpb.NewStringValue(subId),
+			}},
 			AuthorizedActions: oidcAuthorizedActions,
 		})
 	}
@@ -488,7 +475,7 @@ func TestListOidc(t *testing.T) {
 			name: "Filter Some Accounts",
 			req: &pbs.ListAccountsRequest{
 				AuthMethodId: amSomeAccounts.GetPublicId(),
-				Filter:       fmt.Sprintf(`"/item/attributes/subject"==%q`, wantSomeAccounts[1].GetOidcAccountAttributes().Subject),
+				Filter:       fmt.Sprintf(`"/item/attributes/subject"==%q`, wantSomeAccounts[1].Attributes.AsMap()["subject"]),
 			},
 			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
 			skipAnon: true,
@@ -522,8 +509,8 @@ func TestListOidc(t *testing.T) {
 				require.NoError(gErr)
 			}
 			sort.Slice(got.Items, func(i, j int) bool {
-				return strings.Compare(got.Items[i].GetOidcAccountAttributes().Subject,
-					got.Items[j].GetOidcAccountAttributes().Subject) < 0
+				return strings.Compare(got.Items[i].GetAttributes().GetFields()["subject"].GetStringValue(),
+					got.Items[j].GetAttributes().GetFields()["subject"].GetStringValue()) < 0
 			})
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 
@@ -535,7 +522,7 @@ func TestListOidc(t *testing.T) {
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
-				assert.Nil(g.Attrs)
+				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)
 				assert.Nil(g.UpdatedTime)
 				assert.Empty(g.Version)
@@ -697,6 +684,16 @@ func TestCreatePassword(t *testing.T) {
 	defaultCreated := defaultAccount.GetCreateTime().GetTimestamp()
 	require.NoError(t, err, "Error converting proto to timestamp.")
 
+	createAttr := func(un, pw string) *structpb.Struct {
+		attr := &pb.PasswordAccountAttributes{LoginName: un}
+		if pw != "" {
+			attr.Password = wrapperspb.String(pw)
+		}
+		ret, err := handlers.ProtoToStruct(attr)
+		require.NoError(t, err, "Error converting proto to struct.")
+		return ret
+	}
+
 	cases := []struct {
 		name string
 		req  *pbs.CreateAccountRequest
@@ -711,29 +708,19 @@ func TestCreatePassword(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Type:         "password",
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "validaccount",
-							Password:  nil,
-						},
-					},
+					Attributes:   createAttr("validaccount", ""),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
 				Uri: fmt.Sprintf("accounts/%s_", intglobals.NewPasswordAccountPrefix),
 				Item: &pb.Account{
-					AuthMethodId: defaultAccount.GetAuthMethodId(),
-					Name:         &wrapperspb.StringValue{Value: "name"},
-					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Version:      1,
-					Type:         "password",
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "validaccount",
-							Password:  nil,
-						},
-					},
+					AuthMethodId:      defaultAccount.GetAuthMethodId(),
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:           1,
+					Type:              "password",
+					Attributes:        createAttr("validaccount", ""),
 					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
@@ -743,27 +730,17 @@ func TestCreatePassword(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "notypedefined",
-							Password:  nil,
-						},
-					},
+					Attributes:   createAttr("notypedefined", ""),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
 				Uri: fmt.Sprintf("accounts/%s_", intglobals.NewPasswordAccountPrefix),
 				Item: &pb.Account{
-					AuthMethodId: defaultAccount.GetAuthMethodId(),
-					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Version:      1,
-					Type:         "password",
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "notypedefined",
-							Password:  nil,
-						},
-					},
+					AuthMethodId:      defaultAccount.GetAuthMethodId(),
+					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:           1,
+					Type:              "password",
+					Attributes:        createAttr("notypedefined", ""),
 					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
@@ -775,29 +752,19 @@ func TestCreatePassword(t *testing.T) {
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Name:         &wrapperspb.StringValue{Value: "name_with_password"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "haspassword",
-							Password:  &wrapperspb.StringValue{Value: "somepassword"},
-						},
-					},
+					Attributes:   createAttr("haspassword", "somepassword"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
 				Uri: fmt.Sprintf("accounts/%s_", intglobals.NewPasswordAccountPrefix),
 				Item: &pb.Account{
-					AuthMethodId: defaultAccount.GetAuthMethodId(),
-					Name:         &wrapperspb.StringValue{Value: "name_with_password"},
-					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-					Version:      1,
-					Type:         "password",
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "haspassword",
-							Password:  nil,
-						},
-					},
+					AuthMethodId:      defaultAccount.GetAuthMethodId(),
+					Name:              &wrapperspb.StringValue{Value: "name_with_password"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Scope:             &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:           1,
+					Type:              "password",
+					Attributes:        createAttr("haspassword", ""),
 					AuthorizedActions: pwAuthorizedActions,
 				},
 			},
@@ -808,12 +775,7 @@ func TestCreatePassword(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Type:         "wrong",
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "nopwprovided",
-							Password:  nil,
-						},
-					},
+					Attributes:   createAttr("nopwprovided", ""),
 				},
 			},
 			res: nil,
@@ -826,12 +788,7 @@ func TestCreatePassword(t *testing.T) {
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Id:           intglobals.NewPasswordAccountPrefix + "_notallowed",
 					Type:         "password",
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "cantprovideid",
-							Password:  nil,
-						},
-					},
+					Attributes:   createAttr("cantprovideid", ""),
 				},
 			},
 			res: nil,
@@ -844,12 +801,7 @@ func TestCreatePassword(t *testing.T) {
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					CreatedTime:  timestamppb.Now(),
 					Type:         "password",
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "nocreatedtime",
-							Password:  nil,
-						},
-					},
+					Attributes:   createAttr("nocreatedtime", ""),
 				},
 			},
 			res: nil,
@@ -862,12 +814,7 @@ func TestCreatePassword(t *testing.T) {
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					UpdatedTime:  timestamppb.Now(),
 					Type:         "password",
-					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
-							LoginName: "noupdatetime",
-							Password:  nil,
-						},
-					},
+					Attributes:   createAttr("noupdatetime", ""),
 				},
 			},
 			res: nil,
@@ -892,8 +839,6 @@ func TestCreatePassword(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
-			} else {
-				require.NoError(gErr)
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
@@ -946,6 +891,13 @@ func TestCreateOidc(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
+	createAttr := func(sid string) *structpb.Struct {
+		attr := &pb.OidcAccountAttributes{Subject: sid}
+		ret, err := handlers.ProtoToStruct(attr)
+		require.NoError(t, err, "Error converting proto to struct.")
+		return ret
+	}
+
 	cases := []struct {
 		name string
 		req  *pbs.CreateAccountRequest
@@ -960,11 +912,7 @@ func TestCreateOidc(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "valid-account",
-						},
-					},
+					Attributes:   createAttr("valid-account"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -976,12 +924,11 @@ func TestCreateOidc(t *testing.T) {
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "valid-account",
-							Issuer:  am.GetIssuer(),
-						},
-					},
+					Attributes: func() *structpb.Struct {
+						a := createAttr("valid-account")
+						a.Fields["issuer"] = structpb.NewStringValue(am.GetIssuer())
+						return a
+					}(),
 					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
@@ -991,11 +938,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "no type defined",
-						},
-					},
+					Attributes:   createAttr("no type defined"),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -1005,12 +948,11 @@ func TestCreateOidc(t *testing.T) {
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "no type defined",
-							Issuer:  am.GetIssuer(),
-						},
-					},
+					Attributes: func() *structpb.Struct {
+						a := createAttr("no type defined")
+						a.Fields["issuer"] = structpb.NewStringValue(am.GetIssuer())
+						return a
+					}(),
 					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
@@ -1022,12 +964,11 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "overwritten-issuer",
-							Issuer:  "https://overwrite.com",
-						},
-					},
+					Attributes: func() *structpb.Struct {
+						a := createAttr("overwritten-issuer")
+						a.Fields["issuer"] = structpb.NewStringValue("https://overwrite.com")
+						return a
+					}(),
 				},
 			},
 			res: &pbs.CreateAccountResponse{
@@ -1038,12 +979,11 @@ func TestCreateOidc(t *testing.T) {
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "overwritten-issuer",
-							Issuer:  "https://overwrite.com",
-						},
-					},
+					Attributes: func() *structpb.Struct {
+						a := createAttr("overwritten-issuer")
+						a.Fields["issuer"] = structpb.NewStringValue("https://overwrite.com")
+						return a
+					}(),
 					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
@@ -1054,11 +994,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Type:         password.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "cant-specify-mismatching-type",
-						},
-					},
+					Attributes:   createAttr("cant-specify-mismatching-type"),
 				},
 			},
 			res: nil,
@@ -1071,11 +1007,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Id:           oidc.AccountPrefix + "_notallowed",
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "cant-specify-id",
-						},
-					},
+					Attributes:   createAttr("cant-specify-id"),
 				},
 			},
 			res: nil,
@@ -1088,11 +1020,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "cant-specify-created-time",
-						},
-					},
+					Attributes:   createAttr("cant-specify-created-time"),
 				},
 			},
 			res: nil,
@@ -1105,11 +1033,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
-							Subject: "cant-specify-update-time",
-						},
-					},
+					Attributes:   createAttr("cant-specify-update-time"),
 				},
 			},
 			res: nil,
@@ -1172,16 +1096,12 @@ func TestUpdatePassword(t *testing.T) {
 	require.NoError(t, err, "Error when getting new accounts service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
-	defaultAttributes := &pb.Account_PasswordAccountAttributes{
-		&pb.PasswordAccountAttributes{
-			LoginName: "default",
-		},
-	}
-	modifiedAttributes := &pb.Account_PasswordAccountAttributes{
-		&pb.PasswordAccountAttributes{
-			LoginName: "modified",
-		},
-	}
+	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"login_name": structpb.NewStringValue("default"),
+	}}
+	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"login_name": structpb.NewStringValue("modified"),
+	}}
 
 	freshAccount := func(t *testing.T) (*pb.Account, func()) {
 		t.Helper()
@@ -1192,7 +1112,7 @@ func TestUpdatePassword(t *testing.T) {
 					Name:         wrapperspb.String("default"),
 					Description:  wrapperspb.String("default"),
 					Type:         "password",
-					Attrs:        defaultAttributes,
+					Attributes:   defaultAttributes,
 				},
 			},
 		)
@@ -1231,7 +1151,7 @@ func TestUpdatePassword(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Type:              "password",
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: pwAuthorizedActions,
 				},
@@ -1255,7 +1175,7 @@ func TestUpdatePassword(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Type:              "password",
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: pwAuthorizedActions,
 				},
@@ -1267,7 +1187,7 @@ func TestUpdatePassword(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1292,7 +1212,7 @@ func TestUpdatePassword(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1304,7 +1224,7 @@ func TestUpdatePassword(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1317,7 +1237,7 @@ func TestUpdatePassword(t *testing.T) {
 				},
 				Item: &pb.Account{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1325,7 +1245,7 @@ func TestUpdatePassword(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					Type:              "password",
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: pwAuthorizedActions,
 				},
@@ -1340,7 +1260,7 @@ func TestUpdatePassword(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1349,7 +1269,7 @@ func TestUpdatePassword(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					Type:              "password",
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: pwAuthorizedActions,
 				},
@@ -1364,7 +1284,7 @@ func TestUpdatePassword(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1373,7 +1293,7 @@ func TestUpdatePassword(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					Type:              "password",
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: pwAuthorizedActions,
 				},
@@ -1388,7 +1308,7 @@ func TestUpdatePassword(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1397,7 +1317,7 @@ func TestUpdatePassword(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					Type:              "password",
-					Attrs:             modifiedAttributes,
+					Attributes:        modifiedAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: pwAuthorizedActions,
 				},
@@ -1507,8 +1427,6 @@ func TestUpdatePassword(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
-			} else {
-				require.NoError(gErr)
 			}
 
 			if tc.res == nil {
@@ -1568,18 +1486,14 @@ func TestUpdateOidc(t *testing.T) {
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
-	defaultAttributes := &pb.Account_OidcAccountAttributes{
-		&pb.OidcAccountAttributes{
-			Issuer:  "https://www.alice.com",
-			Subject: "test-subject",
-		},
-	}
-	modifiedAttributes := &pb.Account_OidcAccountAttributes{
-		&pb.OidcAccountAttributes{
-			Issuer:  "https://www.changed.com",
-			Subject: "changed",
-		},
-	}
+	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"issuer":  structpb.NewStringValue("https://www.alice.com"),
+		"subject": structpb.NewStringValue("test-subject"),
+	}}
+	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"issuer":  structpb.NewStringValue("https://www.changed.com"),
+		"subject": structpb.NewStringValue("changed"),
+	}}
 
 	freshAccount := func(t *testing.T) (*oidc.Account, func()) {
 		t.Helper()
@@ -1618,7 +1532,7 @@ func TestUpdateOidc(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -1642,7 +1556,7 @@ func TestUpdateOidc(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -1654,7 +1568,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1679,7 +1593,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1691,7 +1605,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1704,7 +1618,7 @@ func TestUpdateOidc(t *testing.T) {
 				},
 				Item: &pb.Account{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1712,7 +1626,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -1727,7 +1641,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1736,7 +1650,7 @@ func TestUpdateOidc(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -1751,7 +1665,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateAccountResponse{
@@ -1760,7 +1674,7 @@ func TestUpdateOidc(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -1775,7 +1689,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.Account{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1855,8 +1769,8 @@ func TestUpdateOidc(t *testing.T) {
 					Paths: []string{"attributes.issuer"},
 				},
 				Item: &pb.Account{
-					Name:  &wrapperspb.StringValue{Value: "ignored"},
-					Attrs: modifiedAttributes,
+					Name:       &wrapperspb.StringValue{Value: "ignored"},
+					Attributes: modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1868,8 +1782,8 @@ func TestUpdateOidc(t *testing.T) {
 					Paths: []string{"attributes.subject"},
 				},
 				Item: &pb.Account{
-					Name:  &wrapperspb.StringValue{Value: "ignored"},
-					Attrs: modifiedAttributes,
+					Name:       &wrapperspb.StringValue{Value: "ignored"},
+					Attributes: modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1946,19 +1860,19 @@ func TestSetPassword(t *testing.T) {
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {
 		am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-		pwAttrs := &pb.Account_PasswordAccountAttributes{
-			&pb.PasswordAccountAttributes{
-				LoginName: "testusername",
-			},
+		pwAttrs := &pb.PasswordAccountAttributes{
+			LoginName: "testusername",
 		}
 		if pw != "" {
-			pwAttrs.PasswordAccountAttributes.Password = wrapperspb.String(pw)
+			pwAttrs.Password = wrapperspb.String(pw)
 		}
+		attrs, err := handlers.ProtoToStruct(pwAttrs)
+		require.NoError(t, err)
 		createResp, err := tested.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),
 				Type:         "password",
-				Attrs:        pwAttrs,
+				Attributes:   attrs,
 			},
 		})
 		require.NoError(t, err)
@@ -2085,17 +1999,19 @@ func TestChangePassword(t *testing.T) {
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {
 		am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-		pwAttrs := &pb.Account_PasswordAccountAttributes{&pb.PasswordAccountAttributes{
+		pwAttrs := &pb.PasswordAccountAttributes{
 			LoginName: "testusername",
-		}}
-		if pw != "" {
-			pwAttrs.PasswordAccountAttributes.Password = wrapperspb.String(pw)
 		}
+		if pw != "" {
+			pwAttrs.Password = wrapperspb.String(pw)
+		}
+		attrs, err := handlers.ProtoToStruct(pwAttrs)
+		require.NoError(t, err)
 		createResp, err := tested.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.CreateAccountRequest{
 			Item: &pb.Account{
 				AuthMethodId: am.GetPublicId(),
 				Type:         "password",
-				Attrs:        pwAttrs,
+				Attributes:   attrs,
 			},
 		})
 		require.NoError(t, err)

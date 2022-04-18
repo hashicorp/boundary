@@ -14,6 +14,8 @@ import (
 )
 
 func TestWorkerWaitForNextSuccessfulStatusUpdate(t *testing.T) {
+	// do not run using t.Parallel() since it relies on the sys eventer
+	event.TestEnableEventing(t, true)
 	testConfig := event.DefaultEventerConfig()
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{

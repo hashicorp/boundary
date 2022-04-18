@@ -8,9 +8,6 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/managedgroups/v1/managed_group.proto";
-import "controller/custom_options/v1/options.proto";
-
-option (custom_options.v1.domain) = "auth";
 
 service ManagedGroupService {
 
@@ -89,7 +86,7 @@ service ManagedGroupService {
 }
 
 message GetManagedGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1;
 }
 
 message GetManagedGroupResponse {
@@ -97,8 +94,8 @@ message GetManagedGroupResponse {
 }
 
 message ListManagedGroupsRequest {
-  string auth_method_id = 1 [json_name="auth_method_id"]; // @gotags: `class:"public"`
-  string filter = 30 [json_name="filter"]; // @gotags: `class:"public"`
+  string auth_method_id = 1 [json_name="auth_method_id"];
+  string filter = 30 [json_name="filter"];
 }
 
 message ListManagedGroupsResponse {
@@ -110,12 +107,12 @@ message CreateManagedGroupRequest {
 }
 
 message CreateManagedGroupResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1;
   resources.managedgroups.v1.ManagedGroup item = 2;
 }
 
 message UpdateManagedGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1;
   resources.managedgroups.v1.ManagedGroup item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
@@ -125,7 +122,7 @@ message UpdateManagedGroupResponse {
 }
 
 message DeleteManagedGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1;
 }
 
 message DeleteManagedGroupResponse {}

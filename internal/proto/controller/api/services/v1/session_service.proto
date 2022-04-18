@@ -52,7 +52,7 @@ service SessionService {
 }
 
 message GetSessionRequest {
-	string id = 1; // @gotags: `class:"public"`
+	string id = 1;
 }
 
 message GetSessionResponse {
@@ -60,9 +60,9 @@ message GetSessionResponse {
 }
 
 message ListSessionsRequest {
-	string scope_id = 1; // @gotags: `class:"public"`
-	bool recursive = 20 [json_name="recursive"]; // @gotags: `class:"public"`
-	string filter = 30 [json_name="filter"]; // @gotags: `class:"public"`
+	string scope_id = 1;
+	bool recursive = 20 [json_name="recursive"];
+	string filter = 30 [json_name="filter"];
 }
 
 message ListSessionsResponse {
@@ -70,8 +70,8 @@ message ListSessionsResponse {
 }
 
 message CancelSessionRequest {
-	string id = 1; // @gotags: `class:"public"`
-	uint32 version = 2; // @gotags: `class:"public"`
+	string id = 1;
+	uint32 version = 2;
 }
 
 message CancelSessionResponse {

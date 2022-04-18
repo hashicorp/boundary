@@ -19,12 +19,14 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
+	authtokenpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -98,12 +100,10 @@ func TestUpdate_Password(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinPasswordLength:  8,
-							MinLoginNameLength: 3,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -128,12 +128,10 @@ func TestUpdate_Password(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
 					Type:        "password",
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinPasswordLength:  8,
-							MinLoginNameLength: 3,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -208,12 +206,10 @@ func TestUpdate_Password(t *testing.T) {
 					ScopeId:     o.GetPublicId(),
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinPasswordLength:  8,
-							MinLoginNameLength: 3,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -237,12 +233,10 @@ func TestUpdate_Password(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinPasswordLength:  8,
-							MinLoginNameLength: 3,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -266,12 +260,10 @@ func TestUpdate_Password(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
 					Type:        "password",
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinPasswordLength:  8,
-							MinLoginNameLength: 3,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -355,12 +347,10 @@ func TestUpdate_Password(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinLoginNameLength: 42,
-							MinPasswordLength:  55555,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_login_name_length": structpb.NewNumberValue(42),
+						"min_password_length":   structpb.NewNumberValue(55555),
+					}},
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -369,12 +359,10 @@ func TestUpdate_Password(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinPasswordLength:  8,
-							MinLoginNameLength: 42,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(42),
+					}},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -390,12 +378,10 @@ func TestUpdate_Password(t *testing.T) {
 				Item: &pb.AuthMethod{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinLoginNameLength: 5555,
-							MinPasswordLength:  42,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_login_name_length": structpb.NewNumberValue(5555),
+						"min_password_length":   structpb.NewNumberValue(42),
+					}},
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -404,12 +390,10 @@ func TestUpdate_Password(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        "password",
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinPasswordLength:  42,
-							MinLoginNameLength: 3,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(42),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -444,7 +428,6 @@ func TestUpdate_Password(t *testing.T) {
 				require.Nil(got)
 			}
 
-			cmpOptions := []cmp.Option{protocmp.Transform()}
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
 
@@ -453,13 +436,13 @@ func TestUpdate_Password(t *testing.T) {
 				// Verify it is a auth_method updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated auth_method should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
-				// Ignore all values which are hard to compare against.
-				cmpOptions = append(cmpOptions, protocmp.IgnoreFields(&pb.AuthMethod{}, "updated_time"))
+				// Clear all values which are hard to compare against.
+				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
 				assert.EqualValues(2, got.Item.Version)
 				tc.res.Item.Version = 2
 			}
-			assert.Empty(cmp.Diff(got, tc.res, cmpOptions...), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -508,12 +491,13 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
-				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
-					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
-						LoginName: testLoginName,
-						Password:  testPassword,
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
 			},
 			wantType: "token",
 		},
@@ -522,12 +506,13 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "cookie",
-				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
-					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
-						LoginName: testLoginName,
-						Password:  testPassword,
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
 			},
 			wantType: "cookie",
 		},
@@ -535,12 +520,13 @@ func TestAuthenticate_Password(t *testing.T) {
 			name: "no-token-type",
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
-				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
-					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
-						LoginName: testLoginName,
-						Password:  testPassword,
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
 			},
 		},
 		{
@@ -548,24 +534,26 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "email",
-				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
-					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
-						LoginName: testLoginName,
-						Password:  testPassword,
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
 			},
 			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "no-authmethod",
 			request: &pbs.AuthenticateRequest{
-				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
-					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
-						LoginName: testLoginName,
-						Password:  testPassword,
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
 			},
 			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -574,12 +562,13 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
-				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
-					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
-						LoginName: testLoginName,
-						Password:  "wrong",
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
 			},
 			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
 		},
@@ -588,12 +577,13 @@ func TestAuthenticate_Password(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				AuthMethodId: am.GetPublicId(),
 				TokenType:    "token",
-				Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
-					PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
-						LoginName: "wrong",
-						Password:  testPassword,
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					creds := map[string]*structpb.Value{
+						"login_name": {Kind: &structpb.Value_StringValue{StringValue: "wrong"}},
+						"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+					}
+					return &structpb.Struct{Fields: creds}
+				}(),
 			},
 			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
 		},
@@ -612,8 +602,8 @@ func TestAuthenticate_Password(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-
-			aToken := resp.GetAuthTokenResponse()
+			aToken := &authtokenpb.AuthToken{}
+			require.NoError(handlers.StructToProto(resp.GetAttributes(), aToken, handlers.WithDiscardUnknownFields(true)))
 			assert.NotEmpty(aToken.GetId())
 			assert.NotEmpty(aToken.GetToken())
 			assert.True(strings.HasPrefix(aToken.GetToken(), aToken.GetId()))
@@ -622,7 +612,7 @@ func TestAuthenticate_Password(t *testing.T) {
 			assert.Equal(aToken.GetCreatedTime(), aToken.GetApproximateLastUsedTime())
 			assert.Equal(acct.GetPublicId(), aToken.GetAccountId())
 			assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
-			assert.Equal(tc.wantType, resp.GetType())
+			assert.Equal(tc.wantType, resp.GetAttributes().GetFields()["token_type"].GetStringValue())
 		})
 	}
 }
@@ -669,16 +659,18 @@ func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 	require.NoError(err)
 	resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.AuthenticateRequest{
 		AuthMethodId: am.GetPublicId(),
-		Attrs: &pbs.AuthenticateRequest_PasswordLoginAttributes{
-			PasswordLoginAttributes: &pbs.PasswordLoginAttributes{
-				LoginName: testLoginName,
-				Password:  testPassword,
-			},
-		},
+		Attributes: func() *structpb.Struct {
+			creds := map[string]*structpb.Value{
+				"login_name": {Kind: &structpb.Value_StringValue{StringValue: testLoginName}},
+				"password":   {Kind: &structpb.Value_StringValue{StringValue: testPassword}},
+			}
+			return &structpb.Struct{Fields: creds}
+		}(),
 	})
 	require.NoError(err)
 
-	aToken := resp.GetAuthTokenResponse()
+	aToken := &authtokenpb.AuthToken{}
+	require.NoError(handlers.StructToProto(resp.GetAttributes(), aToken, handlers.WithDiscardUnknownFields(true)))
 	assert.Equal(iamUser.GetPublicId(), aToken.GetUserId())
 	assert.Equal(am.GetPublicId(), aToken.GetAuthMethodId())
 	assert.Equal(acct.GetPublicId(), aToken.GetAccountId())

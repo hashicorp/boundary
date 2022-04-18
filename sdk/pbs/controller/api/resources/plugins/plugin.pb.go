@@ -26,11 +26,11 @@ type PluginInfo struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Plugin.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Output only. The name of the plugin resource in boundary, if any.
-	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// Output only. The description of the plugin in boundary, if any.
-	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 }
 
 func (x *PluginInfo) Reset() {

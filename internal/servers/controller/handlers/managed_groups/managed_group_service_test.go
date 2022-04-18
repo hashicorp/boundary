@@ -32,6 +32,7 @@ import (
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -123,18 +124,14 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err)
 
 	oidcWireManagedGroup := pb.ManagedGroup{
-		Id:           omg.GetPublicId(),
-		AuthMethodId: omg.GetAuthMethodId(),
-		CreatedTime:  omg.GetCreateTime().GetTimestamp(),
-		UpdatedTime:  currMg.GetUpdateTime().GetTimestamp(),
-		Scope:        &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-		Version:      currMg.Version,
-		Type:         "oidc",
-		Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-			OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-				Filter: omg.GetFilter(),
-			},
-		},
+		Id:                omg.GetPublicId(),
+		AuthMethodId:      omg.GetAuthMethodId(),
+		CreatedTime:       omg.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       currMg.GetUpdateTime().GetTimestamp(),
+		Scope:             &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:           currMg.Version,
+		Type:              "oidc",
+		Attributes:        &structpb.Struct{Fields: map[string]*structpb.Value{"filter": structpb.NewStringValue(omg.GetFilter())}},
 		AuthorizedActions: oidcAuthorizedActions,
 		MemberIds:         []string{oidcA.GetPublicId()},
 	}
@@ -219,11 +216,9 @@ func TestListOidc(t *testing.T) {
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
 			Type:         oidc.Subtype.String(),
-			Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-				OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-					Filter: oidc.TestFakeManagedGroupFilter,
-				},
-			},
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"filter": structpb.NewStringValue(oidc.TestFakeManagedGroupFilter),
+			}},
 			AuthorizedActions: oidcAuthorizedActions,
 		})
 	}
@@ -240,11 +235,9 @@ func TestListOidc(t *testing.T) {
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
 			Type:         oidc.Subtype.String(),
-			Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-				OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-					Filter: oidc.TestFakeManagedGroupFilter,
-				},
-			},
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"filter": structpb.NewStringValue(oidc.TestFakeManagedGroupFilter),
+			}},
 			AuthorizedActions: oidcAuthorizedActions,
 		})
 	}
@@ -327,7 +320,7 @@ func TestListOidc(t *testing.T) {
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
-				assert.Nil(g.Attrs)
+				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)
 				assert.Nil(g.UpdatedTime)
 				assert.Empty(g.Version)
@@ -474,6 +467,13 @@ func TestCreateOidc(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
+	createAttr := func() *structpb.Struct {
+		attr := &pb.OidcManagedGroupAttributes{Filter: oidc.TestFakeManagedGroupFilter}
+		ret, err := handlers.ProtoToStruct(attr)
+		require.NoError(t, err, "Error converting proto to struct.")
+		return ret
+	}
+
 	cases := []struct {
 		name string
 		req  *pbs.CreateManagedGroupRequest
@@ -488,11 +488,7 @@ func TestCreateOidc(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: oidc.TestFakeManagedGroupFilter,
-						},
-					},
+					Attributes:   createAttr(),
 				},
 			},
 			res: &pbs.CreateManagedGroupResponse{
@@ -504,11 +500,11 @@ func TestCreateOidc(t *testing.T) {
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: oidc.TestFakeManagedGroupFilter,
-						},
-					},
+					Attributes: func() *structpb.Struct {
+						a := createAttr()
+						a.Fields["filter"] = structpb.NewStringValue(oidc.TestFakeManagedGroupFilter)
+						return a
+					}(),
 					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
@@ -518,11 +514,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateManagedGroupRequest{
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: oidc.TestFakeManagedGroupFilter,
-						},
-					},
+					Attributes:   createAttr(),
 				},
 			},
 			res: &pbs.CreateManagedGroupResponse{
@@ -532,11 +524,11 @@ func TestCreateOidc(t *testing.T) {
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: oidc.TestFakeManagedGroupFilter,
-						},
-					},
+					Attributes: func() *structpb.Struct {
+						a := createAttr()
+						a.Fields["filter"] = structpb.NewStringValue(oidc.TestFakeManagedGroupFilter)
+						return a
+					}(),
 					AuthorizedActions: oidcAuthorizedActions,
 				},
 			},
@@ -547,11 +539,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					Type:         password.Subtype.String(),
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: oidc.TestFakeManagedGroupFilter,
-						},
-					},
+					Attributes:   createAttr(),
 				},
 			},
 			res: nil,
@@ -564,11 +552,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Id:           intglobals.OidcManagedGroupPrefix + "_notallowed",
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: oidc.TestFakeManagedGroupFilter,
-						},
-					},
+					Attributes:   createAttr(),
 				},
 			},
 			res: nil,
@@ -581,11 +565,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: oidc.TestFakeManagedGroupFilter,
-						},
-					},
+					Attributes:   createAttr(),
 				},
 			},
 			res: nil,
@@ -598,11 +578,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: oidc.TestFakeManagedGroupFilter,
-						},
-					},
+					Attributes:   createAttr(),
 				},
 			},
 			res: nil,
@@ -615,11 +591,11 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
 					Type:         oidc.Subtype.String(),
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: "foobar",
-						},
-					},
+					Attributes: func() *structpb.Struct {
+						a := createAttr()
+						a.Fields["filter"] = structpb.NewStringValue("foobar")
+						return a
+					}(),
 				},
 			},
 			res: nil,
@@ -677,23 +653,19 @@ func TestUpdateOidc(t *testing.T) {
 	require.NoError(t, err, "Error when getting new managed_groups service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
-	defaultAttributes := &pb.ManagedGroup_OidcManagedGroupAttributes{
-		OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-			Filter: oidc.TestFakeManagedGroupFilter,
-		},
-	}
+	defaultAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"filter": structpb.NewStringValue(oidc.TestFakeManagedGroupFilter),
+	}}
 
-	modifiedAttributes := &pb.ManagedGroup_OidcManagedGroupAttributes{
-		OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-			Filter: `"/token/zip" == "zap"`,
-		},
-	}
+	modifiedFilter := `"/token/zip" == "zap"`
+	modifiedAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"filter": structpb.NewStringValue(modifiedFilter),
+	}}
 
-	badAttributes := &pb.ManagedGroup_OidcManagedGroupAttributes{
-		OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-			Filter: `"foobar"`,
-		},
-	}
+	badFilter := `"foobar"`
+	badAttributes := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"filter": structpb.NewStringValue(badFilter),
+	}}
 
 	freshManagedGroup := func(t *testing.T) (*oidc.ManagedGroup, func()) {
 		t.Helper()
@@ -732,7 +704,7 @@ func TestUpdateOidc(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -756,7 +728,7 @@ func TestUpdateOidc(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -768,7 +740,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -793,19 +765,19 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Only non-existent paths in Mask",
+			name: "Only non-existant paths in Mask",
 			req: &pbs.UpdateManagedGroupRequest{
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -818,7 +790,7 @@ func TestUpdateOidc(t *testing.T) {
 				},
 				Item: &pb.ManagedGroup{
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -826,7 +798,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -841,7 +813,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "updated"},
 					Description: &wrapperspb.StringValue{Value: "ignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -850,7 +822,7 @@ func TestUpdateOidc(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -865,7 +837,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "ignored"},
 					Description: &wrapperspb.StringValue{Value: "notignored"},
-					Attrs:       modifiedAttributes,
+					Attributes:  modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -874,7 +846,7 @@ func TestUpdateOidc(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             defaultAttributes,
+					Attributes:        defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -955,7 +927,7 @@ func TestUpdateOidc(t *testing.T) {
 					Paths: []string{"attributes.filter"},
 				},
 				Item: &pb.ManagedGroup{
-					Attrs: badAttributes,
+					Attributes: badAttributes,
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -967,7 +939,7 @@ func TestUpdateOidc(t *testing.T) {
 					Paths: []string{"attributes.filter"},
 				},
 				Item: &pb.ManagedGroup{
-					Attrs: modifiedAttributes,
+					Attributes: modifiedAttributes,
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -976,7 +948,7 @@ func TestUpdateOidc(t *testing.T) {
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
 					Type:              oidc.Subtype.String(),
-					Attrs:             modifiedAttributes,
+					Attributes:        modifiedAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
 				},
@@ -1004,8 +976,6 @@ func TestUpdateOidc(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateManagedGroup(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
-			} else {
-				require.NoError(gErr)
 			}
 
 			if tc.res == nil {

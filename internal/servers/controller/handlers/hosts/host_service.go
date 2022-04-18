@@ -112,7 +112,7 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 	}
 	for _, item := range hl {
 		res.Id = item.GetPublicId()
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId("host", res.Id)]
+		idActions := idActionsTypeMap[host.SubtypeFromId(res.Id)]
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
@@ -136,13 +136,7 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 			return nil, err
 		}
 
-		// This comes last so that we can use item fields in the filter after
-		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
-		if err != nil {
-			return nil, err
-		}
-		if filter.Match(filterable) {
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -179,7 +173,7 @@ func (s Service) GetHost(ctx context.Context, req *pbs.GetHostRequest) (*pbs.Get
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId("host", req.GetId())]
+		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
 	outputOpts = append(outputOpts, handlers.WithHostSetIds(h.GetSetIds()))
@@ -218,7 +212,7 @@ func (s Service) CreateHost(ctx context.Context, req *pbs.CreateHostRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId("host", req.GetItem().GetHostCatalogId())]
+		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetItem().GetHostCatalogId())]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
 
@@ -260,7 +254,7 @@ func (s Service) UpdateHost(ctx context.Context, req *pbs.UpdateHostRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId("host", req.GetId())]
+		idActions := idActionsTypeMap[host.SubtypeFromId(req.GetId())]
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, h.GetPublicId(), idActions).Strings()))
 	}
 	outputOpts = append(outputOpts, handlers.WithHostSetIds(h.GetSetIds()))
@@ -292,7 +286,7 @@ func (s Service) DeleteHost(ctx context.Context, req *pbs.DeleteHostRequest) (*p
 func (s Service) getFromRepo(ctx context.Context, id string) (host.Host, *plugins.PluginInfo, error) {
 	var h host.Host
 	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromId("host", id) {
+	switch host.SubtypeFromId(id) {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -325,7 +319,10 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Host, *plugin
 
 func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*static.Host, error) {
 	const op = "hosts.(Service).createInRepo"
-	ha := item.GetStaticHostAttributes()
+	ha := &pb.StaticHostAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
+	}
 	var opts []static.Option
 	if ha.GetAddress() != nil {
 		opts = append(opts, static.WithAddress(ha.GetAddress().GetValue()))
@@ -357,7 +354,10 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*static.Host, error) {
 	const op = "hosts.(Service).updateInRepo"
-	ha := item.GetStaticHostAttributes()
+	ha := &pb.StaticHostAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), ha); err != nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed converting attributes to subtype proto: %s", err)
+	}
 	var opts []static.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
@@ -407,7 +407,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Host, *plugins.PluginInfo, error) {
 	var hosts []host.Host
 	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromId("host", catalogId) {
+	switch host.SubtypeFromId(catalogId) {
 	case static.Subtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
@@ -456,7 +456,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	case action.List, action.Create:
 		parentId = id
 	default:
-		switch subtypes.SubtypeFromId("host", id) {
+		switch host.SubtypeFromId(id) {
 		case static.Subtype:
 			h, err := staticRepo.LookupHost(ctx, id)
 			if err != nil {
@@ -484,7 +484,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var cat host.Catalog
-	switch subtypes.SubtypeFromId("host", id) {
+	switch host.SubtypeFromId(id) {
 	case static.Subtype:
 		stcat, err := staticRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
@@ -572,11 +572,11 @@ func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Hos
 	if outputFields.Has(globals.AttributesField) {
 		switch h := in.(type) {
 		case *static.Host:
-			out.Attrs = &pb.Host_StaticHostAttributes{
-				StaticHostAttributes: &pb.StaticHostAttributes{
-					Address: wrapperspb.String(h.GetAddress()),
-				},
+			st, err := handlers.ProtoToStruct(&pb.StaticHostAttributes{Address: wrapperspb.String(h.GetAddress())})
+			if err != nil {
+				return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to convert static attribute to struct: %s", err)
 			}
+			out.Attributes = st
 		}
 	}
 	if outputFields.Has(globals.PluginField) {
@@ -607,7 +607,7 @@ func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Hos
 func validateGetRequest(req *pbs.GetHostRequest) error {
 	return handlers.ValidateGetRequest(func() map[string]string {
 		badFields := map[string]string{}
-		ct := subtypes.SubtypeFromId("host", req.GetId())
+		ct := host.SubtypeFromId(req.GetId())
 		if ct == subtypes.UnknownSubtype {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
@@ -621,7 +621,7 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), static.HostCatalogPrefix) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
-		switch subtypes.SubtypeFromId("host", req.GetItem().GetHostCatalogId()) {
+		switch host.SubtypeFromId(req.GetItem().GetHostCatalogId()) {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
@@ -632,7 +632,10 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 			if len(req.GetItem().GetDnsNames()) > 0 {
 				badFields[globals.DnsNamesField] = "This field is not supported for this host type."
 			}
-			attrs := req.GetItem().GetStaticHostAttributes()
+			attrs := &pb.StaticHostAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
+			}
 			if attrs.GetAddress() == nil ||
 				len(attrs.GetAddress().GetValue()) < static.MinHostAddressLength ||
 				len(attrs.GetAddress().GetValue()) > static.MaxHostAddressLength {
@@ -657,11 +660,14 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId("host", req.GetId()) {
+		switch host.SubtypeFromId(req.GetId()) {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
-				attrs := req.GetItem().GetStaticHostAttributes()
+				attrs := &pb.StaticHostAttributes{}
+				if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+					badFields["attributes"] = "Attribute fields do not match the expected format."
+				}
 
 				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.address") {
 					if attrs.GetAddress() == nil ||
@@ -683,7 +689,7 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 	return handlers.ValidateDeleteRequest(func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId("host", req.GetId()) {
+		switch host.SubtypeFromId(req.GetId()) {
 		case plugin.Subtype:
 			badFields[globals.IdField] = "Cannot manually delete this type of host."
 		}

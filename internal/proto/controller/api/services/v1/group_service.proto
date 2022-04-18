@@ -131,7 +131,7 @@ service GroupService {
 }
 
 message GetGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1;
 }
 
 message GetGroupResponse {
@@ -139,9 +139,9 @@ message GetGroupResponse {
 }
 
 message ListGroupsRequest {
-  string scope_id = 1 [json_name="scope_id"]; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name="recursive"]; // @gotags: `class:"public"`
-  string filter = 30 [json_name="filter"]; // @gotags: `class:"public"`
+  string scope_id = 1 [json_name="scope_id"];
+  bool recursive = 20 [json_name="recursive"];
+  string filter = 30 [json_name="filter"];
 }
 
 message ListGroupsResponse {
@@ -153,12 +153,12 @@ message CreateGroupRequest {
 }
 
 message CreateGroupResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1;
   resources.groups.v1.Group item = 2;
 }
 
 message UpdateGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1;
   resources.groups.v1.Group item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
@@ -168,17 +168,17 @@ message UpdateGroupResponse {
 }
 
 message DeleteGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1;
 }
 
 message DeleteGroupResponse {}
 
 message AddGroupMembersRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1;
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2; // @gotags: `class:"public"`
-  repeated string member_ids = 3 [json_name="member_ids"]; // @gotags: `class:"public"`
+  uint32 version = 2;
+  repeated string member_ids = 3 [json_name="member_ids"];
 }
 
 message AddGroupMembersResponse {
@@ -186,11 +186,11 @@ message AddGroupMembersResponse {
 }
 
 message SetGroupMembersRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1;
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2; // @gotags: `class:"public"`
-  repeated string member_ids = 3 [json_name="member_ids"]; // @gotags: `class:"public"`
+  uint32 version = 2;
+  repeated string member_ids = 3 [json_name="member_ids"];
 }
 
 message SetGroupMembersResponse {
@@ -198,11 +198,11 @@ message SetGroupMembersResponse {
 }
 
 message RemoveGroupMembersRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1;
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2; // @gotags: `class:"public"`
-  repeated string member_ids = 3 [json_name="member_ids"]; // @gotags: `class:"public"`
+  uint32 version = 2;
+  repeated string member_ids = 3 [json_name="member_ids"];
 }
 
 message RemoveGroupMembersResponse {

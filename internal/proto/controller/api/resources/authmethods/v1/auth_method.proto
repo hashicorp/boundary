@@ -7,11 +7,8 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/struct.proto";
-import "google/api/visibility.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
-
-option (custom_options.v1.domain) = "auth";
 
 // AuthMethod contains all fields related to an Auth Method resource
 message AuthMethod {
@@ -44,20 +41,8 @@ message AuthMethod {
   // The Auth Method type.
   string type = 90;  // @gotags: `class:"public"`
 
-  oneof attrs {
-    // The attributes that are applicable for the specific Auth Method type.
-    google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.subtype) = "default"];
-    PasswordAuthMethodAttributes password_auth_method_attributes = 101 [
-      (custom_options.v1.generate_sdk_option) = true,
-      (custom_options.v1.subtype) = "password",
-      (google.api.field_visibility).restriction = "INTERNAL"
-    ];
-    OidcAuthMethodAttributes oidc_auth_methods_attributes = 102 [
-      (custom_options.v1.generate_sdk_option) = true,
-      (custom_options.v1.subtype) = "oidc",
-      (google.api.field_visibility).restriction = "INTERNAL"
-    ];
-  }
+  // The attributes that are applicable for the specific Auth Method type.
+  google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
 
   // Output only. Whether this auth method is the primary auth method for it's scope.
   // To change this value update the primary_auth_method_id field on the scope.
@@ -67,7 +52,7 @@ message AuthMethod {
   repeated string authorized_actions = 300 [json_name = "authorized_actions"];  // @gotags: `class:"public"`
 
   // Output only. The authorized actions for the scope's collections.
-  map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name = "authorized_collection_actions"]; // classified as public via taggable implementation
+  map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name = "authorized_collection_actions"];
 }
 
 // The attributes of a password typed auth method.

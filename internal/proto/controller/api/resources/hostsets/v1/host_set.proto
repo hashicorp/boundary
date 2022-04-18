@@ -14,10 +14,10 @@ import "controller/custom_options/v1/options.proto";
 // HostSet is a collection of Hosts created and managed by a Host Catalog
 message HostSet {
 	// Output only. The ID of the Host Set.
-	string id = 10;  // @gotags: `class:"public"`
+	string id = 10;
 
 	// The Host Catalog of which this Host Set is a part.
-	string host_catalog_id = 20 [json_name="host_catalog_id"];  // @gotags: `class:"public"`
+	string host_catalog_id = 20 [json_name="host_catalog_id"];
 
 	// Output only. Scope information for this resource.
 	resources.scopes.v1.ScopeInfo scope = 30;
@@ -26,26 +26,26 @@ message HostSet {
 	resources.plugins.v1.PluginInfo plugin = 35;
 
 	// Optional name for identification purposes.
-	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];  // @gotags: `class:"public"`
+	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
 
 	// Optional user-set description for identification purposes.
-	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];  // @gotags: `class:"public"`
+	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
 
 	// Output only. The time this resource was created.
-	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];  // @gotags: `class:"public"`
+	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
 
 	// Output only. The time this resource was last updated.
-	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];  // @gotags: `class:"public"`
+	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
 
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	uint32 version = 80;  // @gotags: `class:"public"`
+	uint32 version = 80;
 
 	// The type of the Host Set.
-	string type = 90;  // @gotags: `class:"public"`
+	string type = 90;
 
 	// Output only. A list of Hosts in this Host Set.
-	repeated string host_ids = 100 [json_name="host_ids"];  // @gotags: `class:"public"`
+	repeated string host_ids = 100 [json_name="host_ids"];
 
 	// multiple possible endpoints for a host. Preferences are specified by
 	// "cidr:<valid IPv4/6 CIDR>" or "dns:<globbed name>", specifying which IP
@@ -53,7 +53,7 @@ message HostSet {
 	// preferred. If no preferences are specified, a value will be chosen from
 	// among all avialable values using a built-in priority order. May not be
 	// valid for all plugin types.
-	repeated string preferred_endpoints = 101 [json_name="preferred_endpoints", (custom_options.v1.generate_sdk_option) = true,  (custom_options.v1.mask_mapping) = {this:"preferred_endpoints" that: "PreferredEndpoints"}];  // @gotags: `class:"public"`
+	repeated string preferred_endpoints = 101 [json_name="preferred_endpoints", (custom_options.v1.generate_sdk_option) = true,  (custom_options.v1.mask_mapping) = {this:"preferred_endpoints" that: "PreferredEndpoints"}];
 
 	// An interger number of seconds indicating the amount of time that should
 	// elapse between syncs of the host set. The interval will be applied to the
@@ -61,13 +61,11 @@ message HostSet {
 	// disable syncing for that host set; setting to zero will cause the set to
 	// use Boundary's default. The default may change between releases. May not
 	// be valid for all plugin types.
-	google.protobuf.Int32Value sync_interval_seconds = 102 [json_name="sync_interval_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"sync_interval_seconds" that: "SyncIntervalSeconds"}];  // @gotags: `class:"public"`
+	google.protobuf.Int32Value sync_interval_seconds = 102 [json_name="sync_interval_seconds", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"sync_interval_seconds" that: "SyncIntervalSeconds"}];
 
-	oneof attrs {
-		// The attributes that are applicable for the specific Host Set type.
-		google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.subtype) = "default"];
-	}
+	// The attributes that are applicable for the specific Host Set type.
+	google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true];
 
 	// Output only. The available actions on this resource for this user.
-	repeated string authorized_actions = 300 [json_name="authorized_actions"];  // @gotags: `class:"public"`
+	repeated string authorized_actions = 300 [json_name="authorized_actions"];
 }

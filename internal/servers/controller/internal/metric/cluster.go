@@ -3,14 +3,16 @@ package metric
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -20,18 +22,49 @@ const (
 	clusterSubSystem = "controller_cluster"
 )
 
-// gRpcRequestLatency collects measurements of how long it takes
-// the boundary system to reply to a request to the controller cluster
-// from the time that boundary received the request.
-var gRpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
-	prometheus.HistogramOpts{
-		Namespace: globals.MetricNamespace,
-		Subsystem: clusterSubSystem,
-		Name:      "grpc_request_duration_seconds",
-		Help:      "Histogram of latencies for gRPC requests.",
-		Buckets:   prometheus.DefBuckets,
-	},
-	[]string{labelGRpcCode, labelGRpcService, labelGRpcMethod},
+var (
+	// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb
+	gRpcMsgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 6)
+
+	// gRpcRequestLatency collects measurements of how long it takes
+	// the boundary system to reply to a request to the controller cluster
+	// from the time that boundary received the request.
+	gRpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: globals.MetricNamespace,
+			Subsystem: clusterSubSystem,
+			Name:      "grpc_request_duration_seconds",
+			Help:      "Histogram of latencies for gRPC requests.",
+			Buckets:   prometheus.DefBuckets,
+		},
+		[]string{labelGRpcCode, labelGRpcService, labelGRpcMethod},
+	)
+
+	// gRpcRequestSize collections measurements of how large each request
+	// to the boundary controller cluster is.
+	gRpcRequestSize prometheus.ObserverVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: globals.MetricNamespace,
+			Subsystem: clusterSubSystem,
+			Name:      "grpc_request_size_bytes",
+			Help:      "Histogram of request sizes for gRPC requests.",
+			Buckets:   gRpcMsgSizeBuckets,
+		},
+		[]string{labelGRpcCode, labelGRpcService, labelGRpcMethod},
+	)
+
+	// gRpcResponseSize collections measurements of how large each response
+	// from the boundary controller cluster is.
+	gRpcResponseSize prometheus.ObserverVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: globals.MetricNamespace,
+			Subsystem: clusterSubSystem,
+			Name:      "grpc_response_size_bytes",
+			Help:      "Histogram of response sizes for gRPC responses.",
+			Buckets:   gRpcMsgSizeBuckets,
+		},
+		[]string{labelGRpcCode, labelGRpcService, labelGRpcMethod},
+	)
 )
 
 // statusFromError retrieves the *status.Status from the provided error.  It'll
@@ -61,52 +94,71 @@ func splitMethodName(fullMethodName string) (string, string) {
 	return "unknown", "unknown"
 }
 
-type metricMethodNameContextKey struct{}
+type requestRecorder struct {
+	labels prometheus.Labels
 
-type statsHandler struct{}
-
-func (sh statsHandler) TagRPC(ctx context.Context, i *stats.RPCTagInfo) context.Context {
-	return context.WithValue(ctx, metricMethodNameContextKey{}, i.FullMethodName)
+	// measurements
+	reqSize *int
+	start   time.Time
 }
 
-func (sh statsHandler) TagConn(ctx context.Context, _ *stats.ConnTagInfo) context.Context {
-	return ctx
-}
-
-func (sh statsHandler) HandleConn(context.Context, stats.ConnStats) {
-}
-
-func (sh statsHandler) HandleRPC(ctx context.Context, s stats.RPCStats) {
-	switch v := s.(type) {
-	case *stats.End:
-		// Accept the ok, but ignore it. This code doesn't need to panic
-		// and if "fullName" is an empty string splitMethodName will
-		// set service and method to "unknown".
-		fullName, _ := ctx.Value(metricMethodNameContextKey{}).(string)
-		service, method := splitMethodName(fullName)
-		l := prometheus.Labels{
+func newRequestRecorder(ctx context.Context, req interface{}, fullMethodName string) requestRecorder {
+	const op = "metric.newRequestRecorder"
+	service, method := splitMethodName(fullMethodName)
+	r := requestRecorder{
+		labels: prometheus.Labels{
 			labelGRpcMethod:  method,
 			labelGRpcService: service,
-			labelGRpcCode:    statusFromError(v.Error).Code().String(),
-		}
-		gRpcRequestLatency.With(l).Observe(v.EndTime.Sub(v.BeginTime).Seconds())
+		},
+		start: time.Now(),
+	}
+
+	reqProto, ok := req.(proto.Message)
+	switch {
+	case ok:
+		reqSize := proto.Size(reqProto)
+		r.reqSize = &reqSize
+	default:
+		event.WriteError(ctx, op, errors.New(ctx, errors.Internal, op, "unable to cast to proto.Message"))
+	}
+	return r
+}
+
+func (r requestRecorder) record(ctx context.Context, resp interface{}, err error) {
+	const op = "metric.(requestRecorder).record"
+	st := statusFromError(err)
+	r.labels[labelGRpcCode] = st.Code().String()
+
+	gRpcRequestLatency.With(r.labels).Observe(time.Since(r.start).Seconds())
+
+	if r.reqSize != nil {
+		gRpcRequestSize.With(r.labels).Observe(float64(*r.reqSize))
+	}
+
+	if respProto, ok := resp.(proto.Message); ok {
+		respSize := proto.Size(respProto)
+		gRpcResponseSize.With(r.labels).Observe(float64(respSize))
+	} else {
+		event.WriteError(ctx, op, errors.New(ctx, errors.Internal, op, "unable to cast to proto.Message"))
+	}
+}
+
+// InstrumentClusterInterceptor wraps a UnaryServerInterceptor and records
+// observations for the collectors associated with the cluster's grpc service.
+func InstrumentClusterInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		recorder := newRequestRecorder(ctx, req, info.FullMethod)
+		resp, err := handler(ctx, req)
+		recorder.record(ctx, resp, err)
+		return resp, err
 	}
 }
 
 var allCodes = []codes.Code{
-	codes.OK, codes.InvalidArgument, codes.PermissionDenied,
-	codes.FailedPrecondition,
-
-	// Codes which can be generated by the gRPC framework
-	codes.Canceled, codes.Unknown, codes.DeadlineExceeded,
-	codes.ResourceExhausted, codes.Unimplemented, codes.Internal,
-	codes.Unavailable, codes.Unauthenticated,
-}
-
-// InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
-// cluster specific metrics. Use with the cluster gRPC server.
-func InstrumentClusterStatsHandler() statsHandler {
-	return statsHandler{}
+	codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded, codes.NotFound,
+	codes.AlreadyExists, codes.PermissionDenied, codes.Unauthenticated, codes.ResourceExhausted,
+	codes.FailedPrecondition, codes.Aborted, codes.OutOfRange, codes.Unimplemented, codes.Internal,
+	codes.Unavailable, codes.DataLoss,
 }
 
 // InitializeClusterCollectors registers the cluster metrics to the default
@@ -116,7 +168,7 @@ func InitializeClusterCollectors(r prometheus.Registerer, server *grpc.Server) {
 	if r == nil {
 		return
 	}
-	r.MustRegister(gRpcRequestLatency)
+	r.MustRegister(gRpcRequestLatency, gRpcRequestSize, gRpcResponseSize)
 
 	for serviceName, info := range server.GetServiceInfo() {
 		for _, mInfo := range info.Methods {
@@ -127,6 +179,8 @@ func InitializeClusterCollectors(r prometheus.Registerer, server *grpc.Server) {
 					labelGRpcCode:    c.String(),
 				}
 				gRpcRequestLatency.With(l)
+				gRpcRequestSize.With(l)
+				gRpcResponseSize.With(l)
 			}
 		}
 	}

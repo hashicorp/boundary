@@ -267,27 +267,39 @@ func TestUpdate_OIDC(t *testing.T) {
 	tp.SetClientCreds(tpClientId, tpClientSecret)
 	_, _, tpAlg, _ := tp.SigningKeys()
 
-	defaultAttributes := &pb.AuthMethod_OidcAuthMethodsAttributes{
-		OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-			Issuer:            wrapperspb.String(tp.Addr()),
-			ClientId:          wrapperspb.String("someclientid"),
-			ClientSecret:      wrapperspb.String("secret"),
-			ApiUrlPrefix:      wrapperspb.String("https://example.com"),
-			IdpCaCerts:        []string{tp.CACert()},
-			SigningAlgorithms: []string{string(tpAlg)},
-		},
+	defaultAttributeFields := func() map[string]*structpb.Value {
+		return map[string]*structpb.Value{
+			"issuer":         structpb.NewStringValue(tp.Addr()),
+			"client_id":      structpb.NewStringValue("someclientid"),
+			"client_secret":  structpb.NewStringValue("secret"),
+			"api_url_prefix": structpb.NewStringValue("http://example.com"),
+			"idp_ca_certs": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
+				return structpb.NewListValue(lv)
+			}(),
+			"signing_algorithms": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
+				return structpb.NewListValue(lv)
+			}(),
+		}
 	}
-	defaultReadAttributes := &pb.AuthMethod_OidcAuthMethodsAttributes{
-		OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-			Issuer:            wrapperspb.String(tp.Addr()),
-			ClientId:          wrapperspb.String("someclientid"),
-			ClientSecretHmac:  "<hmac>",
-			State:             string(oidc.ActivePrivateState),
-			ApiUrlPrefix:      wrapperspb.String("https://example.com"),
-			CallbackUrl:       "https://example.com/v1/auth-methods/oidc:authenticate:callback",
-			IdpCaCerts:        []string{tp.CACert()},
-			SigningAlgorithms: []string{string(tpAlg)},
-		},
+	defaultReadAttributeFields := func() map[string]*structpb.Value {
+		return map[string]*structpb.Value{
+			"issuer":             structpb.NewStringValue(tp.Addr()),
+			"client_id":          structpb.NewStringValue("someclientid"),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.ActivePrivateState)),
+			"api_url_prefix":     structpb.NewStringValue("http://example.com"),
+			"callback_url":       structpb.NewStringValue("http://example.com/v1/auth-methods/oidc:authenticate:callback"),
+			"idp_ca_certs": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
+				return structpb.NewListValue(lv)
+			}(),
+			"signing_algorithms": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
+				return structpb.NewListValue(lv)
+			}(),
+		}
 	}
 
 	freshAuthMethod := func(t *testing.T) (*pb.AuthMethod, func()) {
@@ -297,17 +309,17 @@ func TestUpdate_OIDC(t *testing.T) {
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
 			Type:        oidc.Subtype.String(),
-			Attrs:       defaultAttributes,
+			Attributes: &structpb.Struct{
+				Fields: defaultAttributeFields(),
+			},
 		}})
 		require.NoError(t, err)
 
 		csr, err := tested.ChangeState(ctx, &pbs.ChangeStateRequest{
 			Id:      am.GetItem().GetId(),
 			Version: am.GetItem().GetVersion(),
-			Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-				OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-					State: "active-private",
-				},
+			Attributes: &structpb.Struct{
+				Fields: map[string]*structpb.Value{"state": structpb.NewStringValue("active-private")},
 			},
 		})
 		require.NoError(t, err)
@@ -341,11 +353,13 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					ScopeId:                     o.GetPublicId(),
-					Name:                        &wrapperspb.StringValue{Value: "new"},
-					Description:                 &wrapperspb.StringValue{Value: "desc"},
-					Type:                        oidc.Subtype.String(),
-					Attrs:                       defaultReadAttributes,
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        oidc.Subtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -366,11 +380,13 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					ScopeId:                     o.GetPublicId(),
-					Name:                        &wrapperspb.StringValue{Value: "new"},
-					Description:                 &wrapperspb.StringValue{Value: "desc"},
-					Type:                        oidc.Subtype.String(),
-					Attrs:                       defaultReadAttributes,
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        oidc.Subtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -384,12 +400,14 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.issuer"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.Issuer = wrapperspb.String("http://localhost:72759/somepath/.well-known/openid-configuration")
-						f.DisableDiscoveredConfigValidation = true
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["issuer"] = structpb.NewStringValue("http://localhost:72759/somepath/.well-known/openid-configuration")
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+							return f
+						}(),
+					},
 				},
 			},
 			res: &pbs.UpdateAuthMethodResponse{
@@ -398,13 +416,14 @@ func TestUpdate_OIDC(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        oidc.Subtype.String(),
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.Issuer = wrapperspb.String("http://localhost:72759/somepath/")
-						f.DisableDiscoveredConfigValidation = true
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
-
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["issuer"] = structpb.NewStringValue("http://localhost:72759/somepath/")
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+							return f
+						}(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -418,12 +437,14 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.issuer"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.Issuer = wrapperspb.String("http://localhost:7dddd")
-						f.DisableDiscoveredConfigValidation = true
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["issuer"] = structpb.NewStringValue("http://localhost:7dddd")
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+							return f
+						}(),
+					},
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -493,10 +514,12 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					ScopeId:                     o.GetPublicId(),
-					Description:                 &wrapperspb.StringValue{Value: "default"},
-					Type:                        oidc.Subtype.String(),
-					Attrs:                       defaultReadAttributes,
+					ScopeId:     o.GetPublicId(),
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        oidc.Subtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -515,10 +538,12 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					ScopeId:                     o.GetPublicId(),
-					Name:                        &wrapperspb.StringValue{Value: "default"},
-					Type:                        oidc.Subtype.String(),
-					Attrs:                       defaultReadAttributes,
+					ScopeId: o.GetPublicId(),
+					Name:    &wrapperspb.StringValue{Value: "default"},
+					Type:    oidc.Subtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -538,11 +563,13 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					ScopeId:                     o.GetPublicId(),
-					Name:                        &wrapperspb.StringValue{Value: "updated"},
-					Description:                 &wrapperspb.StringValue{Value: "default"},
-					Type:                        oidc.Subtype.String(),
-					Attrs:                       defaultReadAttributes,
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        oidc.Subtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -562,11 +589,13 @@ func TestUpdate_OIDC(t *testing.T) {
 			},
 			res: &pbs.UpdateAuthMethodResponse{
 				Item: &pb.AuthMethod{
-					ScopeId:                     o.GetPublicId(),
-					Name:                        &wrapperspb.StringValue{Value: "default"},
-					Description:                 &wrapperspb.StringValue{Value: "notignored"},
-					Type:                        oidc.Subtype.String(),
-					Attrs:                       defaultReadAttributes,
+					ScopeId:     o.GetPublicId(),
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
+					Type:        oidc.Subtype.String(),
+					Attributes: &structpb.Struct{
+						Fields: defaultReadAttributeFields(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -678,9 +707,9 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.max_age"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							MaxAge: wrapperspb.UInt32(0),
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"max_age": structpb.NewNumberValue(0),
 						},
 					},
 				},
@@ -691,11 +720,13 @@ func TestUpdate_OIDC(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        oidc.Subtype.String(),
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.MaxAge = wrapperspb.UInt32(0)
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["max_age"] = structpb.NewNumberValue(0)
+							return f
+						}(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -709,9 +740,9 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.max_age"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							MaxAge: wrapperspb.UInt32(4),
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"max_age": structpb.NewNumberValue(4),
 						},
 					},
 				},
@@ -722,11 +753,13 @@ func TestUpdate_OIDC(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        oidc.Subtype.String(),
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.MaxAge = wrapperspb.UInt32(4)
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["max_age"] = structpb.NewNumberValue(4)
+							return f
+						}(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -740,9 +773,9 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.client_id"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							ClientId: wrapperspb.String("new id"),
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"client_id": structpb.NewStringValue("new id"),
 						},
 					},
 				},
@@ -753,11 +786,13 @@ func TestUpdate_OIDC(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        oidc.Subtype.String(),
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.ClientId = wrapperspb.String("new id")
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["client_id"] = structpb.NewStringValue("new id")
+							return f
+						}(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -771,11 +806,7 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.api_url_prefix"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							ApiUrlPrefix: nil, // Not strictly necessary to populate this, since it is the zero value, but be explicit
-						},
-					},
+					Attributes: &structpb.Struct{},
 				},
 			},
 			wantErr: true,
@@ -787,10 +818,13 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.api_url_prefix"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							ApiUrlPrefix: wrapperspb.String("https://callback.prefix:9281/path"),
-						},
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := map[string]*structpb.Value{
+								"api_url_prefix": structpb.NewStringValue("https://callback.prefix:9281/path"),
+							}
+							return f
+						}(),
 					},
 				},
 			},
@@ -800,12 +834,14 @@ func TestUpdate_OIDC(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        oidc.Subtype.String(),
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.ApiUrlPrefix = wrapperspb.String("https://callback.prefix:9281/path")
-						f.CallbackUrl = "https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback"
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["api_url_prefix"] = structpb.NewStringValue("https://callback.prefix:9281/path")
+							f["callback_url"] = structpb.NewStringValue("https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback")
+							return f
+						}(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -819,9 +855,12 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.allowed_audiences"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							AllowedAudiences: []string{"bar", "foo"},
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"allowed_audiences": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"bar", "foo"})
+								return structpb.NewListValue(lv)
+							}(),
 						},
 					},
 				},
@@ -832,11 +871,16 @@ func TestUpdate_OIDC(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        oidc.Subtype.String(),
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.AllowedAudiences = []string{"bar", "foo"}
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["allowed_audiences"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"bar", "foo"})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -850,9 +894,12 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.claims_scopes"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							ClaimsScopes: []string{"email", "profile"},
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"claims_scopes": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+								return structpb.NewListValue(lv)
+							}(),
 						},
 					},
 				},
@@ -863,11 +910,16 @@ func TestUpdate_OIDC(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        oidc.Subtype.String(),
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.ClaimsScopes = []string{"email", "profile"}
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["claims_scopes"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -881,9 +933,12 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.account_claim_maps"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							AccountClaimMaps: []string{"display_name=name"},
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"account_claim_maps": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"display_name=name"})
+								return structpb.NewListValue(lv)
+							}(),
 						},
 					},
 				},
@@ -894,11 +949,16 @@ func TestUpdate_OIDC(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        oidc.Subtype.String(),
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.AccountClaimMaps = []string{"display_name=name"}
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["account_claim_maps"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"display_name=name"})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -912,9 +972,12 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.account_claim_maps"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							AccountClaimMaps: []string{"oid=sub"},
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"account_claim_maps": func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{"oid=sub"})
+								return structpb.NewListValue(lv)
+							}(),
 						},
 					},
 				},
@@ -938,10 +1001,15 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.signing_algorithms"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							SigningAlgorithms: []string{string(oidc.EdDSA)},
-						},
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["signing_algorithms"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
 					},
 				},
 			},
@@ -954,11 +1022,16 @@ func TestUpdate_OIDC(t *testing.T) {
 					Paths: []string{"attributes.signing_algorithms"},
 				},
 				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							DisableDiscoveredConfigValidation: true,
-							SigningAlgorithms:                 []string{string(oidc.EdDSA)},
-						},
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultAttributeFields()
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+							f["signing_algorithms"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+								return structpb.NewListValue(lv)
+							}()
+							return f
+						}(),
 					},
 				},
 			},
@@ -968,12 +1041,17 @@ func TestUpdate_OIDC(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "default"},
 					Description: &wrapperspb.StringValue{Value: "default"},
 					Type:        oidc.Subtype.String(),
-					Attrs: func() *pb.AuthMethod_OidcAuthMethodsAttributes {
-						f := proto.Clone(defaultReadAttributes.OidcAuthMethodsAttributes).(*pb.OidcAuthMethodAttributes)
-						f.SigningAlgorithms = []string{string(oidc.EdDSA)}
-						f.DisableDiscoveredConfigValidation = true
-						return &pb.AuthMethod_OidcAuthMethodsAttributes{OidcAuthMethodsAttributes: f}
-					}(),
+					Attributes: &structpb.Struct{
+						Fields: func() map[string]*structpb.Value {
+							f := defaultReadAttributeFields()
+							f["signing_algorithms"] = func() *structpb.Value {
+								lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+								return structpb.NewListValue(lv)
+							}()
+							f["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+							return f
+						}(),
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -1010,7 +1088,7 @@ func TestUpdate_OIDC(t *testing.T) {
 			if tc.res == nil {
 				require.Nil(got)
 			}
-			cmpOptions := []cmp.Option{protocmp.Transform()}
+
 			if got != nil {
 				assert.NotNilf(tc.res, "Expected UpdateAuthMethod response to be nil, but was %v", got)
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -1019,26 +1097,27 @@ func TestUpdate_OIDC(t *testing.T) {
 				// Verify it is a auth_method updated after it was created
 				assert.True(gotUpdateTime.After(created), "Updated auth_method should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
 
-				// Ignore all values which are hard to compare against.
-				cmpOptions = append(
-					cmpOptions,
-					protocmp.IgnoreFields(&pb.AuthMethod{}, "updated_time"),
-					protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac", "callback_url"),
-				)
-				assert.NotEqual("secret", got.Item.GetOidcAuthMethodsAttributes().GetClientSecretHmac())
-				if got.Item.GetOidcAuthMethodsAttributes().CallbackUrl != "" {
-					exp := tc.res.Item.GetOidcAuthMethodsAttributes().GetCallbackUrl()
-					gVal := got.Item.GetOidcAuthMethodsAttributes().GetCallbackUrl()
+				// Clear all values which are hard to compare against.
+				if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+					assert.NotEqual("secret", got.Item.Attributes.Fields["client_secret_hmac"])
+					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
+				}
+				if _, ok := got.Item.Attributes.Fields["callback_url"]; ok {
+					exp := tc.res.Item.Attributes.Fields["callback_url"].GetStringValue()
+					gVal := got.Item.Attributes.Fields["callback_url"].GetStringValue()
 					matches, err := regexp.MatchString(exp, gVal)
 					require.NoError(err)
 					assert.True(matches, "%q doesn't match %q", gVal, exp)
+					delete(got.Item.Attributes.Fields, "callback_url")
+					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
+
+				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
 				assert.EqualValues(3, got.Item.Version)
 				tc.res.Item.Version = 3
-
 			}
-			assert.Empty(cmp.Diff(got, tc.res, cmpOptions...), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1100,18 +1179,22 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		Type:                        oidc.Subtype.String(),
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
-		Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-			OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-				ApiUrlPrefix:      wrapperspb.String(am.GetApiUrl()),
-				CallbackUrl:       fmt.Sprintf("%s/v1/auth-methods/oidc:authenticate:callback", am.GetApiUrl()),
-				ClientId:          wrapperspb.String(am.GetClientId()),
-				ClientSecretHmac:  am.GetClientSecretHmac(),
-				Issuer:            wrapperspb.String(am.GetIssuer()),
-				State:             am.GetOperationalState(),
-				IdpCaCerts:        []string{tp.CACert()},
-				SigningAlgorithms: []string{string(tpAlg)},
-			},
-		},
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"api_url_prefix":     structpb.NewStringValue(am.GetApiUrl()),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf("%s/v1/auth-methods/oidc:authenticate:callback", am.GetApiUrl())),
+			"client_id":          structpb.NewStringValue(am.GetClientId()),
+			"client_secret_hmac": structpb.NewStringValue(am.GetClientSecretHmac()),
+			"issuer":             structpb.NewStringValue(am.GetIssuer()),
+			"state":              structpb.NewStringValue(am.GetOperationalState()),
+			"idp_ca_certs": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{tp.CACert()})
+				return structpb.NewListValue(lv)
+			}(),
+			"signing_algorithms": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{string(tpAlg)})
+				return structpb.NewListValue(lv)
+			}(),
+		}},
 	}
 
 	tested, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
@@ -1133,17 +1216,15 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 				Name:        wrapperspb.String("updated"),
 				Description: wrapperspb.String("updated"),
 				Version:     am.GetVersion(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						DryRun: true,
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run": structpb.NewBoolValue(true),
+				}},
 			},
 			want: func() *pb.AuthMethod {
 				c := proto.Clone(wireAuthMethod).(*pb.AuthMethod)
 				c.Name = wrapperspb.String("updated")
 				c.Description = wrapperspb.String("updated")
-				c.GetOidcAuthMethodsAttributes().DryRun = true
+				c.GetAttributes().GetFields()["dry_run"] = structpb.NewBoolValue(true)
 				return c
 			}(),
 		},
@@ -1153,11 +1234,9 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 			mask: []string{"attributes.issuer"},
 			item: &pb.AuthMethod{
 				Version: am.GetVersion(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						DryRun: true,
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run": structpb.NewBoolValue(true),
+				}},
 			},
 			wantErr: true,
 		},
@@ -1167,12 +1246,13 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 			mask: []string{"attributes.signing_algorithms"},
 			item: &pb.AuthMethod{
 				Version: am.GetVersion(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						DryRun:            true,
-						SigningAlgorithms: []string{string(oidc.RS512)},
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run": structpb.NewBoolValue(true),
+					"signing_algorithms": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{string(oidc.RS512)})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
 			},
 			wantErr: true,
 		},
@@ -1182,12 +1262,10 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 			mask: []string{"name"},
 			item: &pb.AuthMethod{
 				Version: am.GetVersion(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						DryRun:                            true,
-						DisableDiscoveredConfigValidation: true,
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"dry_run":                              structpb.NewBoolValue(true),
+					"disable_discovered_config_validation": structpb.NewBoolValue(true),
+				}},
 			},
 			wantErr: true,
 		},
@@ -1263,24 +1341,34 @@ func TestChangeState_OIDC(t *testing.T) {
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
+	signingAlg := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{string(tpAlg)})
+		require.NoError(t, err)
+		return structpb.NewListValue(lv)
+	}()
+
+	certs := func() *structpb.Value {
+		lv, err := structpb.NewList([]interface{}{tp.CACert()})
+		require.NoError(t, err)
+		return structpb.NewListValue(lv)
+	}()
+
 	wantTemplate := &pb.AuthMethod{
 		Id:          oidcam.GetPublicId(),
 		ScopeId:     oidcam.GetScopeId(),
 		CreatedTime: oidcam.CreateTime.GetTimestamp(),
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
 		Type:        oidc.Subtype.String(),
-		Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-			OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-				Issuer:            wrapperspb.String(oidcam.GetIssuer()),
-				ClientId:          wrapperspb.String(tpClientId),
-				ClientSecretHmac:  "<hmac>",
-				State:             string(oidc.InactiveState),
-				CallbackUrl:       "https://example.callback:58/v1/auth-methods/oidc:authenticate:callback",
-				ApiUrlPrefix:      wrapperspb.String("https://example.callback:58"),
-				SigningAlgorithms: []string{string(tpAlg)},
-				IdpCaCerts:        []string{tp.CACert()},
-			},
-		},
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"issuer":             structpb.NewStringValue(oidcam.GetIssuer()),
+			"client_id":          structpb.NewStringValue(tpClientId),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"callback_url":       structpb.NewStringValue("https://example.callback:58/v1/auth-methods/oidc:authenticate:callback"),
+			"api_url_prefix":     structpb.NewStringValue("https://example.callback:58"),
+			"signing_algorithms": signingAlg,
+			"idp_ca_certs":       certs,
+		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
 			Id:            o.GetPublicId(),
@@ -1289,6 +1377,10 @@ func TestChangeState_OIDC(t *testing.T) {
 		},
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
+	}
+
+	toState := func(s string) *structpb.Struct {
+		return &structpb.Struct{Fields: map[string]*structpb.Value{"state": structpb.NewStringValue(s)}}
 	}
 
 	// These test cases must be run in this order since these tests rely on the correct versions being provided
@@ -1300,40 +1392,17 @@ func TestChangeState_OIDC(t *testing.T) {
 	}{
 		{
 			name: "Password Auth Method",
-			req: &pbs.ChangeStateRequest{
-				Id:      pwam.GetPublicId(),
-				Version: pwam.GetVersion(),
-				Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State: "inactive",
-					},
-				},
-			},
-			err: true,
+			req:  &pbs.ChangeStateRequest{Id: pwam.GetPublicId(), Version: pwam.GetVersion(), Attributes: toState("inactive")},
+			err:  true,
 		},
 		{
 			name: "No Version Specified",
-			req: &pbs.ChangeStateRequest{
-				Id: oidcam.GetPublicId(),
-				Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State: "inactive",
-					},
-				},
-			},
-			err: true,
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Attributes: toState("inactive")},
+			err:  true,
 		},
 		{
 			name: "Keep Inactive",
-			req: &pbs.ChangeStateRequest{
-				Id:      oidcam.GetPublicId(),
-				Version: oidcam.GetVersion(),
-				Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State: "inactive",
-					},
-				},
-			},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("inactive")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				return am
@@ -1341,40 +1410,20 @@ func TestChangeState_OIDC(t *testing.T) {
 		},
 		{
 			name: "Make Incomplete Private",
-			req: &pbs.ChangeStateRequest{
-				Id:      incompleteAm.GetPublicId(),
-				Version: oidcam.GetVersion(),
-				Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State: "active-private",
-					},
-				},
-			},
-			err: true,
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("active-private")},
+			err:  true,
 		},
 		{
 			name: "Make Incomplete Public",
-			req: &pbs.ChangeStateRequest{
-				Id:      incompleteAm.GetPublicId(),
-				Version: oidcam.GetVersion(),
-				Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State: "active-public",
-					},
-				},
-			},
-			err: true,
+			req:  &pbs.ChangeStateRequest{Id: incompleteAm.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("active-public")},
+			err:  true,
 		},
 		{
 			name: "Mismatched To Public",
 			req: &pbs.ChangeStateRequest{
-				Id:      mismatchedAM.GetPublicId(),
-				Version: mismatchedAM.GetVersion(),
-				Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State: "active-public",
-					},
-				},
+				Id:         mismatchedAM.GetPublicId(),
+				Version:    mismatchedAM.GetVersion(),
+				Attributes: toState("active-public"),
 			},
 			err: true,
 		},
@@ -1383,20 +1432,22 @@ func TestChangeState_OIDC(t *testing.T) {
 			req: &pbs.ChangeStateRequest{
 				Id:      mismatchedAM.GetPublicId(),
 				Version: mismatchedAM.GetVersion(),
-				Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State:                             "active-public",
-						DisableDiscoveredConfigValidation: true,
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					s := toState("active-public")
+					s.Fields["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+					return s
+				}(),
 			},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
 				am.Id = mismatchedAM.PublicId
-				am.GetOidcAuthMethodsAttributes().DisableDiscoveredConfigValidation = true
-				am.GetOidcAuthMethodsAttributes().State = "active-public"
-				am.GetOidcAuthMethodsAttributes().ClientId = wrapperspb.String(mismatchedAM.ClientId)
-				am.GetOidcAuthMethodsAttributes().SigningAlgorithms = []string{string(oidc.EdDSA)}
+				am.Attributes.Fields["disable_discovered_config_validation"] = structpb.NewBoolValue(true)
+				am.Attributes.Fields["state"] = structpb.NewStringValue("active-public")
+				am.Attributes.Fields["client_id"] = structpb.NewStringValue(mismatchedAM.ClientId)
+				am.Attributes.Fields["signing_algorithms"] = func() *structpb.Value {
+					lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+					return structpb.NewListValue(lv)
+				}()
 				am.CreatedTime = mismatchedAM.CreateTime.GetTimestamp()
 				am.Version = 2
 				return am
@@ -1404,48 +1455,30 @@ func TestChangeState_OIDC(t *testing.T) {
 		},
 		{
 			name: "Make Complete Private",
-			req: &pbs.ChangeStateRequest{
-				Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State: "active-private",
-					},
-				},
-			},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: oidcam.GetVersion(), Attributes: toState("active-private")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
-				am.GetOidcAuthMethodsAttributes().State = "active-private"
+				am.Attributes.Fields["state"] = structpb.NewStringValue("active-private")
 				am.Version = 2
 				return am
 			}()},
 		},
 		{
 			name: "Make Complete Public",
-			req: &pbs.ChangeStateRequest{
-				Id: oidcam.GetPublicId(), Version: 2, Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State: "active-public",
-					},
-				},
-			},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 2, Attributes: toState("active-public")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
-				am.GetOidcAuthMethodsAttributes().State = "active-public"
+				am.Attributes.Fields["state"] = structpb.NewStringValue("active-public")
 				am.Version = 3
 				return am
 			}()},
 		},
 		{
 			name: "Make Complete Inactive",
-			req: &pbs.ChangeStateRequest{
-				Id: oidcam.GetPublicId(), Version: 3, Attrs: &pbs.ChangeStateRequest_OidcChangeStateAttributes{
-					OidcChangeStateAttributes: &pbs.OidcChangeStateAttributes{
-						State: "inactive",
-					},
-				},
-			},
+			req:  &pbs.ChangeStateRequest{Id: oidcam.GetPublicId(), Version: 3, Attributes: toState("inactive")},
 			res: &pbs.ChangeStateResponse{Item: func() *pb.AuthMethod {
 				am := proto.Clone(wantTemplate).(*pb.AuthMethod)
-				am.GetOidcAuthMethodsAttributes().State = "inactive"
+				am.Attributes.Fields["state"] = structpb.NewStringValue("inactive")
 				am.Version = 4
 				return am
 			}()},
@@ -1461,19 +1494,21 @@ func TestChangeState_OIDC(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			if got.Item.GetOidcAuthMethodsAttributes().CallbackUrl != "" {
-				exp := tc.res.Item.GetOidcAuthMethodsAttributes().CallbackUrl
-				gVal := got.Item.GetOidcAuthMethodsAttributes().CallbackUrl
+			if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+				got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
+			}
+			if _, ok := got.Item.Attributes.Fields["callback_url"]; ok {
+				exp := tc.res.Item.Attributes.Fields["callback_url"].GetStringValue()
+				gVal := got.Item.Attributes.Fields["callback_url"].GetStringValue()
 				matches, err := regexp.MatchString(exp, gVal)
 				require.NoError(err)
 				assert.True(matches, "%q doesn't match %q", gVal, exp)
+				delete(got.Item.Attributes.Fields, "callback_url")
+				delete(tc.res.Item.Attributes.Fields, "callback_url")
 			}
 			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
 
-			assert.Empty(
-				cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac", "callback_url")),
-				"ChangeState() got response %q, wanted %q", got, tc.res,
-			)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ChangeState() got response %q, wanted %q", got, tc.res)
 		})
 	}
 }
@@ -1532,18 +1567,16 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				Command:      "start",
 				AuthMethodId: s.authMethod.GetPublicId(),
-				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
-					OidcStartAttributes: &pbs.OidcStartAttributes{
-						RoundtripPayload: func() *structpb.Struct {
-							ret, err := structpb.NewStruct(map[string]interface{}{
-								"foo": "bar",
-								"baz": true,
-							})
-							require.NoError(t, err)
-							return ret
-						}(),
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"roundtrip_payload": map[string]interface{}{
+							"foo": "bar",
+							"baz": true,
+						},
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
 			},
 		},
 	}
@@ -1561,10 +1594,13 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 			require.Equal(got.GetCommand(), "start")
 			// We can't really compare directly as a lot of the values contain
 			// random data, so just verify existence
-			got.GetAuthTokenResponse()
-			require.NotNil(got.GetOidcAuthMethodAuthenticateStartResponse())
-			require.NotEmpty(got.GetOidcAuthMethodAuthenticateStartResponse().GetAuthUrl())
-			require.NotEmpty(got.GetOidcAuthMethodAuthenticateStartResponse().GetTokenId())
+			require.NotNil(got.GetAttributes())
+			m := got.GetAttributes().AsMap()
+			require.NotNil(m)
+			require.Contains(m, "auth_url")
+			require.NotEmpty(m["auth_url"])
+			require.Contains(m, "token_id")
+			require.NotEmpty(m["token_id"])
 		})
 	}
 }
@@ -1625,16 +1661,18 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				Command:      "token",
 				AuthMethodId: s.authMethod.GetPublicId(),
-				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
-					OidcAuthMethodAuthenticateTokenRequest: &pb.OidcAuthMethodAuthenticateTokenRequest{
-						TokenId: func() string {
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"token_id": func() string {
 							tokenPublicId, err := authtoken.NewAuthTokenId()
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, 200*time.Second, tokenPublicId)
 						}(),
-					},
-				},
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
 			},
 		},
 		{
@@ -1642,16 +1680,18 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				Command:      "token",
 				AuthMethodId: s.authMethod.GetPublicId(),
-				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
-					OidcAuthMethodAuthenticateTokenRequest: &pb.OidcAuthMethodAuthenticateTokenRequest{
-						TokenId: func() string {
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"token_id": func() string {
 							tokenPublicId, err := authtoken.NewAuthTokenId()
 							require.NoError(t, err)
 							oidc.TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 							return oidc.TestTokenRequestId(t, s.authMethod, s.kmsCache, -20*time.Second, tokenPublicId)
 						}(),
-					},
-				},
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
 			},
 			wantErrMatch: errors.T(errors.AuthAttemptExpired),
 		},
@@ -1660,11 +1700,13 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			request: &pbs.AuthenticateRequest{
 				Command:      "token",
 				AuthMethodId: s.authMethod.GetPublicId(),
-				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
-					OidcAuthMethodAuthenticateTokenRequest: &pb.OidcAuthMethodAuthenticateTokenRequest{
-						TokenId: "bad-token-id",
-					},
-				},
+				Attributes: func() *structpb.Struct {
+					ret, err := structpb.NewStruct(map[string]interface{}{
+						"token_id": "bad-token-id",
+					})
+					require.NoError(t, err)
+					return ret
+				}(),
 			},
 			wantErrMatch: errors.T(errors.Unknown),
 		},
@@ -1685,8 +1727,11 @@ func TestAuthenticate_OIDC_Token(t *testing.T) {
 			}
 			require.NoError(err)
 			require.Equal(got.GetCommand(), "token")
-			require.NotNil(got.GetAuthTokenResponse())
-			require.NotEmpty(got.GetAuthTokenResponse().GetToken())
+			require.NotNil(got.GetAttributes())
+			m := got.GetAttributes().AsMap()
+			require.NotNil(m)
+			require.Contains(m, "token")
+			require.NotEmpty(m["token"])
 		})
 	}
 }
@@ -1703,23 +1748,27 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 			req: &pbs.AuthenticateRequest{
 				AuthMethodId: s.authMethod.GetPublicId(),
 				Command:      "callback",
-				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
-					OidcAuthMethodAuthenticateCallbackRequest: &pb.OidcAuthMethodAuthenticateCallbackRequest{
+				Attributes: func() *structpb.Struct {
+					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
 						State: "anything",
-					},
-				},
+					})
+					require.NoError(t, err)
+					return st
+				}(),
 			},
 		},
 		{
 			name: "No Auth Method Id",
 			req: &pbs.AuthenticateRequest{
 				Command: "callback",
-				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
-					OidcAuthMethodAuthenticateCallbackRequest: &pb.OidcAuthMethodAuthenticateCallbackRequest{
+				Attributes: func() *structpb.Struct {
+					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
 						Code:  "anythingworks",
 						State: "anything",
-					},
-				},
+					})
+					require.NoError(t, err)
+					return st
+				}(),
 			},
 		},
 		{
@@ -1727,11 +1776,13 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 			req: &pbs.AuthenticateRequest{
 				AuthMethodId: s.authMethod.GetPublicId(),
 				Command:      "callback",
-				Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
-					OidcAuthMethodAuthenticateCallbackRequest: &pb.OidcAuthMethodAuthenticateCallbackRequest{
+				Attributes: func() *structpb.Struct {
+					st, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackRequest{
 						Code: "anythingworks",
-					},
-				},
+					})
+					require.NoError(t, err)
+					return st
+				}(),
 			},
 		},
 	}
@@ -1771,13 +1822,16 @@ func TestAuthenticate_OIDC_Callback_ErrorRedirect(t *testing.T) {
 				&pbs.AuthenticateRequest{
 					AuthMethodId: s.authMethod.GetPublicId(),
 					Command:      "callback",
-					Attrs: &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
-						OidcAuthMethodAuthenticateCallbackRequest: tc.attrs,
-					},
+					Attributes: func() *structpb.Struct {
+						st, err := handlers.ProtoToStruct(tc.attrs)
+						require.NoError(t, err)
+						return st
+					}(),
 				})
 
 			require.NoError(t, err)
-			respAttrs := got.GetOidcAuthMethodAuthenticateCallbackResponse()
+			respAttrs := &pb.OidcAuthMethodAuthenticateCallbackResponse{}
+			require.NoError(t, handlers.StructToProto(got.GetAttributes(), respAttrs))
 			assert.Contains(t, respAttrs.FinalRedirectUrl, fmt.Sprintf("%s/authentication-error?", s.authMethod.GetApiUrl()))
 			u, err := url.Parse(respAttrs.GetFinalRedirectUrl())
 			require.NoError(t, err)

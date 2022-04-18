@@ -3,11 +3,12 @@ package static
 import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register("host", Subtype, HostCatalogPrefix, HostSetPrefix, HostPrefix); err != nil {
+	if err := host.Register(Subtype, HostCatalogPrefix, HostSetPrefix, HostPrefix); err != nil {
 		panic(err)
 	}
 }

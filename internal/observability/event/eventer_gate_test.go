@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +19,9 @@ import (
 func TestEventer_Gating(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
+
+	// FIXME: Remove this when no longer needed:
+	os.Setenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS, "true")
 
 	buffer := new(bytes.Buffer)
 	eventerConfig := EventerConfig{

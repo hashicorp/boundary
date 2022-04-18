@@ -25,6 +25,7 @@ func TestSchedulerWorkflow(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
 	testConfig := event.DefaultEventerConfig()
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
@@ -107,6 +108,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
 	testConfig := event.DefaultEventerConfig()
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
@@ -156,6 +158,7 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
 	testConfig := event.DefaultEventerConfig()
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
@@ -257,6 +260,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
 	testConfig := event.DefaultEventerConfig()
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
@@ -365,6 +369,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
 	testConfig := event.DefaultEventerConfig()
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
@@ -430,6 +435,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
 	testConfig := event.DefaultEventerConfig()
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
@@ -520,6 +526,7 @@ func TestSchedulerRunNow(t *testing.T) {
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
+	event.TestEnableEventing(t, true)
 	testConfig := event.DefaultEventerConfig()
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{

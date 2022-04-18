@@ -32,7 +32,7 @@ func TestAuthenticationHandler(t *testing.T) {
 			"password":   "password123",
 		},
 	}
-	// No "type" defined means "token" type
+	// No token_type defined means "token" type
 	b, err := json.Marshal(request)
 	require.NoError(t, err)
 
@@ -54,7 +54,7 @@ func TestAuthenticationHandler(t *testing.T) {
 	assert.Truef(t, strings.HasPrefix(tok, pubId), "Token: %q, Id: %q", tok, pubId)
 
 	// Set the token type to cookie and make sure the body does not contain the token anymore.
-	request["type"] = "cookie"
+	request["token_type"] = "cookie"
 	b, err = json.Marshal(request)
 	require.NoError(t, err)
 	resp, err = http.Post(fmt.Sprintf("%s/v1/auth-methods/ampw_1234567890:authenticate", c.ApiAddrs()[0]), "application/json", bytes.NewReader(b))

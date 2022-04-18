@@ -33,6 +33,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -75,11 +76,9 @@ func TestGet_Static(t *testing.T) {
 		UpdatedTime:   h.UpdateTime.GetTimestamp(),
 		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 		Type:          "static",
-		Attrs: &pb.Host_StaticHostAttributes{
-			StaticHostAttributes: &pb.StaticHostAttributes{
-				Address: wrapperspb.String(h.GetAddress()),
-			},
-		},
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"address": structpb.NewStringValue(h.GetAddress()),
+		}},
 		AuthorizedActions: testAuthorizedActions[static.Subtype],
 		HostSetIds:        []string{s.GetPublicId()},
 	}
@@ -269,12 +268,9 @@ func TestList_Static(t *testing.T) {
 			CreatedTime:   h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:   h.GetUpdateTime().GetTimestamp(),
 			Version:       h.GetVersion(),
-			Type:          static.Subtype.String(),
-			Attrs: &pb.Host_StaticHostAttributes{
-				StaticHostAttributes: &pb.StaticHostAttributes{
-					Address: wrapperspb.String(h.GetAddress()),
-				},
-			},
+			Type:          static.Subtype.String(), Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"address": structpb.NewStringValue(h.GetAddress()),
+			}},
 			AuthorizedActions: testAuthorizedActions[static.Subtype],
 			HostSetIds:        []string{hset.GetPublicId()},
 		})
@@ -636,11 +632,9 @@ func TestCreate(t *testing.T) {
 				Name:          &wrappers.StringValue{Value: "name"},
 				Description:   &wrappers.StringValue{Value: "desc"},
 				Type:          "static",
-				Attrs: &pb.Host_StaticHostAttributes{
-					StaticHostAttributes: &pb.StaticHostAttributes{
-						Address: wrapperspb.String("123.456.789"),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"address": structpb.NewStringValue("123.456.789"),
+				}},
 			}},
 			res: &pbs.CreateHostResponse{
 				Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
@@ -650,11 +644,9 @@ func TestCreate(t *testing.T) {
 					Name:          &wrappers.StringValue{Value: "name"},
 					Description:   &wrappers.StringValue{Value: "desc"},
 					Type:          "static",
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: wrapperspb.String("123.456.789"),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue("123.456.789"),
+					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
@@ -674,11 +666,9 @@ func TestCreate(t *testing.T) {
 				Name:          &wrappers.StringValue{Value: "name"},
 				Description:   &wrappers.StringValue{Value: "desc"},
 				Type:          "static",
-				Attrs: &pb.Host_StaticHostAttributes{
-					StaticHostAttributes: &pb.StaticHostAttributes{
-						Address: wrapperspb.String(""),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"address": structpb.NewStringValue(""),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -689,11 +679,7 @@ func TestCreate(t *testing.T) {
 				Name:          &wrappers.StringValue{Value: "name"},
 				Description:   &wrappers.StringValue{Value: "desc"},
 				Type:          "static",
-				Attrs: &pb.Host_StaticHostAttributes{
-					StaticHostAttributes: &pb.StaticHostAttributes{
-						Address: nil,
-					},
-				},
+				Attributes:    &structpb.Struct{Fields: map[string]*structpb.Value{}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -713,11 +699,9 @@ func TestCreate(t *testing.T) {
 				HostCatalogId: hc.GetPublicId(),
 				Name:          &wrappers.StringValue{Value: "no type name"},
 				Description:   &wrappers.StringValue{Value: "no type desc"},
-				Attrs: &pb.Host_StaticHostAttributes{
-					StaticHostAttributes: &pb.StaticHostAttributes{
-						Address: wrapperspb.String("123.456.789"),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"address": structpb.NewStringValue("123.456.789"),
+				}},
 			}},
 			res: &pbs.CreateHostResponse{
 				Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
@@ -727,11 +711,9 @@ func TestCreate(t *testing.T) {
 					Name:          &wrappers.StringValue{Value: "no type name"},
 					Description:   &wrappers.StringValue{Value: "no type desc"},
 					Type:          "static",
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: wrapperspb.String("123.456.789"),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue("123.456.789"),
+					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
@@ -873,11 +855,9 @@ func TestUpdate_Static(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "desc"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: wrapperspb.String("defaultaddress"),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue("defaultaddress"),
+					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 					HostSetIds:        []string{s.GetPublicId()},
 				},
@@ -904,11 +884,9 @@ func TestUpdate_Static(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "desc"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: wrapperspb.String("defaultaddress"),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue("defaultaddress"),
+					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 					HostSetIds:        []string{s.GetPublicId()},
 				},
@@ -977,11 +955,9 @@ func TestUpdate_Static(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "default"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: wrapperspb.String("defaultaddress"),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue("defaultaddress"),
+					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 					HostSetIds:        []string{s.GetPublicId()},
 				},
@@ -1005,11 +981,9 @@ func TestUpdate_Static(t *testing.T) {
 					Name:          &wrappers.StringValue{Value: "default"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: wrapperspb.String("defaultaddress"),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue("defaultaddress"),
+					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 					HostSetIds:        []string{s.GetPublicId()},
 				},
@@ -1035,11 +1009,9 @@ func TestUpdate_Static(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "default"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: wrapperspb.String("defaultaddress"),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue("defaultaddress"),
+					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 					HostSetIds:        []string{s.GetPublicId()},
 				},
@@ -1065,11 +1037,9 @@ func TestUpdate_Static(t *testing.T) {
 					Description:   &wrappers.StringValue{Value: "notignored"},
 					CreatedTime:   h.GetCreateTime().GetTimestamp(),
 					Type:          "static",
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: wrapperspb.String("defaultaddress"),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue("defaultaddress"),
+					}},
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 					HostSetIds:        []string{s.GetPublicId()},
 				},
@@ -1115,11 +1085,9 @@ func TestUpdate_Static(t *testing.T) {
 					Paths: []string{"attributes.address"},
 				},
 				Item: &pb.Host{
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: nil,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewNullValue(),
+					}},
 				},
 			},
 			res: nil,
@@ -1133,11 +1101,9 @@ func TestUpdate_Static(t *testing.T) {
 					Paths: []string{"attributes.address"},
 				},
 				Item: &pb.Host{
-					Attrs: &pb.Host_StaticHostAttributes{
-						StaticHostAttributes: &pb.StaticHostAttributes{
-							Address: wrapperspb.String(""),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"address": structpb.NewStringValue(""),
+					}},
 				},
 			},
 			res: nil,

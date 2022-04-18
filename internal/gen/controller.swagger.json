@@ -6,49 +6,49 @@
   },
   "tags": [
     {
-      "name": "controller.api.services.v1.ScopeService"
+      "name": "ScopeService"
     },
     {
-      "name": "controller.api.services.v1.AccountService"
+      "name": "AccountService"
     },
     {
-      "name": "controller.api.services.v1.AuthMethodService"
+      "name": "AuthMethodService"
     },
     {
-      "name": "controller.api.services.v1.AuthTokenService"
+      "name": "AuthTokenService"
     },
     {
-      "name": "controller.api.services.v1.CredentialLibraryService"
+      "name": "CredentialLibraryService"
     },
     {
-      "name": "controller.api.services.v1.CredentialStoreService"
+      "name": "CredentialStoreService"
     },
     {
-      "name": "controller.api.services.v1.GroupService"
+      "name": "GroupService"
     },
     {
-      "name": "controller.api.services.v1.HostCatalogService"
+      "name": "HostCatalogService"
     },
     {
-      "name": "controller.api.services.v1.HostService"
+      "name": "HostService"
     },
     {
-      "name": "controller.api.services.v1.HostSetService"
+      "name": "HostSetService"
     },
     {
-      "name": "controller.api.services.v1.ManagedGroupService"
+      "name": "ManagedGroupService"
     },
     {
-      "name": "controller.api.services.v1.RoleService"
+      "name": "RoleService"
     },
     {
-      "name": "controller.api.services.v1.SessionService"
+      "name": "SessionService"
     },
     {
-      "name": "controller.api.services.v1.TargetService"
+      "name": "TargetService"
     },
     {
-      "name": "controller.api.services.v1.UserService"
+      "name": "UserService"
     }
   ],
   "schemes": [
@@ -105,7 +105,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -184,7 +184,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -341,7 +341,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -382,10 +382,6 @@
               "type": "object",
               "properties": {
                 "token_type": {
-                  "type": "string",
-                  "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser. Deprecated, use \"type\" instead."
-                },
-                "type": {
                   "type": "string",
                   "description": "This can be \"cookie\" or \"token\". If not provided, \"token\" will be used. \"cookie\" activates a split-cookie method where the token is split partially between http-only and regular cookies in order\nto keep it safe from rogue JS in the browser."
                 },
@@ -472,7 +468,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -663,7 +659,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -742,7 +738,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -810,7 +806,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -889,7 +885,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -957,7 +953,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1036,7 +1032,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1242,7 +1238,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1328,7 +1324,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1390,7 +1386,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1469,7 +1465,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1672,7 +1668,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1751,7 +1747,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1813,7 +1809,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1892,7 +1888,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -1960,7 +1956,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -2039,7 +2035,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -2383,7 +2379,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -2474,7 +2470,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -2643,7 +2639,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -2722,7 +2718,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -3414,7 +3410,7 @@
         },
         "parameters": [
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -3493,7 +3489,7 @@
             "type": "string"
           },
           {
-            "name": "item",
+            "name": "body",
             "in": "body",
             "required": true,
             "schema": {
@@ -3699,7 +3695,8 @@
           "description": "The ID of the Auth Method that is associated with this Account."
         },
         "attributes": {
-          "type": "object"
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Account type."
         },
         "managed_group_ids": {
           "type": "array",
@@ -5437,10 +5434,6 @@
     "controller.api.services.v1.AuthenticateResponse": {
       "type": "object",
       "properties": {
-        "type": {
-          "type": "string",
-          "description": "The type of the token returned. Either \"cookie\" or \"token\"."
-        },
         "attributes": {
           "type": "object",
           "description": "Valid keys and values depend on the type of Auth Method as well as the command."

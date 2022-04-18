@@ -916,6 +916,9 @@ func TestDb_LookupWhere(t *testing.T) {
 // TestDb_LookupNotFoundEvent validates that not found error events are suppressed when
 // LookupById and LookupWhere are called.
 func TestDb_LookupNotFoundEvent(t *testing.T) {
+	// this test and its subtests cannot be run in parallel because of it's
+	// dependency on the sysEventer
+	event.TestEnableEventing(t, true)
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
 

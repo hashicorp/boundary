@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
@@ -28,12 +27,10 @@ import (
 )
 
 const (
-	attributesPathField        = "attributes"
 	vaultPathField             = "attributes.path"
 	httpMethodField            = "attributes.http_method"
 	httpRequestBodyField       = "attributes.http_request_body"
 	credentialMappingPathField = "credential_mapping_overrides"
-	domain                     = "credential"
 )
 
 // Credential mapping override attributes
@@ -142,11 +139,7 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 			return nil, err
 		}
 
-		filterable, err := subtypes.Filterable(item)
-		if err != nil {
-			return nil, err
-		}
-		if filter.Match(filterable) {
+		if filter.Match(item) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -427,7 +420,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	default:
 		opts = append(opts, auth.WithId(id))
 
-		switch subtypes.SubtypeFromId(domain, id) {
+		switch credential.SubtypeFromId(id) {
 		case vault.Subtype:
 			cl, err := repo.LookupCredentialLibrary(ctx, id)
 			if err != nil {
@@ -452,7 +445,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 
 	opts = append(opts, auth.WithPin(parentId))
 
-	switch subtypes.SubtypeFromId(domain, parentId) {
+	switch credential.SubtypeFromId(parentId) {
 	case vault.Subtype:
 		cs, err := repo.LookupCredentialStore(ctx, parentId)
 		if err != nil {
@@ -489,7 +482,7 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 		out.CredentialStoreId = in.GetStoreId()
 	}
 	if outputFields.Has(globals.TypeField) {
-		out.Type = subtypes.SubtypeFromId(domain, in.GetPublicId()).String()
+		out.Type = credential.SubtypeFromId(in.GetPublicId()).String()
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
@@ -512,7 +505,7 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
-	switch subtypes.SubtypeFromId(domain, in.GetPublicId()) {
+	switch credential.SubtypeFromId(in.GetPublicId()) {
 	case vault.Subtype:
 		vaultIn, ok := in.(*vault.CredentialLibrary)
 		if !ok {
@@ -551,8 +544,10 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 			if vaultIn.GetHttpRequestBody() != nil {
 				attrs.HttpRequestBody = wrapperspb.String(string(vaultIn.GetHttpRequestBody()))
 			}
-			out.Attrs = &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-				VaultCredentialLibraryAttributes: attrs,
+			var err error
+			out.Attributes, err = handlers.ProtoToStruct(attrs)
+			if err != nil {
+				return nil, errors.WrapDeprecated(err, op, errors.WithMsg("failed to convert resource from storage to api"))
 			}
 		}
 	}
@@ -569,7 +564,11 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 		opts = append(opts, vault.WithDescription(in.GetDescription().GetValue()))
 	}
 
-	attrs := in.GetVaultCredentialLibraryAttributes()
+	attrs := &pb.VaultCredentialLibraryAttributes{}
+	if err := handlers.StructToProto(in.GetAttributes(), attrs); err != nil {
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to parse the attributes"))
+	}
+
 	if attrs.GetHttpMethod() != nil {
 		opts = append(opts, vault.WithMethod(vault.Method(strings.ToUpper(attrs.GetHttpMethod().GetValue()))))
 	}
@@ -613,14 +612,15 @@ func validateGetRequest(req *pbs.GetCredentialLibraryRequest) error {
 func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetItem().GetCredentialStoreId()) {
+		switch credential.SubtypeFromId(req.GetItem().GetCredentialStoreId()) {
 		case vault.Subtype:
-			if t := req.GetItem().GetType(); t != "" && subtypes.SubtypeFromType(domain, t) != vault.Subtype {
+			if t := req.GetItem().GetType(); t != "" && credential.SubtypeFromType(t) != vault.Subtype {
 				badFields[globals.CredentialStoreIdField] = "If included, type must match that of the credential store."
 			}
-			attrs := req.GetItem().GetVaultCredentialLibraryAttributes()
-			if attrs == nil {
-				badFields[attributesPathField] = "This is a required field."
+			attrs := &pb.VaultCredentialLibraryAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
+				break
 			}
 			if attrs.GetPath().GetValue() == "" {
 				badFields[vaultPathField] = "This is a required field."
@@ -642,27 +642,29 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCredentialType credential.Type) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		switch credential.SubtypeFromId(req.GetId()) {
 		case vault.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.Subtype {
+			if req.GetItem().GetType() != "" && credential.SubtypeFromType(req.GetItem().GetType()) != vault.Subtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {
 				badFields[globals.CredentialTypeField] = "Cannot modify credential type."
 			}
-			attrs := req.GetItem().GetVaultCredentialLibraryAttributes()
-			if attrs != nil {
-				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultPathField) && attrs.GetPath().GetValue() == "" {
-					badFields[vaultPathField] = "This is a required field and cannot be set to empty."
-				}
-				if m := attrs.GetHttpMethod(); handlers.MaskContains(req.GetUpdateMask().GetPaths(), httpMethodField) && m != nil && !strutil.StrListContains([]string{"GET", "POST"}, strings.ToUpper(m.GetValue())) {
-					badFields[httpMethodField] = "If set, value must be 'GET' or 'POST'."
-				}
-				if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) == "GET" {
-					badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
-				}
-				validateMapping(badFields, currentCredentialType, req.GetItem().CredentialMappingOverrides.AsMap())
+			attrs := &pb.VaultCredentialLibraryAttributes{}
+			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
+				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
+				break
 			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultPathField) && attrs.GetPath().GetValue() == "" {
+				badFields[vaultPathField] = "This is a required field and cannot be set to empty."
+			}
+			if m := attrs.GetHttpMethod(); handlers.MaskContains(req.GetUpdateMask().GetPaths(), httpMethodField) && m != nil && !strutil.StrListContains([]string{"GET", "POST"}, strings.ToUpper(m.GetValue())) {
+				badFields[httpMethodField] = "If set, value must be 'GET' or 'POST'."
+			}
+			if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) == "GET" {
+				badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
+			}
+			validateMapping(badFields, currentCredentialType, req.GetItem().CredentialMappingOverrides.AsMap())
 		}
 		return badFields
 	}, vault.CredentialLibraryPrefix)

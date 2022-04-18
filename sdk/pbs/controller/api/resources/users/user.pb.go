@@ -30,9 +30,9 @@ type Account struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Account.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
 	// Output only. The Scope containing the Account.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
 }
 
 func (x *Account) Reset() {
@@ -88,40 +88,40 @@ type User struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the User.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"`
 	// The ID of the Scope this resource is in.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"`
 	// Output only. Contains the list of Account IDs linked to this User.
-	AccountIds []string `protobuf:"bytes,90,rep,name=account_ids,proto3" json:"account_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	AccountIds []string `protobuf:"bytes,90,rep,name=account_ids,proto3" json:"account_ids,omitempty"`
 	// Output only. The Accounts linked to this User.
 	Accounts []*Account `protobuf:"bytes,100,rep,name=accounts,proto3" json:"accounts,omitempty"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"`
 	// Output only. login_name is a string that maps to the user's account "login
 	// name" from the scope's primary auth method
-	LoginName string `protobuf:"bytes,110,opt,name=login_name,proto3" json:"login_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	LoginName string `protobuf:"bytes,110,opt,name=login_name,proto3" json:"login_name,omitempty"`
 	// Output only. full_name is a string that maps to the user's account name
 	// from the scope's primary auth method
-	FullName string `protobuf:"bytes,120,opt,name=full_name,proto3" json:"full_name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	FullName string `protobuf:"bytes,120,opt,name=full_name,proto3" json:"full_name,omitempty"`
 	// Output only. email is a string that maps to the user's account email from
 	// the scope's primary auth method
-	Email string `protobuf:"bytes,130,opt,name=email,proto3" json:"email,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
+	Email string `protobuf:"bytes,130,opt,name=email,proto3" json:"email,omitempty"`
 	// Output only. primary_account_id is a string that maps to the user's account
 	// public_id from the scope's primary auth method
-	PrimaryAccountId string `protobuf:"bytes,140,opt,name=primary_account_id,proto3" json:"primary_account_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	PrimaryAccountId string `protobuf:"bytes,140,opt,name=primary_account_id,proto3" json:"primary_account_id,omitempty"`
 }
 
 func (x *User) Reset() {

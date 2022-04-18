@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func fieldError(field, details string) string {
@@ -47,7 +48,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.ManagedGroup{
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-				Attrs:        nil,
+				Attributes:   &structpb.Struct{Fields: map[string]*structpb.Value{}},
 			},
 			errContains: fieldError(attrFilterField, "This field is required."),
 		},
@@ -56,11 +57,9 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.ManagedGroup{
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-				Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-					OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-						Filter: "foobar",
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"filter": structpb.NewStringValue("foobar"),
+				}},
 			},
 			errContains: "Error evaluating submitted filter",
 		},
@@ -69,11 +68,9 @@ func TestValidateCreateRequest(t *testing.T) {
 			item: &pb.ManagedGroup{
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
-				Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-					OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-						Filter: `"/foo/bar" == "zipzap"`,
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"filter": structpb.NewStringValue(`"/foo/bar" == "zipzap"`),
+				}},
 			},
 		},
 	}
@@ -110,17 +107,27 @@ func TestValidateUpdateRequest(t *testing.T) {
 			errContains: fieldError(globals.TypeField, "Cannot modify the resource type."),
 		},
 		{
+			name: "oidc bad attributes",
+			req: &pbs.UpdateManagedGroupRequest{
+				Id: intglobals.OidcManagedGroupPrefix + "_1234567890",
+				Item: &pb.ManagedGroup{
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"test": structpb.NewStringValue("something"),
+					}},
+				},
+			},
+			errContains: fieldError(globals.AttributesField, "Attribute fields do not match the expected format."),
+		},
+		{
 			name: "no error",
 			req: &pbs.UpdateManagedGroupRequest{
 				Id:         intglobals.OidcManagedGroupPrefix + "_1234567890",
 				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{}},
 				Item: &pb.ManagedGroup{
 					Version: 1,
-					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
-						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
-							Filter: `"/foo/bar" == "zipzap"`,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"filter": structpb.NewStringValue(`"/foo/bar" == "zipzap"`),
+					}},
 				},
 			},
 		},

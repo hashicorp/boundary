@@ -152,7 +152,7 @@ func WrapWithEventsHandler(h http.Handler, e *event.Eventer, kms *kms.Kms, liste
 		}
 
 		// Set the context back on the request
-		r = r.Clone(ctx)
+		r = r.WithContext(ctx)
 
 		{
 			method := r.Method

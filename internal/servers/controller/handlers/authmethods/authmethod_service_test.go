@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -101,12 +102,10 @@ func TestGet(t *testing.T) {
 		CreatedTime: am.CreateTime.GetTimestamp(),
 		UpdatedTime: am.UpdateTime.GetTimestamp(),
 		Type:        "password",
-		Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-			PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-				MinPasswordLength:  8,
-				MinLoginNameLength: 3,
-			},
-		},
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"min_password_length":   structpb.NewNumberValue(8),
+			"min_login_name_length": structpb.NewNumberValue(3),
+		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
 			Id:            o.GetPublicId(),
@@ -129,16 +128,14 @@ func TestGet(t *testing.T) {
 		CreatedTime: oidcam.CreateTime.GetTimestamp(),
 		UpdatedTime: oidcam.UpdateTime.GetTimestamp(),
 		Type:        oidc.Subtype.String(),
-		Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-			OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-				Issuer:           wrapperspb.String("https://alice.com"),
-				ClientId:         wrapperspb.String("alice_rp"),
-				ClientSecretHmac: "<hmac>",
-				State:            string(oidc.InactiveState),
-				ApiUrlPrefix:     wrapperspb.String("https://api.com"),
-				CallbackUrl:      fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com"),
-			},
-		},
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"issuer":             structpb.NewStringValue("https://alice.com"),
+			"client_id":          structpb.NewStringValue("alice_rp"),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com")),
+		}},
 		Version: 1,
 		Scope: &scopepb.ScopeInfo{
 			Id:            o.GetPublicId(),
@@ -204,10 +201,11 @@ func TestGet(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			if oidcAttrs := got.Item.GetOidcAuthMethodsAttributes(); oidcAttrs != nil {
-				assert.NotEqual("secret", oidcAttrs.ClientSecretHmac)
+			if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+				assert.NotEqual("secret", got.Item.Attributes.Fields["client_secret_hmac"])
+				got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac")), "GetAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -251,19 +249,18 @@ func TestList(t *testing.T) {
 		Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:     2,
 		Type:        oidc.Subtype.String(),
-		Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-			OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-				Issuer:           wrapperspb.String("https://alice.com"),
-				ClientId:         wrapperspb.String("alice_rp"),
-				ClientSecretHmac: "<hmac>",
-				State:            string(oidc.ActivePublicState),
-				ApiUrlPrefix:     wrapperspb.String("https://api.com"),
-				CallbackUrl:      fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com"),
-				SigningAlgorithms: []string{
-					string(oidc.EdDSA),
-				},
-			},
-		},
+		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"issuer":             structpb.NewStringValue("https://alice.com"),
+			"client_id":          structpb.NewStringValue("alice_rp"),
+			"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+			"state":              structpb.NewStringValue(string(oidc.ActivePublicState)),
+			"api_url_prefix":     structpb.NewStringValue("https://api.com"),
+			"callback_url":       structpb.NewStringValue(fmt.Sprintf(oidc.CallbackEndpoint, "https://api.com")),
+			"signing_algorithms": func() *structpb.Value {
+				lv, _ := structpb.NewList([]interface{}{string(oidc.EdDSA)})
+				return structpb.NewListValue(lv)
+			}(),
+		}},
 		IsPrimary:                   true,
 		AuthorizedActions:           oidcAuthorizedActions,
 		AuthorizedCollectionActions: authorizedCollectionActions,
@@ -278,12 +275,10 @@ func TestList(t *testing.T) {
 			Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:     1,
 			Type:        "password",
-			Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-				PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-					MinPasswordLength:  8,
-					MinLoginNameLength: 3,
-				},
-			},
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"min_password_length":   structpb.NewNumberValue(8),
+				"min_login_name_length": structpb.NewNumberValue(3),
+			}},
 			AuthorizedActions:           pwAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
@@ -299,12 +294,10 @@ func TestList(t *testing.T) {
 			Scope:       &scopepb.ScopeInfo{Id: oWithOtherAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:     1,
 			Type:        "password",
-			Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-				PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-					MinPasswordLength:  8,
-					MinLoginNameLength: 3,
-				},
-			},
+			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+				"min_password_length":   structpb.NewNumberValue(8),
+				"min_login_name_length": structpb.NewNumberValue(3),
+			}},
 			AuthorizedActions:           pwAuthorizedActions,
 			AuthorizedCollectionActions: authorizedCollectionActions,
 		})
@@ -376,20 +369,21 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			for _, g := range got.Items {
-				if oidcAttrs := g.GetOidcAuthMethodsAttributes(); oidcAttrs != nil {
-					assert.NotEqual("secret", oidcAttrs.ClientSecretHmac)
+			for i, g := range got.Items {
+				if _, ok := g.Attributes.Fields["client_secret_hmac"]; ok {
+					assert.NotEqual("secret", g.Attributes.Fields["client_secret_hmac"])
+					delete(g.Attributes.Fields, "client_secret_hmac")
+					delete(tc.res.Items[i].Attributes.Fields, "client_secret_hmac")
 				}
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac")),
-				"ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check with anonymous user
 			got, gErr = s.ListAuthMethods(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), requestauth.WithUserId(requestauth.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
-				assert.Nil(g.Attrs)
+				assert.Nil(g.Attributes)
 				assert.Nil(g.CreatedTime)
 				assert.Nil(g.UpdatedTime)
 				assert.Empty(g.Version)
@@ -566,12 +560,10 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
 					Version:     1,
 					Type:        "password",
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinPasswordLength:  8,
-							MinLoginNameLength: 3,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
 					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
@@ -582,17 +574,24 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						Issuer:           wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-						ClientId:         wrapperspb.String("someclientid"),
-						ClientSecret:     wrapperspb.String("secret"),
-						ApiUrlPrefix:     wrapperspb.String("https://callback.prefix:9281/path"),
-						AllowedAudiences: []string{"foo", "bar"},
-						ClaimsScopes:     []string{"email", "profile"},
-						AccountClaimMaps: []string{"display_name=name", "oid=sub"},
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("https://callback.prefix:9281/path"),
+					"allowed_audiences": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
+						return structpb.NewListValue(lv)
+					}(),
+					"claims_scopes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+						return structpb.NewListValue(lv)
+					}(),
+					"account_claim_maps": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
 			}},
 			idPrefix: oidc.AuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
@@ -605,19 +604,26 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
 					Version:     1,
 					Type:        oidc.Subtype.String(),
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							Issuer:           wrapperspb.String("https://example.discovery.url:4821/"),
-							ClientId:         wrapperspb.String("someclientid"),
-							ClientSecretHmac: "<hmac>",
-							State:            string(oidc.InactiveState),
-							ApiUrlPrefix:     wrapperspb.String("https://callback.prefix:9281/path"),
-							CallbackUrl:      "https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback",
-							AllowedAudiences: []string{"foo", "bar"},
-							ClaimsScopes:     []string{"email", "profile"},
-							AccountClaimMaps: []string{"display_name=name", "oid=sub"},
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"issuer":             structpb.NewStringValue("https://example.discovery.url:4821/"),
+						"client_id":          structpb.NewStringValue("someclientid"),
+						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+						"api_url_prefix":     structpb.NewStringValue("https://callback.prefix:9281/path"),
+						"callback_url":       structpb.NewStringValue("https://callback.prefix:9281/path/v1/auth-methods/oidc:authenticate:callback"),
+						"allowed_audiences": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"foo", "bar"})
+							return structpb.NewListValue(lv)
+						}(),
+						"claims_scopes": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"email", "profile"})
+							return structpb.NewListValue(lv)
+						}(),
+						"account_claim_maps": func() *structpb.Value {
+							lv, _ := structpb.NewList([]interface{}{"display_name=name", "oid=sub"})
+							return structpb.NewListValue(lv)
+						}(),
+					}},
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
@@ -644,12 +650,10 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Version:     1,
 					Type:        "password",
-					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
-						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
-							MinPasswordLength:  8,
-							MinLoginNameLength: 3,
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"min_password_length":   structpb.NewNumberValue(8),
+						"min_login_name_length": structpb.NewNumberValue(3),
+					}},
 					AuthorizedActions:           pwAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
@@ -660,14 +664,12 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: scope.Global.String(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						Issuer:       wrapperspb.String("https://example.discovery.url"),
-						ApiUrlPrefix: wrapperspb.String("https://api.com"),
-						ClientId:     wrapperspb.String("someclientid"),
-						ClientSecret: wrapperspb.String("secret"),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"issuer":         structpb.NewStringValue("https://example.discovery.url"),
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+				}},
 			}},
 			idPrefix: oidc.AuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
@@ -680,15 +682,13 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
 					Version:     1,
 					Type:        oidc.Subtype.String(),
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							ApiUrlPrefix:     wrapperspb.String("https://api.com"),
-							Issuer:           wrapperspb.String("https://example.discovery.url"),
-							ClientId:         wrapperspb.String("someclientid"),
-							ClientSecretHmac: "<hmac>",
-							State:            string(oidc.InactiveState),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"api_url_prefix":     structpb.NewStringValue("https://api.com"),
+						"issuer":             structpb.NewStringValue("https://example.discovery.url"),
+						"client_id":          structpb.NewStringValue("someclientid"),
+						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+					}},
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
@@ -755,17 +755,45 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
+			name: "Attributes must be valid for password type",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
+				Name:        &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
+				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
+				Type:        password.Subtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"invalid_field":         structpb.NewStringValue("invalid_value"),
+					"min_login_name_length": structpb.NewNumberValue(3),
+				}},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Attributes must be valid for oidc type",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId:     o.GetPublicId(),
+				Name:        &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
+				Description: &wrapperspb.StringValue{Value: "Attributes must be valid for type"},
+				Type:        oidc.Subtype.String(),
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"login-name": structpb.NewStringValue("invalid_value"),
+					"password":   structpb.NewNumberValue(3),
+				}},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "OIDC AuthMethod Doesn't Require Issuer",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						ApiUrlPrefix: wrapperspb.String("https://api.com"),
-						ClientId:     wrapperspb.String("someclientid"),
-						ClientSecret: wrapperspb.String("secret"),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+				}},
 			}},
 			res: &pbs.CreateAuthMethodResponse{
 				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
@@ -777,14 +805,12 @@ func TestCreate(t *testing.T) {
 					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
 					Version:     1,
 					Type:        oidc.Subtype.String(),
-					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-							ApiUrlPrefix:     wrapperspb.String("https://api.com"),
-							ClientId:         wrapperspb.String("someclientid"),
-							ClientSecretHmac: "<hmac>",
-							State:            string(oidc.InactiveState),
-						},
-					},
+					Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+						"api_url_prefix":     structpb.NewStringValue("https://api.com"),
+						"client_id":          structpb.NewStringValue("someclientid"),
+						"client_secret_hmac": structpb.NewStringValue("<hmac>"),
+						"state":              structpb.NewStringValue(string(oidc.InactiveState)),
+					}},
 					AuthorizedActions:           oidcAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
@@ -795,12 +821,10 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						ClientId:     wrapperspb.String("someclientid"),
-						ClientSecret: wrapperspb.String("secret"),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -809,13 +833,11 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						ApiUrlPrefix: wrapperspb.String("https://api.com"),
-						Issuer:       wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-						ClientSecret: wrapperspb.String("secret"),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_secret":  structpb.NewStringValue("secret"),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -824,13 +846,11 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						ApiUrlPrefix: wrapperspb.String("https://api.com"),
-						Issuer:       wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-						ClientId:     wrapperspb.String("someclientid"),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -839,15 +859,13 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						ApiUrlPrefix:     wrapperspb.String("https://api.com"),
-						Issuer:           wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-						ClientId:         wrapperspb.String("someclientid"),
-						ClientSecret:     wrapperspb.String("secret"),
-						ClientSecretHmac: "hmac",
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix":     structpb.NewStringValue("https://api.com"),
+					"issuer":             structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":          structpb.NewStringValue("someclientid"),
+					"client_secret":      structpb.NewStringValue("secret"),
+					"client_secret_hmac": structpb.NewStringValue("hmac"),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -856,15 +874,13 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						ApiUrlPrefix: wrapperspb.String("https://api.com"),
-						Issuer:       wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-						ClientId:     wrapperspb.String("someclientid"),
-						ClientSecret: wrapperspb.String("secret"),
-						State:        string(oidc.InactiveState),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"state":          structpb.NewStringValue(string(oidc.InactiveState)),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -873,15 +889,16 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						ApiUrlPrefix:      wrapperspb.String("https://api.com"),
-						Issuer:            wrapperspb.String("https://example2.discovery.url:4821"),
-						ClientId:          wrapperspb.String("someclientid"),
-						ClientSecret:      wrapperspb.String("secret"),
-						SigningAlgorithms: []string{string(oidc.ES256), strings.ToLower(string(oidc.EdDSA))},
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"signing_algorithms": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{string(oidc.ES256), strings.ToLower(string(oidc.EdDSA))})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -890,14 +907,12 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						Issuer:       wrapperspb.String("https://example2.discovery.url:4821"),
-						ClientId:     wrapperspb.String("someclientid"),
-						ClientSecret: wrapperspb.String("secret"),
-						ApiUrlPrefix: wrapperspb.String("invalid path"),
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"api_url_prefix": structpb.NewStringValue("invalid path"),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -906,14 +921,12 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						Issuer:       wrapperspb.String("https://example2.discovery.url:4821"),
-						ClientId:     wrapperspb.String("someclientid"),
-						ClientSecret: wrapperspb.String("secret"),
-						CallbackUrl:  "http://another.url.com:82471",
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"issuer":        structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":     structpb.NewStringValue("someclientid"),
+					"client_secret": structpb.NewStringValue("secret"),
+					"callback_url":  structpb.NewStringValue("http://another.url.com:82471"),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -922,15 +935,16 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						ApiUrlPrefix: wrapperspb.String("https://api.com"),
-						Issuer:       wrapperspb.String("https://example2.discovery.url:4821"),
-						ClientId:     wrapperspb.String("someclientid"),
-						ClientSecret: wrapperspb.String("secret"),
-						IdpCaCerts:   []string{"unparseable"},
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example2.discovery.url:4821"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"idp_ca_certs": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"unparseable"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -939,15 +953,16 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
 				Type:    oidc.Subtype.String(),
-				Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
-					OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
-						ApiUrlPrefix: wrapperspb.String("https://api.com"),
-						Issuer:       wrapperspb.String("https://example.discovery.url:4821/.well-known/openid-configuration/"),
-						ClientId:     wrapperspb.String("someclientid"),
-						ClientSecret: wrapperspb.String("secret"),
-						ClaimsScopes: []string{"openid"},
-					},
-				},
+				Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
+					"api_url_prefix": structpb.NewStringValue("https://api.com"),
+					"issuer":         structpb.NewStringValue("https://example.discovery.url:4821/.well-known/openid-configuration/"),
+					"client_id":      structpb.NewStringValue("someclientid"),
+					"client_secret":  structpb.NewStringValue("secret"),
+					"claims_scopes": func() *structpb.Value {
+						lv, _ := structpb.NewList([]interface{}{"openid"})
+						return structpb.NewListValue(lv)
+					}(),
+				}},
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -969,7 +984,6 @@ func TestCreate(t *testing.T) {
 			if tc.res == nil {
 				require.Nil(got)
 			}
-			cmpOptions := []cmp.Option{protocmp.Transform()}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), tc.idPrefix))
@@ -980,27 +994,38 @@ func TestCreate(t *testing.T) {
 				assert.True(gotCreateTime.AsTime().After(defaultCreated.AsTime()), "New auth_method should have been created after default auth_method. Was created %v, which is after %v", gotCreateTime, defaultCreated)
 				assert.True(gotUpdateTime.AsTime().After(defaultCreated.AsTime()), "New auth_method should have been updated after default auth_method. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
 
-				// Ignore all values which are hard to compare against.
-				cmpOptions = append(
-					cmpOptions,
-					protocmp.IgnoreFields(&pbs.CreateAuthMethodResponse{}, "uri"),
-					protocmp.IgnoreFields(&pb.AuthMethod{}, "id", "created_time", "updated_time"),
-				)
-				if oidcAttrs := got.Item.GetOidcAuthMethodsAttributes(); oidcAttrs != nil {
-					assert.NotEqual(oidcAttrs.ClientSecret, oidcAttrs.ClientSecretHmac)
-					exp := tc.res.Item.Attrs.(*pb.AuthMethod_OidcAuthMethodsAttributes).OidcAuthMethodsAttributes.CallbackUrl
-					gVal := oidcAttrs.CallbackUrl
+				// Clear all values which are hard to compare against.
+				got.Uri, tc.res.Uri = "", ""
+				got.Item.Id, tc.res.Item.Id = "", ""
+				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
+				if _, ok := got.Item.Attributes.Fields["client_secret_hmac"]; ok {
+					assert.NotEqual(tc.req.Item.Attributes.Fields["client_secret"], got.Item.Attributes.Fields["client_secret_hmac"])
+					got.Item.Attributes.Fields["client_secret_hmac"] = structpb.NewStringValue("<hmac>")
+				}
+				if _, ok := got.Item.Attributes.Fields["callback_url"]; ok {
+					exp := tc.res.Item.Attributes.Fields["callback_url"].GetStringValue()
+					gVal := got.Item.Attributes.Fields["callback_url"].GetStringValue()
 					matches, err := regexp.MatchString(exp, gVal)
 					require.NoError(err)
 					assert.True(matches, "%q doesn't match %q", gVal, exp)
-					cmpOptions = append(
-						cmpOptions,
-						protocmp.SortRepeatedFields(&pb.OidcAuthMethodAttributes{}, "account_claim_maps"),
-						protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac", "callback_url"),
-					)
+					delete(got.Item.Attributes.Fields, "callback_url")
+					delete(tc.res.Item.Attributes.Fields, "callback_url")
 				}
+				if v, ok := got.Item.Attributes.Fields["account_claim_maps"]; ok {
+					lv := v.GetListValue().GetValues()
+					sort.Slice(lv, func(i, j int) bool {
+						return lv[i].GetStringValue() < lv[j].GetStringValue()
+					})
+				}
+				if v, ok := tc.res.Item.Attributes.Fields["account_claim_maps"]; ok {
+					lv := v.GetListValue().GetValues()
+					sort.Slice(lv, func(i, j int) bool {
+						return lv[i].GetStringValue() < lv[j].GetStringValue()
+					})
+				}
+
 			}
-			assert.Empty(cmp.Diff(got, tc.res, cmpOptions...), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "CreateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }

@@ -1388,9 +1388,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
 			Type:        "plugin",
-			Attrs: &pb.HostCatalog_Attributes{
-				Attributes: attr,
-			},
+			Attributes:  attr,
 		}})
 		require.NoError(t, err)
 		id := resp.GetItem().GetId()
@@ -1424,9 +1422,7 @@ func TestUpdate_Plugin(t *testing.T) {
 	}
 	updateAttrs := func(i *structpb.Struct) updateFn {
 		return func(c *pb.HostCatalog) {
-			c.Attrs = &pb.HostCatalog_Attributes{
-				Attributes: i,
-			}
+			c.Attributes = i
 		}
 	}
 	updateSecrets := func(i *structpb.Struct) updateFn {

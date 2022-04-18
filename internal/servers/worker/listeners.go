@@ -113,7 +113,7 @@ func (w *Worker) stopHttpServersAndListeners() error {
 		err := ln.ProxyListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
-			closeErrors = multierror.Append(closeErrors, err)
+			multierror.Append(closeErrors, err)
 		}
 	}
 
@@ -133,7 +133,7 @@ func (w *Worker) stopAnyListeners() error {
 		err := ln.ProxyListener.Close()
 		err = listenerCloseErrorCheck(ln.Config.Type, err)
 		if err != nil {
-			closeErrors = multierror.Append(closeErrors, err)
+			multierror.Append(closeErrors, err)
 		}
 	}
 

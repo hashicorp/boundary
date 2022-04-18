@@ -88,8 +88,8 @@ func (s Service) updatePwInRepo(ctx context.Context, scopeId, id string, mask []
 }
 
 func (s Service) authenticatePassword(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
-	reqAttrs := req.GetPasswordLoginAttributes()
-	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), reqAttrs.LoginName, reqAttrs.Password)
+	reqAttrs := req.GetAttributes().GetFields()
+	tok, err := s.authenticateWithPwRepo(ctx, authResults.Scope.GetId(), req.GetAuthMethodId(), reqAttrs[loginNameField].GetStringValue(), reqAttrs[passwordField].GetStringValue())
 	if err != nil {
 		return nil, err
 	}
@@ -136,11 +136,17 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 
-	attrs := req.GetPasswordLoginAttributes()
-	if attrs.LoginName == "" {
+	if req.GetAttributes() == nil || req.GetAttributes().GetFields() == nil {
+		badFields["attributes"] = "This is a required field."
+		// Return early because we need non-nil values in the rest of the check.
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
+	}
+
+	attrs := req.GetAttributes().GetFields()
+	if _, ok := attrs[loginNameField]; !ok {
 		badFields["attributes.login_name"] = "This is a required field."
 	}
-	if attrs.Password == "" {
+	if _, ok := attrs[passwordField]; !ok {
 		badFields["attributes.password"] = "This is a required field."
 	}
 	if req.GetCommand() == "" {
@@ -150,12 +156,7 @@ func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	if req.Command != loginCommand {
 		badFields[commandField] = "Invalid command for this auth method type."
 	}
-	tokenType := req.GetType()
-	if tokenType == "" {
-		// Fall back to deprecated field if type is not set
-		tokenType = req.GetTokenType()
-	}
-	tType := strings.ToLower(strings.TrimSpace(tokenType))
+	tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
 	if tType != "" && tType != "token" && tType != "cookie" {
 		badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
 	}
@@ -183,7 +184,11 @@ func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthM
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for creation: %v.", err)
 	}
 
-	pwAttrs := item.GetPasswordAuthMethodAttributes()
+	pwAttrs := &pb.PasswordAuthMethodAttributes{}
+	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
+			map[string]string{attributesField: "Attribute fields do not match the expected format."})
+	}
 	if pwAttrs.GetMinLoginNameLength() != 0 {
 		u.MinLoginNameLength = pwAttrs.GetMinLoginNameLength()
 	}

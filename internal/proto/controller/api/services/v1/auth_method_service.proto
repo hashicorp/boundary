@@ -6,14 +6,9 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
-import "google/api/visibility.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/struct.proto";
 import "controller/api/resources/authmethods/v1/auth_method.proto";
-import "controller/api/resources/authtokens/v1/authtoken.proto";
-import "controller/custom_options/v1/options.proto";
-
-option (custom_options.v1.domain) = "auth";
 
 service AuthMethodService {
   // GetAuthMethod returns a stored Auth Method if present.  The provided request
@@ -170,11 +165,8 @@ message ChangeStateRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2;
 
-  oneof attrs {
-    // The attributes specific to this auth method's state.
-    google.protobuf.Struct attributes = 4 [(custom_options.v1.subtype) = "default"];
-    OidcChangeStateAttributes oidc_change_state_attributes = 5 [(custom_options.v1.subtype) = "oidc", (google.api.field_visibility).restriction = "INTERNAL"];
-  }
+  // The attributes specific to this auth method's state.
+  google.protobuf.Struct attributes = 4;
 }
 
 message ChangeStateResponse {
@@ -197,25 +189,23 @@ message OidcStartAttributes {
   string cached_roundtrip_payload = 2;
 }
 
+// The layout of the struct for "attributes" field in AuthenticateRequest for a
+// oidc type's token command. This message isn't directly referenced anywhere
+// but is used here to define the expected field names and types.
+message OidcTokenAttributes {
+  // The token id for the request.  This is the token id that was returned from
+  // the oidc type's start command
+  string token_id = 1;
+}
+
 message AuthenticateRequest {
   // The ID of the Auth Method in the system that should be used for authentication.
   string auth_method_id = 1 [json_name = "auth_method_id"];  // @gotags: `class:"public"`
   // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
-  // to keep it safe from rogue JS in the browser. Deprecated, use "type" instead.
-  string token_type = 2 [json_name = "token_type", deprecated = true];  // @gotags: `class:"public"`
-  // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
   // to keep it safe from rogue JS in the browser.
-  string type = 6 [json_name = "type"];  // @gotags: `class:"public"`
-  oneof attrs {
-    // Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
-    google.protobuf.Struct attributes = 4;
-    // Note: these fields have a custom mapping function for transforming to and from the generic attributes,
-    // they do not use the standard attribute transformation.
-    PasswordLoginAttributes password_login_attributes = 7 [(google.api.field_visibility).restriction = "INTERNAL"];
-    OidcStartAttributes oidc_start_attributes = 8 [(google.api.field_visibility).restriction = "INTERNAL"];
-    controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateCallbackRequest oidc_auth_method_authenticate_callback_request = 9 [(google.api.field_visibility).restriction = "INTERNAL"];
-    controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateTokenRequest oidc_auth_method_authenticate_token_request = 10 [(google.api.field_visibility).restriction = "INTERNAL"];
-  }
+  string token_type = 2 [json_name = "token_type"];  // @gotags: `class:"public"`
+  // Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
+  google.protobuf.Struct attributes = 4 [json_name = "attributes"];
   // The command to perform.
   string command = 5 [json_name = "command"];  // @gotags: `class:"public"`
 
@@ -227,18 +217,8 @@ message AuthenticateRequest {
 message AuthenticateResponse {
   reserved 1, 2;  // Old item and token_type
   reserved "item", "token_type";
-  // The type of the token returned. Either "cookie" or "token".
-  string type = 3;  // @gotags: `class:"public"`
-  oneof attrs {
-    // Valid keys and values depend on the type of Auth Method as well as the command.
-    google.protobuf.Struct attributes = 4 [json_name = "attributes"];
-    // Note: these fields have a custom mapping function for transforming to and from the generic attributes,
-    // they do not use the standard attribute transformation.
-    controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateStartResponse oidc_auth_method_authenticate_start_response = 6 [(google.api.field_visibility).restriction = "INTERNAL"];
-    controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateCallbackResponse oidc_auth_method_authenticate_callback_response = 7 [(google.api.field_visibility).restriction = "INTERNAL"];
-    controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateTokenResponse oidc_auth_method_authenticate_token_response = 8 [(google.api.field_visibility).restriction = "INTERNAL"];
-    controller.api.resources.authtokens.v1.AuthToken auth_token_response = 9 [(google.api.field_visibility).restriction = "INTERNAL"];
-  }
+  // Valid keys and values depend on the type of Auth Method as well as the command.
+  google.protobuf.Struct attributes = 4 [json_name = "attributes"];
   // The command that was performed.
   string command = 5 [json_name = "command"];  // @gotags: `class:"public"`
 }
