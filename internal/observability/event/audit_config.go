@@ -10,7 +10,8 @@ import (
 type AuditConfig struct {
 	// FilterOverrides provide an optional a set of overrides for the
 	// FilterOperations to be applied to DataClassifications.
-	FilterOverrides AuditFilterOperations `hcl:"audit_filter_overrides"`
+	FilterOverrides    AuditFilterOperations `hcl:"-"`
+	FilterOverridesHCL map[string]string     `hcl:"audit_filter_overrides"`
 
 	// wrapper to use for audit event crypto operations.
 	wrapper wrapping.Wrapper

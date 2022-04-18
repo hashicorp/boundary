@@ -799,6 +799,52 @@ func TestController_EventingConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "audit_config",
+			config: []string{
+				`events {
+					audit_enabled = true
+					sink {
+						name = "audit-sink"
+						format = "cloudevents-json"
+						event_types = ["audit"]
+						file {
+							file_name = "audit.log"
+						}
+						audit_config {
+							audit_filter_overrides {
+								sensitive = ""
+								secret    = "hmac-sha256"
+							}
+						}
+					}
+				}`,
+			},
+			wantEventerConfig: &event.EventerConfig{
+				AuditEnabled: true,
+				Sinks: []*event.SinkConfig{
+					{
+						Type:       "file",
+						Name:       "audit-sink",
+						Format:     "cloudevents-json",
+						EventTypes: []event.Type{"audit"},
+						FileConfig: &event.FileSinkTypeConfig{
+							FileName: "audit.log",
+						},
+						AuditConfig: &event.AuditConfig{
+							FilterOverridesHCL: map[string]string{
+								"sensitive": "",
+								"secret":    "hmac-sha256",
+							},
+							FilterOverrides: event.AuditFilterOperations{
+								event.SensitiveClassification: event.NoOperation,
+								event.SecretClassification:    event.HmacSha256Operation,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

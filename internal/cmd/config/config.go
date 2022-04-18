@@ -657,6 +657,14 @@ func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
 			}
 		}
 
+		// parse map into event types
+		if s.AuditConfig != nil && s.AuditConfig.FilterOverridesHCL != nil {
+			s.AuditConfig.FilterOverrides = make(map[event.DataClassification]event.FilterOperation, len(s.AuditConfig.FilterOverridesHCL))
+			for k, v := range s.AuditConfig.FilterOverridesHCL {
+				s.AuditConfig.FilterOverrides[event.DataClassification(k)] = event.FilterOperation(v)
+			}
+		}
+
 		if err := s.Validate(); err != nil {
 			return nil, err
 		}
