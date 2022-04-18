@@ -44,7 +44,7 @@ const (
 	typeField         = "type"
 	attributesField   = "attributes"
 	authMethodIdField = "auth_method_id"
-	tokenTypeField    = "token_type"
+	tokenTypeField    = "type"
 	isPrimaryField    = "is_primary"
 )
 
@@ -1205,7 +1205,15 @@ func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.Aut
 	if err != nil {
 		return nil, err
 	}
-	retAttrs.GetFields()[tokenTypeField] = structpb.NewStringValue(req.GetTokenType())
+	tokenType := req.GetType()
+	if tokenType == "" {
+		// Fall back to deprecated field if type is not set
+		tokenType = req.GetTokenType()
+	}
 
-	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: retAttrs}, nil
+	return &pbs.AuthenticateResponse{
+		Command:    req.GetCommand(),
+		Attributes: retAttrs,
+		Type:       tokenType,
+	}, nil
 }

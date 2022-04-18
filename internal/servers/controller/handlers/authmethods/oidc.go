@@ -389,7 +389,12 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 		}
 
 	case tokenCommand:
-		tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+		tokenType := req.GetType()
+		if tokenType == "" {
+			// Fall back to deprecated field if type is not set
+			tokenType = req.GetTokenType()
+		}
+		tType := strings.ToLower(strings.TrimSpace(tokenType))
 		if tType != "" && tType != "token" && tType != "cookie" {
 			badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
 		}

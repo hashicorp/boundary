@@ -43,7 +43,7 @@ func (req *AuthenticateResponse) Tags() ([]encrypt.PointerTag, error) {
 			Classification: encrypt.PublicClassification,
 		},
 		{
-			Pointer:        "/Attributes/Fields/token_type",
+			Pointer:        "/Attributes/Fields/type",
 			Classification: encrypt.PublicClassification,
 		},
 		{
