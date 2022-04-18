@@ -352,7 +352,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		r.Header.Set("Grpc-Metadata-"+requestInfoMdKey, base58.FastBase58Encoding(marshalledRequestInfo))
 
 		// Set the context back on the request
-		r = r.WithContext(ctx)
+		r = r.Clone(ctx)
 		h.ServeHTTP(w, r)
 	})
 }

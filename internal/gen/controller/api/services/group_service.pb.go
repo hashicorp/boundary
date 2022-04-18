@@ -29,7 +29,7 @@ type GetGroupRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *GetGroupRequest) Reset() {
@@ -123,9 +123,9 @@ type ListGroupsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty"`
-	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty"`
-	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty"`
+	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"`     // @gotags: `class:"public"`
+	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"` // @gotags: `class:"public"`
+	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`        // @gotags: `class:"public"`
 }
 
 func (x *ListGroupsRequest) Reset() {
@@ -280,7 +280,7 @@ type CreateGroupResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string        `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty"`
+	Uri  string        `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item *groups.Group `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -335,7 +335,7 @@ type UpdateGroupRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	Item       *groups.Group          `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -445,7 +445,7 @@ type DeleteGroupRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *DeleteGroupRequest) Reset() {
@@ -530,11 +530,11 @@ type AddGroupMembersRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version   uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
-	MemberIds []string `protobuf:"bytes,3,rep,name=member_ids,proto3" json:"member_ids,omitempty"`
+	Version   uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`      // @gotags: `class:"public"`
+	MemberIds []string `protobuf:"bytes,3,rep,name=member_ids,proto3" json:"member_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *AddGroupMembersRequest) Reset() {
@@ -642,11 +642,11 @@ type SetGroupMembersRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version   uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
-	MemberIds []string `protobuf:"bytes,3,rep,name=member_ids,proto3" json:"member_ids,omitempty"`
+	Version   uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`      // @gotags: `class:"public"`
+	MemberIds []string `protobuf:"bytes,3,rep,name=member_ids,proto3" json:"member_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *SetGroupMembersRequest) Reset() {
@@ -754,11 +754,11 @@ type RemoveGroupMembersRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version   uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
-	MemberIds []string `protobuf:"bytes,3,rep,name=member_ids,proto3" json:"member_ids,omitempty"`
+	Version   uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`      // @gotags: `class:"public"`
+	MemberIds []string `protobuf:"bytes,3,rep,name=member_ids,proto3" json:"member_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *RemoveGroupMembersRequest) Reset() {

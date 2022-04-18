@@ -725,7 +725,9 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 		if err := proto.Unmarshal(in.GetAttributes(), attrs); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal attributes"))
 		}
-		hs.Attributes = attrs
+		hs.Attrs = &pb.HostSet_Attributes{
+			Attributes: attrs,
+		}
 	}
 	return hs, nil
 }

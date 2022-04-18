@@ -32,9 +32,15 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+func init() {
+	subtypes.RegisterRequestTransformationFunc(&pbs.AuthenticateRequest{}, transformAuthenticateRequestAttributes)
+	subtypes.RegisterResponseTransformationFunc(&pbs.AuthenticateResponse{}, transformAuthenticateResponseAttributes)
+}
 
 const (
 	// general auth method field names
@@ -44,7 +50,7 @@ const (
 	typeField         = "type"
 	attributesField   = "attributes"
 	authMethodIdField = "auth_method_id"
-	tokenTypeField    = "token_type"
+	tokenTypeField    = "type"
 	isPrimaryField    = "is_primary"
 )
 
@@ -150,7 +156,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	for _, am := range ul {
 		res.Id = am.GetPublicId()
 		res.ScopeId = am.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())], requestauth.WithResource(&res)).Strings()
+		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId("auth", am.GetPublicId())], requestauth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -177,7 +183,13 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 			return nil, err
 		}
 
-		if filter.Match(item) {
+		// This comes last so that we can use item fields in the filter after
+		// the allowed fields are populated above
+		filterable, err := subtypes.Filterable(item)
+		if err != nil {
+			return nil, err
+		}
+		if filter.Match(filterable) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -211,7 +223,7 @@ func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId("auth", am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
@@ -256,7 +268,7 @@ func (s Service) CreateAuthMethod(ctx context.Context, req *pbs.CreateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId("auth", am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
@@ -306,7 +318,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId("auth", am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
@@ -321,8 +333,8 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 		return nil, err
 	}
 
-	if item.GetAttributes() != nil && dryRun {
-		item.GetAttributes().Fields["dry_run"] = structpb.NewBoolValue(true)
+	if item.GetOidcAuthMethodsAttributes() != nil && dryRun {
+		item.GetOidcAuthMethodsAttributes().DryRun = true
 	}
 
 	return &pbs.UpdateAuthMethodResponse{Item: item}, nil
@@ -360,7 +372,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[auth.SubtypeFromId(am.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId("auth", am.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
 		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
@@ -401,7 +413,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		return nil, err
 	}
 
-	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
+	switch subtypes.SubtypeFromId("auth", req.GetAuthMethodId()) {
 	case password.Subtype:
 		if err := validateAuthenticatePasswordRequest(req); err != nil {
 			return nil, err
@@ -417,7 +429,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		return nil, authResults.Error
 	}
 
-	switch auth.SubtypeFromId(req.GetAuthMethodId()) {
+	switch subtypes.SubtypeFromId("auth", req.GetAuthMethodId()) {
 	case password.Subtype:
 		return s.authenticatePassword(ctx, req, &authResults)
 
@@ -430,7 +442,7 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, error) {
 	var lookupErr error
 	var am auth.AuthMethod
-	switch auth.SubtypeFromId(id) {
+	switch subtypes.SubtypeFromId("auth", id) {
 	case password.Subtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
@@ -500,7 +512,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (auth.AuthMethod, error) {
 	const op = "authmethods.(Service).createInRepo"
 	var out auth.AuthMethod
-	switch auth.SubtypeFromType(item.GetType()) {
+	switch subtypes.SubtypeFromType("auth", item.GetType()) {
 	case password.Subtype:
 		am, err := s.createPwInRepo(ctx, scopeId, item)
 		if err != nil {
@@ -529,7 +541,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 	var am auth.AuthMethod
 	var dryRun bool
 
-	switch auth.SubtypeFromId(req.GetId()) {
+	switch subtypes.SubtypeFromId("auth", req.GetId()) {
 	case password.Subtype:
 		pam, err := s.updatePwInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
@@ -559,7 +571,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	const op = "authmethods.(Service).deleteFromRepo"
 	var rows int
 	var dErr error
-	switch auth.SubtypeFromId(id) {
+	switch subtypes.SubtypeFromId("auth", id) {
 	case password.Subtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
@@ -588,18 +600,14 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 func (s Service) changeStateInRepo(ctx context.Context, req *pbs.ChangeStateRequest) (auth.AuthMethod, error) {
 	const op = "authmethod_service.(Service).changeStateInRepo"
 
-	switch auth.SubtypeFromId(req.GetId()) {
+	switch subtypes.SubtypeFromId("auth", req.GetId()) {
 	case oidc.Subtype:
 		repo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, err
 		}
 
-		attrs := &pbs.OidcChangeStateAttributes{}
-		if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse attributes"))
-		}
-
+		attrs := req.GetOidcChangeStateAttributes()
 		var opts []oidc.Option
 		if attrs.GetDisableDiscoveredConfigValidation() {
 			opts = append(opts, oidc.WithForce())
@@ -651,7 +659,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) reque
 		}
 	default:
 		var authMeth auth.AuthMethod
-		switch auth.SubtypeFromId(id) {
+		switch subtypes.SubtypeFromId("auth", id) {
 		case password.Subtype:
 			repo, err := s.pwRepoFn()
 			if err != nil {
@@ -744,14 +752,12 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
-		st, err := handlers.ProtoToStruct(&pb.PasswordAuthMethodAttributes{
-			MinLoginNameLength: i.GetMinLoginNameLength(),
-			MinPasswordLength:  i.GetMinPasswordLength(),
-		})
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
+		out.Attrs = &pb.AuthMethod_PasswordAuthMethodAttributes{
+			PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
+				MinLoginNameLength: i.GetMinLoginNameLength(),
+				MinPasswordLength:  i.GetMinPasswordLength(),
+			},
 		}
-		out.Attributes = st
 	case *oidc.AuthMethod:
 		if outputFields.Has(globals.TypeField) {
 			out.Type = oidc.Subtype.String()
@@ -787,11 +793,9 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 			attrs.MaxAge = wrapperspb.UInt32(uint32(i.GetMaxAge()))
 		}
 
-		st, err := handlers.ProtoToStruct(attrs)
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building oidc attribute struct: %v", err)
+		out.Attrs = &pb.AuthMethod_OidcAuthMethodsAttributes{
+			OidcAuthMethodsAttributes: attrs,
 		}
-		out.Attributes = st
 	}
 	return &out, nil
 }
@@ -837,16 +841,14 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 		if req.GetItem().GetIsPrimary() {
 			badFields[isPrimaryField] = "This field is read only."
 		}
-		switch auth.SubtypeFromType(req.GetItem().GetType()) {
+		switch subtypes.SubtypeFromType("auth", req.GetItem().GetType()) {
 		case password.Subtype:
-			attrs := &pb.PasswordAuthMethodAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
+			// Password attributes are not required when creating a password auth method.
 		case oidc.Subtype:
-			attrs := &pb.OidcAuthMethodAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
+			attrs := req.GetItem().GetOidcAuthMethodsAttributes()
+			if attrs == nil {
+				// OIDC attributes are required when creating an OIDC auth method.
+				badFields[attributesField] = "Attributes are required for creating an OIDC auth method."
 			} else {
 				if attrs.GetIssuer().GetValue() != "" {
 					iss, err := url.Parse(attrs.GetIssuer().GetValue())
@@ -935,116 +937,111 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), isPrimaryField) {
 			badFields[isPrimaryField] = "This field is read only."
 		}
-		switch auth.SubtypeFromId(req.GetId()) {
+		switch subtypes.SubtypeFromId("auth", req.GetId()) {
 		case password.Subtype:
-			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != password.Subtype {
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType("auth", req.GetItem().GetType()) != password.Subtype {
 				badFields[typeField] = "Cannot modify the resource type."
-			}
-			attrs := &pb.PasswordAuthMethodAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 		case oidc.Subtype:
-			if req.GetItem().GetType() != "" && auth.SubtypeFromType(req.GetItem().GetType()) != oidc.Subtype {
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType("auth", req.GetItem().GetType()) != oidc.Subtype {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
-			attrs := &pb.OidcAuthMethodAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
-			if attrs.DryRun && attrs.DisableDiscoveredConfigValidation {
-				badFields[disableDiscoveredConfigValidationField] = "This field cannot be set to true with dry_run."
-			}
+			attrs := req.GetItem().GetOidcAuthMethodsAttributes()
+			if attrs != nil {
+				if attrs.DryRun && attrs.DisableDiscoveredConfigValidation {
+					badFields[disableDiscoveredConfigValidationField] = "This field cannot be set to true with dry_run."
+				}
 
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
-				// TODO: When we start accepting the address used in the request make this an optional field.
-				if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
-					badFields[apiUrlPrefixField] = "This field should not be set to empty."
-				}
-				if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
-					badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
-				}
-			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
-				if attrs.GetIssuer().GetValue() != "" {
-					iss, err := url.Parse(attrs.GetIssuer().GetValue())
-					if err != nil {
-						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
+					// TODO: When we start accepting the address used in the request make this an optional field.
+					if strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()) == "" {
+						badFields[apiUrlPrefixField] = "This field should not be set to empty."
 					}
-					if iss != nil && !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
-						badFields[issuerField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
-					}
-				}
-			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
-				if attrs.GetApiUrlPrefix().GetValue() != "" {
-					cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
-					if err != nil || cu.Host == "" {
+					if cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue()); err != nil || (cu.Scheme != "http" && cu.Scheme != "https") || cu.Host == "" {
 						badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
 					}
-					if !strutil.StrListContains([]string{"http", "https"}, cu.Scheme) {
-						badFields[apiUrlPrefixField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
-					}
 				}
-			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientSecretField) && attrs.GetClientSecret().GetValue() == "" {
-				badFields[clientSecretField] = "Can change but cannot unset this field."
-			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientIdField) && attrs.GetClientId().GetValue() == "" {
-				badFields[clientIdField] = "Can change but cannot unset this field."
-			}
-
-			if attrs.GetClientSecretHmac() != "" {
-				badFields[clientSecretHmacField] = "Field is read only."
-			}
-			if attrs.GetState() != "" {
-				badFields[stateField] = "Field is read only."
-			}
-			if attrs.GetCallbackUrl() != "" {
-				badFields[callbackUrlField] = "Field is read only."
-			}
-
-			if len(attrs.GetSigningAlgorithms()) > 0 {
-				for _, sa := range attrs.GetSigningAlgorithms() {
-					if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
-						badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
-						break
-					}
-				}
-			}
-			if len(attrs.GetIdpCaCerts()) > 0 {
-				if _, err := oidc.ParseCertificates(ctx, attrs.GetIdpCaCerts()...); err != nil {
-					badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
-				}
-			}
-			if len(attrs.GetClaimsScopes()) > 0 {
-				for _, cs := range attrs.GetClaimsScopes() {
-					if cs == oidc.DefaultClaimsScope {
-						badFields[claimsScopesField] = fmt.Sprintf("%s is the default scope and cannot be added as optional %q", oidc.DefaultClaimsScope, cs)
-						break
-					}
-				}
-			}
-			if len(attrs.GetAccountClaimMaps()) > 0 {
-				acm, err := oidc.ParseAccountClaimMaps(ctx, attrs.GetAccountClaimMaps()...)
-				if err != nil {
-					badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
-				} else {
-					foundTo := make(map[string]bool, len(attrs.GetAccountClaimMaps()))
-					for _, m := range acm {
-						if foundTo[m.To] {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", m.From, m.To, m.To)
-						}
-						foundTo[m.To] = true
-
-						to, err := oidc.ConvertToAccountToClaim(ctx, m.To)
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), issuerField) {
+					if attrs.GetIssuer().GetValue() != "" {
+						iss, err := url.Parse(attrs.GetIssuer().GetValue())
 						if err != nil {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", m.From, m.To, err.Error())
+							badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+						}
+						if iss != nil && !strutil.StrListContains([]string{"http", "https"}, iss.Scheme) {
+							badFields[issuerField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
+						}
+					}
+				}
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), apiUrlPrefixField) {
+					if attrs.GetApiUrlPrefix().GetValue() != "" {
+						cu, err := url.Parse(attrs.GetApiUrlPrefix().GetValue())
+						if err != nil || cu.Host == "" {
+							badFields[apiUrlPrefixField] = fmt.Sprintf("%q cannot be parsed as a url.", attrs.GetApiUrlPrefix().GetValue())
+						}
+						if !strutil.StrListContains([]string{"http", "https"}, cu.Scheme) {
+							badFields[apiUrlPrefixField] = fmt.Sprintf("Must have schema %q or %q specified", "http", "https")
+						}
+					}
+				}
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientSecretField) && attrs.GetClientSecret().GetValue() == "" {
+					badFields[clientSecretField] = "Can change but cannot unset this field."
+				}
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), clientIdField) && attrs.GetClientId().GetValue() == "" {
+					badFields[clientIdField] = "Can change but cannot unset this field."
+				}
+
+				if attrs.GetClientSecretHmac() != "" {
+					badFields[clientSecretHmacField] = "Field is read only."
+				}
+				if attrs.GetState() != "" {
+					badFields[stateField] = "Field is read only."
+				}
+				if attrs.GetCallbackUrl() != "" {
+					badFields[callbackUrlField] = "Field is read only."
+				}
+
+				if len(attrs.GetSigningAlgorithms()) > 0 {
+					for _, sa := range attrs.GetSigningAlgorithms() {
+						if !oidc.SupportedAlgorithm(oidc.Alg(sa)) {
+							badFields[signingAlgorithmField] = fmt.Sprintf("Contains unsupported algorithm %q", sa)
 							break
 						}
-						if to == oidc.ToSubClaim {
-							badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map: not allowed to update sub claim maps", m.From, m.To)
+					}
+				}
+				if len(attrs.GetIdpCaCerts()) > 0 {
+					if _, err := oidc.ParseCertificates(ctx, attrs.GetIdpCaCerts()...); err != nil {
+						badFields[idpCaCertsField] = fmt.Sprintf("Cannot parse CA certificates. %v", err.Error())
+					}
+				}
+				if len(attrs.GetClaimsScopes()) > 0 {
+					for _, cs := range attrs.GetClaimsScopes() {
+						if cs == oidc.DefaultClaimsScope {
+							badFields[claimsScopesField] = fmt.Sprintf("%s is the default scope and cannot be added as optional %q", oidc.DefaultClaimsScope, cs)
 							break
+						}
+					}
+				}
+				if len(attrs.GetAccountClaimMaps()) > 0 {
+					acm, err := oidc.ParseAccountClaimMaps(ctx, attrs.GetAccountClaimMaps()...)
+					if err != nil {
+						badFields[accountClaimMapsField] = fmt.Sprintf("Contains invalid map %q", err.Error())
+					} else {
+						foundTo := make(map[string]bool, len(attrs.GetAccountClaimMaps()))
+						for _, m := range acm {
+							if foundTo[m.To] {
+								badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map - multiple maps to the same Boundary to-claim %s", m.From, m.To, m.To)
+							}
+							foundTo[m.To] = true
+
+							to, err := oidc.ConvertToAccountToClaim(ctx, m.To)
+							if err != nil {
+								badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map %q", m.From, m.To, err.Error())
+								break
+							}
+							if to == oidc.ToSubClaim {
+								badFields[accountClaimMapsField] = fmt.Sprintf("%s=%s contains invalid map: not allowed to update sub claim maps", m.From, m.To)
+								break
+							}
 						}
 					}
 				}
@@ -1088,7 +1085,7 @@ func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
-	if st := auth.SubtypeFromId(req.GetId()); st != oidc.Subtype {
+	if st := subtypes.SubtypeFromId("auth", req.GetId()); st != oidc.Subtype {
 		return handlers.NotFoundErrorf("This endpoint is only available for the %q Auth Method type.", oidc.Subtype.String())
 	}
 	badFields := make(map[string]string)
@@ -1096,14 +1093,15 @@ func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 		badFields[versionField] = "Resource version is required."
 	}
 
-	attrs := &pbs.OidcChangeStateAttributes{}
-	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-		badFields[attributesField] = "Attribute fields do not match the expected format."
-	}
-	switch oidcStateMap[attrs.GetState()] {
-	case inactiveState, privateState, publicState:
-	default:
-		badFields[stateField] = fmt.Sprintf("Only supported values are %q, %q, or %q.", inactiveState.String(), privateState.String(), publicState.String())
+	attrs := req.GetOidcChangeStateAttributes()
+	if attrs == nil {
+		badFields[attributesField] = "Attributes are required when changing an auth method."
+	} else {
+		switch oidcStateMap[attrs.GetState()] {
+		case inactiveState, privateState, publicState:
+		default:
+			badFields[stateField] = fmt.Sprintf("Only supported values are %q, %q, or %q.", inactiveState.String(), privateState.String(), publicState.String())
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
@@ -1122,7 +1120,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	if strings.TrimSpace(req.GetAuthMethodId()) == "" {
 		badFields[authMethodIdField] = "This is a required field."
 	} else {
-		st := auth.SubtypeFromId(req.GetAuthMethodId())
+		st := subtypes.SubtypeFromId("auth", req.GetAuthMethodId())
 		switch st {
 		case password.Subtype, oidc.Subtype:
 		default:
@@ -1200,12 +1198,117 @@ func (s Service) convertToAuthenticateResponse(ctx context.Context, req *pbs.Aut
 		ScopeId: authResults.Scope.Id,
 		Type:    resource.AuthToken,
 	}
-	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, requestauth.WithResource(res)).Strings()
-	retAttrs, err := handlers.ProtoToStruct(tok)
-	if err != nil {
-		return nil, err
+	tokenType := req.GetType()
+	if tokenType == "" {
+		// Fall back to deprecated field if type is not set
+		tokenType = req.GetTokenType()
 	}
-	retAttrs.GetFields()[tokenTypeField] = structpb.NewStringValue(req.GetTokenType())
 
-	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: retAttrs}, nil
+	tok.AuthorizedActions = authResults.FetchActionSetForId(ctx, tok.Id, authtokens.IdActions, requestauth.WithResource(res)).Strings()
+	return &pbs.AuthenticateResponse{
+		Command: req.GetCommand(),
+		Attrs: &pbs.AuthenticateResponse_AuthTokenResponse{
+			AuthTokenResponse: tok,
+		},
+		Type: tokenType,
+	}, nil
+}
+
+func transformAuthenticateRequestAttributes(msg proto.Message) error {
+	const op = "authmethod.transformAuthenticateRequestAttributes"
+	authRequest, ok := msg.(*pbs.AuthenticateRequest)
+	if !ok {
+		return fmt.Errorf("%s: message is not an AuthenticateRequest", op)
+	}
+	attrs := authRequest.GetAttributes()
+	if attrs == nil {
+		return nil
+	}
+	switch subtypes.SubtypeFromId("auth", authRequest.GetAuthMethodId()) {
+	case password.Subtype:
+		newAttrs := &pbs.PasswordLoginAttributes{}
+		if err := handlers.StructToProto(attrs, newAttrs); err != nil {
+			return err
+		}
+		authRequest.Attrs = &pbs.AuthenticateRequest_PasswordLoginAttributes{
+			PasswordLoginAttributes: newAttrs,
+		}
+	case oidc.Subtype:
+		switch authRequest.GetCommand() {
+		case startCommand:
+			newAttrs := &pbs.OidcStartAttributes{}
+			if err := handlers.StructToProto(attrs, newAttrs); err != nil {
+				return err
+			}
+			authRequest.Attrs = &pbs.AuthenticateRequest_OidcStartAttributes{
+				OidcStartAttributes: newAttrs,
+			}
+		case callbackCommand:
+			newAttrs := &pb.OidcAuthMethodAuthenticateCallbackRequest{}
+			if err := handlers.StructToProto(attrs, newAttrs, handlers.WithDiscardUnknownFields(true)); err != nil {
+				return err
+			}
+			authRequest.Attrs = &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateCallbackRequest{
+				OidcAuthMethodAuthenticateCallbackRequest: newAttrs,
+			}
+		case tokenCommand:
+			newAttrs := &pb.OidcAuthMethodAuthenticateTokenRequest{}
+			if err := handlers.StructToProto(attrs, newAttrs); err != nil {
+				return err
+			}
+			authRequest.Attrs = &pbs.AuthenticateRequest_OidcAuthMethodAuthenticateTokenRequest{
+				OidcAuthMethodAuthenticateTokenRequest: newAttrs,
+			}
+		default:
+			return fmt.Errorf("%s: unknown command %q", op, authRequest.GetCommand())
+		}
+	default:
+		return fmt.Errorf("%s: unknown auth method subtype in ID %q", op, authRequest.GetAuthMethodId())
+	}
+	return nil
+}
+
+func transformAuthenticateResponseAttributes(msg proto.Message) error {
+	const op = "authmethod.transformAuthenticateResponseAttributes"
+	authResponse, ok := msg.(*pbs.AuthenticateResponse)
+	if !ok {
+		return fmt.Errorf("%s: message is not an AuthenticateResponse", op)
+	}
+	attrs := authResponse.GetAttrs()
+	if attrs == nil {
+		return nil
+	}
+	var newAttrs *structpb.Struct
+	var err error
+	switch attrs := attrs.(type) {
+	case *pbs.AuthenticateResponse_Attributes:
+		// No transformation necessary
+		newAttrs = attrs.Attributes
+	case *pbs.AuthenticateResponse_AuthTokenResponse:
+		newAttrs, err = handlers.ProtoToStruct(attrs.AuthTokenResponse)
+		if err != nil {
+			return err
+		}
+	case *pbs.AuthenticateResponse_OidcAuthMethodAuthenticateStartResponse:
+		newAttrs, err = handlers.ProtoToStruct(attrs.OidcAuthMethodAuthenticateStartResponse)
+		if err != nil {
+			return err
+		}
+	case *pbs.AuthenticateResponse_OidcAuthMethodAuthenticateCallbackResponse:
+		newAttrs, err = handlers.ProtoToStruct(attrs.OidcAuthMethodAuthenticateCallbackResponse)
+		if err != nil {
+			return err
+		}
+	case *pbs.AuthenticateResponse_OidcAuthMethodAuthenticateTokenResponse:
+		newAttrs, err = handlers.ProtoToStruct(attrs.OidcAuthMethodAuthenticateTokenResponse)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("%s: unknown attributes type %T", op, attrs)
+	}
+	authResponse.Attrs = &pbs.AuthenticateResponse_Attributes{
+		Attributes: newAttrs,
+	}
+	return nil
 }

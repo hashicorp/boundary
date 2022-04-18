@@ -8,6 +8,9 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/hostcatalogs/v1/host_catalog.proto";
+import "controller/custom_options/v1/options.proto";
+
+option (custom_options.v1.domain) = "host";
 
 service HostCatalogService {
 
@@ -84,7 +87,7 @@ service HostCatalogService {
 }
 
 message GetHostCatalogRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message GetHostCatalogResponse {
@@ -92,9 +95,9 @@ message GetHostCatalogResponse {
 }
 
 message ListHostCatalogsRequest {
-  string scope_id = 1 [json_name="scope_id"];
-  bool recursive = 20 [json_name="recursive"];
-  string filter = 30 [json_name="filter"];
+  string scope_id = 1 [json_name="scope_id"];  // @gotags: `class:"public"`
+  bool recursive = 20 [json_name="recursive"];  // @gotags: `class:"public"`
+  string filter = 30 [json_name="filter"];  // @gotags: `class:"public"`
 }
 
 message ListHostCatalogsResponse {
@@ -105,16 +108,16 @@ message CreateHostCatalogRequest {
   api.resources.hostcatalogs.v1.HostCatalog item = 1;
   // As an alternative to providing the plugin id in the provided HostCatalog,
   // this field can be used to lookup the plugin using its name.
-  string plugin_name = 2 [json_name="plugin_name"];
+  string plugin_name = 2 [json_name="plugin_name"];  // @gotags: `class:"public"`
 }
 
 message CreateHostCatalogResponse {
-  string uri = 1;
+  string uri = 1;  // @gotags: `class:"public"`
   api.resources.hostcatalogs.v1.HostCatalog item = 2;
 }
 
 message UpdateHostCatalogRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
   api.resources.hostcatalogs.v1.HostCatalog item = 2;
   google.protobuf.FieldMask update_mask = 3;
 }
@@ -124,7 +127,7 @@ message UpdateHostCatalogResponse {
 }
 
 message DeleteHostCatalogRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message DeleteHostCatalogResponse {}

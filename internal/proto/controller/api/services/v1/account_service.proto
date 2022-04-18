@@ -8,6 +8,9 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/accounts/v1/account.proto";
+import "controller/custom_options/v1/options.proto";
+
+option (custom_options.v1.domain) = "auth";
 
 service AccountService {
 
@@ -114,68 +117,68 @@ service AccountService {
 }
 
 message GetAccountRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message GetAccountResponse {
-  resources.accounts.v1.Account item = 1;
+  resources.accounts.v1.Account item = 1;  // @gotags: `class:"public"`
 }
 
 message ListAccountsRequest {
-  string auth_method_id = 1 [json_name="auth_method_id"];
-  string filter = 30 [json_name="filter"];
+  string auth_method_id = 1 [json_name="auth_method_id"];  // @gotags: `class:"public"`
+  string filter = 30 [json_name="filter"];  // @gotags: `class:"sensitive"`
 }
 
 message ListAccountsResponse {
-  repeated resources.accounts.v1.Account items = 1;
+  repeated resources.accounts.v1.Account items = 1;  // @gotags: `class:"public"`
 }
 
 message CreateAccountRequest {
-  resources.accounts.v1.Account item = 2;
+  resources.accounts.v1.Account item = 2;  // @gotags: `class:"public"`
 }
 
 message CreateAccountResponse {
-  string uri = 1;
-  resources.accounts.v1.Account item = 2;
+  string uri = 1;  // @gotags: `class:"public"`
+  resources.accounts.v1.Account item = 2;  // @gotags: `class:"public"`
 }
 
 message UpdateAccountRequest {
-  string id = 1;
-  resources.accounts.v1.Account item = 2;
-  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+  string id = 1;  // @gotags: `class:"public"`
+  resources.accounts.v1.Account item = 2;  // @gotags: `class:"public"`
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];  // @gotags: `class:"public"`
 }
 
 message UpdateAccountResponse {
-  resources.accounts.v1.Account item = 1;
+  resources.accounts.v1.Account item = 1;  // @gotags: `class:"public"`
 }
 
 message DeleteAccountRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message DeleteAccountResponse {}
 
 message SetPasswordRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  string password = 3;
+  uint32 version = 2;  // @gotags: `class:"public"`
+  string password = 3;  // @gotags: `class:"secret"`
 }
 
 message SetPasswordResponse {
-  resources.accounts.v1.Account item = 1;
+  resources.accounts.v1.Account item = 1;  // @gotags: `class:"public"`
 }
 
 message ChangePasswordRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;
-  string current_password = 3 [json_name="current_password"];
-  string new_password = 4 [json_name="new_password"];
+  uint32 version = 2;  // @gotags: `class:"public"`
+  string current_password = 3 [json_name="current_password"];  // @gotags: `class:"secret"`
+  string new_password = 4 [json_name="new_password"];  // @gotags: `class:"secret"`
 }
 
 message ChangePasswordResponse {
-  resources.accounts.v1.Account item = 1;
+  resources.accounts.v1.Account item = 1;  // @gotags: `class:"public"`
 }

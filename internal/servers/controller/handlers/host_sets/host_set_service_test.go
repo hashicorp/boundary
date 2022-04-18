@@ -903,7 +903,9 @@ func TestCreate_Plugin(t *testing.T) {
 				Description:         &wrappers.StringValue{Value: "desc"},
 				Type:                plugin.Subtype.String(),
 				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
-				Attributes:          testInputAttrs,
+				Attrs: &pb.HostSet_Attributes{
+					Attributes: testInputAttrs,
+				},
 			}},
 			res: &pbs.CreateHostSetResponse{
 				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
@@ -920,7 +922,9 @@ func TestCreate_Plugin(t *testing.T) {
 					Type:                plugin.Subtype.String(),
 					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
 					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
-					Attributes:          testOutputAttrs,
+					Attrs: &pb.HostSet_Attributes{
+						Attributes: testOutputAttrs,
+					},
 				},
 			},
 		},
@@ -1480,11 +1484,13 @@ func TestUpdate_Plugin(t *testing.T) {
 		})
 		require.NoError(t, err)
 		resp, err := tested.CreateHostSet(ctx, &pbs.CreateHostSetRequest{Item: &pb.HostSet{
-			HostCatalogId:      hc.GetPublicId(),
-			Name:               wrapperspb.String("default"),
-			Description:        wrapperspb.String("default"),
-			Type:               plugin.Subtype.String(),
-			Attributes:         attr,
+			HostCatalogId: hc.GetPublicId(),
+			Name:          wrapperspb.String("default"),
+			Description:   wrapperspb.String("default"),
+			Type:          plugin.Subtype.String(),
+			Attrs: &pb.HostSet_Attributes{
+				Attributes: attr,
+			},
 			PreferredEndpoints: []string{"dns:default"},
 		}})
 		require.NoError(t, err)
@@ -1528,7 +1534,9 @@ func TestUpdate_Plugin(t *testing.T) {
 	}
 	updateAttrs := func(i *structpb.Struct) updateFn {
 		return func(c *pb.HostSet) {
-			c.Attributes = i
+			c.Attrs = &pb.HostSet_Attributes{
+				Attributes: i,
+			}
 		}
 	}
 

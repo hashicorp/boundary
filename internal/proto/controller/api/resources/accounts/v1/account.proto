@@ -7,77 +7,90 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/struct.proto";
+import "google/api/visibility.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 
 // Account contains all fields related to an Account resource
 message Account {
 	// Output only. The ID of the Account.
-	string id = 10;
+	string id = 10;  // @gotags: `class:"public"`
 
 	// Output only. Scope information for the Account.
-	resources.scopes.v1.ScopeInfo scope = 20;
+	resources.scopes.v1.ScopeInfo scope = 20;  // @gotags: `class:"public"`
 
 	// Optional name for identification purposes.
-	google.protobuf.StringValue name = 30 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "Name"}];
+	google.protobuf.StringValue name = 30 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "Name"}];  // @gotags: `class:"sensitive"`
 
 	// Optional user-set description for identification purposes.
-	google.protobuf.StringValue description = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "Description"}];
+	google.protobuf.StringValue description = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "Description"}];  // @gotags: `class:"sensitive"`
 
 	// Output only. The time this resource was created.
-	google.protobuf.Timestamp created_time = 50 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 50 [json_name="created_time"];  // @gotags: `class:"public"`
 
 	// Output only. The time this resource was last updated.
-	google.protobuf.Timestamp updated_time = 60 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 60 [json_name="updated_time"];  // @gotags: `class:"public"`
 
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	uint32 version = 70;
+	uint32 version = 70;  // @gotags: `class:"public"`
 
 	// The type of this Account.
-	string type = 80;
+	string type = 80;  // @gotags: `class:"public"`
 
 	// The ID of the Auth Method that is associated with this Account.
-	string auth_method_id = 90 [json_name="auth_method_id"];
+	string auth_method_id = 90 [json_name="auth_method_id", (custom_options.v1.subtype_source_id) = true];  // @gotags: `class:"public"`
 
 	// The attributes that are applicable for the specific Account type.
-	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
+	oneof attrs {
+		google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.subtype) = "default"];  // @gotags: `class:"public"`
+		PasswordAccountAttributes password_account_attributes = 101 [
+			(google.api.field_visibility).restriction = "INTERNAL",
+			(custom_options.v1.generate_sdk_option) = true,
+			(custom_options.v1.subtype) = "password"
+		];  // @gotags: `class:"public"`
+		OidcAccountAttributes oidc_account_attributes = 102 [
+			(google.api.field_visibility).restriction = "INTERNAL",
+			(custom_options.v1.generate_sdk_option) = true,
+			(custom_options.v1.subtype) = "oidc"
+		];  // @gotags: `class:"public"`
+	}
 
 	// Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account
-	repeated string managed_group_ids = 110 [json_name="managed_group_ids"];
+	repeated string managed_group_ids = 110 [json_name="managed_group_ids"];  // @gotags: `class:"public"`
 
 	// Output only. The available actions on this resource for this user.
-	repeated string authorized_actions = 300 [json_name="authorized_actions"];
+	repeated string authorized_actions = 300 [json_name="authorized_actions"];  // @gotags: `class:"public"`
 }
 
 // Attributes associated only with Accounts with type "password".
 message PasswordAccountAttributes {
 	// The login name of this Account. This is unique per Auth Method.
-	string login_name = 10 [json_name="login_name", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.login_name" that: "LoginName"}];
+	string login_name = 10 [json_name="login_name", (custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.login_name" that: "LoginName"}];  // @gotags: `class:"sensitive"`
 
 	// The password for this Account.
-	google.protobuf.StringValue password = 20 [(custom_options.v1.generate_sdk_option) = true];
+	google.protobuf.StringValue password = 20 [(custom_options.v1.generate_sdk_option) = true];  // @gotags: `class:"secret"`
 }
 
 // Attributes associated only with Accounts with type "oidc".
 message OidcAccountAttributes {
 	// issuer is a case sensitive URL that maps to the OIDC iss claim.
 	// This value is immutable after creation time.
-	string issuer = 80 [json_name="issuer", (custom_options.v1.generate_sdk_option) = true];
+	string issuer = 80 [json_name="issuer", (custom_options.v1.generate_sdk_option) = true];  // @gotags: `class:"sensitive"`
 
 	// subject is a case sensitive string that maps to the OIDC sub claim.
 	// This value is immutable after creation time.
-	string subject = 90 [json_name="subject", (custom_options.v1.generate_sdk_option) = true];
+	string subject = 90 [json_name="subject", (custom_options.v1.generate_sdk_option) = true];  // @gotags: `class:"sensitive"`
 
 	// Output only. full_name is a string that maps to the OIDC name claim.
-	string full_name = 100 [json_name="full_name"];
+	string full_name = 100 [json_name="full_name"];  // @gotags: `class:"sensitive"`
 
 	// Output only. email is a string that maps to the OIDC email claim.
-	string email = 110;
+	string email = 110;  // @gotags: `class:"sensitive"`
 
 	// Output only. token_claims are the marshaled claims from the token.
-	google.protobuf.Struct token_claims = 120;
+	google.protobuf.Struct token_claims = 120;  // @gotags: `class:"sensitive"`
 
 	// Output only. userinfo_claims are the marshaled claims from userinfo.
-	google.protobuf.Struct userinfo_claims = 130;
+	google.protobuf.Struct userinfo_claims = 130;  // @gotags: `class:"sensitive"`
 }

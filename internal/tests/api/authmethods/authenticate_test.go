@@ -22,10 +22,6 @@ import (
 
 // TestAuthenticate tests the api calls and the audit events it should produce
 func TestAuthenticate(t *testing.T) {
-	// this cannot run in parallel because it relies on envvar
-	// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
-	event.TestEnableEventing(t, true)
-
 	assert, require := assert.New(t), require.New(t)
 	eventConfig := event.TestEventerConfig(t, "TestAuthenticateAuditEntry", event.TestWithAuditSink(t))
 	testLock := &sync.Mutex{}
@@ -80,13 +76,14 @@ func TestAuthenticate(t *testing.T) {
 	assert.NotNil(tok)
 	got := tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
+	// All attribute fields are classified for now.
 	reqDetails := tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
-	tests_api.AssertRedactedValues(t, reqDetails["attributes"], "password")
+	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["PasswordLoginAttributes"], "password", "login_name")
 
 	respDetails := tests_api.GetEventDetails(t, got, "response")
 	tests_api.AssertRedactedValues(t, respDetails)
-	tests_api.AssertRedactedValues(t, respDetails["attributes"], "token")
+	tests_api.AssertRedactedValues(t, respDetails["Attrs"].(map[string]interface{})["AuthTokenResponse"], "token")
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
 	tok, err = methods.Authenticate(tc.Context(), tc.Server().DevPasswordAuthMethodId, "login", map[string]interface{}{"login_name": "user", "password": "bad-pass"})
@@ -96,5 +93,5 @@ func TestAuthenticate(t *testing.T) {
 
 	reqDetails = tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
-	tests_api.AssertRedactedValues(t, reqDetails["attributes"], "password")
+	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["PasswordLoginAttributes"], "password", "login_name")
 }

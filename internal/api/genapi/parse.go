@@ -40,24 +40,41 @@ func parsePBs() {
 		// Evaluate above, populate below.
 		in.generatedStructure.pkg = packageFromFullName(desc.FullName())
 		in.generatedStructure.name = string(desc.Name())
+		var attributesFilter []string
 		for i := 0; i < desc.Fields().Len(); i++ {
 			fd := desc.Fields().Get(i)
+			opts := fd.Options().(*descriptorpb.FieldOptions)
+			isAttribute := false
+			if proto.GetExtension(opts, protooptions.E_Subtype).(string) != "" {
+				isAttribute = true
+			}
+			if isAttribute {
+				// Only parse attributes oneOf once and not for each option
+				if strutil.StrListContains(attributesFilter, "Attributes") {
+					continue
+				}
+			}
 			if strutil.StrListContains(in.fieldFilter, string(fd.Name())) {
 				continue
 			}
-			fi := fieldInfo{
-				Name:      strcase.ToCamel(string(fd.Name())),
-				ProtoName: string(fd.Name()),
-			}
+
 			// Adjust for slices
 			sliceText := ""
 			if fd.Cardinality() == protoreflect.Repeated {
 				sliceText = "[]"
 			}
-			// Add generate option info
-			opts := fd.Options().(*descriptorpb.FieldOptions)
-			if proto.GetExtension(opts, protooptions.E_GenerateSdkOption).(bool) {
-				fi.GenerateSdkOption = true
+			var fi fieldInfo
+			if isAttribute {
+				fi = fieldInfo{
+					Name:      "Attributes",
+					ProtoName: "attributes",
+				}
+				attributesFilter = append(attributesFilter, "Attributes")
+			} else {
+				fi = fieldInfo{
+					Name:      strcase.ToCamel(string(fd.Name())),
+					ProtoName: string(fd.Name()),
+				}
 			}
 			switch k := fd.Kind(); k {
 			case protoreflect.MessageKind:
@@ -75,6 +92,10 @@ func parsePBs() {
 				fi.FieldType = "[]byte"
 			default:
 				fi.FieldType = sliceText + k.String()
+			}
+			// Add generate option info
+			if proto.GetExtension(opts, protooptions.E_GenerateSdkOption).(bool) {
+				fi.GenerateSdkOption = true
 			}
 			in.generatedStructure.fields = append(in.generatedStructure.fields, fi)
 		}

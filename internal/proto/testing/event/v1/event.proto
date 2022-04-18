@@ -25,9 +25,13 @@ message TestAuthenticateRequest {
   // @inject_tag: `class:"public"`
   string auth_method_id = 1 [json_name = "auth_method_id"];
   // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
+  // to keep it safe from rogue JS in the browser. Deprecated, use "type" instead.
+  // @inject_tag: `class:"public"`
+  string token_type = 2 [json_name = "token_type", deprecated = true];
+  // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
   // to keep it safe from rogue JS in the browser.
   // @inject_tag: `class:"public"`
-  string token_type = 2 [json_name = "token_type"];
+  string type = 3 [json_name = "type"];
   // Attributes are passed to the Auth Method; the valid keys and values depend on the type of Auth Method as well as the command.
   google.protobuf.Struct attributes = 4 [json_name = "attributes"];
   // The command to perform.

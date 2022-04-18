@@ -240,7 +240,10 @@ func auditRequestInterceptor(
 		handler grpc.UnaryHandler) (interface{}, error,
 	) {
 		if msg, ok := req.(proto.Message); ok {
-			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: msg})); err != nil {
+			// Clone the request before writing it to the audit log,
+			// in case downstream interceptors modify it.
+			clonedMsg := proto.Clone(msg)
+			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg audit: %s", err)
 			}
 		}
@@ -252,7 +255,7 @@ func auditRequestInterceptor(
 func auditResponseInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
-	const op = "controller.auditRequestInterceptor"
+	const op = "controller.auditResponseInterceptor"
 	return func(interceptorCtx context.Context,
 		req interface{},
 		_ *grpc.UnaryServerInfo,
@@ -262,7 +265,10 @@ func auditResponseInterceptor(
 		resp, err := handler(interceptorCtx, req)
 
 		if msg, ok := resp.(proto.Message); ok {
-			if err := event.WriteAudit(interceptorCtx, op, event.WithResponse(&event.Response{Details: msg})); err != nil {
+			// Clone the response before writing it to the audit log,
+			// in case downstream interceptors modify it.
+			clonedMsg := proto.Clone(msg)
+			if err := event.WriteAudit(interceptorCtx, op, event.WithResponse(&event.Response{Details: clonedMsg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write response msg audit: %s", err)
 			}
 		}

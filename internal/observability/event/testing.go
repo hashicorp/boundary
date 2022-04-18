@@ -7,27 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/globals"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	"github.com/hashicorp/eventlogger"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
-
-// TestEnableEventing will enable eventing via it's envvar
-// globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS
-func TestEnableEventing(t *testing.T, enable bool) {
-	t.Helper()
-	if enable {
-		os.Setenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS, "true")
-		t.Cleanup(func() {
-			defer os.Unsetenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS)
-		})
-	} else {
-		os.Unsetenv(globals.BOUNDARY_DEVELOPER_ENABLE_EVENTS)
-	}
-}
 
 // TestGetEventerConfig is a test accessor for the eventer's config
 func TestGetEventerConfig(t *testing.T, e *Eventer) EventerConfig {

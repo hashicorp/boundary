@@ -129,20 +129,24 @@ module.exports = [
     destination: '/docs/concepts/domain-model/managed-groups',
     permanent: false,
   },
-
   {
     source: '/help/admin-ui/dynamic-host-catalogs-on-aws',
     destination:
       'https://learn.hashicorp.com/tutorials/boundary/aws-host-catalogs',
     permanent: false,
   },
-
   {
     source: '/help/admin-ui/dynamic-host-catalogs-on-azure',
     destination:
       'https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs',
     permanent: false,
   },
+  {
+    source: '/help/admin-ui/targets/worker-filters',
+    destination: '/docs/concepts/filtering/worker-tags#target-worker-filtering',
+    permanent: false,
+  },
+
   ////////////////////////////////////////////
   // Adding sub-resources to existing resource
   ////////////////////////////////////////////

@@ -2712,11 +2712,19 @@ func TestAuthorizeSession(t *testing.T) {
 		CredentialStoreId: store.GetPublicId(),
 		Name:              wrapperspb.String("Library Name"),
 		Description:       wrapperspb.String("Library Description"),
-		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"path":              structpb.NewStringValue(path.Join("pki", "issue", "boundary")),
-			"http_method":       structpb.NewStringValue("POST"),
-			"http_request_body": structpb.NewStringValue(`{"common_name":"boundary.com"}`),
-		}},
+		Attrs: &credpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+			VaultCredentialLibraryAttributes: &credpb.VaultCredentialLibraryAttributes{
+				Path: &wrapperspb.StringValue{
+					Value: path.Join("pki", "issue", "boundary"),
+				},
+				HttpMethod: &wrapperspb.StringValue{
+					Value: "POST",
+				},
+				HttpRequestBody: &wrapperspb.StringValue{
+					Value: `{"common_name":"boundary.com"}`,
+				},
+			},
+		},
 	}})
 	require.NoError(t, err)
 
@@ -2934,10 +2942,12 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: store.GetPublicId(),
 		Name:              wrapperspb.String("Userpassword Library"),
 		Description:       wrapperspb.String("Userpassword Library Description"),
-		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"path":        structpb.NewStringValue(path.Join("secret", "data", "default-userpass")),
-			"http_method": structpb.NewStringValue("GET"),
-		}},
+		Attrs: &credpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+			VaultCredentialLibraryAttributes: &credpb.VaultCredentialLibraryAttributes{
+				Path:       wrapperspb.String(path.Join("secret", "data", "default-userpass")),
+				HttpMethod: wrapperspb.String("GET"),
+			},
+		},
 		CredentialType: "user_password",
 	}})
 	require.NoError(t, err)
@@ -2946,10 +2956,12 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: store.GetPublicId(),
 		Name:              wrapperspb.String("Unspecified Library"),
 		Description:       wrapperspb.String("Unspecified Library Description"),
-		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"path":        structpb.NewStringValue(path.Join("secret", "data", "default-userpass")),
-			"http_method": structpb.NewStringValue("GET"),
-		}},
+		Attrs: &credpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+			VaultCredentialLibraryAttributes: &credpb.VaultCredentialLibraryAttributes{
+				Path:       wrapperspb.String(path.Join("secret", "data", "default-userpass")),
+				HttpMethod: wrapperspb.String("GET"),
+			},
+		},
 	}})
 	require.NoError(t, err)
 
@@ -2961,10 +2973,12 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		CredentialStoreId: store.GetPublicId(),
 		Name:              wrapperspb.String("Userpassword Mapping Library"),
 		Description:       wrapperspb.String("Userpassword Mapping Library Description"),
-		Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-			"path":        structpb.NewStringValue(path.Join("secret", "data", "non-default-userpass")),
-			"http_method": structpb.NewStringValue("GET"),
-		}},
+		Attrs: &credpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+			VaultCredentialLibraryAttributes: &credpb.VaultCredentialLibraryAttributes{
+				Path:       wrapperspb.String(path.Join("secret", "data", "non-default-userpass")),
+				HttpMethod: wrapperspb.String("GET"),
+			},
+		},
 		CredentialType: "user_password",
 		CredentialMappingOverrides: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"username_attribute": structpb.NewStringValue("non-default-user"),
@@ -3218,9 +3232,11 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
 			Description:       wrapperspb.String(fmt.Sprintf("Library Description for target %q", tar.GetName())),
-			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"path": structpb.NewStringValue(path.Join("database", "creds", "opened")),
-			}},
+			Attrs: &credpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+				VaultCredentialLibraryAttributes: &credpb.VaultCredentialLibraryAttributes{
+					Path: wrapperspb.String(path.Join("database", "creds", "opened")),
+				},
+			},
 		}})
 		require.NoError(t, err)
 
@@ -3240,9 +3256,11 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
 			Description:       wrapperspb.String(fmt.Sprintf("Library Description for target %q", tar.GetName())),
-			Attributes: &structpb.Struct{Fields: map[string]*structpb.Value{
-				"path": structpb.NewStringValue("bad path"),
-			}},
+			Attrs: &credpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+				VaultCredentialLibraryAttributes: &credpb.VaultCredentialLibraryAttributes{
+					Path: wrapperspb.String("bad path"),
+				},
+			},
 		}})
 		require.NoError(t, err)
 

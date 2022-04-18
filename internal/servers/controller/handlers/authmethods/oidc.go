@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -159,7 +158,7 @@ func (s Service) authenticateOidc(ctx context.Context, req *pbs.AuthenticateRequ
 		return s.authenticateOidcToken(ctx, req, authResults)
 	}
 
-	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: nil}, nil
+	return &pbs.AuthenticateResponse{Command: req.GetCommand()}, nil
 }
 
 func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
@@ -169,10 +168,7 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 	}
 
 	var opts []oidc.Option
-	attrs := new(pbs.OidcStartAttributes)
-	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Error parsing request attributes.", errors.WithWrap(err))
-	}
+	attrs := req.GetOidcStartAttributes()
 	if attrs.GetCachedRoundtripPayload() != "" {
 		opts = append(opts, oidc.WithRoundtripPayload(attrs.GetCachedRoundtripPayload()))
 	}
@@ -185,15 +181,15 @@ func (s Service) authenticateOidcStart(ctx context.Context, req *pbs.Authenticat
 		return nil, errors.New(ctx, errors.Internal, op, "Error generating parameters for starting the OIDC flow. See the controller's log for more information.")
 	}
 
-	respAttrs := &pb.OidcAuthMethodAuthenticateStartResponse{
-		AuthUrl: authUrl.String(),
-		TokenId: tokenId,
-	}
-	resp := &pbs.AuthenticateResponse{Command: req.GetCommand()}
-	if resp.Attributes, err = handlers.ProtoToStruct(respAttrs); err != nil {
-		return nil, errors.New(ctx, errors.Internal, op, "Error marshaling parameters.", errors.WithWrap(err))
-	}
-	return resp, nil
+	return &pbs.AuthenticateResponse{
+		Command: req.GetCommand(),
+		Attrs: &pbs.AuthenticateResponse_OidcAuthMethodAuthenticateStartResponse{
+			OidcAuthMethodAuthenticateStartResponse: &pb.OidcAuthMethodAuthenticateStartResponse{
+				AuthUrl: authUrl.String(),
+				TokenId: tokenId,
+			},
+		},
+	}, nil
 }
 
 // authenticateOidcCallback behaves differently than other service methods.
@@ -236,20 +232,17 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		}
 		u.Add("error", string(out))
 		errRedirect := fmt.Sprintf("%s?%s", errRedirectBase, u.Encode())
-		respAttrs, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackResponse{
-			FinalRedirectUrl: errRedirect,
-		})
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed creating error redirect response"))
-		}
-		return &pbs.AuthenticateResponse{Command: callbackCommand, Attributes: respAttrs}, nil
+		return &pbs.AuthenticateResponse{
+			Command: callbackCommand,
+			Attrs: &pbs.AuthenticateResponse_OidcAuthMethodAuthenticateCallbackResponse{
+				OidcAuthMethodAuthenticateCallbackResponse: &pb.OidcAuthMethodAuthenticateCallbackResponse{
+					FinalRedirectUrl: errRedirect,
+				},
+			},
+		}, nil
 	}
 
-	attrs := new(pb.OidcAuthMethodAuthenticateCallbackRequest)
-	// Note that this conversion has already happened in the validate call so we don't expect errors here.
-	if err := handlers.StructToProto(req.GetAttributes(), attrs, handlers.WithDiscardUnknownFields(true)); err != nil {
-		return errResponse(err)
-	}
+	attrs := req.GetOidcAuthMethodAuthenticateCallbackRequest()
 
 	var finalRedirectUrl string
 	if attrs.GetError() != "" {
@@ -268,14 +261,14 @@ func (s Service) authenticateOidcCallback(ctx context.Context, req *pbs.Authenti
 		return errResponse(errors.New(ctx, errors.InvalidParameter, op, "Callback validation failed.", errors.WithWrap(err)))
 	}
 
-	respAttrs, err := handlers.ProtoToStruct(&pb.OidcAuthMethodAuthenticateCallbackResponse{
-		FinalRedirectUrl: finalRedirectUrl,
-	})
-	if err != nil {
-		return errResponse(errors.New(ctx, errors.Internal, op, "Error marshaling parameters after successful callback", errors.WithWrap(err)))
-	}
-
-	return &pbs.AuthenticateResponse{Command: req.GetCommand(), Attributes: respAttrs}, nil
+	return &pbs.AuthenticateResponse{
+		Command: req.GetCommand(),
+		Attrs: &pbs.AuthenticateResponse_OidcAuthMethodAuthenticateCallbackResponse{
+			OidcAuthMethodAuthenticateCallbackResponse: &pb.OidcAuthMethodAuthenticateCallbackResponse{
+				FinalRedirectUrl: finalRedirectUrl,
+			},
+		},
+	}, nil
 }
 
 func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
@@ -286,14 +279,11 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 	if authResults == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil auth results.")
 	}
-	if req.GetAttributes() == nil {
+	if req.GetOidcAuthMethodAuthenticateTokenRequest() == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request attributes.")
 	}
 
-	attrs := new(pb.OidcAuthMethodAuthenticateTokenRequest)
-	if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "Error parsing request attributes.", errors.WithWrap(err))
-	}
+	attrs := req.GetOidcAuthMethodAuthenticateTokenRequest()
 	if attrs.TokenId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "Empty token ID in request attributes.")
 	}
@@ -313,15 +303,16 @@ func (s Service) authenticateOidcToken(ctx context.Context, req *pbs.Authenticat
 		}
 	}
 	if token == nil {
-		attrs, err := structpb.NewStruct(map[string]interface{}{
-			statusField: "unknown",
-		})
 		if err != nil {
 			return nil, errors.New(ctx, errors.Internal, op, "Error generating response attributes.", errors.WithWrap(err))
 		}
 		return &pbs.AuthenticateResponse{
-			Command:    req.Command,
-			Attributes: attrs,
+			Command: req.Command,
+			Attrs: &pbs.AuthenticateResponse_OidcAuthMethodAuthenticateTokenResponse{
+				OidcAuthMethodAuthenticateTokenResponse: &pb.OidcAuthMethodAuthenticateTokenResponse{
+					Status: "unknown",
+				},
+			},
 		}, nil
 	}
 
@@ -340,12 +331,8 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 
 	switch req.GetCommand() {
 	case startCommand:
-		if req.GetAttributes() != nil {
-			attrs := new(pbs.OidcStartAttributes)
-			if err := handlers.StructToProto(req.GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Could not be parsed, or contains invalid fields."
-				break
-			}
+		if req.GetOidcStartAttributes() != nil {
+			attrs := req.GetOidcStartAttributes()
 
 			// Ensure we pay no attention to cache information provided by the client
 			attrs.CachedRoundtripPayload = ""
@@ -362,23 +349,10 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 			} else {
 				// Cache for later
 				attrs.CachedRoundtripPayload = string(m)
-				req.Attributes, err = handlers.ProtoToStruct(attrs)
-				if err != nil {
-					return fmt.Errorf("unable to convert map back to proto")
-				}
 			}
 		}
 	case callbackCommand:
-		if req.GetAttributes() == nil {
-			badFields[attributesField] = "No callback attributes provided."
-			break
-		}
-
-		attrs := new(pb.OidcAuthMethodAuthenticateCallbackRequest)
-		if err := handlers.StructToProto(req.GetAttributes(), attrs, handlers.WithDiscardUnknownFields(true)); err != nil {
-			badFields[attributesField] = "Unable to parse callback request attributes."
-			break
-		}
+		attrs := req.GetOidcAuthMethodAuthenticateCallbackRequest()
 
 		if attrs.GetCode() == "" && attrs.GetError() == "" {
 			badFields[codeField] = "Code field not supplied in callback request."
@@ -389,7 +363,12 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 		}
 
 	case tokenCommand:
-		tType := strings.ToLower(strings.TrimSpace(req.GetTokenType()))
+		tokenType := req.GetType()
+		if tokenType == "" {
+			// Fall back to deprecated field if type is not set
+			tokenType = req.GetTokenType()
+		}
+		tType := strings.ToLower(strings.TrimSpace(tokenType))
 		if tType != "" && tType != "token" && tType != "cookie" {
 			badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
 		}
@@ -409,11 +388,7 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 	if in == nil {
 		return nil, false, false, errors.NewDeprecated(errors.InvalidParameter, op, "nil auth method.")
 	}
-	attrs := &pb.OidcAuthMethodAttributes{}
-	if err := handlers.StructToProto(in.GetAttributes(), attrs); err != nil {
-		return nil, false, false, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{attributesField: "Attribute fields do not match the expected format."})
-	}
+	attrs := in.GetOidcAuthMethodsAttributes()
 	clientId := attrs.GetClientId().GetValue()
 	clientSecret := oidc.ClientSecret(attrs.GetClientSecret().GetValue())
 

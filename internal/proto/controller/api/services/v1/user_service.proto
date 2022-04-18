@@ -136,7 +136,7 @@ service UserService {
 }
 
 message GetUserRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetUserResponse {
@@ -144,9 +144,9 @@ message GetUserResponse {
 }
 
 message ListUsersRequest {
-  string scope_id = 1;
-  bool recursive = 20 [json_name="recursive"];
-  string filter = 30 [json_name="filter"];
+  string scope_id = 1; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name="recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name="filter"]; // @gotags: `class:"sensitive"`
 }
 
 message ListUsersResponse {
@@ -158,12 +158,12 @@ message CreateUserRequest {
 }
 
 message CreateUserResponse {
-  string uri = 1;
+  string uri = 1; // @gotags: `class:"public"`
   resources.users.v1.User item = 2;
 }
 
 message UpdateUserRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   resources.users.v1.User item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
@@ -173,16 +173,16 @@ message UpdateUserResponse {
 }
 
 message DeleteUserRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message DeleteUserResponse {}
 
 message AddUserAccountsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
-  uint32 version = 2;
-  repeated string account_ids = 3 [json_name="account_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string account_ids = 3 [json_name="account_ids"]; // @gotags: `class:"public"`
 }
 
 message AddUserAccountsResponse {
@@ -190,10 +190,10 @@ message AddUserAccountsResponse {
 }
 
 message SetUserAccountsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
-  uint32 version = 2;
-  repeated string account_ids = 3 [json_name="account_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string account_ids = 3 [json_name="account_ids"]; // @gotags: `class:"public"`
 }
 
 message SetUserAccountsResponse {
@@ -201,10 +201,10 @@ message SetUserAccountsResponse {
 }
 
 message RemoveUserAccountsRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
-  uint32 version = 2;
-  repeated string account_ids = 3 [json_name="account_ids"];
+  uint32 version = 2; // @gotags: `class:"public"`
+  repeated string account_ids = 3 [json_name="account_ids"]; // @gotags: `class:"public"`
 }
 
 message RemoveUserAccountsResponse {

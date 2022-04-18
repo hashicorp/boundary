@@ -49,6 +49,8 @@ const (
 	subjectField    = "attributes.subject"
 	nameClaimField  = "attributes.full_name"
 	emailClaimField = "attributes.email"
+
+	domain = "auth"
 )
 
 var (
@@ -144,7 +146,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	}
 	for _, acct := range ul {
 		res.Id = acct.GetPublicId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())], requestauth.WithResource(&res)).Strings()
+		authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())], requestauth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
 		}
@@ -166,7 +168,11 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 
 		// This comes last so that we can use item fields in the filter after
 		// the allowed fields are populated above
-		if filter.Match(item) {
+		filterable, err := subtypes.Filterable(item)
+		if err != nil {
+			return nil, err
+		}
+		if filter.Match(filterable) {
 			finalItems = append(finalItems, item)
 		}
 	}
@@ -201,7 +207,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
 	}
 	if outputFields.Has(globals.ManagedGroupIdsField) {
 		outputOpts = append(outputOpts, handlers.WithManagedGroupIds(mgIds))
@@ -243,7 +249,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
 	}
 
 	item, err := toProto(ctx, acct, outputOpts...)
@@ -282,7 +288,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
 	}
 
 	item, err := toProto(ctx, acct, outputOpts...)
@@ -337,7 +343,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
 	}
 
 	item, err := toProto(ctx, acct, outputOpts...)
@@ -376,7 +382,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[auth.SubtypeFromId(acct.GetPublicId())]).Strings()))
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())]).Strings()))
 	}
 
 	item, err := toProto(ctx, acct, outputOpts...)
@@ -392,7 +398,7 @@ func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (
 func (s Service) getFromRepo(ctx context.Context, id string) (auth.Account, []string, error) {
 	var acct auth.Account
 	var mgIds []string
-	switch auth.SubtypeFromId(id) {
+	switch subtypes.SubtypeFromId(domain, id) {
 	case password.Subtype:
 		repo, err := s.pwRepoFn()
 		if err != nil {
@@ -437,11 +443,7 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 	if item == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
 	}
-	pwAttrs := &pb.PasswordAccountAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), pwAttrs); err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"attributes": "Attribute fields do not match the expected format."})
-	}
+	pwAttrs := item.GetPasswordAccountAttributes()
 	opts := []password.Option{password.WithLoginName(pwAttrs.GetLoginName())}
 	if item.GetName() != nil {
 		opts = append(opts, password.WithName(item.GetName().GetValue()))
@@ -484,11 +486,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	if item.GetDescription() != nil {
 		opts = append(opts, oidc.WithDescription(item.GetDescription().GetValue()))
 	}
-	attrs := &pb.OidcAccountAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{"attributes": "Attribute fields do not match the expected format."})
-	}
+	attrs := item.GetOidcAccountAttributes()
 	if attrs.GetIssuer() != "" {
 		u, err := url.Parse(attrs.GetIssuer())
 		if err != nil {
@@ -521,7 +519,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
 	}
 	var out auth.Account
-	switch auth.SubtypeFromId(am.GetPublicId()) {
+	switch subtypes.SubtypeFromId(domain, am.GetPublicId()) {
 	case password.Subtype:
 		am, err := s.createPwInRepo(ctx, am, item)
 		if err != nil {
@@ -614,7 +612,7 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string, req *pbs.UpdateAccountRequest) (auth.Account, error) {
 	const op = "accounts.(Service).updateInRepo"
 	var out auth.Account
-	switch auth.SubtypeFromId(req.GetId()) {
+	switch subtypes.SubtypeFromId(domain, req.GetId()) {
 	case password.Subtype:
 		a, err := s.updatePwInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
@@ -641,7 +639,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	const op = "accounts.(Service).deleteFromRepo"
 	var rows int
 	var err error
-	switch auth.SubtypeFromId(id) {
+	switch subtypes.SubtypeFromId(domain, id) {
 	case password.Subtype:
 		repo, iErr := s.pwRepoFn()
 		if iErr != nil {
@@ -668,7 +666,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 	const op = "accounts.(Service).listFromRepo"
 
 	var outUl []auth.Account
-	switch auth.SubtypeFromId(authMethodId) {
+	switch subtypes.SubtypeFromId(domain, authMethodId) {
 	case password.Subtype:
 		pwRepo, err := s.pwRepoFn()
 		if err != nil {
@@ -763,7 +761,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	case action.List, action.Create:
 		parentId = id
 	default:
-		switch auth.SubtypeFromId(id) {
+		switch subtypes.SubtypeFromId(domain, id) {
 		case password.Subtype:
 			acct, err := pwRepo.LookupAccount(ctx, id)
 			if err != nil {
@@ -791,7 +789,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	}
 
 	var authMeth auth.AuthMethod
-	switch auth.SubtypeFromId(parentId) {
+	switch subtypes.SubtypeFromId(domain, parentId) {
 	case password.Subtype:
 		am, err := pwRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
@@ -867,11 +865,11 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
-		st, err := handlers.ProtoToStruct(&pb.PasswordAccountAttributes{LoginName: i.GetLoginName()})
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
+		out.Attrs = &pb.Account_PasswordAccountAttributes{
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{
+				LoginName: i.GetLoginName(),
+			},
 		}
-		out.Attributes = st
 	case *oidc.Account:
 		if outputFields.Has(globals.TypeField) {
 			out.Type = oidc.Subtype.String()
@@ -879,11 +877,13 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 		if !outputFields.Has(globals.AttributesField) {
 			break
 		}
-		attrs := &pb.OidcAccountAttributes{
-			Issuer:   i.GetIssuer(),
-			Subject:  i.GetSubject(),
-			FullName: i.GetFullName(),
-			Email:    i.GetEmail(),
+		attrs := &pb.Account_OidcAccountAttributes{
+			OidcAccountAttributes: &pb.OidcAccountAttributes{
+				Issuer:   i.GetIssuer(),
+				Subject:  i.GetSubject(),
+				FullName: i.GetFullName(),
+				Email:    i.GetEmail(),
+			},
 		}
 		if s := i.GetTokenClaims(); s != "" {
 			m := make(map[string]interface{})
@@ -891,7 +891,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 			if err = json.Unmarshal([]byte(s), &m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error unmarshaling stored token claims"))
 			}
-			if attrs.TokenClaims, err = structpb.NewStruct(m); err != nil {
+			if attrs.OidcAccountAttributes.TokenClaims, err = structpb.NewStruct(m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error converting stored token claims to protobuf struct"))
 			}
 		}
@@ -901,15 +901,11 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 			if err = json.Unmarshal([]byte(s), &m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error unmarshaling stored userinfo claims"))
 			}
-			if attrs.UserinfoClaims, err = structpb.NewStruct(m); err != nil {
+			if attrs.OidcAccountAttributes.UserinfoClaims, err = structpb.NewStruct(m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error converting stored userinfo claims to protobuf struct"))
 			}
 		}
-		st, err := handlers.ProtoToStruct(attrs)
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building oidc attribute struct: %v", err)
-		}
-		out.Attributes = st
+		out.Attrs = attrs
 	}
 	return &out, nil
 }
@@ -931,12 +927,7 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
 	}
 
-	attrs := &pb.PasswordAccountAttributes{}
-	if err := handlers.StructToProto(item.GetAttributes(), attrs); err != nil {
-		return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-			map[string]string{attributesField: "Attribute fields do not match the expected format."})
-	}
-
+	attrs := item.GetPasswordAccountAttributes()
 	if attrs.GetLoginName() != "" {
 		u.LoginName = attrs.GetLoginName()
 	}
@@ -966,15 +957,12 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 		if req.GetItem().GetAuthMethodId() == "" {
 			badFields[authMethodIdField] = "This field is required."
 		}
-		switch auth.SubtypeFromId(req.GetItem().GetAuthMethodId()) {
+		switch subtypes.SubtypeFromId(domain, req.GetItem().GetAuthMethodId()) {
 		case password.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
-			attrs := &pb.PasswordAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
+			attrs := req.GetItem().GetPasswordAccountAttributes()
 			if attrs.GetLoginName() == "" {
 				badFields[loginNameKey] = "This is a required field for this type."
 			}
@@ -982,10 +970,7 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
-			attrs := &pb.OidcAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
+			attrs := req.GetItem().GetOidcAccountAttributes()
 			if attrs.GetSubject() == "" {
 				badFields[subjectField] = "This is a required field for this type."
 			}
@@ -1018,22 +1003,14 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch auth.SubtypeFromId(req.GetId()) {
+		switch subtypes.SubtypeFromId(domain, req.GetId()) {
 		case password.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != password.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
 			}
-			attrs := &pb.PasswordAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
-			}
 		case oidc.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Cannot modify the resource type."
-			}
-			attrs := &pb.OidcAccountAttributes{}
-			if err := handlers.StructToProto(req.GetItem().GetAttributes(), attrs); err != nil {
-				badFields[attributesField] = "Attribute fields do not match the expected format."
 			}
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), subjectField) {
 				badFields[subjectField] = "Field cannot be updated."
