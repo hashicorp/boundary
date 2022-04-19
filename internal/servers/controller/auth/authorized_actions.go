@@ -19,7 +19,8 @@ import (
 func CalculateAuthorizedCollectionActions(ctx context.Context,
 	authResults VerifyResults,
 	mapToRange map[resource.Type]action.ActionSet,
-	scopeId, pin string) (map[string]*structpb.ListValue, error) {
+	scopeId, pin string,
+) (map[string]*structpb.ListValue, error) {
 	res := &perms.Resource{
 		ScopeId: scopeId,
 		Pin:     pin,

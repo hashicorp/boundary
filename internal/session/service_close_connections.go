@@ -10,7 +10,8 @@ import (
 // * closes requested connections
 // * uses the sessionId of the connection to see if the session meets conditions for termination
 func CloseConnections(ctx context.Context, sessionRepoFn *Repository, connectionRepoFn *ConnectionRepository,
-	closeWiths []CloseWith) ([]closeConnectionResp, error) {
+	closeWiths []CloseWith,
+) ([]closeConnectionResp, error) {
 	const op = "session.AuthorizeConnection"
 
 	closeInfos, err := connectionRepoFn.closeConnections(ctx, closeWiths)

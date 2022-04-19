@@ -49,7 +49,8 @@ func Callback(
 	iamRepoFn IamRepoFactory,
 	atRepoFn AuthTokenRepoFactory,
 	am *AuthMethod,
-	state, code string) (finalRedirect string, e error) {
+	state, code string,
+) (finalRedirect string, e error) {
 	const op = "oidc.Callback"
 	if oidcRepoFn == nil {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing oidc repository function")

@@ -75,7 +75,8 @@ func requestCtxInterceptor(
 	return func(interceptorCtx context.Context,
 		req interface{},
 		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		md, ok := metadata.FromIncomingContext(interceptorCtx)
 		if !ok {
 			return nil, errors.New(interceptorCtx, errors.Internal, op, "No metadata")
@@ -279,7 +280,8 @@ func workerRequestInfoInterceptor(ctx context.Context, eventer *event.Eventer) (
 	return func(interceptorCtx context.Context,
 		req interface{},
 		srvInfo *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		var err error
 		id, err := event.NewId(event.IdPrefix)
 		if err != nil {

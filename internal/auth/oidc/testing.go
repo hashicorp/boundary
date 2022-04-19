@@ -46,7 +46,8 @@ func TestAuthMethod(
 	state AuthMethodState,
 	clientId string,
 	clientSecret ClientSecret,
-	opt ...Option) *AuthMethod {
+	opt ...Option,
+) *AuthMethod {
 	t.Helper()
 	ctx := context.TODO()
 	opts := getOpts(opt...)
