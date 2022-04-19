@@ -6,7 +6,6 @@ on:
     branches:    
       # Push events on main branch
       - 'main'
-      - 'refactor-build-ci-worfklow-to-decouple-ui-build'
 
 env:
   PKG_NAME: "boundary"
