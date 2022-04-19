@@ -1,4 +1,4 @@
-8496c054888329073c568e9bd4944b209e966923 Merge pull request #980 from hashicorp/chore-radio-card-width
+f2b53d2f4529880eafa73aad465fd6f103fd35e1 chore: 🤖 Updated pr-template to include Jira base url (#1055)
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
