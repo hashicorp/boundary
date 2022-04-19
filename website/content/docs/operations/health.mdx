@@ -57,10 +57,9 @@ All responses return empty bodies. `GET /health` does not support any input.
 
 ## Example configuration 
 
-Defining a listener stanza in the config file is sufficient for enabling metrics
-reporting in Boundary. For details on what fields are allowed in this stanza,
-refer to the documentation about [TCP
-Listener](/docs/configuration/listener/tcp).
+Health checks are available for a controller defined with a `purpose = "ops"`
+listener stanza. For details on what fields are allowed in this stanza, refer to
+the documentation about [TCP Listener](/docs/configuration/listener/tcp).
 
 An example listener stanza:
 
