@@ -111,7 +111,8 @@ func NewVerifierContext(ctx context.Context,
 	authTokenRepoFn common.AuthTokenRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
 	kms *kms.Kms,
-	requestInfo *authpb.RequestInfo) context.Context {
+	requestInfo *authpb.RequestInfo,
+) context.Context {
 	return context.WithValue(ctx, verifierKey, &verifier{
 		iamRepoFn:       iamRepoFn,
 		authTokenRepoFn: authTokenRepoFn,
@@ -439,7 +440,8 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	scopeInfo *scopes.ScopeInfo,
 	retAcl perms.ACL,
 	grantTuples []perms.GrantTuple,
-	retErr error) {
+	retErr error,
+) {
 	const op = "auth.(verifier).performAuthCheck"
 	// Ensure we return an error by default if we forget to set this somewhere
 	retErr = errors.New(ctx, errors.Unknown, op, "default auth error", errors.WithoutEvent())

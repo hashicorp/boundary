@@ -66,7 +66,6 @@ func SetColumns(names []string) []ColumnValue {
 // OnConflict specifies how to handle alternative actions to take when an insert
 // results in a unique constraint or exclusion constraint error.
 type OnConflict struct {
-
 	// Target specifies what conflict you want to define a policy for.  This can
 	// be any one of these:
 	//	Columns: the name of a specific column or columns

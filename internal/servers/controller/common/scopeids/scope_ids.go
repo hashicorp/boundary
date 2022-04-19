@@ -39,7 +39,8 @@ func GetListingScopeIds(
 	recursive bool,
 	// Whether to only return scopes with exact permissions, or whether parent
 	// scopes with appropriate permissions are sufficient
-	directOnly bool) ([]string, map[string]*scopes.ScopeInfo, error) {
+	directOnly bool,
+) ([]string, map[string]*scopes.ScopeInfo, error) {
 	const op = "GetListingScopeIds"
 
 	// Validation

@@ -314,7 +314,8 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 	hc *HostCatalog,
 	setIds []string,
 	phs []*plgpb.ListHostsResponseHost,
-	_ ...Option) ([]*Host, error) {
+	_ ...Option,
+) ([]*Host, error) {
 	const op = "plugin.(SetSyncJob).upsertAndCleanHosts"
 	for _, ph := range phs {
 		if ph.GetExternalId() == "" {

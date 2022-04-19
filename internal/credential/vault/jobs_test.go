@@ -38,7 +38,8 @@ func testVaultToken(t *testing.T,
 	v *TestVaultServer,
 	cs *CredentialStore,
 	status TokenStatus,
-	expiration time.Duration) *Token {
+	expiration time.Duration,
+) *Token {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -93,7 +94,8 @@ func testVaultCred(t *testing.T,
 	sess *session.Session,
 	token *Token,
 	status CredentialStatus,
-	expiration time.Duration) (*vault.Secret, *Credential) {
+	expiration time.Duration,
+) (*vault.Secret, *Credential) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
