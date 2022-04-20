@@ -14,7 +14,7 @@ example listener stanza in a `config.hcl` file.
 
 ### Requirements
 
-For the controller health endpoint to be enabled, any Boundary instance must be
+To enable the controller health endpoint, any Boundary instance must be
 started with a controller. That is, a `controller` block and a `purpose = "api"`
 listener must be defined in Boundary's configuration file. Additionally, a
 `purpose = "ops"` listener must also be defined in Boundary's configuration
