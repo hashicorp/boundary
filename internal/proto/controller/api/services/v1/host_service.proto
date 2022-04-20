@@ -8,6 +8,9 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
 import "controller/api/resources/hosts/v1/host.proto";
+import "controller/custom_options/v1/options.proto";
+
+option (custom_options.v1.domain) = "host";
 
 service HostService {
   // GetHost returns a stored Host if present.  The provided request
@@ -85,7 +88,7 @@ service HostService {
 }
 
 message GetHostRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message GetHostResponse {
@@ -93,8 +96,8 @@ message GetHostResponse {
 }
 
 message ListHostsRequest {
-  string host_catalog_id = 1 [json_name="host_catalog_id"];
-  string filter = 30 [json_name="filter"];
+  string host_catalog_id = 1 [json_name="host_catalog_id"];  // @gotags: `class:"public"`
+  string filter = 30 [json_name="filter"];  // @gotags: `class:"public"`
 }
 
 message ListHostsResponse {
@@ -106,12 +109,12 @@ message CreateHostRequest {
 }
 
 message CreateHostResponse {
-  string uri = 1;
+  string uri = 1;  // @gotags: `class:"public"`
   api.resources.hosts.v1.Host item = 2;
 }
 
 message UpdateHostRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
   api.resources.hosts.v1.Host item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
 }
@@ -121,7 +124,7 @@ message UpdateHostResponse {
 }
 
 message DeleteHostRequest {
-  string id = 1;
+  string id = 1;  // @gotags: `class:"public"`
 }
 
 message DeleteHostResponse {}

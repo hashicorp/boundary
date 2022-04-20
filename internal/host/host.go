@@ -2,6 +2,9 @@ package host
 
 import "github.com/hashicorp/boundary/internal/boundary"
 
+// Domain defines the domain for the host package
+const Domain = "host"
+
 // Catalog contains the common methods across all the different types of host
 // catalogs.
 type Catalog interface {

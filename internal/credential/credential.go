@@ -8,6 +8,9 @@ import (
 	"github.com/hashicorp/boundary/internal/boundary"
 )
 
+// Domain defines the domain for the credential package.
+const Domain = "credential"
+
 // A Store is a resource that can store, retrieve, and potentially generate
 // credentials of differing types and access levels. It belongs to a scope
 // and must support the principle of least privilege by providing

@@ -1,0 +1,180 @@
+syntax = "proto3";
+
+package testing.attribute.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/testing/attribute;attribute";
+
+import "protoc-gen-openapiv2/options/annotations.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/field_mask.proto";
+import "controller/custom_options/v1/options.proto";
+
+option (controller.custom_options.v1.domain) = "test";
+
+message TestResource {
+  string id = 1;
+  string type = 2;
+
+  string other_id = 3 [(controller.custom_options.v1.subtype_source_id) = true];
+
+  oneof attrs {
+    google.protobuf.Struct attributes = 10 [(controller.custom_options.v1.subtype) = "default"];
+    TestSubResourceAttributes sub_resource_attributes = 20 [(controller.custom_options.v1.subtype) = "sub_resource"];
+  }
+}
+
+message TestSubResourceAttributes {
+  string name = 1;
+}
+
+message TestNoAttributes {
+  string id = 1;
+  string type = 2;
+}
+
+message TestNoOneOf {
+  string id = 1;
+  string type = 2;
+
+  google.protobuf.Struct attributes = 10;
+}
+
+message TestCustomTransformation {
+  string some_random_id = 1;
+  string secondary_id = 2;
+
+  oneof attrs {
+    google.protobuf.Struct attributes = 10;
+    TestSubResourceAttributes sub_resource_attributes = 20;
+  }
+}
+
+service TestResourceService {
+  rpc TestListResource(TestListResourceRequest) returns (TestListResourceResponse) {
+    option (google.api.http) = {
+      get: "/v1/test-resources"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Test list"
+    };
+  }
+
+  rpc TestCreateResource(TestCreateResourceRequest) returns (TestCreateResourceResponse) {
+    option (google.api.http) = {
+      post: "/v1/test-resources"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Test create"
+    };
+  }
+
+  rpc TestUpdateResource(TestUpdateResourceRequest) returns (TestUpdateResourceResponse) {
+    option (google.api.http) = {
+      patch: "/v1/test-resources/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Test update"
+    };
+  }
+
+  rpc TestGetResource(TestGetResourceRequest) returns (TestGetResourceResponse) {
+    option (google.api.http) = {
+      get: "/v1/test-resources/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Test get"
+    };
+  }
+}
+
+message TestListResourceRequest {}
+
+message TestListResourceResponse {
+  repeated TestResource items = 1;
+}
+
+message TestGetResourceRequest {
+  string id = 1;
+}
+
+message TestGetResourceResponse {
+  TestResource item = 1;
+}
+
+message TestCreateResourceRequest {
+  TestResource item = 2;
+}
+
+message TestCreateResourceResponse {
+  TestResource item = 1;
+}
+
+message TestUpdateResourceRequest {
+  string                    id          = 1;
+  TestResource              item        = 2;
+  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+}
+
+message TestUpdateResourceResponse {
+  TestResource item = 1;
+}
+
+message TestRequestNoItem {
+  string name = 1;
+}
+
+message TestRequestItemNotMessage {
+  string item = 1;
+}
+
+message TestItemNoType {
+  string id = 1;
+}
+
+message TestRequestItemNoType {
+  TestItemNoType item = 1;
+}
+
+message TestNoItemAttributes {
+  string id = 1;
+
+  oneof attrs {
+    google.protobuf.Struct attributes = 10 [(controller.custom_options.v1.subtype) = "default"];
+    TestSubResourceAttributes sub_resource_attributes = 20 [(controller.custom_options.v1.subtype) = "sub_resource"];
+  }
+}
+
+message TestCreateNoOneOfRequest {
+  TestNoOneOf item = 1;
+}
+
+message TestUpdateNoOneOfRequest {
+  string      id   = 1;
+  TestNoOneOf item = 2;
+}
+
+message TestResponseNoItem {
+  string name = 1;
+}
+
+message TestResponseItemNotMessage {
+  string item = 1;
+}
+
+message TestResponseItemNoType {
+  TestItemNoType item = 1;
+}
+
+message TestCreateNoOneOfResponse {
+  TestNoOneOf item = 1;
+}
+
+message TestUpdateNoOneOfResponse {
+  TestNoOneOf item = 1;
+}

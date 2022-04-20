@@ -75,8 +75,10 @@ func TestLoopbackPlugin(t *testing.T) {
 	require.NoError(err)
 	_, err = plg.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{
 		Set: &hostsets.HostSet{
-			Id:         "set1",
-			Attributes: attrs,
+			Id: "set1",
+			Attrs: &hostsets.HostSet_Attributes{
+				Attributes: attrs,
+			},
 		},
 	})
 	require.NoError(err)
@@ -92,8 +94,10 @@ func TestLoopbackPlugin(t *testing.T) {
 	require.NoError(err)
 	_, err = plg.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{
 		Set: &hostsets.HostSet{
-			Id:         "set2",
-			Attributes: attrs,
+			Id: "set2",
+			Attrs: &hostsets.HostSet_Attributes{
+				Attributes: attrs,
+			},
 		},
 	})
 	require.NoError(err)
@@ -249,8 +253,10 @@ func TestLoopbackPluginArrays(t *testing.T) {
 	require.NoError(err)
 	_, err = plg.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{
 		Set: &hostsets.HostSet{
-			Id:         "set1",
-			Attributes: attrs,
+			Id: "set1",
+			Attrs: &hostsets.HostSet_Attributes{
+				Attributes: attrs,
+			},
 		},
 	})
 	require.NoError(err)
@@ -274,8 +280,10 @@ func TestLoopbackPluginArrays(t *testing.T) {
 	require.NoError(err)
 	_, err = plg.OnCreateSet(ctx, &plgpb.OnCreateSetRequest{
 		Set: &hostsets.HostSet{
-			Id:         "set2",
-			Attributes: attrs,
+			Id: "set2",
+			Attrs: &hostsets.HostSet_Attributes{
+				Attributes: attrs,
+			},
 		},
 	})
 	require.NoError(err)

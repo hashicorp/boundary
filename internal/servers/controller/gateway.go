@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -73,11 +74,12 @@ func newGrpcServer(
 		grpc.MaxSendMsgSize(math.MaxInt32),
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
-				requestCtxInterceptor,         // populated requestInfo from headers into the request ctx
-				auditRequestInterceptor(ctx),  // before we get started, audit the request
-				errorInterceptor(ctx),         // convert domain and api errors into headers for the http proxy
-				statusCodeInterceptor(ctx),    // convert grpc codes into http status codes for the http proxy (can modify the resp)
-				auditResponseInterceptor(ctx), // as we finish, audit the response
+				requestCtxInterceptor,                         // populated requestInfo from headers into the request ctx
+				errorInterceptor(ctx),                         // convert domain and api errors into headers for the http proxy
+				subtypes.AttributeTransformerInterceptor(ctx), // convert to/from generic attributes from/to subtype specific attributes
+				auditRequestInterceptor(ctx),                  // before we get started, audit the request
+				statusCodeInterceptor(ctx),                    // convert grpc codes into http status codes for the http proxy (can modify the resp)
+				auditResponseInterceptor(ctx),                 // as we finish, audit the response
 				grpc_recovery.UnaryServerInterceptor( // recover from panics with a grpc internal error
 					grpc_recovery.WithRecoveryHandlerContext(recoveryHandler()),
 				),

@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	if err := auth.Register(Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
 		panic(err)
 	}
 }

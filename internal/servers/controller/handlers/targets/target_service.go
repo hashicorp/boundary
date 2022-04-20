@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -43,6 +44,11 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+)
+
+const (
+	credentialDomain = "credential"
+	hostDomain       = "host"
 )
 
 var (
@@ -206,14 +212,18 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 			return nil, err
 		}
 
-		if filter.Match(item) {
+		filterable, err := subtypes.Filterable(item)
+		if err != nil {
+			return nil, err
+		}
+		if filter.Match(filterable) {
 			finalItems = append(finalItems, item)
 		}
 	}
 	return &pbs.ListTargetsResponse{Items: finalItems}, nil
 }
 
-// GetTargets implements the interface pbs.TargetServiceServer.
+// GetTarget implements the interface pbs.TargetServiceServer.
 func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs.GetTargetResponse, error) {
 	const op = "targets.(Service).GetTarget"
 
@@ -960,7 +970,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	for _, hSource := range hostSources {
 		hsId := hSource.Id()
 		// FIXME: read in type from DB rather than rely on prefix
-		switch host.SubtypeFromId(hsId) {
+		switch subtypes.SubtypeFromId(hostDomain, hsId) {
 		case static.Subtype:
 			eps, err := staticHostRepo.Endpoints(ctx, hsId)
 			if err != nil {
@@ -1139,14 +1149,14 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 					Name:              l.GetName(),
 					Description:       l.GetDescription(),
 					CredentialStoreId: l.GetStoreId(),
-					Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
+					Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
 				},
 				CredentialSource: &pb.CredentialSource{
 					Id:                l.GetPublicId(),
 					Name:              l.GetName(),
 					Description:       l.GetDescription(),
 					CredentialStoreId: l.GetStoreId(),
-					Type:              credential.SubtypeFromId(l.GetPublicId()).String(),
+					Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
 					CredentialType:    credType,
 				},
 				Secret: &pb.SessionSecret{
@@ -1238,7 +1248,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
 	}
 
-	attr, err := subtypeRegistry.newAttribute(target.SubtypeFromType(item.GetType()), withStruct(item.GetAttributes()))
+	attr, err := subtypeRegistry.newAttribute(target.SubtypeFromType(item.GetType()), item.GetAttrs())
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
 	}
@@ -1282,7 +1292,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	subtype := target.SubtypeFromId(id)
 
-	attr, err := subtypeRegistry.newAttribute(subtype, withStruct(item.GetAttributes()))
+	attr, err := subtypeRegistry.newAttribute(subtype, item.GetAttrs())
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
 	}
@@ -1650,16 +1660,9 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 		}
 	}
 	if outputFields.Has(globals.AttributesField) {
-		attr, err := subtypeRegistry.newAttribute(in.GetType(), withTarget(in))
-		if err != nil {
+		if err := subtypeRegistry.setAttributes(in.GetType(), in, &out); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-
-		st, err := handlers.ProtoToStruct(attr)
-		if err != nil {
-			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "failed building password attribute struct: %v", err)
-		}
-		out.Attributes = st
 	}
 	return &out, nil
 }
@@ -1710,7 +1713,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		if err != nil {
 			badFields[globals.TypeField] = "Unknown type provided."
 		} else {
-			a, err := subtypeRegistry.newAttribute(subtype, withStruct(req.GetItem().GetAttributes()))
+			a, err := subtypeRegistry.newAttribute(subtype, req.GetItem().GetAttrs())
 			if err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			} else {
@@ -1755,7 +1758,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
 
-			a, err := subtypeRegistry.newAttribute(subtype, withStruct(req.GetItem().GetAttributes()))
+			a, err := subtypeRegistry.newAttribute(subtype, req.GetItem().GetAttrs())
 			if err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			} else {
@@ -2106,7 +2109,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		}
 	}
 	if req.GetHostId() != "" {
-		switch host.SubtypeFromId(req.GetHostId()) {
+		switch subtypes.SubtypeFromId(hostDomain, req.GetHostId()) {
 		case static.Subtype, plugin.Subtype:
 		default:
 			badFields[globals.HostIdField] = "Incorrectly formatted identifier."

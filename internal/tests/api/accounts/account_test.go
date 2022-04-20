@@ -63,7 +63,7 @@ func TestListPassword(t *testing.T) {
 	ulResult, err = accountClient.List(tc.Context(), am.Id,
 		accounts.WithFilter(fmt.Sprintf(`"/item/attributes/login_name"==%q`, filterItem.Attributes["login_name"])))
 	require.NoError(err)
-	assert.Len(ulResult.Items, 1)
+	require.Len(ulResult.Items, 1)
 	assert.Equal(filterItem.Id, ulResult.Items[0].Id)
 }
 
@@ -120,7 +120,7 @@ func TestListOidc(t *testing.T) {
 	ulResult, err = accountClient.List(tc.Context(), am.Id,
 		accounts.WithFilter(fmt.Sprintf(`"/item/attributes/subject"==%q`, filterItem.Attributes["subject"])))
 	require.NoError(err)
-	assert.Len(ulResult.Items, 1)
+	require.Len(ulResult.Items, 1)
 	assert.Equal(filterItem.Id, ulResult.Items[0].Id)
 }
 
@@ -382,4 +382,12 @@ func TestErrorsOidc(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+
+	// Invalid attribute fields
+	_, err = accountClient.Create(tc.Context(), amId,
+		accounts.WithOidcAccountSubject("subject2"),
+		accounts.WithPasswordAccountLoginName("foo"),
+	)
+	require.Error(err)
+	require.JSONEq(err.Error(), `{"kind":"InvalidArgument", "message":"Error in provided request.", "details":{"request_fields":[{"name":"attributes", "description":"Attribute fields do not match the expected format."}]}}`)
 }

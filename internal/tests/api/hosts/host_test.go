@@ -43,7 +43,7 @@ func TestList(t *testing.T) {
 	}
 
 	hcr, err := hClient.Create(tc.Context(), hc.Item.Id, hosts.WithName(expected[0].Name), hosts.WithStaticHostAddress("someaddress"))
-	assert.NoError(err)
+	require.NoError(err)
 	expected[0] = hcr.Item
 
 	ul, err = hClient.List(tc.Context(), hc.Item.Id)

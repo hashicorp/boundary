@@ -1,4 +1,4 @@
-package authmethods
+package authmethods_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/filters/encrypt"
@@ -21,6 +22,10 @@ func TestAuthMethod_Tags(t *testing.T) {
 	now := time.Now()
 	wrapper := wrapper.TestWrapper(t)
 	testEncryptingFilter := api.NewEncryptFilter(t, wrapper)
+	testEncryptingFilter.FilterOperationOverrides = map[encrypt.DataClassification]encrypt.FilterOperation{
+		// Use HMAC for sensitive fields for easy test comparisons
+		encrypt.SensitiveClassification: encrypt.HmacSha256Operation,
+	}
 
 	tests := []struct {
 		name      string
@@ -32,29 +37,29 @@ func TestAuthMethod_Tags(t *testing.T) {
 			testEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
-				Payload: &AuthMethod{
+				Payload: &pb.AuthMethod{
 					Id:          "id",
 					ScopeId:     "scope-id",
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "description"},
 					Type:        "oidc",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"state":                                structpb.NewStringValue("public-state"),
-							"issuer":                               structpb.NewStringValue("public-issuer"),
-							"client_id":                            structpb.NewStringValue("public-client_id"),
-							"client_secret_hmac":                   structpb.NewStringValue("public-client_secret_hmac"),
-							"max_age":                              structpb.NewStringValue("public-max_age"),
-							"signing_algorithms":                   structpb.NewStringValue("public-signing_algorithms"),
-							"idp_ca_certs":                         structpb.NewStringValue("public-signing_algorithms"),
-							"api_url_prefix":                       structpb.NewStringValue("public-api_url_prefix"),
-							"callback_url":                         structpb.NewStringValue("public-callback_url"),
-							"allowed_audiences":                    structpb.NewStringValue("public-allowed_audiences"),
-							"claims_scopes":                        structpb.NewStringValue("public-claims_scopes"),
-							"account_claim_maps":                   structpb.NewStringValue("public-account_claim_maps"),
-							"disable_discovered_config_validation": structpb.NewStringValue("public-disable_discovered_config_validation"),
-							"dry_run":                              structpb.NewStringValue("public-dry_run"),
-							"client_secret":                        structpb.NewStringValue("secret-client_secret"),
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							State:                             "public-state",
+							Issuer:                            wrapperspb.String("public-issuer"),
+							ClientId:                          wrapperspb.String("public-client_id"),
+							ClientSecretHmac:                  "public-client_secret_hmac",
+							MaxAge:                            wrapperspb.UInt32(100),
+							SigningAlgorithms:                 []string{"public-signing_algorithms"},
+							IdpCaCerts:                        []string{"public-idp_ca_certs"},
+							ApiUrlPrefix:                      wrapperspb.String("public-api_url_prefix"),
+							CallbackUrl:                       "public-callback_url",
+							AllowedAudiences:                  []string{"public-allowed_audiences"},
+							ClaimsScopes:                      []string{"public-claims_scopes"},
+							AccountClaimMaps:                  []string{"public-account_claim_maps"},
+							DisableDiscoveredConfigValidation: false,
+							DryRun:                            false,
+							ClientSecret:                      wrapperspb.String("secret-client_secret"),
 						},
 					},
 					AuthorizedActions: []string{"action-1", "action-2"},
@@ -71,29 +76,29 @@ func TestAuthMethod_Tags(t *testing.T) {
 			wantEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
-				Payload: &AuthMethod{
+				Payload: &pb.AuthMethod{
 					Id:          "id",
 					ScopeId:     "scope-id",
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "description"},
 					Type:        "oidc",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"state":                                structpb.NewStringValue("public-state"),
-							"issuer":                               structpb.NewStringValue("public-issuer"),
-							"client_id":                            structpb.NewStringValue("public-client_id"),
-							"client_secret_hmac":                   structpb.NewStringValue("public-client_secret_hmac"),
-							"max_age":                              structpb.NewStringValue("public-max_age"),
-							"signing_algorithms":                   structpb.NewStringValue("public-signing_algorithms"),
-							"idp_ca_certs":                         structpb.NewStringValue("public-signing_algorithms"),
-							"api_url_prefix":                       structpb.NewStringValue("public-api_url_prefix"),
-							"callback_url":                         structpb.NewStringValue("public-callback_url"),
-							"allowed_audiences":                    structpb.NewStringValue("public-allowed_audiences"),
-							"claims_scopes":                        structpb.NewStringValue("public-claims_scopes"),
-							"account_claim_maps":                   structpb.NewStringValue("public-account_claim_maps"),
-							"disable_discovered_config_validation": structpb.NewStringValue("public-disable_discovered_config_validation"),
-							"dry_run":                              structpb.NewStringValue("public-dry_run"),
-							"client_secret":                        structpb.NewStringValue(encrypt.RedactedData),
+					Attrs: &pb.AuthMethod_OidcAuthMethodsAttributes{
+						OidcAuthMethodsAttributes: &pb.OidcAuthMethodAttributes{
+							State:                             "public-state",
+							Issuer:                            wrapperspb.String("public-issuer"),
+							ClientId:                          wrapperspb.String("public-client_id"),
+							ClientSecretHmac:                  "public-client_secret_hmac",
+							MaxAge:                            wrapperspb.UInt32(100),
+							SigningAlgorithms:                 []string{"public-signing_algorithms"},
+							IdpCaCerts:                        []string{"public-idp_ca_certs"},
+							ApiUrlPrefix:                      wrapperspb.String("public-api_url_prefix"),
+							CallbackUrl:                       "public-callback_url",
+							AllowedAudiences:                  []string{"public-allowed_audiences"},
+							ClaimsScopes:                      []string{"public-claims_scopes"},
+							AccountClaimMaps:                  []string{"public-account_claim_maps"},
+							DisableDiscoveredConfigValidation: false,
+							DryRun:                            false,
+							ClientSecret:                      wrapperspb.String(encrypt.RedactedData),
 						},
 					},
 					AuthorizedActions: []string{"action-1", "action-2"},
@@ -113,16 +118,16 @@ func TestAuthMethod_Tags(t *testing.T) {
 			testEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
-				Payload: &AuthMethod{
+				Payload: &pb.AuthMethod{
 					Id:          "id",
 					ScopeId:     "scope-id",
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "description"},
 					Type:        "password",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"min_login_name_length": structpb.NewStringValue("public-min_login_name_length"),
-							"min_password_length":   structpb.NewStringValue("public-min_password_length"),
+					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
+						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
+							MinLoginNameLength: 100,
+							MinPasswordLength:  100,
 						},
 					},
 					AuthorizedActions: []string{"action-1", "action-2"},
@@ -139,16 +144,16 @@ func TestAuthMethod_Tags(t *testing.T) {
 			wantEvent: &eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
-				Payload: &AuthMethod{
+				Payload: &pb.AuthMethod{
 					Id:          "id",
 					ScopeId:     "scope-id",
 					Name:        &wrapperspb.StringValue{Value: "name"},
 					Description: &wrapperspb.StringValue{Value: "description"},
 					Type:        "password",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"min_login_name_length": structpb.NewStringValue("public-min_login_name_length"),
-							"min_password_length":   structpb.NewStringValue("public-min_password_length"),
+					Attrs: &pb.AuthMethod_PasswordAuthMethodAttributes{
+						PasswordAuthMethodAttributes: &pb.PasswordAuthMethodAttributes{
+							MinLoginNameLength: 100,
+							MinPasswordLength:  100,
 						},
 					},
 					AuthorizedActions: []string{"action-1", "action-2"},

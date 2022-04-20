@@ -14,51 +14,53 @@ import "controller/custom_options/v1/options.proto";
 // HostCatalog manages Hosts and Host Sets
 message HostCatalog {
 	// Output only. The ID of the host.
-	string id = 10;
+	string id = 10;  // @gotags: `class:"public"`
 
 	// The ID of the Scope of which this Host Catalog is a part.
-	string scope_id = 20 [json_name="scope_id"];
+	string scope_id = 20 [json_name="scope_id"];  // @gotags: `class:"public"`
 
 	// Output only. Scope information for this resource.
 	resources.scopes.v1.ScopeInfo scope = 30;
 
 	// The ID of the plugin of which this catalog is created.
-	string plugin_id = 34 [json_name="plugin_id", (custom_options.v1.generate_sdk_option) = true];
+	string plugin_id = 34 [json_name="plugin_id", (custom_options.v1.generate_sdk_option) = true];  // @gotags: `class:"public"`
 
 	// Output only. Plugin information for this resource.
 	resources.plugins.v1.PluginInfo plugin = 35;
 
 	// Optional name for identification purposes.
-	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];  // @gotags: `class:"public"`
 
 	// Optional user-set description for identification purposes.
-	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];  // @gotags: `class:"public"`
 
 	// Output only. The time this resource was created.
-	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];
+	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];  // @gotags: `class:"public"`
 
 	// Output only. The time this resource was last updated.
-	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];
+	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];  // @gotags: `class:"public"`
 
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	uint32 version = 80;
+	uint32 version = 80;  // @gotags: `class:"public"`
 
 	// The type of Host Catalog.
-	string type = 90;
+	string type = 90;  // @gotags: `class:"public"`
 
-	// Attributes specific to the catalog type.
-	google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true];
+	oneof attrs {
+		// Attributes specific to the catalog type.
+		google.protobuf.Struct attributes = 100 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.subtype) = "default"];
+	}
 
 	// Secrets specific to the catalog type. These are never output.
 	google.protobuf.Struct secrets = 110 [(custom_options.v1.generate_sdk_option) = true];
 
 	// Output only. The HMAC of the last secrets supplied via the API, if any.
-	string secrets_hmac = 120;
+	string secrets_hmac = 120;  // @gotags: `class:"public"`
 
 	// Output only. The available actions on this resource for this user.
-	repeated string authorized_actions = 300 [json_name="authorized_actions"];
+	repeated string authorized_actions = 300 [json_name="authorized_actions"];  // @gotags: `class:"public"`
 
 	// Output only. The authorized actions for the scope's collections.
-	map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name="authorized_collection_actions"];
+	map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name="authorized_collection_actions"]; // classified as public via taggable implementation
 }
