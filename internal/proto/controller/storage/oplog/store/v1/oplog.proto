@@ -2,9 +2,10 @@ syntax = "proto3";
 
 // define an oplog package within the boundary controller
 package controller.storage.oplog.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/oplog/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/oplog/store;store";
 
 // Entry provides a message for oplog entries that's compatible with gorm
 message Entry {
@@ -42,6 +43,7 @@ message Metadata {
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 2;
   // @inject_tag: gorm:"not_nul
+
 
   uint32 entry_id = 3;
   // @inject_tag: gorm:"foreignkey:EntryId"

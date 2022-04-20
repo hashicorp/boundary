@@ -2,6 +2,7 @@ syntax = "proto3";
 
 // Package store provides protobufs for storing types in the host package.
 package controller.storage.plugin.store.v1;
+
 option go_package = "github.com/hashicorp/boundary/internal/plugin/store;store";
 
 // This is a typeless plugin.  In practice this should never be used directly.

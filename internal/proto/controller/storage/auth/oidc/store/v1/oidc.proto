@@ -2,10 +2,11 @@ syntax = "proto3";
 
 // Package store provides protobufs for storing types in the password package.
 package controller.storage.auth.oidc.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/store;store";
 
-import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/store;store";
 
 // AuthMethod represents an OIDC auth method.
 message AuthMethod {
@@ -22,11 +23,17 @@ message AuthMethod {
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 40 [(custom_options.v1.mask_mapping) = { this: "Name" that: "name" }];
+  string name = 40 [(custom_options.v1.mask_mapping) = {
+    this: "Name"
+    that: "name"
+  }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 50 [(custom_options.v1.mask_mapping) = { this: "Description" that: "description" }];
+  string description = 50 [(custom_options.v1.mask_mapping) = {
+    this: "Description"
+    that: "description"
+  }];
 
   // The scope_id of the owning scope. Must be set.
   // @inject_tag: `gorm:"not_null"`
@@ -54,11 +61,17 @@ message AuthMethod {
 
   // issuer is the OIDC Discovery URL without any .well-known component
   // @inject_tag: `gorm:"default:null"`
-  string issuer = 90 [(custom_options.v1.mask_mapping) = { this: "Issuer" that: "attributes.issuer" }];
+  string issuer = 90 [(custom_options.v1.mask_mapping) = {
+    this: "Issuer"
+    that: "attributes.issuer"
+  }];
 
   // client_id is the OIDC client identifier
   // @inject_tag: `gorm:"not_null"`
-  string client_id = 100 [(custom_options.v1.mask_mapping) = { this: "ClientId" that: "attributes.client_id" }];
+  string client_id = 100 [(custom_options.v1.mask_mapping) = {
+    this: "ClientId"
+    that: "attributes.client_id"
+  }];
 
   // ct_client_secret is the encrypted OIDC client secret which is stored in the db.
   // @inject_tag: `gorm:"column:client_secret;not_null" wrapping:"ct,client_secret"`
@@ -66,7 +79,10 @@ message AuthMethod {
 
   // client_secret is the unencrypted OIDC client secret which is not stored in the database.
   // @inject_tag: `gorm:"-" wrapping:"pt,client_secret"`
-  string client_secret = 120 [(custom_options.v1.mask_mapping) = { this: "ClientSecret" that: "attributes.client_secret" }];
+  string client_secret = 120 [(custom_options.v1.mask_mapping) = {
+    this: "ClientSecret"
+    that: "attributes.client_secret"
+  }];
 
   // client_secret_hmac is a sha256-hmac of the unencrypted client_secret that
   // is returned from the API for read.  It is recalculated everytime the raw
@@ -85,44 +101,65 @@ message AuthMethod {
   // should be re-authenticated immediately and would represent the zero value
   // for max age based on the oidc spec.
   // @inject_tag: `gorm:"default:null"`
-  int32 max_age = 150 [(custom_options.v1.mask_mapping) = { this: "MaxAge" that: "attributes.max_age" }];
+  int32 max_age = 150 [(custom_options.v1.mask_mapping) = {
+    this: "MaxAge"
+    that: "attributes.max_age"
+  }];
 
   // api_url is the URLs prefix at which the boundary api is reachable. This value
   // is used by the auth method in the different steps of the auth flow.
   // @inject_tag: `gorm:"default:null"`
-  string api_url = 160 [(custom_options.v1.mask_mapping) = { this: "ApiUrl" that: "attributes.api_url_prefix" }];
+  string api_url = 160 [(custom_options.v1.mask_mapping) = {
+    this: "ApiUrl"
+    that: "attributes.api_url_prefix"
+  }];
 
   // signing_algs are the signing algorithms allowed for an oidc auth method.
   // These are Value Objects that will be stored as SigningAlg messages, and are
   // operated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string signing_algs = 170 [(custom_options.v1.mask_mapping) = { this: "SigningAlgs" that: "attributes.signing_algorithms" }];
+  repeated string signing_algs = 170 [(custom_options.v1.mask_mapping) = {
+    this: "SigningAlgs"
+    that: "attributes.signing_algorithms"
+  }];
 
   // aud_claims are the audience claims for a specific oidc auth method. These
   // are Value Objects that will be stored as AudClaim messages, and are
   // operatated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string aud_claims = 180 [(custom_options.v1.mask_mapping) = { this: "AudClaims" that: "attributes.allowed_audiences" }];
+  repeated string aud_claims = 180 [(custom_options.v1.mask_mapping) = {
+    this: "AudClaims"
+    that: "attributes.allowed_audiences"
+  }];
 
   // certificates are optional PEM encoded x509 certificates that can be
   // used as trust anchors when connecting to an OIDC provider. These are Value
   // Objects that will be stored as Certificate messages, and are operatated on
   // as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string certificates = 190 [(custom_options.v1.mask_mapping) = { this: "Certificates" that: "attributes.idp_ca_certs" }];
+  repeated string certificates = 190 [(custom_options.v1.mask_mapping) = {
+    this: "Certificates"
+    that: "attributes.idp_ca_certs"
+  }];
 
   // claims_scopes are the optional claims scopes a specific oidc auth method.
   // These are Value Objects that will be stored as ClaimsScope messages, and
   // are operatated on as a complete set.
   // @inject_tag: `gorm:"-"`
-  repeated string claims_scopes = 200 [(custom_options.v1.mask_mapping) = { this: "ClaimsScopes" that: "attributes.claims_scopes" }];
+  repeated string claims_scopes = 200 [(custom_options.v1.mask_mapping) = {
+    this: "ClaimsScopes"
+    that: "attributes.claims_scopes"
+  }];
 
   // account_claim_maps are optional claim maps from custom claims to the
   // standard claims of sub, name and email.  These maps are represented as
   // key=value where the key equals the from_claim and the value equals the
   // to_claim.  For example "oid=sub".
   // @inject_tag: `gorm:"-"`
-  repeated string account_claim_maps = 210 [(custom_options.v1.mask_mapping) = { this: "AccountClaimMaps" that: "attributes.account_claim_maps" }];
+  repeated string account_claim_maps = 210 [(custom_options.v1.mask_mapping) = {
+    this: "AccountClaimMaps"
+    that: "attributes.account_claim_maps"
+  }];
 }
 
 // Account represents an OIDC account
@@ -142,11 +179,17 @@ message Account {
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 40 [(custom_options.v1.mask_mapping) = { this: "Name" that: "name" }];
+  string name = 40 [(custom_options.v1.mask_mapping) = {
+    this: "Name"
+    that: "name"
+  }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 50 [(custom_options.v1.mask_mapping) = { this: "Description" that: "description" }];
+  string description = 50 [(custom_options.v1.mask_mapping) = {
+    this: "Description"
+    that: "description"
+  }];
 
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 60;
@@ -276,11 +319,17 @@ message ManagedGroup {
 
   // name is optional. If set, it must be unique within auth_method_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 40 [(custom_options.v1.mask_mapping) = { this: "Name" that: "name" }];
+  string name = 40 [(custom_options.v1.mask_mapping) = {
+    this: "Name"
+    that: "name"
+  }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 50 [(custom_options.v1.mask_mapping) = { this: "Description" that: "description" }];
+  string description = 50 [(custom_options.v1.mask_mapping) = {
+    this: "Description"
+    that: "description"
+  }];
 
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 60;
@@ -291,7 +340,10 @@ message ManagedGroup {
 
   // filter is a go-bexpr filter
   // @inject_tag: `gorm:"not_null"`
-  string filter = 80 [(custom_options.v1.mask_mapping) = { this: "Filter" that: "attributes.filter" }];
+  string filter = 80 [(custom_options.v1.mask_mapping) = {
+    this: "Filter"
+    that: "attributes.filter"
+  }];
 }
 
 // ManagedGroupMemberAccount contains a mapping between a managed group and a

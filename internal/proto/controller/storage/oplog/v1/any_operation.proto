@@ -1,10 +1,11 @@
 syntax = "proto3";
 
+package controller.storage.oplog.v1;
+
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/wrappers.proto";
 
-package controller.storage.oplog.v1;
 option go_package = "github.com/hashicorp/boundary/internal/oplog;oplog";
 
 // OpType provides the type of database operation the Any message represents
@@ -82,7 +83,7 @@ message WithOnConflict {
 
     // columns are the on conflict columns
     Columns columns = 11;
-  };
+  }
 
   // action defines the on conflict action
   oneof action {
@@ -94,7 +95,7 @@ message WithOnConflict {
 
     // column_values defines on conflict action with the columns to update
     ColumnValues column_values = 52;
-  };
+  }
 }
 
 // Columns defines a set of column properties
@@ -113,7 +114,7 @@ message ColumnValue {
     google.protobuf.Value raw = 2;
     ExprValue expr_value = 3;
     Column column = 4;
-  };
+  }
 }
 
 // ColumnValues defines a set of column value properies

@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 package controller.storage.auth.store.v1;
+
 option go_package = "github.com/hashicorp/boundary/internal/auth/store;store";
 
 // Account is a "shared table" between the iam, authtoken, and auth

@@ -2,15 +2,14 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
-
-import "protoc-gen-openapiv2/options/annotations.proto";
+import "controller/api/resources/groups/v1/group.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/resources/groups/v1/group.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service GroupService {
-
   // GetGroup returns a stored Group if present. The provided request must
   // include the Group id and if it is missing, malformed or referencing a
   // non existing resource an error is returned.
@@ -139,9 +138,9 @@ message GetGroupResponse {
 }
 
 message ListGroupsRequest {
-  string scope_id = 1 [json_name="scope_id"]; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name="recursive"]; // @gotags: `class:"public"`
-  string filter = 30 [json_name="filter"]; // @gotags: `class:"public"`
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
 message ListGroupsResponse {
@@ -160,7 +159,7 @@ message CreateGroupResponse {
 message UpdateGroupRequest {
   string id = 1; // @gotags: `class:"public"`
   resources.groups.v1.Group item = 2;
-  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+  google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
 
 message UpdateGroupResponse {
@@ -178,7 +177,7 @@ message AddGroupMembersRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string member_ids = 3 [json_name="member_ids"]; // @gotags: `class:"public"`
+  repeated string member_ids = 3 [json_name = "member_ids"]; // @gotags: `class:"public"`
 }
 
 message AddGroupMembersResponse {
@@ -190,7 +189,7 @@ message SetGroupMembersRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string member_ids = 3 [json_name="member_ids"]; // @gotags: `class:"public"`
+  repeated string member_ids = 3 [json_name = "member_ids"]; // @gotags: `class:"public"`
 }
 
 message SetGroupMembersResponse {
@@ -202,7 +201,7 @@ message RemoveGroupMembersRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string member_ids = 3 [json_name="member_ids"]; // @gotags: `class:"public"`
+  repeated string member_ids = 3 [json_name = "member_ids"]; // @gotags: `class:"public"`
 }
 
 message RemoveGroupMembersResponse {

@@ -2,17 +2,16 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
+import "controller/api/resources/authtokens/v1/authtoken.proto";
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
-import "protoc-gen-openapiv2/options/annotations.proto";
-import "google/api/annotations.proto";
-import "controller/api/resources/authtokens/v1/authtoken.proto";
-
 service AuthTokenService {
-
   // GetAuthToken returns a stored Auth Token if present.  The provided request
   // must include the Auth Token id and if it is missing, malformed or
-   // referencing a non existing resource an error is returned.
+  // referencing a non existing resource an error is returned.
   rpc GetAuthToken(GetAuthTokenRequest) returns (GetAuthTokenResponse) {
     option (google.api.http) = {
       get: "/v1/auth-tokens/{id}"
@@ -49,7 +48,7 @@ service AuthTokenService {
 }
 
 message GetAuthTokenRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetAuthTokenResponse {
@@ -57,9 +56,9 @@ message GetAuthTokenResponse {
 }
 
 message ListAuthTokensRequest {
-  string scope_id = 1 [json_name="scope_id"];  // @gotags: `class:"public"`
-  bool recursive = 20 [json_name="recursive"];  // @gotags: `class:"public"`
-  string filter = 30 [json_name="filter"];  // @gotags: `class:"public"`
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
 message ListAuthTokensResponse {
@@ -67,7 +66,7 @@ message ListAuthTokensResponse {
 }
 
 message DeleteAuthTokenRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message DeleteAuthTokenResponse {}

@@ -2,25 +2,23 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
-
-import "protoc-gen-openapiv2/options/annotations.proto";
-import "google/api/annotations.proto";
-import "google/protobuf/field_mask.proto";
 import "controller/api/resources/accounts/v1/account.proto";
 import "controller/custom_options/v1/options.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 option (custom_options.v1.domain) = "auth";
 
 service AccountService {
-
   // GetAccount returns a stored Account if present. The provided request must
   // include the id for the Account be retrieved. If missing, malformed or
   // referencing a non existing Account an error is returned.
   rpc GetAccount(GetAccountRequest) returns (GetAccountResponse) {
     option (google.api.http) = {
-        get: "/v1/accounts/{id}"
-        response_body: "item"
+      get: "/v1/accounts/{id}"
+      response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Gets a single Account."
@@ -34,7 +32,7 @@ service AccountService {
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse) {
     option (google.api.http) = {
       get: "/v1/accounts"
-     };
+    };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Lists all Accounts in a specific Auth Method."
     };
@@ -117,7 +115,7 @@ service AccountService {
 }
 
 message GetAccountRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetAccountResponse {
@@ -125,8 +123,8 @@ message GetAccountResponse {
 }
 
 message ListAccountsRequest {
-  string auth_method_id = 1 [json_name="auth_method_id"];  // @gotags: `class:"public"`
-  string filter = 30 [json_name="filter"];  // @gotags: `class:"sensitive"`
+  string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
 }
 
 message ListAccountsResponse {
@@ -138,14 +136,14 @@ message CreateAccountRequest {
 }
 
 message CreateAccountResponse {
-  string uri = 1;  // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public"`
   resources.accounts.v1.Account item = 2;
 }
 
 message UpdateAccountRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
   resources.accounts.v1.Account item = 2;
-  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+  google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
 
 message UpdateAccountResponse {
@@ -153,17 +151,17 @@ message UpdateAccountResponse {
 }
 
 message DeleteAccountRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message DeleteAccountResponse {}
 
 message SetPasswordRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;  // @gotags: `class:"public"`
-  string password = 3;  // @gotags: `class:"secret"`
+  uint32 version = 2; // @gotags: `class:"public"`
+  string password = 3; // @gotags: `class:"secret"`
 }
 
 message SetPasswordResponse {
@@ -171,12 +169,12 @@ message SetPasswordResponse {
 }
 
 message ChangePasswordRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2;  // @gotags: `class:"public"`
-  string current_password = 3 [json_name="current_password"];  // @gotags: `class:"secret"`
-  string new_password = 4 [json_name="new_password"];  // @gotags: `class:"secret"`
+  uint32 version = 2; // @gotags: `class:"public"`
+  string current_password = 3 [json_name = "current_password"]; // @gotags: `class:"secret"`
+  string new_password = 4 [json_name = "new_password"]; // @gotags: `class:"secret"`
 }
 
 message ChangePasswordResponse {

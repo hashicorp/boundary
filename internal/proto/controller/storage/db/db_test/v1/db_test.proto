@@ -4,9 +4,10 @@ syntax = "proto3";
 // are only used for unit tests and are not part of the rest of the boundary
 // domain model
 package controller.storage.db.db_test.v1;
-option go_package = "github.com/hashicorp/boundary/internal/db/db_test;db_test";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/db/db_test;db_test";
 
 // TestUser for gorm test user model
 message StoreTestUser {

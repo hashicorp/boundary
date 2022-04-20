@@ -6,11 +6,11 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message PluginInfo {
   // Output only. The ID of the Plugin.
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
 
   // Output only. The name of the plugin resource in boundary, if any.
-  string name = 2;  // @gotags: `class:"public"`
+  string name = 2; // @gotags: `class:"public"`
 
   // Output only. The description of the plugin in boundary, if any.
-  string description = 3;  // @gotags: `class:"public"`
+  string description = 3; // @gotags: `class:"public"`
 }

@@ -1,9 +1,10 @@
 syntax = "proto3";
 
 package controller.storage.timestamp.v1;
-option go_package = "github.com/hashicorp/boundary/internal/db/timestamp;timestamp";
 
 import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/db/timestamp;timestamp";
 
 // Timestamp for storage messages.  We've defined a new local type wrapper
 // of google.protobuf.Timestamp so we can implement sql.Scanner and sql.Valuer

@@ -2,15 +2,14 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
-
-import "protoc-gen-openapiv2/options/annotations.proto";
+import "controller/api/resources/users/v1/user.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/resources/users/v1/user.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
 service UserService {
-
   // GetUser returns a stored User if present.  The provided request
   // must include the User ID for the User being retrieved. If
   // that ID is missing, malformed or reference a non existing
@@ -145,8 +144,8 @@ message GetUserResponse {
 
 message ListUsersRequest {
   string scope_id = 1; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name="recursive"]; // @gotags: `class:"public"`
-  string filter = 30 [json_name="filter"]; // @gotags: `class:"sensitive"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
 }
 
 message ListUsersResponse {
@@ -165,7 +164,7 @@ message CreateUserResponse {
 message UpdateUserRequest {
   string id = 1; // @gotags: `class:"public"`
   resources.users.v1.User item = 2;
-  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+  google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
 
 message UpdateUserResponse {
@@ -182,7 +181,7 @@ message AddUserAccountsRequest {
   string id = 1; // @gotags: `class:"public"`
   // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string account_ids = 3 [json_name="account_ids"]; // @gotags: `class:"public"`
+  repeated string account_ids = 3 [json_name = "account_ids"]; // @gotags: `class:"public"`
 }
 
 message AddUserAccountsResponse {
@@ -193,7 +192,7 @@ message SetUserAccountsRequest {
   string id = 1; // @gotags: `class:"public"`
   // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string account_ids = 3 [json_name="account_ids"]; // @gotags: `class:"public"`
+  repeated string account_ids = 3 [json_name = "account_ids"]; // @gotags: `class:"public"`
 }
 
 message SetUserAccountsResponse {
@@ -204,7 +203,7 @@ message RemoveUserAccountsRequest {
   string id = 1; // @gotags: `class:"public"`
   // The version ensures the User hasn't changed since it was last retrieved and if it has the request will fail.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string account_ids = 3 [json_name="account_ids"]; // @gotags: `class:"public"`
+  repeated string account_ids = 3 [json_name = "account_ids"]; // @gotags: `class:"public"`
 }
 
 message RemoveUserAccountsResponse {

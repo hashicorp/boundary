@@ -1,9 +1,10 @@
 syntax = "proto3";
 
 package controller.storage.kms.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
 
 message OplogKey {
   // private_id is used to access the key via an API

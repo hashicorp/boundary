@@ -2,10 +2,10 @@ syntax = "proto3";
 
 package controller.api.resources.sessions.v1;
 
-option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions;sessions";
-
-import "google/protobuf/timestamp.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions;sessions";
 
 message WorkerInfo {
   // The address of the worker.
@@ -25,27 +25,26 @@ message SessionState {
 
 // Connection contains information about a specific connection in a session
 message Connection {
+  // client_tcp_address of the connection
+  string client_tcp_address = 3; // @gotags: `class:"public"`
 
-    // client_tcp_address of the connection
-    string client_tcp_address = 3; // @gotags: `class:"public"`
+  // client_tcp_port of the connection
+  uint32 client_tcp_port = 4; // @gotags: `class:"public"`
 
-    // client_tcp_port of the connection
-    uint32 client_tcp_port = 4; // @gotags: `class:"public"`
+  // endpoint_tcp_address of the connection
+  string endpoint_tcp_address = 5; // @gotags: `class:"public"`
 
-    // endpoint_tcp_address of the connection
-    string endpoint_tcp_address = 5; // @gotags: `class:"public"`
+  // endpoint_tcp_port of the connection
+  uint32 endpoint_tcp_port = 6; // @gotags: `class:"public"`
 
-    // endpoint_tcp_port of the connection
-    uint32 endpoint_tcp_port = 6; // @gotags: `class:"public"`
+  // bytes_up of the connection
+  uint64 bytes_up = 7; // @gotags: `class:"public"`
 
-    // bytes_up of the connection
-    uint64 bytes_up = 7; // @gotags: `class:"public"`
+  // bytes_down of the connection
+  uint64 bytes_down = 8; // @gotags: `class:"public"`
 
-    // bytes_down of the connection
-    uint64 bytes_down = 8; // @gotags: `class:"public"`
-
-    // closed_reason of the conneciont
-    string closed_reason = 9; // @gotags: `class:"public"`
+  // closed_reason of the conneciont
+  string closed_reason = 9; // @gotags: `class:"public"`
 }
 
 // Session contains all fields related to a Session resource
@@ -108,7 +107,7 @@ message Session {
   string termination_reason = 210 [json_name = "termination_reason"]; // @gotags: `class:"public"`
 
   // Output only. The available actions on this resource for this user.
-  repeated string authorized_actions = 300 [json_name="authorized_actions"]; // @gotags: `class:"public"`
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 
   // Output only. The associated connections with this session.
   repeated Connection connections = 310;

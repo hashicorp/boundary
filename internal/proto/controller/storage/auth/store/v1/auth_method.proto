@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 package controller.storage.auth.store.v1;
+
 option go_package = "github.com/hashicorp/boundary/internal/auth/store;store";
 
 // TODO - fill out the comments for these protobufs... at this point, I'm just
