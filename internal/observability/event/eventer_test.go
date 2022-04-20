@@ -385,34 +385,7 @@ func Test_NewEventer(t *testing.T) {
 		wantErrContains string
 	}{
 		{
-			name: "missing-require-wrapper",
-			config: func() EventerConfig {
-				cfg := EventerConfig{
-					AuditEnabled: true,
-					Sinks: []*SinkConfig{
-						{
-							Name:       "test",
-							EventTypes: []Type{AuditType},
-							Type:       StderrSink,
-							Format:     JSONHclogSinkFormat,
-							AuditConfig: &AuditConfig{
-								FilterOverrides: AuditFilterOperations{
-									SensitiveClassification: EncryptOperation,
-								},
-							},
-						},
-					},
-				}
-				return cfg
-			}(),
-			lock:            testLock,
-			logger:          testLogger,
-			serverName:      "missing-required-wrapper",
-			wantErrIs:       ErrInvalidParameter,
-			wantErrContains: "missing wrapper and encrypt filter operation requires a wrapper",
-		},
-		{
-			name: "valid-audit-config-with-wrapper",
+			name: "valid-audit-configr",
 			config: func() EventerConfig {
 				cfg := EventerConfig{
 					AuditEnabled: true,
@@ -435,7 +408,7 @@ func Test_NewEventer(t *testing.T) {
 			opts:       []Option{WithAuditWrapper(twrapper)},
 			lock:       testLock,
 			logger:     testLogger,
-			serverName: "valid-audit-config-with-wrapper",
+			serverName: "valid-audit-config",
 			want: &Eventer{
 				logger:         testLogger,
 				gatedQueueLock: new(sync.Mutex),
