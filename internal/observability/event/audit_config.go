@@ -46,14 +46,7 @@ func (ac *AuditConfig) Validate() error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if ac.wrapper == nil {
-		for _, filterOperation := range ac.FilterOverrides {
-			switch filterOperation {
-			case EncryptOperation, HmacSha256Operation:
-				return fmt.Errorf("%s: missing wrapper and %s filter operation requires a wrapper: %w", op, filterOperation, ErrInvalidParameter)
-			}
-		}
-	}
+	// Note: we don't validate the wrapper here because it may not be set yet.
 
 	return nil
 }

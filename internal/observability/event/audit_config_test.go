@@ -44,46 +44,8 @@ func TestAuditConfig_Validate(t *testing.T) {
 			wantErrContains: "invalid filter override operation (invalid-operation)",
 		},
 		{
-			name: "missing-wrapper-with-hmac-filter",
-			ac: &AuditConfig{
-				FilterOverrides: AuditFilterOperations{
-					SensitiveClassification: HmacSha256Operation,
-				},
-			},
-			wantIsError:     ErrInvalidParameter,
-			wantErrContains: "hmac-sha256 filter operation requires a wrapper",
-		},
-		{
-			name: "missing-wrapper-with-encrypt-filter",
-			ac: &AuditConfig{
-				FilterOverrides: AuditFilterOperations{
-					SensitiveClassification: EncryptOperation,
-				},
-			},
-			wantIsError:     ErrInvalidParameter,
-			wantErrContains: "encrypt filter operation requires a wrapper",
-		},
-		{
 			name: "valid-default",
 			ac:   DefaultAuditConfig(),
-		},
-		{
-			name: "valid-with-required-wrapper-for-encrypt",
-			ac: &AuditConfig{
-				wrapper: testWrapper(t),
-				FilterOverrides: AuditFilterOperations{
-					SensitiveClassification: EncryptOperation,
-				},
-			},
-		},
-		{
-			name: "valid-with-required-wrapper-for-hmac",
-			ac: &AuditConfig{
-				wrapper: testWrapper(t),
-				FilterOverrides: AuditFilterOperations{
-					SensitiveClassification: HmacSha256Operation,
-				},
-			},
 		},
 	}
 	for _, tt := range tests {
@@ -115,12 +77,6 @@ func TestNewAuditConfig(t *testing.T) {
 		wantIsError     error
 		wantErrContains string
 	}{
-		{
-			name:            "missing-required-wrapper",
-			opts:            []Option{WithFilterOperations(filterOps)},
-			wantIsError:     ErrInvalidParameter,
-			wantErrContains: "missing wrapper",
-		},
 		{
 			name: "valid-default",
 			want: DefaultAuditConfig(),

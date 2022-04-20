@@ -211,6 +211,9 @@ func (b *Server) SetupEventing(logger hclog.Logger, serializationLock *sync.Mute
 		serializationLock,
 		serverName,
 		*opts.withEventerConfig,
+		// Note: this may be nil at this point, it is updated later on in SetupKMSes.
+		// There is a cyclic dependency between the eventer and the wrapper, so we instantiate
+		// the eventer with a nil wrapper until we have a wrapper to use.
 		event.WithAuditWrapper(opts.withEventWrapper),
 		event.WithGating(opts.withEventGating))
 	if err != nil {
