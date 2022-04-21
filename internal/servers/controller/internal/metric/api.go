@@ -91,9 +91,10 @@ func apiPathsAndMethods() map[string][]string {
 }
 
 func buildRegexFromPath(p string) *regexp.Regexp {
-	// a public id in boundary consists of a some prefix, an underscore and
-	// at least 10 alphanumerical characters like "h_1234567890".
-	const idRegexp = "[[:alnum:]]{1,}_[[:alnum:]]{10,}"
+	// We only care about how grpc-gateway will route to specific handlers.
+	// As long as there is at least 1 character that is part of a path segment
+	// (not a '/', '?', or ':' we have identified an id for the sake of routing.
+	const idRegexp = "[^\\/\\?\\:]+"
 
 	// Replace any tag in the form of {id} or {auth_method_id} with the above
 	// regex so we can match paths to that when measuring requests.

@@ -20,13 +20,15 @@ func TestBuildRegexFromPath(t *testing.T) {
 			match: []string{
 				"/v1/pathsomething/a4s_aKsdFh723018djsa:test-thing",
 				"/v1/pathsomething/h_1234567890:test-thing",
-			},
-			dont: []string{
 				"/v1/pathsomething/{id}:test-thing",
 				"/v1/pathsomething/{any_old_id}:test-thing",
-				"/v1/pathsomething:test-thing",
 				"/v1/pathsomething/not-an-id:test-thing",
+			},
+			dont: []string{
 				"/v1/pathsomething/a4s_aKsdFh723018djsa:other-thing",
+				"/v1/pathsomething:test-thing",
+				"/v1/pathsomething/:test-thing:test-thing",
+				"/v1/pathsomething/:other-thing",
 			},
 		},
 		{
@@ -34,10 +36,15 @@ func TestBuildRegexFromPath(t *testing.T) {
 			match: []string{
 				"/v1/pathsomething/a4s_aKsdFh723018djsa:authenticate",
 				"/v1/pathsomething/am_1234567890:authenticate",
-			},
-			dont: []string{
 				"/v1/pathsomething/{id}:authenticate",
 				"/v1/pathsomething/{auth_method}:authenticate",
+			},
+			dont: []string{
+				"/v1/pathsomething:authenticate",
+				"/v1/pathsomething:authenticate:authenticate",
+				"/v1/pathsomething/:authenticate:authenticate",
+				"/v1/pathsomething/am_1234567890/:authenticate",
+				"/v1/pathsomething/?whatabout=:authenticate",
 			},
 		},
 		{
@@ -66,10 +73,10 @@ func TestBuildRegexFromPath(t *testing.T) {
 		t.Run(tc.path, func(t *testing.T) {
 			r := buildRegexFromPath(tc.path)
 			for _, m := range tc.match {
-				assert.True(t, r.Match([]byte(m)))
+				assert.True(t, r.Match([]byte(m)), "Couldn't match %q", m)
 			}
 			for _, d := range tc.dont {
-				assert.False(t, r.Match([]byte(d)))
+				assert.False(t, r.Match([]byte(d)), "Matched %q", d)
 			}
 		})
 	}
@@ -98,6 +105,14 @@ func TestPathLabel(t *testing.T) {
 		},
 		{
 			in:   "/v1/accounts/a_1234567890",
+			want: "/v1/accounts/{id}",
+		},
+		{
+			in:   "/v1/accounts/mistake",
+			want: "/v1/accounts/{id}",
+		},
+		{
+			in:   "/v1/accounts/mistyped_id",
 			want: "/v1/accounts/{id}",
 		},
 		{
