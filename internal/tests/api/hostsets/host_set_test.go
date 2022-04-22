@@ -287,7 +287,6 @@ func TestCrud(t *testing.T) {
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }
 
-// TODO: Get better coverage for expected errors and error formats.
 func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
@@ -308,10 +307,19 @@ func TestErrors(t *testing.T) {
 	require.NoError(err)
 	assert.NotNil(h)
 
+	// A malformed id is processed as the id and not a different path to the api.
+	_, err = hClient.Read(tc.Context(), fmt.Sprintf("%s/../", h.Item.Id))
+	require.Error(err)
+	apiErr := api.AsServerError(err)
+	require.NotNil(apiErr)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+	require.Len(apiErr.Details.RequestFields, 1)
+	assert.Equal(apiErr.Details.RequestFields[0].Name, "id")
+
 	// Updating the wrong version should fail.
 	_, err = hClient.Update(tc.Context(), h.Item.Id, 73, hostsets.WithName("anything"))
 	require.Error(err)
-	apiErr := api.AsServerError(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 

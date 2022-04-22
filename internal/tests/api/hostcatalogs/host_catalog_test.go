@@ -216,9 +216,16 @@ func TestErrors(t *testing.T) {
 
 	hc, err := pc.Create(tc.Context(), "static", proj.GetPublicId(), hostcatalogs.WithName("foo"))
 	require.NoError(err)
-	apiErr := api.AsServerError(err)
-	assert.Nil(apiErr)
 	assert.NotNil(hc)
+
+	// A malformed id is processed as the id and not a different path to the api.
+	_, err = pc.Read(tc.Context(), fmt.Sprintf("%s/../", hc.Item.Id))
+	require.Error(err)
+	apiErr := api.AsServerError(err)
+	require.NotNil(apiErr)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+	require.Len(apiErr.Details.RequestFields, 1)
+	assert.Equal(apiErr.Details.RequestFields[0].Name, "id")
 
 	// Updating the wrong version should fail.
 	_, err = pc.Update(tc.Context(), hc.Item.Id, 73, hostcatalogs.WithName("anything"))

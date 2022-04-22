@@ -149,9 +149,16 @@ func TestErrors(t *testing.T) {
 	vs, err := c.Create(tc.Context(), "vault", proj.GetPublicId(), credentialstores.WithName("foo"),
 		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreToken(vaultTok))
 	require.NoError(err)
+	require.NotNil(vs)
+
+	// A malformed id is processed as the id and not a different path to the api.
+	_, err = c.Read(tc.Context(), fmt.Sprintf("%s/../", vs.Item.Id))
+	require.Error(err)
 	apiErr := api.AsServerError(err)
-	assert.Nil(apiErr)
-	assert.NotNil(vs)
+	require.NotNil(apiErr)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+	require.Len(apiErr.Details.RequestFields, 1)
+	assert.Equal(apiErr.Details.RequestFields[0].Name, "id")
 
 	// Updating the wrong version should fail.
 	_, err = c.Update(tc.Context(), vs.Item.Id, 73, credentialstores.WithName("anything"))

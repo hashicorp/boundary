@@ -145,7 +145,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*RoleReadR
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("roles/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("roles/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -208,7 +208,7 @@ func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...O
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("roles/%s", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("roles/%s", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -249,7 +249,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*RoleDel
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("roles/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("roles/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -361,7 +361,7 @@ func (c *Client) AddGrants(ctx context.Context, id string, version uint32, grant
 
 	opts.postMap["grant_strings"] = grantStrings
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-grants", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddGrants request: %w", err)
 	}
@@ -431,7 +431,7 @@ func (c *Client) AddPrincipals(ctx context.Context, id string, version uint32, p
 
 	opts.postMap["principal_ids"] = principalIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddPrincipals request: %w", err)
 	}
@@ -497,7 +497,7 @@ func (c *Client) SetGrants(ctx context.Context, id string, version uint32, grant
 
 	opts.postMap["grant_strings"] = grantStrings
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-grants", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetGrants request: %w", err)
 	}
@@ -563,7 +563,7 @@ func (c *Client) SetPrincipals(ctx context.Context, id string, version uint32, p
 
 	opts.postMap["principal_ids"] = principalIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetPrincipals request: %w", err)
 	}
@@ -633,7 +633,7 @@ func (c *Client) RemoveGrants(ctx context.Context, id string, version uint32, gr
 
 	opts.postMap["grant_strings"] = grantStrings
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-grants", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveGrants request: %w", err)
 	}
@@ -703,7 +703,7 @@ func (c *Client) RemovePrincipals(ctx context.Context, id string, version uint32
 
 	opts.postMap["principal_ids"] = principalIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:remove-principals", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemovePrincipals request: %w", err)
 	}
