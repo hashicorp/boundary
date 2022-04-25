@@ -47,6 +47,7 @@ database-up:
 		-e PGDATA=/pgdata \
 		--mount type=tmpfs,destination=/pgdata \
 		-v "$(CWD)/../../../internal/db/schema/migrations":/migrations \
+		-v "$(CWD)/benchmark_dumps":/benchmark_dumps \
 		$(TEST_IMAGE_TAG) \
 		-c 'config_file=/etc/postgresql/postgresql.conf' \
 		$(PG_OPTS) 1> /dev/null
