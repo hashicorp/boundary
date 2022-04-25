@@ -85,7 +85,10 @@ require (
 
 require github.com/hashicorp/go-dbw v0.0.0-20211215222256-2ff0d37184ff // this is a branch and should be updated before merging
 
-require github.com/prometheus/client_golang v1.12.1
+require (
+	github.com/prometheus/client_golang v1.12.1
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+)
 
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
@@ -177,7 +180,6 @@ require (
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

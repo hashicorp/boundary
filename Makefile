@@ -239,6 +239,19 @@ test-api:
 .PHONY: test-all
 test-all: test-sdk test-api test
 
+BENCH_TIME?=1s
+BENCH_COUNT?=1s
+.PHONY: benchmark
+benchmark:
+	@go test \
+		-timeout 60m \
+		./internal/servers/controller/handlers/sessions/ \
+		-v \
+		-bench '^BenchmarkSessionList$$' \
+		-benchtime $(BENCH_TIME) \
+		-count $(BENCH_COUNT) \
+		-run '^$$'
+
 .PHONY: install-go
 install-go:
 	./ci/goinstall.sh
