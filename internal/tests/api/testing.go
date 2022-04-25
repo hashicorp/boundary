@@ -14,7 +14,7 @@ import (
 
 // CloudEventFromFile will marshal a single cloud event from the provided file
 // name
-func CloudEventFromFile(t *testing.T, fileName string) *cloudevents.Event {
+func CloudEventFromFile(t testing.TB, fileName string) *cloudevents.Event {
 	t.Helper()
 	b, err := ioutil.ReadFile(fileName)
 	assert.NoError(t, err)
@@ -26,7 +26,7 @@ func CloudEventFromFile(t *testing.T, fileName string) *cloudevents.Event {
 
 // GetEventDetails is a testing helper will return the details from the event
 // payload for a given messageType (request or response)
-func GetEventDetails(t *testing.T, e *cloudevents.Event, messageType string) map[string]interface{} {
+func GetEventDetails(t testing.TB, e *cloudevents.Event, messageType string) map[string]interface{} {
 	t.Helper()
 	require := require.New(t)
 	require.NotNil(e)
@@ -42,7 +42,7 @@ func GetEventDetails(t *testing.T, e *cloudevents.Event, messageType string) map
 
 // AssertRedactedValues will assert that the values for the given keys within
 // the data have been redacted
-func AssertRedactedValues(t *testing.T, data interface{}, keys ...string) {
+func AssertRedactedValues(t testing.TB, data interface{}, keys ...string) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	require.NotNil(data)

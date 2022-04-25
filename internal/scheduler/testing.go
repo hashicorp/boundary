@@ -21,7 +21,7 @@ import (
 //
 // WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
 // the only valid options.
-func TestScheduler(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Scheduler {
+func TestScheduler(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Scheduler {
 	t.Helper()
 
 	rw := db.New(conn)

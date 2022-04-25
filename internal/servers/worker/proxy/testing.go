@@ -18,7 +18,7 @@ import (
 // created during Boundary connect. The proxyConn returned should be used as the connection
 // passed into the worker proxy handler, while the clientConn can be used to simulate
 // the local end user connection.
-func TestWsConn(t *testing.T, ctx context.Context) (clientConn, proxyConn *websocket.Conn) {
+func TestWsConn(t testing.TB, ctx context.Context) (clientConn, proxyConn *websocket.Conn) {
 	t.Helper()
 	require, assert := require.New(t), assert.New(t)
 

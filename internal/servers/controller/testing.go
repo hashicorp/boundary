@@ -58,7 +58,7 @@ const (
 type TestController struct {
 	b            *base.Server
 	c            *Controller
-	t            *testing.T
+	t            testing.TB
 	apiAddrs     []string // The address the Controller API is listening on
 	clusterAddrs []string
 	client       *api.Client
@@ -418,7 +418,7 @@ type TestControllerOpts struct {
 	SchedulerRunJobInterval time.Duration
 }
 
-func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
+func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 	const op = "controller.NewTestController"
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -455,7 +455,7 @@ func NewTestController(t *testing.T, opts *TestControllerOpts) *TestController {
 
 // TestControllerConfig provides a way to create a config for a TestController.
 // The tc passed as a parameter will be modified by this func.
-func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController, opts *TestControllerOpts) *Config {
+func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController, opts *TestControllerOpts) *Config {
 	const op = "controller.TestControllerConfig"
 	if opts == nil {
 		opts = new(TestControllerOpts)
@@ -667,7 +667,7 @@ func TestControllerConfig(t *testing.T, ctx context.Context, tc *TestController,
 	}
 }
 
-func (tc *TestController) AddClusterControllerMember(t *testing.T, opts *TestControllerOpts) *TestController {
+func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestControllerOpts) *TestController {
 	const op = "controller.(TestController).AddClusterControllerMember"
 	if opts == nil {
 		opts = new(TestControllerOpts)
@@ -778,7 +778,7 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 // test greeter service wrapped with the  specified interceptors and return an
 // initialized client for the service. The test service will be stopped/cleaned
 // up after the test (or subtests) have completed.
-func startTestGreeterService(t *testing.T, greeter interceptor.GreeterServiceServer, interceptors ...grpc.UnaryServerInterceptor) interceptor.GreeterServiceClient {
+func startTestGreeterService(t testing.TB, greeter interceptor.GreeterServiceServer, interceptors ...grpc.UnaryServerInterceptor) interceptor.GreeterServiceClient {
 	t.Helper()
 	require := require.New(t)
 	dialCtx := context.Background()

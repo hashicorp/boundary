@@ -8,7 +8,7 @@ import (
 )
 
 // TestFreePort just returns an available free localhost port
-func TestFreePort(t *testing.T) int {
+func TestFreePort(t testing.TB) int {
 	t.Helper()
 	require := require.New(t)
 	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")

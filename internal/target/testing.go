@@ -25,7 +25,7 @@ func TestNewCredentialLibrary(targetId, credentialLibraryId string, purpose cred
 
 // TestCredentialLibrary creates a CredentialLibrary for targetId and
 // libraryId with the credential purpose of application.
-func TestCredentialLibrary(t *testing.T, conn *db.DB, targetId, libraryId string) *CredentialLibrary {
+func TestCredentialLibrary(t testing.TB, conn *db.DB, targetId, libraryId string) *CredentialLibrary {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
