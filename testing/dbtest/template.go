@@ -1,6 +1,8 @@
 package dbtest
 
 import (
+	"context"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"os"
@@ -9,6 +11,8 @@ import (
 	// postgres dialect
 
 	"github.com/hashicorp/boundary/internal/db/common"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
@@ -31,10 +35,20 @@ const (
 	Postgres = "postgres"
 )
 
+// BoundaryBenchmarksUserPassword is the password used for all users
+// created by the boundary benchmarks dump generator.
+const BoundaryBenchmarksUserPassword = "testpassword"
+
 // Template Database Names
 const (
-	BoundaryTemplate = "boundary_template"
-	Template1        = "template1"
+	BoundaryTemplate                                 = "boundary_template"
+	Template1                                        = "template1"
+	Boundary1000Sessions10ConnsPerSession10Template  = "boundary_session_1000_10_10_template"
+	Boundary1000Sessions10ConnsPerSession25Template  = "boundary_session_1000_10_25_template"
+	Boundary1000Sessions10ConnsPerSession50Template  = "boundary_session_1000_10_50_template"
+	Boundary1000Sessions10ConnsPerSession75Template  = "boundary_session_1000_10_75_template"
+	Boundary1000Sessions10ConnsPerSession100Template = "boundary_session_1000_10_100_template"
+	Boundary1000Sessions10ConnsPerSession500Template = "boundary_session_1000_10_500_template"
 )
 
 var supportedDialects = map[string]struct{}{
@@ -44,6 +58,12 @@ var supportedDialects = map[string]struct{}{
 var supportedTemplates = map[string]struct{}{
 	BoundaryTemplate: {},
 	Template1:        {},
+	Boundary1000Sessions10ConnsPerSession10Template:  {},
+	Boundary1000Sessions10ConnsPerSession25Template:  {},
+	Boundary1000Sessions10ConnsPerSession50Template:  {},
+	Boundary1000Sessions10ConnsPerSession75Template:  {},
+	Boundary1000Sessions10ConnsPerSession100Template: {},
+	Boundary1000Sessions10ConnsPerSession500Template: {},
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyz"
@@ -52,6 +72,22 @@ const (
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
+
+const boundaryBenchmarksRootKey = "rootkey1rootkey1rootkey1rootkey1" // 32 bytes for AES-256
+
+// GetBoundaryBenchmarksRootKeyWrapper returns the root key wrapper used for the benchmark dumps.
+func GetBoundaryBenchmarksRootKeyWrapper(ctx context.Context) (wrapping.Wrapper, error) {
+	wrap := aead.NewWrapper()
+	_, err := wrap.SetConfig(ctx, wrapping.WithKeyId(base64.StdEncoding.EncodeToString([]byte(boundaryBenchmarksRootKey))))
+	if err != nil {
+		return nil, err
+	}
+	err = wrap.SetAesGcmKeyBytes([]byte(boundaryBenchmarksRootKey))
+	if err != nil {
+		return nil, err
+	}
+	return wrap, nil
+}
 
 func randStr(n int) string {
 	b := make([]byte, n)
