@@ -12,7 +12,7 @@ import (
 // NewEncryptFilter is a copy of event.NewEncryptFilter since importing it would
 // case circular deps.  The primary reason for this test func is to make sure
 // the proper IgnoreTypes are included for testing.
-func NewEncryptFilter(t *testing.T, w wrapping.Wrapper) *encrypt.Filter {
+func NewEncryptFilter(t testing.TB, w wrapping.Wrapper) *encrypt.Filter {
 	t.Helper()
 	return &encrypt.Filter{
 		Wrapper: w,

@@ -33,7 +33,7 @@ import (
 // the provided scope, vault address, token, and accessor and any values passed
 // in through the Options vargs.  If any errors are encountered during the
 // creation of the store, the test will fail.
-func TestCredentialStore(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId, vaultAddr, vaultToken, accessor string, opts ...Option) *CredentialStore {
+func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId, vaultAddr, vaultToken, accessor string, opts ...Option) *CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -74,7 +74,7 @@ func TestCredentialStore(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, sc
 // the provided DB with the provided scope id. If any errors are
 // encountered during the creation of the credential stores, the test will
 // fail.
-func TestCredentialStores(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*CredentialStore {
+func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -112,7 +112,7 @@ func TestCredentialStores(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, s
 // libraries in the provided DB with the provided store id. If any errors
 // are encountered during the creation of the credential libraries, the
 // test will fail.
-func TestCredentialLibraries(t *testing.T, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
+func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
@@ -143,7 +143,7 @@ func TestCredentialLibraries(t *testing.T, conn *db.DB, _ wrapping.Wrapper, stor
 // TestCredentials creates count number of vault credentials in the provided DB with
 // the provided library id and session id. If any errors are encountered
 // during the creation of the credentials, the test will fail.
-func TestCredentials(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Credential {
+func TestCredentials(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, libraryId, sessionId string, count int) []*Credential {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
@@ -187,7 +187,7 @@ func TestCredentials(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, librar
 	return credentials
 }
 
-func createTestToken(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId, storeId, token, accessor string) *Token {
+func createTestToken(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId, storeId, token, accessor string) *Token {
 	t.Helper()
 	w := db.New(conn)
 	ctx := context.Background()
@@ -209,7 +209,7 @@ func createTestToken(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeI
 	return inToken
 }
 
-func testTokens(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {
+func testTokens(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
@@ -267,7 +267,7 @@ type testCert struct {
 	priv        *ecdsa.PrivateKey
 }
 
-func (tc *testCert) ClientCertificate(t *testing.T) *ClientCertificate {
+func (tc *testCert) ClientCertificate(t testing.TB) *ClientCertificate {
 	t.Helper()
 	c, err := NewClientCertificate(tc.Cert, tc.Key)
 	require.NoError(t, err)
@@ -280,7 +280,7 @@ type testCertBundle struct {
 }
 
 // testCaCert will generate a test x509 CA cert.
-func testCaCert(t *testing.T) *testCert {
+func testCaCert(t testing.TB) *testCert {
 	t.Helper()
 	require := require.New(t)
 
@@ -292,8 +292,10 @@ func testCaCert(t *testing.T) *testCert {
 	keyUsage := x509.KeyUsageDigitalSignature
 
 	notBefore, notAfter := time.Now(), time.Now().Add(24*time.Hour)
-	if deadLine, ok := t.Deadline(); ok {
-		notAfter = deadLine
+	if t, ok := t.(*testing.T); ok {
+		if deadline, ok := t.Deadline(); ok {
+			notAfter = deadline
+		}
 	}
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
@@ -331,7 +333,7 @@ func testCaCert(t *testing.T) *testCert {
 }
 
 // testServerCert will generate a test x509 server cert.
-func testServerCert(t *testing.T, ca *testCert, hosts ...string) *testCertBundle {
+func testServerCert(t testing.TB, ca *testCert, hosts ...string) *testCertBundle {
 	t.Helper()
 	require := require.New(t)
 
@@ -343,8 +345,10 @@ func testServerCert(t *testing.T, ca *testCert, hosts ...string) *testCertBundle
 	keyUsage := x509.KeyUsageDigitalSignature
 
 	notBefore, notAfter := time.Now(), time.Now().Add(24*time.Hour)
-	if deadLine, ok := t.Deadline(); ok {
-		notAfter = deadLine
+	if t, ok := t.(*testing.T); ok {
+		if deadline, ok := t.Deadline(); ok {
+			notAfter = deadline
+		}
 	}
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
@@ -396,7 +400,7 @@ func testServerCert(t *testing.T, ca *testCert, hosts ...string) *testCertBundle
 }
 
 // testClientCert will generate a test x509 client cert.
-func testClientCert(t *testing.T, ca *testCert, opt ...TestOption) *testCertBundle {
+func testClientCert(t testing.TB, ca *testCert, opt ...TestOption) *testCertBundle {
 	t.Helper()
 	require := require.New(t)
 
@@ -413,8 +417,10 @@ func testClientCert(t *testing.T, ca *testCert, opt ...TestOption) *testCertBund
 	keyUsage := x509.KeyUsageDigitalSignature
 
 	notBefore, notAfter := time.Now(), time.Now().Add(24*time.Hour)
-	if deadLine, ok := t.Deadline(); ok {
-		notAfter = deadLine
+	if t, ok := t.(*testing.T); ok {
+		if deadline, ok := t.Deadline(); ok {
+			notAfter = deadline
+		}
 	}
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
@@ -457,7 +463,7 @@ func testClientCert(t *testing.T, ca *testCert, opt ...TestOption) *testCertBund
 	}
 }
 
-func getTestOpts(t *testing.T, opt ...TestOption) testOptions {
+func getTestOpts(t testing.TB, opt ...TestOption) testOptions {
 	t.Helper()
 	opts := getDefaultTestOptions(t)
 	for _, o := range opt {
@@ -467,7 +473,7 @@ func getTestOpts(t *testing.T, opt ...TestOption) testOptions {
 }
 
 // TestOption - how Options are passed as arguments.
-type TestOption func(*testing.T, *testOptions)
+type TestOption func(testing.TB, *testOptions)
 
 // options = how options are represented
 type testOptions struct {
@@ -484,11 +490,13 @@ type testOptions struct {
 	clientKey     *ecdsa.PrivateKey
 }
 
-func getDefaultTestOptions(t *testing.T) testOptions {
+func getDefaultTestOptions(t testing.TB) testOptions {
 	t.Helper()
 	defaultPeriod := 24 * time.Hour
-	if deadline, ok := t.Deadline(); ok {
-		defaultPeriod = time.Until(deadline)
+	if t, ok := t.(*testing.T); ok {
+		if deadline, ok := t.Deadline(); ok {
+			defaultPeriod = time.Until(deadline)
+		}
 	}
 
 	return testOptions{
@@ -509,7 +517,7 @@ func getDefaultTestOptions(t *testing.T) testOptions {
 // is the value of t.Deadline() or 24 hours if
 // t.Deadline() is nil.
 func WithTokenPeriod(d time.Duration) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.tokenPeriod = d
 	}
@@ -518,7 +526,7 @@ func WithTokenPeriod(d time.Duration) TestOption {
 // WithPolicies sets the polices to attach to a token. The default policy
 // attached to tokens is 'default'.
 func WithPolicies(p []string) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.policies = p
 	}
@@ -527,7 +535,7 @@ func WithPolicies(p []string) TestOption {
 // WithDockerNetwork sets the option to create docker network when creating
 // a Vault test server. The default is to not create a docker network.
 func WithDockerNetwork(b bool) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.dockerNetwork = b
 	}
@@ -536,7 +544,7 @@ func WithDockerNetwork(b bool) TestOption {
 // WithTestVaultTLS sets the Vault TLS option.
 // TestNoTLS is the default TLS option.
 func WithTestVaultTLS(s TestVaultTLS) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.vaultTLS = s
 	}
@@ -545,7 +553,7 @@ func WithTestVaultTLS(s TestVaultTLS) TestOption {
 // WithClientKey sets the private key that will be used to generate the
 // client certificate.  The option is only valid when used together with TestClientTLS.
 func WithClientKey(k *ecdsa.PrivateKey) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.clientKey = k
 	}
@@ -553,7 +561,7 @@ func WithClientKey(k *ecdsa.PrivateKey) TestOption {
 
 // WithTestMountPath sets the mount path option to p.
 func WithTestMountPath(p string) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		p = strings.TrimSpace(p)
 		if p != "" {
@@ -566,7 +574,7 @@ func WithTestMountPath(p string) TestOption {
 // WithTestRoleName sets the roleName name to n.
 // The default role name is boundary.
 func WithTestRoleName(n string) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		n = strings.TrimSpace(n)
 		if n == "" {
@@ -579,7 +587,7 @@ func WithTestRoleName(n string) TestOption {
 // WithDontCleanUp causes the resource created to not
 // be automaticaly cleaned up at the end of the test run.
 func WithDontCleanUp() TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.skipCleanup = true
 	}
@@ -588,7 +596,7 @@ func WithDontCleanUp() TestOption {
 // TestOrphanToken sets the token orphan option to b.
 // The orphan option is true by default.
 func TestOrphanToken(b bool) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.orphan = b
 	}
@@ -597,7 +605,7 @@ func TestOrphanToken(b bool) TestOption {
 // TestPeriodicToken sets the token periodic option to b.
 // The periodic option is true by default.
 func TestPeriodicToken(b bool) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.periodic = b
 	}
@@ -606,18 +614,18 @@ func TestPeriodicToken(b bool) TestOption {
 // TestRenewableToken sets the token renewable option to b.
 // The renewable option is true by default.
 func TestRenewableToken(b bool) TestOption {
-	return func(t *testing.T, o *testOptions) {
+	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.renewable = b
 	}
 }
 
-func (v *TestVaultServer) client(t *testing.T) *client {
+func (v *TestVaultServer) client(t testing.TB) *client {
 	t.Helper()
 	return v.clientUsingToken(t, v.RootToken)
 }
 
-func (v *TestVaultServer) clientUsingToken(t *testing.T, token string) *client {
+func (v *TestVaultServer) clientUsingToken(t testing.TB, token string) *client {
 	t.Helper()
 	require := require.New(t)
 	conf := &clientConfig{
@@ -639,7 +647,7 @@ func (v *TestVaultServer) clientUsingToken(t *testing.T, token string) *client {
 // using v.RootToken. It returns the vault secret containing the token and
 // the token itself. See
 // https://www.vaultproject.io/api-docs/auth/token#create-token.
-func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) (*vault.Secret, string) {
+func (v *TestVaultServer) CreateToken(t testing.TB, opt ...TestOption) (*vault.Secret, string) {
 	t.Helper()
 	require := require.New(t)
 	opts := getTestOpts(t, opt...)
@@ -668,7 +676,7 @@ func (v *TestVaultServer) CreateToken(t *testing.T, opt ...TestOption) (*vault.S
 
 // LookupToken calls /auth/token/lookup on v for the token. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token.
-func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret {
+func (v *TestVaultServer) LookupToken(t testing.TB, token string) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
 	vc := v.client(t).cl
@@ -681,7 +689,7 @@ func (v *TestVaultServer) LookupToken(t *testing.T, token string) *vault.Secret 
 // VerifyTokenInvalid calls /auth/token/lookup on v for the token. It expects the lookup to
 // fail with a StatusForbidden.  See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token.
-func (v *TestVaultServer) VerifyTokenInvalid(t *testing.T, token string) {
+func (v *TestVaultServer) VerifyTokenInvalid(t testing.TB, token string) {
 	t.Helper()
 	require, assert := require.New(t), assert.New(t)
 	vc := v.client(t).cl
@@ -698,7 +706,7 @@ func (v *TestVaultServer) VerifyTokenInvalid(t *testing.T, token string) {
 // LookupLease calls the /sys/leases/lookup Vault endpoint and returns
 // the vault.Secret response.  See
 // https://www.vaultproject.io/api-docs/system/leases#read-lease.
-func (v *TestVaultServer) LookupLease(t *testing.T, leaseId string) *vault.Secret {
+func (v *TestVaultServer) LookupLease(t testing.TB, leaseId string) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
 	vc := v.client(t).cl
@@ -709,7 +717,7 @@ func (v *TestVaultServer) LookupLease(t *testing.T, leaseId string) *vault.Secre
 	return secret
 }
 
-func (v *TestVaultServer) addPolicy(t *testing.T, name string, pc pathCapabilities) {
+func (v *TestVaultServer) addPolicy(t testing.TB, name string, pc pathCapabilities) {
 	t.Helper()
 	require := require.New(t)
 	policy := pc.vaultPolicy()
@@ -733,7 +741,7 @@ func (v *TestVaultServer) addPolicy(t *testing.T, name string, pc pathCapabiliti
 //   path "mountPath/*" {
 //     capabilities = ["create", "read", "update", "delete", "list"]
 //   }
-func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secret {
+func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
 	opts := getTestOpts(t, opt...)
@@ -741,8 +749,10 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 
 	// Mount PKI
 	maxTTL := 24 * time.Hour
-	if deadline, ok := t.Deadline(); ok {
-		maxTTL = time.Until(deadline) * 2
+	if t, ok := t.(*testing.T); ok {
+		if deadline, ok := t.Deadline(); ok {
+			maxTTL = time.Until(deadline) * 2
+		}
 	}
 
 	defaultTTL := maxTTL / 2
@@ -797,7 +807,7 @@ func (v *TestVaultServer) MountPKI(t *testing.T, opt ...TestOption) *vault.Secre
 //   }
 //
 // All options are ignored.
-func (v *TestVaultServer) AddKVPolicy(t *testing.T, _ ...TestOption) {
+func (v *TestVaultServer) AddKVPolicy(t testing.TB, _ ...TestOption) {
 	t.Helper()
 
 	pc := pathCapabilities{
@@ -811,7 +821,7 @@ func (v *TestVaultServer) AddKVPolicy(t *testing.T, _ ...TestOption) {
 // `{"data": {"key": "value", "key2": "value2"}}`
 // See
 // https://www.vaultproject.io/api-docs/secret/kv/kv-v2#create-update-secret
-func (v *TestVaultServer) CreateKVSecret(t *testing.T, p string, data []byte) *vault.Secret {
+func (v *TestVaultServer) CreateKVSecret(t testing.TB, p string, data []byte) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
 
@@ -849,7 +859,7 @@ type TestVaultServer struct {
 // WithTestVaultTLS and WithDockerNetwork are the only valid options.
 // Setting the WithDockerNetwork option can significantly increase the
 // amount of time required for a test to run.
-func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
+func NewTestVaultServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 	t.Helper()
 	return newVaultServer(t, opt...)
 }
@@ -868,7 +878,7 @@ func NewTestVaultServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 //
 // MountDatabase returns a TestDatabase for testing credentials from the
 // mount.
-func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) *TestDatabase {
+func (v *TestVaultServer) MountDatabase(t testing.TB, opt ...TestOption) *TestDatabase {
 	t.Helper()
 	return mountDatabase(t, v, opt...)
 }
@@ -878,7 +888,7 @@ func (v *TestVaultServer) MountDatabase(t *testing.T, opt ...TestOption) *TestDa
 type TestDatabaseURL string
 
 // Encode encodes the username and password credentials from s into u.
-func (u TestDatabaseURL) Encode(t *testing.T, s *vault.Secret) string {
+func (u TestDatabaseURL) Encode(t testing.TB, s *vault.Secret) string {
 	t.Helper()
 	require := require.New(t)
 	require.NotNil(s, "vault.Secret")
@@ -897,7 +907,7 @@ type TestDatabase struct {
 
 // ValidateCredential tests the credentials in s against d. An error is
 // returned if the credentials are not valid.
-func (d *TestDatabase) ValidateCredential(t *testing.T, s *vault.Secret) error {
+func (d *TestDatabase) ValidateCredential(t testing.TB, s *vault.Secret) error {
 	t.Helper()
 	require := require.New(t)
 	require.NotNil(s)

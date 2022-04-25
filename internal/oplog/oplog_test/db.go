@@ -16,7 +16,7 @@ const (
 )
 
 // Init will use gorm migrations to init tables for test models
-func Init(t *testing.T, db *dbw.DB) {
+func Init(t testing.TB, db *dbw.DB) {
 	const testQueryCreateTables = `	
 	begin;
 	

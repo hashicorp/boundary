@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRootKey(t *testing.T, conn *db.DB, scopeId string) *RootKey {
+func TestRootKey(t testing.TB, conn *db.DB, scopeId string) *RootKey {
 	t.Helper()
 	require := require.New(t)
 	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocRootKey(); return &i }(), "scope_id = ?", scopeId)
@@ -25,7 +25,7 @@ func TestRootKey(t *testing.T, conn *db.DB, scopeId string) *RootKey {
 	return k
 }
 
-func TestRootKeyVersion(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, rootId string) (kv *RootKeyVersion, kvWrapper wrapping.Wrapper) {
+func TestRootKeyVersion(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, rootId string) (kv *RootKeyVersion, kvWrapper wrapping.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -46,7 +46,7 @@ func TestRootKeyVersion(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, roo
 	return k, rootKeyVersionWrapper
 }
 
-func TestKms(t *testing.T, conn *db.DB, rootWrapper wrapping.Wrapper) *Kms {
+func TestKms(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper) *Kms {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -59,7 +59,7 @@ func TestKms(t *testing.T, conn *db.DB, rootWrapper wrapping.Wrapper) *Kms {
 	return kms
 }
 
-func TestDatabaseKey(t *testing.T, conn *db.DB, rootKeyId string) *DatabaseKey {
+func TestDatabaseKey(t testing.TB, conn *db.DB, rootKeyId string) *DatabaseKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -75,7 +75,7 @@ func TestDatabaseKey(t *testing.T, conn *db.DB, rootKeyId string) *DatabaseKey {
 	return k
 }
 
-func TestDatabaseKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, databaseKeyId string, key []byte) *DatabaseKeyVersion {
+func TestDatabaseKeyVersion(t testing.TB, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, databaseKeyId string, key []byte) *DatabaseKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -95,7 +95,7 @@ func TestDatabaseKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wra
 	return k
 }
 
-func TestOplogKey(t *testing.T, conn *db.DB, rootKeyId string) *OplogKey {
+func TestOplogKey(t testing.TB, conn *db.DB, rootKeyId string) *OplogKey {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -111,7 +111,7 @@ func TestOplogKey(t *testing.T, conn *db.DB, rootKeyId string) *OplogKey {
 	return k
 }
 
-func TestOplogKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, oplogKeyId string, key []byte) *OplogKeyVersion {
+func TestOplogKeyVersion(t testing.TB, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, oplogKeyId string, key []byte) *OplogKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -131,7 +131,7 @@ func TestOplogKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrappi
 	return k
 }
 
-func TestTokenKey(t *testing.T, conn *db.DB, rootKeyId string) *TokenKey {
+func TestTokenKey(t testing.TB, conn *db.DB, rootKeyId string) *TokenKey {
 	t.Helper()
 	require := require.New(t)
 	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocTokenKey(); return &i }(), "root_key_id = ?", rootKeyId)
@@ -147,7 +147,7 @@ func TestTokenKey(t *testing.T, conn *db.DB, rootKeyId string) *TokenKey {
 	return k
 }
 
-func TestTokenKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, tokenKeyId string, key []byte) *TokenKeyVersion {
+func TestTokenKeyVersion(t testing.TB, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, tokenKeyId string, key []byte) *TokenKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -167,7 +167,7 @@ func TestTokenKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrappi
 	return k
 }
 
-func TestSessionKey(t *testing.T, conn *db.DB, rootKeyId string) *SessionKey {
+func TestSessionKey(t testing.TB, conn *db.DB, rootKeyId string) *SessionKey {
 	t.Helper()
 	require := require.New(t)
 	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSessionKey(); return &i }(), "root_key_id = ?", rootKeyId)
@@ -183,7 +183,7 @@ func TestSessionKey(t *testing.T, conn *db.DB, rootKeyId string) *SessionKey {
 	return k
 }
 
-func TestSessionKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, sessionKeyId string, key []byte) *SessionKeyVersion {
+func TestSessionKeyVersion(t testing.TB, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, sessionKeyId string, key []byte) *SessionKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -203,7 +203,7 @@ func TestSessionKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrap
 	return k
 }
 
-func TestOidcKey(t *testing.T, conn *db.DB, rootKeyId string) *OidcKey {
+func TestOidcKey(t testing.TB, conn *db.DB, rootKeyId string) *OidcKey {
 	t.Helper()
 	require := require.New(t)
 	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocOidcKey(); return &i }(), "root_key_id = ?", rootKeyId)
@@ -219,7 +219,7 @@ func TestOidcKey(t *testing.T, conn *db.DB, rootKeyId string) *OidcKey {
 	return k
 }
 
-func TestOidcKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, oidcKeyId string, key []byte) *OidcKeyVersion {
+func TestOidcKeyVersion(t testing.TB, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, oidcKeyId string, key []byte) *OidcKeyVersion {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -239,7 +239,7 @@ func TestOidcKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrappin
 	return k
 }
 
-func TestAuditKey(t *testing.T, conn *db.DB, rootKeyId string) *AuditKey {
+func TestAuditKey(t testing.TB, conn *db.DB, rootKeyId string) *AuditKey {
 	t.Helper()
 	ctx := context.Background()
 	require := require.New(t)
@@ -256,7 +256,7 @@ func TestAuditKey(t *testing.T, conn *db.DB, rootKeyId string) *AuditKey {
 	return k
 }
 
-func TestAuditKeyVersion(t *testing.T, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, auditKeyId string, key []byte) *AuditKeyVersion {
+func TestAuditKeyVersion(t testing.TB, conn *db.DB, rootKeyVersionWrapper wrapping.Wrapper, auditKeyId string, key []byte) *AuditKeyVersion {
 	t.Helper()
 	ctx := context.Background()
 	require := require.New(t)

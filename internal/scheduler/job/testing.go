@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testJob(t *testing.T, conn *db.DB, name, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
+func testJob(t testing.TB, conn *db.DB, name, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -88,7 +88,7 @@ func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime t
 	return run, nil
 }
 
-func testController(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *servers.Server {
+func testController(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper) *servers.Server {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)

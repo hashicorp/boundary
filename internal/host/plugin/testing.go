@@ -24,7 +24,7 @@ import (
 // TestCatalogs creates count number of static host catalogs to the provided DB
 // with the provided scope id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
-func TestCatalogs(t *testing.T, conn *db.DB, scopeId, pluginId string, count int) []*HostCatalog {
+func TestCatalogs(t testing.TB, conn *db.DB, scopeId, pluginId string, count int) []*HostCatalog {
 	t.Helper()
 	var cats []*HostCatalog
 	for i := 0; i < count; i++ {
@@ -36,7 +36,7 @@ func TestCatalogs(t *testing.T, conn *db.DB, scopeId, pluginId string, count int
 // TestCatalog creates a plugin host catalogs to the provided DB
 // with the provided scope id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
-func TestCatalog(t *testing.T, conn *db.DB, scopeId, pluginId string, opt ...Option) *HostCatalog {
+func TestCatalog(t testing.TB, conn *db.DB, scopeId, pluginId string, opt ...Option) *HostCatalog {
 	t.Helper()
 	ctx := context.Background()
 	w := db.New(conn)
@@ -61,7 +61,7 @@ func TestCatalog(t *testing.T, conn *db.DB, scopeId, pluginId string, opt ...Opt
 // TestSet creates a plugin host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
-func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, sched *scheduler.Scheduler, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceClient, opt ...Option) *HostSet {
+func TestSet(t testing.TB, conn *db.DB, kmsCache *kms.Kms, sched *scheduler.Scheduler, hc *HostCatalog, plgm map[string]plgpb.HostPluginServiceClient, opt ...Option) *HostSet {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -91,7 +91,7 @@ func TestSet(t *testing.T, conn *db.DB, kmsCache *kms.Kms, sched *scheduler.Sche
 // TestSetMembers adds hosts to the specified setId in the provided DB.
 // The set and hosts must have been created previously and belong to the
 // same catalog. The test will fail if any errors are encountered.
-func TestSetMembers(t *testing.T, conn *db.DB, setId string, hosts []*Host) []*HostSetMember {
+func TestSetMembers(t testing.TB, conn *db.DB, setId string, hosts []*Host) []*HostSetMember {
 	t.Helper()
 	assert := assert.New(t)
 
@@ -112,7 +112,7 @@ func TestSetMembers(t *testing.T, conn *db.DB, setId string, hosts []*Host) []*H
 // TestHost creates a plugin host in the provided DB in the catalog with the
 // provided catalog id. The catalog must have been created previously.
 // The test will fail if any errors are encountered.
-func TestHost(t *testing.T, conn *db.DB, catId, externId string, opt ...Option) *Host {
+func TestHost(t testing.TB, conn *db.DB, catId, externId string, opt ...Option) *Host {
 	t.Helper()
 	w := db.New(conn)
 	ctx := context.Background()
@@ -148,7 +148,7 @@ func TestHost(t *testing.T, conn *db.DB, catId, externId string, opt ...Option) 
 	return host1
 }
 
-func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, count int) ([]*plgpb.ListHostsResponseHost, []*Host) {
+func TestExternalHosts(t testing.TB, catalog *HostCatalog, setIds []string, count int) ([]*plgpb.ListHostsResponseHost, []*Host) {
 	t.Helper()
 	require := require.New(t)
 	retRH := make([]*plgpb.ListHostsResponseHost, 0, count)
@@ -198,7 +198,7 @@ func TestExternalHosts(t *testing.T, catalog *HostCatalog, setIds []string, coun
 }
 
 // TestRunSetSync runs the set sync job a single time.
-func TestRunSetSync(t *testing.T, conn *db.DB, kmsCache *kms.Kms, plgm map[string]plgpb.HostPluginServiceClient) {
+func TestRunSetSync(t testing.TB, conn *db.DB, kmsCache *kms.Kms, plgm map[string]plgpb.HostPluginServiceClient) {
 	t.Helper()
 	rw := db.New(conn)
 	ctx := context.Background()
@@ -208,13 +208,13 @@ func TestRunSetSync(t *testing.T, conn *db.DB, kmsCache *kms.Kms, plgm map[strin
 	require.NoError(t, j.Run(ctx))
 }
 
-func testGetDnsName(t *testing.T) string {
+func testGetDnsName(t testing.TB) string {
 	dnsName, err := base62.Random(10)
 	require.NoError(t, err)
 	return fmt.Sprintf("%s.example.com", dnsName)
 }
 
-func testGetIpAddress(t *testing.T) string {
+func testGetIpAddress(t testing.TB) string {
 	ipBytes := make([]byte, 4)
 	for {
 		lr := io.LimitReader(rand.Reader, 4)
