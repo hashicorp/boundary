@@ -59,4 +59,12 @@ clean:
 	docker stop $(TEST_CONTAINER_NAME) || true
 	docker rm -v $(TEST_CONTAINER_NAME) || true
 
-.PHONY: all docker-build database-up ${docker-buildxs} ${docker-load-buildxs} clean
+generate-database-dumps:
+	BOUNDARY_DB_TEST_GENERATE_SESSION_BENCHMARK_TEMPLATE_DUMPS=1 go test \
+		-v \
+		-run '^TestGenerateSessionBenchmarkTemplateDumps$$' \
+		--timeout=1000h \
+		-count=1 \
+		../
+
+.PHONY: all docker-build database-up ${docker-buildxs} ${docker-load-buildxs} generate-database-dumps clean

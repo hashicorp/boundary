@@ -214,6 +214,10 @@ test-database-up:
 test-database-down:
 	make -C testing/dbtest/docker clean
 
+.PHONY: generate-database-dumps
+generate-database-dumps:
+	@$(MAKE) -C testing/dbtest/docker generate-database-dumps
+
 .PHONY: test-ci
 test-ci: export CI_BUILD=1
 test-ci:
