@@ -34,7 +34,7 @@ an outgoing Boundary instance causing disruption to incoming requests.
 In this state, Boundary is still capable of processing requests as normal, but
 will report as unhealthy through the controller health endpoint. In
 load-balanced environments, this would cause this "unhealthy" instance to be
-removed from the pool of instances eligible to handle requests, reducing the
+removed from the pool of instances eligible to handle requests, and thereby, reducing the
 likelihood that it will receive a request to handle during shutdown.
  
 This feature is disabled by default, even if the controller health endpoint is
