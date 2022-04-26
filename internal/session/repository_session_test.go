@@ -458,8 +458,6 @@ func TestRepository_CreateSession_Concurrent(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
 
 	require := require.New(t)
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
@@ -478,13 +476,17 @@ func TestRepository_CreateSession_Concurrent(t *testing.T) {
 	eg := &errgroup.Group{}
 	for i := 0; i < 10; i++ {
 		eg.Go(func() error {
+			repo, err := NewRepository(rw, rw, kms)
+			if err != nil {
+				return err
+			}
 			// Clone session, since it is mutated by CreateSession
 			c := s.Clone().(*Session)
-			_, _, err := repo.CreateSession(context.Background(), wrapper, c, []string{"1.2.3.4"})
+			_, _, err = repo.CreateSession(context.Background(), wrapper, c, []string{"1.2.3.4"})
 			return err
 		})
 	}
-	err = eg.Wait()
+	err := eg.Wait()
 	require.NoError(err)
 }
 
