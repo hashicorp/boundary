@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -448,6 +449,43 @@ func TestRepository_CreateSession(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_CreateSession_Concurrent(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	require := require.New(t)
+	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+	s := &Session{
+		UserId:             composedOf.UserId,
+		HostId:             composedOf.HostId,
+		TargetId:           composedOf.TargetId,
+		HostSetId:          composedOf.HostSetId,
+		AuthTokenId:        composedOf.AuthTokenId,
+		ScopeId:            composedOf.ScopeId,
+		Endpoint:           "tcp://127.0.0.1:22",
+		ExpirationTime:     composedOf.ExpirationTime,
+		ConnectionLimit:    composedOf.ConnectionLimit,
+		DynamicCredentials: composedOf.DynamicCredentials,
+	}
+	eg := &errgroup.Group{}
+	for i := 0; i < 10; i++ {
+		eg.Go(func() error {
+			// Clone session, since it is mutated by CreateSession
+			c := s.Clone().(*Session)
+			_, _, err := repo.CreateSession(context.Background(), wrapper, c, []string{"1.2.3.4"})
+			return err
+		})
+	}
+	err = eg.Wait()
+	require.NoError(err)
 }
 
 func TestRepository_updateState(t *testing.T) {
