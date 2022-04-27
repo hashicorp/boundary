@@ -188,10 +188,6 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 	}
-	if c.WorkerAuthKms == nil {
-		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-		return base.CommandUserError
-	}
 
 	if c.Config.DefaultMaxRequestDuration != 0 {
 		globals.DefaultMaxRequestDuration = c.Config.DefaultMaxRequestDuration
@@ -450,12 +446,6 @@ func (c *Command) Run(args []string) int {
 		}
 	}()
 
-	c.PrintInfo(c.UI)
-	if err := c.ReleaseLogGate(); err != nil {
-		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
-		return base.CommandCliError
-	}
-
 	if c.Config.Controller != nil {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
 		if err := c.StartController(c.Context); err != nil {
@@ -474,6 +464,28 @@ func (c *Command) Run(args []string) int {
 			}
 			return base.CommandCliError
 		}
+		if c.WorkerAuthKms == nil {
+			if c.worker.NodeeKeyId == "" {
+				retErr := fmt.Errorf("No worker key ID found at worker registration time")
+				if err := c.worker.Shutdown(); err != nil {
+					c.UI.Error(retErr.Error())
+					retErr = fmt.Errorf("Error shutting down worker: %w", err)
+				}
+				c.UI.Error(retErr.Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
+			c.InfoKeys = append(c.InfoKeys, "worker key identifier")
+			c.Info["worker key identifier"] = c.worker.NodeeKeyId
+		}
+	}
+
+	c.PrintInfo(c.UI)
+	if err := c.ReleaseLogGate(); err != nil {
+		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
+		return base.CommandCliError
 	}
 
 	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)

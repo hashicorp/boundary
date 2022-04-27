@@ -29,8 +29,10 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment/nodetypes"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
+	"go.uber.org/atomic"
 )
 
 var (
@@ -51,39 +53,40 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                     string
-	flagLogFormat                    string
-	flagCombineLogs                  bool
-	flagLoginName                    string
-	flagPassword                     string
-	flagUnprivilegedLoginName        string
-	flagUnprivilegedPassword         string
-	flagIdSuffix                     string
-	flagHostAddress                  string
-	flagTargetDefaultPort            int
-	flagTargetSessionMaxSeconds      int
-	flagTargetSessionConnectionLimit int
-	flagControllerAPIListenAddr      string
-	flagControllerClusterListenAddr  string
-	flagControllerPublicClusterAddr  string
-	flagControllerOnly               bool
-	flagWorkerAuthKey                string
-	flagWorkerProxyListenAddr        string
-	flagWorkerPublicAddr             string
-	flagOpsListenAddr                string
-	flagUiPassthroughDir             string
-	flagRecoveryKey                  string
-	flagDatabaseUrl                  string
-	flagContainerImage               string
-	flagDisableDatabaseDestruction   bool
-	flagEventFormat                  string
-	flagAudit                        string
-	flagObservations                 string
-	flagSysEvents                    string
-	flagEveryEventAllowFilters       []string
-	flagEveryEventDenyFilters        []string
-	flagCreateLoopbackHostPlugin     bool
-	flagPluginExecutionDir           string
+	flagLogLevel                        string
+	flagLogFormat                       string
+	flagCombineLogs                     bool
+	flagLoginName                       string
+	flagPassword                        string
+	flagUnprivilegedLoginName           string
+	flagUnprivilegedPassword            string
+	flagIdSuffix                        string
+	flagHostAddress                     string
+	flagTargetDefaultPort               int
+	flagTargetSessionMaxSeconds         int
+	flagTargetSessionConnectionLimit    int
+	flagControllerAPIListenAddr         string
+	flagControllerClusterListenAddr     string
+	flagControllerPublicClusterAddr     string
+	flagControllerOnly                  bool
+	flagWorkerAuthKey                   string
+	flagWorkerProxyListenAddr           string
+	flagWorkerPublicAddr                string
+	flagOpsListenAddr                   string
+	flagUiPassthroughDir                string
+	flagRecoveryKey                     string
+	flagDatabaseUrl                     string
+	flagContainerImage                  string
+	flagDisableDatabaseDestruction      bool
+	flagEventFormat                     string
+	flagAudit                           string
+	flagObservations                    string
+	flagSysEvents                       string
+	flagEveryEventAllowFilters          []string
+	flagEveryEventDenyFilters           []string
+	flagCreateLoopbackHostPlugin        bool
+	flagPluginExecutionDir              string
+	flagUseEphemeralKmsWorkerAuthMethod bool
 }
 
 func (c *Command) Synopsis() string {
@@ -327,6 +330,11 @@ func (c *Command) Flags() *base.FlagSets {
 		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
 		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
 	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "use-ephemeral-kms-worker-auth-method",
+		Target: &c.flagUseEphemeralKmsWorkerAuthMethod,
+		Usage:  "If set, the original \"ephemeral\" method of worker auth will be used to connect the initial dev worker to the controller.",
+	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "create-loopback-host-plugin",
@@ -540,7 +548,7 @@ func (c *Command) Run(args []string) int {
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
-	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config, base.WithSkipWorkerAuthKmsInstantiation(!c.flagUseEphemeralKmsWorkerAuthMethod)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -548,14 +556,16 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
 	}
-	if c.WorkerAuthKms == nil {
-		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-		return base.CommandUserError
+	if c.flagUseEphemeralKmsWorkerAuthMethod {
+		if c.WorkerAuthKms == nil {
+			c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
+			return base.CommandUserError
+		}
+		c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
+		c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 	}
 	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
 	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
-	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
-	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 	c.InfoKeys = append(c.InfoKeys, "[Recovery] AEAD Key Bytes")
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
 
@@ -613,12 +623,6 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	c.PrintInfo(c.UI)
-	if err := c.ReleaseLogGate(); err != nil {
-		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
-		return base.CommandCliError
-	}
-
 	{
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
 		conf := &controller.Config{
@@ -643,6 +647,8 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 	}
+
+	errorEncountered := atomic.NewBool(false)
 
 	if !c.flagControllerOnly {
 		conf := &worker.Config{
@@ -669,6 +675,45 @@ func (c *Command) Run(args []string) int {
 			}
 			return base.CommandCliError
 		}
+
+		if !c.flagUseEphemeralKmsWorkerAuthMethod {
+			if c.worker.NodeeKeyId == "" {
+				c.UI.Error("No worker key ID found at worker registration time")
+				return base.CommandCliError
+			}
+			c.InfoKeys = append(c.InfoKeys, "worker key identifier")
+			c.Info["worker key identifier"] = c.worker.NodeeKeyId
+			go func() {
+				for {
+					select {
+					case <-c.Context.Done():
+						return
+					case <-time.After(time.Second):
+						waitingNodes, err := c.controller.NodeeFileStorage.List(c.Context, (*nodetypes.NodeInformation)(nil))
+						if err != nil {
+							c.UI.Error(fmt.Errorf("Error listing dev worker for authentication: %w", err).Error())
+							errorEncountered.Store(true)
+							return
+						}
+						if len(waitingNodes) == 0 {
+							continue
+						}
+						if err := c.controller.AuthorizeNodeeWorker(c.worker.NodeeKeyId); err != nil {
+							c.UI.Error(fmt.Errorf("Error authorizing node: %w", err).Error())
+							errorEncountered.Store(true)
+							return
+						}
+						return
+					}
+				}
+			}()
+		}
+	}
+
+	c.PrintInfo(c.UI)
+	if err := c.ReleaseLogGate(); err != nil {
+		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
+		return base.CommandCliError
 	}
 
 	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
@@ -683,7 +728,7 @@ func (c *Command) Run(args []string) int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
-	for !shutdownTriggered {
+	for !shutdownTriggered && !errorEncountered.Load() {
 		select {
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Boundary dev environment shutdown triggered, interrupt again to force")
@@ -704,6 +749,15 @@ func (c *Command) Run(args []string) int {
 				}
 			}()
 
+			shutdownTriggered = true
+
+		case <-c.SigUSR2Ch:
+			buf := make([]byte, 32*1024*1024)
+			n := runtime.Stack(buf[:], true)
+			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
+		}
+
+		if shutdownTriggered {
 			if c.Config.Controller != nil {
 				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
 			}
@@ -722,13 +776,6 @@ func (c *Command) Run(args []string) int {
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
 			}
-
-			shutdownTriggered = true
-
-		case <-c.SigUSR2Ch:
-			buf := make([]byte, 32*1024*1024)
-			n := runtime.Stack(buf[:], true)
-			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 		}
 	}
 

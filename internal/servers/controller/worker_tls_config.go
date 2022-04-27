@@ -27,6 +27,7 @@ type workerAuthEntry struct {
 // been replayed, then stores connection information into the auth cache, which
 // is used by the intercepting listener to log information.
 func (c Controller) validateWorkerTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+	const op = "controller.(Controller).validateWorkerTls"
 	for _, p := range hello.SupportedProtos {
 		switch {
 		case strings.HasPrefix(p, "v1workerauth-"):
@@ -50,7 +51,7 @@ func (c Controller) validateWorkerTls(hello *tls.ClientHelloInfo) (*tls.Config, 
 			return tlsConf, err
 		}
 	}
-	return nil, nil
+	return nil, errors.New("no supported protos found in hello")
 }
 
 // v1WorkerAuthConfig:

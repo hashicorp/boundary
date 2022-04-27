@@ -25,6 +25,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/nodeenrollment/nodeauth"
+	"github.com/hashicorp/nodeenrollment/noderegistration"
+	nodeefile "github.com/hashicorp/nodeenrollment/nodestorage/file"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -43,6 +46,7 @@ type Worker struct {
 	tickerWg sync.WaitGroup
 
 	controllerStatusConn *atomic.Value
+	everAuthenticated    *ua.Bool
 	lastStatusSuccess    *atomic.Value
 	workerStartTime      time.Time
 
@@ -51,7 +55,9 @@ type Worker struct {
 	controllerSessionConn *atomic.Value
 	sessionInfoMap        *sync.Map
 
-	listeners []*base.ServerListener
+	controllerMultihopConn *atomic.Value
+
+	proxyListener *base.ServerListener
 
 	// Used to generate a random nonce for Controller connections
 	nonceFn randFn
@@ -62,7 +68,12 @@ type Worker struct {
 	// This stores whether or not to send updated tags on the next status
 	// request. It can be set via startup in New below, or (eventually) via
 	// SIGHUP.
-	updateTags ua.Bool
+	updateTags *ua.Bool
+
+	// PoC: Testing bits for BYOW
+	NodeeFileStorage *nodeefile.FileStorage
+	NodeeKeyId       string
+	nodeeTeeListener *nodeauth.TeeListener
 
 	// Test-specific options
 	TestOverrideX509VerifyDnsName  string
@@ -75,16 +86,19 @@ func New(conf *Config) (*Worker, error) {
 	metric.InitializeClusterClientCollectors(conf.PrometheusRegisterer)
 
 	w := &Worker{
-		conf:                  conf,
-		logger:                conf.Logger.Named("worker"),
-		started:               ua.NewBool(false),
-		controllerStatusConn:  new(atomic.Value),
-		lastStatusSuccess:     new(atomic.Value),
-		controllerResolver:    new(atomic.Value),
-		controllerSessionConn: new(atomic.Value),
-		sessionInfoMap:        new(sync.Map),
-		tags:                  new(atomic.Value),
-		nonceFn:               base62.Random,
+		conf:                   conf,
+		logger:                 conf.Logger.Named("worker"),
+		started:                ua.NewBool(false),
+		controllerStatusConn:   new(atomic.Value),
+		everAuthenticated:      ua.NewBool(false),
+		lastStatusSuccess:      new(atomic.Value),
+		controllerResolver:     new(atomic.Value),
+		controllerSessionConn:  new(atomic.Value),
+		sessionInfoMap:         new(sync.Map),
+		controllerMultihopConn: new(atomic.Value),
+		tags:                   new(atomic.Value),
+		updateTags:             ua.NewBool(false),
+		nonceFn:                base62.Random,
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
@@ -121,6 +135,7 @@ func New(conf *Config) (*Worker, error) {
 		}
 	}
 
+	var listenerCount int
 	for i := range conf.Listeners {
 		l := conf.Listeners[i]
 		if l == nil || l.Config == nil || l.Config.Purpose == nil {
@@ -131,11 +146,14 @@ func New(conf *Config) (*Worker, error) {
 		}
 		switch l.Config.Purpose[0] {
 		case "proxy":
-			w.listeners = append(w.listeners, l)
+			if w.proxyListener == nil {
+				w.proxyListener = l
+			}
+			listenerCount++
 		}
 	}
-	if len(w.listeners) == 0 {
-		return nil, fmt.Errorf("no proxy listeners found")
+	if listenerCount != 1 {
+		return nil, fmt.Errorf("exactly one proxy listener is required")
 	}
 
 	return w, nil
@@ -143,12 +161,13 @@ func New(conf *Config) (*Worker, error) {
 
 func (w *Worker) Start() error {
 	const op = "worker.(Worker).Start"
+
+	w.baseContext, w.baseCancel = context.WithCancel(context.Background())
+
 	if w.started.Load() {
 		event.WriteSysEvent(w.baseContext, op, "already started, skipping")
 		return nil
 	}
-
-	w.baseContext, w.baseCancel = context.WithCancel(context.Background())
 
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
@@ -157,6 +176,18 @@ func (w *Worker) Start() error {
 	if err := w.startListeners(); err != nil {
 		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
+
+	var err error
+	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext)
+	if err != nil {
+		return err
+	}
+
+	w.NodeeKeyId, err = noderegistration.GenerateNodeCredentialsForRegistration(w.baseContext, w.NodeeFileStorage)
+	if err != nil {
+		return err
+	}
+
 	if err := w.startControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}

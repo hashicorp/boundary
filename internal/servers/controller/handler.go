@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/textproto"
@@ -42,6 +43,7 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment/nodetypes"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -65,6 +67,7 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+	mux.Handle("/v1/nodes", handleNodes(c))
 	mux.Handle("/v1/", grpcGwMux)
 	mux.Handle("/", handleUi(c))
 
@@ -558,6 +561,68 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		}
 
 		h.ServeHTTP(w, req)
+	})
+}
+
+func handleNodes(c *Controller) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodGet:
+			type vals struct {
+				WaitingNodes []string `json:"waiting_nodes"`
+			}
+			var err error
+			var currVals vals
+			currVals.WaitingNodes, err = c.NodeeFileStorage.List(c.baseContext, (*nodetypes.NodeInformation)(nil))
+			if err != nil {
+				_, _ = w.Write([]byte(err.Error()))
+				w.WriteHeader(500)
+				return
+			}
+			ret, err := json.Marshal(currVals)
+			if err != nil {
+				_, _ = w.Write([]byte(err.Error()))
+				w.WriteHeader(500)
+				return
+			}
+			_, err = w.Write(ret)
+			if err != nil {
+				_, _ = w.Write([]byte(err.Error()))
+				w.WriteHeader(500)
+				return
+			}
+			w.WriteHeader(200)
+			return
+
+		case http.MethodPost:
+			body, err := io.ReadAll(req.Body)
+			req.Body.Close()
+			if err != nil {
+				_, _ = w.Write([]byte(err.Error()))
+				w.WriteHeader(500)
+				return
+			}
+			type val struct {
+				KeyId string `json:"key_id"`
+			}
+			var currVal val
+			if err := json.Unmarshal(body, &currVal); err != nil {
+				_, _ = w.Write([]byte(err.Error()))
+				w.WriteHeader(500)
+				return
+			}
+			if err := c.AuthorizeNodeeWorker(currVal.KeyId); err != nil {
+				_, _ = w.Write([]byte(err.Error()))
+				w.WriteHeader(500)
+				return
+			}
+			w.WriteHeader(204)
+			return
+
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	})
 }
 

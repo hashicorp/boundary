@@ -36,6 +36,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
+	"github.com/hashicorp/nodeenrollment/noderegistration"
+	nodeefile "github.com/hashicorp/nodeenrollment/nodestorage/file"
+	"github.com/hashicorp/nodeenrollment/nodetypes"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -86,6 +89,9 @@ type Controller struct {
 	// Used to signal the Health Service to start
 	// replying to queries with "503 Service Unavailable".
 	HealthService *health.Service
+
+	// PoC: Testing bits for BYOW
+	NodeeFileStorage *nodeefile.FileStorage
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
@@ -299,6 +305,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)
 	}
+
 	return c, nil
 }
 
@@ -309,6 +316,17 @@ func (c *Controller) Start() error {
 		return nil
 	}
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
+
+	var err error
+	c.NodeeFileStorage, err = nodeefile.NewFileStorage(c.baseContext)
+	if err != nil {
+		return err
+	}
+	_, err = nodetypes.RotateRootCertificates(c.baseContext, c.NodeeFileStorage)
+	if err != nil {
+		return err
+	}
+
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
@@ -390,4 +408,8 @@ func (c *Controller) Shutdown() error {
 // and auto reconnection.
 func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 	return c.workerStatusUpdateTimes
+}
+
+func (c *Controller) AuthorizeNodeeWorker(keyId string) error {
+	return noderegistration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, keyId)
 }

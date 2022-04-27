@@ -517,7 +517,9 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 
 // SetupKMSes takes in a parsed config, does some minor checking on purposes,
 // and sends each off to configutil to instantiate a wrapper.
-func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
+func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config, opt ...Option) error {
+	opts := getOpts(opt...)
+
 	sharedConfig := config.SharedConfig
 	var pluginLogger hclog.Logger
 	var err error
@@ -527,7 +529,11 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case globals.KmsPurposeRoot, globals.KmsPurposeWorkerAuth, globals.KmsPurposeConfig:
+			case globals.KmsPurposeWorkerAuth:
+				if opts.withSkipWorkerAuthKmsInstantiation {
+					continue
+				}
+			case globals.KmsPurposeRoot, globals.KmsPurposeConfig:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey

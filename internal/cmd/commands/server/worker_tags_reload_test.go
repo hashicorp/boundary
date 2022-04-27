@@ -60,7 +60,7 @@ kms "aead" {
 
 listener "tcp" {
 	purpose = "api"
-	address = "127.0.0.1:9203"
+	address = "127.0.0.1:9403"
 	tls_disable = true
 	cors_enabled = true
 	cors_allowed_origins = ["*"]
@@ -68,12 +68,12 @@ listener "tcp" {
 
 listener "tcp" {
 	purpose = "cluster"
-	address = "127.0.0.1:9204"
+	address = "127.0.0.1:9404"
 }
 
 listener "tcp" {
 	purpose = "proxy"
-	address = "127.0.0.1:9205"
+	address = "127.0.0.1:9405"
 }
 
 `
@@ -82,7 +82,7 @@ const tag1Config = `
 worker {
 	name = "dev-worker"
 	description = "A default worker created in dev mode"
-	controllers = ["127.0.0.1:9204"]
+	controllers = ["127.0.0.1:9404"]
 	tags {
 		type = ["dev", "local"]
 	}
@@ -93,7 +93,7 @@ const tag2Config = `
 worker {
 	name = "dev-worker"
 	description = "A default worker created in dev mode"
-	controllers = ["127.0.0.1:9204"]
+	controllers = ["127.0.0.1:9404"]
 	tags {
 		foo = ["bar", "baz"]
 	}

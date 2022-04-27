@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -13,7 +14,13 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/go-multierror"
+	nodee "github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/multihop"
+	"github.com/hashicorp/nodeenrollment/nodeauth"
+	"github.com/hashicorp/nodeenrollment/nodetypes"
+	"google.golang.org/grpc"
 )
 
 func (w *Worker) startListeners() error {
@@ -27,20 +34,16 @@ func (w *Worker) startListeners() error {
 	if err != nil {
 		return fmt.Errorf("%s: unable to initialize std logger: %w", op, err)
 	}
-
-	servers := make([]func(), 0, len(w.listeners))
-	for i := range w.listeners {
-		ln := w.listeners[i]
-		workerServer, err := w.configureForWorker(ln, logger)
-		if err != nil {
-			return fmt.Errorf("%s: failed to configure for worker: %w", op, err)
-		}
-		servers = append(servers, workerServer)
+	if w.proxyListener == nil {
+		return fmt.Errorf("%s: nil proxy listener", op)
 	}
 
-	for _, s := range servers {
-		s()
+	workerServer, err := w.configureForWorker(w.proxyListener, logger)
+	if err != nil {
+		return fmt.Errorf("%s: failed to configure for worker: %w", op, err)
 	}
+
+	workerServer()
 
 	return nil
 }
@@ -52,7 +55,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 	}
 
 	cancelCtx := w.baseContext
-	server := &http.Server{
+	httpServer := &http.Server{
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
@@ -61,80 +64,173 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 			return cancelCtx
 		},
 	}
-	ln.HTTPServer = server
+	ln.HTTPServer = httpServer
 
 	if ln.Config.HTTPReadHeaderTimeout > 0 {
-		server.ReadHeaderTimeout = ln.Config.HTTPReadHeaderTimeout
+		httpServer.ReadHeaderTimeout = ln.Config.HTTPReadHeaderTimeout
 	}
 	if ln.Config.HTTPReadTimeout > 0 {
-		server.ReadTimeout = ln.Config.HTTPReadTimeout
+		httpServer.ReadTimeout = ln.Config.HTTPReadTimeout
 	}
 	if ln.Config.HTTPWriteTimeout > 0 {
-		server.WriteTimeout = ln.Config.HTTPWriteTimeout
+		httpServer.WriteTimeout = ln.Config.HTTPWriteTimeout
 	}
 	if ln.Config.HTTPIdleTimeout > 0 {
-		server.IdleTimeout = ln.Config.HTTPIdleTimeout
+		httpServer.IdleTimeout = ln.Config.HTTPIdleTimeout
 	}
 
-	l := tls.NewListener(ln.ProxyListener, &tls.Config{
-		GetConfigForClient: w.getSessionTls,
-	})
+	fetchCredsFn := func(
+		ctx context.Context,
+		_ nodee.Storage,
+		req *nodetypes.FetchNodeCredentialsRequest,
+		_ ...nodee.Option,
+	) (*nodetypes.FetchNodeCredentialsResponse, error) {
+		client := w.controllerMultihopConn.Load()
+		if client == nil {
+			return nil, nodeauth.NewTempError(errors.New("error fetching controller connection, client is nil"))
+		}
+		multihopClient, ok := client.(multihop.MultihopServiceClient)
+		if !ok {
+			return nil, nodeauth.NewTempError(errors.New("client could not be understood as a multihop service client"))
+		}
+		return multihopClient.FetchNodeCredentials(ctx, req)
+	}
 
-	return func() { go server.Serve(l) }, nil
+	generateServerCertificatesFn := func(
+		ctx context.Context,
+		_ nodee.Storage,
+		req *nodetypes.GenerateServerCertificatesRequest,
+		_ ...nodee.Option,
+	) (*nodetypes.GenerateServerCertificatesResponse, error) {
+		client := w.controllerMultihopConn.Load()
+		if client == nil {
+			return nil, nodeauth.NewTempError(errors.New("error fetching controller connection, client is nil"))
+		}
+		multihopClient, ok := client.(multihop.MultihopServiceClient)
+		if !ok {
+			return nil, nodeauth.NewTempError(errors.New("client could not be understood as a multihop service client"))
+		}
+		return multihopClient.GenerateServerCertificates(ctx, req)
+	}
+
+	interceptingListener, err := nodeauth.NewInterceptingListener(
+		ln.ProxyListener,
+		&tls.Config{
+			GetConfigForClient: w.getSessionTls,
+		},
+		nodeauth.MakeCurrentParametersFactory(
+			w.baseContext,
+			nodee.NopTransactionStorage(w.NodeeFileStorage),
+		),
+		fetchCredsFn,
+		generateServerCertificatesFn,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
+	}
+
+	w.nodeeTeeListener = nodeauth.NewTeeListener(interceptingListener)
+
+	downstreamServer := grpc.NewServer(
+		grpc.MaxRecvMsgSize(math.MaxInt32),
+		grpc.MaxSendMsgSize(math.MaxInt32),
+	)
+	multihopService := workers.NewMultihopServiceServer(
+		nodeauth.MakeCurrentParametersFactory(w.baseContext, nodee.NopTransactionStorage(w.NodeeFileStorage)),
+	)
+	multihop.RegisterMultihopServiceServer(downstreamServer, multihopService)
+
+	ln.GrpcServer = downstreamServer
+
+	return func() {
+		go w.nodeeTeeListener.Start()
+		go httpServer.Serve(w.nodeeTeeListener.OtherListener())
+		go ln.GrpcServer.Serve(w.nodeeTeeListener.NodeeListener())
+	}, nil
 }
 
 func (w *Worker) stopServersAndListeners() error {
-	var closeErrors *multierror.Error
-	err := w.stopHttpServersAndListeners()
-	if err != nil {
-		closeErrors = multierror.Append(closeErrors, err)
+	var mg multierror.Group
+	mg.Go(w.stopHttpServer)
+	mg.Go(w.stopClusterGrpcServer)
+
+	// FIXME (jeff): For some reason, unlike the controller, the grpc server
+	// really likes to hang on closing. Maybe because it's never served a
+	// connection? This is a workaround to force it until I can dig in.
+	var cancel context.CancelFunc
+	if w.nodeeTeeListener != nil {
+		var ctx context.Context
+		ctx, cancel = context.WithTimeout(w.baseContext, 2*time.Second)
+		go func() {
+			<-ctx.Done()
+			w.nodeeTeeListener.Stop()
+			cancel()
+		}()
 	}
 
-	err = w.stopAnyListeners()
-	if err != nil {
-		closeErrors = multierror.Append(closeErrors, err)
+	stopErrors := mg.Wait()
+
+	if w.nodeeTeeListener != nil {
+		cancel()
+		err := w.nodeeTeeListener.Stop()
+		if err != nil {
+			stopErrors = multierror.Append(stopErrors, err)
+		}
 	}
 
-	return closeErrors.ErrorOrNil()
+	err := w.stopAnyListeners()
+	if err != nil {
+		stopErrors = multierror.Append(stopErrors, err)
+	}
+
+	return stopErrors.ErrorOrNil()
 }
 
-func (w *Worker) stopHttpServersAndListeners() error {
-	var closeErrors *multierror.Error
-	for i := range w.listeners {
-		ln := w.listeners[i]
-		if ln.HTTPServer == nil {
-			continue
-		}
-
-		ctx, cancel := context.WithTimeout(w.baseContext, ln.Config.MaxRequestDuration)
-		ln.HTTPServer.Shutdown(ctx)
-		cancel()
-
-		err := ln.ProxyListener.Close()
-		err = listenerCloseErrorCheck(ln.Config.Type, err)
-		if err != nil {
-			closeErrors = multierror.Append(closeErrors, err)
-		}
+func (w *Worker) stopHttpServer() error {
+	if w.proxyListener == nil {
+		return nil
 	}
 
-	return closeErrors.ErrorOrNil()
+	if w.proxyListener.HTTPServer == nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(w.baseContext, w.proxyListener.Config.MaxRequestDuration)
+	w.proxyListener.HTTPServer.Shutdown(ctx)
+	cancel()
+
+	return nil
+}
+
+func (w *Worker) stopClusterGrpcServer() error {
+	if w.proxyListener == nil {
+		return nil
+	}
+	if w.proxyListener.GrpcServer == nil {
+		return nil
+	}
+
+	w.proxyListener.GrpcServer.GracefulStop()
+	return nil
 }
 
 // stopAnyListeners does a final once over the known
 // listeners to make sure we didn't miss any;
 // expected to run at the end of stopServersAndListeners.
 func (w *Worker) stopAnyListeners() error {
+	if w.proxyListener == nil {
+		return nil
+	}
 	var closeErrors *multierror.Error
-	for _, ln := range w.listeners {
-		if ln == nil || ln.ProxyListener == nil {
-			continue
-		}
-
-		err := ln.ProxyListener.Close()
-		err = listenerCloseErrorCheck(ln.Config.Type, err)
-		if err != nil {
-			closeErrors = multierror.Append(closeErrors, err)
-		}
+	var err error
+	if w.nodeeTeeListener != nil {
+		err = w.nodeeTeeListener.Stop()
+	} else if w.proxyListener.ProxyListener != nil {
+		err = w.proxyListener.ProxyListener.Close()
+	}
+	err = listenerCloseErrorCheck("proxy", err)
+	if err != nil {
+		closeErrors = multierror.Append(closeErrors, err)
 	}
 
 	return closeErrors.ErrorOrNil()

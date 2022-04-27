@@ -23,7 +23,12 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/worker/internal/metric"
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	nodee "github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/multihop"
+	"github.com/hashicorp/nodeenrollment/nodeauth"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"
 )
@@ -62,39 +67,60 @@ func (w *Worker) startControllerConnections() error {
 }
 
 func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
-	const op = "worker.(Worker).controllerDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
-		tlsConf, authInfo, err := w.workerAuthTLSConfig()
-		if err != nil {
-			return nil, fmt.Errorf("error creating tls config for worker auth: %w", err)
-		}
-		dialer := &net.Dialer{}
-		var nonTlsConn net.Conn
+		var conn net.Conn
+		var err error
 		switch {
-		case strings.HasPrefix(addr, "/"):
-			nonTlsConn, err = dialer.DialContext(ctx, "unix", addr)
+		case w.conf.WorkerAuthKms != nil:
+			conn, err = w.v1KmsAuthDialFn(ctx, addr)
 		default:
-			nonTlsConn, err = dialer.DialContext(ctx, "tcp", addr)
+			conn, err = nodeauth.AuthDialFn(
+				nodeauth.MakeCurrentParametersFactory(
+					ctx,
+					nodee.NopTransactionStorage(w.NodeeFileStorage),
+				))(ctx, addr)
 		}
-		if err != nil {
-			return nil, fmt.Errorf("unable to dial to controller: %w", err)
+
+		if !w.everAuthenticated.Load() && err == nil && conn != nil {
+			w.everAuthenticated.Store(true)
 		}
-		tlsConn := tls.Client(nonTlsConn, tlsConf)
-		written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
-		if err != nil {
-			if err := nonTlsConn.Close(); err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
-			}
-			return nil, fmt.Errorf("unable to write connection nonce: %w", err)
-		}
-		if written != len(authInfo.ConnectionNonce) {
-			if err := nonTlsConn.Close(); err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
-			}
-			return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
-		}
-		return tlsConn, nil
+
+		return conn, err
 	}
+}
+
+func (w *Worker) v1KmsAuthDialFn(ctx context.Context, addr string) (net.Conn, error) {
+	const op = "worker.(Worker).v1KmsAuthDialFn"
+	tlsConf, authInfo, err := w.workerAuthTLSConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error creating tls config for worker auth: %w", err)
+	}
+	dialer := &net.Dialer{}
+	var nonTlsConn net.Conn
+	switch {
+	case strings.HasPrefix(addr, "/"):
+		nonTlsConn, err = dialer.DialContext(ctx, "unix", addr)
+	default:
+		nonTlsConn, err = dialer.DialContext(ctx, "tcp", addr)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("unable to dial to controller: %w", err)
+	}
+	tlsConn := tls.Client(nonTlsConn, tlsConf)
+	written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
+	if err != nil {
+		if err := nonTlsConn.Close(); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
+		}
+		return nil, fmt.Errorf("unable to write connection nonce: %w", err)
+	}
+	if written != len(authInfo.ConnectionNonce) {
+		if err := nonTlsConn.Close(); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing connection after writing failure"))
+		}
+		return nil, fmt.Errorf("expected to write %d bytes of connection nonce, wrote %d", len(authInfo.ConnectionNonce), written)
+	}
+	return tlsConn, nil
 }
 
 func (w *Worker) createClientConn(addr string) error {
@@ -113,18 +139,29 @@ func (w *Worker) createClientConn(addr string) error {
 	  }
 	  `, defaultTimeout)
 	res := w.Resolver()
-	cc, err := grpc.DialContext(w.baseContext,
-		fmt.Sprintf("%s:///%s", res.Scheme(), addr),
+	dialOpts := []grpc.DialOption{
 		grpc.WithResolvers(res),
 		grpc.WithUnaryInterceptor(metric.InstrumentClusterClient()),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
 		grpc.WithContextDialer(w.controllerDialerFunc()),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(defServiceConfig),
 		// Don't have the resolver reach out for a service config from the
 		// resolver, use the one specified as default
 		grpc.WithDisableServiceConfig(),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff: backoff.Config{
+				BaseDelay:  time.Second,
+				Multiplier: 1.2,
+				Jitter:     0.2,
+				MaxDelay:   3 * time.Second,
+			},
+		}),
+	}
+	cc, err := grpc.DialContext(w.baseContext,
+		fmt.Sprintf("%s:///%s", res.Scheme(), addr),
+		dialOpts...,
 	)
 	if err != nil {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
@@ -132,8 +169,7 @@ func (w *Worker) createClientConn(addr string) error {
 
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
-
-	event.WriteSysEvent(w.baseContext, op, "connected to controller", "address", addr)
+	w.controllerMultihopConn.Store(multihop.NewMultihopServiceClient(cc))
 	return nil
 }
 

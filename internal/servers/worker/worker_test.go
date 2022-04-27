@@ -23,13 +23,13 @@ func TestWorkerNew(t *testing.T) {
 			name:      "nil listeners",
 			in:        &Config{Server: &base.Server{Listeners: nil}},
 			expErr:    true,
-			expErrMsg: "no proxy listeners found",
+			expErrMsg: "exactly one proxy listener is required",
 		},
 		{
 			name:      "zero listeners",
 			in:        &Config{Server: &base.Server{Listeners: []*base.ServerListener{}}},
 			expErr:    true,
-			expErrMsg: "no proxy listeners found",
+			expErrMsg: "exactly one proxy listener is required",
 		},
 		{
 			name: "populated with nil values",
@@ -43,7 +43,7 @@ func TestWorkerNew(t *testing.T) {
 				},
 			},
 			expErr:    true,
-			expErrMsg: "no proxy listeners found",
+			expErrMsg: "exactly one proxy listener is required",
 		},
 		{
 			name: "multiple purposes",
@@ -60,7 +60,7 @@ func TestWorkerNew(t *testing.T) {
 			expErrMsg: `found listener with multiple purposes "api,proxy"`,
 		},
 		{
-			name: "valid listeners",
+			name: "too many proxy listeners",
 			in: &Config{
 				Server: &base.Server{
 					Listeners: []*base.ServerListener{
@@ -71,10 +71,21 @@ func TestWorkerNew(t *testing.T) {
 					},
 				},
 			},
-			expErr: false,
-			assertions: func(t *testing.T, w *Worker) {
-				require.Len(t, w.listeners, 2)
+			expErr:    true,
+			expErrMsg: "exactly one proxy listener is required",
+		},
+		{
+			name: "valid listeners",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+					},
+				},
 			},
+			expErr: false,
 		},
 		{
 			name: "worker nonce func is set",

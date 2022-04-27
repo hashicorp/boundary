@@ -17,6 +17,9 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/boundary/internal/servers/controller/internal/metric"
 	"github.com/hashicorp/go-multierror"
+	nodee "github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/multihop"
+	"github.com/hashicorp/nodeenrollment/nodeauth"
 	"google.golang.org/grpc"
 )
 
@@ -103,9 +106,21 @@ func (c *Controller) configureForApi(ln *base.ServerListener) ([]func(), error) 
 }
 
 func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error) {
-	l := tls.NewListener(ln.ClusterListener, &tls.Config{
-		GetConfigForClient: c.validateWorkerTls,
-	})
+	l, err := nodeauth.NewInterceptingListener(
+		ln.ClusterListener,
+		&tls.Config{
+			GetConfigForClient: c.validateWorkerTls,
+		},
+		nodeauth.MakeCurrentParametersFactory(
+			c.baseContext,
+			nodee.NopTransactionStorage(c.NodeeFileStorage),
+		),
+		nil,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
+	}
 
 	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
 	if err != nil {
@@ -129,6 +144,12 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		c.workerStatusUpdateTimes, c.kms)
 	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 	pbs.RegisterSessionServiceServer(workerServer, workerService)
+
+	multihopService := workers.NewMultihopServiceServer(
+		nodeauth.MakeCurrentParametersFactory(c.baseContext, nodee.NopTransactionStorage(c.NodeeFileStorage)),
+	)
+	multihop.RegisterMultihopServiceServer(workerServer, multihopService)
+
 	metric.InitializeClusterCollectors(c.conf.PrometheusRegisterer, workerServer)
 
 	ln.GrpcServer = workerServer

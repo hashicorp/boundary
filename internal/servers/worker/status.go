@@ -90,6 +90,14 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 
 func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	const op = "worker.(Worker).sendWorkerStatus"
+
+	// If we've never managed to successfully authenticate then we won't have
+	// any session information anyways and this will produce a ton of noise in
+	// observability, so suppress it
+	if !w.everAuthenticated.Load() {
+		return
+	}
+
 	// First send info as-is. We'll perform cleanup duties after we
 	// get cancel/job change info back.
 	var activeJobs []*pbs.JobStatus

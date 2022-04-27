@@ -1,12 +1,15 @@
 package controller
 
 import (
-	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
+	nodee "github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/nodeauth"
 )
 
 // interceptingListener allows us to validate the nonce from a connection before
@@ -45,42 +48,54 @@ func newInterceptingListener(c *Controller, baseLn net.Listener) *interceptingLi
 
 func (m *interceptingListener) Accept() (net.Conn, error) {
 	const op = "controller.(interceptingListener).Accept"
-	ctx := context.TODO()
+	ctx := m.c.baseContext
 	conn, err := m.baseLn.Accept()
 	if err != nil {
+		// We may already be closed but can't be sure, so just try anyways
 		if conn != nil {
 			if err := conn.Close(); err != nil {
-				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("error closing worker connection"))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 			}
 		}
 		return nil, err
 	}
 
-	nonce := make([]byte, 20)
-	read, err := conn.Read(nonce)
-	if err != nil {
-		if err := conn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
+	tlsConn := conn.(*tls.Conn)
+	switch {
+	case nodeauth.ContainsNodeAuthAlpnProto(tlsConn.ConnectionState().NegotiatedProtocol):
+		event.WriteSysEvent(ctx, op, "worker successfully authed", "key_id", nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId))
+		return conn, nil
+
+	case strings.HasPrefix(tlsConn.ConnectionState().NegotiatedProtocol, "v1workerauth"):
+		nonce := make([]byte, 20)
+		read, err := conn.Read(nonce)
+		if err != nil {
+			if err := conn.Close(); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
+			}
+			return nil, fmt.Errorf("error reading nonce from connection: %w", err)
 		}
-		return nil, fmt.Errorf("error reading nonce from connection: %w", err)
-	}
-	if read != len(nonce) {
-		if err := conn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
+		if read != len(nonce) {
+			if err := conn.Close(); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
+			}
+			return nil, fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read)
 		}
-		return nil, fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read)
-	}
-	workerInfoRaw, found := m.c.workerAuthCache.Load(string(nonce))
-	if !found {
-		if err := conn.Close(); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
+		workerInfoRaw, found := m.c.workerAuthCache.Load(string(nonce))
+		if !found {
+			if err := conn.Close(); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
+			}
+			return nil, errors.New("did not find valid nonce for incoming worker")
 		}
-		return nil, errors.New("did not find valid nonce for incoming worker")
+		workerInfo := workerInfoRaw.(*workerAuthEntry)
+		workerInfo.conn = tlsConn
+		event.WriteSysEvent(ctx, op, "worker successfully authed", "name", workerInfo.Name)
+		return tlsConn, nil
+
+	default:
+		return nil, nodeauth.NewTempError(errors.New("unable to authenticate incoming connection"))
 	}
-	workerInfo := workerInfoRaw.(*workerAuthEntry)
-	workerInfo.conn = conn
-	event.WriteSysEvent(ctx, op, "worker successfully authed", "name", workerInfo.Name)
-	return conn, nil
 }
 
 func (m *interceptingListener) Close() error {

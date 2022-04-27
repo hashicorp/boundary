@@ -125,6 +125,10 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	}()
 	waitCh(t, workerCmd.startedCh)
 
+	// Give the worker time for initial status or we can fail because no worker
+	// is ready for the connection yet
+	time.Sleep(5 * time.Second)
+
 	// Set up the target
 	ctx := context.Background()
 	client := buildClient(t, shutdownReloadApiAddr)
