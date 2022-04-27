@@ -4,8 +4,8 @@ CWD := $(shell pwd)
 DOCKER_ARGS ?= -d
 
 REGISTRY_NAME?=docker.io/hashicorpboundary
-IMAGE_NAME=postgres
-IMAGE_TAG ?= $(REGISTRY_NAME)/$(IMAGE_NAME):11-alpine
+TEST_IMAGE_NAME=postgres
+TEST_IMAGE_TAG ?= $(REGISTRY_NAME)/$(TEST_IMAGE_NAME):11-alpine
 PG_OPTS ?=
 TEST_DB_PORT ?= 5432
 TEST_CONTAINER_NAME ?= boundary-sql-tests
@@ -22,11 +22,11 @@ ${docker-buildxs}: %-buildx:
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
 		--push \
-		-t $(REGISTRY_NAME)/$(IMAGE_NAME):$* \
+		-t $(REGISTRY_NAME)/$(TEST_IMAGE_NAME):$* \
 		-f Dockerfile.$* .
 
 database-up:
-	@echo "Using image:                       $(IMAGE_TAG)"
+	@echo "Using image:                       $(TEST_IMAGE_TAG)"
 	@echo "Additional postgres configuration: $(PG_OPTS)"
 	@docker run \
 		$(DOCKER_ARGS) \
@@ -38,7 +38,7 @@ database-up:
 		-e PGDATA=/pgdata \
 		--mount type=tmpfs,destination=/pgdata \
 		-v "$(CWD)/../../../internal/db/schema/migrations":/migrations \
-		$(IMAGE_TAG) \
+		$(TEST_IMAGE_TAG) \
 		-c 'config_file=/etc/postgresql/postgresql.conf' \
 		$(PG_OPTS) 1> /dev/null
 	@echo "Container name:                    $(TEST_CONTAINER_NAME)"
