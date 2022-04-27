@@ -142,7 +142,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*GroupRead
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("groups/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("groups/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -205,7 +205,7 @@ func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...O
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("groups/%s", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("groups/%s", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -246,7 +246,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*GroupDe
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("groups/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("groups/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -358,7 +358,7 @@ func (c *Client) AddMembers(ctx context.Context, id string, version uint32, memb
 
 	opts.postMap["member_ids"] = memberIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:add-members", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:add-members", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddMembers request: %w", err)
 	}
@@ -424,7 +424,7 @@ func (c *Client) SetMembers(ctx context.Context, id string, version uint32, memb
 
 	opts.postMap["member_ids"] = memberIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:set-members", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:set-members", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetMembers request: %w", err)
 	}
@@ -494,7 +494,7 @@ func (c *Client) RemoveMembers(ctx context.Context, id string, version uint32, m
 
 	opts.postMap["member_ids"] = memberIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:remove-members", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("groups/%s:remove-members", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveMembers request: %w", err)
 	}

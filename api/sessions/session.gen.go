@@ -107,7 +107,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*SessionRe
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("sessions/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("sessions/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}

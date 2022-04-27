@@ -98,7 +98,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*AuthToken
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-tokens/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("auth-tokens/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -139,7 +139,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*AuthTok
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-tokens/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("auth-tokens/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

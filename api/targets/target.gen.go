@@ -160,7 +160,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*TargetRea
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("targets/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("targets/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -223,7 +223,7 @@ func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...O
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("targets/%s", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("targets/%s", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -264,7 +264,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*TargetD
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("targets/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("targets/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -370,7 +370,7 @@ func (c *Client) AddCredentialLibraries(ctx context.Context, id string, version 
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-credential-libraries", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-credential-libraries", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddCredentialLibraries request: %w", err)
 	}
@@ -434,7 +434,7 @@ func (c *Client) AddCredentialSources(ctx context.Context, id string, version ui
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-credential-sources", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-credential-sources", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddCredentialSources request: %w", err)
 	}
@@ -504,7 +504,7 @@ func (c *Client) AddHostSets(ctx context.Context, id string, version uint32, hos
 
 	opts.postMap["host_set_ids"] = hostSetIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-host-sets", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-host-sets", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddHostSets request: %w", err)
 	}
@@ -574,7 +574,7 @@ func (c *Client) AddHostSources(ctx context.Context, id string, version uint32, 
 
 	opts.postMap["host_source_ids"] = hostSourceIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-host-sources", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-host-sources", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddHostSources request: %w", err)
 	}
@@ -638,7 +638,7 @@ func (c *Client) SetCredentialLibraries(ctx context.Context, id string, version 
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-credential-libraries", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-credential-libraries", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetCredentialLibraries request: %w", err)
 	}
@@ -702,7 +702,7 @@ func (c *Client) SetCredentialSources(ctx context.Context, id string, version ui
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-credential-sources", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-credential-sources", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetCredentialSources request: %w", err)
 	}
@@ -768,7 +768,7 @@ func (c *Client) SetHostSets(ctx context.Context, id string, version uint32, hos
 
 	opts.postMap["host_set_ids"] = hostSetIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-host-sets", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-host-sets", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetHostSets request: %w", err)
 	}
@@ -834,7 +834,7 @@ func (c *Client) SetHostSources(ctx context.Context, id string, version uint32, 
 
 	opts.postMap["host_source_ids"] = hostSourceIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-host-sources", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-host-sources", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetHostSources request: %w", err)
 	}
@@ -898,7 +898,7 @@ func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, versi
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-credential-libraries", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-credential-libraries", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveCredentialLibraries request: %w", err)
 	}
@@ -962,7 +962,7 @@ func (c *Client) RemoveCredentialSources(ctx context.Context, id string, version
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-credential-sources", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-credential-sources", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveCredentialSources request: %w", err)
 	}
@@ -1032,7 +1032,7 @@ func (c *Client) RemoveHostSets(ctx context.Context, id string, version uint32, 
 
 	opts.postMap["host_set_ids"] = hostSetIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-host-sets", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-host-sets", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveHostSets request: %w", err)
 	}
@@ -1102,7 +1102,7 @@ func (c *Client) RemoveHostSources(ctx context.Context, id string, version uint3
 
 	opts.postMap["host_source_ids"] = hostSourceIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-host-sources", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-host-sources", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveHostSources request: %w", err)
 	}

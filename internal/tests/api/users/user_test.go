@@ -181,10 +181,19 @@ func TestErrors(t *testing.T) {
 	require.NoError(err)
 	assert.NotNil(u)
 
+	// A malformed id is processed as the id and not a different path to the api.
+	_, err = userClient.Read(tc.Context(), fmt.Sprintf("%s/../", u.Item.Id))
+	require.Error(err)
+	apiErr := api.AsServerError(err)
+	require.NotNil(apiErr)
+	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+	require.Len(apiErr.Details.RequestFields, 1)
+	assert.Equal(apiErr.Details.RequestFields[0].Name, "id")
+
 	// Updating the wrong version should fail.
 	_, err = userClient.Update(tc.Context(), u.Item.Id, 73, users.WithName("anything"))
 	require.Error(err)
-	apiErr := api.AsServerError(err)
+	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 

@@ -142,7 +142,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*ScopeRead
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("scopes/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -205,7 +205,7 @@ func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...O
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("scopes/%s", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -246,7 +246,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*ScopeDe
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("scopes/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("scopes/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}

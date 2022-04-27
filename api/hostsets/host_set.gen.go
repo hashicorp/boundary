@@ -147,7 +147,7 @@ func (c *Client) Read(ctx context.Context, id string, opt ...Option) (*HostSetRe
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-sets/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", fmt.Sprintf("host-sets/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Read request: %w", err)
 	}
@@ -210,7 +210,7 @@ func (c *Client) Update(ctx context.Context, id string, version uint32, opt ...O
 
 	opts.postMap["version"] = version
 
-	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-sets/%s", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "PATCH", fmt.Sprintf("host-sets/%s", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Update request: %w", err)
 	}
@@ -251,7 +251,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt ...Option) (*HostSet
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-sets/%s", id), nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "DELETE", fmt.Sprintf("host-sets/%s", url.PathEscape(id)), nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Delete request: %w", err)
 	}
@@ -363,7 +363,7 @@ func (c *Client) AddHosts(ctx context.Context, id string, version uint32, hostId
 
 	opts.postMap["host_ids"] = hostIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:add-hosts", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:add-hosts", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating AddHosts request: %w", err)
 	}
@@ -429,7 +429,7 @@ func (c *Client) SetHosts(ctx context.Context, id string, version uint32, hostId
 
 	opts.postMap["host_ids"] = hostIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:set-hosts", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:set-hosts", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating SetHosts request: %w", err)
 	}
@@ -499,7 +499,7 @@ func (c *Client) RemoveHosts(ctx context.Context, id string, version uint32, hos
 
 	opts.postMap["host_ids"] = hostIds
 
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:remove-hosts", id), opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("host-sets/%s:remove-hosts", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating RemoveHosts request: %w", err)
 	}

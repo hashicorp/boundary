@@ -29,7 +29,7 @@ func getArgsAndPaths(pluralResource, parentTypeName, action string) (colArg, col
 	if action != "" {
 		action = fmt.Sprintf(":%s", action)
 	}
-	resPath = fmt.Sprintf("fmt.Sprintf(\"%s/%%s%s\", id)", colPath, action)
+	resPath = fmt.Sprintf("fmt.Sprintf(\"%s/%%s%s\", url.PathEscape(id))", colPath, action)
 	return
 }
 
