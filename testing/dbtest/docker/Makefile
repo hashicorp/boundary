@@ -13,6 +13,7 @@ TEST_CONTAINER_NAME ?= boundary-sql-tests
 # Generate targets from dockerfiles
 dockerfiles = $(wildcard Dockerfile.*)
 docker-buildxs = $(patsubst Dockerfile.%,%-buildx, $(dockerfiles))
+docker-load-buildxs = $(patsubst Dockerfile.%,%-load-buildx, $(dockerfiles))
 
 # Before running this target a builder instance needs to be setup, ie:
 #  docker buildx create --driver docker-container --use
@@ -22,6 +23,14 @@ ${docker-buildxs}: %-buildx:
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
 		--push \
+		-t $(REGISTRY_NAME)/$(TEST_IMAGE_NAME):$* \
+		-f Dockerfile.$* .
+
+docker-load: ${docker-load-buildxs}
+
+${docker-load-buildxs}: %-load-buildx:
+	docker buildx build \
+		--load \
 		-t $(REGISTRY_NAME)/$(TEST_IMAGE_NAME):$* \
 		-f Dockerfile.$* .
 
@@ -49,4 +58,4 @@ clean:
 	docker stop $(TEST_CONTAINER_NAME) || true
 	docker rm -v $(TEST_CONTAINER_NAME) || true
 
-.PHONY: all docker-build database-up ${docker-buildxs} clean
+.PHONY: all docker-build database-up ${docker-buildxs} ${docker-load-buildxs} clean
