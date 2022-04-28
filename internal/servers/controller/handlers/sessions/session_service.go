@@ -139,6 +139,19 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		}
 	}
 
+	switch req.Style {
+	case "":
+		return s.listSessionsNormally(ctx, req, authResults)
+	case "desktop-ui":
+		return s.listSessionsDesktopUi(ctx, req, authResults)
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown style %s", req.Style))
+	}
+}
+
+func (s Service) listSessionsNormally(ctx context.Context, req *pbs.ListSessionsRequest, authResults auth.VerifyResults) (*pbs.ListSessionsResponse, error) {
+	const op = "session.(Service).listSessionsNormally"
+
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -197,6 +210,98 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		item, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
+		}
+
+		if filter.Match(item) {
+			finalItems = append(finalItems, item)
+		}
+	}
+
+	return &pbs.ListSessionsResponse{Items: finalItems}, nil
+}
+
+func (s Service) listSessionsDesktopUi(ctx context.Context, req *pbs.ListSessionsRequest, authResults auth.VerifyResults) (*pbs.ListSessionsResponse, error) {
+	const op = "session.(Service).listSessionsDesktopUi"
+
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
+		ctx,
+		s.iamRepoFn,
+		authResults,
+		req.GetScopeId(),
+		resource.Session,
+		req.GetRecursive(),
+		false,
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	// If no scopes match, return an empty response
+	if len(scopeInfoMap) == 0 {
+		return &pbs.ListSessionsResponse{}, nil
+	}
+
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	scopedResourceIds, err := repo.FetchIdsWithOptions(ctx, session.WithScopeIds(scopeIds), session.WithUserId(authResults.UserId), session.WithNonTerminatedSessionsOnly(true))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	res := perms.Resource{
+		Type: resource.Session,
+	}
+
+	resourceIdsToAuthActions := make(map[string]action.ActionSet)
+	var allResourceIds []string
+	for scopeId, minimalResourceInfos := range scopedResourceIds {
+		for _, minimalResource := range minimalResourceInfos {
+			res.Id = minimalResource.PublicId
+			res.ScopeId = scopeId
+			authorizedActions := authResults.FetchActionSetForId(ctx, minimalResource.PublicId, IdActions, auth.WithResource(&res))
+			if len(authorizedActions) == 0 {
+				continue
+			}
+
+			if authorizedActions.OnlySelf() && minimalResource.UserId != authResults.UserId {
+				continue
+			}
+
+			resourceIdsToAuthActions[minimalResource.PublicId] = authorizedActions
+			allResourceIds = append(allResourceIds, minimalResource.PublicId)
+		}
+	}
+
+	sesList, err := s.listFromRepo(ctx, session.WithSessionIds(allResourceIds...))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if len(sesList) == 0 {
+		return &pbs.ListSessionsResponse{}, nil
+	}
+
+	filter, err := handlers.NewFilter(req.GetFilter())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	finalItems := make([]*pb.Session, 0, len(sesList))
+
+	for _, item := range sesList {
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.ScopeId]))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(resourceIdsToAuthActions[item.PublicId].Strings()))
+		}
+
+		item, err := toProto(ctx, item, outputOpts...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
 		}
 
 		if filter.Match(item) {
@@ -296,28 +401,24 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*session.Session, 
 	return sess, nil
 }
 
-func (s Service) listFromRepoViaScopeIds(ctx context.Context, scopeIds []string) ([]*session.Session, error) {
+func (s Service) listFromRepo(ctx context.Context, opt ...session.Option) ([]*session.Session, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	sesList, err := repo.ListSessions(ctx, session.WithScopeIds(scopeIds))
+	sesList, err := repo.ListSessions(ctx, opt...)
 	if err != nil {
 		return nil, err
 	}
 	return sesList, nil
 }
 
+func (s Service) listFromRepoViaScopeIds(ctx context.Context, scopeIds []string, opt ...session.Option) ([]*session.Session, error) {
+	return s.listFromRepo(ctx, session.WithScopeIds(scopeIds))
+}
+
 func (s Service) listFromRepoViaSessionIds(ctx context.Context, sessionIds []string) ([]*session.Session, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	sesList, err := repo.ListSessions(ctx, session.WithSessionIds(sessionIds...))
-	if err != nil {
-		return nil, err
-	}
-	return sesList, nil
+	return s.listFromRepo(ctx, session.WithSessionIds(sessionIds...))
 }
 
 func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*session.Session, error) {
