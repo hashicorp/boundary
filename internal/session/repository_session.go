@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
@@ -203,6 +205,53 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	}
 
 	return &session, authzSummary, nil
+}
+
+// FetchIdsForScopes implements resource.FetchIdsForScopes
+func (r *Repository) FetchIdsForScopes(ctx context.Context, scopeIds []string) (map[string][]resource.MinimalInfo, error) {
+	const op = "session.(Repository).FetchIdsForScopes"
+
+	var where string
+	var args []interface{}
+
+	inClauseCnt := 0
+
+	switch len(scopeIds) {
+	case 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
+	case 1:
+		if scopeIds[0] != scope.Global.String() {
+			inClauseCnt += 1
+			where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named("1", scopeIds[0]))
+		}
+	default:
+		idsInClause := make([]string, 0, len(scopeIds))
+		for _, id := range scopeIds {
+			inClauseCnt += 1
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+		}
+		where = fmt.Sprintf("where scope_id in (%s)", strings.Join(idsInClause, ","))
+	}
+
+	q := sessionPublicIdList
+	query := fmt.Sprintf(q, where)
+
+	rows, err := r.reader.Query(ctx, query, args)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+
+	sessionsMap := map[string][]resource.MinimalInfo{}
+	for rows.Next() {
+		var info resource.MinimalInfo
+		if err := r.reader.ScanRows(ctx, rows, &info); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+		}
+		sessionsMap[info.ScopeId] = append(sessionsMap[info.ScopeId], info)
+	}
+
+	return sessionsMap, nil
 }
 
 // ListSessions will sessions.  Supports the WithLimit, WithScopeId, WithSessionIds, and WithServerId options.

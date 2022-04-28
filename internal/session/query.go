@@ -118,6 +118,13 @@ select expiration_time, connection_limit, current_connection_count
 from
 	session_connection_limit, session_connection_count;
 `
+
+	sessionPublicIdList = `
+select public_id, scope_id, user_id from session
+%s
+;
+`
+
 	sessionList = `
 select *
 from

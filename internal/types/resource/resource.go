@@ -1,6 +1,9 @@
 package resource
 
-import "encoding/json"
+import (
+	"context"
+	"encoding/json"
+)
 
 // Type defines the types of resources in the system
 type Type uint
@@ -89,4 +92,18 @@ var Map = map[string]Type{
 	ManagedGroup.String():      ManagedGroup,
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
+}
+
+type MinimalInfo struct {
+	PublicId string
+	ScopeId  string
+	UserId   string
+}
+
+type MinimalInfoRepo interface {
+	// Fetches resource IDs for the given scopes. Note that it is assumed that
+	// the set of scopes is either length 1 or is recursive; that is, the reason
+	// we would have multiple scopes is because there is a parent or set of
+	// parents and any children.
+	FetchIdsForScopes(context.Context, []string) (map[string][]MinimalInfo, error)
 }
