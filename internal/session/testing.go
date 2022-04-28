@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -94,6 +95,11 @@ func TestSession(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, c Composed
 	}
 	require.NoError(err)
 	err = rw.Create(ctx, s, opts.withDbOpts...)
+	if e, ok := err.(*errors.Err); err != nil && ok && e.Code == errors.NotUnique {
+		// Sometimes we can get unique constraint errors when creating a session,
+		// if that happens, just retry.
+		err = rw.Create(ctx, s, opts.withDbOpts...)
+	}
 	require.NoError(err)
 
 	for _, cred := range s.DynamicCredentials {
