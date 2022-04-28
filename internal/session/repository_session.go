@@ -211,30 +211,56 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 func (r *Repository) FetchIdsForScopes(ctx context.Context, scopeIds []string) (map[string][]resource.MinimalInfo, error) {
 	const op = "session.(Repository).FetchIdsForScopes"
 
-	var where string
+	if len(scopeIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
+	}
+	return r.FetchIdsWithOptions(ctx, WithScopeIds(scopeIds))
+}
+
+func (r *Repository) FetchIdsWithOptions(ctx context.Context, opt ...Option) (map[string][]resource.MinimalInfo, error) {
+	const op = "session.(Repository).FetchIdsWithOptions"
+
+	opts := getOpts(opt...)
+
+	var where []string
 	var args []interface{}
 
 	inClauseCnt := 0
 
-	switch len(scopeIds) {
+	switch len(opts.withScopeIds) {
 	case 0:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
+		// Nothing
 	case 1:
-		if scopeIds[0] != scope.Global.String() {
+		if opts.withScopeIds[0] != scope.Global.String() {
 			inClauseCnt += 1
-			where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named("1", scopeIds[0]))
+			where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withScopeIds[0]))
 		}
 	default:
-		idsInClause := make([]string, 0, len(scopeIds))
-		for _, id := range scopeIds {
+		idsInClause := make([]string, 0, len(opts.withScopeIds))
+		for _, id := range opts.withScopeIds {
 			inClauseCnt += 1
 			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 		}
-		where = fmt.Sprintf("where scope_id in (%s)", strings.Join(idsInClause, ","))
+		where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
 	}
 
-	q := sessionPublicIdList
-	query := fmt.Sprintf(q, where)
+	if opts.withUserId != "" {
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("user_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withUserId))
+	}
+
+	if opts.withNonTerminatedSessionsOnly {
+		where = append(where, "termination_reason is null")
+	}
+
+	query := sessionPublicIdList
+	switch len(where) {
+	case 0:
+		query = fmt.Sprintf(query, "")
+	default:
+		wheres := fmt.Sprintf("where %s", strings.Join(where, " and "))
+		query = fmt.Sprintf(query, wheres)
+	}
 
 	rows, err := r.reader.Query(ctx, query, args)
 	if err != nil {
@@ -254,7 +280,7 @@ func (r *Repository) FetchIdsForScopes(ctx context.Context, scopeIds []string) (
 	return sessionsMap, nil
 }
 
-// ListSessions will sessions.  Supports the WithLimit, WithScopeId, WithSessionIds, and WithServerId options.
+// ListSessions will sessions.  Supports the WithLimit, WithScopeIds, WithUserIds, WithSessionIds, and WithServerId options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).ListSessions"
 	opts := getOpts(opt...)

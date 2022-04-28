@@ -33,6 +33,7 @@ type options struct {
 	withDbOpts                      []db.Option
 	withWorkerStateDelay            time.Duration
 	withDeadWorkerConnCloseMinGrace time.Duration
+	withNonTerminatedSessionsOnly   bool
 }
 
 func getDefaultOptions() options {
@@ -130,5 +131,14 @@ func WithWorkerStateDelay(d time.Duration) Option {
 func WithDeadWorkerConnCloseMinGrace(d time.Duration) Option {
 	return func(o *options) {
 		o.withDeadWorkerConnCloseMinGrace = d
+	}
+}
+
+// WithNonTerminatedSessionsOnly is used to indicate that a query for sessions (e.g.
+// list) should only return sessions that are cancelable -- that is, in pending
+// or active state.
+func WithNonTerminatedSessionsOnly(with bool) Option {
+	return func(o *options) {
+		o.withNonTerminatedSessionsOnly = with
 	}
 }

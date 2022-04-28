@@ -6,6 +6,7 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 
 import "protoc-gen-openapiv2/options/annotations.proto";
 import "google/api/annotations.proto";
+import "google/api/visibility.proto";
 import "controller/api/resources/sessions/v1/session.proto";
 
 service SessionService {
@@ -63,6 +64,10 @@ message ListSessionsRequest {
 	string scope_id = 1; // @gotags: `class:"public"`
 	bool recursive = 20 [json_name="recursive"]; // @gotags: `class:"public"`
 	string filter = 30 [json_name="filter"]; // @gotags: `class:"public"`
+
+	// INTERNAL ONLY: This option is experimental for use by the official
+	// Boundary desktop client and may change or disappear.
+	string style = 40 [(google.api.field_visibility).restriction = "INTERNAL"];
 }
 
 message ListSessionsResponse {
