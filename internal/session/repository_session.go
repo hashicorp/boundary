@@ -319,10 +319,10 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 
 	var whereClause string
 	if len(where) > 0 {
-		whereClause = " and " + strings.Join(where, " and ")
+		whereClause = " where " + strings.Join(where, " and ")
 	}
 	q := sessionList
-	query := fmt.Sprintf(q, limit, whereClause, withOrder)
+	query := fmt.Sprintf(q, whereClause, withOrder, limit, withOrder)
 
 	rows, err := r.reader.Query(ctx, query, args)
 	if err != nil {
