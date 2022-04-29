@@ -319,7 +319,7 @@ func (b *Server) StorePidFile(pidPath string) error {
 
 	// Write out the PID
 	pid := os.Getpid()
-	_, err = pidFile.WriteString(fmt.Sprintf("%d", pid))
+	_, err = pidFile.WriteString(strconv.Itoa(pid))
 	if err != nil {
 		return fmt.Errorf("could not write to pid file: %w", err)
 	}
@@ -459,7 +459,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 			}
 
 			if lnConfig.XForwardedForHopSkips > 0 {
-				props["x_forwarded_for_hop_skips"] = fmt.Sprintf("%d", lnConfig.XForwardedForHopSkips)
+				props["x_forwarded_for_hop_skips"] = strconv.Itoa(lnConfig.XForwardedForHopSkips)
 			}
 		}
 
@@ -473,7 +473,7 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 			lnConfig.MaxRequestSize = globals.DefaultMaxRequestSize
 		}
 		// TODO: We don't actually limit this yet.
-		// props["max_request_size"] = fmt.Sprintf("%d", lnConfig.MaxRequestSize)
+		// props["max_request_size"] = strconv.Itoa(lnConfig.MaxRequestSize)
 
 		if lnConfig.MaxRequestDuration == 0 {
 			lnConfig.MaxRequestDuration = globals.DefaultMaxRequestDuration

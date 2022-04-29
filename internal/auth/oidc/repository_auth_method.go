@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -87,7 +88,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		columns, values = append(columns, "token_claims"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), string(marshaledTokenClaims)))
+		columns, values = append(columns, "token_claims"), append(values, sql.Named(strconv.Itoa(len(values)+1), string(marshaledTokenClaims)))
 		conflictClauses = append(conflictClauses, fmt.Sprintf("token_claims = @%d", len(values)))
 		fieldMasks = append(fieldMasks, TokenClaimsField)
 	}
@@ -96,7 +97,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		columns, values = append(columns, "userinfo_claims"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), string(marshaledAccessTokenClaims)))
+		columns, values = append(columns, "userinfo_claims"), append(values, sql.Named(strconv.Itoa(len(values)+1), string(marshaledAccessTokenClaims)))
 		conflictClauses = append(conflictClauses, fmt.Sprintf("userinfo_claims = @%d", len(values)))
 		fieldMasks = append(fieldMasks, UserinfoClaimsField)
 	}
@@ -114,10 +115,10 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	switch {
 	case AccessTokenClaims[fromName] != nil:
 		foundName = AccessTokenClaims[fromName]
-		columns, values = append(columns, "full_name"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundName))
+		columns, values = append(columns, "full_name"), append(values, sql.Named(strconv.Itoa(len(values)+1), foundName))
 	case IdTokenClaims[fromName] != nil:
 		foundName = IdTokenClaims[fromName]
-		columns, values = append(columns, "full_name"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundName))
+		columns, values = append(columns, "full_name"), append(values, sql.Named(strconv.Itoa(len(values)+1), foundName))
 	}
 	if foundName != nil {
 		acctForOplog.FullName = foundName.(string)
@@ -132,10 +133,10 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	switch {
 	case AccessTokenClaims[fromEmail] != nil:
 		foundEmail = AccessTokenClaims[fromEmail]
-		columns, values = append(columns, "email"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundEmail))
+		columns, values = append(columns, "email"), append(values, sql.Named(strconv.Itoa(len(values)+1), foundEmail))
 	case IdTokenClaims[fromEmail] != nil:
 		foundEmail = IdTokenClaims[fromEmail]
-		columns, values = append(columns, "email"), append(values, sql.Named(fmt.Sprintf("%d", len(values)+1), foundEmail))
+		columns, values = append(columns, "email"), append(values, sql.Named(strconv.Itoa(len(values)+1), foundEmail))
 	}
 	if foundEmail != nil {
 		acctForOplog.Email = foundEmail.(string)

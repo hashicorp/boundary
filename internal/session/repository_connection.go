@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -426,7 +427,7 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 		params := make([]string, len(reportedConnections))
 		for i, connId := range reportedConnections {
 			params[i] = fmt.Sprintf("@%d", i)
-			args = append(args, sql.Named(fmt.Sprintf("%d", i), connId))
+			args = append(args, sql.Named(strconv.Itoa(i), connId))
 		}
 		notInClause = fmt.Sprintf(notInClause, strings.Join(params, ","))
 	}

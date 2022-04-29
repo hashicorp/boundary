@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -345,7 +346,7 @@ func (r *Repository) changes(ctx context.Context, setId string, hostIds []string
 	var params []interface{}
 	params = append(params, sql.Named("1", setId))
 	for idx, v := range hostIds {
-		params = append(params, sql.Named(fmt.Sprintf("%d", idx+2), v))
+		params = append(params, sql.Named(strconv.Itoa(idx+2), v))
 	}
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {

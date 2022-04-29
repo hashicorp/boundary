@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -306,7 +307,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 
 	var params []interface{}
 	for idx, v := range libIds {
-		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), v))
+		params = append(params, sql.Named(strconv.Itoa(idx+1), v))
 	}
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {

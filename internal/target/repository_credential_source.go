@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential"
@@ -403,7 +404,7 @@ func (r *Repository) changes(ctx context.Context, targetId string, cls []*Creden
 	var params []interface{}
 	params = append(params, sql.Named("target_id", targetId), sql.Named("purpose", purpose))
 	for idx, cl := range cls {
-		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), cl.CredentialLibraryId))
+		params = append(params, sql.Named(strconv.Itoa(idx+1), cl.CredentialLibraryId))
 		inClauseSpots = append(inClauseSpots, fmt.Sprintf("@%d", idx+1))
 	}
 	inClause := strings.Join(inClauseSpots, ",")

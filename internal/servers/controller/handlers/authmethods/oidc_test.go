@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"testing"
 	"time"
 
@@ -164,20 +165,20 @@ func TestList_FilterNonPublic(t *testing.T) {
 
 	// 1 Public
 	i := 0
-	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePublicState, "alice_rp", "secret", oidc.WithDescription(fmt.Sprintf("%d", i)),
+	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePublicState, "alice_rp", "secret", oidc.WithDescription(strconv.Itoa(i)),
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA))
 	i++
 	iam.TestSetPrimaryAuthMethod(t, iamRepo, o, oidcam.GetPublicId())
 
 	// 4 private
 	for ; i < 4; i++ {
-		_ = oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState, "alice_rp", "secret", oidc.WithDescription(fmt.Sprintf("%d", i)),
+		_ = oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.ActivePrivateState, "alice_rp", "secret", oidc.WithDescription(strconv.Itoa(i)),
 			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]), oidc.WithSigningAlgs(oidc.EdDSA))
 	}
 
 	// 5 inactive
 	for ; i < 10; i++ {
-		_ = oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "secret", oidc.WithDescription(fmt.Sprintf("%d", i)),
+		_ = oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "secret", oidc.WithDescription(strconv.Itoa(i)),
 			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 	}
 
@@ -229,7 +230,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 				return gotSorted[i].GetDescription().GetValue() < gotSorted[j].GetDescription().GetValue()
 			})
 			for i := 0; i < tc.respCount; i++ {
-				assert.Equal(t, fmt.Sprintf("%d", i), gotSorted[i].GetDescription().GetValue(), "Auth method with description '%d' missing", i)
+				assert.Equal(t, strconv.Itoa(i), gotSorted[i].GetDescription().GetValue(), "Auth method with description '%d' missing", i)
 			}
 		})
 	}

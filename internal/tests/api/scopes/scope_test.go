@@ -3,6 +3,7 @@ package scopes_test
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -31,7 +32,7 @@ func TestList(t *testing.T) {
 
 	expected := make([]*scopes.Scope, 10)
 	for i := 0; i < 10; i++ {
-		scr, err := scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName(fmt.Sprintf("%d", i)))
+		scr, err := scps.Create(tc.Context(), org.GetPublicId(), scopes.WithName(strconv.Itoa(i)))
 		require.NoError(err)
 		expected[i] = scr.Item
 	}

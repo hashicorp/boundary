@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/boundary"
@@ -220,12 +221,12 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, sco
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
 	case 1:
 		inClauseCnt += 1
-		where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), scopeIds[0]))
+		where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named(strconv.Itoa(inClauseCnt), scopeIds[0]))
 	default:
 		idsInClause := make([]string, 0, len(scopeIds))
 		for _, id := range scopeIds {
 			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), id))
 		}
 		where = fmt.Sprintf("where scope_id in (%s)", strings.Join(idsInClause, ","))
 	}
@@ -263,38 +264,38 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	case 0:
 	case 1:
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withScopeIds[0]))
+		where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), opts.withScopeIds[0]))
 	default:
 		idsInClause := make([]string, 0, len(opts.withScopeIds))
 		for _, id := range opts.withScopeIds {
 			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), id))
 		}
 		where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
 	}
 
 	if opts.withUserId != "" {
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("user_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withUserId))
+		where, args = append(where, fmt.Sprintf("user_id = @%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), opts.withUserId))
 	}
 
 	switch len(opts.withSessionIds) {
 	case 0:
 	case 1:
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("s.public_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withSessionIds[0]))
+		where, args = append(where, fmt.Sprintf("s.public_id = @%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), opts.withSessionIds[0]))
 	default:
 		idsInClause := make([]string, 0, len(opts.withSessionIds))
 		for _, id := range opts.withSessionIds {
 			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), id))
 		}
 		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
 	}
 
 	if opts.withServerId != "" {
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("server_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withServerId))
+		where, args = append(where, fmt.Sprintf("server_id = @%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), opts.withServerId))
 	}
 
 	var limit string
@@ -665,7 +666,7 @@ func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions
 	params := make([]string, len(reportedSessions))
 	for i, sessId := range reportedSessions {
 		params[i] = fmt.Sprintf("@%d", i)
-		args = append(args, sql.Named(fmt.Sprintf("%d", i), sessId))
+		args = append(args, sql.Named(strconv.Itoa(i), sessId))
 	}
 	inClause = fmt.Sprintf(inClause, strings.Join(params, ","))
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/boundary"
@@ -156,13 +157,13 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, sco
 	case 1:
 		if scopeIds[0] != scope.Global.String() {
 			inClauseCnt += 1
-			where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), scopeIds[0]))
+			where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named(strconv.Itoa(inClauseCnt), scopeIds[0]))
 		}
 	default:
 		idsInClause := make([]string, 0, len(scopeIds))
 		for _, id := range scopeIds {
 			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), id))
 		}
 		where = fmt.Sprintf("where scope_id in (%s)", strings.Join(idsInClause, ","))
 	}
@@ -204,12 +205,12 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	case 0:
 	case 1:
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithScopeIds[0]))
+		where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), opts.WithScopeIds[0]))
 	default:
 		idsInClause := make([]string, 0, len(opts.WithScopeIds))
 		for _, id := range opts.WithScopeIds {
 			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), id))
 		}
 		where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
 	}
@@ -218,19 +219,19 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	case 0:
 	case 1:
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("public_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithTargetIds[0]))
+		where, args = append(where, fmt.Sprintf("public_id = @%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), opts.WithTargetIds[0]))
 	default:
 		idsInClause := make([]string, 0, len(opts.WithTargetIds))
 		for _, id := range opts.WithTargetIds {
 			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), id))
 		}
 		where = append(where, fmt.Sprintf("public_id in (%s)", strings.Join(idsInClause, ",")))
 	}
 
 	if opts.WithType != "" {
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("type = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithType.String()))
+		where, args = append(where, fmt.Sprintf("type = @%d", inClauseCnt)), append(args, sql.Named(strconv.Itoa(inClauseCnt), opts.WithType.String()))
 	}
 
 	var foundTargets []*targetView
