@@ -18,6 +18,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Fix for retrieving sessions that could result in incomplete results when
   there is a large number (10k+) of sessions.
   [PR](https://github.com/hashicorp/boundary/pull/2049)
+* session: update session state trigger to prevent transitions to invalid states ([Issue](https://github.com/hashicorp/boundary/issues/2040),
+  [PR](https://github.com/hashicorp/boundary/pull/2046))
   
 ## 0.7.6 (2022/03/15)
 
