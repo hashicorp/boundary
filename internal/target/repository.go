@@ -2,14 +2,17 @@ package target
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // Cloneable provides a cloning interface
@@ -138,21 +141,96 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	return subtype, hostSources, credSources, nil
 }
 
+// FetchAuthzProtectedEntitiesByScope implements boundary.AuthzProtectedEntityProvider
+func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, scopeIds []string) (map[string][]boundary.AuthzProtectedEntity, error) {
+	const op = "target.(Repository).FetchAuthzProtectedEntitiesByScope"
+
+	var where string
+	var args []interface{}
+
+	inClauseCnt := 0
+
+	switch len(scopeIds) {
+	case 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
+	case 1:
+		if scopeIds[0] != scope.Global.String() {
+			inClauseCnt += 1
+			where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), scopeIds[0]))
+		}
+	default:
+		idsInClause := make([]string, 0, len(scopeIds))
+		for _, id := range scopeIds {
+			inClauseCnt += 1
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+		}
+		where = fmt.Sprintf("where scope_id in (%s)", strings.Join(idsInClause, ","))
+	}
+
+	q := targetPublicIdList
+	query := fmt.Sprintf(q, where)
+
+	rows, err := r.reader.Query(ctx, query, args)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+
+	targetsMap := map[string][]boundary.AuthzProtectedEntity{}
+	for rows.Next() {
+		var tv targetView
+		if err := r.reader.ScanRows(ctx, rows, &tv); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+		}
+		targetsMap[tv.GetScopeId()] = append(targetsMap[tv.GetScopeId()], tv)
+	}
+
+	return targetsMap, nil
+}
+
 // ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithType options.
 func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
 	const op = "target.(Repository).ListTargets"
 	opts := GetOpts(opt...)
-	if len(opts.WithScopeIds) == 0 && opts.WithUserId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "must specify either scope id or user id")
+	if len(opts.WithScopeIds) == 0 && opts.WithUserId == "" && len(opts.WithTargetIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "must specify either scope ids, target ids, or user id")
 	}
 	// TODO (jimlambrt 8/2020) - implement WithUserId() optional filtering.
 	var where []string
 	var args []interface{}
-	if len(opts.WithScopeIds) != 0 {
-		where, args = append(where, "scope_id in (?)"), append(args, opts.WithScopeIds)
+	inClauseCnt := 0
+
+	switch len(opts.WithScopeIds) {
+	case 0:
+	case 1:
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithScopeIds[0]))
+	default:
+		idsInClause := make([]string, 0, len(opts.WithScopeIds))
+		for _, id := range opts.WithScopeIds {
+			inClauseCnt += 1
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+		}
+		where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
 	}
+
+	switch len(opts.WithTargetIds) {
+	case 0:
+	case 1:
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("public_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithTargetIds[0]))
+	default:
+		idsInClause := make([]string, 0, len(opts.WithTargetIds))
+		for _, id := range opts.WithTargetIds {
+			inClauseCnt += 1
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+		}
+		where = append(where, fmt.Sprintf("public_id in (%s)", strings.Join(idsInClause, ",")))
+	}
+
 	if opts.WithType != "" {
-		where, args = append(where, "type = ?"), append(args, opts.WithType.String())
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("type = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithType.String()))
 	}
 
 	var foundTargets []*targetView

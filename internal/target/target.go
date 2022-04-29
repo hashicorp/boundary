@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -44,6 +45,8 @@ const (
 	targetsViewDefaultTable = "target_all_subtypes"
 )
 
+var _ boundary.AuthzProtectedEntity = (*targetView)(nil)
+
 // targetView provides a common way to return targets regardless of their
 // underlying type.
 type targetView struct {
@@ -75,6 +78,22 @@ func (t *targetView) SetTableName(n string) {
 	default:
 		t.tableName = n
 	}
+}
+
+// GetPublicId satisfies boundary.AuthzProtectedEntity
+func (t targetView) GetPublicId() string {
+	return t.PublicId
+}
+
+// GetScopeId satisfies boundary.AuthzProtectedEntity
+func (t targetView) GetScopeId() string {
+	return t.ScopeId
+}
+
+// GetUserId satisfies boundary.AuthzProtectedEntity; targets are not associated
+// with a user ID so this always returns an empty string
+func (t targetView) GetUserId() string {
+	return ""
 }
 
 func (t *targetView) Subtype() subtypes.Subtype {
