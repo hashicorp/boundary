@@ -94,7 +94,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 	}
 
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
-		ctx, s.repoFn, authResults, req.GetScopeId(), resource.User, req.GetRecursive(), false)
+		ctx, s.repoFn, authResults, req.GetScopeId(), resource.User, req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
