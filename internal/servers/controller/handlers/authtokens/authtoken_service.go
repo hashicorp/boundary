@@ -81,7 +81,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 	}
 
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
-		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.AuthToken, req.GetRecursive(), false)
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.AuthToken, req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}

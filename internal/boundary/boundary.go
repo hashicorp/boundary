@@ -2,7 +2,9 @@
 // define the Boundary domain.
 package boundary
 
-import "github.com/hashicorp/boundary/internal/db/timestamp"
+import (
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+)
 
 // An Entity is an object distinguished by its identity, rather than its
 // attributes. It can contain value objects and other entities.
@@ -24,4 +26,13 @@ type Resource interface {
 	Aggregate
 	GetName() string
 	GetDescription() string
+}
+
+// AuthzProtectedEntity is used by some functions (primarily
+// scopeids.AuthzProtectedEntityProvider-conforming implementations) to deliver
+// some common information necessary for calculating authz.
+type AuthzProtectedEntity interface {
+	Entity
+	GetScopeId() string
+	GetUserId() string
 }

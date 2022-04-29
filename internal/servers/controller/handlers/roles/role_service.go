@@ -96,7 +96,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 	}
 
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
-		ctx, s.repoFn, authResults, req.GetScopeId(), resource.Role, req.GetRecursive(), false)
+		ctx, s.repoFn, authResults, req.GetScopeId(), resource.Role, req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
