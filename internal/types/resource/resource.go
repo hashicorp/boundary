@@ -104,9 +104,9 @@ type BasicInfo interface {
 }
 
 type BasicInfoRepo interface {
-	// Fetches resource IDs for the given scopes. Note that it is assumed that
-	// the set of scopes is either length 1 or is recursive; that is, the reason
-	// we would have multiple scopes is because there is a parent or set of
-	// parents and any children.
-	FetchIdsForScopes(context.Context, []string) (map[string][]BasicInfo, error)
+	// Fetches basic resource info for the given scopes. Note that this is a
+	// "where clause" style of argument: if the set of scopes is populated these
+	// are the scopes to limit to (e.g. to put in a where clause). An empty set
+	// of scopes means to look in *all* scopes, not none!
+	FetchBasicInfo(context.Context, []string) (map[string][]BasicInfo, error)
 }

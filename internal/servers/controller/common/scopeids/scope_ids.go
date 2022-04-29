@@ -44,10 +44,6 @@ type GetListingResourceInformationInput struct {
 	// Whether the search is recursive
 	Recursive bool
 
-	// Whether to only return scopes with exact permissions, or whether parent
-	// scopes with appropriate permissions are sufficient
-	DirectOnly bool
-
 	// A repo to fetch resources
 	BasicInfoRepo resource.BasicInfoRepo
 
@@ -93,6 +89,8 @@ func GetListingResourceInformation(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root scope id")
 	case input.AuthResults.Scope == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil scope in auth results")
+	case !input.Recursive && input.AuthResults.Scope.Id != input.RootScopeId:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "non-recursive search but auth results scope does not match root scope")
 	}
 
 	// This will be used to memoize scope info so we can put the right scope
@@ -103,10 +101,10 @@ func GetListingResourceInformation(
 	// already-looked-up info
 	if !input.Recursive {
 		output.ScopeResourceMap[input.AuthResults.Scope.Id] = &ScopeInfoWithResourceIds{ScopeInfo: input.AuthResults.Scope}
-		// If we don't have information do to the lookup ourselves, return what
-		// we have
+		// If we don't have information do to the resource lookup ourselves,
+		// return what we have
 		if input.BasicInfoRepo == nil {
-			output.ScopeIds = []string{input.RootScopeId}
+			output.ScopeIds = []string{input.AuthResults.Scope.Id}
 			return output, nil
 		}
 		// Otherwise filter on this one scope and return
@@ -148,11 +146,9 @@ func GetListingResourceInformation(
 		switch len(aSet) {
 		case 0:
 			// Defer until we've read all scopes. We do this because if the
-			// ordering coming back isn't in parent-first ording our map
+			// ordering coming back isn't in parent-first ordering our map
 			// lookup might fail.
-			if !input.DirectOnly {
-				deferredScopes = append(deferredScopes, scp)
-			}
+			deferredScopes = append(deferredScopes, scp)
 		case 1:
 			if aSet[0] != action.List {
 				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
@@ -223,7 +219,7 @@ func GetListingResourceInformation(
 	}
 
 	if input.BasicInfoRepo == nil {
-		_ = output.populateScopeIdsFromScopeResourceMap()
+		output.populateScopeIdsFromScopeResourceMap()
 		return output, nil
 	}
 
@@ -250,16 +246,11 @@ func filterAuthorizedResourceIds(
 	const op = "scopeids.filterAuthorizedResources"
 
 	// Populate scopeIds and determine if we found global
-	foundGlobal := output.populateScopeIdsFromScopeResourceMap()
+	output.populateScopeIdsFromScopeResourceMap()
 
-	// Fetch resources for all of the input scope IDs unless we find global in
-	// which case we only fetch that since we are mandating recursive behavior
-	// in the FetchIdsForScopes function.
-	scopeIdsForFetch := output.ScopeIds
-	if foundGlobal {
-		scopeIdsForFetch = []string{scope.Global.String()}
-	}
-	scopedResourceInfo, err := input.BasicInfoRepo.FetchIdsForScopes(ctx, scopeIdsForFetch)
+	// The calling function is giving us a complete set with any recursive
+	// lookup already performed (that's the point of the function).
+	scopedResourceInfo, err := input.BasicInfoRepo.FetchBasicInfo(ctx, output.ScopeIds)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -299,15 +290,10 @@ func filterAuthorizedResourceIds(
 
 // populateScopeIdsFromScopeResourceMap populates the ScopeIds field and returns
 // whether global scope was found
-func (i *GetListingResourceInformationOutput) populateScopeIdsFromScopeResourceMap() bool {
-	var foundGlobal bool
+func (i *GetListingResourceInformationOutput) populateScopeIdsFromScopeResourceMap() {
 	for k := range i.ScopeResourceMap {
-		if k == scope.Global.String() {
-			foundGlobal = true
-		}
 		i.ScopeIds = append(i.ScopeIds, k)
 	}
-	return foundGlobal
 }
 
 // GetListingScopeIds is provided for backwards compatibility with existing
@@ -327,9 +313,6 @@ func GetListingScopeIds(
 	typ resource.Type,
 	// Whether or not the search should be recursive
 	recursive bool,
-	// Whether to only return scopes with exact permissions, or whether parent
-	// scopes with appropriate permissions are sufficient
-	directOnly bool,
 ) ([]string, map[string]*scopes.ScopeInfo, error) {
 	const op = "scopeids.GetListingScopeIds"
 	scopeResourceInfo, err := GetListingResourceInformation(ctx,
@@ -339,7 +322,6 @@ func GetListingScopeIds(
 			RootScopeId: rootScopeId,
 			Type:        typ,
 			Recursive:   recursive,
-			DirectOnly:  directOnly,
 		},
 	)
 	if err != nil {

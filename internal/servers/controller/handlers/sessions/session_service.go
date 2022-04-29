@@ -152,7 +152,6 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 			RootScopeId:   req.GetScopeId(),
 			Type:          resource.Session,
 			Recursive:     req.GetRecursive(),
-			DirectOnly:    false,
 			BasicInfoRepo: repo,
 			ActionSet:     IdActions,
 		},

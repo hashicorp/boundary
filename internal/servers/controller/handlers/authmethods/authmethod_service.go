@@ -130,7 +130,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 	}
 
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
-		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.AuthMethod, req.GetRecursive(), false)
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.AuthMethod, req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}

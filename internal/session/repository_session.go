@@ -13,9 +13,10 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
+
+var _ resource.BasicInfoRepo = (*Repository)(nil)
 
 // CreateSession inserts into the repository and returns the new Session with
 // its State of "Pending".  The following fields must be empty when creating a
@@ -207,8 +208,8 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	return &session, authzSummary, nil
 }
 
-// FetchIdsForScopes implements resource.FetchIdsForScopes
-func (r *Repository) FetchIdsForScopes(ctx context.Context, scopeIds []string) (map[string][]resource.BasicInfo, error) {
+// FetchBasicInfo implements resource.BasicInfoRepo
+func (r *Repository) FetchBasicInfo(ctx context.Context, scopeIds []string) (map[string][]resource.BasicInfo, error) {
 	const op = "session.(Repository).FetchIdsForScopes"
 
 	var where string
@@ -220,10 +221,8 @@ func (r *Repository) FetchIdsForScopes(ctx context.Context, scopeIds []string) (
 	case 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
 	case 1:
-		if scopeIds[0] != scope.Global.String() {
-			inClauseCnt += 1
-			where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named("1", scopeIds[0]))
-		}
+		inClauseCnt += 1
+		where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named("1", scopeIds[0]))
 	default:
 		idsInClause := make([]string, 0, len(scopeIds))
 		for _, id := range scopeIds {

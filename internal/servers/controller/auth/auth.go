@@ -196,7 +196,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 				return
 			}
 			if scp == nil {
-				ret.Error = errors.New(ctx, errors.InvalidParameter, op, fmt.Sprint("non-existent scope $q", ret.Scope.Id))
+				ret.Error = errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("non-existent scope %q", ret.Scope.Id))
 				return
 			}
 			ret.Scope = &scopes.ScopeInfo{

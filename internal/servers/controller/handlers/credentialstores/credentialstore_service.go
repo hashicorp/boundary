@@ -112,7 +112,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 	}
 
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
-		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.CredentialStore, req.GetRecursive(), false)
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.CredentialStore, req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}
