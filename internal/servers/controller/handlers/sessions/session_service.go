@@ -147,13 +147,13 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	scopeResourceInfo, err := scopeids.GetListingResourceInformation(
 		ctx,
 		scopeids.GetListingResourceInformationInput{
-			IamRepoFn:     s.iamRepoFn,
-			AuthResults:   authResults,
-			RootScopeId:   req.GetScopeId(),
-			Type:          resource.Session,
-			Recursive:     req.GetRecursive(),
-			BasicInfoRepo: repo,
-			ActionSet:     IdActions,
+			IamRepoFn:                    s.iamRepoFn,
+			AuthResults:                  authResults,
+			RootScopeId:                  req.GetScopeId(),
+			Type:                         resource.Session,
+			Recursive:                    req.GetRecursive(),
+			AuthzProtectedEntityProvider: repo,
+			ActionSet:                    IdActions,
 		},
 	)
 	if err != nil {

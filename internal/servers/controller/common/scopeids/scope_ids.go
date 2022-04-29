@@ -3,6 +3,7 @@ package scopeids
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -45,7 +46,7 @@ type GetListingResourceInformationInput struct {
 	Recursive bool
 
 	// A repo to fetch resources
-	BasicInfoRepo resource.BasicInfoRepo
+	AuthzProtectedEntityProvider boundary.AuthzProtectedEntityProvider
 
 	// The available actions for the resource type
 	ActionSet action.ActionSet
@@ -103,7 +104,7 @@ func GetListingResourceInformation(
 		output.ScopeResourceMap[input.AuthResults.Scope.Id] = &ScopeInfoWithResourceIds{ScopeInfo: input.AuthResults.Scope}
 		// If we don't have information do to the resource lookup ourselves,
 		// return what we have
-		if input.BasicInfoRepo == nil {
+		if input.AuthzProtectedEntityProvider == nil {
 			output.ScopeIds = []string{input.AuthResults.Scope.Id}
 			return output, nil
 		}
@@ -218,7 +219,7 @@ func GetListingResourceInformation(
 		return nil, handlers.ForbiddenError()
 	}
 
-	if input.BasicInfoRepo == nil {
+	if input.AuthzProtectedEntityProvider == nil {
 		output.populateScopeIdsFromScopeResourceMap()
 		return output, nil
 	}
@@ -250,7 +251,7 @@ func filterAuthorizedResourceIds(
 
 	// The calling function is giving us a complete set with any recursive
 	// lookup already performed (that's the point of the function).
-	scopedResourceInfo, err := input.BasicInfoRepo.FetchBasicInfo(ctx, output.ScopeIds)
+	scopedResourceInfo, err := input.AuthzProtectedEntityProvider.FetchAuthzProtectedEntityInfo(ctx, output.ScopeIds)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

@@ -1,7 +1,6 @@
 package resource
 
 import (
-	"context"
 	"encoding/json"
 )
 
@@ -92,21 +91,4 @@ var Map = map[string]Type{
 	ManagedGroup.String():      ManagedGroup,
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
-}
-
-// BasicInfo is used by some functions (primarily
-// BasicInfoRepo-conforming implementations) to deliver some common information
-// necessary for calculating authz.
-type BasicInfo interface {
-	GetPublicId() string
-	GetScopeId() string
-	GetUserId() string
-}
-
-type BasicInfoRepo interface {
-	// Fetches basic resource info for the given scopes. Note that this is a
-	// "where clause" style of argument: if the set of scopes is populated these
-	// are the scopes to limit to (e.g. to put in a where clause). An empty set
-	// of scopes means to look in *all* scopes, not none!
-	FetchBasicInfo(context.Context, []string) (map[string][]BasicInfo, error)
 }

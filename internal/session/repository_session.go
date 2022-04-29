@@ -8,15 +8,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-var _ resource.BasicInfoRepo = (*Repository)(nil)
+var _ boundary.AuthzProtectedEntityProvider = (*Repository)(nil)
 
 // CreateSession inserts into the repository and returns the new Session with
 // its State of "Pending".  The following fields must be empty when creating a
@@ -208,9 +208,9 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	return &session, authzSummary, nil
 }
 
-// FetchBasicInfo implements resource.BasicInfoRepo
-func (r *Repository) FetchBasicInfo(ctx context.Context, scopeIds []string) (map[string][]resource.BasicInfo, error) {
-	const op = "session.(Repository).FetchIdsForScopes"
+// FetchAuthzProtectedEntityInfo implements boundary.AuthzProtectedEntityProvider
+func (r *Repository) FetchAuthzProtectedEntityInfo(ctx context.Context, scopeIds []string) (map[string][]boundary.AuthzProtectedEntity, error) {
+	const op = "session.(Repository).FetchAuthzProtectedEntityInfo"
 
 	var where string
 	var args []interface{}
@@ -241,7 +241,7 @@ func (r *Repository) FetchBasicInfo(ctx context.Context, scopeIds []string) (map
 	}
 	defer rows.Close()
 
-	sessionsMap := map[string][]resource.BasicInfo{}
+	sessionsMap := map[string][]boundary.AuthzProtectedEntity{}
 	for rows.Next() {
 		var ses Session
 		if err := r.reader.ScanRows(ctx, rows, &ses); err != nil {

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -133,9 +133,9 @@ func (s Session) GetUserId() string {
 }
 
 var (
-	_ Cloneable          = (*Session)(nil)
-	_ db.VetForWriter    = (*Session)(nil)
-	_ resource.BasicInfo = (*Session)(nil)
+	_ Cloneable                     = (*Session)(nil)
+	_ db.VetForWriter               = (*Session)(nil)
+	_ boundary.AuthzProtectedEntity = (*Session)(nil)
 )
 
 // New creates a new in memory session.
