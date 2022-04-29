@@ -35,6 +35,7 @@ type options struct {
 	WithSessionConnectionLimit int32
 	WithPublicId               string
 	WithWorkerFilter           string
+	WithTargetIds              []string
 }
 
 func getDefaultOptions() options {
@@ -159,5 +160,12 @@ func WithPublicId(id string) Option {
 func WithWorkerFilter(filter string) Option {
 	return func(o *options) {
 		o.WithWorkerFilter = filter
+	}
+}
+
+// WithTargetIds provides an option to search by specific target IDs
+func WithTargetIds(with []string) Option {
+	return func(o *options) {
+		o.WithTargetIds = with
 	}
 }
