@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -119,13 +120,22 @@ type Session struct {
 	tableName string `gorm:"-"`
 }
 
-func (s *Session) GetPublicId() string {
+func (s Session) GetPublicId() string {
 	return s.PublicId
 }
 
+func (s Session) GetScopeId() string {
+	return s.ScopeId
+}
+
+func (s Session) GetUserId() string {
+	return s.UserId
+}
+
 var (
-	_ Cloneable       = (*Session)(nil)
-	_ db.VetForWriter = (*Session)(nil)
+	_ Cloneable          = (*Session)(nil)
+	_ db.VetForWriter    = (*Session)(nil)
+	_ resource.BasicInfo = (*Session)(nil)
 )
 
 // New creates a new in memory session.

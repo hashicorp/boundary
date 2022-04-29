@@ -49,7 +49,7 @@ type GetListingResourceInformationInput struct {
 	DirectOnly bool
 
 	// A repo to fetch resources
-	MinimalInfoRepo resource.MinimalInfoRepo
+	BasicInfoRepo resource.BasicInfoRepo
 
 	// The available actions for the resource type
 	ActionSet action.ActionSet
@@ -105,7 +105,7 @@ func GetListingResourceInformation(
 		output.ScopeResourceMap[input.AuthResults.Scope.Id] = &ScopeInfoWithResourceIds{ScopeInfo: input.AuthResults.Scope}
 		// If we don't have information do to the lookup ourselves, return what
 		// we have
-		if input.MinimalInfoRepo == nil {
+		if input.BasicInfoRepo == nil {
 			output.ScopeIds = []string{input.RootScopeId}
 			return output, nil
 		}
@@ -222,7 +222,7 @@ func GetListingResourceInformation(
 		return nil, handlers.ForbiddenError()
 	}
 
-	if input.MinimalInfoRepo == nil {
+	if input.BasicInfoRepo == nil {
 		_ = output.populateScopeIdsFromScopeResourceMap()
 		return output, nil
 	}
@@ -259,7 +259,7 @@ func filterAuthorizedResourceIds(
 	if foundGlobal {
 		scopeIdsForFetch = []string{scope.Global.String()}
 	}
-	scopedResourceIds, err := input.MinimalInfoRepo.FetchIdsForScopes(ctx, scopeIdsForFetch)
+	scopedResourceInfo, err := input.BasicInfoRepo.FetchIdsForScopes(ctx, scopeIdsForFetch)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -270,17 +270,17 @@ func filterAuthorizedResourceIds(
 
 	// Now run authorization checks against each so we know if there is a point
 	// in fetching the full resource, and cache the authorized actions
-	for scopeId, minimalResourceInfos := range scopedResourceIds {
-		for _, minimalResource := range minimalResourceInfos {
-			res.Id = minimalResource.PublicId
+	for scopeId, resourceInfos := range scopedResourceInfo {
+		for _, resourceInfo := range resourceInfos {
+			res.Id = resourceInfo.GetPublicId()
 			res.ScopeId = scopeId
-			authorizedActions := input.AuthResults.FetchActionSetForId(ctx, minimalResource.PublicId, input.ActionSet, auth.WithResource(&res))
+			authorizedActions := input.AuthResults.FetchActionSetForId(ctx, resourceInfo.GetPublicId(), input.ActionSet, auth.WithResource(&res))
 			if len(authorizedActions) == 0 {
 				continue
 			}
 
-			if minimalResource.UserId != "" {
-				if authorizedActions.OnlySelf() && minimalResource.UserId != input.AuthResults.UserId {
+			if resourceInfo.GetUserId() != "" {
+				if authorizedActions.OnlySelf() && resourceInfo.GetUserId() != input.AuthResults.UserId {
 					continue
 				}
 			}
@@ -289,8 +289,8 @@ func filterAuthorizedResourceIds(
 				output.ScopeResourceMap[scopeId].Resources = make(map[string]ResourceInfo)
 			}
 
-			output.ScopeResourceMap[scopeId].Resources[minimalResource.PublicId] = ResourceInfo{AuthorizedActions: authorizedActions}
-			output.ResourceIds = append(output.ResourceIds, minimalResource.PublicId)
+			output.ScopeResourceMap[scopeId].Resources[resourceInfo.GetPublicId()] = ResourceInfo{AuthorizedActions: authorizedActions}
+			output.ResourceIds = append(output.ResourceIds, resourceInfo.GetPublicId())
 		}
 	}
 

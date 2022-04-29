@@ -208,7 +208,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 }
 
 // FetchIdsForScopes implements resource.FetchIdsForScopes
-func (r *Repository) FetchIdsForScopes(ctx context.Context, scopeIds []string) (map[string][]resource.MinimalInfo, error) {
+func (r *Repository) FetchIdsForScopes(ctx context.Context, scopeIds []string) (map[string][]resource.BasicInfo, error) {
 	const op = "session.(Repository).FetchIdsForScopes"
 
 	var where string
@@ -242,13 +242,13 @@ func (r *Repository) FetchIdsForScopes(ctx context.Context, scopeIds []string) (
 	}
 	defer rows.Close()
 
-	sessionsMap := map[string][]resource.MinimalInfo{}
+	sessionsMap := map[string][]resource.BasicInfo{}
 	for rows.Next() {
-		var info resource.MinimalInfo
-		if err := r.reader.ScanRows(ctx, rows, &info); err != nil {
+		var ses Session
+		if err := r.reader.ScanRows(ctx, rows, &ses); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
-		sessionsMap[info.ScopeId] = append(sessionsMap[info.ScopeId], info)
+		sessionsMap[ses.GetScopeId()] = append(sessionsMap[ses.GetScopeId()], ses)
 	}
 
 	return sessionsMap, nil

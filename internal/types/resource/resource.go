@@ -94,16 +94,19 @@ var Map = map[string]Type{
 	CredentialLibrary.String(): CredentialLibrary,
 }
 
-type MinimalInfo struct {
-	PublicId string
-	ScopeId  string
-	UserId   string
+// BasicInfo is used by some functions (primarily
+// BasicInfoRepo-conforming implementations) to deliver some common information
+// necessary for calculating authz.
+type BasicInfo interface {
+	GetPublicId() string
+	GetScopeId() string
+	GetUserId() string
 }
 
-type MinimalInfoRepo interface {
+type BasicInfoRepo interface {
 	// Fetches resource IDs for the given scopes. Note that it is assumed that
 	// the set of scopes is either length 1 or is recursive; that is, the reason
 	// we would have multiple scopes is because there is a parent or set of
 	// parents and any children.
-	FetchIdsForScopes(context.Context, []string) (map[string][]MinimalInfo, error)
+	FetchIdsForScopes(context.Context, []string) (map[string][]BasicInfo, error)
 }
