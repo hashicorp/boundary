@@ -133,7 +133,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	}
 
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
-		ctx, s.repoFn, authResults, req.GetScopeId(), resource.Scope, req.GetRecursive(), false)
+		ctx, s.repoFn, authResults, req.GetScopeId(), resource.Scope, req.GetRecursive())
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -119,13 +120,22 @@ type Session struct {
 	tableName string `gorm:"-"`
 }
 
-func (s *Session) GetPublicId() string {
+func (s Session) GetPublicId() string {
 	return s.PublicId
 }
 
+func (s Session) GetScopeId() string {
+	return s.ScopeId
+}
+
+func (s Session) GetUserId() string {
+	return s.UserId
+}
+
 var (
-	_ Cloneable       = (*Session)(nil)
-	_ db.VetForWriter = (*Session)(nil)
+	_ Cloneable                     = (*Session)(nil)
+	_ db.VetForWriter               = (*Session)(nil)
+	_ boundary.AuthzProtectedEntity = (*Session)(nil)
 )
 
 // New creates a new in memory session.

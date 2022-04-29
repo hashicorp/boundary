@@ -146,6 +146,8 @@ var _ pbs.TargetServiceServer = Service{}
 
 // ListTargets implements the interface pbs.TargetServiceServer.
 func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (*pbs.ListTargetsResponse, error) {
+	const op = "targets.(Service).ListSessions"
+
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
@@ -163,17 +165,34 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		}
 	}
 
-	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
-		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.Target, req.GetRecursive(), false)
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	scopeResourceInfo, err := scopeids.GetListingResourceInformation(
+		ctx,
+		scopeids.GetListingResourceInformationInput{
+			IamRepoFn:                    s.iamRepoFn,
+			AuthResults:                  authResults,
+			RootScopeId:                  req.GetScopeId(),
+			Type:                         resource.Target,
+			Recursive:                    req.GetRecursive(),
+			AuthzProtectedEntityProvider: repo,
+			ActionSet:                    IdActions,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
+
 	// If no scopes match, return an empty response
-	if len(scopeIds) == 0 {
+	if len(scopeResourceInfo.ScopeIds) == 0 ||
+		len(scopeResourceInfo.ResourceIds) == 0 {
 		return &pbs.ListTargetsResponse{}, nil
 	}
 
-	tl, err := s.listFromRepo(ctx, scopeIds)
+	tl, err := s.listFromRepo(ctx, scopeResourceInfo.ResourceIds)
 	if err != nil {
 		return nil, err
 	}
@@ -190,21 +209,14 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		Type: resource.Target,
 	}
 	for _, item := range tl {
-		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
-			continue
-		}
-
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+			outputOpts = append(outputOpts, handlers.WithScope(scopeResourceInfo.ScopeResourceMap[item.GetScopeId()].ScopeInfo))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(scopeResourceInfo.ScopeResourceMap[item.GetScopeId()].Resources[item.GetPublicId()].AuthorizedActions.Strings()))
 		}
 
 		item, err := toProto(ctx, item, nil, nil, outputOpts...)
@@ -1346,12 +1358,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]target.Target, error) {
+func (s Service) listFromRepo(ctx context.Context, targetIds []string) ([]target.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListTargets(ctx, target.WithScopeIds(scopeIds))
+	ul, err := repo.ListTargets(ctx, target.WithTargetIds(targetIds))
 	if err != nil {
 		return nil, err
 	}

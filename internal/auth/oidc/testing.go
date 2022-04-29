@@ -39,7 +39,7 @@ const TestFakeManagedGroupFilter = `"/foo" == "bar"`
 // WithMaxAge, WithApiUrl, WithIssuer, WithCertificates, WithAudClaims, and
 // WithSigningAlgs options are supported.
 func TestAuthMethod(
-	t *testing.T,
+	t testing.TB,
 	conn *db.DB,
 	databaseWrapper wrapping.Wrapper,
 	scopeId string,
@@ -131,7 +131,7 @@ func TestAuthMethod(
 // TestSortAuthMethods will sort the provided auth methods by public id and it
 // will sort each auth method's embedded value objects (algs, auds, certs,
 // callbacks)
-func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
+func TestSortAuthMethods(t testing.TB, methods []*AuthMethod) {
 	// sort them by public id first...
 	sort.Slice(methods, func(a, b int) bool {
 		return methods[a].PublicId < methods[b].PublicId
@@ -158,7 +158,7 @@ func TestSortAuthMethods(t *testing.T, methods []*AuthMethod) {
 }
 
 // TestAccount creates a test oidc auth account.
-func TestAccount(t *testing.T, conn *db.DB, am *AuthMethod, subject string, opt ...Option) *Account {
+func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, subject string, opt ...Option) *Account {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -179,7 +179,7 @@ func TestAccount(t *testing.T, conn *db.DB, am *AuthMethod, subject string, opt 
 }
 
 // TestManagedGroup creates a test oidc managed group.
-func TestManagedGroup(t *testing.T, conn *db.DB, am *AuthMethod, filter string, opt ...Option) *ManagedGroup {
+func TestManagedGroup(t testing.TB, conn *db.DB, am *AuthMethod, filter string, opt ...Option) *ManagedGroup {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -197,7 +197,7 @@ func TestManagedGroup(t *testing.T, conn *db.DB, am *AuthMethod, filter string, 
 }
 
 // TestManagedGroupMember adds given account IDs to a managed group
-func TestManagedGroupMember(t *testing.T, conn *db.DB, managedGroupId, memberId string, opt ...Option) *ManagedGroupMemberAccount {
+func TestManagedGroupMember(t testing.TB, conn *db.DB, managedGroupId, memberId string, opt ...Option) *ManagedGroupMemberAccount {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -212,7 +212,7 @@ func TestManagedGroupMember(t *testing.T, conn *db.DB, managedGroupId, memberId 
 
 // TestConvertToUrls will convert URL string representations to a slice of
 // *url.URL
-func TestConvertToUrls(t *testing.T, urls ...string) []*url.URL {
+func TestConvertToUrls(t testing.TB, urls ...string) []*url.URL {
 	t.Helper()
 	require := require.New(t)
 	require.NotEmpty(urls)
@@ -228,7 +228,7 @@ func TestConvertToUrls(t *testing.T, urls ...string) []*url.URL {
 
 // testGenerateCA will generate a test x509 CA cert, along with it encoded in a
 // PEM format.
-func testGenerateCA(t *testing.T, hosts ...string) (*x509.Certificate, string) {
+func testGenerateCA(t testing.TB, hosts ...string) (*x509.Certificate, string) {
 	t.Helper()
 	require := require.New(t)
 
@@ -280,7 +280,7 @@ func testGenerateCA(t *testing.T, hosts ...string) (*x509.Certificate, string) {
 	return c, string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes}))
 }
 
-func testProvider(t *testing.T, clientId, clientSecret, allowedRedirectURL string, tp *oidc.TestProvider) *oidc.Provider {
+func testProvider(t testing.TB, clientId, clientSecret, allowedRedirectURL string, tp *oidc.TestProvider) *oidc.Provider {
 	t.Helper()
 	require := require.New(t)
 	require.NotEmptyf(clientId, "%s: client id is empty")
@@ -307,7 +307,7 @@ func testProvider(t *testing.T, clientId, clientSecret, allowedRedirectURL strin
 // testState will make a request.State and encrypt/encode within a request.Wrapper.
 // the returned string can be used as a parameter for functions like: oidc.Callback
 func testState(
-	t *testing.T,
+	t testing.TB,
 	am *AuthMethod,
 	kms *kms.Kms,
 	tokenRequestId string,
@@ -344,7 +344,7 @@ func testState(
 // TestTokenRequestId will make a request.Token and encrypt/encode within a request.Wrapper.
 // the returned string can be used as a parameter for functions like: oidc.TokenRequest
 func TestTokenRequestId(
-	t *testing.T,
+	t testing.TB,
 	am *AuthMethod,
 	kms *kms.Kms,
 	expIn time.Duration,
@@ -371,7 +371,7 @@ func TestTokenRequestId(
 
 // TestPendingToken will create a pending auth token for the tokenRequestId (aka public id)
 func TestPendingToken(
-	t *testing.T,
+	t testing.TB,
 	tokenRepo *authtoken.Repository,
 	user *iam.User,
 	acct *Account,
@@ -401,11 +401,11 @@ type testControllerSrv struct {
 	iamRepoFn  IamRepoFactory
 	atRepoFn   AuthTokenRepoFactory
 	httpServer *httptest.Server
-	t          *testing.T
+	t          testing.TB
 }
 
 // startTestControllerSrv returns a running testControllerSrv
-func startTestControllerSrv(t *testing.T, oidcRepoFn OidcRepoFactory, iamRepoFn IamRepoFactory, atRepoFn AuthTokenRepoFactory) *testControllerSrv {
+func startTestControllerSrv(t testing.TB, oidcRepoFn OidcRepoFactory, iamRepoFn IamRepoFactory, atRepoFn AuthTokenRepoFactory) *testControllerSrv {
 	require := require.New(t)
 	require.NotNil(t)
 	t.Helper()

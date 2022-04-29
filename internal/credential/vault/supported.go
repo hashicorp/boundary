@@ -30,9 +30,9 @@ func init() {
 	mountDatabase = gotMountDatabase
 }
 
-func gotDocker(t *testing.T) {}
+func gotDocker(t testing.TB) {}
 
-func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
+func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 	const (
 		serverTlsTemplate = `{
   "listener": [
@@ -193,7 +193,7 @@ func gotNewServer(t *testing.T, opt ...TestOption) *TestVaultServer {
 	return server
 }
 
-func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) *TestDatabase {
+func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *TestDatabase {
 	require := require.New(t)
 	require.Nil(v.postgresContainer, "postgres container exists")
 	require.NotNil(v.network, "Vault server must be created with docker network")
@@ -265,8 +265,10 @@ func gotMountDatabase(t *testing.T, v *TestVaultServer, opt ...TestOption) *Test
 
 	// Mount Database
 	maxTTL := 24 * time.Hour
-	if deadline, ok := t.Deadline(); ok {
-		maxTTL = time.Until(deadline) * 2
+	if t, ok := t.(*testing.T); ok {
+		if deadline, ok := t.Deadline(); ok {
+			maxTTL = time.Until(deadline) * 2
+		}
 	}
 
 	defaultTTL := maxTTL / 2
@@ -348,7 +350,7 @@ grant closed_role to "{{name}}";
 	}
 }
 
-func cleanupResource(t *testing.T, pool *dockertest.Pool, resource *dockertest.Resource) {
+func cleanupResource(t testing.TB, pool *dockertest.Pool, resource *dockertest.Resource) {
 	t.Helper()
 	var err error
 	for i := 0; i < 10; i++ {

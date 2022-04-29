@@ -15,13 +15,13 @@ import (
 )
 
 // TestGetEventerConfig is a test accessor for the eventer's config
-func TestGetEventerConfig(t *testing.T, e *Eventer) EventerConfig {
+func TestGetEventerConfig(t testing.TB, e *Eventer) EventerConfig {
 	t.Helper()
 	return e.conf
 }
 
 // TestResetSysEventer will reset event.syseventer to an uninitialized state.
-func TestResetSystEventer(t *testing.T) {
+func TestResetSystEventer(t testing.TB) {
 	t.Helper()
 	sysEventerLock.Lock()
 	defer sysEventerLock.Unlock()
@@ -38,7 +38,7 @@ type TestConfig struct {
 
 // TestEventerConfig creates a test config and registers a cleanup func for its
 // test tmp files.
-func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig {
+func TestEventerConfig(t testing.TB, testName string, opt ...Option) TestConfig {
 	t.Helper()
 	require := require.New(t)
 	tmpAllFile, err := ioutil.TempFile("./", "tmp-all-events-"+testName)
@@ -153,7 +153,7 @@ func TestEventerConfig(t *testing.T, testName string, opt ...Option) TestConfig 
 }
 
 // TestRequestInfo provides a test RequestInfo
-func TestRequestInfo(t *testing.T) *RequestInfo {
+func TestRequestInfo(t testing.TB) *RequestInfo {
 	t.Helper()
 	return &RequestInfo{
 		EventId:  "test-event-id",
@@ -164,7 +164,7 @@ func TestRequestInfo(t *testing.T) *RequestInfo {
 	}
 }
 
-func testAuth(t *testing.T) *Auth {
+func testAuth(t testing.TB) *Auth {
 	t.Helper()
 	return &Auth{
 		UserEmail: "test-auth@example.com",
@@ -172,7 +172,7 @@ func testAuth(t *testing.T) *Auth {
 	}
 }
 
-func testRequest(t *testing.T) *Request {
+func testRequest(t testing.TB) *Request {
 	t.Helper()
 	return &Request{
 		Operation: "op",
@@ -183,7 +183,7 @@ func testRequest(t *testing.T) *Request {
 	}
 }
 
-func testResponse(t *testing.T) *Response {
+func testResponse(t testing.TB) *Response {
 	t.Helper()
 	return &Response{
 		StatusCode: 200,
@@ -200,7 +200,7 @@ func testResponse(t *testing.T) *Response {
 }
 
 // TestWithBroker is an unexported and a test option for passing in an optional broker
-func TestWithBroker(t *testing.T, b broker) Option {
+func TestWithBroker(t testing.TB, b broker) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withBroker = b
@@ -208,7 +208,7 @@ func TestWithBroker(t *testing.T, b broker) Option {
 }
 
 // TestWithObservationSink is a test option
-func TestWithObservationSink(t *testing.T) Option {
+func TestWithObservationSink(t testing.TB) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withObservationSink = true
@@ -216,7 +216,7 @@ func TestWithObservationSink(t *testing.T) Option {
 }
 
 // TestWithAuditSink is a test option
-func TestWithAuditSink(t *testing.T) Option {
+func TestWithAuditSink(t testing.TB) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withAuditSink = true
@@ -224,7 +224,7 @@ func TestWithAuditSink(t *testing.T) Option {
 }
 
 // TestWithSysSink is a test option
-func TestWithSysSink(t *testing.T) Option {
+func TestWithSysSink(t testing.TB) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withSysSink = true
@@ -232,7 +232,7 @@ func TestWithSysSink(t *testing.T) Option {
 }
 
 // testWithSinkFormat is an unexported and a test option
-func testWithSinkFormat(t *testing.T, fmt SinkFormat) Option {
+func testWithSinkFormat(t testing.TB, fmt SinkFormat) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withSinkFormat = fmt

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthToken(t *testing.T, conn *db.DB, kms *kms.Kms, scopeId string, opt ...Option) *AuthToken {
+func TestAuthToken(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId string, opt ...Option) *AuthToken {
 	t.Helper()
 	authMethod := password.TestAuthMethods(t, conn, scopeId, 1)[0]
 	// auth account is only used to join auth method to user.

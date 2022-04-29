@@ -12,7 +12,7 @@ import (
 // TestCatalogs creates count number of static host catalogs to the provided DB
 // with the provided scope id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
-func TestCatalogs(t *testing.T, conn *db.DB, scopeId string, count int) []*HostCatalog {
+func TestCatalogs(t testing.TB, conn *db.DB, scopeId string, count int) []*HostCatalog {
 	t.Helper()
 	assert := assert.New(t)
 	var cats []*HostCatalog
@@ -36,7 +36,7 @@ func TestCatalogs(t *testing.T, conn *db.DB, scopeId string, count int) []*HostC
 // TestHosts creates count number of static hosts to the provided DB
 // with the provided catalog id.  The catalog must have been created previously.
 // If any errors are encountered during the creation of the host, the test will fail.
-func TestHosts(t *testing.T, conn *db.DB, catalogId string, count int) []*Host {
+func TestHosts(t testing.TB, conn *db.DB, catalogId string, count int) []*Host {
 	t.Helper()
 	assert := assert.New(t)
 	var hosts []*Host
@@ -62,7 +62,7 @@ func TestHosts(t *testing.T, conn *db.DB, catalogId string, count int) []*Host {
 // TestSets creates count number of static host sets in the provided DB
 // with the provided catalog id. The catalog must have been created
 // previously. The test will fail if any errors are encountered.
-func TestSets(t *testing.T, conn *db.DB, catalogId string, count int) []*HostSet {
+func TestSets(t testing.TB, conn *db.DB, catalogId string, count int) []*HostSet {
 	t.Helper()
 	assert := assert.New(t)
 	var sets []*HostSet
@@ -87,7 +87,7 @@ func TestSets(t *testing.T, conn *db.DB, catalogId string, count int) []*HostSet
 // TestSetMembers adds hosts to the specified setId in the provided DB.
 // The set and hosts must have been created previously and belong to the
 // same catalog. The test will fail if any errors are encountered.
-func TestSetMembers(t *testing.T, conn *db.DB, setId string, hosts []*Host) []*HostSetMember {
+func TestSetMembers(t testing.TB, conn *db.DB, setId string, hosts []*Host) []*HostSetMember {
 	t.Helper()
 	assert := assert.New(t)
 

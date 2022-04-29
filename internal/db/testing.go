@@ -25,7 +25,8 @@ import (
 // setup the tests (initialize the database one-time and intialized
 // testDatabaseURL). Do not close the returned db. Supported options:
 // WithTestLogLevel, WithTestDatabaseUrl
-func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
+func TestSetup(t testing.TB, dialect string, opt ...TestOption) (*DB, string) {
+	t.Helper()
 	var cleanup func() error
 	var url string
 	var err error
@@ -73,7 +74,8 @@ func TestSetup(t *testing.T, dialect string, opt ...TestOption) (*DB, string) {
 }
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
-func TestWrapper(t *testing.T) wrapping.Wrapper {
+func TestWrapper(t testing.TB) wrapping.Wrapper {
+	t.Helper()
 	rootKey := make([]byte, 32)
 	n, err := rand.Read(rootKey)
 	if err != nil {
@@ -95,7 +97,7 @@ func TestWrapper(t *testing.T) wrapping.Wrapper {
 
 // AssertPublicId is a test helper that asserts that the provided id is in
 // the format of a public id.
-func AssertPublicId(t *testing.T, prefix, actual string) {
+func AssertPublicId(t testing.TB, prefix, actual string) {
 	t.Helper()
 	assert.NotEmpty(t, actual)
 	parts := strings.Split(actual, "_")
@@ -105,7 +107,7 @@ func AssertPublicId(t *testing.T, prefix, actual string) {
 
 // TestDeleteWhere allows you to easily delete resources for testing purposes
 // including all the current resources.
-func TestDeleteWhere(t *testing.T, conn *DB, i interface{}, whereClause string, args ...interface{}) {
+func TestDeleteWhere(t testing.TB, conn *DB, i interface{}, whereClause string, args ...interface{}) {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -122,7 +124,7 @@ func TestDeleteWhere(t *testing.T, conn *DB, i interface{}, whereClause string, 
 // WithResourcePrivateId option is provided, the lookup will use the `resource-private-id` tag.
 // An error is returned if the entry or it's metadata is not found.  Returning an error
 // allows clients to test if an entry was not written, which is a valid use case.
-func TestVerifyOplog(t *testing.T, r Reader, resourceId string, opt ...TestOption) error {
+func TestVerifyOplog(t testing.TB, r Reader, resourceId string, opt ...TestOption) error {
 	t.Helper()
 
 	// sql where clauses
@@ -264,14 +266,14 @@ const (
 
 // WithTestLogLevel provides a way to specify a test log level for the
 // underlying database package (if applicable).
-func WithTestLogLevel(_ *testing.T, l TestLogLevel) TestOption {
+func WithTestLogLevel(_ testing.TB, l TestLogLevel) TestOption {
 	return func(o *testOptions) {
 		o.withLogLevel = l
 	}
 }
 
 // TestCreateTables will create the test tables for the db pkg
-func TestCreateTables(t *testing.T, conn *DB) {
+func TestCreateTables(t testing.TB, conn *DB) {
 	t.Helper()
 	t.Cleanup(func() { testDropTables(t, conn) })
 	require := require.New(t)
@@ -283,7 +285,7 @@ func TestCreateTables(t *testing.T, conn *DB) {
 	require.NoError(err)
 }
 
-func testDropTables(t *testing.T, conn *DB) {
+func testDropTables(t testing.TB, conn *DB) {
 	t.Helper()
 	require := require.New(t)
 	testCtx := context.Background()

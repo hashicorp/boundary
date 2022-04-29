@@ -119,6 +119,8 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 
 // ListSessions implements the interface pbs.SessionServiceServer.
 func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest) (*pbs.ListSessionsResponse, error) {
+	const op = "session.(Service).ListSessions"
+
 	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
@@ -137,17 +139,34 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		}
 	}
 
-	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(ctx,
-		s.iamRepoFn, authResults, req.GetScopeId(), resource.Session, req.GetRecursive(), false)
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	scopeResourceInfo, err := scopeids.GetListingResourceInformation(
+		ctx,
+		scopeids.GetListingResourceInformationInput{
+			IamRepoFn:                    s.iamRepoFn,
+			AuthResults:                  authResults,
+			RootScopeId:                  req.GetScopeId(),
+			Type:                         resource.Session,
+			Recursive:                    req.GetRecursive(),
+			AuthzProtectedEntityProvider: repo,
+			ActionSet:                    IdActions,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
-	// If no scopes match, return an empty response
-	if len(scopeIds) == 0 {
+	// If no scopes match or we match scopes but there are no resources in them
+	// that we are authorized to see, return an empty response
+	if len(scopeResourceInfo.ScopeIds) == 0 ||
+		len(scopeResourceInfo.ResourceIds) == 0 {
 		return &pbs.ListSessionsResponse{}, nil
 	}
 
-	sesList, err := s.listFromRepo(ctx, scopeIds)
+	sesList, err := s.listFromRepo(ctx, scopeResourceInfo.ResourceIds)
 	if err != nil {
 		return nil, err
 	}
@@ -164,25 +183,14 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		Type: resource.Session,
 	}
 	for _, item := range sesList {
-		res.Id = item.GetPublicId()
-		res.ScopeId = item.ScopeId
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res))
-		if len(authorizedActions) == 0 {
-			continue
-		}
-
-		if authorizedActions.OnlySelf() && item.UserId != authResults.UserId {
-			continue
-		}
-
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.ScopeId]))
+			outputOpts = append(outputOpts, handlers.WithScope(scopeResourceInfo.ScopeResourceMap[item.ScopeId].ScopeInfo))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(scopeResourceInfo.ScopeResourceMap[item.ScopeId].Resources[item.PublicId].AuthorizedActions.Strings()))
 		}
 
 		item, err := toProto(ctx, item, outputOpts...)
@@ -287,12 +295,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*session.Session, 
 	return sess, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*session.Session, error) {
+func (s Service) listFromRepo(ctx context.Context, sessionIds []string) ([]*session.Session, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	sesList, err := repo.ListSessions(ctx, session.WithScopeIds(scopeIds))
+	sesList, err := repo.ListSessions(ctx, session.WithSessionIds(sessionIds...))
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,8 @@ import (
 
 // TestRepo creates a repo that can be used for various purposes. Crucially, it
 // ensures that the global scope contains a valid root key.
-func TestRepo(t *testing.T, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Option) *Repository {
+func TestRepo(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Option) *Repository {
+	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
@@ -39,7 +40,7 @@ func TestRepo(t *testing.T, conn *db.DB, rootWrapper wrapping.Wrapper, opt ...Op
 }
 
 // TestSetPrimaryAuthMethod will set the PrimaryAuthMethodId for a scope.
-func TestSetPrimaryAuthMethod(t *testing.T, repo *Repository, s *Scope, authMethodId string) {
+func TestSetPrimaryAuthMethod(t testing.TB, repo *Repository, s *Scope, authMethodId string) {
 	t.Helper()
 	require := require.New(t)
 	require.NotEmpty(s)
@@ -54,7 +55,7 @@ func TestSetPrimaryAuthMethod(t *testing.T, repo *Repository, s *Scope, authMeth
 }
 
 // TestScopes creates an org and project suitable for testing.
-func TestScopes(t *testing.T, repo *Repository, opt ...Option) (org *Scope, prj *Scope) {
+func TestScopes(t testing.TB, repo *Repository, opt ...Option) (org *Scope, prj *Scope) {
 	t.Helper()
 	require := require.New(t)
 
@@ -77,7 +78,7 @@ func TestScopes(t *testing.T, repo *Repository, opt ...Option) (org *Scope, prj 
 	return
 }
 
-func TestOrg(t *testing.T, repo *Repository, opt ...Option) *Scope {
+func TestOrg(t testing.TB, repo *Repository, opt ...Option) *Scope {
 	t.Helper()
 	require := require.New(t)
 
@@ -93,7 +94,7 @@ func TestOrg(t *testing.T, repo *Repository, opt ...Option) *Scope {
 	return org
 }
 
-func TestProject(t *testing.T, repo *Repository, orgId string, opt ...Option) *Scope {
+func TestProject(t testing.TB, repo *Repository, orgId string, opt ...Option) *Scope {
 	t.Helper()
 	require := require.New(t)
 
@@ -109,7 +110,7 @@ func TestProject(t *testing.T, repo *Repository, orgId string, opt ...Option) *S
 	return proj
 }
 
-func testOrg(t *testing.T, repo *Repository, name, description string) (org *Scope) {
+func testOrg(t testing.TB, repo *Repository, name, description string) (org *Scope) {
 	t.Helper()
 	require := require.New(t)
 
@@ -123,7 +124,7 @@ func testOrg(t *testing.T, repo *Repository, name, description string) (org *Sco
 	return o
 }
 
-func testProject(t *testing.T, repo *Repository, orgId string, opt ...Option) *Scope {
+func testProject(t testing.TB, repo *Repository, orgId string, opt ...Option) *Scope {
 	t.Helper()
 	require := require.New(t)
 
@@ -137,14 +138,14 @@ func testProject(t *testing.T, repo *Repository, orgId string, opt ...Option) *S
 	return p
 }
 
-func testId(t *testing.T) string {
+func testId(t testing.TB) string {
 	t.Helper()
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
 	return id
 }
 
-func testPublicId(t *testing.T, prefix string) string {
+func testPublicId(t testing.TB, prefix string) string {
 	t.Helper()
 	publicId, err := db.NewPublicId(prefix)
 	require.NoError(t, err)
@@ -153,7 +154,7 @@ func testPublicId(t *testing.T, prefix string) string {
 
 // TestUser creates a user suitable for testing.  Supports the options:
 // WithName, WithDescription and WithAccountIds.
-func TestUser(t *testing.T, repo *Repository, scopeId string, opt ...Option) *User {
+func TestUser(t testing.TB, repo *Repository, scopeId string, opt ...Option) *User {
 	t.Helper()
 	require := require.New(t)
 
@@ -171,7 +172,7 @@ func TestUser(t *testing.T, repo *Repository, scopeId string, opt ...Option) *Us
 }
 
 // TestRole creates a role suitable for testing.
-func TestRole(t *testing.T, conn *db.DB, scopeId string, opt ...Option) *Role {
+func TestRole(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Role {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -191,7 +192,7 @@ func TestRole(t *testing.T, conn *db.DB, scopeId string, opt ...Option) *Role {
 	return role
 }
 
-func TestRoleGrant(t *testing.T, conn *db.DB, roleId, grant string, opt ...Option) *RoleGrant {
+func TestRoleGrant(t testing.TB, conn *db.DB, roleId, grant string, opt ...Option) *RoleGrant {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -204,7 +205,7 @@ func TestRoleGrant(t *testing.T, conn *db.DB, roleId, grant string, opt ...Optio
 }
 
 // TestGroup creates a group suitable for testing.
-func TestGroup(t *testing.T, conn *db.DB, scopeId string, opt ...Option) *Group {
+func TestGroup(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *Group {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -220,7 +221,7 @@ func TestGroup(t *testing.T, conn *db.DB, scopeId string, opt ...Option) *Group 
 	return grp
 }
 
-func TestGroupMember(t *testing.T, conn *db.DB, groupId, userId string, opt ...Option) *GroupMemberUser {
+func TestGroupMember(t testing.TB, conn *db.DB, groupId, userId string, opt ...Option) *GroupMemberUser {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -233,7 +234,7 @@ func TestGroupMember(t *testing.T, conn *db.DB, groupId, userId string, opt ...O
 	return gm
 }
 
-func TestUserRole(t *testing.T, conn *db.DB, roleId, userId string, opt ...Option) *UserRole {
+func TestUserRole(t testing.TB, conn *db.DB, roleId, userId string, opt ...Option) *UserRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -245,7 +246,7 @@ func TestUserRole(t *testing.T, conn *db.DB, roleId, userId string, opt ...Optio
 	return r
 }
 
-func TestGroupRole(t *testing.T, conn *db.DB, roleId, grpId string, opt ...Option) *GroupRole {
+func TestGroupRole(t testing.TB, conn *db.DB, roleId, grpId string, opt ...Option) *GroupRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -257,7 +258,7 @@ func TestGroupRole(t *testing.T, conn *db.DB, roleId, grpId string, opt ...Optio
 	return r
 }
 
-func TestManagedGroupRole(t *testing.T, conn *db.DB, roleId, managedGrpId string, opt ...Option) *ManagedGroupRole {
+func TestManagedGroupRole(t testing.TB, conn *db.DB, roleId, managedGrpId string, opt ...Option) *ManagedGroupRole {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -272,7 +273,7 @@ func TestManagedGroupRole(t *testing.T, conn *db.DB, roleId, managedGrpId string
 // testAccount is a temporary test function.  TODO - replace with an auth
 // subsystem testAccount function.  If userId is zero value, then an auth
 // account will be created with a null IamUserId
-func testAccount(t *testing.T, conn *db.DB, scopeId, authMethodId, userId string) *authAccount {
+func testAccount(t testing.TB, conn *db.DB, scopeId, authMethodId, userId string) *authAccount {
 	const (
 		accountPrefix = "aa_"
 	)
@@ -326,7 +327,7 @@ func testAccount(t *testing.T, conn *db.DB, scopeId, authMethodId, userId string
 
 // testAuthMethod is a temporary test function.  TODO - replace with an auth
 // subsystem testAuthMethod function.
-func testAuthMethod(t *testing.T, conn *db.DB, scopeId string) string {
+func testAuthMethod(t testing.TB, conn *db.DB, scopeId string) string {
 	const (
 		authMethodPrefix = "am_"
 	)

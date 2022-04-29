@@ -366,7 +366,7 @@ func Test_MakeInactive_MakePrivate_MakePublic(t *testing.T) {
 			}(),
 			version:         1,
 			wantErrMatch:    errors.T(errors.InvalidParameter),
-			wantErrContains: "certificate signed by unknown authority",
+			wantErrContains: "certificate",
 		},
 	}
 

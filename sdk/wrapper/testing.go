@@ -11,7 +11,7 @@ import (
 )
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing
-func TestWrapper(t *testing.T) wrapping.Wrapper {
+func TestWrapper(t testing.TB) wrapping.Wrapper {
 	rootKey := make([]byte, 32)
 	n, err := rand.Read(rootKey)
 	if err != nil {

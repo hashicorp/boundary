@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -205,6 +206,51 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	return &session, authzSummary, nil
 }
 
+// FetchAuthzProtectedEntitiesByScope implements boundary.AuthzProtectedEntityProvider
+func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, scopeIds []string) (map[string][]boundary.AuthzProtectedEntity, error) {
+	const op = "session.(Repository).FetchAuthzProtectedEntityInfo"
+
+	var where string
+	var args []interface{}
+
+	inClauseCnt := 0
+
+	switch len(scopeIds) {
+	case 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
+	case 1:
+		inClauseCnt += 1
+		where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), scopeIds[0]))
+	default:
+		idsInClause := make([]string, 0, len(scopeIds))
+		for _, id := range scopeIds {
+			inClauseCnt += 1
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+		}
+		where = fmt.Sprintf("where scope_id in (%s)", strings.Join(idsInClause, ","))
+	}
+
+	q := sessionPublicIdList
+	query := fmt.Sprintf(q, where)
+
+	rows, err := r.reader.Query(ctx, query, args)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+
+	sessionsMap := map[string][]boundary.AuthzProtectedEntity{}
+	for rows.Next() {
+		var ses Session
+		if err := r.reader.ScanRows(ctx, rows, &ses); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+		}
+		sessionsMap[ses.GetScopeId()] = append(sessionsMap[ses.GetScopeId()], ses)
+	}
+
+	return sessionsMap, nil
+}
+
 // ListSessions will sessions.  Supports the WithLimit, WithScopeId, WithSessionIds, and WithServerId options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).ListSessions"
@@ -213,25 +259,31 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	var args []interface{}
 
 	inClauseCnt := 0
-	if len(opts.withScopeIds) != 0 {
-		switch len(opts.withScopeIds) {
-		case 1:
+	switch len(opts.withScopeIds) {
+	case 0:
+	case 1:
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withScopeIds[0]))
+	default:
+		idsInClause := make([]string, 0, len(opts.withScopeIds))
+		for _, id := range opts.withScopeIds {
 			inClauseCnt += 1
-			where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named("1", opts.withScopeIds[0]))
-		default:
-			idsInClause := make([]string, 0, len(opts.withScopeIds))
-			for _, id := range opts.withScopeIds {
-				inClauseCnt += 1
-				idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
-			}
-			where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 		}
+		where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
 	}
+
 	if opts.withUserId != "" {
 		inClauseCnt += 1
 		where, args = append(where, fmt.Sprintf("user_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withUserId))
 	}
-	if len(opts.withSessionIds) > 0 {
+
+	switch len(opts.withSessionIds) {
+	case 0:
+	case 1:
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("s.public_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withSessionIds[0]))
+	default:
 		idsInClause := make([]string, 0, len(opts.withSessionIds))
 		for _, id := range opts.withSessionIds {
 			inClauseCnt += 1
@@ -239,6 +291,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		}
 		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
 	}
+
 	if opts.withServerId != "" {
 		inClauseCnt += 1
 		where, args = append(where, fmt.Sprintf("server_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withServerId))
@@ -266,10 +319,10 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 
 	var whereClause string
 	if len(where) > 0 {
-		whereClause = " and " + strings.Join(where, " and ")
+		whereClause = " where " + strings.Join(where, " and ")
 	}
 	q := sessionList
-	query := fmt.Sprintf(q, limit, whereClause, withOrder)
+	query := fmt.Sprintf(q, whereClause, withOrder, limit, withOrder)
 
 	rows, err := r.reader.Query(ctx, query, args)
 	if err != nil {

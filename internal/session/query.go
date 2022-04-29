@@ -118,14 +118,30 @@ select expiration_time, connection_limit, current_connection_count
 from
 	session_connection_limit, session_connection_count;
 `
+
+	sessionPublicIdList = `
+select public_id, scope_id, user_id from session
+%s
+;
+`
+
 	sessionList = `
-select *
-from
-	(select public_id from session %s) s,
-	session_list ss
-where
-	s.public_id = ss.public_id
+with
+session_ids as (
+	select public_id
+	from session as s
+	-- where clause is constructed
 	%s
+	-- order by clause is constructed
+	%s
+	-- limit is constructed
+	%s
+)
+select *
+from session_list
+where
+	session_list.public_id in (select * from session_ids)
+-- order by clause again since order from cte is not guaranteed to be preserved
 %s
 ;
 `

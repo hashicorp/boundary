@@ -214,6 +214,10 @@ test-database-up:
 test-database-down:
 	make -C testing/dbtest/docker clean
 
+.PHONY: generate-database-dumps
+generate-database-dumps:
+	@$(MAKE) -C testing/dbtest/docker generate-database-dumps
+
 .PHONY: test-ci
 test-ci: export CI_BUILD=1
 test-ci:
@@ -238,6 +242,19 @@ test-api:
 
 .PHONY: test-all
 test-all: test-sdk test-api test
+
+BENCH_TIME?=1s
+BENCH_COUNT?=1s
+.PHONY: benchmark
+benchmark:
+	@go test \
+		-timeout 60m \
+		./internal/servers/controller/handlers/sessions/ \
+		-v \
+		-bench '^BenchmarkSessionList$$' \
+		-benchtime $(BENCH_TIME) \
+		-count $(BENCH_COUNT) \
+		-run '^$$'
 
 .PHONY: install-go
 install-go:

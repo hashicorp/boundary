@@ -18,7 +18,7 @@ import (
 )
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func setup(t *testing.T) *dbw.DB {
+func setup(t testing.TB) *dbw.DB {
 	t.Helper()
 	require := require.New(t)
 	cleanup, url, err := testInitDbInDocker(t)
@@ -33,7 +33,7 @@ func setup(t *testing.T) *dbw.DB {
 	return db
 }
 
-func testOpen(t *testing.T, dbType string, connectionUrl string) *dbw.DB {
+func testOpen(t testing.TB, dbType string, connectionUrl string) *dbw.DB {
 	t.Helper()
 	require := require.New(t)
 	var dialect dbw.Dialector
@@ -52,7 +52,7 @@ func testOpen(t *testing.T, dbType string, connectionUrl string) *dbw.DB {
 	return db
 }
 
-func testUser(t *testing.T, db *dbw.DB, name, phoneNumber, email string) *oplog_test.TestUser {
+func testUser(t testing.TB, db *dbw.DB, name, phoneNumber, email string) *oplog_test.TestUser {
 	t.Helper()
 	u := &oplog_test.TestUser{
 		Name:        name,
@@ -63,21 +63,21 @@ func testUser(t *testing.T, db *dbw.DB, name, phoneNumber, email string) *oplog_
 	return u
 }
 
-func testFindUser(t *testing.T, db *dbw.DB, userId uint32) *oplog_test.TestUser {
+func testFindUser(t testing.TB, db *dbw.DB, userId uint32) *oplog_test.TestUser {
 	t.Helper()
 	var foundUser oplog_test.TestUser
 	require.NoError(t, dbw.New(db).LookupWhere(context.Background(), &foundUser, "id = ?", []interface{}{userId}))
 	return &foundUser
 }
 
-func testId(t *testing.T) string {
+func testId(t testing.TB) string {
 	t.Helper()
 	id, err := dbw.NewId("i")
 	require.NoError(t, err)
 	return id
 }
 
-func testInitDbInDocker(t *testing.T) (cleanup func() error, retURL string, err error) {
+func testInitDbInDocker(t testing.TB) (cleanup func() error, retURL string, err error) {
 	t.Helper()
 	require := require.New(t)
 	cleanup, retURL, _, err = dbtest.StartUsingTemplate(dbtest.Postgres)
@@ -87,7 +87,7 @@ func testInitDbInDocker(t *testing.T) (cleanup func() error, retURL string, err 
 }
 
 // testWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
-func testWrapper(t *testing.T) wrapping.Wrapper {
+func testWrapper(t testing.TB) wrapping.Wrapper {
 	t.Helper()
 	rootKey := make([]byte, 32)
 	n, err := rand.Read(rootKey)
@@ -100,7 +100,7 @@ func testWrapper(t *testing.T) wrapping.Wrapper {
 }
 
 // testInitStore will execute the migrations needed to initialize the store for tests
-func testInitStore(t *testing.T, cleanup func() error, url string) {
+func testInitStore(t testing.TB, cleanup func() error, url string) {
 	t.Helper()
 	ctx := context.Background()
 	dialect := "postgres"
@@ -117,7 +117,7 @@ type constraintResults struct {
 	TableName string
 }
 
-func testListConstraints(t *testing.T, db *dbw.DB, tableName string) []constraintResults {
+func testListConstraints(t testing.TB, db *dbw.DB, tableName string) []constraintResults {
 	t.Helper()
 	require := require.New(t)
 	testCtx := context.Background()

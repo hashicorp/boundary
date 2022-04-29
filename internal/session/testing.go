@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -24,7 +25,7 @@ import (
 )
 
 // TestConnection creates a test connection for the sessionId in the repository.
-func TestConnection(t *testing.T, conn *db.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, userClientIp string) *Connection {
+func TestConnection(t testing.TB, conn *db.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, userClientIp string) *Connection {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -44,7 +45,7 @@ func TestConnection(t *testing.T, conn *db.DB, sessionId, clientTcpAddr string, 
 }
 
 // TestConnectionState creates a test connection state for the connectionId in the repository.
-func TestConnectionState(t *testing.T, conn *db.DB, connectionId string, state ConnectionStatus) *ConnectionState {
+func TestConnectionState(t testing.TB, conn *db.DB, connectionId string, state ConnectionStatus) *ConnectionState {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -56,7 +57,7 @@ func TestConnectionState(t *testing.T, conn *db.DB, connectionId string, state C
 }
 
 // TestState creates a test state for the sessionId in the repository.
-func TestState(t *testing.T, conn *db.DB, sessionId string, state Status) *State {
+func TestState(t testing.TB, conn *db.DB, sessionId string, state Status) *State {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
@@ -69,7 +70,7 @@ func TestState(t *testing.T, conn *db.DB, sessionId string, state Status) *State
 
 // TestSession creates a test session composed of c in the repository. Options
 // are passed into New, and withServerId is handled locally.
-func TestSession(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
+func TestSession(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
 	ctx := context.Background()
 	opts := getOpts(opt...)
@@ -94,6 +95,11 @@ func TestSession(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, c Composed
 	}
 	require.NoError(err)
 	err = rw.Create(ctx, s, opts.withDbOpts...)
+	if e, ok := err.(*errors.Err); err != nil && ok && e.Code == errors.NotUnique {
+		// Sometimes we can get unique constraint errors when creating a session,
+		// if that happens, just retry.
+		err = rw.Create(ctx, s, opts.withDbOpts...)
+	}
 	require.NoError(err)
 
 	for _, cred := range s.DynamicCredentials {
@@ -110,7 +116,7 @@ func TestSession(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, c Composed
 }
 
 // TestDefaultSession creates a test session in the repository using defaults.
-func TestDefaultSession(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
+func TestDefaultSession(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
 	t.Helper()
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 	future := timestamppb.New(time.Now().Add(time.Hour))
@@ -120,7 +126,7 @@ func TestDefaultSession(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iam
 
 // TestSessionParams returns an initialized ComposedOf which can be used to
 // create a session in the repository.
-func TestSessionParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
+func TestSessionParams(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
 	t.Helper()
 	ctx := context.Background()
 
@@ -166,7 +172,7 @@ func TestSessionParams(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, iamR
 }
 
 // TestTofu will create a test "trust on first use" token
-func TestTofu(t *testing.T) []byte {
+func TestTofu(t testing.TB) []byte {
 	t.Helper()
 	require := require.New(t)
 	tofu, err := base62.Random(20)
@@ -176,7 +182,7 @@ func TestTofu(t *testing.T) []byte {
 
 // TestWorker inserts a worker into the db to satisfy foreign key constraints.
 // Supports the WithServerId option.
-func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Server {
+func TestWorker(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Server {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)

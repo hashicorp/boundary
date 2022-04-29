@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPlugin(t *testing.T, conn *db.DB, name string) *Plugin {
+func TestPlugin(t testing.TB, conn *db.DB, name string) *Plugin {
 	t.Helper()
 	p := NewPlugin(WithName(name))
 	id, err := newPluginId()

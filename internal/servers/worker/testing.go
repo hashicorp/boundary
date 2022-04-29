@@ -24,7 +24,7 @@ import (
 type TestWorker struct {
 	b      *base.Server
 	w      *Worker
-	t      *testing.T
+	t      testing.TB
 	addrs  []string // The address the worker proxies are listening on
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -193,7 +193,7 @@ type TestWorkerOpts struct {
 	NonceFn randFn
 }
 
-func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
+func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	const op = "worker.NewTestWorker"
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -302,7 +302,7 @@ func NewTestWorker(t *testing.T, opts *TestWorkerOpts) *TestWorker {
 	return tw
 }
 
-func (tw *TestWorker) AddClusterWorkerMember(t *testing.T, opts *TestWorkerOpts) *TestWorker {
+func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	const op = "worker.(TestWorker).AddClusterWorkerMember"
 	if opts == nil {
 		opts = new(TestWorkerOpts)
