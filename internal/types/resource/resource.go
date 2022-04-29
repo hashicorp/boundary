@@ -1,8 +1,6 @@
 package resource
 
-import (
-	"encoding/json"
-)
+import "encoding/json"
 
 // Type defines the types of resources in the system
 type Type uint
