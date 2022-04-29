@@ -2,6 +2,7 @@ package scopeids
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -265,7 +266,7 @@ func filterAuthorizedResourceIds(
 	}
 
 	res := perms.Resource{
-		Type: resource.Session,
+		Type: input.Type,
 	}
 
 	// Now run authorization checks against each so we know if there is a point
@@ -285,6 +286,9 @@ func filterAuthorizedResourceIds(
 				}
 			}
 
+			if output.ScopeResourceMap[scopeId] == nil {
+				return errors.New(ctx, errors.Internal, op, fmt.Sprintf("scope id %s returned from fetching authz protected entities not found in scope resource map", scopeId))
+			}
 			if output.ScopeResourceMap[scopeId].Resources == nil {
 				output.ScopeResourceMap[scopeId].Resources = make(map[string]ResourceInfo)
 			}

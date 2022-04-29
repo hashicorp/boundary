@@ -44,4 +44,10 @@ final (action, library_id) as (
 select * from final
 order by action, library_id;
 `
+
+	targetPublicIdList = `
+select public_id, scope_id from target
+%s
+;
+`
 )

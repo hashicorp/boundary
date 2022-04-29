@@ -220,7 +220,7 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, sco
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
 	case 1:
 		inClauseCnt += 1
-		where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named("1", scopeIds[0]))
+		where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), scopeIds[0]))
 	default:
 		idsInClause := make([]string, 0, len(scopeIds))
 		for _, id := range scopeIds {
