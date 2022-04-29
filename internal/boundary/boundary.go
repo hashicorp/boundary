@@ -3,8 +3,6 @@
 package boundary
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 )
 
@@ -31,18 +29,10 @@ type Resource interface {
 }
 
 // AuthzProtectedEntity is used by some functions (primarily
-// AuthzProtectedEntityProvider-conforming implementations) to deliver some
-// common information necessary for calculating authz.
+// scopeids.AuthzProtectedEntityProvider-conforming implementations) to deliver
+// some common information necessary for calculating authz.
 type AuthzProtectedEntity interface {
 	Entity
 	GetScopeId() string
 	GetUserId() string
-}
-
-type AuthzProtectedEntityProvider interface {
-	// Fetches basic resource info for the given scopes. Note that this is a
-	// "where clause" style of argument: if the set of scopes is populated these
-	// are the scopes to limit to (e.g. to put in a where clause). An empty set
-	// of scopes means to look in *all* scopes, not none!
-	FetchAuthzProtectedEntityInfo(context.Context, []string) (map[string][]AuthzProtectedEntity, error)
 }

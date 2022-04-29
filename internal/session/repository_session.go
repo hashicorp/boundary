@@ -16,8 +16,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-var _ boundary.AuthzProtectedEntityProvider = (*Repository)(nil)
-
 // CreateSession inserts into the repository and returns the new Session with
 // its State of "Pending".  The following fields must be empty when creating a
 // session: ServerId, ServerType, and PublicId.  No options are

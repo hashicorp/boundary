@@ -16,6 +16,14 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 )
 
+type authzProtectedEntityProvider interface {
+	// Fetches basic resource info for the given scopes. Note that this is a
+	// "where clause" style of argument: if the set of scopes is populated these
+	// are the scopes to limit to (e.g. to put in a where clause). An empty set
+	// of scopes means to look in *all* scopes, not none!
+	FetchAuthzProtectedEntityInfo(context.Context, []string) (map[string][]boundary.AuthzProtectedEntity, error)
+}
+
 // ResourceInfo contains information about a particular resource
 type ResourceInfo struct {
 	AuthorizedActions action.ActionSet
@@ -46,7 +54,7 @@ type GetListingResourceInformationInput struct {
 	Recursive bool
 
 	// A repo to fetch resources
-	AuthzProtectedEntityProvider boundary.AuthzProtectedEntityProvider
+	AuthzProtectedEntityProvider authzProtectedEntityProvider
 
 	// The available actions for the resource type
 	ActionSet action.ActionSet
