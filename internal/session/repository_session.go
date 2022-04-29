@@ -261,25 +261,31 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	var args []interface{}
 
 	inClauseCnt := 0
-	if len(opts.withScopeIds) != 0 {
-		switch len(opts.withScopeIds) {
-		case 1:
+	switch len(opts.withScopeIds) {
+	case 0:
+	case 1:
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withScopeIds[0]))
+	default:
+		idsInClause := make([]string, 0, len(opts.withScopeIds))
+		for _, id := range opts.withScopeIds {
 			inClauseCnt += 1
-			where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named("1", opts.withScopeIds[0]))
-		default:
-			idsInClause := make([]string, 0, len(opts.withScopeIds))
-			for _, id := range opts.withScopeIds {
-				inClauseCnt += 1
-				idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
-			}
-			where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
+			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 		}
+		where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
 	}
+
 	if opts.withUserId != "" {
 		inClauseCnt += 1
 		where, args = append(where, fmt.Sprintf("user_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withUserId))
 	}
-	if len(opts.withSessionIds) > 0 {
+
+	switch len(opts.withSessionIds) {
+	case 0:
+	case 1:
+		inClauseCnt += 1
+		where, args = append(where, fmt.Sprintf("s.public_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withSessionIds[0]))
+	default:
 		idsInClause := make([]string, 0, len(opts.withSessionIds))
 		for _, id := range opts.withSessionIds {
 			inClauseCnt += 1
@@ -287,6 +293,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		}
 		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
 	}
+
 	if opts.withServerId != "" {
 		inClauseCnt += 1
 		where, args = append(where, fmt.Sprintf("server_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withServerId))

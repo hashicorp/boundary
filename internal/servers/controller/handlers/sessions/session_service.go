@@ -166,7 +166,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return &pbs.ListSessionsResponse{}, nil
 	}
 
-	sesList, err := s.listFromRepoViaSessionIds(ctx, scopeResourceInfo.ResourceIds)
+	sesList, err := s.listFromRepo(ctx, scopeResourceInfo.ResourceIds)
 	if err != nil {
 		return nil, err
 	}
@@ -295,19 +295,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*session.Session, 
 	return sess, nil
 }
 
-func (s Service) listFromRepoViaScopeIds(ctx context.Context, scopeIds []string) ([]*session.Session, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	sesList, err := repo.ListSessions(ctx, session.WithScopeIds(scopeIds))
-	if err != nil {
-		return nil, err
-	}
-	return sesList, nil
-}
-
-func (s Service) listFromRepoViaSessionIds(ctx context.Context, sessionIds []string) ([]*session.Session, error) {
+func (s Service) listFromRepo(ctx context.Context, sessionIds []string) ([]*session.Session, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
