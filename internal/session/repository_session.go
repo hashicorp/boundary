@@ -207,7 +207,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 }
 
 // FetchAuthzProtectedEntityInfo implements boundary.AuthzProtectedEntityProvider
-func (r *Repository) FetchAuthzProtectedEntityInfo(ctx context.Context, scopeIds []string) (map[string][]boundary.AuthzProtectedEntity, error) {
+func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, scopeIds []string) (map[string][]boundary.AuthzProtectedEntity, error) {
 	const op = "session.(Repository).FetchAuthzProtectedEntityInfo"
 
 	var where string

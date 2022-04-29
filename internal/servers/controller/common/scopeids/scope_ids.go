@@ -21,7 +21,7 @@ type authzProtectedEntityProvider interface {
 	// "where clause" style of argument: if the set of scopes is populated these
 	// are the scopes to limit to (e.g. to put in a where clause). An empty set
 	// of scopes means to look in *all* scopes, not none!
-	FetchAuthzProtectedEntityInfo(context.Context, []string) (map[string][]boundary.AuthzProtectedEntity, error)
+	FetchAuthzProtectedEntitiesByScope(ctx context.Context, scopeIds []string) (map[string][]boundary.AuthzProtectedEntity, error)
 }
 
 // ResourceInfo contains information about a particular resource
@@ -259,7 +259,7 @@ func filterAuthorizedResourceIds(
 
 	// The calling function is giving us a complete set with any recursive
 	// lookup already performed (that's the point of the function).
-	scopedResourceInfo, err := input.AuthzProtectedEntityProvider.FetchAuthzProtectedEntityInfo(ctx, output.ScopeIds)
+	scopedResourceInfo, err := input.AuthzProtectedEntityProvider.FetchAuthzProtectedEntitiesByScope(ctx, output.ScopeIds)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
