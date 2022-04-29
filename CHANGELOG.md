@@ -6,6 +6,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 * controller: new health endpoint ([PR](https://github.com/hashicorp/boundary/pull/1882)).
+* Improve response time for listing sessions and targets.
+  [PR](https://github.com/hashicorp/boundary/pull/2049)
 
 ### Bug Fixes
 * worker: create new error to prevent `event.newError: missing error: invalid parameter` and handle session cancel 
@@ -13,6 +15,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR](https://github.com/hashicorp/boundary/pull/1929))
 * controller: Reconcile DEKs with existing scopes ([Issue](https://github.com/hashicorp/boundary/issues/1856),
   [PR](https://github.com/hashicorp/boundary/pull/1976))
+* Fix for retrieving sessions that could result in incomplete results when
+  there is a large number (10k+) of sessions.
+  [PR](https://github.com/hashicorp/boundary/pull/2049)
   
 ## 0.7.6 (2022/03/15)
 
