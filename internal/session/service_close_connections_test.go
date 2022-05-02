@@ -32,7 +32,7 @@ func TestServiceCloseConnections(t *testing.T) {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
 		srv := TestWorker(t, conn, wrapper)
 		tofu := TestTofu(t)
-		s, _, err = repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		s, _, err = repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, tofu)
 		require.NoError(t, err)
 
 		require.NoError(t, err)

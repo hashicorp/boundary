@@ -21,17 +21,18 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit             int
-	withOrderByCreateTime db.OrderBy
-	withScopeIds          []string
-	withUserId            string
-	withExpirationTime    *timestamp.Timestamp
-	withTestTofu          []byte
-	withListingConvert    bool
-	withSessionIds        []string
-	withServerId          string
-	withDbOpts            []db.Option
-	withWorkerStateDelay  time.Duration
+	withLimit                       int
+	withOrderByCreateTime           db.OrderBy
+	withScopeIds                    []string
+	withUserId                      string
+	withExpirationTime              *timestamp.Timestamp
+	withTestTofu                    []byte
+	withListingConvert              bool
+	withSessionIds                  []string
+	withWorkerId                    string
+	withDbOpts                      []db.Option
+	withWorkerStateDelay            time.Duration
+	withDeadWorkerConnCloseMinGrace time.Duration
 }
 
 func getDefaultOptions() options {
@@ -99,11 +100,10 @@ func withListingConvert(withListingConvert bool) Option {
 	}
 }
 
-// WithServerId allows the specification of the server id to use for the
-// operation.
-func WithServerId(id string) Option {
+// WithWorkerId allows the specification of the worker id to use
+func WithWorkerId(id string) Option {
 	return func(o *options) {
-		o.withServerId = id
+		o.withWorkerId = id
 	}
 }
 

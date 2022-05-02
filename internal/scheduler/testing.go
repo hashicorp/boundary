@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/servers/store"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -32,13 +34,11 @@ func TestScheduler(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
-	controller := &servers.Server{
-		PrivateId:   "test-job-server-" + id,
-		Type:        servers.ServerTypeController.String(),
-		Description: "Test Job Controller",
-		Address:     "127.0.0.1",
+	controller := &store.Controller{
+		PrivateId: "test-job-server-" + id,
+		Address:   "127.0.0.1",
 	}
-	_, _, err = serversRepo.UpsertServer(context.Background(), controller)
+	_, err = serversRepo.UpsertController(context.Background(), controller)
 	require.NoError(t, err)
 
 	jobRepoFn := func() (*job.Repository, error) {

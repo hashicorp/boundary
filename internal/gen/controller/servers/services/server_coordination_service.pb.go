@@ -468,7 +468,7 @@ type StatusRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The worker info. We could use information from the TLS connection but this
-	// is easier and going the other route doesn't provijde much benefit -- if you
+	// is easier and going the other route doesn't provide much benefit -- if you
 	// get access to the key and spoof the connection, you're already compromised.
 	Worker *servers.Server `protobuf:"bytes,10,opt,name=worker,proto3" json:"worker,omitempty"`
 	// Jobs which this worker wants to report the status.
@@ -593,8 +593,7 @@ type StatusResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Active controllers. This can be used (eventually) for connection
-	// management.
+	// Active controllers. This can be used for connection management.
 	Controllers []*servers.Server `protobuf:"bytes,10,rep,name=controllers,proto3" json:"controllers,omitempty"`
 	// List of jobs and the expected state changes.  For example, this will
 	// include jobs witch change type of canceled for jobs which are active on a

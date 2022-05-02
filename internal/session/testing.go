@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/servers/store"
+
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -88,7 +90,7 @@ func TestSession(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, c Composed
 	_, certBytes, err := newCert(ctx, wrapper, c.UserId, id, []string{"127.0.0.1", "localhost"}, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
-	s.ServerId = opts.withServerId
+	s.WorkerId = opts.withWorkerId
 
 	if len(s.TofuToken) != 0 {
 		err = s.encrypt(ctx, wrapper)
@@ -181,8 +183,7 @@ func TestTofu(t testing.TB) []byte {
 }
 
 // TestWorker inserts a worker into the db to satisfy foreign key constraints.
-// Supports the WithServerId option.
-func TestWorker(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Server {
+func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *store.Worker {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -190,19 +191,19 @@ func TestWorker(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	require.NoError(t, err)
 
 	opts := getOpts(opt...)
-	id := opts.withServerId
+	id := opts.withWorkerId
 	if id == "" {
 		id, err = uuid.GenerateUUID()
 		require.NoError(t, err)
 		id = "test-session-worker-" + id
 	}
-	worker := &servers.Server{
-		PrivateId:   id,
-		Type:        servers.ServerTypeWorker.String(),
-		Description: "Test Session Worker",
-		Address:     "127.0.0.1",
+	name := "test-worker-" + id
+	worker := &store.Worker{
+		PrivateId: id,
+		Name:      name,
+		Address:   "127.0.0.1",
 	}
-	_, _, err = serversRepo.UpsertServer(context.Background(), worker)
+	_, _, err = serversRepo.UpsertWorker(context.Background(), worker)
 	require.NoError(t, err)
 	return worker
 }

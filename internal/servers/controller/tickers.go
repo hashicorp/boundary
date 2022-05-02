@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/servers/store"
+
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // In the future we could make this configurable
@@ -30,7 +30,7 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 			return
 
 		case <-timer.C:
-			if err := c.upsertServer(cancelCtx); err != nil {
+			if err := c.upsertController(cancelCtx); err != nil {
 				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for status update"))
 			}
 			timer.Reset(statusInterval)
@@ -38,21 +38,18 @@ func (c *Controller) startStatusTicking(cancelCtx context.Context) {
 	}
 }
 
-func (c *Controller) upsertServer(ctx context.Context) error {
-	const op = "controller.(Controller).upsertServer"
-	server := &servers.Server{
-		PrivateId:   c.conf.RawConfig.Controller.Name,
-		Name:        c.conf.RawConfig.Controller.Name,
-		Type:        resource.Controller.String(),
-		Description: c.conf.RawConfig.Controller.Description,
-		Address:     c.conf.RawConfig.Controller.PublicClusterAddr,
+func (c *Controller) upsertController(ctx context.Context) error {
+	const op = "controller.(Controller).upsertController"
+	controller := &store.Controller{
+		PrivateId: c.conf.RawConfig.Controller.Name,
+		Address:   c.conf.RawConfig.Controller.PublicClusterAddr,
 	}
 	repo, err := c.ServersRepoFn()
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error fetching repository for status update"))
 	}
 
-	_, _, err = repo.UpsertServer(ctx, server)
+	_, err = repo.UpsertController(ctx, controller)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error performing status update"))
 	}

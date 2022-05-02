@@ -6,12 +6,12 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/servers"
+
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/worker/common"
 	"github.com/hashicorp/boundary/internal/servers/worker/session"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/resolver"
 )
 
@@ -143,14 +143,13 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	}
 	statusCtx, statusCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
 	defer statusCancel()
+
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		Worker: &servers.Server{
-			PrivateId:   w.conf.RawConfig.Worker.Name,
-			Type:        resource.Worker.String(),
-			Description: w.conf.RawConfig.Worker.Description,
-			Address:     w.conf.RawConfig.Worker.PublicAddr,
-			Tags:        tags,
+			PrivateId: w.conf.RawConfig.Worker.Name,
+			Address:   w.conf.RawConfig.Worker.PublicAddr,
+			Tags:      tags,
 		},
 		UpdateTags: w.updateTags.Load(),
 	})

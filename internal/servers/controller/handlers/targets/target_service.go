@@ -23,7 +23,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
-	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/controller/auth"
 	"github.com/hashicorp/boundary/internal/servers/controller/common"
 	"github.com/hashicorp/boundary/internal/servers/controller/common/scopeids"
@@ -898,7 +897,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	var workers []*pb.WorkerInfo
 	var workerIds []string
 	hasWorkerFilter := len(t.GetWorkerFilter()) > 0
-	servers, err := serversRepo.ListServers(ctx, servers.ServerTypeWorker)
+	servers, err := serversRepo.ListWorkers(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -912,7 +911,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if hasWorkerFilter && len(workerIds) > 0 {
 		finalWorkers := make([]*pb.WorkerInfo, 0, len(workers))
 		// Fetch the tags for the given worker IDs
-		tags, err := serversRepo.ListTagsForServers(ctx, workerIds)
+		tags, err := serversRepo.ListTagsForWorkers(ctx, workerIds)
 		if err != nil {
 			return nil, err
 		}
@@ -921,10 +920,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		// worker's ID to its filter map.
 		tagMap := make(map[string]map[string][]string)
 		for _, tag := range tags {
-			currWorkerMap := tagMap[tag.ServerId]
+			currWorkerMap := tagMap[tag.WorkerId]
 			if currWorkerMap == nil {
 				currWorkerMap = make(map[string][]string)
-				tagMap[tag.ServerId] = currWorkerMap
+				tagMap[tag.WorkerId] = currWorkerMap
 			}
 			currWorkerMap[tag.Key] = append(currWorkerMap[tag.Key], tag.Value)
 			// We don't need to reinsert after the fact because maps are

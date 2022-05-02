@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package controller.storage.servers.store.v1;
+option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+// Controller contains all fields related to a Controller resource
+message Controller {
+  // Private ID of the resource
+  string private_id = 10;
+
+  // Address for the controller
+  string address = 20;
+
+  // Description of the resource (optional)
+  // @inject_tag: `gorm:"default:null"`
+  string description = 30;
+
+  // First seen time from the RDBMS
+  storage.timestamp.v1.Timestamp create_time = 40;
+
+  // Last time there was an update
+  storage.timestamp.v1.Timestamp update_time = 50;
+}

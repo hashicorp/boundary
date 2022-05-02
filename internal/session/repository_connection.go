@@ -345,6 +345,59 @@ func (r *ConnectionRepository) DeleteConnection(ctx context.Context, publicId st
 	return rowsDeleted, nil
 }
 
+type CloseConnectionsForDeadWorkersResult struct {
+	WorkerId                string
+	LastUpdateTime          time.Time
+	NumberConnectionsClosed int
+}
+
+// CloseConnectionsForDeadWorkers will run
+// closeConnectionsForDeadServersCte to look for connections that
+// should be marked because they are on a worker that is no longer
+// sending status updates to the controller(s).
+//
+// The only input to the method is the grace period, in seconds.
+func (r *ConnectionRepository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePeriod time.Duration) ([]CloseConnectionsForDeadWorkersResult, error) {
+	const op = "session.(ConnectionRepository).CloseConnectionsForDeadWorkers"
+	if gracePeriod < r.deadWorkerConnCloseMinGrace {
+		return nil, errors.New(ctx,
+			errors.InvalidParameter, op, fmt.Sprintf("gracePeriod must be at least %s", r.deadWorkerConnCloseMinGrace))
+	}
+
+	args := []interface{}{
+		sql.Named("grace_period_seconds", gracePeriod.Seconds()),
+	}
+	results := make([]CloseConnectionsForDeadWorkersResult, 0)
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			rows, err := w.Query(ctx, closeConnectionsForDeadServersCte, args)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var result CloseConnectionsForDeadWorkersResult
+				if err := w.ScanRows(ctx, rows, &result); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+
+				results = append(results, result)
+			}
+
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return results, nil
+}
+
 // closeOrphanedConnections looks for connections that are still active, but where not reported by the worker.
 func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, workerId string, reportedConnections []string) ([]string, error) {
 	const op = "session.(ConnectionRepository).closeOrphanedConnections"
@@ -352,7 +405,7 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 	var orphanedConns []string
 
 	args := make([]interface{}, 0, len(reportedConnections)+2)
-	args = append(args, sql.Named("server_id", workerId))
+	args = append(args, sql.Named("worker_id", workerId))
 	args = append(args, sql.Named("worker_state_delay_seconds", r.workerStateDelay.Seconds()))
 
 	var notInClause string

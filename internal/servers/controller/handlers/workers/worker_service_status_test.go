@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/servers/store"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -31,14 +33,12 @@ func TestStatus(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serverRepo, _ := servers.NewRepository(rw, rw, kms)
-	serverRepo.UpsertServer(ctx, &servers.Server{
+	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
-		Type:      "controller",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertServer(ctx, &servers.Server{
+	serverRepo.UpsertWorker(ctx, &store.Worker{
 		PrivateId: "test_worker1",
-		Type:      "worker",
 		Address:   "127.0.0.1",
 	})
 
@@ -83,7 +83,7 @@ func TestStatus(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu := session.TestTofu(t)
-	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker1.PrivateId, worker1.Type, tofu)
+	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker1.PrivateId, tofu)
 	require.NoError(t, err)
 	require.NoError(t, err)
 
@@ -104,13 +104,17 @@ func TestStatus(t *testing.T) {
 			name:    "No Sessions",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				Worker: worker1,
+				Worker: &servers.Server{
+					PrivateId:  worker1.PrivateId,
+					Address:    worker1.Address,
+					CreateTime: worker1.CreateTime,
+					UpdateTime: worker1.UpdateTime,
+				},
 			},
 			want: &pbs.StatusResponse{
 				Controllers: []*servers.Server{
 					{
 						PrivateId: "test_controller1",
-						Type:      "controller",
 						Address:   "127.0.0.1",
 					},
 				},
@@ -120,7 +124,12 @@ func TestStatus(t *testing.T) {
 			name:    "Still Active",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				Worker: worker1,
+				Worker: &servers.Server{
+					PrivateId:  worker1.PrivateId,
+					Address:    worker1.Address,
+					CreateTime: worker1.CreateTime,
+					UpdateTime: worker1.UpdateTime,
+				},
 				Jobs: []*pbs.JobStatus{
 					{
 						Job: &pbs.Job{
@@ -145,7 +154,6 @@ func TestStatus(t *testing.T) {
 				Controllers: []*servers.Server{
 					{
 						PrivateId: "test_controller1",
-						Type:      "controller",
 						Address:   "127.0.0.1",
 					},
 				},
@@ -193,14 +201,12 @@ func TestStatusSessionClosed(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serverRepo, _ := servers.NewRepository(rw, rw, kms)
-	serverRepo.UpsertServer(ctx, &servers.Server{
+	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
-		Type:      "controller",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertServer(ctx, &servers.Server{
+	serverRepo.UpsertWorker(ctx, &store.Worker{
 		PrivateId: "test_worker1",
-		Type:      "worker",
 		Address:   "127.0.0.1",
 	})
 
@@ -245,7 +251,7 @@ func TestStatusSessionClosed(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu := session.TestTofu(t)
-	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker1.PrivateId, worker1.Type, tofu)
+	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker1.PrivateId, tofu)
 	require.NoError(t, err)
 	sess2 := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -258,7 +264,7 @@ func TestStatusSessionClosed(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu2 := session.TestTofu(t)
-	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker1.PrivateId, worker1.Type, tofu2)
+	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker1.PrivateId, tofu2)
 	require.NoError(t, err)
 
 	s := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
@@ -283,7 +289,12 @@ func TestStatusSessionClosed(t *testing.T) {
 				require.NoError(t, err)
 			},
 			req: &pbs.StatusRequest{
-				Worker: worker1,
+				Worker: &servers.Server{
+					PrivateId:  worker1.PrivateId,
+					Address:    worker1.Address,
+					CreateTime: worker1.CreateTime,
+					UpdateTime: worker1.UpdateTime,
+				},
 				Jobs: []*pbs.JobStatus{
 					{
 						Job: &pbs.Job{
@@ -308,7 +319,6 @@ func TestStatusSessionClosed(t *testing.T) {
 				Controllers: []*servers.Server{
 					{
 						PrivateId: "test_controller1",
-						Type:      "controller",
 						Address:   "127.0.0.1",
 					},
 				},
@@ -373,14 +383,12 @@ func TestStatusDeadConnection(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serverRepo, _ := servers.NewRepository(rw, rw, kms)
-	serverRepo.UpsertServer(ctx, &servers.Server{
+	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
-		Type:      "controller",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertServer(ctx, &servers.Server{
+	serverRepo.UpsertWorker(ctx, &store.Worker{
 		PrivateId: "test_worker1",
-		Type:      "worker",
 		Address:   "127.0.0.1",
 	})
 
@@ -425,7 +433,7 @@ func TestStatusDeadConnection(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu := session.TestTofu(t)
-	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker1.PrivateId, worker1.Type, tofu)
+	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker1.PrivateId, tofu)
 	require.NoError(t, err)
 	sess2 := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -438,7 +446,7 @@ func TestStatusDeadConnection(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu2 := session.TestTofu(t)
-	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker1.PrivateId, worker1.Type, tofu2)
+	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker1.PrivateId, tofu2)
 	require.NoError(t, err)
 
 	s := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
@@ -451,7 +459,12 @@ func TestStatusDeadConnection(t *testing.T) {
 	require.NotEqual(t, deadConn.PublicId, connection.PublicId)
 
 	req := &pbs.StatusRequest{
-		Worker: worker1,
+		Worker: &servers.Server{
+			PrivateId:  worker1.PrivateId,
+			Address:    worker1.Address,
+			CreateTime: worker1.CreateTime,
+			UpdateTime: worker1.UpdateTime,
+		},
 		Jobs: []*pbs.JobStatus{
 			{
 				Job: &pbs.Job{
@@ -476,7 +489,6 @@ func TestStatusDeadConnection(t *testing.T) {
 		Controllers: []*servers.Server{
 			{
 				PrivateId: "test_controller1",
-				Type:      "controller",
 				Address:   "127.0.0.1",
 			},
 		},

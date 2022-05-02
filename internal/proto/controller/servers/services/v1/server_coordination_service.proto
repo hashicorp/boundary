@@ -56,9 +56,11 @@ message JobStatus {
   Job job = 1;
 }
 
+
+
 message StatusRequest {
   // The worker info. We could use information from the TLS connection but this
-  // is easier and going the other route doesn't provijde much benefit -- if you
+  // is easier and going the other route doesn't provide much benefit -- if you
   // get access to the key and spoof the connection, you're already compromised.
   servers.v1.Server worker = 10;
 
@@ -85,8 +87,7 @@ message JobChangeRequest {
 }
 
 message StatusResponse {
-  // Active controllers. This can be used (eventually) for connection
-  // management.
+  // Active controllers. This can be used for connection management.
   repeated servers.v1.Server controllers = 10;
 
   // List of jobs and the expected state changes.  For example, this will

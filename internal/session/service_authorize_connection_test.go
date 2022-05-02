@@ -38,7 +38,7 @@ func TestService_AuthorizeConnection(t *testing.T) {
 		srv := TestWorker(t, conn, wrapper)
 		testServer = srv.PrivateId
 		tofu := TestTofu(t)
-		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, tofu)
 		require.NoError(t, err)
 		return s
 	}

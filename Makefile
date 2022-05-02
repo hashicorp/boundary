@@ -146,7 +146,9 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/oplog_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go	
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
-	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go		
+	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/store/controller.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/store/worker.pb.go
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/targettest/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/tcp/store/target.pb.go

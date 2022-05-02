@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/servers/store"
+
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -26,14 +28,12 @@ func TestWorkerStatusReport(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serverRepo, _ := servers.NewRepository(rw, rw, kms)
-	serverRepo.UpsertServer(ctx, &servers.Server{
+	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
-		Type:      "controller",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertServer(ctx, &servers.Server{
+	serverRepo.UpsertWorker(ctx, &store.Worker{
 		PrivateId: "test_worker1",
-		Type:      "worker",
 		Address:   "127.0.0.1",
 	})
 
@@ -56,7 +56,7 @@ func TestWorkerStatusReport(t *testing.T) {
 	)
 
 	type testCase struct {
-		worker              *servers.Server
+		worker              *store.Worker
 		req                 []session.StateReport
 		want                []session.StateReport
 		orphanedConnections []string
@@ -91,7 +91,7 @@ func TestWorkerStatusReport(t *testing.T) {
 					ConnectionLimit: 10,
 				})
 				tofu := session.TestTofu(t)
-				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, worker.Type, tofu)
+				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, tofu)
 				require.NoError(t, err)
 				require.NoError(t, err)
 
@@ -123,7 +123,7 @@ func TestWorkerStatusReport(t *testing.T) {
 					ConnectionLimit: 10,
 				})
 				tofu := session.TestTofu(t)
-				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, worker.Type, tofu)
+				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, tofu)
 				require.NoError(t, err)
 				require.NoError(t, err)
 
@@ -157,7 +157,7 @@ func TestWorkerStatusReport(t *testing.T) {
 					ConnectionLimit: 10,
 				})
 				tofu := session.TestTofu(t)
-				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, worker.Type, tofu)
+				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, tofu)
 				require.NoError(t, err)
 				connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PrivateId)
 				require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestWorkerStatusReport(t *testing.T) {
 					ConnectionLimit: 10,
 				})
 				tofu := session.TestTofu(t)
-				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, worker.Type, tofu)
+				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, tofu)
 				require.NoError(t, err)
 				connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PrivateId)
 				require.NoError(t, err)
@@ -215,7 +215,7 @@ func TestWorkerStatusReport(t *testing.T) {
 					ConnectionLimit: 10,
 				})
 				tofu2 := session.TestTofu(t)
-				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker.PrivateId, worker.Type, tofu2)
+				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker.PrivateId, tofu2)
 				require.NoError(t, err)
 				connection2, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PrivateId)
 				require.NoError(t, err)
@@ -264,7 +264,7 @@ func TestWorkerStatusReport(t *testing.T) {
 					ConnectionLimit: 10,
 				})
 				tofu := session.TestTofu(t)
-				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, worker.Type, tofu)
+				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, tofu)
 				require.NoError(t, err)
 				connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PrivateId)
 				require.NoError(t, err)
@@ -280,7 +280,7 @@ func TestWorkerStatusReport(t *testing.T) {
 					ConnectionLimit: 10,
 				})
 				tofu2 := session.TestTofu(t)
-				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker.PrivateId, worker.Type, tofu2)
+				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker.PrivateId, tofu2)
 				require.NoError(t, err)
 				connection2, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PrivateId)
 				require.NoError(t, err)
@@ -315,7 +315,7 @@ func TestWorkerStatusReport(t *testing.T) {
 					ConnectionLimit: 10,
 				})
 				tofu := session.TestTofu(t)
-				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, worker.Type, tofu)
+				sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, tofu)
 				require.NoError(t, err)
 				connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker.PrivateId)
 				require.NoError(t, err)
@@ -333,7 +333,7 @@ func TestWorkerStatusReport(t *testing.T) {
 					ConnectionLimit: 10,
 				})
 				tofu2 := session.TestTofu(t)
-				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker.PrivateId, worker.Type, tofu2)
+				sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker.PrivateId, tofu2)
 				require.NoError(t, err)
 				connection2, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker.PrivateId)
 				require.NoError(t, err)

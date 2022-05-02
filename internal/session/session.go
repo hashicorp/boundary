@@ -64,10 +64,8 @@ type Session struct {
 	UserId string `json:"user_id,omitempty" gorm:"default:null"`
 	// HostId of the session
 	HostId string `json:"host_id,omitempty" gorm:"default:null"`
-	// ServerId that proxied the session
-	ServerId string `json:"server_id,omitempty" gorm:"default:null"`
-	// ServerType that proxied the session
-	ServerType string `json:"server_type,omitempty" gorm:"default:null"`
+	// WorkerId that proxied the session
+	WorkerId string `json:"worker_id,omitempty" gorm:"default:null"`
 	// TargetId for the session
 	TargetId string `json:"target_id,omitempty" gorm:"default:null"`
 	// HostSetId for the session
@@ -171,8 +169,7 @@ func (s *Session) Clone() interface{} {
 		PublicId:          s.PublicId,
 		UserId:            s.UserId,
 		HostId:            s.HostId,
-		ServerId:          s.ServerId,
-		ServerType:        s.ServerType,
+		WorkerId:          s.WorkerId,
 		TargetId:          s.TargetId,
 		HostSetId:         s.HostSetId,
 		AuthTokenId:       s.AuthTokenId,
@@ -337,11 +334,8 @@ func (s *Session) validateNewSession() error {
 	if s.TerminationReason != "" {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "termination reason must be empty")
 	}
-	if s.ServerId != "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "server id must be empty")
-	}
-	if s.ServerType != "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "server type must be empty")
+	if s.WorkerId != "" {
+		return errors.NewDeprecated(errors.InvalidParameter, op, "worker id must be empty")
 	}
 	if s.TofuToken != nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "tofu token must be empty")
@@ -449,8 +443,7 @@ type sessionListView struct {
 	PublicId          string               `json:"public_id,omitempty" gorm:"primary_key"`
 	UserId            string               `json:"user_id,omitempty" gorm:"default:null"`
 	HostId            string               `json:"host_id,omitempty" gorm:"default:null"`
-	ServerId          string               `json:"server_id,omitempty" gorm:"default:null"`
-	ServerType        string               `json:"server_type,omitempty" gorm:"default:null"`
+	WorkerId          string               `json:"worker_id,omitempty" gorm:"default:null"`
 	TargetId          string               `json:"target_id,omitempty" gorm:"default:null"`
 	HostSetId         string               `json:"host_set_id,omitempty" gorm:"default:null"`
 	AuthTokenId       string               `json:"auth_token_id,omitempty" gorm:"default:null"`

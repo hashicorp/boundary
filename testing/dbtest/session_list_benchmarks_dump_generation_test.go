@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -131,12 +132,11 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			require.NoError(err)
 			serversRepo, err := servers.NewRepository(rw, rw, kms)
 			require.NoError(err)
-			worker := &servers.Server{
+			worker := &store.Worker{
 				PrivateId: "test1",
-				Type:      "worker",
 				Address:   "127.0.0.1",
 			}
-			_, _, err = serversRepo.UpsertServer(ctx, worker)
+			_, _, err = serversRepo.UpsertWorker(ctx, worker)
 			require.NoError(err)
 
 			usersStart := time.Now()
@@ -220,8 +220,8 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 	}
 }
 
-func cycleSessionStates(t testing.TB, ctx context.Context, sess *session.Session, sessRepo *session.Repository, connRepo *session.ConnectionRepository, conn *db.DB, worker *servers.Server, numConns int) {
-	sess, _, err := sessRepo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, worker.Type, []byte(`tofu`))
+func cycleSessionStates(t testing.TB, ctx context.Context, sess *session.Session, sessRepo *session.Repository, connRepo *session.ConnectionRepository, conn *db.DB, worker *store.Worker, numConns int) {
+	sess, _, err := sessRepo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, []byte(`tofu`))
 	require.NoError(t, err)
 	var closeWiths []session.CloseWith
 	for i := 0; i < numConns; i++ {

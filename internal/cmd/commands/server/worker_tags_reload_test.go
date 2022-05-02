@@ -140,7 +140,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		t.Helper()
 		serversRepo, err := cmd.controller.ServersRepoFn()
 		require.NoError(err)
-		tags, err := serversRepo.ListTagsForServers(cmd.Context, []string{name})
+		tags, err := serversRepo.ListTagsForWorkers(cmd.Context, []string{name})
 		require.NoError(err)
 		require.Len(tags, 2)
 		require.Equal(key, tags[0].Key)

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/servers/store"
 )
 
 const (
@@ -62,16 +62,14 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) 
 	}, nil
 }
 
-// ListServers is a passthrough to listServersWithReader that uses the repo's
-// normal reader.
-func (r *Repository) ListServers(ctx context.Context, serverType ServerType, opt ...Option) ([]*Server, error) {
-	return r.listServersWithReader(ctx, r.reader, serverType, opt...)
+// ListWorkers is a passthrough to listWorkersWithReader that uses the repo's normal reader.
+func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*store.Worker, error) {
+	return r.listWorkersWithReader(ctx, r.reader, opt...)
 }
 
-// listServersWithReader will return a listing of resources and honor the
-// WithLimit option or the repo defaultLimit. It accepts a reader, allowing it
-// to be used within a transaction or without.
-func (r *Repository) listServersWithReader(ctx context.Context, reader db.Reader, serverType ServerType, opt ...Option) ([]*Server, error) {
+// listWorkersWithReader will return a listing of resources and honor the WithLimit option or the repo
+// defaultLimit. It accepts a reader, allowing it to be used within a transaction or without.
+func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*store.Worker, error) {
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
@@ -80,65 +78,89 @@ func (r *Repository) listServersWithReader(ctx context.Context, reader db.Reader
 
 	var where string
 	if liveness > 0 {
-		where = fmt.Sprintf("type = ? and update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
-	} else {
-		where = "type = ?"
+		where = fmt.Sprintf("update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
 	}
 
-	var servers []*Server
+	var workers []*store.Worker
 	if err := reader.SearchWhere(
 		ctx,
-		&servers,
+		&workers,
 		where,
-		[]interface{}{serverType},
+		[]interface{}{},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, errors.Wrap(ctx, err, "servers.listServersWithReader")
+		return nil, errors.Wrap(ctx, err, "workers.listWorkersWithReader")
 	}
 
-	return servers, nil
+	return workers, nil
 }
 
-// ServerTag holds the information for the server_tag table for Gorm.
-type ServerTag struct {
-	ServerId string
+func (r *Repository) ListControllers(ctx context.Context, opt ...Option) ([]*store.Controller, error) {
+	return r.listControllersWithReader(ctx, r.reader, opt...)
+}
+
+// listControllersWithReader will return a listing of resources and honor the
+// WithLimit option or the repo defaultLimit. It accepts a reader, allowing it
+// to be used within a transaction or without.
+func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*store.Controller, error) {
+	opts := getOpts(opt...)
+	liveness := opts.withLiveness
+	if liveness == 0 {
+		liveness = DefaultLiveness
+	}
+
+	var where string
+	if liveness > 0 {
+		where = fmt.Sprintf("update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
+	}
+
+	var controllers []*store.Controller
+	if err := reader.SearchWhere(
+		ctx,
+		&controllers,
+		where,
+		[]interface{}{},
+		db.WithLimit(-1),
+	); err != nil {
+		return nil, errors.Wrap(ctx, err, "workers.listControllersWithReader")
+	}
+
+	return controllers, nil
+}
+
+// WorkerTag holds the information for the worker_tag table for Gorm.
+type WorkerTag struct {
+	WorkerId string
 	Key      string
 	Value    string
 }
 
-// TableName overrides the table name used by ServerTag to `server_tag`
-func (ServerTag) TableName() string {
-	return "server_tag"
-}
-
-// ListTagsForServers pulls out tag tuples into ServerTag structs for the
-// given server ID values.
-func (r *Repository) ListTagsForServers(ctx context.Context, serverIds []string, opt ...Option) ([]*ServerTag, error) {
-	var serverTags []*ServerTag
+// ListTagsForWorkers pulls out tag tuples into WorkerTag structs for the given worker
+func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, opt ...Option) ([]*WorkerTag, error) {
+	var workerTags []*WorkerTag
 	if err := r.reader.SearchWhere(
 		ctx,
-		&serverTags,
-		"server_id in (?)",
-		[]interface{}{serverIds},
+		&workerTags,
+		"worker_id in (?)",
+		[]interface{}{workerIds},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, errors.Wrap(ctx, err, "servers.ListTagsForServers", errors.WithMsg(fmt.Sprintf("server IDs %v", serverIds)))
+		return nil, errors.Wrap(ctx, err, "servers.ListTagsForWorkers", errors.WithMsg(fmt.Sprintf("worker IDs %v", workerIds)))
 	}
-	return serverTags, nil
+	return workerTags, nil
 }
 
-// UpsertServer adds or updates a server in the DB
-func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Option) ([]*Server, int, error) {
-	const op = "servers.UpsertServer"
+func (r *Repository) UpsertWorker(ctx context.Context, worker *store.Worker, opt ...Option) ([]*store.Controller, int, error) {
+	const op = "servers.UpsertWorker"
 
-	if server == nil {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "server is nil")
+	if worker == nil {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
 	}
 
 	opts := getOpts(opt...)
 
 	var rowsUpdated int64
-	var controllers []*Server
+	var controllers []*store.Controller
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -146,21 +168,18 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 		func(read db.Reader, w db.Writer) error {
 			var err error
 			onConflict := &db.OnConflict{
-				Target: db.Constraint("server_pkey"),
-				Action: append(db.SetColumns([]string{"type", "description", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
+				Target: db.Columns{"private_id"},
+				Action: append(db.SetColumns([]string{"description", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
 			}
-			err = w.Create(ctx, server, db.WithOnConflict(onConflict), db.WithReturnRowsAffected(&rowsUpdated))
+			err = w.Create(ctx, worker, db.WithOnConflict(onConflict), db.WithReturnRowsAffected(&rowsUpdated))
 			if err != nil {
 				return errors.Wrap(ctx, err, op+":Upsert")
 			}
 
-			// If it's a worker, fetch the current controllers to feed to them
-			if server.Type == resource.Worker.String() {
-				// Fetch current controllers to feed to the workers
-				controllers, err = r.listServersWithReader(ctx, read, ServerTypeController)
-				if err != nil {
-					return errors.Wrap(ctx, err, op+":ListServer")
-				}
+			// Fetch current controllers to feed to the workers
+			controllers, err = r.listControllersWithReader(ctx, read)
+			if err != nil {
+				return errors.Wrap(ctx, err, op+":ListController")
 			}
 
 			// If we've been told to update tags, we need to clean out old
@@ -168,31 +187,31 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				_, err = w.Delete(ctx, &ServerTag{}, db.WithWhere(deleteTagsSql, server.PrivateId))
+				_, err = w.Delete(ctx, &WorkerTag{}, db.WithWhere(deleteTagsSql, worker.PrivateId))
 				if err != nil {
-					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(server.PrivateId))
+					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(worker.PrivateId))
 				}
 
 				// If tags were cleared out entirely, then we'll have nothing
 				// to do here, e.g., it will result in deletion of all tags.
 				// Otherwise, go through and stage each tuple for insertion
 				// below.
-				if len(server.Tags) > 0 {
-					tags := make([]interface{}, 0, len(server.Tags))
-					for k, v := range server.Tags {
+				if len(worker.Tags) > 0 {
+					tags := make([]interface{}, 0, len(worker.Tags))
+					for k, v := range worker.Tags {
 						if v == nil {
-							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", server.PrivateId, k))
+							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", worker.PrivateId, k))
 						}
 						for _, val := range v.Values {
-							tags = append(tags, ServerTag{
-								ServerId: server.PrivateId,
+							tags = append(tags, WorkerTag{
+								WorkerId: worker.PrivateId,
 								Key:      k,
 								Value:    val,
 							})
 						}
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {
-						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(server.PrivateId))
+						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(worker.PrivateId))
 					}
 				}
 			}
@@ -205,6 +224,39 @@ func (r *Repository) UpsertServer(ctx context.Context, server *Server, opt ...Op
 	}
 
 	return controllers, int(rowsUpdated), nil
+}
+
+func (r *Repository) UpsertController(ctx context.Context, controller *store.Controller) (int, error) {
+	const op = "servers.UpsertController"
+
+	if controller == nil {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "controller is nil")
+	}
+
+	var rowsUpdated int64
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			var err error
+			onConflict := &db.OnConflict{
+				Target: db.Columns{"private_id"},
+				Action: append(db.SetColumns([]string{"description", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
+			}
+			err = w.Create(ctx, controller, db.WithOnConflict(onConflict), db.WithReturnRowsAffected(&rowsUpdated))
+			if err != nil {
+				return errors.Wrap(ctx, err, op+":Upsert")
+			}
+
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, err
+	}
+
+	return int(rowsUpdated), nil
 }
 
 type Nonce struct {

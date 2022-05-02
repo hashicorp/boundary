@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/servers/store"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
@@ -88,7 +90,7 @@ func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime t
 	return run, nil
 }
 
-func testController(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper) *servers.Server {
+func testController(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *store.Controller {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -97,13 +99,11 @@ func testController(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper) *server
 
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
-	controller := &servers.Server{
-		PrivateId:   "test-job-server-" + id,
-		Type:        servers.ServerTypeController.String(),
-		Description: "Test Job Controller",
-		Address:     "127.0.0.1",
+	controller := &store.Controller{
+		PrivateId: "test-job-server-" + id,
+		Address:   "127.0.0.1",
 	}
-	_, _, err = serversRepo.UpsertServer(context.Background(), controller)
+	_, err = serversRepo.UpsertController(context.Background(), controller)
 	require.NoError(t, err)
 	return controller
 }

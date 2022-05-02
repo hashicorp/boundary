@@ -75,11 +75,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withSessionIds = []string{"s_1", "s_2", "s_3"}
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithServerId", func(t *testing.T) {
+	t.Run("WithWorkerId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithServerId("worker1"))
+		opts := getOpts(WithWorkerId("worker1"))
 		testOpts := getDefaultOptions()
-		testOpts.withServerId = "worker1"
+		testOpts.withWorkerId = "worker1"
 		assert.Equal(opts, testOpts)
 	})
 }
