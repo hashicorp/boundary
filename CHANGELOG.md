@@ -5,6 +5,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## Next
 
 ### New and Improved
+* metrics: provide [metrics](https://www.boundaryproject.io/docs/operations/metrics) for controllers and workers
 * controller: new health endpoint ([PR](https://github.com/hashicorp/boundary/pull/1882)).
 * Improve response time for listing sessions and targets.
   [PR](https://github.com/hashicorp/boundary/pull/2049)
