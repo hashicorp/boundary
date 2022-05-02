@@ -426,7 +426,7 @@ begin;
   update on session_state
     for each row execute procedure immutable_columns('session_id', 'state', 'start_time', 'previous_end_time');
 
-    
+-- Replaced in 28/02_prior_session_trigger.up.sql
   create or replace function
     insert_session_state()
     returns trigger
