@@ -9,6 +9,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller: new health endpoint ([PR](https://github.com/hashicorp/boundary/pull/1882)).
 * Improve response time for listing sessions and targets.
   [PR](https://github.com/hashicorp/boundary/pull/2049)
+* ui: Add support for worker filters in targets.
+* ui: Add manual refresh button in sessions list.
 
 ### Bug Fixes
 * worker: create new error to prevent `event.newError: missing error: invalid parameter` and handle session cancel 
