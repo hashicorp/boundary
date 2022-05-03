@@ -1,0 +1,100 @@
+---
+layout: docs
+page_title: Boundary Health Endpoints
+description: |-
+  Verify the Boundary controller server is up and able to receive requests
+---
+
+## Boundary Health Endpoints
+
+Boundary provides health monitoring through the `/health` path using a listener
+with the `"ops"` purpose. By default, a listener with that purpose runs on port
+`9203`. See the [example configuration](#example-configuration) section for an
+example listener stanza in a `config.hcl` file.
+
+### Requirements
+
+To enable the controller health endpoint, any Boundary instance must be
+started with a controller. That is, a `controller` block and a `purpose = "api"`
+listener must be defined in Boundary's configuration file. Additionally, a
+`purpose = "ops"` listener must also be defined in Boundary's configuration
+file. Under these conditions, the `ops` server (which hosts the controller health
+api) will be exposed.
+
+### Shutdown Grace Period
+
+Optionally, when the controller health endpoint is enabled, Boundary can be
+configured to change the controller health response to `503 Service Unavailable`
+upon receiving a shutdown signal, and wait a configurable amount of time before
+starting the shutdown process.
+ 
+This feature is designed to integrate with load balancers to reduce the risk of
+an outgoing Boundary instance causing disruption to incoming requests.
+ 
+In this state, Boundary is still capable of processing requests as normal, but
+will report as unhealthy through the controller health endpoint. In
+load-balanced environments, this would cause this "unhealthy" instance to be
+removed from the pool of instances eligible to handle requests, and thereby, reducing the
+likelihood that it will receive a request to handle during shutdown.
+ 
+This feature is disabled by default, even if the controller health endpoint is
+enabled. You can set it up by defining `graceful_shutdown_wait_duration` in the
+`controller` block of Boundary's configuration file. The value should be set to
+a string that is parseable by
+[ParseDuration](https://pkg.go.dev/time#ParseDuration).
+
+### API
+
+The new controller health service introduces a single read-only endpoint:
+
+| Status        | Description                                                    |
+|--------------|----------------------------------------------------------------|
+| `200`        | `GET /health` returns HTTP status 200 OK if the controller's api gRPC Server is up |
+| `5xx`        | `GET /health` returns HTTP status `5XX` or request timeout if unhealthy |
+| `503`        | `GET /health` returns HTTP status `503 Service Unavailable` status if the controller is shutting down |
+
+All responses return empty bodies. `GET /health` does not support any input.
+
+## Example configuration 
+
+Health checks are available for a controller defined with a `purpose = "ops"`
+listener stanza. For details on what fields are allowed in this stanza, refer to
+the documentation about [TCP Listener](/docs/configuration/listener/tcp).
+
+An example listener stanza:
+
+```hcl
+controller {
+  name = "boundary-controller"
+  database {
+      url = "postgresql://<username>:<password>@10.0.0.1:5432/<database_name>"
+  }
+}
+
+listener "tcp" {
+	purpose = "api"
+	tls_disable = true
+}
+
+listener "tcp" {
+	purpose = "ops"
+	tls_disable = true
+}
+```
+
+To enable a shutdown grace period, update the `controller` block with a defined
+wait duration:
+
+```hcl
+controller {
+  name = "boundary-controller"
+  database {
+      url = "env://BOUNDARY_PG_URL"
+  }
+  graceful_shutdown_wait_duration = "10s"
+}
+```
+
+A complete example can be viewed under the [Controller
+configuration](/docs/configuration/controller#complete-configuration-example)
+docs.
