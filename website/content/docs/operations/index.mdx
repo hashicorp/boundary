@@ -7,7 +7,9 @@ description: |-
 
 # Maintaining and Operating Boundary
 
-Having visibility into various components of Boundary plays an important role in ensuring the health of its controllers and workers. While we intend to offer additional monitoring components in subsequent Boundary releases, Boundary can now export metrics for its controllers and workers which can be collected by Prometheus.  These metrics help you understand the current state of your Boundary deployment, thereby, enabling the diagnosis of deployed controllers and workers to help detect anomalies and mitigate. We will cover the metrics available as well as the naming and labeling standards used for the metrics exported. Additionally, we offer the ability to monitor the health of your Boundary instance with new endpoints. Once you defined a listener in our Boundary's configuration file, the controller health endpoint becomes enabled, and a health response may be configured to begin a shutdown process that's based on a configurable amount of time.
+Visibility into various components of Boundary plays an important role in ensuring the health of its controllers and workers. While additional monitoring components are planned for subsequent Boundary releases, metrics for controllers and workers can now be exported and then collected by Prometheus. Metrics provide insight into the current state of a Boundary deployment by enabling the diagnosis of deployed controllers and workers. Enabling metrics assists in the detection and mitigation of anomalies in a deployment.
+
+These docs describe the available metrics and the naming and labeling standards used. Additionally, the health of controllers can be monitored using the `/health` endpoint. The health endpoint is enabled by defining a listener in Boundary's configuration file, and a health response may be configured to add a shutdown grace period process.
 
 * Refer to the [Metrics](/docs/operations/metrics) documentation to learn more about Boundary metrics.
 * Refer to the [Health Endpoint](/docs/operations/health) documentation to learn more about Boundary health endpoints.
