@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.8.0 (2022/05/03)
 
 ### New and Improved
 * metrics: provide metrics for controllers and workers
