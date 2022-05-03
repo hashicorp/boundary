@@ -1,4 +1,4 @@
-a8ae8d28df4af8d2c72e8a67409d439976b24031 fix: 🐛 Reduce extra padding in tables (#1091)
+8545697b430a432bd50c1bde6a080759f803f157 Add toolbar regions to align refresh button to the right (#1098)
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
