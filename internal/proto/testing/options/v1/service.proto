@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package testing.options.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/testing/protooptions;protooptions";
-
 import "google/api/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/testing/protooptions;protooptions";
 
 // The test service definition.  This is just a service that can be used to
 // test options applied to services.

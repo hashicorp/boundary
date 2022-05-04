@@ -1,9 +1,10 @@
 syntax = "proto3";
 
 package controller.servers.v1;
-option go_package = "github.com/hashicorp/boundary/internal/servers;servers";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/servers;servers";
 
 // Server contains all fields related to a Controller or Worker resource
 message Server {

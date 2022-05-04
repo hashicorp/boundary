@@ -1,10 +1,10 @@
-
 syntax = "proto3";
 
 package controller.storage.iam.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
 
 message UserRole {
   // create_time from the RDBMS

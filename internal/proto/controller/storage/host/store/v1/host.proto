@@ -2,6 +2,7 @@ syntax = "proto3";
 
 // Package store provides protobufs for storing types in the host package.
 package controller.storage.host.store.v1;
+
 option go_package = "github.com/hashicorp/boundary/internal/host/store;store";
 
 message Catalog {

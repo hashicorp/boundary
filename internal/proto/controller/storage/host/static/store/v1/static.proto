@@ -3,10 +3,11 @@ syntax = "proto3";
 // Package store provides protobufs for storing types in the static host
 // package.
 package controller.storage.host.static.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/host/static/store;store";
 
-import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/host/static/store;store";
 
 message HostCatalog {
   // public_is is a surrogate key suitable for use in a public API.
@@ -23,11 +24,17 @@ message HostCatalog {
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+  string name = 4 [(custom_options.v1.mask_mapping) = {
+    this: "name"
+    that: "name"
+  }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+  string description = 5 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
 
   // The scope_id of the owning scope and must be set.
   // @inject_tag: `gorm:"not_null"`
@@ -54,11 +61,17 @@ message Host {
   // name is optional. If set, it must be unique within
   // catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+  string name = 4 [(custom_options.v1.mask_mapping) = {
+    this: "name"
+    that: "name"
+  }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+  string description = 5 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
 
   // catalog_id is the public_id of the owning
   // static_host_catalog and must be set.
@@ -68,7 +81,10 @@ message Host {
   // address is the IP Address or DNS name of the host. It must be set and
   // it must be unique within catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string address = 7 [(custom_options.v1.mask_mapping) = {this:"address" that: "attributes.address"}];
+  string address = 7 [(custom_options.v1.mask_mapping) = {
+    this: "address"
+    that: "attributes.address"
+  }];
 
   // version allows optimistic locking of the resource
   // @inject_tag: `gorm:"default:null"`
@@ -91,11 +107,17 @@ message HostSet {
   // name is optional. If set, it must be unique within
   // catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+  string name = 4 [(custom_options.v1.mask_mapping) = {
+    this: "name"
+    that: "name"
+  }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+  string description = 5 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
 
   // catalog_id is the public_id of the owning
   // static_host_catalog and must be set.
@@ -122,6 +144,12 @@ message HostSetMember {
 // here for the purpose of identifying the mask maps which are on the top level
 // api set resource but aren't present in the static host set storage.
 message UnimplementedSetFields {
-  repeated string preferred_endpoints = 11 [(custom_options.v1.mask_mapping) = {this:"PreferredEndpoints" that: "preferred_endpoints"}];
-  int32 sync_interval_seconds = 22 [(custom_options.v1.mask_mapping) = {this: "SyncIntervalSeconds" that: "sync_interval_seconds"}];
+  repeated string preferred_endpoints = 11 [(custom_options.v1.mask_mapping) = {
+    this: "PreferredEndpoints"
+    that: "preferred_endpoints"
+  }];
+  int32 sync_interval_seconds = 22 [(custom_options.v1.mask_mapping) = {
+    this: "SyncIntervalSeconds"
+    that: "sync_interval_seconds"
+  }];
 }

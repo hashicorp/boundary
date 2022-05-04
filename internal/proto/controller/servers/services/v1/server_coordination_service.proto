@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package controller.servers.services.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
-
 import "controller/servers/v1/servers.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
 
 service ServerCoordinationService {
   // Status gets worker status requests which include the ongoing jobs the worker is handling and

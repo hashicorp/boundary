@@ -2,11 +2,11 @@ syntax = "proto3";
 
 package testing.event.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/testing/event;event";
-
+import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
-import "google/api/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/testing/event;event";
 
 service TestAuthMethodService {
   // TestAuthenticate validates credentials provided and returns an Auth Token.
@@ -27,7 +27,10 @@ message TestAuthenticateRequest {
   // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
   // to keep it safe from rogue JS in the browser. Deprecated, use "type" instead.
   // @inject_tag: `class:"public"`
-  string token_type = 2 [json_name = "token_type", deprecated = true];
+  string token_type = 2 [
+    json_name = "token_type",
+    deprecated = true
+  ];
   // This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
   // to keep it safe from rogue JS in the browser.
   // @inject_tag: `class:"public"`
@@ -40,7 +43,7 @@ message TestAuthenticateRequest {
 }
 
 message TestAuthenticateResponse {
-  reserved 1, 2;  // Old item and token_type
+  reserved 1, 2; // Old item and token_type
   reserved "item", "token_type";
   // Valid keys and values depend on the type of Auth Method as well as the command.
   google.protobuf.Struct attributes = 4 [json_name = "attributes"];

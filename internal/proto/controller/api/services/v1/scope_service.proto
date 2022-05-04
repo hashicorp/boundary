@@ -2,13 +2,12 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
-
-import "protoc-gen-openapiv2/options/annotations.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
-import "controller/api/resources/scopes/v1/scope.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
     title: "Boundary Controller HTTP API"
@@ -100,8 +99,8 @@ message GetScopeResponse {
 
 message ListScopesRequest {
   string scope_id = 1;
-  bool recursive = 20 [json_name="recursive"];
-  string filter = 30 [json_name="filter"];
+  bool recursive = 20 [json_name = "recursive"];
+  string filter = 30 [json_name = "filter"];
 }
 
 message ListScopesResponse {
@@ -122,7 +121,7 @@ message CreateScopeResponse {
 message UpdateScopeRequest {
   string id = 1;
   resources.scopes.v1.Scope item = 2;
-  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+  google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
 
 message UpdateScopeResponse {

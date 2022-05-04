@@ -1,10 +1,11 @@
 syntax = "proto3";
 
 package controller.storage.iam.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
 
 import "controller/custom_options/v1/options.proto";
 import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/iam/store;store";
 
 message Scope {
   // public_id is the used to access the Scope via an API
@@ -22,7 +23,10 @@ message Scope {
   // name is the optional friendly name used to
   // access the Scope via an API
   // @inject_tag: `gorm:"default:null"`
-  string name = 4 [(custom_options.v1.mask_mapping) = { this: "name" that: "name" }];
+  string name = 4 [(custom_options.v1.mask_mapping) = {
+    this: "name"
+    that: "name"
+  }];
 
   // Type of scope
   string type = 5;
@@ -33,7 +37,10 @@ message Scope {
 
   // description of scope
   // @inject_tag: `gorm:"default:null"`
-  string description = 7 [(custom_options.v1.mask_mapping) = { this: "description" that: "description" }];
+  string description = 7 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
 
   // version allows optimistic locking of the scope
   // @inject_tag: `gorm:"default:null"`
@@ -44,5 +51,8 @@ message Scope {
   // method will also be designated as the auth method which can autovivify
   // users.
   // @inject_tag: `gorm:"default:null"`
-  string primary_auth_method_id = 20 [(custom_options.v1.mask_mapping) = { this: "PrimaryAuthMethodId" that: "primary_auth_method_id" }];
+  string primary_auth_method_id = 20 [(custom_options.v1.mask_mapping) = {
+    this: "PrimaryAuthMethodId"
+    that: "primary_auth_method_id"
+  }];
 }

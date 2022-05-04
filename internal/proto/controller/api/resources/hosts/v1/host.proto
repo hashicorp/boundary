@@ -2,76 +2,100 @@ syntax = "proto3";
 
 package controller.api.resources.hosts.v1;
 
-option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts;hosts";
-
+import "controller/api/resources/plugins/v1/plugin.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/api/visibility.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
-import "google/api/visibility.proto";
-import "controller/api/resources/scopes/v1/scope.proto";
-import "controller/api/resources/plugins/v1/plugin.proto";
-import "controller/custom_options/v1/options.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts;hosts";
 
 // Host contains all fields related to a Host resource
 message Host {
-	// Output only. The ID of the Host.
-	string id = 10;  // @gotags: `class:"public"`
+  // Output only. The ID of the Host.
+  string id = 10; // @gotags: `class:"public"`
 
-	// The Host Catalog of which this Host is a part.
-	string host_catalog_id = 20 [json_name="host_catalog_id", (custom_options.v1.subtype_source_id) = true];  // @gotags: `class:"public"`
+  // The Host Catalog of which this Host is a part.
+  string host_catalog_id = 20 [
+    json_name = "host_catalog_id",
+    (custom_options.v1.subtype_source_id) = true
+  ]; // @gotags: `class:"public"`
 
-	// Output only. Scope information for this resource.
-	resources.scopes.v1.ScopeInfo scope = 30;
+  // Output only. Scope information for this resource.
+  resources.scopes.v1.ScopeInfo scope = 30;
 
-	// Output only. Plugin information for this resource.
-	resources.plugins.v1.PluginInfo plugin = 35;
+  // Output only. Plugin information for this resource.
+  resources.plugins.v1.PluginInfo plugin = 35;
 
-	// Optional name for identification purposes.
-	google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"name" that: "name"}];  // @gotags: `class:"public"`
+  // Optional name for identification purposes.
+  google.protobuf.StringValue name = 40 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "name"
+      that: "name"
+    }
+  ]; // @gotags: `class:"public"`
 
-	// Optional user-set description for identification purposes.
-	google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"description" that: "description"}];  // @gotags: `class:"public"`
+  // Optional user-set description for identification purposes.
+  google.protobuf.StringValue description = 50 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "description"
+      that: "description"
+    }
+  ]; // @gotags: `class:"public"`
 
-	// Output only. The time this resource was created.
-	google.protobuf.Timestamp created_time = 60 [json_name="created_time"];  // @gotags: `class:"public"`
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
 
-	// Output only. The time this resource was last updated.
-	google.protobuf.Timestamp updated_time = 70 [json_name="updated_time"];  // @gotags: `class:"public"`
+  // Output only. The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
 
-	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
-	// The mutation will fail if the version does not match the latest known good version.
-	uint32 version = 80;  // @gotags: `class:"public"`
+  // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 80; // @gotags: `class:"public"`
 
-	// The type of the resource.
-	string type = 90;  // @gotags: `class:"public"`
+  // The type of the resource.
+  string type = 90; // @gotags: `class:"public"`
 
-	// Output only. A list of Host Sets containing this Host.
-	repeated string host_set_ids = 100 [json_name="host_set_ids"];  // @gotags: `class:"public"`
+  // Output only. A list of Host Sets containing this Host.
+  repeated string host_set_ids = 100 [json_name = "host_set_ids"]; // @gotags: `class:"public"`
 
-	oneof attrs {
-		// The attributes that are applicable to the specific Host type.
-		google.protobuf.Struct attributes = 110 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.subtype) = "default"];
-		StaticHostAttributes static_host_attributes = 111 [
-			(google.api.field_visibility).restriction = "INTERNAL",
-			(custom_options.v1.generate_sdk_option) = true,
-			(custom_options.v1.subtype) = "static"
-		];
-	}
+  oneof attrs {
+    // The attributes that are applicable to the specific Host type.
+    google.protobuf.Struct attributes = 110 [
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "default"
+    ];
+    StaticHostAttributes static_host_attributes = 111 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "static"
+    ];
+  }
 
-	// Output only.  The list of ip addresses associated with this host.
-	repeated string ip_addresses = 120;  // @gotags: `class:"public"`
+  // Output only.  The list of ip addresses associated with this host.
+  repeated string ip_addresses = 120; // @gotags: `class:"public"`
 
-	// Output only.  The list of dns addresses associated with this host.
-	repeated string dns_names = 130;  // @gotags: `class:"public"`
+  // Output only.  The list of dns addresses associated with this host.
+  repeated string dns_names = 130; // @gotags: `class:"public"`
 
-	// Output only. The external ID of the host, if any.
-	string external_id = 140;  // @gotags: `class:"public"`
+  // Output only. The external ID of the host, if any.
+  string external_id = 140; // @gotags: `class:"public"`
 
-	// Output only. The available actions on this resource for this user.
-	repeated string authorized_actions = 300 [json_name="authorized_actions"];  // @gotags: `class:"public"`
+  // Output only. The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }
 
 message StaticHostAttributes {
-	// The address (DNS or IP name) used to reach the Host.
-	google.protobuf.StringValue address = 10 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = {this:"attributes.address" that: "address"}];  // @gotags: `class:"public"`
+  // The address (DNS or IP name) used to reach the Host.
+  google.protobuf.StringValue address = 10 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.address"
+      that: "address"
+    }
+  ]; // @gotags: `class:"public"`
 }

@@ -3,10 +3,11 @@ syntax = "proto3";
 // Package store provides protobufs for storing types in the plugin host
 // package.
 package controller.storage.host.plugin.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/host/plugin/store;store";
 
-import "controller/storage/timestamp/v1/timestamp.proto";
 import "controller/custom_options/v1/options.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/host/plugin/store;store";
 
 message HostCatalog {
   // public_id is a surrogate key suitable for use in a public API.
@@ -23,11 +24,17 @@ message HostCatalog {
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 4 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+  string name = 4 [(custom_options.v1.mask_mapping) = {
+    this: "name"
+    that: "name"
+  }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 5 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+  string description = 5 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
 
   // The scope_id of the owning scope and must be set.
   // @inject_tag: `gorm:"not_null"`
@@ -76,11 +83,17 @@ message HostSet {
   // name is optional. If set, it must be unique within
   // catalog_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 6 [(custom_options.v1.mask_mapping) = {this:"name" that: "name"}];
+  string name = 6 [(custom_options.v1.mask_mapping) = {
+    this: "name"
+    that: "name"
+  }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 7 [(custom_options.v1.mask_mapping) = {this:"description" that: "description"}];
+  string description = 7 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
 
   // catalog_id is the public_id of the owning
   // plugin_host_catalog and must be set.
@@ -97,11 +110,17 @@ message HostSet {
 
   // preferred_endpoints stores string preference values
   // @inject_tag: `gorm:"-"`
-  repeated string preferred_endpoints = 11 [(custom_options.v1.mask_mapping) = {this:"PreferredEndpoints" that: "preferred_endpoints"}];
+  repeated string preferred_endpoints = 11 [(custom_options.v1.mask_mapping) = {
+    this: "PreferredEndpoints"
+    that: "preferred_endpoints"
+  }];
 
   // Sync interval is a value representing a duration in seconds
   // @inject_tag: `gorm:"default:null"`
-  int32 sync_interval_seconds = 12 [(custom_options.v1.mask_mapping) = {this: "SyncIntervalSeconds" that: "sync_interval_seconds"}];
+  int32 sync_interval_seconds = 12 [(custom_options.v1.mask_mapping) = {
+    this: "SyncIntervalSeconds"
+    that: "sync_interval_seconds"
+  }];
 }
 
 message HostCatalogSecret {

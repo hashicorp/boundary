@@ -2,21 +2,20 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
-
-import "protoc-gen-openapiv2/options/annotations.proto";
-import "google/api/annotations.proto";
-import "google/protobuf/field_mask.proto";
 import "controller/api/resources/hosts/v1/host.proto";
 import "controller/custom_options/v1/options.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 option (custom_options.v1.domain) = "host";
 
 service HostService {
   // GetHost returns a stored Host if present.  The provided request
   // must include the host ID for the resource being retrieved. If the ID is
   // missing, malformed or referencing anon existing resource an error is
-   // returned.
+  // returned.
   rpc GetHost(GetHostRequest) returns (GetHostResponse) {
     option (google.api.http) = {
       get: "/v1/hosts/{id}"
@@ -88,7 +87,7 @@ service HostService {
 }
 
 message GetHostRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetHostResponse {
@@ -96,8 +95,8 @@ message GetHostResponse {
 }
 
 message ListHostsRequest {
-  string host_catalog_id = 1 [json_name="host_catalog_id"];  // @gotags: `class:"public"`
-  string filter = 30 [json_name="filter"];  // @gotags: `class:"public"`
+  string host_catalog_id = 1 [json_name = "host_catalog_id"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
 message ListHostsResponse {
@@ -109,14 +108,14 @@ message CreateHostRequest {
 }
 
 message CreateHostResponse {
-  string uri = 1;  // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public"`
   api.resources.hosts.v1.Host item = 2;
 }
 
 message UpdateHostRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
   api.resources.hosts.v1.Host item = 2;
-  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+  google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
 
 message UpdateHostResponse {
@@ -124,7 +123,7 @@ message UpdateHostResponse {
 }
 
 message DeleteHostRequest {
-  string id = 1;  // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message DeleteHostResponse {}

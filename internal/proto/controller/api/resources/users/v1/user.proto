@@ -2,12 +2,12 @@ syntax = "proto3";
 
 package controller.api.resources.users.v1;
 
-option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users;users";
-
-import "google/protobuf/timestamp.proto";
-import "google/protobuf/wrappers.proto";
 import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users;users";
 
 message Account {
   // Output only. The ID of the Account.
@@ -29,10 +29,22 @@ message User {
   resources.scopes.v1.ScopeInfo scope = 30;
 
   // Optional name for identification purposes.
-  google.protobuf.StringValue name = 40 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "name" that: "name" }]; // @gotags: `class:"sensitive"`
+  google.protobuf.StringValue name = 40 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "name"
+      that: "name"
+    }
+  ]; // @gotags: `class:"sensitive"`
 
   // Optional user-set description for identification purposes.
-  google.protobuf.StringValue description = 50 [(custom_options.v1.generate_sdk_option) = true, (custom_options.v1.mask_mapping) = { this: "description" that: "description" }]; // @gotags: `class:"sensitive"`
+  google.protobuf.StringValue description = 50 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "description"
+      that: "description"
+    }
+  ]; // @gotags: `class:"sensitive"`
 
   // Output only. The time this resource was created.
   google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`

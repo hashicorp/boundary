@@ -2,9 +2,10 @@ syntax = "proto3";
 
 // Package store provides protobufs for storing types in the password package.
 package controller.storage.auth.oidc.request.v1;
-option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/request;request";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/auth/oidc/request;request";
 
 // State represents an oidc request state.  State will be marshaled and then
 // wrapped with an EncryptedState before that's marshaled and encrypted.

@@ -5082,7 +5082,7 @@
         },
         "credential": {
           "type": "object",
-          "description": "Output only. The fields of the strongly typed credential, empty if the credential type of the \ncredential source is unspecified.",
+          "description": "Output only. The fields of the strongly typed credential, empty if the credential type of the\ncredential source is unspecified.",
           "readOnly": true
         }
       },

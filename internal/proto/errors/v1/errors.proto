@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package errors.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/errors;errors";
-
 import "controller/api/v1/error.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/errors;errors";
 
 // Err is a protobuf representation of a domain error
 message Err {

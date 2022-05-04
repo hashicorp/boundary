@@ -2,14 +2,13 @@ syntax = "proto3";
 
 package testing.attribute.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/testing/attribute;attribute";
-
-import "protoc-gen-openapiv2/options/annotations.proto";
-import "google/api/annotations.proto";
-import "google/protobuf/struct.proto";
-import "google/protobuf/field_mask.proto";
 import "controller/custom_options/v1/options.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/struct.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
 
+option go_package = "github.com/hashicorp/boundary/internal/gen/testing/attribute;attribute";
 option (controller.custom_options.v1.domain) = "test";
 
 message TestResource {
@@ -116,9 +115,9 @@ message TestCreateResourceResponse {
 }
 
 message TestUpdateResourceRequest {
-  string                    id          = 1;
-  TestResource              item        = 2;
-  google.protobuf.FieldMask update_mask = 3 [json_name="update_mask"];
+  string id = 1;
+  TestResource item = 2;
+  google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
 
 message TestUpdateResourceResponse {
@@ -155,7 +154,7 @@ message TestCreateNoOneOfRequest {
 }
 
 message TestUpdateNoOneOfRequest {
-  string      id   = 1;
+  string id = 1;
   TestNoOneOf item = 2;
 }
 

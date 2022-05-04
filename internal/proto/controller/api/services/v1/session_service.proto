@@ -2,78 +2,78 @@ syntax = "proto3";
 
 package controller.api.services.v1;
 
+import "controller/api/resources/sessions/v1/session.proto";
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 
-import "protoc-gen-openapiv2/options/annotations.proto";
-import "google/api/annotations.proto";
-import "controller/api/resources/sessions/v1/session.proto";
-
 service SessionService {
-	// GetSession returns a stored Session if present.  The provided request
-	// must include the Session ID for the Session being retrieved. If
-	// any that ID is missing, malformed or reference a non existing
-	// resource an error is returned.
-	rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
-		option (google.api.http) = {
-			get: "/v1/sessions/{id}"
-			response_body: "item"
-		};
-		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-			summary: "Gets a single Session."
-		};
-	}
+  // GetSession returns a stored Session if present.  The provided request
+  // must include the Session ID for the Session being retrieved. If
+  // any that ID is missing, malformed or reference a non existing
+  // resource an error is returned.
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
+    option (google.api.http) = {
+      get: "/v1/sessions/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Gets a single Session."
+    };
+  }
 
-	// ListSessions returns a list of stored Sessions which exist inside the scope
-	// referenced inside the request. The request must include the scope ID for
-	// the Sessions being retrieved. If the scope ID is missing, malformed, or
-	// reference a non existing scope, an error is returned.
-	rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
-		option (google.api.http) = {
-			get: "/v1/sessions"
-    	};
-		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-			summary: "Lists all Sessions."
-		};
-	}
+  // ListSessions returns a list of stored Sessions which exist inside the scope
+  // referenced inside the request. The request must include the scope ID for
+  // the Sessions being retrieved. If the scope ID is missing, malformed, or
+  // reference a non existing scope, an error is returned.
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/sessions"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Lists all Sessions."
+    };
+  }
 
-	// CancelSession cancels an existing Session in boundary.  An error
-	// is returned if the request attempts to cancel a Session that does
-	// not exist.
-	rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {
-		option (google.api.http) = {
-			post: "/v1/sessions/{id}:cancel"
-			body: "*"
-			response_body: "item"
-		};
-		option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-			summary: "Cancels a Session."
-		};
-	}
+  // CancelSession cancels an existing Session in boundary.  An error
+  // is returned if the request attempts to cancel a Session that does
+  // not exist.
+  rpc CancelSession(CancelSessionRequest) returns (CancelSessionResponse) {
+    option (google.api.http) = {
+      post: "/v1/sessions/{id}:cancel"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Cancels a Session."
+    };
+  }
 }
 
 message GetSessionRequest {
-	string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetSessionResponse {
-	resources.sessions.v1.Session item = 1;
+  resources.sessions.v1.Session item = 1;
 }
 
 message ListSessionsRequest {
-	string scope_id = 1; // @gotags: `class:"public"`
-	bool recursive = 20 [json_name="recursive"]; // @gotags: `class:"public"`
-	string filter = 30 [json_name="filter"]; // @gotags: `class:"public"`
+  string scope_id = 1; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
 message ListSessionsResponse {
-	repeated resources.sessions.v1.Session items = 1;
+  repeated resources.sessions.v1.Session items = 1;
 }
 
 message CancelSessionRequest {
-	string id = 1; // @gotags: `class:"public"`
-	uint32 version = 2; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
+  uint32 version = 2; // @gotags: `class:"public"`
 }
 
 message CancelSessionResponse {
-	resources.sessions.v1.Session item = 1;
+  resources.sessions.v1.Session item = 1;
 }
