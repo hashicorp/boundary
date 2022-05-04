@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/api
 
-go 1.17
+go 1.18
 
 require (
 	github.com/fatih/structs v1.1.0
