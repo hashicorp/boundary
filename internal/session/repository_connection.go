@@ -11,15 +11,9 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/servers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-// DeadWorkerConnCloseMinGrace is the minimum allowable setting for
-// the CloseConnectionsForDeadWorkers method. This is synced with
-// the default server liveness setting.
-var DeadWorkerConnCloseMinGrace = servers.DefaultLiveness
 
 // ConnectionRepository is the session connection database repository.
 type ConnectionRepository struct {
@@ -33,11 +27,6 @@ type ConnectionRepository struct {
 	// workerStateDelay is used by queries to account for a delay in state propagation between
 	// worker and controller
 	workerStateDelay time.Duration
-
-	// deadWorkerConnCloseMinGrace is the minimum allowable setting for
-	// the CloseConnectionsForDeadWorkers method. This defaults to
-	// the default server liveness setting.
-	deadWorkerConnCloseMinGrace time.Duration
 }
 
 // NewConnectionRepository creates a new session Connection Repository. Supports the options: WithLimit
@@ -60,12 +49,11 @@ func NewConnectionRepository(ctx context.Context, r db.Reader, w db.Writer, kms 
 	}
 
 	return &ConnectionRepository{
-		reader:                      r,
-		writer:                      w,
-		kms:                         kms,
-		defaultLimit:                opts.withLimit,
-		workerStateDelay:            opts.withWorkerStateDelay,
-		deadWorkerConnCloseMinGrace: opts.withDeadWorkerConnCloseMinGrace,
+		reader:           r,
+		writer:           w,
+		kms:              kms,
+		defaultLimit:     opts.withLimit,
+		workerStateDelay: opts.withWorkerStateDelay,
 	}, nil
 }
 
@@ -355,59 +343,6 @@ func (r *ConnectionRepository) DeleteConnection(ctx context.Context, publicId st
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
 	return rowsDeleted, nil
-}
-
-type CloseConnectionsForDeadWorkersResult struct {
-	ServerId                string
-	LastUpdateTime          time.Time
-	NumberConnectionsClosed int
-}
-
-// CloseConnectionsForDeadWorkers will run
-// closeConnectionsForDeadServersCte to look for connections that
-// should be marked because they are on a server that is no longer
-// sending status updates to the controller(s).
-//
-// The only input to the method is the grace period, in seconds.
-func (r *ConnectionRepository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePeriod time.Duration) ([]CloseConnectionsForDeadWorkersResult, error) {
-	const op = "session.(ConnectionRepository).CloseConnectionsForDeadWorkers"
-	if gracePeriod < r.deadWorkerConnCloseMinGrace {
-		return nil, errors.New(ctx,
-			errors.InvalidParameter, op, fmt.Sprintf("gracePeriod must be at least %s", r.deadWorkerConnCloseMinGrace))
-	}
-
-	args := []interface{}{
-		sql.Named("grace_period_seconds", gracePeriod.Seconds()),
-	}
-	results := make([]CloseConnectionsForDeadWorkersResult, 0)
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			rows, err := w.Query(ctx, closeConnectionsForDeadServersCte, args)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			defer rows.Close()
-
-			for rows.Next() {
-				var result CloseConnectionsForDeadWorkersResult
-				if err := w.ScanRows(ctx, rows, &result); err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
-
-				results = append(results, result)
-			}
-
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	return results, nil
 }
 
 // closeOrphanedConnections looks for connections that are still active, but where not reported by the worker.
