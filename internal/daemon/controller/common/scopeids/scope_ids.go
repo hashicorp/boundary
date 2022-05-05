@@ -80,9 +80,9 @@ type GetListingResourceInformationOutput struct {
 // resources; the IDs of the resources known to be authorized for that user; and
 // a memoized map of the scopes to their info for populating returned values.
 func GetListingResourceInformation(
-// The context to use when listing in the DB, if required
+	// The context to use when listing in the DB, if required
 	ctx context.Context,
-// The input struct
+	// The input struct
 	input GetListingResourceInformationInput,
 ) (*GetListingResourceInformationOutput, error) {
 	const op = "scopeids.GetListingResourceInformation"
@@ -246,11 +246,11 @@ func GetListingResourceInformation(
 //
 // It also populates the scope IDs in the output
 func filterAuthorizedResourceIds(
-// The context to use when listing in the DB, if required
+	// The context to use when listing in the DB, if required
 	ctx context.Context,
-// The input struct
+	// The input struct
 	input GetListingResourceInformationInput,
-// The scope information to fill out
+	// The scope information to fill out
 	output *GetListingResourceInformationOutput,
 ) error {
 	const op = "scopeids.filterAuthorizedResources"
@@ -313,18 +313,18 @@ func (i *GetListingResourceInformationOutput) populateScopeIdsFromScopeResourceM
 // services; services should eventually migrate to
 // GetListingResourceInformation.
 func GetListingScopeIds(
-// The context to use when listing in the DB, if required
+	// The context to use when listing in the DB, if required
 	ctx context.Context,
-// An IAM repo function to use for a listing call, if required
+	// An IAM repo function to use for a listing call, if required
 	repoFn common.IamRepoFactory,
-// The original auth results from the list command
+	// The original auth results from the list command
 	authResults auth.VerifyResults,
-// The scope ID to use, or to use as the starting point for a recursive
-// search
+	// The scope ID to use, or to use as the starting point for a recursive
+	// search
 	rootScopeId string,
-// The type of resource we are listing
+	// The type of resource we are listing
 	typ resource.Type,
-// Whether or not the search should be recursive
+	// Whether or not the search should be recursive
 	recursive bool,
 ) ([]string, map[string]*scopes.ScopeInfo, error) {
 	const op = "scopeids.GetListingScopeIds"
