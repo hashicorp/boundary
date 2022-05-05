@@ -357,23 +357,8 @@ func (c *Controller) registerJobs() error {
 	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
-
-	if err := c.registerSessionConnectionCleanupJob(); err != nil {
+	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.conf.StatusGracePeriodDuration); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// registerSessionConnectionCleanupJob is a helper method to abstract
-// registering the session connection cleanup job specifically.
-func (c *Controller) registerSessionConnectionCleanupJob() error {
-	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(c.ConnectionRepoFn, c.conf.StatusGracePeriodDuration)
-	if err != nil {
-		return fmt.Errorf("error creating session cleanup job: %w", err)
-	}
-	if err = c.scheduler.RegisterJob(c.baseContext, sessionConnectionCleanupJob); err != nil {
-		return fmt.Errorf("error registering session cleanup job: %w", err)
 	}
 
 	return nil
