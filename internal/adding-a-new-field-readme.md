@@ -53,7 +53,7 @@ The first step in the process is to add it to the API/SDK protobufs.
 Now that the API protobufs have been updated,
 you can move on to adding this new field to the API service handler.
 
-* Service handlers are under: `internal/servers/controller/handlers`
+* Service handlers are under: `internal/daemon/controller/handlers`
 * Incorporate the new field into the handlers `updateInRepo` func.
   You'll need to incorporate the inbound protobuf's field with the repository's update function.
   This could include adding repository options to the Update function call

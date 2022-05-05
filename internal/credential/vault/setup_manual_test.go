@@ -16,12 +16,12 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/credential/vault"
-	"github.com/hashicorp/boundary/internal/servers/controller"
-	"github.com/hashicorp/boundary/internal/servers/worker"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/hashicorp/boundary/internal/servers/controller/handlers/targets/tcp"
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
 func TestSetupSleepyDevEnvironment(t *testing.T) {

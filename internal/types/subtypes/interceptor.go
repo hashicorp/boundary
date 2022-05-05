@@ -3,7 +3,7 @@ package subtypes
 import (
 	"context"
 
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

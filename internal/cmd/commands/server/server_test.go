@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/servers/controller"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 )
