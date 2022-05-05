@@ -10,7 +10,7 @@ import (
 )
 
 // RegisterJobs registers plugin host related jobs with the provided scheduler.
-func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, _ db.Reader, w db.Writer, gracePeriod time.Duration) error {
+func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, w db.Writer, gracePeriod time.Duration) error {
 	const op = "session.RegisterJobs"
 	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(w, gracePeriod)
 	if err != nil {

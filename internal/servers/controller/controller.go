@@ -357,7 +357,7 @@ func (c *Controller) registerJobs() error {
 	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
-	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.conf.StatusGracePeriodDuration); err != nil {
+	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, c.conf.StatusGracePeriodDuration); err != nil {
 		return err
 	}
 
