@@ -4,10 +4,14 @@ begin;
 create table server_controller (
   private_id text primary key,
   description wt_description,
-  address text not null,
+  address text not null
+    constraint address_must_not_be_empty
+      check(length(trim(address)) > 0),
   create_time wt_timestamp,
   update_time wt_timestamp
 );
+comment on table server_controller  is
+  'server_controller is a table where each row represents a Boundary controller.';
 
 create trigger immutable_columns before update on server_controller
   for each row execute procedure immutable_columns('private_id','create_time');
@@ -26,10 +30,14 @@ create table server_worker (
   private_id text primary key,
   description wt_description,
   name wt_name unique,
-  address text not null,
+  address text not null
+    constraint address_must_not_be_empty
+      check(length(trim(address)) > 0),
   create_time wt_timestamp,
   update_time wt_timestamp
 );
+comment on table server_worker  is
+  'server_worker is a table where each row represents a Boundary worker.';
 
 create trigger immutable_columns before update on server_worker
   for each row execute procedure immutable_columns('private_id','create_time');
@@ -48,9 +56,10 @@ create trigger worker_update_time_column before update on server_worker
 -- Create table worker tag
 create table server_worker_tag (
   worker_id text
-    references server_worker(private_id)
-      on delete cascade
-      on update cascade,
+    constraint server_worker_fkey
+      references server_worker(private_id)
+        on delete cascade
+        on update cascade,
   key wt_tagpair,
   value wt_tagpair,
   primary key(worker_id, key, value)
@@ -70,7 +79,7 @@ alter table session
 alter table session
   rename column server_id to worker_id;
 alter table session
-  add constraint session_worker_id_fkey
+  add constraint server_worker_fkey
     foreign key (worker_id)
       references server_worker(private_id)
       on delete set null
@@ -88,7 +97,7 @@ alter table session_connection
 alter table session_connection
   rename column server_id to worker_id;
 alter table session_connection
-  add constraint worker_fkey
+  add constraint server_worker_fkey
     foreign key (worker_id)
       references server_worker (private_id)
       on delete set null
@@ -98,7 +107,7 @@ alter table session_connection
 alter table job_run
   drop constraint server_fkey;
 alter table job_run
-  add constraint server_fkey
+  add constraint server_controller_fkey
     foreign key (server_id)
       references server_controller (private_id)
       on delete set null

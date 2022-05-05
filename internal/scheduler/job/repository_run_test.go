@@ -70,7 +70,7 @@ func TestRepository_RunJobs(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrCode: errors.NotSpecificIntegrity,
-			wantErrMsg:  "job.(Repository).RunJobs: db.DoTx: job.(Repository).RunJobs: db.Query: insert or update on table \"job_run\" violates foreign key constraint \"server_fkey\": integrity violation: error #1003",
+			wantErrMsg:  "job.(Repository).RunJobs: db.DoTx: job.(Repository).RunJobs: db.Query: insert or update on table \"job_run\" violates foreign key constraint \"server_controller_fkey\": integrity violation: error #1003",
 		},
 	}
 	for _, tt := range tests {
