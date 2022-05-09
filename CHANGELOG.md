@@ -25,6 +25,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR](https://github.com/hashicorp/boundary/pull/2049)
 * ui: Add support for worker filters in targets
 * ui: Add manual refresh button in sessions list
+* Audit events are no longer a WIP ([PR](https://github.com/hashicorp/boundary/pull/2031).
 
 ### Bug Fixes
 
