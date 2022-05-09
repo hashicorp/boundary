@@ -290,6 +290,7 @@ begin;
     for each row execute procedure update_session_state_on_termination_reason();
  
 
+  -- Updated in 29/01_cancel_session_null_fkey
   -- cancel_session will insert a cancel state for the session, if there's isn't
   -- a canceled state already.  It's used by cancel_session_with_null_fk.
   create or replace function
