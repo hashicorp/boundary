@@ -7,6 +7,7 @@ import (
 	pbs "github.com/hashicorp/nodeenrollment/multihop"
 	"github.com/hashicorp/nodeenrollment/nodeauth"
 	"github.com/hashicorp/nodeenrollment/noderegistration"
+	"github.com/hashicorp/nodeenrollment/nodetls"
 	"github.com/hashicorp/nodeenrollment/nodetypes"
 )
 
@@ -41,5 +42,5 @@ func (m *multihopServiceServer) GenerateServerCertificates(ctx context.Context, 
 	if err != nil {
 		return nil, fmt.Errorf("%s: error getting current parameters: %w", op, err)
 	}
-	return noderegistration.GenerateServerCertificates(ctx, storage, req, opt...)
+	return nodetls.GenerateServerCertificates(ctx, storage, req, opt...)
 }

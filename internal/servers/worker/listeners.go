@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/go-multierror"
@@ -139,6 +140,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 		nodeauth.MakeCurrentParametersFactory(w.baseContext, nodee.NopTransactionStorage(w.NodeeFileStorage)),
 	)
 	multihop.RegisterMultihopServiceServer(downstreamServer, multihopService)
+	statusSessionService := workers.NewWorkerProxyServiceServer(w.controllerStatusConn, w.controllerSessionConn)
+	pbs.RegisterServerCoordinationServiceServer(downstreamServer, statusSessionService)
+	pbs.RegisterSessionServiceServer(downstreamServer, statusSessionService)
 
 	ln.GrpcServer = downstreamServer
 

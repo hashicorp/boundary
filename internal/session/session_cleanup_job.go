@@ -20,7 +20,7 @@ import (
 const deadWorkerConnCloseMinGrace = servers.DefaultLiveness
 
 type closeConnectionsForDeadWorkersResult struct {
-	ServerId                string
+	WorkerId                string
 	LastUpdateTime          time.Time
 	NumberConnectionsClosed int
 }

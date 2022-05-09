@@ -26,9 +26,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/nodeauth"
-	"github.com/hashicorp/nodeenrollment/noderegistration"
 	nodeefile "github.com/hashicorp/nodeenrollment/nodestorage/file"
+	"github.com/hashicorp/nodeenrollment/nodetypes"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -184,10 +185,11 @@ func (w *Worker) Start() error {
 		return err
 	}
 
-	w.NodeeKeyId, err = noderegistration.GenerateNodeCredentialsForRegistration(w.baseContext, w.NodeeFileStorage)
-	if err != nil {
+	var nodeCreds nodetypes.NodeCredentials
+	if err := nodeCreds.GenerateRegistrationParameters(w.baseContext, w.NodeeFileStorage); err != nil {
 		return err
 	}
+	w.NodeeKeyId = nodee.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 
 	if err := w.startControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)

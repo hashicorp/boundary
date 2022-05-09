@@ -6,6 +6,8 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
+replace github.com/hashicorp/nodeenrollment => ../nodeenrollment
+
 require (
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/fatih/color v1.13.0
@@ -87,7 +89,7 @@ require (
 
 require github.com/hashicorp/go-dbw v0.0.0-20211215222256-2ff0d37184ff // this is a branch and should be updated before merging
 
-require github.com/hashicorp/nodeenrollment v0.0.0-20220427165109-a2f5dad593c7
+require github.com/hashicorp/nodeenrollment v0.0.0-20220503175646-9114ff4a40e9
 
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect

@@ -38,7 +38,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/nodeenrollment/noderegistration"
 	nodeefile "github.com/hashicorp/nodeenrollment/nodestorage/file"
-	"github.com/hashicorp/nodeenrollment/nodetypes"
+	"github.com/hashicorp/nodeenrollment/rotation"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -322,7 +322,7 @@ func (c *Controller) Start() error {
 	if err != nil {
 		return err
 	}
-	_, err = nodetypes.RotateRootCertificates(c.baseContext, c.NodeeFileStorage)
+	_, err = rotation.RotateRootCertificates(c.baseContext, c.NodeeFileStorage)
 	if err != nil {
 		return err
 	}

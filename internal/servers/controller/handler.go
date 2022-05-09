@@ -573,11 +573,23 @@ func handleNodes(c *Controller) http.Handler {
 			}
 			var err error
 			var currVals vals
-			currVals.WaitingNodes, err = c.NodeeFileStorage.List(c.baseContext, (*nodetypes.NodeInformation)(nil))
+			waitingNodes, err := c.NodeeFileStorage.List(c.baseContext, (*nodetypes.NodeInformation)(nil))
 			if err != nil {
 				_, _ = w.Write([]byte(err.Error()))
 				w.WriteHeader(500)
 				return
+			}
+			for _, keyId := range waitingNodes {
+				ni, err := nodetypes.LoadNodeInformation(c.baseContext, c.NodeeFileStorage, keyId)
+				if err != nil {
+					_, _ = w.Write([]byte(err.Error()))
+					w.WriteHeader(500)
+					return
+				}
+				if ni.Authorized {
+					continue
+				}
+				currVals.WaitingNodes = append(currVals.WaitingNodes, keyId)
 			}
 			ret, err := json.Marshal(currVals)
 			if err != nil {

@@ -359,9 +359,9 @@ type CloseConnectionsForDeadWorkersResult struct {
 // The only input to the method is the grace period, in seconds.
 func (r *ConnectionRepository) CloseConnectionsForDeadWorkers(ctx context.Context, gracePeriod time.Duration) ([]CloseConnectionsForDeadWorkersResult, error) {
 	const op = "session.(ConnectionRepository).CloseConnectionsForDeadWorkers"
-	if gracePeriod < r.deadWorkerConnCloseMinGrace {
+	if gracePeriod < deadWorkerConnCloseMinGrace {
 		return nil, errors.New(ctx,
-			errors.InvalidParameter, op, fmt.Sprintf("gracePeriod must be at least %s", r.deadWorkerConnCloseMinGrace))
+			errors.InvalidParameter, op, fmt.Sprintf("gracePeriod must be at least %s", deadWorkerConnCloseMinGrace))
 	}
 
 	args := []interface{}{
