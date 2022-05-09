@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/servers/controller"
-	"github.com/hashicorp/boundary/internal/servers/worker"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 )
