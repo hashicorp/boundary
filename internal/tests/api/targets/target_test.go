@@ -14,13 +14,13 @@ import (
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/credential/vault"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/servers/controller"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/hashicorp/boundary/internal/servers/controller/handlers/targets/tcp"
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
 func TestHostSetASD(t *testing.T) {
