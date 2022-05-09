@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/resolver"
 )
 

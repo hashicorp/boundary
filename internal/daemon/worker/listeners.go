@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers/controller/handlers/workers"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
