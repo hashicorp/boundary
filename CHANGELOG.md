@@ -9,6 +9,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller: Do not shut down cluster listener when it receives an invalid
   packet ([Issue](https://github.com/hashicorp/boundary/issues/2072),
   [PR](https://github.com/hashicorp/boundary/pull/2073))
+* session: update cancel_session() function to check for terminated state ([Issue](https://github.com/hashicorp/boundary/issues/2064),
+  [PR](https://github.com/hashicorp/boundary/pull/2065))
 
 ## 0.8.0 (2022/05/03)
 
