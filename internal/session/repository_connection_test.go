@@ -452,8 +452,8 @@ func TestRepository_CloseConnectionsForDeadWorkers(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
-	deadWorkerConnCloseMinGrace := 1 * time.Second
-	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms, WithDeadWorkerConnCloseMinGrace(deadWorkerConnCloseMinGrace))
+	deadWorkerConnCloseMinGrace := 15 * time.Second
+	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	serversRepo, err := servers.NewRepository(rw, rw, kms)
 	require.NoError(err)

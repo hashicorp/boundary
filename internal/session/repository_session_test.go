@@ -642,7 +642,7 @@ func TestRepository_transitionState(t *testing.T) {
 				var ss []*State
 				var err error
 				if status == StatusActive {
-					s, ss, err = repo.ActivateSession(context.Background(), id, version, srv.PrivateId, srv.Type, tofu)
+					s, ss, err = repo.ActivateSession(context.Background(), id, version, srv.PrivateId, tofu)
 				} else {
 					s, ss, err = repo.updateState(context.Background(), id, version, status)
 				}

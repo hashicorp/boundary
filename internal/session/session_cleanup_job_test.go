@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,8 +45,8 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Create two "workers". One will remain untouched while the other "goes
 	// away and comes back" (worker 2).
-	worker1 := TestWorker(t, conn, wrapper, WithServerId("worker1"))
-	worker2 := TestWorker(t, conn, wrapper, WithServerId("worker2"))
+	worker1 := TestWorker(t, conn, wrapper, WithWorkerId("worker1"))
+	worker2 := TestWorker(t, conn, wrapper, WithWorkerId("worker2"))
 
 	// Create a few sessions on each, activate, and authorize a connection
 	var connIds []string
@@ -55,8 +56,8 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 		if i%2 == 0 {
 			serverId = worker2.PrivateId
 		}
-		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithServerId(serverId), WithDbOpts(db.WithSkipVetForWrite(true)))
-		sess, _, err = sessionRepo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, serverId, "worker", []byte("foo"))
+		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithWorkerId(serverId), WithDbOpts(db.WithSkipVetForWrite(true)))
+		sess, _, err = sessionRepo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, serverId, []byte("foo"))
 		require.NoError(err)
 		c, cs, _, err := AuthorizeConnection(ctx, sessionRepo, connectionRepo, sess.GetPublicId(), serverId)
 		require.NoError(err)
@@ -108,7 +109,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, rowsUpdated, err := serversRepo.UpsertServer(ctx, worker1, []servers.Option{}...)
+	_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, worker1, []servers.Option{}...)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -196,10 +197,10 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// firstly, the last worker will have no connections at all, and we will be
 	// closing the others in stages to test multiple servers being closed at
 	// once.
-	worker1 := TestWorker(t, conn, wrapper, WithServerId("worker1"))
-	worker2 := TestWorker(t, conn, wrapper, WithServerId("worker2"))
-	worker3 := TestWorker(t, conn, wrapper, WithServerId("worker3"))
-	worker4 := TestWorker(t, conn, wrapper, WithServerId("worker4"))
+	worker1 := TestWorker(t, conn, wrapper, WithWorkerId("worker1"))
+	worker2 := TestWorker(t, conn, wrapper, WithWorkerId("worker2"))
+	worker3 := TestWorker(t, conn, wrapper, WithWorkerId("worker3"))
+	worker4 := TestWorker(t, conn, wrapper, WithWorkerId("worker4"))
 
 	// Create sessions on the first three, activate, and authorize connections
 	var worker1ConnIds, worker2ConnIds, worker3ConnIds []string
@@ -212,8 +213,8 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		} else {
 			serverId = worker3.PrivateId
 		}
-		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithServerId(serverId), WithDbOpts(db.WithSkipVetForWrite(true)))
-		sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, serverId, "worker", []byte("foo"))
+		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithWorkerId(serverId), WithDbOpts(db.WithSkipVetForWrite(true)))
+		sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, serverId, []byte("foo"))
 		require.NoError(err)
 		c, cs, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
 		require.NoError(err)
@@ -288,12 +289,12 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// updateServer is a helper for updating the update time for our
 	// servers. The controller is read back so that we can reference
 	// the most up-to-date fields.
-	updateServer := func(t *testing.T, w *servers.Server) *servers.Server {
+	updateServer := func(t *testing.T, w *store.Worker) *store.Worker {
 		t.Helper()
-		_, rowsUpdated, err := serversRepo.UpsertServer(ctx, w)
+		_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, w)
 		require.NoError(err)
 		require.Equal(1, rowsUpdated)
-		servers, err := serversRepo.ListServers(ctx, servers.ServerTypeWorker)
+		servers, err := serversRepo.ListWorkers(ctx)
 		require.NoError(err)
 		for _, server := range servers {
 			if server.PrivateId == w.PrivateId {
@@ -398,7 +399,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		// number of connections closed. Due to how things are
 		require.Equal([]closeConnectionsForDeadWorkersResult{
 			{
-				ServerId:                worker1.PrivateId,
+				WorkerId:                worker1.PrivateId,
 				LastUpdateTime:          timestampPbAsUTC(t, worker1.UpdateTime.AsTime()),
 				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
 			},
@@ -422,12 +423,12 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		// Assert that we have one result with the appropriate ID and number of connections closed.
 		require.Equal([]closeConnectionsForDeadWorkersResult{
 			{
-				ServerId:                worker2.PrivateId,
+				WorkerId:                worker2.PrivateId,
 				LastUpdateTime:          timestampPbAsUTC(t, worker2.UpdateTime.AsTime()),
 				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
 			},
 			{
-				ServerId:                worker3.PrivateId,
+				WorkerId:                worker3.PrivateId,
 				LastUpdateTime:          timestampPbAsUTC(t, worker3.UpdateTime.AsTime()),
 				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
 			},
