@@ -186,7 +186,8 @@ func (w *Worker) Start() error {
 	}
 
 	var nodeCreds nodetypes.NodeCredentials
-	if err := nodeCreds.GenerateRegistrationParameters(w.baseContext, w.NodeeFileStorage); err != nil {
+	if err := nodeCreds.GenerateRegistrationParameters(w.baseContext, w.NodeeFileStorage,
+		nodee.WithWrapper(w.conf.WorkerPkiAuthKms)); err != nil {
 		return err
 	}
 	w.NodeeKeyId = nodee.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)

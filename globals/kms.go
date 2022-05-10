@@ -1,8 +1,9 @@
 package globals
 
 const (
-	KmsPurposeRoot       = "root"
-	KmsPurposeWorkerAuth = "worker-auth"
-	KmsPurposeRecovery   = "recovery"
-	KmsPurposeConfig     = "config"
+	KmsPurposeRoot          = "root"
+	KmsPurposeWorkerAuth    = "worker-auth"
+	KmsPurposeWorkerPkiAuth = "worker-pki-auth"
+	KmsPurposeRecovery      = "recovery"
+	KmsPurposeConfig        = "config"
 )

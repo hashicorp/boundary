@@ -84,6 +84,7 @@ type Server struct {
 
 	RootKms            wrapping.Wrapper
 	WorkerAuthKms      wrapping.Wrapper
+	WorkerPkiAuthKms   wrapping.Wrapper
 	RecoveryKms        wrapping.Wrapper
 	Kms                *kms.Kms
 	SecureRandomReader io.Reader
@@ -533,7 +534,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				if opts.withSkipWorkerAuthKmsInstantiation {
 					continue
 				}
-			case globals.KmsPurposeRoot, globals.KmsPurposeConfig:
+			case globals.KmsPurposeRoot, globals.KmsPurposeConfig, globals.KmsPurposeWorkerPkiAuth:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
@@ -597,6 +598,8 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				b.RootKms = wrapper
 			case globals.KmsPurposeWorkerAuth:
 				b.WorkerAuthKms = wrapper
+			case globals.KmsPurposeWorkerPkiAuth:
+				b.WorkerPkiAuthKms = wrapper
 			case globals.KmsPurposeRecovery:
 				b.RecoveryKms = wrapper
 			case globals.KmsPurposeConfig:
