@@ -80,7 +80,7 @@ update-ui-version:
 	else \
 		echo "==> Setting to latest commit matching '$(UI_COMMITISH)'"; \
 	fi; \
-	./scripts/uiclone.sh && ./scripts/uiupdate.sh
+	./scripts/uiupdate.sh
 
 .PHONY: build-ui
 build-ui:
