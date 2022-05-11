@@ -4,31 +4,39 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* controller: Do not shut down cluster listener when it receives an invalid
+  packet ([Issue](https://github.com/hashicorp/boundary/issues/2072),
+  [PR](https://github.com/hashicorp/boundary/pull/2073))
+
 ## 0.8.0 (2022/05/03)
 
 ### New and Improved
-* metrics: provide metrics for controllers and workers
-* controller: new health endpoint ([PR](https://github.com/hashicorp/boundary/pull/1882)).
-* Improve response time for listing sessions and targets.
+* metrics: Provide metrics for controllers and workers
+* controller: Add health endpoint ([PR](https://github.com/hashicorp/boundary/pull/1882))
+* controller: Improve response time for listing sessions and targets.
   [PR](https://github.com/hashicorp/boundary/pull/2049)
-* ui: Add support for worker filters in targets.
-* ui: Add manual refresh button in sessions list.
+* ui: Add support for worker filters in targets
+* ui: Add manual refresh button in sessions list
 
 ### Bug Fixes
+
 * worker: create new error to prevent `event.newError: missing error: invalid parameter` and handle session cancel 
   with no TOFU token ([Issue](https://github.com/hashicorp/boundary/issues/1902),
   [PR](https://github.com/hashicorp/boundary/pull/1929))
 * controller: Reconcile DEKs with existing scopes ([Issue](https://github.com/hashicorp/boundary/issues/1856),
   [PR](https://github.com/hashicorp/boundary/pull/1976))
-* Fix for retrieving sessions that could result in incomplete results when
+* controller: Fix for retrieving sessions that could result in incomplete results when
   there is a large number (10k+) of sessions.
   [PR](https://github.com/hashicorp/boundary/pull/2049)
 * session: update session state trigger to prevent transitions to invalid states ([Issue](https://github.com/hashicorp/boundary/issues/2040),
   [PR](https://github.com/hashicorp/boundary/pull/2046))
-  
+
 ## 0.7.6 (2022/03/15)
 
 ### Bug Fixes
+
 * sessions: Sessions and session connections have been refactored 
 to better isolate transactions and prevent resource contention that caused deadlocks.
 ([Issue](https://github.com/hashicorp/boundary/issues/1812),
@@ -53,6 +61,7 @@ to better isolate transactions and prevent resource contention that caused deadl
 * ui: Add support for dynamic host catalog. AWS and Azure plugin-based CRUD operations.
 
 ### Bug Fixes
+
 * targets: Specifying a plugin based host id when authorizing a session
   now works. ([PR](https://github.com/hashicorp/boundary/pull/1853))
 * targets: DNS names are now properly parsed when selecting an endpoint
