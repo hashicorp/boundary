@@ -25,7 +25,9 @@ create trigger controller_insert_time_column before insert on server_controller
 create trigger controller_update_time_column before update on server_controller
   for each row execute procedure update_time_column();
 
--- Worker table adds the field: name
+-- Worker table takes the place of the server table.
+-- instead of the private_id we use a wt_public_id field named public_id since
+-- workers will now be exposed as resources in boundary.
 create table server_worker (
   public_id wt_public_id primary key,
   description wt_description,
