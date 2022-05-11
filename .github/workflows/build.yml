@@ -6,7 +6,6 @@ on:
     branches:    
       # Push events on main branch
       - 'main'
-      - ICU-4231-update-ui-artifacts-consumption
 
 env:
   PKG_NAME: "boundary"
