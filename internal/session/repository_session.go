@@ -49,9 +49,6 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	if newSession.ScopeId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	if newSession.WorkerId != "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
-	}
 	if newSession.CtTofuToken != nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "ct is not empty")
 	}
@@ -248,7 +245,7 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, sco
 	return sessionsMap, nil
 }
 
-// ListSessions lists sessions.  Supports the WithLimit, WithScopeId, WithSessionIds, and WithWorkerId options.
+// ListSessions lists sessions.  Supports the WithLimit, WithScopeId, and WithSessionIds options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).ListSessions"
 	opts := getOpts(opt...)
@@ -287,11 +284,6 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 		}
 		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
-	}
-
-	if opts.withWorkerId != "" {
-		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("worker_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withWorkerId))
 	}
 
 	var limit string
@@ -492,16 +484,13 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 // activated. States are ordered by start time descending. Returns an
 // InvalidSessionState error code if a connection cannot be made because the session
 // was canceled or terminated.
-func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, workerId string, tofuToken []byte) (*Session, []*State, error) {
+func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, tofuToken []byte) (*Session, []*State, error) {
 	const op = "session.(Repository).ActivateSession"
 	if sessionId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
 	if sessionVersion == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
-	}
-	if workerId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing worker id")
 	}
 	if len(tofuToken) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing tofu token")
@@ -539,7 +528,6 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			}
 
 			updatedSession.TofuToken = tofuToken
-			updatedSession.WorkerId = workerId
 			if err := updatedSession.encrypt(ctx, databaseWrapper); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

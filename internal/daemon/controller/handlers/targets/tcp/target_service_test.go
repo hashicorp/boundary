@@ -2790,7 +2790,7 @@ func TestAuthorizeSession(t *testing.T) {
 			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 			_, err = workerService.Status(ctx, &spbs.StatusRequest{
 				Worker: &spb.Server{
-					PrivateId: "testworker",
+					PrivateId: "w_testworker",
 					Address:   "localhost:8457",
 				},
 			})
@@ -3078,7 +3078,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 			_, err = workerService.Status(ctx, &spbs.StatusRequest{
 				Worker: &spb.Server{
-					PrivateId: "testworker",
+					PrivateId: "w_testworker",
 					Address:   "localhost:8457",
 				},
 			})
@@ -3209,7 +3209,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 		_, err := workerService.Status(context.Background(), &spbs.StatusRequest{
 			Worker: &spb.Server{
-				PrivateId: "testworker",
+				PrivateId: "w_testworker",
 				Address:   "localhost:123",
 			},
 		})

@@ -194,6 +194,9 @@ func (w *Worker) Start() error {
 	if err := w.startControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
+	if len(w.conf.RawConfig.Worker.Name) < 10 {
+		time.Sleep(time.Second)
+	}
 
 	w.tickerWg.Add(1)
 	go func() {

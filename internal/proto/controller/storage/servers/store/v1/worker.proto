@@ -1,14 +1,16 @@
 syntax = "proto3";
 
 package controller.storage.servers.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 
+option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
+
 // Worker contains all fields related to a Worker resource
 message Worker {
-  // Private ID of the resource
-  string private_id = 10;
+  // Public ID of the resource
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
 
   // Name of the resource (optional)
   // Description of the resource (optional)

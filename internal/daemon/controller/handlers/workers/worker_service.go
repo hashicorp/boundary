@@ -82,7 +82,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		workerTags[k] = thisTag
 	}
 	worker := &store.Worker{
-		PrivateId:  reqServer.PrivateId,
+		PublicId:   reqServer.PrivateId,
 		Address:    reqServer.Address,
 		CreateTime: reqServer.CreateTime,
 		UpdateTime: reqServer.UpdateTime,
@@ -318,12 +318,7 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	sessionInfo, sessionStates, err := sessRepo.ActivateSession(
-		ctx,
-		req.GetSessionId(),
-		req.GetVersion(),
-		req.GetWorkerId(),
-		[]byte(req.GetTofuToken()))
+	sessionInfo, sessionStates, err := sessRepo.ActivateSession(ctx, req.GetSessionId(), req.GetVersion(), []byte(req.GetTofuToken()))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error looking up session: %v", err)
 	}

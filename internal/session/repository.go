@@ -110,7 +110,6 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 				PublicId:          sv.PublicId,
 				UserId:            sv.UserId,
 				HostId:            sv.HostId,
-				WorkerId:          sv.WorkerId,
 				TargetId:          sv.TargetId,
 				HostSetId:         sv.HostSetId,
 				AuthTokenId:       sv.AuthTokenId,

@@ -324,7 +324,7 @@ where
 	closeConnectionsForDeadServersCte = `
    with
    dead_workers (worker_id, last_update_time) as (
-         select private_id, update_time
+         select public_id, update_time
            from server_worker
           where update_time < wt_sub_seconds_from_now(@grace_period_seconds)
    ),
@@ -343,6 +343,16 @@ where
        on closed_connections.worker_id = dead_workers.worker_id
  group by closed_connections.worker_id, dead_workers.last_update_time
  order by closed_connections.worker_id;
+`
+
+	// closeWorkerlessConnections closes any open connections which has the
+	// worker id set to null.
+	closeWorkerlessConnections = `
+	update session_connection
+		set closed_reason = 'system error'
+	where worker_id is null
+		and closed_reason is null
+	returning public_id;
 `
 
 	orphanedConnectionsCte = `

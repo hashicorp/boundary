@@ -90,8 +90,6 @@ func TestSession(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, c Composed
 	_, certBytes, err := newCert(ctx, wrapper, c.UserId, id, []string{"127.0.0.1", "localhost"}, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
-	s.WorkerId = opts.withWorkerId
-
 	if len(s.TofuToken) != 0 {
 		err = s.encrypt(ctx, wrapper)
 	}
@@ -190,18 +188,15 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	serversRepo, err := servers.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	opts := getOpts(opt...)
-	id := opts.withWorkerId
-	if id == "" {
-		id, err = uuid.GenerateUUID()
-		require.NoError(t, err)
-		id = "test-session-worker-" + id
-	}
+	id, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+	id = "test_session_worker-" + id
+
 	name := "test-worker-" + id
 	worker := &store.Worker{
-		PrivateId: id,
-		Name:      name,
-		Address:   "127.0.0.1",
+		PublicId: id,
+		Name:     name,
+		Address:  "127.0.0.1",
 	}
 	_, _, err = serversRepo.UpsertWorker(context.Background(), worker)
 	require.NoError(t, err)

@@ -47,7 +47,7 @@ func TestWorkerTagging(t *testing.T) {
 	// Worker 1
 	conf, err = config.DevWorker()
 	require.NoError(t, err)
-	conf.Worker.Name = "w1"
+	conf.Worker.Name = "test_worker_1"
 	conf.Worker.Tags = map[string][]string{
 		"region": {"east"},
 		"foo":    {"bar"},
@@ -64,7 +64,7 @@ func TestWorkerTagging(t *testing.T) {
 	// Worker 2
 	conf, err = config.DevWorker()
 	require.NoError(t, err)
-	conf.Worker.Name = "w2"
+	conf.Worker.Name = "test_worker_2"
 	conf.Worker.Tags = map[string][]string{
 		"region": {"west"},
 		"az":     {"one", "two", "three"},
@@ -81,7 +81,7 @@ func TestWorkerTagging(t *testing.T) {
 	// Worker 3
 	conf, err = config.DevWorker()
 	require.NoError(t, err)
-	conf.Worker.Name = "w3"
+	conf.Worker.Name = "test_worker_3"
 	conf.Worker.Tags = map[string][]string{
 		"region": {"west"},
 		"az":     {"one", "three"},
@@ -109,12 +109,12 @@ func TestWorkerTagging(t *testing.T) {
 		},
 		{
 			name:       "name and region",
-			filter:     `"/name" matches "w[13]" and "west" in "/tags/region"`,
+			filter:     `"/name" matches "test_worker_[13]" and "west" in "/tags/region"`,
 			expWorkers: []string{w3Addr},
 		},
 		{
 			name:       "name and az",
-			filter:     `"/name" matches "w[23]" and "three" in "/tags/az"`,
+			filter:     `"/name" matches "test_worker_[23]" and "three" in "/tags/az"`,
 			expWorkers: []string{w2Addr, w3Addr},
 		},
 		{

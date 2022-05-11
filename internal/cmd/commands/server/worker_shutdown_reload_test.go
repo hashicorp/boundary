@@ -69,7 +69,7 @@ const shutdownReloadWorkerConfig = `
 disable_mlock = true
 
 worker {
-	name = "dev-worker"
+	name = "w_dev_worker"
 	description = "A default worker created in dev mode"
 	controllers = ["127.0.0.1:9204"]
 }

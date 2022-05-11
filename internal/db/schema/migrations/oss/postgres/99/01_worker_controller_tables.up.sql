@@ -27,7 +27,7 @@ create trigger controller_update_time_column before update on server_controller
 
 -- Worker table adds the field: name
 create table server_worker (
-  private_id text primary key,
+  public_id wt_public_id primary key,
   description wt_description,
   name wt_name unique,
   address text not null
@@ -40,7 +40,7 @@ comment on table server_worker  is
   'server_worker is a table where each row represents a Boundary worker.';
 
 create trigger immutable_columns before update on server_worker
-  for each row execute procedure immutable_columns('private_id','create_time');
+  for each row execute procedure immutable_columns('public_id','create_time');
 
 create trigger default_create_time_column before insert on server_worker
   for each row execute procedure default_create_time();
@@ -55,9 +55,9 @@ create trigger worker_update_time_column before update on server_worker
 
 -- Create table worker tag
 create table server_worker_tag (
-  worker_id text
+  worker_id wt_public_id
     constraint server_worker_fkey
-      references server_worker(private_id)
+      references server_worker(public_id)
         on delete cascade
         on update cascade,
   key wt_tagpair,
@@ -69,37 +69,44 @@ create table server_worker_tag (
 drop table server_tag;
 
 -- Update session table to use worker_id instead of server_id
+-- Updating the session table modified in 01/01_server_tags_migrations.up.sql
 alter table session
   drop constraint session_server_id_fkey;
 drop trigger update_version_column
   on session;
 alter table session
   drop column server_type cascade;
-
 alter table session
-  rename column server_id to worker_id;
-alter table session
-  add constraint server_worker_fkey
-    foreign key (worker_id)
-      references server_worker(private_id)
-      on delete set null
-      on update cascade;
+  drop column server_id cascade;
 
 create trigger
   update_version_column
-  after update of version, termination_reason, key_id, tofu_token, worker_id on session
+  after update of version, termination_reason, key_id, tofu_token on session
   for each row execute procedure update_version_column();
 
+
 -- Update session_connection table to use worker_id instead of server_id
-alter table session_connection
-  drop constraint server_fkey;
+-- Table last updated in 21/02_session.up.sql
+-- TODO: Add the denormalized worker address column since this value doesn't change
+-- even if the worker's address column changes.
+-- alter table session_connection
+--   add column worker_address text;
+-- update session_connection sc
+-- set
+--   worker_address = w.address
+-- from
+--   server_worker w
+-- where
+--     sc.worker_id = w.private_id;
 
 alter table session_connection
-  rename column server_id to worker_id;
+  drop column server_id;
+alter table session_connection
+  add column worker_id wt_public_id;
 alter table session_connection
   add constraint server_worker_fkey
     foreign key (worker_id)
-      references server_worker (private_id)
+      references server_worker (public_id)
       on delete set null
       on update cascade;
 
@@ -117,9 +124,8 @@ alter table job_run
 drop view if exists session_list;
 
 create view session_list as
-
   select
-    s.public_id, s.user_id, s.host_id, s.worker_id, s.target_id,
+    s.public_id, s.user_id, s.host_id, s.target_id,
     s.host_set_id, s.auth_token_id, s.scope_id, s.certificate,s.expiration_time,
     s.connection_limit, s.tofu_token, s.key_id, s.termination_reason, s.version,
     s.create_time, s.update_time, s.endpoint, s.worker_filter,
