@@ -1,4 +1,4 @@
-8545697b430a432bd50c1bde6a080759f803f157 Add toolbar regions to align refresh button to the right (#1098)
+7e792d3f7664bf3efdf33a66539022d3f3cdaf4c Refactor UI generated artifacts creation. (#1104)
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
