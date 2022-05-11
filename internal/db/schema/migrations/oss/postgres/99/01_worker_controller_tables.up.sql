@@ -66,8 +66,8 @@ create table server_worker_tag (
 -- Aaand drop server_tag
 drop table server_tag;
 
--- Replaces the view created in 9/01 to include worker id instead of server id and server type
-drop view if exists session_list;
+-- Update session table to use worker_id instead of server_id, drop view first because of dependency on server type
+drop view session_list;
 
 -- Update session table to use worker_id instead of server_id
 -- Updating the session table modified in 01/01_server_tags_migrations.up.sql
@@ -84,7 +84,6 @@ create trigger
   update_version_column
   after update of version, termination_reason, key_id, tofu_token on session
   for each row execute procedure update_version_column();
-
 
 -- Update session_connection table to use worker_id instead of server_id
 -- Table last updated in 21/02_session.up.sql
@@ -109,7 +108,7 @@ alter table job_run
       on delete set null
       on update cascade;
 
-
+-- Replaces the view created in 9/01 to include worker id instead of server id and server type
 create view session_list as
   select
     s.public_id, s.user_id, s.host_id, s.target_id,

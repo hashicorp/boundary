@@ -12,6 +12,23 @@ import (
 	"github.com/hashicorp/nodeenrollment/nodeauth"
 )
 
+// tempError is an error that satisfies the temporary error interface that is
+// internally used by gRPC to determine whether an error should cause a listener
+// to die. Any error that isn't an accept error is wrapped in this since one
+// connection failing TLS wise doesn't mean we don't want to accept any more...
+type tempError struct {
+	error
+}
+
+// newTempError is a "temporary" error
+func newTempError(inner error) tempError {
+	return tempError{error: inner}
+}
+
+func (t tempError) Temporary() bool {
+	return true
+}
+
 // interceptingListener allows us to validate the nonce from a connection before
 // handing it off to the gRPC server. It is expected that the first thing a
 // connection sends after successful TLS validation is the nonce that was
@@ -57,7 +74,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 			}
 		}
-		return nil, err
+		return nil, newTempError(err)
 	}
 
 	tlsConn := conn.(*tls.Conn)
@@ -73,20 +90,20 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 			if err := conn.Close(); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 			}
-			return nil, fmt.Errorf("error reading nonce from connection: %w", err)
+			return nil, newTempError(fmt.Errorf("error reading nonce from connection: %w", err))
 		}
 		if read != len(nonce) {
 			if err := conn.Close(); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 			}
-			return nil, fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read)
+			return nil, newTempError(fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read))
 		}
 		workerInfoRaw, found := m.c.workerAuthCache.Load(string(nonce))
 		if !found {
 			if err := conn.Close(); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 			}
-			return nil, errors.New("did not find valid nonce for incoming worker")
+			return nil, newTempError(errors.New("did not find valid nonce for incoming worker"))
 		}
 		workerInfo := workerInfoRaw.(*workerAuthEntry)
 		workerInfo.conn = tlsConn
@@ -94,7 +111,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		return tlsConn, nil
 
 	default:
-		return nil, nodeauth.NewTempError(errors.New("unable to authenticate incoming connection"))
+		return nil, newTempError(errors.New("unable to authenticate incoming connection"))
 	}
 }
 
