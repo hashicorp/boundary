@@ -6,9 +6,11 @@ on:
     branches:    
       # Push events on main branch
       - 'main'
+      - ICU-4231-update-ui-artifacts-consumption
 
 env:
   PKG_NAME: "boundary"
+  EDITION: oss
 
 jobs:
   get-product-version:
@@ -102,7 +104,7 @@ jobs:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
-          name: admin-ui
+          name: admin-ui-${{ env.EDITION }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
@@ -157,7 +159,7 @@ jobs:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
-          name: admin-ui
+          name: admin-ui-${{ env.EDITION }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
@@ -239,7 +241,7 @@ jobs:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
-          name: admin-ui
+          name: admin-ui-${{ env.EDITION }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
