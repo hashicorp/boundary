@@ -22,7 +22,7 @@ type options struct {
 	withLimit                int
 	withRootWrapper          wrapping.Wrapper
 	withWorkerAuthWrapper    wrapping.Wrapper
-	withWorkerAuthPkiWrapper wrapping.Wrapper
+	withWorkerStorageWrapper wrapping.Wrapper
 	withRecoveryWrapper      wrapping.Wrapper
 	withRepository           *Repository
 	withOrderByVersion       db.OrderBy
@@ -58,11 +58,11 @@ func WithWorkerAuthWrapper(w wrapping.Wrapper) Option {
 	}
 }
 
-// WithWorkerPkiAuthWraper sets the external pki worker authentication wrapper for a
+// WithWorkerStorageWraper sets the external pki worker storage wrapper for a
 // given scope
-func WithWorkerPkiAuthWraper(w wrapping.Wrapper) Option {
+func WithWorkerStorageWraper(w wrapping.Wrapper) Option {
 	return func(o *options) {
-		o.withWorkerAuthPkiWrapper = w
+		o.withWorkerStorageWrapper = w
 	}
 }
 

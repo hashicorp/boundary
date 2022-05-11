@@ -21,7 +21,7 @@ type ExternalWrappers struct {
 	m             sync.RWMutex
 	root          wrapping.Wrapper
 	workerAuth    wrapping.Wrapper
-	workerPkiAuth wrapping.Wrapper
+	workerStorage wrapping.Wrapper
 	recovery      wrapping.Wrapper
 }
 
@@ -39,11 +39,11 @@ func (e *ExternalWrappers) WorkerAuth() wrapping.Wrapper {
 	return e.workerAuth
 }
 
-// WorkerPkiAuth returns the wrapper for worker PKI authentication
-func (e *ExternalWrappers) WorkerPkiAuth() wrapping.Wrapper {
+// WorkerStorage returns the wrapper for PKI worker storage
+func (e *ExternalWrappers) WorkerStorage() wrapping.Wrapper {
 	e.m.RLock()
 	defer e.m.RUnlock()
-	return e.workerPkiAuth
+	return e.workerStorage
 }
 
 // Recovery returns the wrapper for recovery operations
@@ -131,14 +131,14 @@ func (k *Kms) AddExternalWrappers(ctx context.Context, opt ...Option) error {
 			return errors.New(ctx, errors.InvalidParameter, op, "worker auth wrapper has no key ID")
 		}
 	}
-	if opts.withWorkerAuthPkiWrapper != nil {
-		ext.workerAuth = opts.withWorkerAuthPkiWrapper
-		keyId, err := ext.workerPkiAuth.KeyId(ctx)
+	if opts.withWorkerStorageWrapper != nil {
+		ext.workerAuth = opts.withWorkerStorageWrapper
+		keyId, err := ext.workerStorage.KeyId(ctx)
 		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("error reading PKI worker auth wrapper key ID"))
+			return errors.Wrap(ctx, err, op, errors.WithMsg("error reading worker storage wrapper key ID"))
 		}
 		if keyId == "" {
-			return errors.New(ctx, errors.InvalidParameter, op, "PKI worker auth wrapper has no key ID")
+			return errors.New(ctx, errors.InvalidParameter, op, "worker storage wrapper has no key ID")
 		}
 	}
 	if opts.withRecoveryWrapper != nil {
@@ -167,7 +167,7 @@ func (k *Kms) GetExternalWrappers() *ExternalWrappers {
 	ret := &ExternalWrappers{
 		root:          ext.root,
 		workerAuth:    ext.workerAuth,
-		workerPkiAuth: ext.workerPkiAuth,
+		workerStorage: ext.workerStorage,
 		recovery:      ext.recovery,
 	}
 	return ret

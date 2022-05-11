@@ -3,7 +3,7 @@ package globals
 const (
 	KmsPurposeRoot          = "root"
 	KmsPurposeWorkerAuth    = "worker-auth"
-	KmsPurposeWorkerPkiAuth = "worker-pki-auth"
+	KmsPurposeWorkerStorage = "worker-storage"
 	KmsPurposeRecovery      = "recovery"
 	KmsPurposeConfig        = "config"
 )
