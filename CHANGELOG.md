@@ -4,11 +4,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### Deprecations/Changes
-
-* Update uiupdate.sh to fetch latest commit sha on main from the boundary-ui repo.
-* No longer use uiclone.sh in the update-ui-version step in the Makefile since we do not need to clone the repo to get the latest commit sha.
-
 ## 0.8.0 (2022/05/03)
 
 ### New and Improved
