@@ -80,7 +80,7 @@ listener "tcp" {
 
 const tag1Config = `
 worker {
-	name = "w_dev_worker"
+	name = "w_1234567890"
 	description = "A default worker created in dev mode"
 	controllers = ["127.0.0.1:9404"]
 	tags {
@@ -91,7 +91,7 @@ worker {
 
 const tag2Config = `
 worker {
-	name = "w_dev_worker"
+	name = "w_1234567890"
 	description = "A default worker created in dev mode"
 	controllers = ["127.0.0.1:9404"]
 	tags {
@@ -151,7 +151,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 
 	// Give time to populate up to the controller
 	time.Sleep(10 * time.Second)
-	fetchWorkerTags("w_dev_worker", "type", []string{"dev", "local"})
+	fetchWorkerTags("w_1234567890", "type", []string{"dev", "local"})
 
 	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, cmd.DatabaseUrl, controllerKey, workerAuthKey, recoveryKey))
 
@@ -163,7 +163,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	}
 
 	time.Sleep(10 * time.Second)
-	fetchWorkerTags("w_dev_worker", "foo", []string{"bar", "baz"})
+	fetchWorkerTags("w_1234567890", "foo", []string{"bar", "baz"})
 
 	close(cmd.ShutdownCh)
 

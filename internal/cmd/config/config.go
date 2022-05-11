@@ -87,7 +87,7 @@ listener "tcp" {
 }
 
 worker {
-	name = "w_dev_worker"
+	name = "w_1234567890"
 	description = "A default worker created in dev mode"
 	controllers = ["127.0.0.1"]
 	tags {

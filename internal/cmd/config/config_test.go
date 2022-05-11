@@ -180,7 +180,7 @@ func TestDevWorker(t *testing.T) {
 			},
 		},
 		Worker: &Worker{
-			Name:           "w_dev_worker",
+			Name:           "w_1234567890",
 			Description:    "A default worker created in dev mode",
 			Controllers:    []string{"127.0.0.1"},
 			ControllersRaw: []interface{}{"127.0.0.1"},
@@ -221,7 +221,7 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	worker {
-		name = "w_dev_worker"
+		name = "w_1234567890"
 		description = "A default worker created in dev mode"
 		controllers = ["127.0.0.1"]
 		tags {
@@ -246,7 +246,7 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	worker {
-		name = "w_dev_worker"
+		name = "w_1234567890"
 		description = "A default worker created in dev mode"
 		controllers = ["127.0.0.1"]
 		tags = ["tyPe=dev", "type=local"]
@@ -263,7 +263,7 @@ func TestDevWorker(t *testing.T) {
 		}
 
 		worker {
-			name = "w_dev_worker"
+			name = "w_1234567890"
 			description = "A default worker created in dev mode"
 			controllers = ["127.0.0.1"]
 			tags = ["type=dev", "type=loCal"]
@@ -390,7 +390,7 @@ func TestWorkerTags(t *testing.T) {
 			name: "no tags",
 			in: `
 			worker {
-				name = "w_test_worker"
+				name = "w_1234567890"
 			}
 			`,
 			expWorkerTags: nil,
@@ -400,7 +400,7 @@ func TestWorkerTags(t *testing.T) {
 			name: "empty tags",
 			in: `
 			worker {
-				name = "w_test_worker"
+				name = "w_1234567890"
 				tags = {}
 			}
 			`,
@@ -411,7 +411,7 @@ func TestWorkerTags(t *testing.T) {
 			name: "empty tags 2",
 			in: `
 			worker {
-				name = "w_test_worker"
+				name = "w_1234567890"
 				tags = []
 			}
 			`,

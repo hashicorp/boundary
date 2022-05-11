@@ -51,8 +51,6 @@ create trigger worker_insert_time_column before insert on server_worker
 create trigger worker_update_time_column before update on server_worker
   for each row execute procedure update_time_column();
 
--- TODO: Migrate server entries to worker and controller tables, if necessary
-
 -- Create table worker tag
 create table server_worker_tag (
   worker_id wt_public_id
@@ -68,6 +66,9 @@ create table server_worker_tag (
 -- Aaand drop server_tag
 drop table server_tag;
 
+-- Replaces the view created in 9/01 to include worker id instead of server id and server type
+drop view if exists session_list;
+
 -- Update session table to use worker_id instead of server_id
 -- Updating the session table modified in 01/01_server_tags_migrations.up.sql
 alter table session
@@ -75,9 +76,9 @@ alter table session
 drop trigger update_version_column
   on session;
 alter table session
-  drop column server_type cascade;
+  drop column server_type;
 alter table session
-  drop column server_id cascade;
+  drop column server_id;
 
 create trigger
   update_version_column
@@ -87,18 +88,6 @@ create trigger
 
 -- Update session_connection table to use worker_id instead of server_id
 -- Table last updated in 21/02_session.up.sql
--- TODO: Add the denormalized worker address column since this value doesn't change
--- even if the worker's address column changes.
--- alter table session_connection
---   add column worker_address text;
--- update session_connection sc
--- set
---   worker_address = w.address
--- from
---   server_worker w
--- where
---     sc.worker_id = w.private_id;
-
 alter table session_connection
   drop column server_id;
 alter table session_connection
@@ -120,8 +109,6 @@ alter table job_run
       on delete set null
       on update cascade;
 
--- Replaces the view created in 9/01 to include worker id instead of server id and server type
-drop view if exists session_list;
 
 create view session_list as
   select
