@@ -17,8 +17,8 @@ type tempError struct {
 	error
 }
 
-// NewTempError is a "temporary" error
-func NewTempError(inner error) tempError {
+// newTempError is a "temporary" error
+func newTempError(inner error) tempError {
 	return tempError{error: inner}
 }
 
@@ -70,7 +70,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 				event.WriteError(context.TODO(), op, err, event.WithInfoMsg("error closing worker connection"))
 			}
 		}
-		return nil, NewTempError(err)
+		return nil, newTempError(err)
 	}
 
 	nonce := make([]byte, 20)
@@ -79,20 +79,20 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		if err := conn.Close(); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 		}
-		return nil, NewTempError(fmt.Errorf("error reading nonce from connection: %w", err))
+		return nil, newTempError(fmt.Errorf("error reading nonce from connection: %w", err))
 	}
 	if read != len(nonce) {
 		if err := conn.Close(); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 		}
-		return nil, NewTempError(fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read))
+		return nil, newTempError(fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read))
 	}
 	workerInfoRaw, found := m.c.workerAuthCache.Load(string(nonce))
 	if !found {
 		if err := conn.Close(); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 		}
-		return nil, NewTempError(errors.New("did not find valid nonce for incoming worker"))
+		return nil, newTempError(errors.New("did not find valid nonce for incoming worker"))
 	}
 	workerInfo := workerInfoRaw.(*workerAuthEntry)
 	workerInfo.conn = conn
