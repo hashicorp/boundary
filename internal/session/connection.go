@@ -33,7 +33,7 @@ type Connection struct {
 	BytesUp uint64 `json:"bytes_up,omitempty" gorm:"default:null"`
 	// BytesDown of the connection
 	BytesDown uint64 `json:"bytes_down,omitempty" gorm:"default:null"`
-	// ClosedReason of the conneciont
+	// ClosedReason of the connection
 	ClosedReason string `json:"closed_reason,omitempty" gorm:"default:null"`
 	// CreateTime from the RDBMS
 	CreateTime *timestamp.Timestamp `json:"create_time,omitempty" gorm:"default:current_timestamp"`
