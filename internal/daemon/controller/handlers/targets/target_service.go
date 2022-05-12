@@ -911,7 +911,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if hasWorkerFilter && len(workerIds) > 0 {
 		finalWorkers := make([]*pb.WorkerInfo, 0, len(workers))
 		// Fetch the tags for the given worker IDs
-		tags, err := serversRepo.ListTagsForWorkers(ctx, workerIds)
+		workerTags, err := serversRepo.ListTagsForWorkers(ctx, workerIds)
 		if err != nil {
 			return nil, err
 		}
@@ -919,13 +919,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		// built from the worker config, but with one extra level: a map of the
 		// worker's ID to its filter map.
 		tagMap := make(map[string]map[string][]string)
-		for _, tag := range tags {
-			currWorkerMap := tagMap[tag.WorkerId]
+		for wId, tags := range workerTags {
+			currWorkerMap := tagMap[wId]
 			if currWorkerMap == nil {
 				currWorkerMap = make(map[string][]string)
-				tagMap[tag.WorkerId] = currWorkerMap
+				tagMap[wId] = currWorkerMap
 			}
-			currWorkerMap[tag.Key] = append(currWorkerMap[tag.Key], tag.Value)
+			for _, tag := range tags {
+				currWorkerMap[tag.Key] = append(currWorkerMap[tag.Key], tag.Value)
+			}
 			// We don't need to reinsert after the fact because maps are
 			// reference types, so we don't need to re-insert into tagMap
 		}

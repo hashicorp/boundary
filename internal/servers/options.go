@@ -1,6 +1,8 @@
 package servers
 
-import "time"
+import (
+	"time"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -16,15 +18,45 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit      int
-	withLiveness   time.Duration
-	withUpdateTags bool
+	withName        string
+	withDescription string
+	withAddress     string
+	withPublicId    string
+	withLimit       int
+	withLiveness    time.Duration
+	withUpdateTags  bool
+	withWorkerTags  []*Tag
 }
 
 func getDefaultOptions() options {
-	return options{
-		withLimit:    0,
-		withLiveness: 0,
+	return options{}
+}
+
+// WithDescription provides an optional description.
+func WithDescription(desc string) Option {
+	return func(o *options) {
+		o.withDescription = desc
+	}
+}
+
+// WithName provides an optional name.
+func WithName(name string) Option {
+	return func(o *options) {
+		o.withName = name
+	}
+}
+
+// WithAddress provides an optional address.
+func WithAddress(address string) Option {
+	return func(o *options) {
+		o.withAddress = address
+	}
+}
+
+// WithPublicId provides an optional public id
+func WithPublicId(id string) Option {
+	return func(o *options) {
+		o.withPublicId = id
 	}
 }
 
@@ -52,5 +84,12 @@ func WithLiveness(liveness time.Duration) Option {
 func WithUpdateTags(updateTags bool) Option {
 	return func(o *options) {
 		o.withUpdateTags = updateTags
+	}
+}
+
+// WithWorkerTags provides worker tags.
+func WithWorkerTags(tags ...*Tag) Option {
+	return func(o *options) {
+		o.withWorkerTags = tags
 	}
 }

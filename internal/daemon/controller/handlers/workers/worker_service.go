@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/servers/store"
-
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -16,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-bexpr"
 	"google.golang.org/grpc/codes"
@@ -74,20 +73,20 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	reqServer := req.GetWorker()
 	// Convert API tags to storage tags
-	workerTags := make(map[string]*store.TagValues)
+	workerTags := make([]*servers.Tag, 0, len(reqServer.Tags))
 	for k, v := range reqServer.Tags {
-		thisTag := &store.TagValues{
-			Values: v.GetValues(),
+		for _, val := range v.GetValues() {
+			workerTags = append(workerTags, &servers.Tag{
+				Key:   k,
+				Value: val,
+			})
 		}
-		workerTags[k] = thisTag
 	}
-	worker := &store.Worker{
-		PublicId:   reqServer.PrivateId,
-		Address:    reqServer.Address,
-		CreateTime: reqServer.CreateTime,
-		UpdateTime: reqServer.UpdateTime,
-		Tags:       workerTags,
-	}
+
+	worker := servers.NewWorker(scope.Global.String(),
+		servers.WithPublicId(reqServer.PrivateId),
+		servers.WithAddress(reqServer.Address),
+		servers.WithWorkerTags(workerTags...))
 	controllers, _, err := serverRepo.UpsertWorker(ctx, worker, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
@@ -199,17 +198,19 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 		}
-		tags, err := serversRepo.ListTagsForWorkers(ctx, []string{req.ServerId})
+		workerTags, err := serversRepo.ListTagsForWorkers(ctx, []string{req.ServerId})
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up tags for server", "server_id", req.ServerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
 		}
 		// Build the map for filtering.
 		tagMap := make(map[string][]string)
-		for _, tag := range tags {
-			tagMap[tag.Key] = append(tagMap[tag.Key], tag.Value)
-			// We don't need to reinsert after the fact because maps are
-			// reference types, so we don't need to re-insert into tagMap
+		for _, tags := range workerTags {
+			for _, tag := range tags {
+				tagMap[tag.Key] = append(tagMap[tag.Key], tag.Value)
+				// We don't need to reinsert after the fact because maps are
+				// reference types, so we don't need to re-insert into tagMap
+			}
 		}
 
 		// Create the evaluator

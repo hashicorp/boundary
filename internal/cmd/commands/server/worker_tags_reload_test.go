@@ -142,11 +142,11 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		require.NoError(err)
 		tags, err := serversRepo.ListTagsForWorkers(cmd.Context, []string{name})
 		require.NoError(err)
-		require.Len(tags, 2)
-		require.Equal(key, tags[0].Key)
-		require.Equal(values[0], tags[0].Value)
-		require.Equal(key, tags[1].Key)
-		require.Equal(values[1], tags[1].Value)
+		require.Len(tags[name], 2)
+		require.Equal(key, tags[name][0].Key)
+		require.Equal(values[0], tags[name][0].Value)
+		require.Equal(key, tags[name][1].Key)
+		require.Equal(values[1], tags[name][1].Value)
 	}
 
 	// Give time to populate up to the controller

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -32,10 +33,9 @@ func TestWorkerStatusReport(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, &store.Worker{
-		PublicId: "test_worker1",
-		Address:  "127.0.0.1",
-	})
+	serverRepo.UpsertWorker(ctx, servers.NewWorker(scope.Global.String(),
+		servers.WithPublicId("test_worker1"),
+		servers.WithAddress("127.0.0.1")))
 
 	repo, err := session.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestWorkerStatusReport(t *testing.T) {
 	)
 
 	type testCase struct {
-		worker              *store.Worker
+		worker              *servers.Worker
 		req                 []session.StateReport
 		want                []session.StateReport
 		orphanedConnections []string

@@ -24,17 +24,6 @@ const (
 	DefaultLiveness = 15 * time.Second
 )
 
-type ServerType string
-
-const (
-	ServerTypeController ServerType = "controller"
-	ServerTypeWorker     ServerType = "worker"
-)
-
-func (s ServerType) String() string {
-	return string(s)
-}
-
 // Repository is the servers database repository
 type Repository struct {
 	reader db.Reader
@@ -63,13 +52,13 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) 
 }
 
 // ListWorkers is a passthrough to listWorkersWithReader that uses the repo's normal reader.
-func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*store.Worker, error) {
+func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*Worker, error) {
 	return r.listWorkersWithReader(ctx, r.reader, opt...)
 }
 
 // listWorkersWithReader will return a listing of resources and honor the WithLimit option or the repo
 // defaultLimit. It accepts a reader, allowing it to be used within a transaction or without.
-func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*store.Worker, error) {
+func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*Worker, error) {
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
@@ -81,7 +70,7 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 		where = fmt.Sprintf("update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
 	}
 
-	var workers []*store.Worker
+	var workers []*Worker
 	if err := reader.SearchWhere(
 		ctx,
 		&workers,
@@ -128,16 +117,10 @@ func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Re
 	return controllers, nil
 }
 
-// WorkerTag holds the information for the worker_tag table for Gorm.
-type WorkerTag struct {
-	WorkerId string
-	Key      string
-	Value    string
-}
-
-// ListTagsForWorkers pulls out tag tuples into WorkerTag structs for the given worker
-func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, opt ...Option) ([]*WorkerTag, error) {
-	var workerTags []*WorkerTag
+// ListTagsForWorkers returns a map from the worker's id to the list of Tags
+// that are for that worker.  All options are ignored.
+func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, opt ...Option) (map[string][]*Tag, error) {
+	var workerTags []*store.WorkerTag
 	if err := r.reader.SearchWhere(
 		ctx,
 		&workerTags,
@@ -147,14 +130,29 @@ func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string,
 	); err != nil {
 		return nil, errors.Wrap(ctx, err, "servers.ListTagsForWorkers", errors.WithMsg(fmt.Sprintf("worker IDs %v", workerIds)))
 	}
-	return workerTags, nil
+
+	ret := make(map[string][]*Tag, len(workerIds))
+	for _, t := range workerTags {
+		ret[t.WorkerId] = append(ret[t.WorkerId], &Tag{Key: t.Key, Value: t.Value})
+	}
+	return ret, nil
 }
 
-func (r *Repository) UpsertWorker(ctx context.Context, worker *store.Worker, opt ...Option) ([]*store.Controller, int, error) {
+// UpsertWorker creates a new worker if one with the provided public id doesn't
+// already exist. If it does, UpsertWorker updates the worker. The
+// WithUpdateTags option is the only one used. All others are ignored.
+func (r *Repository) UpsertWorker(ctx context.Context, worker *Worker, opt ...Option) ([]*store.Controller, int, error) {
 	const op = "servers.UpsertWorker"
 
-	if worker == nil {
+	switch {
+	case worker == nil:
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
+	case worker.Address == "":
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "address is empty")
+	case worker.ScopeId == "":
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
+	case worker.PublicId == "":
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "public id is empty")
 	}
 
 	opts := getOpts(opt...)
@@ -187,9 +185,9 @@ func (r *Repository) UpsertWorker(ctx context.Context, worker *store.Worker, opt
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				_, err = w.Delete(ctx, &WorkerTag{}, db.WithWhere(deleteTagsSql, worker.PublicId))
+				_, err = w.Delete(ctx, &store.WorkerTag{}, db.WithWhere(deleteTagsSql, worker.GetPublicId()))
 				if err != nil {
-					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(worker.PublicId))
+					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(worker.GetPublicId()))
 				}
 
 				// If tags were cleared out entirely, then we'll have nothing
@@ -198,20 +196,18 @@ func (r *Repository) UpsertWorker(ctx context.Context, worker *store.Worker, opt
 				// below.
 				if len(worker.Tags) > 0 {
 					tags := make([]interface{}, 0, len(worker.Tags))
-					for k, v := range worker.Tags {
+					for _, v := range worker.Tags {
 						if v == nil {
-							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", worker.PublicId, k))
+							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s", worker.GetPublicId()))
 						}
-						for _, val := range v.Values {
-							tags = append(tags, WorkerTag{
-								WorkerId: worker.PublicId,
-								Key:      k,
-								Value:    val,
-							})
-						}
+						tags = append(tags, &store.WorkerTag{
+							WorkerId: worker.GetPublicId(),
+							Key:      v.Key,
+							Value:    v.Value,
+						})
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {
-						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(worker.PublicId))
+						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(worker.GetPublicId()))
 					}
 				}
 			}

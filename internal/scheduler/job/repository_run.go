@@ -265,7 +265,7 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 	args := []interface{}{-1 * int(interruptThreshold.Round(time.Second).Seconds())}
 	var whereServerId string
 	if opts.withServerId != "" {
-		whereServerId = "and server_id = ?"
+		whereServerId = "and controller_id = ?"
 		args = append(args, opts.withServerId)
 	}
 	query := fmt.Sprintf(interruptRunsQuery, whereServerId)
