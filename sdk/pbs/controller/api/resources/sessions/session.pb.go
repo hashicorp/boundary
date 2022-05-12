@@ -154,7 +154,7 @@ type Connection struct {
 	BytesUp uint64 `protobuf:"varint,7,opt,name=bytes_up,json=bytesUp,proto3" json:"bytes_up,omitempty" class:"public"` // @gotags: `class:"public"`
 	// bytes_down of the connection
 	BytesDown uint64 `protobuf:"varint,8,opt,name=bytes_down,json=bytesDown,proto3" json:"bytes_down,omitempty" class:"public"` // @gotags: `class:"public"`
-	// closed_reason of the conneciont
+	// closed_reason of the connection
 	ClosedReason string `protobuf:"bytes,9,opt,name=closed_reason,json=closedReason,proto3" json:"closed_reason,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 

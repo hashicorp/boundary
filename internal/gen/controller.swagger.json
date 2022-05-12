@@ -4742,7 +4742,7 @@
         },
         "closed_reason": {
           "type": "string",
-          "title": "closed_reason of the conneciont"
+          "title": "closed_reason of the connection"
         }
       },
       "title": "Connection contains information about a specific connection in a session"
