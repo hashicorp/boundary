@@ -58,6 +58,13 @@ kms "aead" {
 }
 
 kms "aead" {
+    purpose = "worker-storage"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_worker-auth"
+}
+
+kms "aead" {
 	purpose = "recovery"
 	aead_type = "aes-gcm"
 	key = "%s"
@@ -109,6 +116,7 @@ type Config struct {
 	DevUiPassthroughDir string `hcl:"-"`
 	DevControllerKey    string `hcl:"-"`
 	DevWorkerAuthKey    string `hcl:"-"`
+	DevWorkerStorageKey string `hcl:"-"`
 	DevRecoveryKey      string `hcl:"-"`
 
 	// Eventing configuration for the controller
@@ -230,8 +238,8 @@ func DevWorker() (*Config, error) {
 	return parsed, nil
 }
 
-func DevKeyGeneration() (string, string, string) {
-	var numBytes int64 = 96
+func DevKeyGeneration() string {
+	var numBytes int64 = 32
 	randBuf := new(bytes.Buffer)
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
 		R: rand.Reader,
@@ -241,21 +249,21 @@ func DevKeyGeneration() (string, string, string) {
 		panic(err)
 	}
 	if n != numBytes {
-		panic(fmt.Errorf("expected to read 64 bytes, read %d", n))
+		panic(fmt.Errorf("expected to read 32 bytes, read %d", n))
 	}
-	controllerKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[0:32])
-	workerAuthKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[32:64])
-	recoveryKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[64:numBytes])
-
-	return controllerKey, workerAuthKey, recoveryKey
+	devKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[0:numBytes])
+	return devKey
 }
 
 // DevController is a Config that is used for dev mode of Boundary
 // controllers
 func DevController() (*Config, error) {
-	controllerKey, workerAuthKey, recoveryKey := DevKeyGeneration()
+	controllerKey := DevKeyGeneration()
+	workerAuthKey := DevKeyGeneration()
+	workerStorageKey := DevKeyGeneration()
+	recoveryKey := DevKeyGeneration()
 
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, workerStorageKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -263,13 +271,17 @@ func DevController() (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
+	parsed.DevWorkerStorageKey = workerStorageKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
 
 func DevCombined() (*Config, error) {
-	controllerKey, workerAuthKey, recoveryKey := DevKeyGeneration()
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
+	controllerKey := DevKeyGeneration()
+	workerAuthKey := DevKeyGeneration()
+	workerStorageKey := DevKeyGeneration()
+	recoveryKey := DevKeyGeneration()
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, workerStorageKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -277,6 +289,7 @@ func DevCombined() (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
+	parsed.DevWorkerStorageKey = workerStorageKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }

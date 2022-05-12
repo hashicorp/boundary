@@ -132,7 +132,7 @@ func (k *Kms) AddExternalWrappers(ctx context.Context, opt ...Option) error {
 		}
 	}
 	if opts.withWorkerStorageWrapper != nil {
-		ext.workerAuth = opts.withWorkerStorageWrapper
+		ext.workerStorage = opts.withWorkerStorageWrapper
 		keyId, err := ext.workerStorage.KeyId(ctx)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("error reading worker storage wrapper key ID"))
