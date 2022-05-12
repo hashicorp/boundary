@@ -61,7 +61,7 @@ kms "aead" {
     purpose = "worker-storage"
 	aead_type = "aes-gcm"
 	key = "%s"
-	key_id = "global_worker-auth"
+	key_id = "global_worker-storage"
 }
 
 kms "aead" {

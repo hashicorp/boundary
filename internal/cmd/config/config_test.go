@@ -63,6 +63,14 @@ func TestDevController(t *testing.T) {
 				},
 				{
 					Type:    "aead",
+					Purpose: []string{"worker-storage"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_worker-storage",
+					},
+				},
+				{
+					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
@@ -84,9 +92,11 @@ func TestDevController(t *testing.T) {
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
+	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
+	exp.DevWorkerStorageKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
 
 	assert.Equal(t, exp, actual)
 
