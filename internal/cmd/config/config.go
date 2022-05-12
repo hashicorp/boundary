@@ -187,6 +187,9 @@ type Worker struct {
 	//
 	// TODO: This field is currently internal.
 	StatusGracePeriodDuration time.Duration `hcl:"-"`
+
+	// StoragePath represents the location a pki worker stores its node credentials, if set.
+	StoragePath string `hcl:"storage_path"`
 }
 
 func (w *Worker) InitNameIfEmpty() (string, error) {
