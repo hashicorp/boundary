@@ -87,6 +87,7 @@ type Command struct {
 	flagCreateLoopbackHostPlugin        bool
 	flagPluginExecutionDir              string
 	flagUseEphemeralKmsWorkerAuthMethod bool
+	flagWorkerAuthStorageDir            string
 }
 
 func (c *Command) Synopsis() string {
@@ -336,6 +337,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "If set, the original \"ephemeral\" method of worker auth will be used to connect the initial dev worker to the controller.",
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:       "worker-storage-dir",
+		Target:     &c.flagWorkerAuthStorageDir,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      "Specifies the directory to store worker authentication credentials in dev mode.",
+	})
+
 	f.BoolVar(&base.BoolVar{
 		Name:   "create-loopback-host-plugin",
 		Target: &c.flagCreateLoopbackHostPlugin,
@@ -392,6 +400,7 @@ func (c *Command) Run(args []string) int {
 	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
+	c.Config.Worker.StoragePath = c.flagWorkerAuthStorageDir
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
