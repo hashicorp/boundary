@@ -68,13 +68,15 @@ create table server_worker_tag (
 -- Aaand drop server_tag
 drop table server_tag;
 
--- Update session table to use worker_id instead of server_id
+-- Update session table to use worker_id instead of server_id, drop view first because of dependency on server type
+drop view session_list;
+
 alter table session
   drop constraint session_server_id_fkey;
 drop trigger update_version_column
   on session;
 alter table session
-  drop column server_type cascade;
+  drop column server_type;
 
 alter table session
   rename column server_id to worker_id;
@@ -114,8 +116,6 @@ alter table job_run
       on update cascade;
 
 -- Replaces the view created in 9/01 to include worker id instead of server id and server type
-drop view if exists session_list;
-
 create view session_list as
 
   select

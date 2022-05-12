@@ -180,7 +180,8 @@ func (w *Worker) Start() error {
 	}
 
 	var err error
-	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext)
+	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
+		nodeefile.WithFileStorageBaseDirectory(w.conf.RawConfig.Worker.StoragePath))
 	if err != nil {
 		return err
 	}
