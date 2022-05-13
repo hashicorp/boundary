@@ -4,7 +4,8 @@ on:
   push:
     # Sequence of patterns matched against refs/heads
     branches:    
-      # Push events on main branch
+      # Push events on main branch and 0.8.x release
+      - 'main'
       - 'release/0.8.x'
 
 env:
