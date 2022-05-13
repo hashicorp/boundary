@@ -181,8 +181,7 @@ func (w *Worker) Start() error {
 
 	var err error
 	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
-		nodeefile.WithFileStorageBaseDirectory(w.conf.RawConfig.Worker.StoragePath),
-		nodeefile.WithFileStorageSkipCleanup(w.conf.RawConfig.Worker.SkipStorageCleanup))
+		nodeefile.WithFileStorageBaseDirectory(w.conf.RawConfig.Worker.StoragePath))
 	if err != nil {
 		return err
 	}

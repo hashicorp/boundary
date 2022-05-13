@@ -348,7 +348,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "worker-storage-skip-cleanup",
 		Target: &c.flagWorkerAuthStorageSkipCleanup,
-		Usage:  "Prevents removal of worker credential storage directory if set",
+		Usage:  "Prevents deletion of temp worker credential storage directory if set",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -408,7 +408,6 @@ func (c *Command) Run(args []string) int {
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
 	c.Config.Worker.StoragePath = c.flagWorkerAuthStorageDir
-	c.Config.Worker.SkipStorageCleanup = c.flagWorkerAuthStorageSkipCleanup
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
@@ -780,6 +779,9 @@ func (c *Command) Run(args []string) int {
 			}
 
 			if !c.flagControllerOnly {
+				if c.flagWorkerAuthStorageSkipCleanup {
+					c.worker.NodeeFileStorage.SkipCleanup() = true
+				}
 				if err := c.worker.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 				}
