@@ -38,7 +38,7 @@ message Connection {
   // bytes_down of the connection
   uint64 bytes_down = 8; // @gotags: `class:"public"`
 
-  // closed_reason of the conneciont
+  // closed_reason of the connection
   string closed_reason = 9; // @gotags: `class:"public"`
 }
 

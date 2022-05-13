@@ -655,11 +655,7 @@ func (b *Server) ConnectToDatabase(ctx context.Context, dialect string) error {
 func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 	rw := db.New(b.Database)
 
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return fmt.Errorf("error creating kms repository: %w", err)
-	}
-	kmsCache, err := kms.NewKms(kmsRepo)
+	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
 		return fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -680,8 +676,7 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 		}
 	}()
 
-	_, err = kms.CreateKeysTx(cancelCtx, rw, rw, b.RootKms, b.SecureRandomReader, scope.Global.String())
-	if err != nil {
+	if err = kmsCache.CreateKeys(cancelCtx, scope.Global.String(), kms.WithRandomReader(b.SecureRandomReader)); err != nil {
 		return fmt.Errorf("error creating global scope kms keys: %w", err)
 	}
 

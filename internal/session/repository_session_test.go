@@ -1425,3 +1425,51 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	params.DynamicCredentials = creds
 	return params
 }
+
+func TestRepository_deleteTargetFKey(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	targetRepo, err := target.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name  string
+		state Status
+	}{
+		{
+			name:  "Delete target for terminated session",
+			state: StatusTerminated,
+		},
+		{
+			name:  "Delete target for canceling session",
+			state: StatusCanceling,
+		},
+		{
+			name:  "Delete target for active session",
+			state: StatusActive,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			c := TestSessionParams(t, conn, wrapper, iamRepo)
+			sesh := TestSession(t, conn, wrapper, c)
+
+			s := TestState(t, conn, sesh.PublicId, tt.state)
+			assert.Equal(tt.state, s.Status)
+
+			// Delete target associated with session; ensure target deletion with no state violations
+			rows, err := targetRepo.DeleteTarget(context.Background(), c.TargetId)
+			require.NoError(err)
+			assert.Equal(1, rows)
+			foundSession, _, err := repo.LookupSession(context.Background(), sesh.PublicId)
+			assert.NoError(err)
+			assert.Empty(foundSession.TargetId)
+		})
+	}
+}
