@@ -73,15 +73,12 @@ drop view session_list;
 
 -- Update session table to use worker_id instead of server_id
 -- Updating the session table modified in 01/01_server_tags_migrations.up.sql
-alter table session
-  drop constraint session_server_id_fkey;
 drop trigger update_version_column
   on session;
 alter table session
-  drop column server_type;
-alter table session
+  drop constraint session_server_id_fkey,
+  drop column server_type,
   drop column server_id;
-
 create trigger
   update_version_column
   after update of version, termination_reason, key_id, tofu_token on session
@@ -90,10 +87,8 @@ create trigger
 -- Update session_connection table to use worker_id instead of server_id
 -- Table last updated in 21/02_session.up.sql
 alter table session_connection
-  drop column server_id;
-alter table session_connection
-  add column worker_id wt_public_id;
-alter table session_connection
+  drop column server_id,
+  add column worker_id wt_public_id,
   add constraint server_worker_fkey
     foreign key (worker_id)
       references server_worker (public_id)
@@ -102,15 +97,14 @@ alter table session_connection
 
 -- Update job run table so that server id references controller id
 alter table job_run
-  drop constraint server_fkey;
-alter table job_run
+  drop constraint server_fkey,
   add constraint server_controller_fkey
     foreign key (server_id)
       references server_controller (private_id)
       on delete set null
       on update cascade;
 
--- Replaces the view created in 9/01 to include worker id instead of server id and server type
+-- Replaces the view created in 9/01 to remove references to the server/worker id.
 create view session_list as
   select
     s.public_id, s.user_id, s.host_id, s.target_id,
