@@ -28,7 +28,7 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.1.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.5-0.20220321175502-0989a9b6deb1
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.6-0.20220512190651-85bdcdd684e6
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
@@ -86,6 +86,7 @@ require (
 require github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f // this is a branch and should be updated before merging
 
 require (
+	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220512190651-85bdcdd684e6
 	github.com/prometheus/client_golang v1.12.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
@@ -126,7 +127,6 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220512190651-85bdcdd684e6 // indirect
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.2 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.1 // indirect
