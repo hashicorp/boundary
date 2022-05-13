@@ -80,7 +80,14 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 	tlsConn := conn.(*tls.Conn)
 	switch {
 	case nodeauth.ContainsNodeAuthAlpnProto(tlsConn.ConnectionState().NegotiatedProtocol):
-		event.WriteSysEvent(ctx, op, "worker successfully authed", "key_id", nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId))
+		keyId, err := nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId)
+		if err != nil {
+			if err := conn.Close(); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
+			}
+			return nil, newTempError(fmt.Errorf("error deriving key id from newly-authenticated node: %w", err))
+		}
+		event.WriteSysEvent(ctx, op, "worker successfully authed", "key_id", keyId)
 		return conn, nil
 
 	case strings.HasPrefix(tlsConn.ConnectionState().NegotiatedProtocol, "v1workerauth"):

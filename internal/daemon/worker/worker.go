@@ -190,7 +190,10 @@ func (w *Worker) Start() error {
 	if err := nodeCreds.GenerateRegistrationParameters(w.baseContext, w.NodeeFileStorage); err != nil {
 		return err
 	}
-	w.NodeeKeyId = nodee.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+	w.NodeeKeyId, err = nodee.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+	if err != nil {
+		return fmt.Errorf("error deriving key id: %w", err)
+	}
 
 	if err := w.startControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
