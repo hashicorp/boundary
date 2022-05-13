@@ -328,11 +328,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMethod, error) {
 	rw := db.New(b.Database)
 
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return nil, fmt.Errorf("error creating kms repository: %w", err)
-	}
-	kmsCache, err := kms.NewKms(kmsRepo)
+	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}

@@ -23,7 +23,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
@@ -788,18 +787,13 @@ func (c *Command) verifyKmsSetup() error {
 	const op = "server.(Command).verifyKmsExists"
 	rw := db.New(c.Database)
 
-	kmsRepo, err := kms.NewRepository(rw, rw)
+	ctx := context.Background()
+	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
-		return fmt.Errorf("error creating kms repository: %w", err)
+		return fmt.Errorf("error creating kms: %w", err)
 	}
-	rks, err := kmsRepo.ListRootKeys(c.Context, kms.WithLimit(1))
-	if err != nil {
+	if err := kmsCache.VerifyGlobalRoot(ctx); err != nil {
 		return err
 	}
-	for _, rk := range rks {
-		if rk.GetScopeId() == scope.Global.String() {
-			return nil
-		}
-	}
-	return errors.NewDeprecated(errors.MigrationIntegrity, op, "can't find global scoped root key")
+	return nil
 }
