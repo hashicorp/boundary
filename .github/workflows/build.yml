@@ -9,7 +9,6 @@ on:
 
 env:
   PKG_NAME: "boundary"
-  EDITION: oss
 
 jobs:
   get-product-version:
@@ -61,10 +60,28 @@ jobs:
           project="$(go list -m)"
           sha="$(git rev-parse HEAD)"
           echo "::set-output name=ldflags::"-s -w -X \'$project/version.GitCommit=$sha\'""
+  
+  get-product-edition:
+    runs-on: ubuntu-latest
+    outputs:
+      product-edition: ${{ steps.get-product-edition.outputs.product-edition}}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "1.18.1"
+      - name: Get product edition
+        id: get-product-edition
+        run: |
+          make edition
+          echo "::set-output name=product-edition::$(make edition)"
+
 
   build-other:
     needs: 
       - get-product-version
+      - get-product-edition
       - set-ld-flags
     runs-on: ubuntu-latest
     strategy:
@@ -103,7 +120,7 @@ jobs:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
-          name: admin-ui-${{ env.EDITION }}
+          name: admin-ui-${{ needs.get-product-edition.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
@@ -125,6 +142,7 @@ jobs:
   build-linux:
     needs: 
       - get-product-version
+      - get-product-edition
       - set-ld-flags
     runs-on: ubuntu-latest
     strategy:
@@ -158,7 +176,7 @@ jobs:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
-          name: admin-ui-${{ env.EDITION }}
+          name: admin-ui-${{ needs.get-product-edition.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
@@ -210,6 +228,7 @@ jobs:
   build-darwin:
     needs: 
       - get-product-version
+      - get-product-edition
       - set-ld-flags
     runs-on: macos-latest
     strategy:
@@ -240,7 +259,7 @@ jobs:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
           repo: "hashicorp/boundary-ui"
-          name: admin-ui-${{ env.EDITION }}
+          name: admin-ui-${{ needs.get-product-edition.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
