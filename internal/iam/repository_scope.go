@@ -31,7 +31,6 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	}
 
 	var parentOplogWrapper wrapping.Wrapper
-	var externalWrappers *kms.ExternalWrappers
 	var err error
 	switch s.Type {
 	case scope.Unknown.String():
@@ -47,7 +46,6 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		default:
 			parentOplogWrapper, err = r.kms.GetWrapper(ctx, s.ParentId, kms.KeyPurposeOplog)
 		}
-		externalWrappers = r.kms.GetExternalWrappers()
 	}
 	if err != nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to get oplog wrapper")
@@ -174,17 +172,17 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 			s := scopeRaw.(*Scope)
 
-			// Create the scope's keys
-			_, err = kms.CreateKeysTx(ctx, dbr, w, externalWrappers.Root(), reader, s.PublicId)
+			txnKms, err := kms.NewUsingReaderWriter(ctx, dbr, w)
 			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating transaction's kms"))
+			}
+			if err := txnKms.AddExternalWrappers(ctx, kms.WithRootWrapper(r.kms.GetExternalWrappers(ctx).Root())); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error adding external root wrapper to transaction's kms"))
+			}
+			if err := txnKms.CreateKeys(ctx, s.PublicId, kms.WithRandomReader(reader), kms.WithReaderWriter(dbr, w)); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating scope keys"))
 			}
-
-			kmsRepo, err := kms.NewRepository(dbr, w)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating new kms repo"))
-			}
-			childOplogWrapper, err := r.kms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog, kms.WithRepository(kmsRepo))
+			childOplogWrapper, err := txnKms.GetWrapper(ctx, s.PublicId, kms.KeyPurposeOplog)
 			if err != nil {
 				return errors.New(ctx, errors.InvalidParameter, op, "unable to get oplog wrapper")
 			}

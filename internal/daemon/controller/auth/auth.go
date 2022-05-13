@@ -396,7 +396,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
 			return
 		}
-		wrapper := v.kms.GetExternalWrappers().Recovery()
+		wrapper := v.kms.GetExternalWrappers(ctx).Recovery()
 		if wrapper == nil {
 			event.WriteError(ctx, op, stderrors.New("no recovery KMS is available"))
 			v.requestInfo.TokenFormat = uint32(AuthTokenTypeUnknown)
