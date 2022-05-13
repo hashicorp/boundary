@@ -88,6 +88,7 @@ type Command struct {
 	flagPluginExecutionDir              string
 	flagUseEphemeralKmsWorkerAuthMethod bool
 	flagWorkerAuthStorageDir            string
+	flagWorkerAuthStorageSkipCleanup    bool
 }
 
 func (c *Command) Synopsis() string {
@@ -345,6 +346,12 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.BoolVar(&base.BoolVar{
+		Name:   "worker-storage-skip-cleanup",
+		Target: &c.flagWorkerAuthStorageSkipCleanup,
+		Usage:  "Prevents removal of worker credential storage directory if set",
+	})
+
+	f.BoolVar(&base.BoolVar{
 		Name:   "create-loopback-host-plugin",
 		Target: &c.flagCreateLoopbackHostPlugin,
 		Hidden: true,
@@ -401,6 +408,7 @@ func (c *Command) Run(args []string) int {
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
 	c.Config.Worker.StoragePath = c.flagWorkerAuthStorageDir
+	c.Config.Worker.SkipStorageCleanup = c.flagWorkerAuthStorageSkipCleanup
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
