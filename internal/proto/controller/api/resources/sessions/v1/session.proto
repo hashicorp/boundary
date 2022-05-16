@@ -38,15 +38,17 @@ message Connection {
   // bytes_down of the connection
   uint64 bytes_down = 8; // @gotags: `class:"public"`
 
-  // closed_reason of the conneciont
+  // closed_reason of the connection
   string closed_reason = 9; // @gotags: `class:"public"`
 }
 
 // Session contains all fields related to a Session resource
 message Session {
-  // Worker info previously contained only the worker's address.  A session
-  // could have multiple connections through different workers, so if we need
-  // to report worker information, it should probably be done on the connection.
+  // Worker info previously contained only the worker's address but was never
+  // populated either in the database or on the API.  While worker id information
+  // may become helpful on a session in the future, the worker id seems the most
+  // relevant information since the address can change between the time the
+  // session is created and a session connection is made through that worker.
   reserved "worker_info";
 
   // Output only. The ID of the Session.

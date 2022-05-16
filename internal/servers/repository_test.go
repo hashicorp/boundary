@@ -31,6 +31,10 @@ func TestRecoveryNonces(t *testing.T) {
 	})
 	defer tc.Shutdown()
 
+	externalWrappers := tc.Kms().GetExternalWrappers(context.Background())
+	externalRecovery := externalWrappers.Recovery()
+	require.Equal(externalRecovery, wrapper)
+
 	client := tc.Client()
 	repo := tc.ServersRepo()
 

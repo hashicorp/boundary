@@ -26,55 +26,15 @@ func TestKms(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	extWrapper := db.TestWrapper(t)
-	badExtWrapper := db.TestWrapper(t)
-	repo, err := kms.NewRepository(rw, rw)
-	require.NoError(t, err)
 	kmsCache := kms.TestKms(t, conn, extWrapper)
 	org, proj := iam.TestScopes(t, iam.TestRepo(t, conn, extWrapper))
 
-	// Verify that the cache is empty, so we can show that by the end of the
-	// test sequence we did actually look up keys and store them in the cache
-	t.Run("verify cache empty", func(t *testing.T) {
-		var count int
-		kmsCache.GetScopePurposeCache().Range(func(key interface{}, value interface{}) bool {
-			count++
-			return true
-		})
-		assert.Equal(t, 0, count)
-	})
-	// Verify that the root keys are all in the database and can be decrypted
-	// with the correct wrapper from the KMS object
-	t.Run("verify root keys", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		rootKeys, err := repo.ListRootKeys(ctx)
-		require.NoError(err)
-		wrappers := kmsCache.GetExternalWrappers()
-		for _, key := range rootKeys {
-			kvs, err := repo.ListRootKeyVersions(ctx, wrappers.Root(), key.GetPrivateId())
-			require.NoError(err)
-			assert.Len(kvs, 1)
-			assert.Len(kvs[0].GetKey(), 32)
-		}
-	})
-	// Verify that the wrong wrapper causes decryption to fail
-	t.Run("bad external keys", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		rootKeys, err := repo.ListRootKeys(ctx)
-		require.NoError(err)
-		for _, key := range rootKeys {
-			_, err := repo.ListRootKeyVersions(ctx, badExtWrapper, key.GetPrivateId())
-			require.Error(err)
-			assert.True(strings.Contains(err.Error(), "message authentication failed"), err.Error())
-		}
-	})
 	// This next sequence is run twice to ensure that calling for the keys twice
 	// returns the same value each time and doesn't simply populate more keys
 	// into the KMS object
 	keyBytes := map[string]bool{}
 	keyIds := map[string]bool{}
-	scopePurposeMap := map[string]interface{}{}
 	for i := 1; i < 3; i++ {
 		// This iterates through wrappers for all three scopes and four purposes,
 		// ensuring that the key bytes and IDs are different for each of them,
@@ -116,24 +76,6 @@ func TestKms(t *testing.T) {
 				}
 			}
 		})
-		// Verify that the cache has been populated with unique values. The
-		// second time we validate that the items we find when going through the
-		// cache a second time are the same as the first. If they were recreated
-		// the pointers would be different.
-		t.Run(fmt.Sprintf("verify cache populated x %d", i), func(t *testing.T) {
-			var count int
-			kmsCache.GetScopePurposeCache().Range(func(key interface{}, value interface{}) bool {
-				count++
-				if i == 1 {
-					scopePurposeMap[key.(string)] = value
-				} else {
-					assert.Same(t, scopePurposeMap[key.(string)], value)
-				}
-				return true
-			})
-			// four purposes x 3 scopes
-			assert.Equal(t, 12, count)
-		})
 	}
 }
 
@@ -141,7 +83,6 @@ func TestKms_ReconcileKeys(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	org2, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -183,9 +124,10 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			kms:    kms.TestKms(t, conn, wrapper),
 			reader: rand.Reader,
 			setup: func(k *kms.Kms) {
-				db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocAuditKey(); return &i }(), "1=1")
+				kms.TestKmsDeleteKeyPurpose(t, conn, kms.KeyPurposeAudit)
 				// make sure the kms is in the proper state for the unit test
 				// before proceeding.
+				k.ClearCache(testCtx)
 				_, err := k.GetWrapper(testCtx, scope.Global.String(), kms.KeyPurposeAudit)
 				require.Error(t, err)
 			},
@@ -200,14 +142,15 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			setup: func(k *kms.Kms) {
 				// create initial keys for the test scope ids...
 				for _, id := range []string{org.PublicId, org2.PublicId} {
-					_, err := kms.CreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, id)
+					err := k.CreateKeys(testCtx, id)
 					require.NoError(t, err)
 				}
-				db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocOidcKey(); return &i }(), "1=1")
+				kms.TestKmsDeleteKeyPurpose(t, conn, kms.KeyPurposeOidc)
+
 				// make sure the kms is in the proper state for the unit test
 				// before proceeding.
 				for _, id := range []string{org.PublicId, org2.PublicId} {
-					_, err := k.GetWrapper(testCtx, id, kms.KeyPurposeAudit)
+					_, err := k.GetWrapper(testCtx, id, kms.KeyPurposeOidc)
 					require.Error(t, err)
 				}
 			},
@@ -218,10 +161,10 @@ func TestKms_ReconcileKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			// start with no keys...
-			db.TestDeleteWhere(t, conn, func() interface{} { i := kms.AllocRootKey(); return &i }(), "1=1")
+			kms.TestKmsDeleteAllKeys(t, conn)
 
 			// create initial keys for the global scope...
-			_, err := kms.CreateKeysTx(context.Background(), rw, rw, wrapper, rand.Reader, scope.Global.String())
+			err := tt.kms.CreateKeys(context.Background(), scope.Global.String())
 			require.NoError(err)
 
 			if tt.setup != nil {
@@ -248,6 +191,178 @@ func TestKms_ReconcileKeys(t *testing.T) {
 				}
 			}
 			_, err = tt.kms.GetWrapper(testCtx, scope.Global.String(), kms.KeyPurposeAudit)
+			require.NoError(err)
+		})
+	}
+}
+
+func TestKms_GetDerivedPurposeCache(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	derivedWrapper := db.TestWrapper(t)
+	kmsCache.GetDerivedPurposeCache().Store(1, derivedWrapper)
+
+	v, ok := kmsCache.GetDerivedPurposeCache().Load(1)
+	assert.True(ok)
+	assert.Equal(derivedWrapper, v)
+}
+
+func TestKms_VerifyGlobalRoot(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	assert.Error(kmsCache.VerifyGlobalRoot(testCtx))
+
+	require.NoError(kmsCache.CreateKeys(testCtx, "global"))
+	assert.NoError(kmsCache.VerifyGlobalRoot(testCtx))
+}
+
+func TestKms_GetWrapper(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	kmsCache.CreateKeys(testCtx, "global")
+	tests := []struct {
+		name            string
+		kms             *kms.Kms
+		purpose         kms.KeyPurpose
+		scopeId         string
+		opt             []kms.Option
+		wantErr         bool
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-purpose",
+			kms:             kmsCache,
+			scopeId:         "global",
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing purpose",
+		},
+		{
+			name:            "missing-scope-id",
+			kms:             kmsCache,
+			purpose:         kms.KeyPurposeDatabase,
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing scope id",
+		},
+		{
+			name:    "success",
+			kms:     kmsCache,
+			purpose: kms.KeyPurposeDatabase,
+			scopeId: "global",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := tc.kms.GetWrapper(testCtx, tc.scopeId, tc.purpose, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrMatch != nil {
+					assert.Truef(errors.Match(tc.wantErrMatch, err), "expected %q and got err: %+v", tc.wantErrMatch.Code, err)
+				}
+				if tc.wantErrContains != "" {
+					assert.True(strings.Contains(err.Error(), tc.wantErrContains))
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(got)
+		})
+	}
+}
+
+func TestKms_CreateKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rootWrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	kmsCache.CreateKeys(testCtx, "global")
+	rw := db.New(conn)
+
+	tests := []struct {
+		name            string
+		kms             *kms.Kms
+		scopeId         string
+		opt             []kms.Option
+		wantErr         bool
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-scope-id",
+			kms:             kmsCache,
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing scope id",
+		},
+		{
+			name:            "invalid-scope",
+			kms:             kmsCache,
+			scopeId:         "o_1234567890",
+			wantErr:         true,
+			wantErrContains: "violates foreign key constraint",
+		},
+		{
+			name:            "missing-writer-opt",
+			kms:             kmsCache,
+			scopeId:         "global",
+			opt:             []kms.Option{kms.WithReaderWriter(rw, nil)},
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing writer",
+		},
+		{
+			name:            "missing-reader-opt",
+			kms:             kmsCache,
+			scopeId:         "global",
+			opt:             []kms.Option{kms.WithReaderWriter(nil, rw)},
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing reader",
+		},
+		{
+			name:    "success",
+			kms:     kmsCache,
+			scopeId: "global",
+		},
+		{
+			name:    "success-with-reader-writer",
+			kms:     kmsCache,
+			opt:     []kms.Option{kms.WithReaderWriter(rw, rw)},
+			scopeId: "global",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			kms.TestKmsDeleteAllKeys(t, conn)
+			err := tc.kms.CreateKeys(testCtx, tc.scopeId, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrMatch != nil {
+					assert.Truef(errors.Match(tc.wantErrMatch, err), "expected %q and got err: %+v", tc.wantErrMatch.Code, err)
+				}
+				if tc.wantErrContains != "" {
+					assert.True(strings.Contains(err.Error(), tc.wantErrContains))
+				}
+				return
+			}
 			require.NoError(err)
 		})
 	}

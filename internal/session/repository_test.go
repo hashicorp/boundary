@@ -13,14 +13,18 @@ func TestNewRepository(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+
 	type args struct {
 		r db.Reader
 		w db.Writer
+		k *kms.Kms
 	}
 	tests := []struct {
 		name          string
 		args          args
-		want          *kms.Repository
+		want          *Repository
 		wantErr       bool
 		wantErrString string
 	}{
@@ -29,9 +33,10 @@ func TestNewRepository(t *testing.T) {
 			args: args{
 				r: rw,
 				w: rw,
+				k: testKms,
 			},
-			want: func() *kms.Repository {
-				ret, err := kms.NewRepository(rw, rw)
+			want: func() *Repository {
+				ret, err := NewRepository(rw, rw, testKms)
 				require.NoError(t, err)
 				return ret
 			}(),
@@ -45,7 +50,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "kms.NewRepository: nil writer: parameter violation: error #100",
+			wantErrString: "session.NewRepository: nil writer: parameter violation: error #100",
 		},
 		{
 			name: "nil-reader",
@@ -55,13 +60,13 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:          nil,
 			wantErr:       true,
-			wantErrString: "kms.NewRepository: nil reader: parameter violation: error #100",
+			wantErrString: "session.NewRepository: nil reader: parameter violation: error #100",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := kms.NewRepository(tt.args.r, tt.args.w)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.k)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrString, err.Error())

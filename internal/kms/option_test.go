@@ -35,4 +35,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withOrderByVersion = db.DescendingOrderBy
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithKeyId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithKeyId("100"))
+		testOpts := getDefaultOptions()
+		testOpts.withKeyId = "100"
+		assert.Equal(opts, testOpts)
+	})
 }

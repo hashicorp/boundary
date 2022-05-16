@@ -29,7 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/nodeenrollment/nodetypes"
+	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -689,7 +689,7 @@ func (c *Command) Run(args []string) int {
 					case <-c.Context.Done():
 						return
 					case <-time.After(time.Second):
-						waitingNodes, err := c.controller.NodeeFileStorage.List(c.Context, (*nodetypes.NodeInformation)(nil))
+						waitingNodes, err := c.controller.NodeeFileStorage.List(c.Context, (*types.NodeInformation)(nil))
 						if err != nil {
 							c.UI.Error(fmt.Errorf("Error listing dev worker for authentication: %w", err).Error())
 							errorEncountered.Store(true)

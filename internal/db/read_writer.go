@@ -208,6 +208,11 @@ func New(underlying *DB) *Db {
 	return &Db{underlying: underlying}
 }
 
+// UnderlyingDB returns the underlying *dbw.DB
+func (rw *Db) UnderlyingDB() *dbw.DB {
+	return rw.underlying.wrapped
+}
+
 // Exec will execute the sql with the values as parameters. The int returned
 // is the number of rows affected by the sql. WithDebug is supported.
 func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, opt ...Option) (int, error) {

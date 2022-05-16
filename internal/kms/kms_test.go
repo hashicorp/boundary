@@ -2,73 +2,175 @@ package kms
 
 import (
 	"context"
-	"crypto/rand"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-uuid"
+	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/go-dbw"
+	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestKms_KeyId(t *testing.T) {
+func Test_New(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
-	ctx := context.Background()
+	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
-	extWrapper := db.TestWrapper(t)
-	repo, err := NewRepository(rw, rw)
-	require.NoError(err)
 
-	// Make the global scope base keys
-	_, err = CreateKeysTx(ctx, rw, rw, extWrapper, rand.Reader, scope.Global.String())
-	require.NoError(err)
+	tests := []struct {
+		name            string
+		r               *db.Db
+		w               *db.Db
+		want            *Kms
+		wantErr         bool
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "nil-reader",
+			w:               rw,
+			wantErr:         true,
+			wantErrContains: "missing reader",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+		{
+			name:            "nil-writer",
+			r:               rw,
+			wantErr:         true,
+			wantErrContains: "missing writer",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "success",
+			r:    rw,
+			w:    rw,
+			want: &Kms{
+				reader: rw,
+				underlying: func() *wrappingKms.Kms {
+					purposes := make([]wrappingKms.KeyPurpose, 0, len(ValidDekPurposes()))
+					for _, p := range ValidDekPurposes() {
+						purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
+					}
+					purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
 
-	// Get the global scope's root wrapper
-	kmsCache, err := NewKms(repo)
-	require.NoError(err)
-	require.NoError(kmsCache.AddExternalWrappers(ctx, WithRootWrapper(extWrapper)))
-	globalRootWrapper, _, err := kmsCache.loadRoot(ctx, scope.Global.String())
-	require.NoError(err)
+					r := dbw.New(rw.UnderlyingDB())
+					w := dbw.New(rw.UnderlyingDB())
+					wrapped, err := wrappingKms.New(r, w, purposes, wrappingKms.WithCache(true))
+					require.NoError(t, err)
+					return wrapped
+				}(),
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 
-	dks, err := repo.ListDatabaseKeys(ctx)
-	require.NoError(err)
-	require.Len(dks, 1)
+			got, err := New(testCtx, tc.r, tc.w)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrMatch != nil {
+					assert.Truef(errors.Match(tc.wantErrMatch, err), "expected %q and got err: %+v", tc.wantErrMatch.Code, err)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tc.want, got)
+		})
+	}
+}
 
-	// Create another key version
-	newKeyBytes, err := uuid.GenerateRandomBytes(32)
-	require.NoError(err)
-	_, err = repo.CreateDatabaseKeyVersion(ctx, globalRootWrapper, dks[0].GetPrivateId(), newKeyBytes)
-	require.NoError(err)
+func Test_NewUsingReaderWriter(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
 
-	dkvs, err := repo.ListDatabaseKeyVersions(ctx, globalRootWrapper, dks[0].GetPrivateId())
-	require.NoError(err)
-	require.Len(dkvs, 2)
+	tests := []struct {
+		name            string
+		r               db.Reader
+		w               db.Writer
+		want            *Kms
+		wantErr         bool
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "nil-reader",
+			w:               rw,
+			wantErr:         true,
+			wantErrContains: "missing reader",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+		{
+			name:            "nil-writer",
+			r:               rw,
+			wantErr:         true,
+			wantErrContains: "missing writer",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+		{
+			name:            "invalid-reader",
+			r:               &invalidReader{},
+			w:               rw,
+			wantErr:         true,
+			wantErrContains: "unable to convert to db.DB",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+		{
+			name:            "invalid-writer",
+			r:               rw,
+			w:               &invalidWriter{},
+			wantErr:         true,
+			wantErrContains: "unable to convert to db.DB",
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "success",
+			r:    rw,
+			w:    rw,
+			want: &Kms{
+				reader: rw,
+				underlying: func() *wrappingKms.Kms {
+					purposes := stdNewKmsPurposes()
+					r := dbw.New(rw.UnderlyingDB())
+					w := dbw.New(rw.UnderlyingDB())
+					wrapped, err := wrappingKms.New(r, w, purposes, wrappingKms.WithCache(true))
+					require.NoError(t, err)
+					return wrapped
+				}(),
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
 
-	keyId1 := dkvs[0].GetPrivateId()
-	keyId2 := dkvs[1].GetPrivateId()
+			got, err := NewUsingReaderWriter(testCtx, tc.r, tc.w)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrMatch != nil {
+					assert.Truef(errors.Match(tc.wantErrMatch, err), "expected %q and got err: %+v", tc.wantErrMatch.Code, err)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tc.want, got)
+		})
+	}
+}
 
-	// First test: just getting the key should return the latest
-	wrapper, err := kmsCache.GetWrapper(ctx, scope.Global.String(), KeyPurposeDatabase)
-	require.NoError(err)
-	tKeyId, err := wrapper.KeyId(context.Background())
-	require.NoError(err)
-	require.Equal(keyId2, tKeyId)
+type invalidReader struct {
+	db.Reader
+}
 
-	// Second: ask for each in turn
-	wrapper, err = kmsCache.GetWrapper(ctx, scope.Global.String(), KeyPurposeDatabase, WithKeyId(keyId1))
-	require.NoError(err)
-	tKeyId, err = wrapper.KeyId(context.Background())
-	require.NoError(err)
-	require.Equal(keyId1, tKeyId)
-	wrapper, err = kmsCache.GetWrapper(ctx, scope.Global.String(), KeyPurposeDatabase, WithKeyId(keyId2))
-	require.NoError(err)
-	tKeyId, err = wrapper.KeyId(context.Background())
-	require.NoError(err)
-	require.Equal(keyId2, tKeyId)
-
-	// Last: verify something bogus finds nothing
-	_, err = kmsCache.GetWrapper(ctx, scope.Global.String(), KeyPurposeDatabase, WithKeyId("foo"))
-	require.Error(err)
+type invalidWriter struct {
+	db.Writer
 }

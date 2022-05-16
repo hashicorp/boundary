@@ -6,285 +6,150 @@ import (
 	"io"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-dbw"
+	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
-	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 )
-
-// ExternalWrappers holds wrappers defined outside of Boundary, e.g. in its
-// configuration file.
-type ExternalWrappers struct {
-	m          sync.RWMutex
-	root       wrapping.Wrapper
-	workerAuth wrapping.Wrapper
-	recovery   wrapping.Wrapper
-}
-
-// Root returns the wrapper for root keys
-func (e *ExternalWrappers) Root() wrapping.Wrapper {
-	e.m.RLock()
-	defer e.m.RUnlock()
-	return e.root
-}
-
-// WorkerAuth returns the wrapper for worker authentication
-func (e *ExternalWrappers) WorkerAuth() wrapping.Wrapper {
-	e.m.RLock()
-	defer e.m.RUnlock()
-	return e.workerAuth
-}
-
-// Recovery returns the wrapper for recovery operations
-func (e *ExternalWrappers) Recovery() wrapping.Wrapper {
-	e.m.RLock()
-	defer e.m.RUnlock()
-	return e.recovery
-}
 
 // Kms is a way to access wrappers for a given scope and purpose. Since keys can
 // never change, only be added or (eventually) removed, it opportunistically
 // caches, going to the database as needed.
 type Kms struct {
-	// scopePurposeCache holds a per-scope-purpose multiwrapper containing the
-	// current encrypting key and all previous key versions, for decryption
-	scopePurposeCache sync.Map
-
-	externalScopeCache      map[string]*ExternalWrappers
-	externalScopeCacheMutex sync.RWMutex
-
+	underlying          *wrappingKms.Kms
+	reader              db.Reader
 	derivedPurposeCache sync.Map
-
-	repo *Repository
 }
 
-// NewKms takes in a repo and returns a Kms.
-func NewKms(repo *Repository, opt ...Option) (*Kms, error) {
-	const op = "kms.NewKms"
-	if repo == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing underlying repo")
+// New creates a Kms using the provided reader and writer.  No options are
+// currently supported.
+func New(ctx context.Context, reader *db.Db, writer *db.Db, _ ...Option) (*Kms, error) {
+	const op = "kms.(Kms).New"
+	if isNil(reader) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing reader")
 	}
+	if isNil(writer) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing writer")
+	}
+	purposes := stdNewKmsPurposes()
 
+	r := dbw.New(reader.UnderlyingDB())
+	w := dbw.New(writer.UnderlyingDB())
+	k, err := wrappingKms.New(r, w, purposes, wrappingKms.WithCache(true))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
+	}
 	return &Kms{
-		externalScopeCache: make(map[string]*ExternalWrappers),
-		repo:               repo,
+		underlying: k,
+		reader:     reader,
 	}, nil
 }
 
-// GetScopePurposeCache is used in test functions for validation. Since the
-// tests need to be in a different package to avoid circular dependencies, this
-// is exported.
-func (k *Kms) GetScopePurposeCache() *sync.Map {
-	return &k.scopePurposeCache
+// NewUsingReaderWriter creates a Kms using the provided reader and writer.  No
+// options are currently supported.
+func NewUsingReaderWriter(ctx context.Context, reader db.Reader, writer db.Writer, _ ...Option) (*Kms, error) {
+	const op = "kms.(Kms).New"
+	if isNil(reader) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing reader")
+	}
+	if isNil(writer) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing writer")
+	}
+	purposes := stdNewKmsPurposes()
+
+	r, err := convertToRW(ctx, reader)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	w, err := convertToRW(ctx, writer)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	k, err := wrappingKms.New(r, w, purposes, wrappingKms.WithCache(true))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
+	}
+	return &Kms{
+		underlying: k,
+		reader:     reader,
+	}, nil
 }
 
-func (k *Kms) GetDerivedPurposeCache() *sync.Map {
-	return &k.derivedPurposeCache
+func convertToRW(ctx context.Context, r interface{}) (*dbw.RW, error) {
+	const op = "kms.convertToDb"
+	d, ok := r.(*db.Db)
+	if !ok {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to convert to db.DB")
+	}
+	return dbw.New(d.UnderlyingDB()), nil
 }
 
 // AddExternalWrappers allows setting the external keys.
-//
-// TODO: If we support more than one, e.g. for encrypting against many in case
-// of a key loss, there will need to be some refactoring here to have the values
-// being stored in the struct be a multiwrapper, but that's for a later project.
 func (k *Kms) AddExternalWrappers(ctx context.Context, opt ...Option) error {
-	const op = "kms.AddExternalWrappers"
-	k.externalScopeCacheMutex.Lock()
-	defer k.externalScopeCacheMutex.Unlock()
-
-	ext := k.externalScopeCache[scope.Global.String()]
-	if ext == nil {
-		ext = &ExternalWrappers{}
-	}
-	ext.m.Lock()
-	defer ext.m.Unlock()
+	const op = "kms.(Kms).AddExternalWrappers"
 
 	opts := getOpts(opt...)
 	if opts.withRootWrapper != nil {
-		ext.root = opts.withRootWrapper
-		keyId, err := ext.root.KeyId(ctx)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("error reading root wrapper key ID"))
-		}
-		if keyId == "" {
-			return errors.New(ctx, errors.InvalidParameter, op, "root wrapper has no key ID")
+		if err := k.underlying.AddExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRootKey.String()), opts.withRootWrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add root wrapper"))
 		}
 	}
 	if opts.withWorkerAuthWrapper != nil {
-		ext.workerAuth = opts.withWorkerAuthWrapper
-		keyId, err := ext.workerAuth.KeyId(ctx)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("error reading worker auth wrapper key ID"))
-		}
-		if keyId == "" {
-			return errors.New(ctx, errors.InvalidParameter, op, "worker auth wrapper has no key ID")
+		if err := k.underlying.AddExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), opts.withWorkerAuthWrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add worker auth wrapper"))
 		}
 	}
 	if opts.withRecoveryWrapper != nil {
-		ext.recovery = opts.withRecoveryWrapper
-		keyId, err := ext.root.KeyId(ctx)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("error reading recovery wrapper key ID"))
-		}
-		if keyId == "" {
-			return errors.New(ctx, errors.InvalidParameter, op, "recovery wrapper has no key ID")
+		if err := k.underlying.AddExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRecovery.String()), opts.withRecoveryWrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add recovery wrapper"))
 		}
 	}
-
-	k.externalScopeCache[scope.Global.String()] = ext
 	return nil
-}
-
-func (k *Kms) GetExternalWrappers() *ExternalWrappers {
-	k.externalScopeCacheMutex.RLock()
-	defer k.externalScopeCacheMutex.RUnlock()
-
-	ext := k.externalScopeCache[scope.Global.String()]
-	ext.m.RLock()
-	defer ext.m.RUnlock()
-
-	ret := &ExternalWrappers{
-		root:       ext.root,
-		workerAuth: ext.workerAuth,
-		recovery:   ext.recovery,
-	}
-	return ret
 }
 
 // GetWrapper returns a wrapper for the given scope and purpose. When a keyId is
 // passed, it will ensure that the returning wrapper has that key ID in the
-// multiwrapper. This is not necesary for encryption but should be supplied for
+// multiwrapper. This is not necessary for encryption but should be supplied for
 // decryption.
 func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
-	const op = "kms.GetWrapper"
+	const op = "kms.(Kms).GetWrapper"
 	if scopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-
-	switch purpose {
-	case KeyPurposeOplog, KeyPurposeDatabase, KeyPurposeTokens, KeyPurposeSessions, KeyPurposeOidc, KeyPurposeAudit:
-	case KeyPurposeUnknown:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing key purpose")
-	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported purpose %q", purpose))
+	if purpose == KeyPurposeUnknown {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing purpose")
 	}
-
 	opts := getOpts(opt...)
-	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
-	// that ID is in the multiwrapper; if not, fall through to reload from the
-	// DB.
-	val, ok := k.scopePurposeCache.Load(scopeId + purpose.String())
-	if ok {
-		wrapper := val.(*multi.PooledWrapper)
-		if opts.withKeyId == "" {
-			return wrapper, nil
-		}
-		if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
-			return keyIdWrapper, nil
-		}
-		// Fall through to refresh our multiwrapper for this scope/purpose from the DB
-	}
-
-	// We don't have it cached, so we'll need to read from the database. Get the
-	// root for the scope as we'll need it to decrypt the value coming from the
-	// DB. We don't cache the roots as we expect that after a few calls the
-	// scope-purpose cache will catch everything in steady-state.
-	rootWrapper, rootKeyId, err := k.loadRoot(ctx, scopeId, opt...)
+	w, err := k.underlying.GetWrapper(ctx, scopeId, wrappingKms.KeyPurpose(purpose.String()), wrappingKms.WithKeyId(opts.withKeyId))
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error loading root key for scope %s", scopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get wrapper"))
 	}
-	if rootWrapper == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("got nil root wrapper for scope %s", scopeId))
-	}
-
-	wrapper, err := k.loadDek(ctx, scopeId, purpose, rootWrapper, rootKeyId, opt...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error loading %s for scope %s", purpose.String(), scopeId)))
-	}
-	k.scopePurposeCache.Store(scopeId+purpose.String(), wrapper)
-
-	if opts.withKeyId != "" {
-		if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
-			return keyIdWrapper, nil
-		}
-		return nil, errors.New(ctx, errors.KeyNotFound, op, "unable to find specified key ID")
-	}
-
-	return wrapper, nil
+	return w, err
 }
 
-func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multi.PooledWrapper, string, error) {
-	const op = "kms.loadRoot"
-	opts := getOpts(opt...)
-	repo := opts.withRepository
-	if repo == nil {
-		repo = k.repo
+// GetExternalWrappers returns the Kms' ExternalWrappers
+func (k *Kms) GetExternalWrappers(ctx context.Context) *ExternalWrappers {
+	const op = "kms.(Kms).GetExternalWrappers"
+	ret := &ExternalWrappers{}
+	if root, err := k.underlying.GetExternalRootWrapper(); err == nil {
+		ret.root = root
 	}
-	rootKeys, err := repo.ListRootKeys(ctx)
-	if err != nil {
-		return nil, "", errors.Wrap(ctx, err, op)
+	if workerAuth, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String())); err == nil {
+		ret.workerAuth = workerAuth
 	}
-	var rootKeyId string
-	for _, k := range rootKeys {
-		if k.GetScopeId() == scopeId {
-			rootKeyId = k.GetPrivateId()
-			break
-		}
+	if recovery, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRecovery.String())); err == nil {
+		ret.recovery = recovery
 	}
-	if rootKeyId == "" {
-		return nil, "", errors.New(ctx, errors.KeyNotFound, op, fmt.Sprintf("missing root key for scope %s", scopeId))
-	}
+	return ret
+}
 
-	// Now: find the external KMS that can be used to decrypt the root values
-	// from the DB.
-	k.externalScopeCacheMutex.Lock()
-	externalWrappers := k.externalScopeCache[scope.Global.String()]
-	k.externalScopeCacheMutex.Unlock()
-	if externalWrappers == nil {
-		return nil, "", errors.New(ctx, errors.KeyNotFound, op, "could not find kms information at either the needed scope or global fallback")
-	}
-
-	externalWrappers.m.RLock()
-	defer externalWrappers.m.RUnlock()
-
-	if externalWrappers.root == nil {
-		return nil, "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("root key wrapper for scope %s is nil", scopeId))
-	}
-	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalWrappers.root, rootKeyId, WithOrderByVersion(db.DescendingOrderBy))
-	if err != nil {
-		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up root key versions for scope %s", scopeId)))
-	}
-	if len(rootKeyVersions) == 0 {
-		return nil, "", errors.New(ctx, errors.KeyNotFound, op, fmt.Sprintf("no root key versions found for scope %s", scopeId))
-	}
-
-	var pooled *multi.PooledWrapper
-	for i, key := range rootKeyVersions {
-		var err error
-		wrapper := aead.NewWrapper()
-		if _, err = wrapper.SetConfig(ctx, wrapping.WithKeyId(key.GetPrivateId())); err != nil {
-			return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead root wrapper in scope %s", scopeId)))
-		}
-		if err = wrapper.SetAesGcmKeyBytes(key.GetKey()); err != nil {
-			return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead root wrapper in scope %s", scopeId)))
-		}
-		if i == 0 {
-			pooled, err = multi.NewPooledWrapper(ctx, wrapper)
-			if err != nil {
-				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting root pooled wrapper for key version 0 in scope %s", scopeId)))
-			}
-		} else {
-			_, err = pooled.AddWrapper(ctx, wrapper)
-			if err != nil {
-				return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error adding pooled wrapper for key version %d in scope %s", i, scopeId)))
-			}
-		}
-	}
-
-	return pooled, rootKeyId, nil
+// GetDerivedPurposeCache returns the raw derived purpose cache
+func (k *Kms) GetDerivedPurposeCache() *sync.Map {
+	return &k.derivedPurposeCache
 }
 
 // ReconcileKeys will reconcile the keys in the kms against known possible
@@ -295,69 +160,106 @@ func (k *Kms) ReconcileKeys(ctx context.Context, randomReader io.Reader, opt ...
 	if isNil(randomReader) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing rand reader")
 	}
-
 	// it's possible that the global audit key was created after this instance's
 	// database was initialized... so check if the audit wrapper is available
 	// for the global scope and if not, then add one to the global scope
 	if _, err := k.GetWrapper(ctx, scope.Global.String(), KeyPurposeAudit); err != nil {
-		switch {
-		case errors.Match(errors.T(errors.KeyNotFound), err):
-			globalRootWrapper, _, err := k.loadRoot(ctx, scope.Global.String())
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			key, err := generateKey(ctx, randomReader)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for database key in scope %s", scope.Global.String())))
-			}
-			if _, _, err := k.repo.CreateAuditKey(ctx, globalRootWrapper, key); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating audit key in scope %s", scope.Global.String())))
-			}
-		default:
-			errors.Wrap(ctx, err, op)
+		if err := k.underlying.ReconcileKeys(
+			ctx,
+			[]string{scope.Global.String()},
+			[]wrappingKms.KeyPurpose{wrappingKms.KeyPurpose(KeyPurposeAudit.String())},
+			wrappingKms.WithRandomReader(randomReader),
+		); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating audit key in scope %s", scope.Global.String())))
 		}
 	}
 
 	opts := getOpts(opt...)
-	for _, id := range opts.withScopeIds {
-		var scopeRootWrapper *multi.PooledWrapper
-
-		for _, purpose := range []KeyPurpose{
+	if len(opts.withScopeIds) > 0 {
+		if err := k.underlying.ReconcileKeys(
+			ctx,
+			opts.withScopeIds,
 			// just add additional purposes as needed going forward to reconcile
 			// new keys as they are added.
-			//
-			// NOTE: don't add an audit key here since it can only be created in
-			// the global scope.
-			KeyPurposeOidc,
-		} {
-			if _, err := k.GetWrapper(ctx, id, purpose); err != nil {
-				switch {
-				case errors.Match(errors.T(errors.KeyNotFound), err):
-					if scopeRootWrapper == nil {
-						if scopeRootWrapper, _, err = k.loadRoot(ctx, id); err != nil {
-							return errors.Wrap(ctx, err, op)
-						}
-					}
-					key, err := generateKey(ctx, randomReader)
-					if err != nil {
-						return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error generating random bytes for %q key in scope %q", purpose.String(), id)))
-					}
-					switch purpose {
-					case KeyPurposeOidc:
-						if _, _, err := k.repo.CreateOidcKey(ctx, scopeRootWrapper, key); err != nil {
-							return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating %q key in scope %s", purpose.String(), id)))
-						}
-					default:
-						return errors.New(ctx, errors.Internal, op, fmt.Sprintf("error creating %q key in scope %s since it's not a supported KeyPurpose", purpose.String(), id))
-					}
-				default:
-					errors.Wrap(ctx, err, op)
-				}
-			}
+			[]wrappingKms.KeyPurpose{wrappingKms.KeyPurpose(KeyPurposeOidc.String())},
+			wrappingKms.WithRandomReader(randomReader),
+		); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating keys in scopes %s", opts.withScopeIds)))
 		}
 	}
-
 	return nil
+}
+
+// CreateKeys creates the root key and DEKs returns a map of the new keys.
+// Supports the WithRandomReader(...) and WithReaderWriter(...) options.
+// When WithReaderWriter(...) is used the caller is responsible for managing the
+// transaction which allows this capability to be shared with the iam repo when
+// it's creating Scopes.
+func (k *Kms) CreateKeys(ctx context.Context, scopeId string, opt ...Option) error {
+	const op = "kms.(Kms).CreateKeysTx"
+	if scopeId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	opts := getOpts(opt...)
+	kmsOpts := []wrappingKms.Option{wrappingKms.WithRandomReader(opts.withRandomReader)}
+	switch {
+	case !isNil(opts.withReader) && isNil(opts.withWriter):
+		return errors.New(ctx, errors.InvalidParameter, op, "missing writer")
+	case isNil(opts.withReader) && !isNil(opts.withWriter):
+		return errors.New(ctx, errors.InvalidParameter, op, "missing reader")
+	case !isNil(opts.withReader) && !isNil(opts.withWriter):
+		r, err := convertToRW(ctx, opts.withReader)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert reader"))
+		}
+		w, err := convertToRW(ctx, opts.withWriter)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert writer"))
+		}
+		kmsOpts = append(kmsOpts, wrappingKms.WithReaderWriter(r, w))
+	}
+	purposes := make([]wrappingKms.KeyPurpose, 0, len(ValidDekPurposes()))
+	for _, p := range ValidDekPurposes() {
+		purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
+	}
+	if err := k.underlying.CreateKeys(ctx, scopeId, purposes, kmsOpts...); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
+}
+
+// ClearCache will clear the kms's cache which is useful after a scope has been
+// deleted.
+func (k *Kms) ClearCache(ctx context.Context) error {
+	const op = "kms.(Kms).ClearCache"
+	if err := k.underlying.ClearCache(ctx); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
+}
+
+// VerifyGlobalRoot will verify that the global root wrapper is reasonable.
+func (k *Kms) VerifyGlobalRoot(ctx context.Context) error {
+	const op = "kms.(Kms).VerifyGlobalRoot"
+	var keys []*rootKey
+	if err := k.reader.SearchWhere(ctx, &keys, "1=1", nil, db.WithLimit(1), db.WithOrder("create_time asc")); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	for _, rk := range keys {
+		if rk.ScopeId == scope.Global.String() {
+			return nil
+		}
+	}
+	return errors.New(ctx, errors.MigrationIntegrity, op, "can't find global scoped root key")
+}
+
+func stdNewKmsPurposes() []wrappingKms.KeyPurpose {
+	purposes := make([]wrappingKms.KeyPurpose, 0, len(ValidDekPurposes()))
+	for _, p := range ValidDekPurposes() {
+		purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
+	}
+	purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
+	return purposes
 }
 
 func isNil(i interface{}) bool {
@@ -371,111 +273,10 @@ func isNil(i interface{}) bool {
 	return false
 }
 
-// Dek is an interface wrapping dek types to allow a lot less switching in loadDek
-type Dek interface {
-	GetRootKeyId() string
-	GetPrivateId() string
+type rootKey struct {
+	PrivateId  string    `gorm:"primary_key"`
+	ScopeId    string    `gorm:"default:null"`
+	CreateTime time.Time `gorm:"default:current_timestamp"`
 }
 
-// DekVersion is an interface wrapping versioned dek types to allow a lot less switching in loadDek
-type DekVersion interface {
-	GetPrivateId() string
-	GetKey() []byte
-}
-
-func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*multi.PooledWrapper, error) {
-	const op = "kms.loadDek"
-	if rootWrapper == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("nil root wrapper for scope %s", scopeId))
-	}
-	if rootKeyId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("missing root key ID for scope %s", scopeId))
-	}
-
-	opts := getOpts(opt...)
-	repo := opts.withRepository
-	if repo == nil {
-		repo = k.repo
-	}
-
-	var keys []Dek
-	var err error
-	switch purpose {
-	case KeyPurposeDatabase:
-		keys, err = repo.ListDatabaseKeys(ctx)
-	case KeyPurposeOplog:
-		keys, err = repo.ListOplogKeys(ctx)
-	case KeyPurposeTokens:
-		keys, err = repo.ListTokenKeys(ctx)
-	case KeyPurposeSessions:
-		keys, err = repo.ListSessionKeys(ctx)
-	case KeyPurposeOidc:
-		keys, err = repo.ListOidcKeys(ctx)
-	case KeyPurposeAudit:
-		keys, err = repo.ListAuditKeys(ctx)
-	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
-	}
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error listing root keys"))
-	}
-	var keyId string
-	for _, k := range keys {
-		if k.GetRootKeyId() == rootKeyId {
-			keyId = k.GetPrivateId()
-			break
-		}
-	}
-	if keyId == "" {
-		return nil, errors.New(ctx, errors.KeyNotFound, op, fmt.Sprintf("error finding %s key for scope %s", purpose.String(), scopeId))
-	}
-
-	var keyVersions []DekVersion
-	switch purpose {
-	case KeyPurposeDatabase:
-		keyVersions, err = repo.ListDatabaseKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
-	case KeyPurposeOplog:
-		keyVersions, err = repo.ListOplogKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
-	case KeyPurposeTokens:
-		keyVersions, err = repo.ListTokenKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
-	case KeyPurposeSessions:
-		keyVersions, err = repo.ListSessionKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
-	case KeyPurposeOidc:
-		keyVersions, err = repo.ListOidcKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
-	case KeyPurposeAudit:
-		keyVersions, err = repo.ListAuditKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(db.DescendingOrderBy))
-	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown or invalid DEK purpose specified")
-	}
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up %s key versions for scope %s", purpose.String(), scopeId)))
-	}
-	if len(keyVersions) == 0 {
-		return nil, errors.New(ctx, errors.KeyNotFound, op, fmt.Sprintf("no %s key versions found for scope %s", purpose.String(), scopeId))
-	}
-
-	var pooled *multi.PooledWrapper
-	for i, keyVersion := range keyVersions {
-		var err error
-		wrapper := aead.NewWrapper()
-		if _, err = wrapper.SetConfig(ctx, wrapping.WithKeyId(keyVersion.GetPrivateId())); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting config on aead %s wrapper in scope %s", purpose.String(), scopeId)))
-		}
-		if err = wrapper.SetAesGcmKeyBytes(keyVersion.GetKey()); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error setting key bytes on aead %s wrapper in scope %s", purpose.String(), scopeId)))
-		}
-		if i == 0 {
-			pooled, err = multi.NewPooledWrapper(ctx, wrapper)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s pooled wrapper for key version 0 in scope %s", purpose.String(), scopeId)))
-			}
-		} else {
-			_, err = pooled.AddWrapper(ctx, wrapper)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error getting %s pooled wrapper for key version %d in scope %s", purpose.String(), i, scopeId)))
-			}
-		}
-	}
-
-	return pooled, nil
-}
+func (*rootKey) TableName() string { return "kms_root_key" }

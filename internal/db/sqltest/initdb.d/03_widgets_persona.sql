@@ -105,13 +105,13 @@ begin;
     values
       ('krkv___widget', 'krk___widget', 'krk___widget'::bytea);
 
-    insert into kms_database_key
-      (private_id, root_key_id)
+    insert into kms_data_key
+      (private_id, root_key_id, purpose)
     values
-      ('kdk____widget', 'krk___widget');
+      ('kdk____widget', 'krk___widget', 'database');
 
-    insert into kms_database_key_version
-      (private_id,      database_key_id, root_key_version_id, key)
+    insert into kms_data_key_version
+      (private_id,      data_key_id, root_key_version_id, key)
     values
       ('kdkv___widget', 'kdk____widget', 'krkv___widget',     'kdk____widget'::bytea);
 
