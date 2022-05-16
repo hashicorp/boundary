@@ -28,8 +28,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/nodeauth"
-	nodeefile "github.com/hashicorp/nodeenrollment/nodestorage/file"
-	"github.com/hashicorp/nodeenrollment/nodetypes"
+	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
+	"github.com/hashicorp/nodeenrollment/types"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -181,12 +181,12 @@ func (w *Worker) Start() error {
 
 	var err error
 	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
-		nodeefile.WithFileStorageBaseDirectory(w.conf.RawConfig.Worker.StoragePath))
+		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.StoragePath))
 	if err != nil {
 		return err
 	}
 
-	var nodeCreds nodetypes.NodeCredentials
+	var nodeCreds types.NodeCredentials
 	if err := nodeCreds.GenerateRegistrationParameters(w.baseContext, w.NodeeFileStorage); err != nil {
 		return err
 	}

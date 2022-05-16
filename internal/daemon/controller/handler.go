@@ -43,7 +43,7 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/nodeenrollment/nodetypes"
+	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -573,14 +573,14 @@ func handleNodes(c *Controller) http.Handler {
 			}
 			var err error
 			var currVals vals
-			waitingNodes, err := c.NodeeFileStorage.List(c.baseContext, (*nodetypes.NodeInformation)(nil))
+			waitingNodes, err := c.NodeeFileStorage.List(c.baseContext, (*types.NodeInformation)(nil))
 			if err != nil {
 				_, _ = w.Write([]byte(err.Error()))
 				w.WriteHeader(500)
 				return
 			}
 			for _, keyId := range waitingNodes {
-				ni, err := nodetypes.LoadNodeInformation(c.baseContext, c.NodeeFileStorage, keyId)
+				ni, err := types.LoadNodeInformation(c.baseContext, c.NodeeFileStorage, keyId)
 				if err != nil {
 					_, _ = w.Write([]byte(err.Error()))
 					w.WriteHeader(500)

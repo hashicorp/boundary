@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/nodeenrollment/nodeauth"
 	"github.com/hashicorp/nodeenrollment/noderegistration"
 	"github.com/hashicorp/nodeenrollment/nodetls"
-	"github.com/hashicorp/nodeenrollment/nodetypes"
+	"github.com/hashicorp/nodeenrollment/types"
 )
 
 type multihopServiceServer struct {
@@ -27,7 +27,7 @@ func NewMultihopServiceServer(
 
 var _ pbs.MultihopServiceServer = (*multihopServiceServer)(nil)
 
-func (m *multihopServiceServer) FetchNodeCredentials(ctx context.Context, req *nodetypes.FetchNodeCredentialsRequest) (*nodetypes.FetchNodeCredentialsResponse, error) {
+func (m *multihopServiceServer) FetchNodeCredentials(ctx context.Context, req *types.FetchNodeCredentialsRequest) (*types.FetchNodeCredentialsResponse, error) {
 	const op = "workers.(multihopServiceServer).FetchNodeCredentials"
 	_, storage, opt, err := m.currentParams()
 	if err != nil {
@@ -36,7 +36,7 @@ func (m *multihopServiceServer) FetchNodeCredentials(ctx context.Context, req *n
 	return noderegistration.FetchNodeCredentials(ctx, storage, req, opt...)
 }
 
-func (m *multihopServiceServer) GenerateServerCertificates(ctx context.Context, req *nodetypes.GenerateServerCertificatesRequest) (*nodetypes.GenerateServerCertificatesResponse, error) {
+func (m *multihopServiceServer) GenerateServerCertificates(ctx context.Context, req *types.GenerateServerCertificatesRequest) (*types.GenerateServerCertificatesResponse, error) {
 	const op = "workers.(multihopServiceServer).GenerateServerCertificates"
 	_, storage, opt, err := m.currentParams()
 	if err != nil {

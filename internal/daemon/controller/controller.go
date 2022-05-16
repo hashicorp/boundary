@@ -37,8 +37,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/nodeenrollment/noderegistration"
-	nodeefile "github.com/hashicorp/nodeenrollment/nodestorage/file"
 	"github.com/hashicorp/nodeenrollment/rotation"
+	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
