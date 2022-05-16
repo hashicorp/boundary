@@ -196,19 +196,6 @@ func printItemTable(result api.GenericResult) string {
 		}
 	}
 
-	var workerInfoMaps []map[string]interface{}
-	if len(item.WorkerInfo) > 0 {
-		for _, wi := range item.WorkerInfo {
-			m := map[string]interface{}{
-				"Address": wi.Address,
-			}
-			workerInfoMaps = append(workerInfoMaps, m)
-		}
-		if l := len("Address"); l > maxLength {
-			maxLength = l
-		}
-	}
-
 	ret := []string{
 		"",
 		"Session information:",
@@ -237,18 +224,6 @@ func printItemTable(result api.GenericResult) string {
 			"  States:",
 		)
 		for _, m := range statesMaps {
-			ret = append(ret,
-				base.WrapMap(4, maxLength, m),
-				"",
-			)
-		}
-	}
-
-	if len(item.WorkerInfo) > 0 {
-		ret = append(ret,
-			fmt.Sprintf("  Worker Info:   %s", ""),
-		)
-		for _, m := range workerInfoMaps {
 			ret = append(ret,
 				base.WrapMap(4, maxLength, m),
 				"",

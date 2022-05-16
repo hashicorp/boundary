@@ -903,7 +903,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 	for _, v := range servers {
 		if hasWorkerFilter {
-			workerIds = append(workerIds, v.GetPrivateId())
+			workerIds = append(workerIds, v.GetPublicId())
 		}
 		workers = append(workers, &pb.WorkerInfo{Address: v.Address})
 	}

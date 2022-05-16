@@ -14,9 +14,10 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/testing/controller"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -24,54 +25,13 @@ import (
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
-const shutdownReloadApiAddr = "http://127.0.0.1:9203"
-
-const shutdownReloadControllerConfig = `
-disable_mlock = true
-
-controller {
-	name = "dev-controller"
-	description = "A default controller created in dev mode"
-	database {
-		url = "%s"
-	}
-}
-
-kms "aead" {
-	purpose = "root"
-	aead_type = "aes-gcm"
-	key = "%s"
-	key_id = "global_root"
-}
-
-kms "aead" {
-	purpose = "worker-auth"
-	aead_type = "aes-gcm"
-	key = "%s"
-	key_id = "global_worker-auth"
-}
-
-listener "tcp" {
-	purpose = "api"
-	address = "127.0.0.1:9203"
-	tls_disable = true
-	cors_enabled = true
-	cors_allowed_origins = ["*"]
-}
-
-listener "tcp" {
-	purpose = "cluster"
-	address = "127.0.0.1:9204"
-}
-`
-
 const shutdownReloadWorkerConfig = `
 disable_mlock = true
 
 worker {
-	name = "dev-worker"
+	name = "w_1234567890"
 	description = "A default worker created in dev mode"
-	controllers = ["127.0.0.1:9204"]
+	controllers = ["%s"]
 }
 
 kms "aead" {
@@ -89,35 +49,16 @@ listener "tcp" {
 
 func TestServer_ShutdownWorker(t *testing.T) {
 	require := require.New(t)
-	controllerKey, workerAuthKey, _ := config.DevKeyGeneration()
 
-	// Start the controller
-	controllerCmd := testServerCommand(t, testServerCommandOpts{
-		CreateDevDatabase: true,
-		ControllerKey:     controllerKey,
-		UseDevAuthMethod:  true,
-		UseDevTarget:      true,
-	})
-	t.Cleanup(func() {
-		if controllerCmd.DevDatabaseCleanupFunc != nil {
-			require.NoError(controllerCmd.DevDatabaseCleanupFunc())
-		}
-	})
-	controllerCmd.presetConfig = atomic.NewString(fmt.Sprintf(shutdownReloadControllerConfig, controllerCmd.DatabaseUrl, controllerKey, workerAuthKey))
-
-	// Use code channel so that we can use test assertions on the returned integer.
-	// It is illegal to call `t.FailNow()` from a goroutine.
-	// https://pkg.go.dev/testing#T.FailNow
-	controllerCodeChan := make(chan int)
-	go func() {
-		controllerCodeChan <- controllerCmd.Run(nil)
-	}()
-
-	waitCh(t, controllerCmd.startedCh)
+	rootWrapper, _ := wrapperWithKey(t)
+	recoveryWrapper, _ := wrapperWithKey(t)
+	workerAuthWrapper, key := wrapperWithKey(t)
+	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
+	defer testController.Shutdown()
 
 	// Start the worker
 	workerCmd := testServerCommand(t, testServerCommandOpts{})
-	workerCmd.presetConfig = atomic.NewString(fmt.Sprintf(shutdownReloadWorkerConfig, workerAuthKey))
+	workerCmd.presetConfig = atomic.NewString(fmt.Sprintf(shutdownReloadWorkerConfig, testController.ClusterAddrs()[0], key))
 
 	workerCodeChan := make(chan int)
 	go func() {
@@ -131,24 +72,27 @@ func TestServer_ShutdownWorker(t *testing.T) {
 
 	// Set up the target
 	ctx := context.Background()
-	client := buildClient(t, shutdownReloadApiAddr)
+	client := buildClient(t, testController.ApiAddrs()[0])
 	setAuthToken(ctx, t, client)
 
 	tcl := targets.NewClient(client)
-	tgt, err := tcl.Read(ctx, "ttcp_1234567890")
+	tgtL, err := tcl.List(ctx, scope.Global.String(), targets.WithRecursive(true))
+	// tgt, err := tcl.Read(ctx, "ttcp_1234567890")
 	require.NoError(err)
+	require.Len(tgtL.Items, 1)
+	tgt := tgtL.Items[0]
 	require.NotNil(tgt)
 
 	// Create test server, update default port on target
 	ts := helper.NewTestTcpServer(t)
 	require.NotNil(ts)
 	defer ts.Close()
-	tgt, err = tcl.Update(ctx, tgt.Item.Id, tgt.Item.Version, targets.WithTcpTargetDefaultPort(ts.Port()))
+	tgtR, err := tcl.Update(ctx, tgt.Id, tgt.Version, targets.WithTcpTargetDefaultPort(ts.Port()))
 	require.NoError(err)
-	require.NotNil(tgt)
+	require.NotNil(tgtR)
 
 	// Authorize and connect
-	sess := helper.NewTestSession(ctx, t, tcl, "ttcp_1234567890")
+	sess := helper.NewTestSession(ctx, t, tcl, tgt.Id)
 	sConn := sess.Connect(ctx, t)
 
 	// Run initial send/receive test, make sure things are working
@@ -164,14 +108,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 
 	// Connection should fail, and the session should be closed on the DB.
 	sConn.TestSendRecvFail(t)
-	sess.ExpectConnectionStateOnController(ctx, t, controllerCmd.controller.ConnectionRepoFn, session.StatusClosed)
-
-	// We're done! Shutdown the controller, and that's it.
-	close(controllerCmd.ShutdownCh)
-	if <-controllerCodeChan != 0 {
-		output := controllerCmd.UI.(*cli.MockUi).ErrorWriter.String() + controllerCmd.UI.(*cli.MockUi).OutputWriter.String()
-		require.FailNow(output, "command exited with non-zero error code")
-	}
+	sess.ExpectConnectionStateOnController(ctx, t, testController.Controller().ConnectionRepoFn, session.StatusClosed)
 }
 
 // largely copied from controller/testing.go

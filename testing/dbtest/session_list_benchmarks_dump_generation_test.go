@@ -133,8 +133,8 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			serversRepo, err := servers.NewRepository(rw, rw, kms)
 			require.NoError(err)
 			worker := &store.Worker{
-				PrivateId: "test1",
-				Address:   "127.0.0.1",
+				PublicId: "test_worker_1",
+				Address:  "127.0.0.1",
 			}
 			_, _, err = serversRepo.UpsertWorker(ctx, worker)
 			require.NoError(err)
@@ -221,7 +221,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 }
 
 func cycleSessionStates(t testing.TB, ctx context.Context, sess *session.Session, sessRepo *session.Repository, connRepo *session.ConnectionRepository, conn *db.DB, worker *store.Worker, numConns int) {
-	sess, _, err := sessRepo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, []byte(`tofu`))
+	sess, _, err := sessRepo.ActivateSession(ctx, sess.PublicId, sess.Version, []byte(`tofu`))
 	require.NoError(t, err)
 	var closeWiths []session.CloseWith
 	for i := 0; i < numConns; i++ {

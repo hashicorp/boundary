@@ -10,11 +10,11 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -316,7 +316,7 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	}
 	if nextOpts.Name == "" {
 		var err error
-		nextOpts.Name, err = base62.Random(5)
+		nextOpts.Name, err = db.NewPublicId("w")
 		if err != nil {
 			t.Fatal(err)
 		}

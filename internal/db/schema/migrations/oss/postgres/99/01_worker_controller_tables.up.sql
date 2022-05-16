@@ -25,9 +25,11 @@ create trigger controller_insert_time_column before insert on server_controller
 create trigger controller_update_time_column before update on server_controller
   for each row execute procedure update_time_column();
 
--- Worker table adds the field: name
+-- Worker table takes the place of the server table.
+-- instead of the private_id we use a wt_public_id field named public_id since
+-- workers will now be exposed as resources in boundary.
 create table server_worker (
-  private_id text primary key,
+  public_id wt_public_id primary key,
   description wt_description,
   name wt_name unique,
   address text not null
@@ -40,7 +42,7 @@ comment on table server_worker  is
   'server_worker is a table where each row represents a Boundary worker.';
 
 create trigger immutable_columns before update on server_worker
-  for each row execute procedure immutable_columns('private_id','create_time');
+  for each row execute procedure immutable_columns('public_id','create_time');
 
 create trigger default_create_time_column before insert on server_worker
   for each row execute procedure default_create_time();
@@ -51,13 +53,11 @@ create trigger worker_insert_time_column before insert on server_worker
 create trigger worker_update_time_column before update on server_worker
   for each row execute procedure update_time_column();
 
--- TODO: Migrate server entries to worker and controller tables, if necessary
-
 -- Create table worker tag
 create table server_worker_tag (
-  worker_id text
+  worker_id wt_public_id
     constraint server_worker_fkey
-      references server_worker(private_id)
+      references server_worker(public_id)
         on delete cascade
         on update cascade,
   key wt_tagpair,
@@ -71,55 +71,43 @@ drop table server_tag;
 -- Update session table to use worker_id instead of server_id, drop view first because of dependency on server type
 drop view session_list;
 
-alter table session
-  drop constraint session_server_id_fkey;
+-- Update session table to use worker_id instead of server_id
+-- Updating the session table modified in 01/01_server_tags_migrations.up.sql
 drop trigger update_version_column
   on session;
 alter table session
-  drop column server_type;
-
-alter table session
-  rename column server_id to worker_id;
-alter table session
-  add constraint server_worker_fkey
-    foreign key (worker_id)
-      references server_worker(private_id)
-      on delete set null
-      on update cascade;
-
+  drop constraint session_server_id_fkey,
+  drop column server_type,
+  drop column server_id;
 create trigger
   update_version_column
-  after update of version, termination_reason, key_id, tofu_token, worker_id on session
+  after update of version, termination_reason, key_id, tofu_token on session
   for each row execute procedure update_version_column();
 
 -- Update session_connection table to use worker_id instead of server_id
+-- Table last updated in 21/02_session.up.sql
 alter table session_connection
-  drop constraint server_fkey;
-
-alter table session_connection
-  rename column server_id to worker_id;
-alter table session_connection
+  drop column server_id,
+  add column worker_id wt_public_id,
   add constraint server_worker_fkey
     foreign key (worker_id)
-      references server_worker (private_id)
+      references server_worker (public_id)
       on delete set null
       on update cascade;
 
 -- Update job run table so that server id references controller id
 alter table job_run
-  drop constraint server_fkey;
-alter table job_run
+  drop constraint server_fkey,
   add constraint server_controller_fkey
     foreign key (server_id)
       references server_controller (private_id)
       on delete set null
       on update cascade;
 
--- Replaces the view created in 9/01 to include worker id instead of server id and server type
+-- Replaces the view created in 9/01 to remove references to the server/worker id.
 create view session_list as
-
   select
-    s.public_id, s.user_id, s.host_id, s.worker_id, s.target_id,
+    s.public_id, s.user_id, s.host_id, s.target_id,
     s.host_set_id, s.auth_token_id, s.scope_id, s.certificate,s.expiration_time,
     s.connection_limit, s.tofu_token, s.key_id, s.termination_reason, s.version,
     s.create_time, s.update_time, s.endpoint, s.worker_filter,

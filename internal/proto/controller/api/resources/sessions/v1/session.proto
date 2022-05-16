@@ -7,11 +7,6 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions;sessions";
 
-message WorkerInfo {
-  // The address of the worker.
-  string address = 10; // @gotags: `class:"public"`
-}
-
 message SessionState {
   // The status of the Session, e.g. "pending", "active", "canceling", "terminated".
   string status = 10; // @gotags: `class:"public"`
@@ -49,6 +44,13 @@ message Connection {
 
 // Session contains all fields related to a Session resource
 message Session {
+  // Worker info previously contained only the worker's address but was never
+  // populated either in the database or on the API.  While worker id information
+  // may become helpful on a session in the future, the worker id seems the most
+  // relevant information since the address can change between the time the
+  // session is created and a session connection is made through that worker.
+  reserved "worker_info";
+
   // Output only. The ID of the Session.
   string id = 10; // @gotags: `class:"public"`
 
@@ -96,9 +98,6 @@ message Session {
 
   // Output only. The current status of this Session.
   string status = 180; // @gotags: `class:"public"`
-
-  // Output only. Worker information given to the client.
-  repeated WorkerInfo worker_info = 190 [json_name = "worker_info"];
 
   // Output only. The certificate generated for the session. Raw DER bytes.
   bytes certificate = 200; // @gotags: `class:"public"`

@@ -180,7 +180,7 @@ func TestDevWorker(t *testing.T) {
 			},
 		},
 		Worker: &Worker{
-			Name:           "dev-worker",
+			Name:           "w_1234567890",
 			Description:    "A default worker created in dev mode",
 			Controllers:    []string{"127.0.0.1"},
 			ControllersRaw: []interface{}{"127.0.0.1"},
@@ -201,7 +201,7 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	worker {
-		name = "dev-worker"
+		name = "w_1234567890"
 		description = "A default worker created in dev mode"
 		controllers = ["127.0.0.1"]
 		tags = ["type=dev", "type=local"]
@@ -221,7 +221,7 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	worker {
-		name = "dev-worker"
+		name = "w_1234567890"
 		description = "A default worker created in dev mode"
 		controllers = ["127.0.0.1"]
 		tags {
@@ -246,7 +246,7 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	worker {
-		name = "dev-worker"
+		name = "w_1234567890"
 		description = "A default worker created in dev mode"
 		controllers = ["127.0.0.1"]
 		tags = ["tyPe=dev", "type=local"]
@@ -263,7 +263,7 @@ func TestDevWorker(t *testing.T) {
 		}
 
 		worker {
-			name = "dev-worker"
+			name = "w_1234567890"
 			description = "A default worker created in dev mode"
 			controllers = ["127.0.0.1"]
 			tags = ["type=dev", "type=loCal"]
@@ -315,18 +315,18 @@ func TestParsingName(t *testing.T) {
 		{
 			name:               "no env",
 			templateController: "foobar",
-			templateWorker:     "barfoo",
+			templateWorker:     "test_worker_barfoo",
 			expectedController: "foobar",
-			expectedWorker:     "barfoo",
+			expectedWorker:     "test_worker_barfoo",
 		},
 		{
 			name:               "env",
 			templateController: fmt.Sprintf("env://%s", controllerEnv),
 			templateWorker:     fmt.Sprintf("env://%s", workerEnv),
 			envController:      "foobar2",
-			envWorker:          "barfoo2",
+			envWorker:          "env_name_barfoo2",
 			expectedController: "foobar2",
-			expectedWorker:     "barfoo2",
+			expectedWorker:     "env_name_barfoo2",
 		},
 	}
 	for _, tt := range cases {
@@ -390,7 +390,7 @@ func TestWorkerTags(t *testing.T) {
 			name: "no tags",
 			in: `
 			worker {
-				name = "testworker"
+				name = "w_1234567890"
 			}
 			`,
 			expWorkerTags: nil,
@@ -400,7 +400,7 @@ func TestWorkerTags(t *testing.T) {
 			name: "empty tags",
 			in: `
 			worker {
-				name = "testworker"
+				name = "w_1234567890"
 				tags = {}
 			}
 			`,
@@ -411,7 +411,7 @@ func TestWorkerTags(t *testing.T) {
 			name: "empty tags 2",
 			in: `
 			worker {
-				name = "testworker"
+				name = "w_1234567890"
 				tags = []
 			}
 			`,

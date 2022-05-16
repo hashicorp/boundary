@@ -100,8 +100,8 @@ func TestTagUpdatingListing(t *testing.T) {
 
 	repo := tc.ServersRepo()
 	srv := &store.Worker{
-		PrivateId: "test1",
-		Address:   "127.0.0.1",
+		PublicId: "test_worker_1",
+		Address:  "127.0.0.1",
 		Tags: map[string]*store.TagValues{
 			"tag1": {
 				Values: []string{"value1", "value2"},
@@ -113,8 +113,8 @@ func TestTagUpdatingListing(t *testing.T) {
 	require.NoError(err)
 
 	srv = &store.Worker{
-		PrivateId: "test2",
-		Address:   "127.0.0.1",
+		PublicId: "test_worker_2",
+		Address:  "127.0.0.1",
 		Tags: map[string]*store.TagValues{
 			"tag2": {
 				Values: []string{"value1", "value2"},
@@ -124,28 +124,28 @@ func TestTagUpdatingListing(t *testing.T) {
 	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
 
-	tags, err := repo.ListTagsForWorkers(tc.Context(), []string{"test1", "test2"})
+	tags, err := repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 
 	// Base case
 	exp := []*servers.WorkerTag{
 		{
-			WorkerId: "test1",
+			WorkerId: "test_worker_1",
 			Key:      "tag1",
 			Value:    "value1",
 		},
 		{
-			WorkerId: "test1",
+			WorkerId: "test_worker_1",
 			Key:      "tag1",
 			Value:    "value2",
 		},
 		{
-			WorkerId: "test2",
+			WorkerId: "test_worker_2",
 			Key:      "tag2",
 			Value:    "value1",
 		},
 		{
-			WorkerId: "test2",
+			WorkerId: "test_worker_2",
 			Key:      "tag2",
 			Value:    "value2",
 		},
@@ -154,8 +154,8 @@ func TestTagUpdatingListing(t *testing.T) {
 
 	// Update without saying to update tags
 	srv = &store.Worker{
-		PrivateId: "test2",
-		Address:   "192.168.1.1",
+		PublicId: "test_worker_2",
+		Address:  "192.168.1.1",
 		Tags: map[string]*store.TagValues{
 			"tag22": {
 				Values: []string{"value21", "value22"},
@@ -164,24 +164,24 @@ func TestTagUpdatingListing(t *testing.T) {
 	}
 	_, _, err = repo.UpsertWorker(tc.Context(), srv)
 	require.NoError(err)
-	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test1", "test2"})
+	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 	require.Equal(exp, tags)
 
 	// Update tags and test again
 	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
-	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test1", "test2"})
+	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 	require.NotEqual(exp, tags)
 	// Update and try again
 	exp[2] = &servers.WorkerTag{
-		WorkerId: "test2",
+		WorkerId: "test_worker_2",
 		Key:      "tag22",
 		Value:    "value21",
 	}
 	exp[3] = &servers.WorkerTag{
-		WorkerId: "test2",
+		WorkerId: "test_worker_2",
 		Key:      "tag22",
 		Value:    "value22",
 	}
@@ -199,10 +199,10 @@ func TestListServersWithLiveness(t *testing.T) {
 	require.NoError(err)
 	ctx := context.Background()
 
-	newWorker := func(privateId string) *store.Worker {
+	newWorker := func(publicId string) *store.Worker {
 		result := &store.Worker{
-			PrivateId: privateId,
-			Address:   "127.0.0.1",
+			PublicId: publicId,
+			Address:  "127.0.0.1",
 		}
 		_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, result)
 		require.NoError(err)
@@ -211,9 +211,9 @@ func TestListServersWithLiveness(t *testing.T) {
 		return result
 	}
 
-	server1 := newWorker("test1")
-	server2 := newWorker("test2")
-	server3 := newWorker("test3")
+	server1 := newWorker("test_worker_1")
+	server2 := newWorker("test_worker_2")
+	server3 := newWorker("test_worker_3")
 
 	// Sleep the default liveness time (15sec currently) +1s
 	time.Sleep(time.Second * 16)
@@ -233,7 +233,7 @@ func TestListServersWithLiveness(t *testing.T) {
 
 		got := make(map[string]struct{})
 		for _, v := range actual {
-			got[v.PrivateId] = struct{}{}
+			got[v.PublicId] = struct{}{}
 		}
 
 		require.Equal(want, got)
@@ -243,7 +243,7 @@ func TestListServersWithLiveness(t *testing.T) {
 	result, err := serversRepo.ListWorkers(ctx)
 	require.NoError(err)
 	require.Len(result, 1)
-	requireIds([]string{server1.PrivateId}, result)
+	requireIds([]string{server1.PublicId}, result)
 
 	// Upsert second server.
 	_, rowsUpdated, err = serversRepo.UpsertWorker(ctx, server2)
@@ -255,11 +255,11 @@ func TestListServersWithLiveness(t *testing.T) {
 	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(time.Second*5))
 	require.NoError(err)
 	require.Len(result, 2)
-	requireIds([]string{server1.PrivateId, server2.PrivateId}, result)
+	requireIds([]string{server1.PublicId, server2.PublicId}, result)
 
 	// Liveness disabled, should get all three workers.
 	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(-1))
 	require.NoError(err)
 	require.Len(result, 3)
-	requireIds([]string{server1.PrivateId, server2.PrivateId, server3.PrivateId}, result)
+	requireIds([]string{server1.PublicId, server2.PublicId, server3.PublicId}, result)
 }

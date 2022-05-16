@@ -56,8 +56,6 @@ message JobStatus {
   Job job = 1;
 }
 
-
-
 message StatusRequest {
   // The worker info. We could use information from the TLS connection but this
   // is easier and going the other route doesn't provide much benefit -- if you

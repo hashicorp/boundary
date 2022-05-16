@@ -168,7 +168,7 @@ func (r *Repository) UpsertWorker(ctx context.Context, worker *store.Worker, opt
 		func(read db.Reader, w db.Writer) error {
 			var err error
 			onConflict := &db.OnConflict{
-				Target: db.Columns{"private_id"},
+				Target: db.Columns{"public_id"},
 				Action: append(db.SetColumns([]string{"description", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
 			}
 			err = w.Create(ctx, worker, db.WithOnConflict(onConflict), db.WithReturnRowsAffected(&rowsUpdated))
@@ -187,9 +187,9 @@ func (r *Repository) UpsertWorker(ctx context.Context, worker *store.Worker, opt
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				_, err = w.Delete(ctx, &WorkerTag{}, db.WithWhere(deleteTagsSql, worker.PrivateId))
+				_, err = w.Delete(ctx, &WorkerTag{}, db.WithWhere(deleteTagsSql, worker.PublicId))
 				if err != nil {
-					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(worker.PrivateId))
+					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(worker.PublicId))
 				}
 
 				// If tags were cleared out entirely, then we'll have nothing
@@ -200,18 +200,18 @@ func (r *Repository) UpsertWorker(ctx context.Context, worker *store.Worker, opt
 					tags := make([]interface{}, 0, len(worker.Tags))
 					for k, v := range worker.Tags {
 						if v == nil {
-							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", worker.PrivateId, k))
+							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s and key %s", worker.PublicId, k))
 						}
 						for _, val := range v.Values {
 							tags = append(tags, WorkerTag{
-								WorkerId: worker.PrivateId,
+								WorkerId: worker.PublicId,
 								Key:      k,
 								Value:    val,
 							})
 						}
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {
-						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(worker.PrivateId))
+						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(worker.PublicId))
 					}
 				}
 			}

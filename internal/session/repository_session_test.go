@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -209,32 +208,6 @@ func TestRepository_ListSession(t *testing.T) {
 		assert.Equal(2, len(got))
 		assert.Equal(StatusActive, got[0].States[0].Status)
 		assert.Equal(StatusPending, got[0].States[1].Status)
-	})
-	t.Run("withServerId", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
-		for i := 0; i < 6; i++ {
-			if i%2 == 0 {
-				TestWorker(t, conn, wrapper, WithWorkerId(fmt.Sprintf("server-%d", i/2)))
-			}
-			_ = TestSession(t, conn, wrapper, composedOf,
-				WithWorkerId(fmt.Sprintf("server-%d", i/2)),
-				WithDbOpts(db.WithSkipVetForWrite(true)),
-			)
-		}
-		got, err := repo.ListSessions(context.Background())
-		require.NoError(err)
-		assert.Equal(6, len(got))
-
-		for i := 0; i < 3; i++ {
-			serverId := fmt.Sprintf("server-%d", i)
-			got, err = repo.ListSessions(context.Background(), WithWorkerId(serverId))
-			require.NoError(err)
-			assert.Equal(2, len(got))
-			for _, item := range got {
-				assert.Equal(serverId, item.WorkerId)
-			}
-		}
 	})
 }
 
@@ -574,7 +547,6 @@ func TestRepository_transitionState(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	tofu := TestTofu(t)
-	srv := TestWorker(t, conn, wrapper)
 
 	tests := []struct {
 		name        string
@@ -642,7 +614,7 @@ func TestRepository_transitionState(t *testing.T) {
 				var ss []*State
 				var err error
 				if status == StatusActive {
-					s, ss, err = repo.ActivateSession(context.Background(), id, version, srv.PrivateId, tofu)
+					s, ss, err = repo.ActivateSession(context.Background(), id, version, tofu)
 				} else {
 					s, ss, err = repo.updateState(context.Background(), id, version, status)
 				}
@@ -681,9 +653,8 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 		composedOf.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
 		s := TestSession(t, conn, wrapper, composedOf)
 
-		srv := TestWorker(t, conn, wrapper)
 		tofu := TestTofu(t)
-		s, _, err = repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, tofu)
+		s, _, err = repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)
 		require.NoError(t, err)
 		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222, "127.0.0.1")
 		if !leaveOpen {
@@ -1227,7 +1198,6 @@ func TestRepository_ActivateSession(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	worker := TestWorker(t, conn, wrapper)
 
 	tofu := TestTofu(t)
 	tests := []struct {
@@ -1247,7 +1217,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 			name: "already-active",
 			session: func() *Session {
 				s := TestDefaultSession(t, conn, wrapper, iamRepo)
-				activeSession, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, worker.PrivateId, tofu)
+				activeSession, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)
 				require.NoError(t, err)
 				return activeSession
 			}(),
@@ -1310,7 +1280,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 			default:
 				version = tt.session.Version
 			}
-			s, ss, err := repo.ActivateSession(context.Background(), id, version, worker.PrivateId, tofu)
+			s, ss, err := repo.ActivateSession(context.Background(), id, version, tofu)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantIsError), err), "unexpected error %s", err.Error())
@@ -1326,17 +1296,17 @@ func TestRepository_ActivateSession(t *testing.T) {
 		t.Run("already active", func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			session := TestDefaultSession(t, conn, wrapper, iamRepo)
-			s, ss, err := repo.ActivateSession(context.Background(), session.PublicId, 1, worker.PrivateId, tofu)
+			s, ss, err := repo.ActivateSession(context.Background(), session.PublicId, 1, tofu)
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(ss)
 			assert.Equal(2, len(ss))
 			assert.Equal(StatusActive, ss[0].Status)
 
-			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 1, worker.PrivateId, tofu)
+			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 1, tofu)
 			require.Error(err)
 
-			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 2, worker.PrivateId, tofu)
+			_, _, err = repo.ActivateSession(context.Background(), session.PublicId, 2, tofu)
 			require.Error(err)
 		})
 	}

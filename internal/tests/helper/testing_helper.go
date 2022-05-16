@@ -70,7 +70,7 @@ func NewTestSession(
 ) *TestSession {
 	t.Helper()
 	require := require.New(t)
-	sar, err := tcl.AuthorizeSession(ctx, "ttcp_1234567890")
+	sar, err := tcl.AuthorizeSession(ctx, targetId)
 	require.NoError(err)
 	require.NotNil(sar)
 
