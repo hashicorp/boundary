@@ -6,6 +6,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+## 0.8.1 (2022/05/13)
+
+### Bug Fixes
+
 * controller: Do not shut down cluster listener when it receives an invalid
   packet ([Issue](https://github.com/hashicorp/boundary/issues/2072),
   [PR](https://github.com/hashicorp/boundary/pull/2073))
