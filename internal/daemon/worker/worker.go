@@ -256,7 +256,6 @@ func (w *Worker) Shutdown() error {
 	w.baseCancel()
 	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
 
-	w.NodeeFileStorage.Cleanup()
 	w.started.Store(false)
 	w.tickerWg.Wait()
 	if w.conf.Eventer != nil {

@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/require"
@@ -122,4 +123,14 @@ func TestWorkerNew(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWorkerEncryption(t *testing.T) {
+
+	encryptMsg := &wrapping.BlobInfo{
+		Ciphertext: []byte("foo"),
+		Iv:         []byte("bar"),
+		Hmac:       []byte("baz"),
+	}
+
 }

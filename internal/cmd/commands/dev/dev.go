@@ -779,8 +779,8 @@ func (c *Command) Run(args []string) int {
 			}
 
 			if !c.flagControllerOnly {
-				if c.flagWorkerAuthStorageSkipCleanup {
-					c.worker.NodeeFileStorage.SkipCleanup() = true
+				if !c.flagWorkerAuthStorageSkipCleanup {
+					c.worker.NodeeFileStorage.Cleanup()
 				}
 				if err := c.worker.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
