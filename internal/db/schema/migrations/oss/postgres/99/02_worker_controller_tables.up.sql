@@ -1,6 +1,29 @@
 begin;
 
 -- Split the server table into two new tables: controller and worker
+
+create table server_controller (
+  private_id text primary key,
+  description wt_description,
+  address wt_network_address not null,
+  create_time wt_timestamp,
+  update_time wt_timestamp
+);
+comment on table server_controller  is
+  'server_controller is a table where each row represents a Boundary controller.';
+
+create trigger immutable_columns before update on server_controller
+  for each row execute procedure immutable_columns('private_id','create_time');
+
+create trigger default_create_time_column before insert on server_controller
+  for each row execute procedure default_create_time();
+
+create trigger controller_insert_time_column before insert on server_controller
+  for each row execute procedure update_time_column();
+
+create trigger controller_update_time_column before update on server_controller
+  for each row execute procedure update_time_column();
+
 -- Worker table takes the place of the server table.
 -- instead of the private_id we use a wt_public_id field named public_id since
 -- workers will now be exposed as resources in boundary.
@@ -49,28 +72,6 @@ create table server_worker_tag (
 
 -- Aaand drop server_tag
 drop table server_tag;
-
-create table server_controller (
-  private_id text primary key,
-  description wt_description,
-  address wt_network_address not null,
-  create_time wt_timestamp,
-  update_time wt_timestamp
-);
-comment on table server_controller  is
-  'server_controller is a table where each row represents a Boundary controller.';
-
-create trigger immutable_columns before update on server_controller
-  for each row execute procedure immutable_columns('private_id','create_time');
-
-create trigger default_create_time_column before insert on server_controller
-  for each row execute procedure default_create_time();
-
-create trigger controller_insert_time_column before insert on server_controller
-  for each row execute procedure update_time_column();
-
-create trigger controller_update_time_column before update on server_controller
-  for each row execute procedure update_time_column();
 
 -- Update session table to use worker_id instead of server_id, drop view first because of dependency on server type
 drop view session_list;
