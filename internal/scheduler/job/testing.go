@@ -35,7 +35,7 @@ func testJob(t testing.TB, conn *db.DB, name, description string, wrapper wrappi
 func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 	query := `
 		insert into job_run (
-			job_plugin_id, job_name, server_id
+			job_plugin_id, job_name, controller_id
 		)
 		values (?,?,?)
 		on conflict (job_plugin_id, job_name) where status = 'running'
@@ -65,7 +65,7 @@ func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime time.Time) (*Run, error) {
 	query := `
 		insert into job_run (
-		  job_plugin_id, job_name, server_id, update_time
+		  job_plugin_id, job_name, controller_id, update_time
 		)
 		values (?,?,?,?)
 		returning *;

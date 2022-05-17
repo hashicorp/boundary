@@ -99,26 +99,27 @@ alter table session_connection
       on delete set null
       on update cascade;
 
--- We only need to migrate the private ids to maintain the job_run foreign key
--- constraint.  Since we are changing the constraints on the address and
--- description, we wont migrate that data and rely on the controllers to update
--- those correctly when they start up.
-insert
-  into server_controller (private_id, address)
-select s.private_id, 'migrated address placeholder'
-  from  server s
-  where type='controller';
-
 -- Update job run table so that server id references controller id
 alter table job_run
-  rename column server_id to controller_id;
+  add column controller_id wt_private_id,
+  drop column server_id;
 alter table job_run
-  drop constraint server_fkey,
   add constraint server_controller_fkey
     foreign key (controller_id)
       references server_controller (private_id)
       on delete set null
       on update cascade;
+
+-- Since the above alter tables sets all controller_ids to null running jobs
+-- can no longer be reclaimed by any controller and should be considered
+-- interrupted.
+update job_run
+set
+  status = 'interrupted',
+  end_time = current_timestamp
+where
+    status = 'running';
+
 
 -- Replaces the view created in 9/01.
 -- Remove the worker id from this view.  In actuality this is almost a no-op
