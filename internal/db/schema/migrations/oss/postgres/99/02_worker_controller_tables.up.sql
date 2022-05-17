@@ -101,6 +101,14 @@ alter table session_connection
       on update cascade;
 
 -- Update job run table so that server id references controller id
+-- We are not migrating the values from server_id to controller_id. The fkey
+-- constraint says that server_id can be set to null when the server is deleted
+-- which is what this migration does (removing all records from the server table).
+-- Not migrating values make it easier to change types in the server_worker and
+-- server_controller tables (like from text to wt_public_id or text to wt_address)
+-- without having to worry about old values being valid in the new types.
+-- Finally, neither jobs nor servers are exposed out of boundary so the risk of
+-- losing data that would be useful later on is diminished.
 alter table job_run
   add column controller_id wt_private_id,
   drop column server_id;
