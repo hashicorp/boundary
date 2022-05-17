@@ -1,4 +1,4 @@
-7e792d3f7664bf3efdf33a66539022d3f3cdaf4c Refactor UI generated artifacts creation. (#1104)
+698160d423e8fee640d3286c3a3f17434f56a12b
 # This file determines the version of the UI to embed in the boundary binary.
 # Update this file by running 'make update-ui-version' from the root of this repo.
 # Set UI_COMMITISH when running the above target to update to a specific version.
