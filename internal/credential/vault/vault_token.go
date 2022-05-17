@@ -122,7 +122,7 @@ func (t *Token) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	}
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
-		errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error fetching wrapper key id"))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error fetching wrapper key id"))
 	}
 	t.KeyId = keyId
 	return nil
