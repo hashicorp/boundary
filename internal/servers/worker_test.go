@@ -167,7 +167,7 @@ func TestWorker_New(t *testing.T) {
 			got := NewWorker(tt.args.scopeId, tt.args.opts...)
 			assert.Empty(cmp.Diff(tt.want, got.clone(), protocmp.Transform()))
 
-			id, err := newWorkerId()
+			id, err := newWorkerId(context.Background())
 			assert.NoError(err)
 
 			tt.want.PublicId = id

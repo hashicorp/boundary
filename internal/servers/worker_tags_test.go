@@ -16,7 +16,7 @@ func TestWorkerTags_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 
-	workerPublicid, err := newWorkerId()
+	workerPublicid, err := newWorkerId(context.Background())
 	require.NoError(t, err)
 	worker := NewWorker(scope.Global.String(), WithPublicId(workerPublicid))
 
