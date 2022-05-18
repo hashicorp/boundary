@@ -905,7 +905,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		if hasWorkerFilter {
 			workerIds = append(workerIds, v.GetPublicId())
 		}
-		workers = append(workers, &pb.WorkerInfo{Address: v.Address})
+		workers = append(workers, &pb.WorkerInfo{Address: v.CanonicalAddress()})
 	}
 
 	if hasWorkerFilter && len(workerIds) > 0 {

@@ -2,6 +2,7 @@ package servers_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -87,18 +89,152 @@ func TestRecoveryNonces(t *testing.T) {
 	}
 }
 
+func TestUpsertWorkerConfig(t *testing.T) {
+	// test name colissions between new kms workers and existing workers when new workers are created
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	wConf1 := servers.NewWorkerConfig("test_worker_1",
+		servers.WithAddress("address"),
+		servers.WithName("config_name1"))
+	_, _, err = repo.UpsertWorkerConfig(ctx, wConf1)
+	require.NoError(t, err)
+	{
+		workers, err := repo.ListWorkers(ctx)
+		require.NoError(t, err)
+		assert.Len(t, workers, 1)
+		worker := workers[0]
+		assert.Equal(t, wConf1.GetWorkerId(), worker.GetPublicId())
+		assert.Equal(t, wConf1.Address, worker.CanonicalAddress())
+		assert.Equal(t, wConf1.GetName(), worker.Name)
+		assert.Equal(t, worker.Config.CreateTime, worker.CreateTime)
+		assert.Equal(t, worker.LastConnectionUpdate(), worker.UpdateTime)
+		assert.Equal(t, uint32(1), worker.Version)
+		assert.Empty(t, worker.Address)
+		assert.Empty(t, worker.Description)
+	}
+
+	// Remove the config's name, verify that it doesn't remove the resource's name.
+	updatedConf1 := servers.NewWorkerConfig(wConf1.WorkerId,
+		servers.WithAddress(wConf1.Address))
+	_, _, err = repo.UpsertWorkerConfig(ctx, updatedConf1)
+	require.NoError(t, err)
+	{
+		workers, err := repo.ListWorkers(ctx)
+		require.NoError(t, err)
+		assert.Len(t, workers, 1)
+		worker := workers[0]
+		// The resource's name remains untouched
+		assert.Equal(t, wConf1.GetName(), worker.Name)
+		// The Config's name is correctly cleared
+		assert.Empty(t, worker.Config.Name)
+		// The last connection update time was increased
+		assert.Greater(t, worker.LastConnectionUpdate().AsTime().UnixMilli(), worker.UpdateTime.AsTime().UnixMilli())
+		assert.Equal(t, worker.UpdateTime, worker.CreateTime)
+
+		assert.Equal(t, updatedConf1.GetWorkerId(), worker.GetPublicId())
+		assert.Equal(t, updatedConf1.Address, worker.CanonicalAddress())
+		assert.Equal(t, worker.Config.CreateTime, worker.CreateTime)
+		assert.Equal(t, uint32(1), worker.Version)
+		assert.Empty(t, worker.Address)
+		assert.Empty(t, worker.Description)
+	}
+
+	failureCases := []struct {
+		name      string
+		cfg       *servers.WorkerConfig
+		errAssert func(*testing.T, error)
+	}{
+		{
+			name: "with the same name",
+			cfg: servers.NewWorkerConfig("worker_with_the_same_name",
+				servers.WithAddress("failed address"),
+				servers.WithName(wConf1.Name)),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.IsUniqueError(err))
+			},
+		},
+		{
+			name: "no address",
+			cfg: servers.NewWorkerConfig("worker_with_no_address",
+				servers.WithName("worker_with_no_address")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name: "invalid id",
+			cfg: servers.NewWorkerConfig("short",
+				servers.WithAddress("someaddress"),
+				servers.WithName("worker_with_short_id")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.IsCheckConstraintError(err))
+			},
+		},
+		{
+			name: "no id",
+			cfg: servers.NewWorkerConfig("",
+				servers.WithAddress("anotheraddress"),
+				servers.WithName("no_address")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name: "no config",
+			cfg:  nil,
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+	}
+	for _, tc := range failureCases {
+		t.Run(fmt.Sprintf("Failures %s", tc.name), func(t *testing.T) {
+			_, _, err = repo.UpsertWorkerConfig(ctx, tc.cfg)
+			assert.Error(t, err)
+			tc.errAssert(t, err)
+
+			// Still only the original worker exists.
+			workers, err := repo.ListWorkers(ctx)
+			require.NoError(t, err)
+			assert.Len(t, workers, 1)
+		})
+	}
+
+	{
+		anotherConf := servers.NewWorkerConfig("another_test_worker",
+			servers.WithAddress("address"))
+		_, _, err = repo.UpsertWorkerConfig(ctx, anotherConf)
+		require.NoError(t, err)
+		{
+			workers, err := repo.ListWorkers(ctx)
+			require.NoError(t, err)
+			assert.Len(t, workers, 2)
+		}
+	}
+}
+
 func TestTagUpdatingListing(t *testing.T) {
 	require := require.New(t)
-
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		RecoveryKms: wrapper,
-	})
-	defer tc.Shutdown()
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(err)
+	ctx := context.Background()
 
-	repo := tc.ServersRepo()
-	srv := servers.NewWorker(scope.Global.String(),
-		servers.WithPublicId("test_worker_1"),
+	wConf := servers.NewWorkerConfig("test_worker_1",
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -110,11 +246,10 @@ func TestTagUpdatingListing(t *testing.T) {
 				Value: "value2",
 			}))
 
-	_, _, err := repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerConfig(ctx, wConf, servers.WithUpdateTags(true))
 	require.NoError(err)
 
-	srv = servers.NewWorker(scope.Global.String(),
-		servers.WithPublicId("test_worker_2"),
+	wConf = servers.NewWorkerConfig("test_worker_2",
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -125,10 +260,10 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag2",
 				Value: "value2",
 			}))
-	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerConfig(ctx, wConf, servers.WithUpdateTags(true))
 	require.NoError(err)
 
-	tags, err := repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
+	tags, err := repo.ListTagsForWorkers(ctx, []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 
 	// Base case
@@ -156,8 +291,7 @@ func TestTagUpdatingListing(t *testing.T) {
 	require.Equal(exp, tags)
 
 	// Update without saying to update tags
-	srv = servers.NewWorker(scope.Global.String(),
-		servers.WithPublicId("test_worker_2"),
+	wConf = servers.NewWorkerConfig("test_worker_2",
 		servers.WithAddress("192.168.1.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -168,16 +302,16 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag22",
 				Value: "value22",
 			}))
-	_, _, err = repo.UpsertWorker(tc.Context(), srv)
+	_, _, err = repo.UpsertWorkerConfig(ctx, wConf)
 	require.NoError(err)
-	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
+	tags, err = repo.ListTagsForWorkers(ctx, []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 	require.Equal(exp, tags)
 
 	// Update tags and test again
-	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerConfig(ctx, wConf, servers.WithUpdateTags(true))
 	require.NoError(err)
-	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
+	tags, err = repo.ListTagsForWorkers(ctx, []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 	require.NotEqual(exp, tags)
 	// Update and try again
@@ -205,27 +339,26 @@ func TestListServersWithLiveness(t *testing.T) {
 	require.NoError(err)
 	ctx := context.Background()
 
-	newWorker := func(publicId string) *servers.Worker {
-		result := servers.NewWorker(scope.Global.String(),
-			servers.WithPublicId(publicId),
+	newWorkerConfig := func(publicId string) *servers.WorkerConfig {
+		result := servers.NewWorkerConfig(publicId,
 			servers.WithAddress("127.0.0.1"))
-		_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, result)
+		_, rowsUpdated, err := serversRepo.UpsertWorkerConfig(ctx, result)
 		require.NoError(err)
 		require.Equal(1, rowsUpdated)
 
 		return result
 	}
 
-	server1 := newWorker("test_worker_1")
-	server2 := newWorker("test_worker_2")
-	server3 := newWorker("test_worker_3")
+	workConf1 := newWorkerConfig("test_worker_1")
+	workConf2 := newWorkerConfig("test_worker_2")
+	workConf3 := newWorkerConfig("test_worker_3")
 
 	// Sleep the default liveness time (15sec currently) +1s
 	time.Sleep(time.Second * 16)
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, server1)
+	_, rowsUpdated, err := serversRepo.UpsertWorkerConfig(ctx, workConf1)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -248,10 +381,10 @@ func TestListServersWithLiveness(t *testing.T) {
 	result, err := serversRepo.ListWorkers(ctx)
 	require.NoError(err)
 	require.Len(result, 1)
-	requireIds([]string{server1.PublicId}, result)
+	requireIds([]string{workConf1.WorkerId}, result)
 
 	// Upsert second server.
-	_, rowsUpdated, err = serversRepo.UpsertWorker(ctx, server2)
+	_, rowsUpdated, err = serversRepo.UpsertWorkerConfig(ctx, workConf2)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -260,11 +393,11 @@ func TestListServersWithLiveness(t *testing.T) {
 	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(time.Second*5))
 	require.NoError(err)
 	require.Len(result, 2)
-	requireIds([]string{server1.PublicId, server2.PublicId}, result)
+	requireIds([]string{workConf1.WorkerId, workConf2.WorkerId}, result)
 
 	// Liveness disabled, should get all three workers.
 	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(-1))
 	require.NoError(err)
 	require.Len(result, 3)
-	requireIds([]string{server1.PublicId, server2.PublicId, server3.PublicId}, result)
+	requireIds([]string{workConf1.WorkerId, workConf2.WorkerId, workConf3.WorkerId}, result)
 }

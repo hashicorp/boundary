@@ -58,6 +58,33 @@ create trigger worker_insert_time_column before insert on server_worker
 create trigger worker_update_time_column before update on server_worker
   for each row execute procedure update_time_column();
 
+create table server_worker_config (
+  worker_id wt_public_id primary key
+    constraint server_worker_fkey
+      references server_worker(public_id)
+      on delete cascade
+      on update cascade,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  -- This is the calculated address that the worker reports it is reachable on.
+  address wt_network_address not null,
+  name wt_name
+);
+comment on table server_worker_config  is
+  'server_worker_config is a table where each row represents values that a Boundary worker reports to a controller.';
+
+create trigger immutable_columns before update on server_worker_config
+  for each row execute procedure immutable_columns('worker_id', 'create_time');
+
+create trigger default_create_time_column before insert on server_worker_config
+  for each row execute procedure default_create_time();
+
+create trigger worker_insert_time_column before insert on server_worker_config
+  for each row execute procedure update_time_column();
+
+create trigger worker_update_time_column before update on server_worker_config
+  for each row execute procedure update_time_column();
+
 -- Create table worker tag
 create table server_worker_tag (
   worker_id wt_public_id
@@ -69,6 +96,28 @@ create table server_worker_tag (
   value wt_tagpair,
   primary key(worker_id, key, value)
 );
+
+-- worker_aggregate view allows the worker and configuration to be read at the
+-- same time.
+-- TODO: In the future add tags to this as well.
+create view server_worker_aggregate as
+select
+  w.public_id,
+  w.scope_id,
+  w.description,
+  w.name,
+  w.address,
+  w.create_time,
+  w.update_time,
+  w.version,
+  wc.name as worker_config_name,
+  wc.address as worker_config_address,
+  wc.update_time as worker_config_update_time,
+  wc.create_time as worker_config_create_time
+from server_worker w
+  join server_worker_config wc on
+    w.public_id = wc.worker_id;
+
 
 -- Aaand drop server_tag
 drop table server_tag;

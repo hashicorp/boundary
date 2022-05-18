@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 const (
@@ -67,13 +68,13 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 
 	var where string
 	if liveness > 0 {
-		where = fmt.Sprintf("update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
+		where = fmt.Sprintf("worker_config_update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
 	}
 
-	var workers []*Worker
+	var wAggs []*workerAggregate
 	if err := reader.SearchWhere(
 		ctx,
-		&workers,
+		&wAggs,
 		where,
 		[]interface{}{},
 		db.WithLimit(-1),
@@ -81,6 +82,10 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 		return nil, errors.Wrap(ctx, err, "workers.listWorkersWithReader")
 	}
 
+	workers := make([]*Worker, 0, len(wAggs))
+	for _, a := range wAggs {
+		workers = append(workers, a.toWorker())
+	}
 	return workers, nil
 }
 
@@ -138,21 +143,19 @@ func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string,
 	return ret, nil
 }
 
-// UpsertWorker creates a new worker if one with the provided public id doesn't
-// already exist. If it does, UpsertWorker updates the worker. The
+// UpsertWorkerConfig creates a new worker if one with the provided public id doesn't
+// already exist. If it does, UpsertWorkerConfig updates the worker. The
 // WithUpdateTags option is the only one used. All others are ignored.
-func (r *Repository) UpsertWorker(ctx context.Context, worker *Worker, opt ...Option) ([]*store.Controller, int, error) {
-	const op = "servers.UpsertWorker"
+func (r *Repository) UpsertWorkerConfig(ctx context.Context, workerConf *WorkerConfig, opt ...Option) ([]*store.Controller, int, error) {
+	const op = "servers.UpsertWorkerConfig"
 
 	switch {
-	case worker == nil:
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
-	case worker.Address == "":
+	case workerConf == nil:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "workerConf is nil")
+	case workerConf.Address == "":
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "address is empty")
-	case worker.ScopeId == "":
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
-	case worker.PublicId == "":
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "public id is empty")
+	case workerConf.WorkerId == "":
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker id is empty")
 	}
 
 	opts := getOpts(opt...)
@@ -164,12 +167,28 @@ func (r *Repository) UpsertWorker(ctx context.Context, worker *Worker, opt ...Op
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			var err error
-			onConflict := &db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: append(db.SetColumns([]string{"description", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
+			workerOps := []Option{WithPublicId(workerConf.GetWorkerId())}
+			if workerConf.GetName() != "" {
+				// If this worker doesn't exist yet, that means it is a KMS only worker.
+				// KMS workers have their resource name set to the name provided in the config at
+				// creation time.
+				workerOps = append(workerOps, WithName(workerConf.GetName()))
 			}
-			err = w.Create(ctx, worker, db.WithOnConflict(onConflict), db.WithReturnRowsAffected(&rowsUpdated))
+			worker := NewWorker(scope.Global.String(), workerOps...)
+			workerCreateConflict := &db.OnConflict{
+				Target: db.Columns{"public_id"},
+				Action: db.DoNothing(true),
+			}
+			if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict)); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
+			}
+
+			var err error
+			onConfigConflict := &db.OnConflict{
+				Target: db.Columns{"worker_id"},
+				Action: append(db.SetColumns([]string{"name", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
+			}
+			err = w.Create(ctx, workerConf, db.WithOnConflict(onConfigConflict), db.WithReturnRowsAffected(&rowsUpdated))
 			if err != nil {
 				return errors.Wrap(ctx, err, op+":Upsert")
 			}
@@ -185,29 +204,29 @@ func (r *Repository) UpsertWorker(ctx context.Context, worker *Worker, opt ...Op
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				_, err = w.Delete(ctx, &store.WorkerTag{}, db.WithWhere(deleteTagsSql, worker.GetPublicId()))
+				_, err = w.Delete(ctx, &store.WorkerTag{}, db.WithWhere(deleteTagsSql, workerConf.GetWorkerId()))
 				if err != nil {
-					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(worker.GetPublicId()))
+					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(workerConf.GetWorkerId()))
 				}
 
 				// If tags were cleared out entirely, then we'll have nothing
 				// to do here, e.g., it will result in deletion of all tags.
 				// Otherwise, go through and stage each tuple for insertion
 				// below.
-				if len(worker.Tags) > 0 {
-					tags := make([]interface{}, 0, len(worker.Tags))
-					for _, v := range worker.Tags {
+				if len(workerConf.Tags) > 0 {
+					tags := make([]interface{}, 0, len(workerConf.Tags))
+					for _, v := range workerConf.Tags {
 						if v == nil {
-							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s", worker.GetPublicId()))
+							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s", workerConf.GetWorkerId()))
 						}
 						tags = append(tags, &store.WorkerTag{
-							WorkerId: worker.GetPublicId(),
+							WorkerId: workerConf.GetWorkerId(),
 							Key:      v.Key,
 							Value:    v.Value,
 						})
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {
-						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(worker.GetPublicId()))
+						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(workerConf.GetWorkerId()))
 					}
 				}
 			}

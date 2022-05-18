@@ -108,7 +108,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, worker1)
+	_, rowsUpdated, err := serversRepo.UpsertWorkerConfig(ctx, worker1.Config)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -121,7 +121,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 		require.True(ok)
 		require.Len(connIds, 6)
 		for _, connId := range connIds {
-			_, states, err := connectionRepo.LookupConnection(ctx, connId, nil)
+			_, states, err := connectionRepo.LookupConnection(ctx, connId)
 			require.NoError(err)
 			var foundClosed bool
 			for _, state := range states {
@@ -290,7 +290,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// the most up-to-date fields.
 	updateServer := func(t *testing.T, w *servers.Worker) *servers.Worker {
 		t.Helper()
-		_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, w)
+		_, rowsUpdated, err := serversRepo.UpsertWorkerConfig(ctx, w.Config)
 		require.NoError(err)
 		require.Equal(1, rowsUpdated)
 		servers, err := serversRepo.ListWorkers(ctx)
@@ -399,7 +399,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		require.Equal([]closeConnectionsForDeadWorkersResult{
 			{
 				WorkerId:                worker1.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker1.UpdateTime.AsTime()),
+				LastUpdateTime:          timestampPbAsUTC(t, worker1.LastConnectionUpdate().AsTime()),
 				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
 			},
 		}, result)
@@ -423,12 +423,12 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		require.ElementsMatch([]closeConnectionsForDeadWorkersResult{
 			{
 				WorkerId:                worker2.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker2.UpdateTime.AsTime()),
+				LastUpdateTime:          timestampPbAsUTC(t, worker2.LastConnectionUpdate().AsTime()),
 				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
 			},
 			{
 				WorkerId:                worker3.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker3.UpdateTime.AsTime()),
+				LastUpdateTime:          timestampPbAsUTC(t, worker3.LastConnectionUpdate().AsTime()),
 				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
 			},
 		}, result)

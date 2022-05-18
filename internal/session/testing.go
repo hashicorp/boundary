@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/types/scope"
-
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -19,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-uuid"
@@ -193,13 +192,17 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	id = "test_session_worker-" + id
 
 	name := "test-worker-" + id
-	worker := servers.NewWorker(scope.Global.String(),
-		servers.WithPublicId(id),
+	conf := servers.NewWorkerConfig(id,
 		servers.WithName(name),
 		servers.WithAddress("127.0.0.1"))
-	_, _, err = serversRepo.UpsertWorker(context.Background(), worker)
+	_, _, err = serversRepo.UpsertWorkerConfig(context.Background(), conf)
 	require.NoError(t, err)
-	return worker
+
+	wrk := servers.NewWorker(scope.Global.String(), servers.WithPublicId(id))
+	require.NoError(t, rw.LookupById(context.Background(), wrk))
+	wrk.Config = conf
+
+	return wrk
 }
 
 // TestCert is a temporary test func that intentionally doesn't take testing.T
