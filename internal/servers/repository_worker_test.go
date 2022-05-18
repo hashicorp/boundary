@@ -5,87 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/api/recovery"
-	"github.com/hashicorp/boundary/api/roles"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestRecoveryNonces(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
-	// Set these low so that we can not have the test run forever
-	globals.RecoveryTokenValidityPeriod = 10 * time.Second
-	globals.WorkerAuthNonceValidityPeriod = 10 * time.Second
-	controller.NonceCleanupInterval = 20 * time.Second
-
-	wrapper := db.TestWrapper(t)
-	tc := controller.NewTestController(t, &controller.TestControllerOpts{
-		RecoveryKms: wrapper,
-	})
-	defer tc.Shutdown()
-
-	externalWrappers := tc.Kms().GetExternalWrappers(context.Background())
-	externalRecovery := externalWrappers.Recovery()
-	require.Equal(externalRecovery, wrapper)
-
-	client := tc.Client()
-	repo := tc.ServersRepo()
-
-	// First, validate that we can't use the same token twice. Get two tokens,
-	// try to use the first twice (should succeed first time, fail second), then
-	// ensure second token works
-	token1, err := recovery.GenerateRecoveryToken(tc.Context(), wrapper)
-	require.NoError(err)
-	token2, err := recovery.GenerateRecoveryToken(tc.Context(), wrapper)
-	require.NoError(err)
-
-	// Token 1, try 1
-	client.SetToken(token1)
-	roleClient := roles.NewClient(client)
-	_, err = roleClient.Create(tc.Context(), scope.Global.String())
-	require.NoError(err)
-	nonces, err := repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
-	require.NoError(err)
-	assert.Len(nonces, 1)
-
-	// Token 1, try 2
-	_, err = roleClient.Create(tc.Context(), scope.Global.String())
-	require.Error(err)
-	nonces, err = repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
-	require.NoError(err)
-	assert.Len(nonces, 1)
-
-	// Token 2
-	roleClient.ApiClient().SetToken(token2)
-	_, err = roleClient.Create(tc.Context(), scope.Global.String())
-	require.NoError(err)
-	nonces, err = repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
-	require.NoError(err)
-	assert.Len(nonces, 2)
-
-	// Make sure they get cleaned up
-	time.Sleep(2 * controller.NonceCleanupInterval)
-	nonces, err = repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
-	require.NoError(err)
-	assert.Len(nonces, 0)
-
-	// And finally, make sure they still can't be used
-	for _, token := range []string{token1, token2} {
-		roleClient.ApiClient().SetToken(token)
-		_, err = roleClient.Create(tc.Context(), scope.Global.String())
-		require.Error(err)
-		nonces, err = repo.ListNonces(tc.Context(), servers.NoncePurposeRecovery)
-		require.NoError(err)
-		assert.Len(nonces, 0)
-	}
-}
 
 func TestTagUpdatingListing(t *testing.T) {
 	require := require.New(t)
@@ -102,15 +28,17 @@ func TestTagUpdatingListing(t *testing.T) {
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
-				Key:   "tag1",
-				Value: "value1",
+				Key:    "tag1",
+				Value:  "value1",
+				Source: servers.ConfigurationTagSource,
 			},
 			&servers.Tag{
-				Key:   "tag1",
-				Value: "value2",
+				Key:    "tag1",
+				Value:  "value2",
+				Source: servers.ConfigurationTagSource,
 			}))
 
-	_, _, err := repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err := repo.UpsertWorkerConfiguration(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
 
 	srv = servers.NewWorker(scope.Global.String(),
@@ -118,14 +46,16 @@ func TestTagUpdatingListing(t *testing.T) {
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
-				Key:   "tag2",
-				Value: "value1",
+				Key:    "tag2",
+				Value:  "value1",
+				Source: servers.ConfigurationTagSource,
 			},
 			&servers.Tag{
-				Key:   "tag2",
-				Value: "value2",
+				Key:    "tag2",
+				Value:  "value2",
+				Source: servers.ConfigurationTagSource,
 			}))
-	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerConfiguration(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
 
 	tags, err := repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
@@ -135,21 +65,25 @@ func TestTagUpdatingListing(t *testing.T) {
 	exp := map[string][]*servers.Tag{
 		"test_worker_1": {
 			{
-				Key:   "tag1",
-				Value: "value1",
+				Key:    "tag1",
+				Value:  "value1",
+				Source: servers.ConfigurationTagSource,
 			}, {
-				Key:   "tag1",
-				Value: "value2",
+				Key:    "tag1",
+				Value:  "value2",
+				Source: servers.ConfigurationTagSource,
 			},
 		},
 		"test_worker_2": {
 			{
-				Key:   "tag2",
-				Value: "value1",
+				Key:    "tag2",
+				Value:  "value1",
+				Source: servers.ConfigurationTagSource,
 			},
 			{
-				Key:   "tag2",
-				Value: "value2",
+				Key:    "tag2",
+				Value:  "value2",
+				Source: servers.ConfigurationTagSource,
 			},
 		},
 	}
@@ -161,21 +95,23 @@ func TestTagUpdatingListing(t *testing.T) {
 		servers.WithAddress("192.168.1.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
-				Key:   "tag22",
-				Value: "value21",
+				Key:    "tag22",
+				Value:  "value21",
+				Source: servers.ConfigurationTagSource,
 			},
 			&servers.Tag{
-				Key:   "tag22",
-				Value: "value22",
+				Key:    "tag22",
+				Value:  "value22",
+				Source: servers.ConfigurationTagSource,
 			}))
-	_, _, err = repo.UpsertWorker(tc.Context(), srv)
+	_, _, err = repo.UpsertWorkerConfiguration(tc.Context(), srv)
 	require.NoError(err)
 	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 	require.Equal(exp, tags)
 
 	// Update tags and test again
-	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerConfiguration(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
 	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
@@ -183,18 +119,20 @@ func TestTagUpdatingListing(t *testing.T) {
 	// Update and try again
 	exp["test_worker_2"] = []*servers.Tag{
 		{
-			Key:   "tag22",
-			Value: "value21",
+			Key:    "tag22",
+			Value:  "value21",
+			Source: servers.ConfigurationTagSource,
 		},
 		{
-			Key:   "tag22",
-			Value: "value22",
+			Key:    "tag22",
+			Value:  "value22",
+			Source: servers.ConfigurationTagSource,
 		},
 	}
 	require.Equal(exp, tags)
 }
 
-func TestListServersWithLiveness(t *testing.T) {
+func TestListWorkersWithLiveness(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -209,7 +147,7 @@ func TestListServersWithLiveness(t *testing.T) {
 		result := servers.NewWorker(scope.Global.String(),
 			servers.WithPublicId(publicId),
 			servers.WithAddress("127.0.0.1"))
-		_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, result)
+		_, rowsUpdated, err := serversRepo.UpsertWorkerConfiguration(ctx, result)
 		require.NoError(err)
 		require.Equal(1, rowsUpdated)
 
@@ -225,7 +163,7 @@ func TestListServersWithLiveness(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, server1)
+	_, rowsUpdated, err := serversRepo.UpsertWorkerConfiguration(ctx, server1)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -251,7 +189,7 @@ func TestListServersWithLiveness(t *testing.T) {
 	requireIds([]string{server1.PublicId}, result)
 
 	// Upsert second server.
-	_, rowsUpdated, err = serversRepo.UpsertWorker(ctx, server2)
+	_, rowsUpdated, err = serversRepo.UpsertWorkerConfiguration(ctx, server2)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 

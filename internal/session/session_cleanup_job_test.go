@@ -108,7 +108,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, worker1)
+	_, rowsUpdated, err := serversRepo.UpsertWorkerConfiguration(ctx, worker1)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -290,7 +290,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// the most up-to-date fields.
 	updateServer := func(t *testing.T, w *servers.Worker) *servers.Worker {
 		t.Helper()
-		_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, w)
+		_, rowsUpdated, err := serversRepo.UpsertWorkerConfiguration(ctx, w)
 		require.NoError(err)
 		require.Equal(1, rowsUpdated)
 		servers, err := serversRepo.ListWorkers(ctx)

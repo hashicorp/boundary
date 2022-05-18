@@ -38,7 +38,7 @@ func TestStatus(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, servers.NewWorker(
+	serverRepo.UpsertWorkerConfiguration(ctx, servers.NewWorker(
 		scope.Global.String(),
 		servers.WithPublicId("test_worker1"),
 		servers.WithAddress("127.0.0.1")))
@@ -206,7 +206,7 @@ func TestStatusSessionClosed(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, servers.NewWorker(
+	serverRepo.UpsertWorkerConfiguration(ctx, servers.NewWorker(
 		scope.Global.String(),
 		servers.WithPublicId("test_worker1"),
 		servers.WithAddress("127.0.0.1")))
@@ -388,7 +388,7 @@ func TestStatusDeadConnection(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, servers.NewWorker(
+	serverRepo.UpsertWorkerConfiguration(ctx, servers.NewWorker(
 		scope.Global.String(),
 		servers.WithPublicId("test_worker1"),
 		servers.WithAddress("127.0.0.1")))

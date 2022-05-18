@@ -2,5 +2,5 @@ package servers
 
 const (
 	deleteWhereCreateTimeSql = `create_time < ?`
-	deleteTagsSql            = `worker_id = ?`
+	deleteConfigTagsSql      = `source = 'configuration' and worker_id = ?`
 )

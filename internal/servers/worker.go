@@ -15,10 +15,13 @@ type Worker struct {
 
 // A Tag is a custom key/value pair which can be attached to a Worker.
 // Multiple Tags may contain the same key and different values in which
-// case both key/value pairs are valid.
+// case both key/value pairs are valid.  Tags can be sourced from either the
+// worker's configuration or the api. key/value pairs can be the same from
+// different sources.
 type Tag struct {
-	Key   string
-	Value string
+	Key    string
+	Value  string
+	Source TagSource
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
