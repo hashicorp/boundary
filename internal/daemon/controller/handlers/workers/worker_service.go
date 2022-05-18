@@ -77,9 +77,8 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	for k, v := range reqServer.Tags {
 		for _, val := range v.GetValues() {
 			workerTags = append(workerTags, &servers.Tag{
-				Key:    k,
-				Value:  val,
-				Source: servers.ConfigurationTagSource,
+				Key:   k,
+				Value: val,
 			})
 		}
 	}
@@ -88,7 +87,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		servers.WithPublicId(reqServer.PrivateId),
 		servers.WithAddress(reqServer.Address),
 		servers.WithWorkerTags(workerTags...))
-	controllers, _, err := serverRepo.UpsertWorkerConfiguration(ctx, worker, servers.WithUpdateTags(req.GetUpdateTags()))
+	controllers, _, err := serverRepo.UpsertWorker(ctx, worker, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)

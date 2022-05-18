@@ -28,17 +28,15 @@ func TestTagUpdatingListing(t *testing.T) {
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
-				Key:    "tag1",
-				Value:  "value1",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag1",
+				Value: "value1",
 			},
 			&servers.Tag{
-				Key:    "tag1",
-				Value:  "value2",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag1",
+				Value: "value2",
 			}))
 
-	_, _, err := repo.UpsertWorkerConfiguration(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err := repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
 
 	srv = servers.NewWorker(scope.Global.String(),
@@ -46,16 +44,14 @@ func TestTagUpdatingListing(t *testing.T) {
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
-				Key:    "tag2",
-				Value:  "value1",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag2",
+				Value: "value1",
 			},
 			&servers.Tag{
-				Key:    "tag2",
-				Value:  "value2",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag2",
+				Value: "value2",
 			}))
-	_, _, err = repo.UpsertWorkerConfiguration(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
 
 	tags, err := repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
@@ -65,25 +61,21 @@ func TestTagUpdatingListing(t *testing.T) {
 	exp := map[string][]*servers.Tag{
 		"test_worker_1": {
 			{
-				Key:    "tag1",
-				Value:  "value1",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag1",
+				Value: "value1",
 			}, {
-				Key:    "tag1",
-				Value:  "value2",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag1",
+				Value: "value2",
 			},
 		},
 		"test_worker_2": {
 			{
-				Key:    "tag2",
-				Value:  "value1",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag2",
+				Value: "value1",
 			},
 			{
-				Key:    "tag2",
-				Value:  "value2",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag2",
+				Value: "value2",
 			},
 		},
 	}
@@ -95,23 +87,21 @@ func TestTagUpdatingListing(t *testing.T) {
 		servers.WithAddress("192.168.1.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
-				Key:    "tag22",
-				Value:  "value21",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag22",
+				Value: "value21",
 			},
 			&servers.Tag{
-				Key:    "tag22",
-				Value:  "value22",
-				Source: servers.ConfigurationTagSource,
+				Key:   "tag22",
+				Value: "value22",
 			}))
-	_, _, err = repo.UpsertWorkerConfiguration(tc.Context(), srv)
+	_, _, err = repo.UpsertWorker(tc.Context(), srv)
 	require.NoError(err)
 	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 	require.Equal(exp, tags)
 
 	// Update tags and test again
-	_, _, err = repo.UpsertWorkerConfiguration(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
 	require.NoError(err)
 	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
@@ -119,14 +109,12 @@ func TestTagUpdatingListing(t *testing.T) {
 	// Update and try again
 	exp["test_worker_2"] = []*servers.Tag{
 		{
-			Key:    "tag22",
-			Value:  "value21",
-			Source: servers.ConfigurationTagSource,
+			Key:   "tag22",
+			Value: "value21",
 		},
 		{
-			Key:    "tag22",
-			Value:  "value22",
-			Source: servers.ConfigurationTagSource,
+			Key:   "tag22",
+			Value: "value22",
 		},
 	}
 	require.Equal(exp, tags)
@@ -147,7 +135,7 @@ func TestListWorkersWithLiveness(t *testing.T) {
 		result := servers.NewWorker(scope.Global.String(),
 			servers.WithPublicId(publicId),
 			servers.WithAddress("127.0.0.1"))
-		_, rowsUpdated, err := serversRepo.UpsertWorkerConfiguration(ctx, result)
+		_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, result)
 		require.NoError(err)
 		require.Equal(1, rowsUpdated)
 
@@ -163,7 +151,7 @@ func TestListWorkersWithLiveness(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, rowsUpdated, err := serversRepo.UpsertWorkerConfiguration(ctx, server1)
+	_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, server1)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -189,7 +177,7 @@ func TestListWorkersWithLiveness(t *testing.T) {
 	requireIds([]string{server1.PublicId}, result)
 
 	// Upsert second server.
-	_, rowsUpdated, err = serversRepo.UpsertWorkerConfiguration(ctx, server2)
+	_, rowsUpdated, err = serversRepo.UpsertWorker(ctx, server2)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 

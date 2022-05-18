@@ -85,7 +85,7 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 
 // ListTagsForWorkers returns a map from the worker's id to the list of Tags
 // that are for that worker.  All options are ignored.
-func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, opt ...Option) (map[string][]*Tag, error) {
+func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, _ ...Option) (map[string][]*Tag, error) {
 	const op = "servers.ListTagsForWorkers"
 	var workerTags []*store.WorkerTag
 	if err := r.reader.SearchWhere(
@@ -100,20 +100,16 @@ func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string,
 
 	ret := make(map[string][]*Tag, len(workerIds))
 	for _, t := range workerTags {
-		source := TagSource(t.Source)
-		if !source.isValid() {
-			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unrecognized source received from the database: %s", t.Source))
-		}
-		ret[t.WorkerId] = append(ret[t.WorkerId], &Tag{Key: t.Key, Value: t.Value, Source: source})
+		ret[t.WorkerId] = append(ret[t.WorkerId], &Tag{Key: t.Key, Value: t.Value})
 	}
 	return ret, nil
 }
 
-// UpsertWorkerConfiguration creates a new worker if one with the provided public id doesn't
-// already exist. If it does, UpsertWorkerConfiguration updates the worker. The
+// UpsertWorker creates a new worker if one with the provided public id doesn't
+// already exist. If it does, UpsertWorker updates the worker. The
 // WithUpdateTags option is the only one used. All others are ignored.
-func (r *Repository) UpsertWorkerConfiguration(ctx context.Context, worker *Worker, opt ...Option) ([]*store.Controller, int, error) {
-	const op = "servers.UpsertWorkerConfiguration"
+func (r *Repository) UpsertWorker(ctx context.Context, worker *Worker, opt ...Option) ([]*store.Controller, int, error) {
+	const op = "servers.UpsertWorker"
 
 	switch {
 	case worker == nil:
@@ -171,14 +167,11 @@ func (r *Repository) UpsertWorkerConfiguration(ctx context.Context, worker *Work
 						if v == nil {
 							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s", worker.GetPublicId()))
 						}
-						if !v.Source.isValid() {
-							return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid tag source for worker %s: %s", worker.GetPublicId(), v.Source))
-						}
 						tags = append(tags, &store.WorkerTag{
 							WorkerId: worker.GetPublicId(),
 							Key:      v.Key,
 							Value:    v.Value,
-							Source:   string(v.Source),
+							Source:   string(ConfigurationTagSource),
 						})
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {

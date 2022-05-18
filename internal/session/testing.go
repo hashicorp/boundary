@@ -197,7 +197,7 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 		servers.WithPublicId(id),
 		servers.WithName(name),
 		servers.WithAddress("127.0.0.1"))
-	_, _, err = serversRepo.UpsertWorkerConfiguration(context.Background(), worker)
+	_, _, err = serversRepo.UpsertWorker(context.Background(), worker)
 	require.NoError(t, err)
 	return worker
 }

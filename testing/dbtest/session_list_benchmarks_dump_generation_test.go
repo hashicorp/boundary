@@ -135,7 +135,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			worker := servers.NewWorker(scope.Global.String(),
 				servers.WithPublicId("test_worker_1"),
 				servers.WithAddress("127.0.0.1"))
-			_, _, err = serversRepo.UpsertWorkerConfiguration(ctx, worker)
+			_, _, err = serversRepo.UpsertWorker(ctx, worker)
 			require.NoError(err)
 
 			usersStart := time.Now()
