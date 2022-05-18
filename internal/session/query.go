@@ -324,8 +324,8 @@ where
 	closeConnectionsForDeadServersCte = `
    with
    dead_workers (worker_id, last_update_time) as (
-         select public_id, update_time
-           from server_worker
+         select worker_id, update_time
+           from server_worker_config
           where update_time < wt_sub_seconds_from_now(@grace_period_seconds)
    ),
    closed_connections (connection_id, worker_id) as (

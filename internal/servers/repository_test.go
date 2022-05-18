@@ -97,8 +97,7 @@ func TestTagUpdatingListing(t *testing.T) {
 	defer tc.Shutdown()
 
 	repo := tc.ServersRepo()
-	srv := servers.NewWorker(scope.Global.String(),
-		servers.WithPublicId("test_worker_1"),
+	wConf := servers.NewWorkerConfig("test_worker_1",
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -110,11 +109,10 @@ func TestTagUpdatingListing(t *testing.T) {
 				Value: "value2",
 			}))
 
-	_, _, err := repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err := repo.UpsertWorkerConfig(tc.Context(), wConf, servers.WithUpdateTags(true))
 	require.NoError(err)
 
-	srv = servers.NewWorker(scope.Global.String(),
-		servers.WithPublicId("test_worker_2"),
+	wConf = servers.NewWorkerConfig("test_worker_2",
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -125,7 +123,7 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag2",
 				Value: "value2",
 			}))
-	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerConfig(tc.Context(), wConf, servers.WithUpdateTags(true))
 	require.NoError(err)
 
 	tags, err := repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
@@ -156,8 +154,7 @@ func TestTagUpdatingListing(t *testing.T) {
 	require.Equal(exp, tags)
 
 	// Update without saying to update tags
-	srv = servers.NewWorker(scope.Global.String(),
-		servers.WithPublicId("test_worker_2"),
+	wConf = servers.NewWorkerConfig("test_worker_2",
 		servers.WithAddress("192.168.1.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -168,14 +165,14 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag22",
 				Value: "value22",
 			}))
-	_, _, err = repo.UpsertWorker(tc.Context(), srv)
+	_, _, err = repo.UpsertWorkerConfig(tc.Context(), wConf)
 	require.NoError(err)
 	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 	require.Equal(exp, tags)
 
 	// Update tags and test again
-	_, _, err = repo.UpsertWorker(tc.Context(), srv, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerConfig(tc.Context(), wConf, servers.WithUpdateTags(true))
 	require.NoError(err)
 	tags, err = repo.ListTagsForWorkers(tc.Context(), []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
@@ -205,27 +202,26 @@ func TestListServersWithLiveness(t *testing.T) {
 	require.NoError(err)
 	ctx := context.Background()
 
-	newWorker := func(publicId string) *servers.Worker {
-		result := servers.NewWorker(scope.Global.String(),
-			servers.WithPublicId(publicId),
+	newWorkerConfig := func(publicId string) *servers.WorkerConfig {
+		result := servers.NewWorkerConfig(publicId,
 			servers.WithAddress("127.0.0.1"))
-		_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, result)
+		_, rowsUpdated, err := serversRepo.UpsertWorkerConfig(ctx, result)
 		require.NoError(err)
 		require.Equal(1, rowsUpdated)
 
 		return result
 	}
 
-	server1 := newWorker("test_worker_1")
-	server2 := newWorker("test_worker_2")
-	server3 := newWorker("test_worker_3")
+	workConf1 := newWorkerConfig("test_worker_1")
+	workConf2 := newWorkerConfig("test_worker_2")
+	workConf3 := newWorkerConfig("test_worker_3")
 
 	// Sleep the default liveness time (15sec currently) +1s
 	time.Sleep(time.Second * 16)
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, server1)
+	_, rowsUpdated, err := serversRepo.UpsertWorkerConfig(ctx, workConf1)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -248,10 +244,10 @@ func TestListServersWithLiveness(t *testing.T) {
 	result, err := serversRepo.ListWorkers(ctx)
 	require.NoError(err)
 	require.Len(result, 1)
-	requireIds([]string{server1.PublicId}, result)
+	requireIds([]string{workConf1.WorkerId}, result)
 
 	// Upsert second server.
-	_, rowsUpdated, err = serversRepo.UpsertWorker(ctx, server2)
+	_, rowsUpdated, err = serversRepo.UpsertWorkerConfig(ctx, workConf2)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -260,11 +256,17 @@ func TestListServersWithLiveness(t *testing.T) {
 	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(time.Second*5))
 	require.NoError(err)
 	require.Len(result, 2)
-	requireIds([]string{server1.PublicId, server2.PublicId}, result)
+	requireIds([]string{workConf1.WorkerId, workConf2.WorkerId}, result)
 
 	// Liveness disabled, should get all three workers.
 	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(-1))
 	require.NoError(err)
 	require.Len(result, 3)
-	requireIds([]string{server1.PublicId, server2.PublicId, server3.PublicId}, result)
+	requireIds([]string{workConf1.WorkerId, workConf2.WorkerId, workConf3.WorkerId}, result)
+}
+
+func TestUpsertWorkerConfig(t *testing.T) {
+	// test name colissions between new kms workers and existing workers when new workers are created
+
+	// test no name provided
 }
