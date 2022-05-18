@@ -8,7 +8,7 @@ create domain wt_network_address as text
     check (length(trim(value)) > 0)
   constraint wt_network_address_too_long
     check (length(trim(value)) < 256);
-comment on domain wt_dns_name is
+comment on domain wt_network_address is
   'standard column for a network address.';
 
 
