@@ -155,6 +155,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/scheduler/job/store/job.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
+	@protoc-go-inject-tag -input=./internal/credential/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 
@@ -184,6 +185,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/credential_store_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/credentiallibraries/credential_library.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/credential_library_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/credentials/credential.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/credential_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/roles/role.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/role_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/sessions/session.pb.go

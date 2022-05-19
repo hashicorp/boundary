@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
@@ -64,18 +65,19 @@ type Controller struct {
 	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
-	AuthTokenRepoFn       common.AuthTokenRepoFactory
-	VaultCredentialRepoFn common.VaultCredentialRepoFactory
-	IamRepoFn             common.IamRepoFactory
-	OidcRepoFn            common.OidcAuthRepoFactory
-	PasswordAuthRepoFn    common.PasswordAuthRepoFactory
-	ServersRepoFn         common.ServersRepoFactory
-	SessionRepoFn         common.SessionRepoFactory
-	ConnectionRepoFn      common.ConnectionRepoFactory
-	StaticHostRepoFn      common.StaticRepoFactory
-	PluginHostRepoFn      common.PluginHostRepoFactory
-	HostPluginRepoFn      common.HostPluginRepoFactory
-	TargetRepoFn          common.TargetRepoFactory
+	AuthTokenRepoFn        common.AuthTokenRepoFactory
+	VaultCredentialRepoFn  common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn common.StaticCredentialRepoFactory
+	IamRepoFn              common.IamRepoFactory
+	OidcRepoFn             common.OidcAuthRepoFactory
+	PasswordAuthRepoFn     common.PasswordAuthRepoFactory
+	ServersRepoFn          common.ServersRepoFactory
+	SessionRepoFn          common.SessionRepoFactory
+	ConnectionRepoFn       common.ConnectionRepoFactory
+	StaticHostRepoFn       common.StaticRepoFactory
+	PluginHostRepoFn       common.PluginHostRepoFactory
+	HostPluginRepoFn       common.HostPluginRepoFactory
+	TargetRepoFn           common.TargetRepoFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -276,6 +278,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
 		return vault.NewRepository(dbase, dbase, c.kms, c.scheduler)
+	}
+	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)

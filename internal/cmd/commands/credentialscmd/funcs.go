@@ -1,12 +1,11 @@
-package credentialstorescmd
+package credentialscmd
 
 import (
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/credentialstores"
+	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
@@ -15,45 +14,37 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	switch c.Func {
 	case "":
 		return base.WrapForHelpText([]string{
-			"Usage: boundary credential-stores [sub command] [options] [args]",
+			"Usage: boundary credentials [sub command] [options] [args]",
 			"",
-			"  This command allows operations on Boundary credential store resources. Example:",
+			"  This command allows operations on Boundary credential resources. Example:",
 			"",
-			"    Read a credential store:",
+			"    Read a credential:",
 			"",
-			`      $ boundary credential-stores read -id csvlt_1234567890`,
+			`      $ boundary credentials read -id cred_1234567890`,
 			"",
-			"  Please see the credential-stores subcommand help for detailed usage information.",
+			"  Please see the credentials subcommand help for detailed usage information.",
 		})
 	case "create":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary credential-stores create [type] [sub command] [options] [args]",
+			"Usage: boundary credentials create [type] [sub command] [options] [args]",
 			"",
-			"  This command allows create operations on Boundary credential store resources. Example:",
+			"  This command allows create operations on Boundary credential resources. Example:",
 			"",
-			"    Create a vault-type credential store:",
+			"    Create a credential:",
 			"",
-			`      $ boundary credential-stores create vault -scope-id p_1234567890 -vault-address "http://localhost:8200" -vault-token "s.s0m3t0k3n"`,
-			"",
-			"    Create a static-type credential store:",
-			"",
-			`      $ boundary credential-stores create static -scope-id p_1234567890`,
+			`      $ boundary credentials create username-password -credential-store-id cs_1234567890 -username user -password pass`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
 	case "update":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary credential-stores update [type] [sub command] [options] [args]",
+			"Usage: boundary credentials update [type] [sub command] [options] [args]",
 			"",
-			"  This command allows update operations on Boundary credential store resources. Example:",
+			"  This command allows update operations on Boundary credential resources. Example:",
 			"",
-			"    Update a vault-type credential store:",
+			"    Update a user password credential:",
 			"",
-			`      $ boundary credential-stores update vault -id csvlt_1234567890 -name devops -description "For DevOps usage"`,
-			"",
-			"    Update a static-type credential store:",
-			"",
-			`      $ boundary credential-stores update static -id cs_1234567890 -name devops -description "For DevOps usage"`,
+			`      $ boundary credentials update username-password -id cred_1234567890 -name devops -description "For DevOps usage"`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
@@ -63,15 +54,15 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func (c *Command) printListTable(items []*credentialstores.CredentialStore) string {
+func (c *Command) printListTable(items []*credentials.Credential) string {
 	if len(items) == 0 {
-		return "No credential store found"
+		return "No credentials found"
 	}
 
 	var output []string
 	output = []string{
 		"",
-		"Credential Store information:",
+		"Credential information:",
 	}
 	for i, m := range items {
 		if i > 0 {
@@ -84,11 +75,6 @@ func (c *Command) printListTable(items []*credentialstores.CredentialStore) stri
 		} else {
 			output = append(output,
 				fmt.Sprintf("  ID:                    %s", "(not available)"),
-			)
-		}
-		if c.FlagRecursive && m.ScopeId != "" {
-			output = append(output,
-				fmt.Sprintf("    Scope ID:            %s", m.ScopeId),
 			)
 		}
 		if m.Version > 0 {
@@ -123,7 +109,7 @@ func (c *Command) printListTable(items []*credentialstores.CredentialStore) stri
 }
 
 func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*credentialstores.CredentialStore)
+	item := result.GetItem().(*credentials.Credential)
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
@@ -136,6 +122,9 @@ func printItemTable(result api.GenericResult) string {
 	}
 	if !item.UpdatedTime.IsZero() {
 		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
+	}
+	if item.CredentialStoreId != "" {
+		nonAttributeMap["Credential Store ID"] = item.CredentialStoreId
 	}
 	if item.Name != "" {
 		nonAttributeMap["Name"] = item.Name
@@ -151,7 +140,7 @@ func printItemTable(result api.GenericResult) string {
 
 	ret := []string{
 		"",
-		"Credential Store information:",
+		"Credential information:",
 		base.WrapMap(2, maxLength+2, nonAttributeMap),
 	}
 
@@ -171,23 +160,6 @@ func printItemTable(result api.GenericResult) string {
 		)
 	}
 
-	if len(item.AuthorizedCollectionActions) > 0 {
-		keys := make([]string, 0, len(item.AuthorizedCollectionActions))
-		for k := range item.AuthorizedCollectionActions {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		ret = append(ret, "",
-			"  Authorized Actions on Credential Store's Collections:",
-		)
-		for _, key := range keys {
-			ret = append(ret,
-				fmt.Sprintf("    %s:", key),
-				base.WrapSlice(6, item.AuthorizedCollectionActions[key]),
-			)
-		}
-	}
-
 	if len(item.Attributes) > 0 {
 		ret = append(ret,
 			"",
@@ -200,12 +172,6 @@ func printItemTable(result api.GenericResult) string {
 }
 
 var keySubstMap = map[string]string{
-	"address":                     "Address",
-	"namespace":                   "Namespace",
-	"ca_cert":                     "CA Cert",
-	"tls_server_name":             "TLS Server Name",
-	"tls_skip_verify":             "Skip TLS Verification",
-	"token_hmac":                  "Token HMAC",
-	"client_certificate":          "Client Certificate",
-	"client_certificate_key_hmac": "Client Certificate Key HMAC",
+	"username":      "Username",
+	"password_hmac": "Password HMAC",
 }
