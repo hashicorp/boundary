@@ -49,9 +49,14 @@ func TestList(t *testing.T) {
 	require.NoError(err)
 	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul.Items))
 
-	for i := 1; i < 10; i++ {
+	for i := 1; i < 5; i++ {
 		cr, err = storeClient.Create(tc.Context(), "vault", proj.GetPublicId(), credentialstores.WithName(expected[i].Name),
 			credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreToken(expected[i].Attributes["token"].(string)))
+		require.NoError(err)
+		expected[i] = cr.Item
+	}
+	for i := 5; i < 10; i++ {
+		cr, err = storeClient.Create(tc.Context(), "static", proj.GetPublicId(), credentialstores.WithName(expected[i].Name))
 		require.NoError(err)
 		expected[i] = cr.Item
 	}

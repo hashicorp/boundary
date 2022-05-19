@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -25,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -57,9 +59,10 @@ var (
 		action.List,
 	}
 
-	collectionTypeMap = map[resource.Type]action.ActionSet{
+	vaultCollectionTypeMap = map[resource.Type]action.ActionSet{
 		resource.CredentialLibrary: credentiallibraries.CollectionActions,
 	}
+	staticCollectionTypeMap = map[resource.Type]action.ActionSet{}
 )
 
 func init() {
@@ -74,20 +77,28 @@ func init() {
 type Service struct {
 	pbs.UnimplementedCredentialStoreServiceServer
 
-	iamRepoFn common.IamRepoFactory
-	repoFn    common.VaultCredentialRepoFactory
+	iamRepoFn    common.IamRepoFactory
+	vaultRepoFn  common.VaultCredentialRepoFactory
+	staticRepoFn common.StaticCredentialRepoFactory
 }
 
 // NewService returns a credential store service which handles credential store related requests to boundary.
-func NewService(repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
+func NewService(
+	vaultRepo common.VaultCredentialRepoFactory,
+	staticRepo common.StaticCredentialRepoFactory,
+	iamRepo common.IamRepoFactory,
+) (Service, error) {
 	const op = "credentialstores.NewService"
 	if iamRepo == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
-	if repo == nil {
+	if vaultRepo == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing vault credential repository")
 	}
-	return Service{iamRepoFn: iamRepo, repoFn: repo}, nil
+	if staticRepo == nil {
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static credential repository")
+	}
+	return Service{iamRepoFn: iamRepo, vaultRepoFn: vaultRepo, staticRepoFn: staticRepo}, nil
 }
 
 var _ pbs.CredentialStoreServiceServer = Service{}
@@ -155,7 +166,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, item.GetPublicId())
+			collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, item.GetPublicId())
 			if err != nil {
 				return nil, err
 			}
@@ -208,7 +219,7 @@ func (s Service) GetCredentialStore(ctx context.Context, req *pbs.GetCredentialS
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, cs.GetPublicId())
+		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, cs.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +264,7 @@ func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCrede
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, cs.GetPublicId())
+		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, cs.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -301,7 +312,7 @@ func (s Service) UpdateCredentialStore(ctx context.Context, req *pbs.UpdateCrede
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
 	}
 	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-		collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, cs.GetPublicId())
+		collectionActions, err := calculateAuthorizedCollectionActions(ctx, authResults, cs.GetPublicId())
 		if err != nil {
 			return nil, err
 		}
@@ -332,74 +343,154 @@ func (s Service) DeleteCredentialStore(ctx context.Context, req *pbs.DeleteCrede
 	return nil, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*vault.CredentialStore, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]credential.Store, error) {
 	const op = "credentialstores.(Service).listFromRepo"
-	repo, err := s.repoFn()
+
+	vaultRepo, err := s.vaultRepoFn()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	csl, err := repo.ListCredentialStores(ctx, scopeIds)
+	vaultCsl, err := vaultRepo.ListCredentialStores(ctx, scopeIds)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+
+	staticRepo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	staticCsl, err := staticRepo.ListCredentialStores(ctx, scopeIds)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	csl := make([]credential.Store, 0, len(staticCsl)+len(vaultCsl))
+	for _, s := range vaultCsl {
+		csl = append(csl, s)
+	}
+	for _, s := range staticCsl {
+		csl = append(csl, s)
+	}
+
 	return csl, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (credential.Store, error) {
 	const op = "credentialstores.(Service).getFromRepo"
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+
+	switch subtypes.SubtypeFromId(domain, id) {
+	case vault.Subtype:
+		repo, err := s.vaultRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		cs, err := repo.LookupCredentialStore(ctx, id)
+		if err != nil && !errors.IsNotFoundError(err) {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if cs != nil {
+			return cs, nil
+		}
+
+	case static.Subtype:
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		cs, err := repo.LookupCredentialStore(ctx, id)
+		if err != nil && !errors.IsNotFoundError(err) {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if cs != nil {
+			return cs, nil
+		}
 	}
-	cs, err := repo.LookupCredentialStore(ctx, id)
-	if err != nil && !errors.IsNotFoundError(err) {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if cs == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("credential store %q not found", id))
-	}
-	return cs, err
+
+	return nil, handlers.NotFoundErrorf("credential store %q not found", id)
 }
 
 func (s Service) createInRepo(ctx context.Context, projId string, item *pb.CredentialStore) (credential.Store, error) {
 	const op = "credentialstores.(Service).createInRepo"
-	cs, err := toStorageVaultStore(projId, item)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+
+	switch item.Type {
+	case vault.Subtype.String():
+		cs, err := toStorageVaultStore(projId, item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		repo, err := s.vaultRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, err := repo.CreateCredentialStore(ctx, cs)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential store"))
+		}
+		return out, nil
+
+	case static.Subtype.String():
+		cs, err := toStorageStaticStore(projId, item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, err := repo.CreateCredentialStore(ctx, cs)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential store"))
+		}
+		return out, nil
+
+	default:
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential store, unknown type.")
 	}
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	out, err := repo.CreateCredentialStore(ctx, cs)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential store"))
-	}
-	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential store but no error returned from repository.")
-	}
-	return out, nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []string, item *pb.CredentialStore) (credential.Store, error) {
 	const op = "credentialstores.(Service).updateInRepo"
-	cs, err := toStorageVaultStore(projId, item)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	cs.PublicId = id
+
+	var out credential.Store
+	var rowsUpdated int
 
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
 		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	out, rowsUpdated, err := repo.UpdateCredentialStore(ctx, cs, item.GetVersion(), dbMask)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential store"))
+
+	switch subtypes.SubtypeFromId(domain, id) {
+	case vault.Subtype:
+		cs, err := toStorageVaultStore(projId, item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		cs.PublicId = id
+
+		repo, err := s.vaultRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, rowsUpdated, err = repo.UpdateCredentialStore(ctx, cs, item.GetVersion(), dbMask)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential store"))
+		}
+
+	case static.Subtype:
+		cs, err := toStorageStaticStore(projId, item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		cs.PublicId = id
+
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, rowsUpdated, err = repo.UpdateCredentialStore(ctx, cs, item.GetVersion(), dbMask)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential store"))
+		}
 	}
 	if rowsUpdated == 0 {
 		return nil, handlers.NotFoundErrorf("Credential Store %q doesn't exist or incorrect version provided.", id)
@@ -409,16 +500,34 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 
 func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	const op = "credentialstores.(Service).deleteFromRepo"
-	repo, err := s.repoFn()
-	if err != nil {
-		return false, err
-	}
-	rows, err := repo.DeleteCredentialStore(ctx, id)
-	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return false, nil
+	var rows int
+
+	switch subtypes.SubtypeFromId(domain, id) {
+	case vault.Subtype:
+		repo, err := s.vaultRepoFn()
+		if err != nil {
+			return false, err
 		}
-		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete credential store"))
+		rows, err = repo.DeleteCredentialStore(ctx, id)
+		if err != nil {
+			if errors.IsNotFoundError(err) {
+				return false, nil
+			}
+			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete credential store"))
+		}
+
+	case static.Subtype:
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return false, err
+		}
+		rows, err = repo.DeleteCredentialStore(ctx, id)
+		if err != nil {
+			if errors.IsNotFoundError(err) {
+				return false, nil
+			}
+			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete credential store"))
+		}
 	}
 	return rows > 0, nil
 }
@@ -430,7 +539,12 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		res.Error = err
 		return res
 	}
-	repo, err := s.repoFn()
+	vaultRepo, err := s.vaultRepoFn()
+	if err != nil {
+		res.Error = err
+		return res
+	}
+	staticRepo, err := s.staticRepoFn()
 	if err != nil {
 		res.Error = err
 		return res
@@ -451,16 +565,32 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			return res
 		}
 	default:
-		cs, err := repo.LookupCredentialStore(ctx, id)
-		if err != nil {
-			res.Error = err
-			return res
+		switch subtypes.SubtypeFromId(domain, id) {
+		case vault.Subtype:
+			cs, err := vaultRepo.LookupCredentialStore(ctx, id)
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			if cs == nil {
+				res.Error = handlers.NotFoundError()
+				return res
+			}
+			parentId = cs.GetScopeId()
+
+		case static.Subtype:
+			var err error
+			cs, err := staticRepo.LookupCredentialStore(ctx, id)
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			if cs == nil {
+				res.Error = handlers.NotFoundError()
+				return res
+			}
+			parentId = cs.GetScopeId()
 		}
-		if cs == nil {
-			res.Error = handlers.NotFoundError()
-			return res
-		}
-		parentId = cs.GetScopeId()
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
@@ -550,6 +680,23 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 	return &out, nil
 }
 
+func toStorageStaticStore(scopeId string, in *pb.CredentialStore) (out *static.CredentialStore, err error) {
+	const op = "credentialstores.toStorageStaticStore"
+	var opts []static.Option
+	if in.GetName() != nil {
+		opts = append(opts, static.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, static.WithDescription(in.GetDescription().GetValue()))
+	}
+
+	cs, err := static.NewCredentialStore(scopeId, opts...)
+	if err != nil {
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential store for creation"))
+	}
+	return cs, err
+}
+
 func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.CredentialStore, err error) {
 	const op = "credentialstores.toStorageVaultStore"
 	var opts []vault.Option
@@ -609,7 +756,7 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetCredentialStoreRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, vault.CredentialStorePrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, vault.CredentialStorePrefix, static.CredentialStorePrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
@@ -651,6 +798,8 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 			if len(cs) > 0 && pk == nil {
 				badFields[clientCertField] = "Cannot set a client certificate without a private key."
 			}
+		case static.Subtype:
+			// No additional validation required for static credential store
 		default:
 			badFields[globals.TypeField] = "This is a required field and must be a known credential store type."
 		}
@@ -693,11 +842,11 @@ func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 			}
 		}
 		return badFields
-	}, vault.CredentialStorePrefix)
+	}, vault.CredentialStorePrefix, static.CredentialStorePrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteCredentialStoreRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, vault.CredentialStorePrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, vault.CredentialStorePrefix, static.CredentialStorePrefix)
 }
 
 func validateListRequest(req *pbs.ListCredentialStoresRequest) error {
@@ -713,4 +862,21 @@ func validateListRequest(req *pbs.ListCredentialStoresRequest) error {
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
+}
+
+func calculateAuthorizedCollectionActions(ctx context.Context, authResults auth.VerifyResults, id string) (map[string]*structpb.ListValue, error) {
+	var collectionActions map[string]*structpb.ListValue
+	var err error
+	switch subtypes.SubtypeFromId(domain, id) {
+	case vault.Subtype:
+		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, vaultCollectionTypeMap, authResults.Scope.Id, id)
+
+	case static.Subtype:
+		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, staticCollectionTypeMap, authResults.Scope.Id, id)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return collectionActions, nil
 }

@@ -435,67 +435,6 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: true,
 	},
-	// Credentials
-	{
-		inProto:     &credentialstores.VaultCredentialStoreAttributes{},
-		outFile:     "credentialstores/vault_credential_store_attributes.gen.go",
-		subtypeName: "VaultCredentialStore",
-	},
-	{
-		inProto: &credentialstores.CredentialStore{},
-		outFile: "credentialstores/credential_store.gen.go",
-		templates: []*template.Template{
-			clientTemplate,
-			createTemplate,
-			readTemplate,
-			updateTemplate,
-			deleteTemplate,
-			listTemplate,
-		},
-		pluralResourceName:  "credential-stores",
-		parentTypeName:      "scope",
-		typeOnCreate:        true,
-		versionEnabled:      true,
-		createResponseTypes: true,
-		recursiveListing:    true,
-		fieldOverrides: []fieldInfo{
-			{
-				Name:        "Address",
-				SkipDefault: true,
-			},
-			{
-				Name:        "Token",
-				SkipDefault: true,
-			},
-		},
-	},
-	{
-		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
-		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
-		subtypeName: "VaultCredentialLibrary",
-		fieldOverrides: []fieldInfo{
-			{
-				Name:        "Path",
-				SkipDefault: true,
-			},
-		},
-	},
-	{
-		inProto: &credentiallibraries.CredentialLibrary{},
-		outFile: "credentiallibraries/credential_library.gen.go",
-		templates: []*template.Template{
-			clientTemplate,
-			createTemplate,
-			readTemplate,
-			updateTemplate,
-			deleteTemplate,
-			listTemplate,
-		},
-		pluralResourceName:  "credential-libraries",
-		parentTypeName:      "credential-store",
-		versionEnabled:      true,
-		createResponseTypes: true,
-	},
 	// Host related resources
 	{
 		inProto: &hostcatalogs.HostCatalog{},

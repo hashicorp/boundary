@@ -33,7 +33,11 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Create a vault-type credential store:",
 			"",
-			`      $ boundary credential-stores create vault -vault-address "http://localhost:8200" -vault-token "s.s0m3t0k3n"`,
+			`      $ boundary credential-stores create vault -scope-id p_1234567890 -vault-address "http://localhost:8200" -vault-token "s.s0m3t0k3n"`,
+			"",
+			"    Create a static-type credential store:",
+			"",
+			`      $ boundary credential-stores create static -scope-id p_1234567890`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
@@ -46,6 +50,10 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"    Update a vault-type credential store:",
 			"",
 			`      $ boundary credential-stores update vault -id csvlt_1234567890 -name devops -description "For DevOps usage"`,
+			"",
+			"    Update a static-type credential store:",
+			"",
+			`      $ boundary credential-stores update static -id cs_1234567890 -name devops -description "For DevOps usage"`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
