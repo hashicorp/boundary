@@ -27,30 +27,30 @@ func TestRepository_RunJobs(t *testing.T) {
 	server := testController(t, conn, wrapper)
 
 	tests := []struct {
-		name        string
-		serverId    string
-		job         *Job
-		wantRun     bool
-		wantErr     bool
-		wantErrCode errors.Code
-		wantErrMsg  string
+		name         string
+		ControllerId string
+		job          *Job
+		wantRun      bool
+		wantErr      bool
+		wantErrCode  errors.Code
+		wantErrMsg   string
 	}{
 		{
-			name:        "missing-server-id",
-			serverId:    "",
-			wantErr:     true,
-			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "job.(Repository).RunJobs: missing server id: parameter violation: error #100",
+			name:         "missing-server-id",
+			ControllerId: "",
+			wantErr:      true,
+			wantErrCode:  errors.InvalidParameter,
+			wantErrMsg:   "job.(Repository).RunJobs: missing server id: parameter violation: error #100",
 		},
 		{
-			name:     "no-work",
-			serverId: server.PrivateId,
-			wantRun:  false,
-			wantErr:  false,
+			name:         "no-work",
+			ControllerId: server.PrivateId,
+			wantRun:      false,
+			wantErr:      false,
 		},
 		{
-			name:     "valid",
-			serverId: server.PrivateId,
+			name:         "valid",
+			ControllerId: server.PrivateId,
 			job: &Job{
 				Job: &store.Job{
 					Name:        "valid-test",
@@ -60,8 +60,8 @@ func TestRepository_RunJobs(t *testing.T) {
 			wantRun: true,
 		},
 		{
-			name:     "fake-server-id",
-			serverId: "fake-server-id",
+			name:         "fake-server-id",
+			ControllerId: "fake-server-id",
 			job: &Job{
 				Job: &store.Job{
 					Name:        "fake-server-id-test",
@@ -84,7 +84,7 @@ func TestRepository_RunJobs(t *testing.T) {
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			got, err := repo.RunJobs(context.Background(), tt.serverId)
+			got, err := repo.RunJobs(context.Background(), tt.ControllerId)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -253,10 +253,10 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			name: "status-already-interrupted",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Interrupted.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Interrupted.string(),
 				},
 			},
 			wantErr:     true,
@@ -267,10 +267,10 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			name: "status-already-failed",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Failed.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Failed.string(),
 				},
 			},
 			wantErr:     true,
@@ -281,10 +281,10 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			name: "status-already-completed",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Completed.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Completed.string(),
 				},
 			},
 			wantErr:     true,
@@ -295,10 +295,10 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			name: "valid-no-changes",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Running.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Running.string(),
 				},
 			},
 		},
@@ -306,10 +306,10 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			name: "valid-update-total",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Running.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Running.string(),
 				},
 			},
 			args: args{
@@ -323,11 +323,11 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			name: "valid-update-completed",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Running.string(),
-					TotalCount:  10,
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Running.string(),
+					TotalCount:   10,
 				},
 			},
 			args: args{
@@ -343,10 +343,10 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			name: "valid-update-completed-and-total",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Running.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Running.string(),
 				},
 			},
 			args: args{
@@ -362,10 +362,10 @@ func TestRepository_UpdateProgress(t *testing.T) {
 			name: "invalid-completed-greater-than-total",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Running.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Running.string(),
 				},
 			},
 			args: args{
@@ -467,10 +467,10 @@ func TestRepository_CompleteRun(t *testing.T) {
 			name: "status-already-interrupted",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Interrupted.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Interrupted.string(),
 				},
 			},
 			wantErr:     true,
@@ -481,10 +481,10 @@ func TestRepository_CompleteRun(t *testing.T) {
 			name: "status-already-failed",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Failed.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Failed.string(),
 				},
 			},
 			wantErr:     true,
@@ -495,10 +495,10 @@ func TestRepository_CompleteRun(t *testing.T) {
 			name: "status-already-completed",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Completed.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Completed.string(),
 				},
 			},
 			wantErr:     true,
@@ -509,10 +509,10 @@ func TestRepository_CompleteRun(t *testing.T) {
 			name: "valid",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Running.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Running.string(),
 				},
 			},
 			nextRunIn: time.Hour,
@@ -521,10 +521,10 @@ func TestRepository_CompleteRun(t *testing.T) {
 			name: "valid-with-progress",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Running.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Running.string(),
 				},
 			},
 			args: args{completed: 10, total: 20},
@@ -631,10 +631,10 @@ func TestRepository_FailRun(t *testing.T) {
 			name: "status-already-interrupted",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Interrupted.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Interrupted.string(),
 				},
 			},
 			wantErr:     true,
@@ -645,10 +645,10 @@ func TestRepository_FailRun(t *testing.T) {
 			name: "status-already-failed",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Failed.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Failed.string(),
 				},
 			},
 			wantErr:     true,
@@ -659,10 +659,10 @@ func TestRepository_FailRun(t *testing.T) {
 			name: "status-already-completed",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Completed.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Completed.string(),
 				},
 			},
 			wantErr:     true,
@@ -673,10 +673,10 @@ func TestRepository_FailRun(t *testing.T) {
 			name: "valid",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Running.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Running.string(),
 				},
 			},
 		},
@@ -684,10 +684,10 @@ func TestRepository_FailRun(t *testing.T) {
 			name: "valid-with-progress",
 			orig: &Run{
 				JobRun: &store.JobRun{
-					JobName:     job.Name,
-					JobPluginId: job.PluginId,
-					ServerId:    server.PrivateId,
-					Status:      Running.string(),
+					JobName:      job.Name,
+					JobPluginId:  job.PluginId,
+					ControllerId: server.PrivateId,
+					Status:       Running.string(),
 				},
 			},
 			args: args{completed: 10, total: 20},
@@ -859,7 +859,7 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 	job3 := testJob(t, conn, "job3", "description", wrapper)
 
 	type args struct {
-		serverId     string
+		ControllerId string
 		opts         []Option
 		expectedJobs []*Job
 	}
@@ -872,7 +872,7 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			name: "all-runs",
 			runs: []args{
 				{
-					serverId:     server1.PrivateId,
+					ControllerId: server1.PrivateId,
 					opts:         []Option{WithRunJobsLimit(3)},
 					expectedJobs: []*Job{job1, job2, job3},
 				},
@@ -887,22 +887,22 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			name: "all-runs-on-single-server-with-server-id",
 			runs: []args{
 				{
-					serverId:     server2.PrivateId,
+					ControllerId: server2.PrivateId,
 					opts:         []Option{WithRunJobsLimit(3)},
 					expectedJobs: []*Job{job1, job2, job3},
 				},
 			},
 			interrupts: []args{
 				{
-					opts:         []Option{WithServerId(server1.PrivateId)},
+					opts:         []Option{WithControllerId(server1.PrivateId)},
 					expectedJobs: []*Job{},
 				},
 				{
-					opts:         []Option{WithServerId(server2.PrivateId)},
+					opts:         []Option{WithControllerId(server2.PrivateId)},
 					expectedJobs: []*Job{job1, job2, job3},
 				},
 				{
-					opts:         []Option{WithServerId(server3.PrivateId)},
+					opts:         []Option{WithControllerId(server3.PrivateId)},
 					expectedJobs: []*Job{},
 				},
 			},
@@ -921,15 +921,15 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			runs: []args{},
 			interrupts: []args{
 				{
-					opts:         []Option{WithServerId(server1.PrivateId)},
+					opts:         []Option{WithControllerId(server1.PrivateId)},
 					expectedJobs: []*Job{},
 				},
 				{
-					opts:         []Option{WithServerId(server2.PrivateId)},
+					opts:         []Option{WithControllerId(server2.PrivateId)},
 					expectedJobs: []*Job{},
 				},
 				{
-					opts:         []Option{WithServerId(server3.PrivateId)},
+					opts:         []Option{WithControllerId(server3.PrivateId)},
 					expectedJobs: []*Job{},
 				},
 			},
@@ -938,17 +938,17 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			name: "multiple-servers-interrupt-all",
 			runs: []args{
 				{
-					serverId:     server1.PrivateId,
+					ControllerId: server1.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{job1},
 				},
 				{
-					serverId:     server2.PrivateId,
+					ControllerId: server2.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{job2},
 				},
 				{
-					serverId:     server3.PrivateId,
+					ControllerId: server3.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{job3},
 				},
@@ -963,32 +963,32 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			name: "multiple-servers-with-server-id",
 			runs: []args{
 				{
-					serverId:     server1.PrivateId,
+					ControllerId: server1.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{job1},
 				},
 				{
-					serverId:     server2.PrivateId,
+					ControllerId: server2.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{job2},
 				},
 				{
-					serverId:     server3.PrivateId,
+					ControllerId: server3.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{job3},
 				},
 			},
 			interrupts: []args{
 				{
-					opts:         []Option{WithServerId(server1.PrivateId)},
+					opts:         []Option{WithControllerId(server1.PrivateId)},
 					expectedJobs: []*Job{job1},
 				},
 				{
-					opts:         []Option{WithServerId(server2.PrivateId)},
+					opts:         []Option{WithControllerId(server2.PrivateId)},
 					expectedJobs: []*Job{job2},
 				},
 				{
-					opts:         []Option{WithServerId(server3.PrivateId)},
+					opts:         []Option{WithControllerId(server3.PrivateId)},
 					expectedJobs: []*Job{job3},
 				},
 			},
@@ -997,32 +997,32 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			name: "multiple-servers-distributed-runs",
 			runs: []args{
 				{
-					serverId:     server1.PrivateId,
+					ControllerId: server1.PrivateId,
 					opts:         []Option{WithRunJobsLimit(2)},
 					expectedJobs: []*Job{job1, job2},
 				},
 				{
-					serverId:     server2.PrivateId,
+					ControllerId: server2.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{job3},
 				},
 				{
-					serverId:     server3.PrivateId,
+					ControllerId: server3.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{},
 				},
 			},
 			interrupts: []args{
 				{
-					opts:         []Option{WithServerId(server1.PrivateId)},
+					opts:         []Option{WithControllerId(server1.PrivateId)},
 					expectedJobs: []*Job{job1, job2},
 				},
 				{
-					opts:         []Option{WithServerId(server2.PrivateId)},
+					opts:         []Option{WithControllerId(server2.PrivateId)},
 					expectedJobs: []*Job{job3},
 				},
 				{
-					opts:         []Option{WithServerId(server3.PrivateId)},
+					opts:         []Option{WithControllerId(server3.PrivateId)},
 					expectedJobs: []*Job{},
 				},
 			},
@@ -1031,17 +1031,17 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			name: "multiple-servers-distributed-runs-interrupt-all",
 			runs: []args{
 				{
-					serverId:     server1.PrivateId,
+					ControllerId: server1.PrivateId,
 					opts:         []Option{WithRunJobsLimit(2)},
 					expectedJobs: []*Job{job1, job2},
 				},
 				{
-					serverId:     server2.PrivateId,
+					ControllerId: server2.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{job3},
 				},
 				{
-					serverId:     server3.PrivateId,
+					ControllerId: server3.PrivateId,
 					opts:         []Option{WithRunJobsLimit(1)},
 					expectedJobs: []*Job{},
 				},
@@ -1060,7 +1060,7 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 			require.NoError(err)
 
 			for _, r := range tt.runs {
-				runs, err := repo.RunJobs(context.Background(), r.serverId, r.opts...)
+				runs, err := repo.RunJobs(context.Background(), r.ControllerId, r.opts...)
 				require.NoError(err)
 				assert.Len(runs, len(r.expectedJobs))
 				sort.Slice(runs, func(i, j int) bool { return runs[i].JobName < runs[j].JobName })

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -37,10 +38,10 @@ func TestStatus(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, &store.Worker{
-		PublicId: "test_worker1",
-		Address:  "127.0.0.1",
-	})
+	serverRepo.UpsertWorker(ctx, servers.NewWorker(
+		scope.Global.String(),
+		servers.WithPublicId("test_worker1"),
+		servers.WithAddress("127.0.0.1")))
 
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
@@ -205,10 +206,10 @@ func TestStatusSessionClosed(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, &store.Worker{
-		PublicId: "test_worker1",
-		Address:  "127.0.0.1",
-	})
+	serverRepo.UpsertWorker(ctx, servers.NewWorker(
+		scope.Global.String(),
+		servers.WithPublicId("test_worker1"),
+		servers.WithAddress("127.0.0.1")))
 
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
@@ -387,10 +388,10 @@ func TestStatusDeadConnection(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, &store.Worker{
-		PublicId: "test_worker1",
-		Address:  "127.0.0.1",
-	})
+	serverRepo.UpsertWorker(ctx, servers.NewWorker(
+		scope.Global.String(),
+		servers.WithPublicId("test_worker1"),
+		servers.WithAddress("127.0.0.1")))
 
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil

@@ -1,12 +1,11 @@
 begin;
 
 -- Split the server table into two new tables: controller and worker
+
 create table server_controller (
   private_id text primary key,
   description wt_description,
-  address text not null
-    constraint address_must_not_be_empty
-      check(length(trim(address)) > 0),
+  address wt_network_address not null,
   create_time wt_timestamp,
   update_time wt_timestamp
 );
@@ -30,19 +29,25 @@ create trigger controller_update_time_column before update on server_controller
 -- workers will now be exposed as resources in boundary.
 create table server_worker (
   public_id wt_public_id primary key,
+  scope_id wt_scope_id not null
+    references iam_scope_global(scope_id)
+      on delete cascade
+      on update cascade,
   description wt_description,
   name wt_name unique,
-  address text not null
-    constraint address_must_not_be_empty
-      check(length(trim(address)) > 0),
+  -- The address can be null since it is an optional value from the API.
+  address wt_network_address,
   create_time wt_timestamp,
-  update_time wt_timestamp
+  update_time wt_timestamp,
+  version wt_version,
+  constraint server_worker_scope_id_name_uq
+    unique(scope_id, name)
 );
 comment on table server_worker  is
   'server_worker is a table where each row represents a Boundary worker.';
 
 create trigger immutable_columns before update on server_worker
-  for each row execute procedure immutable_columns('public_id','create_time');
+  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
 
 create trigger default_create_time_column before insert on server_worker
   for each row execute procedure default_create_time();
@@ -96,15 +101,39 @@ alter table session_connection
       on update cascade;
 
 -- Update job run table so that server id references controller id
+-- We are not migrating the values from server_id to controller_id. The fkey
+-- constraint says that server_id can be set to null when the server is deleted
+-- which is what this migration does (removing all records from the server table).
+-- Not migrating values make it easier to change types in the server_worker and
+-- server_controller tables (like from text to wt_public_id or text to wt_address)
+-- without having to worry about old values being valid in the new types.
+-- Finally, neither jobs nor servers are exposed out of boundary so the risk of
+-- losing data that would be useful later on is diminished.
 alter table job_run
-  drop constraint server_fkey,
+  add column controller_id wt_private_id,
+  drop column server_id;
+alter table job_run
   add constraint server_controller_fkey
-    foreign key (server_id)
+    foreign key (controller_id)
       references server_controller (private_id)
       on delete set null
       on update cascade;
 
--- Replaces the view created in 9/01 to remove references to the server/worker id.
+-- Since the above alter tables sets all controller_ids to null running jobs
+-- can no longer be reclaimed by any controller and should be considered
+-- interrupted.
+update job_run
+set
+  status = 'interrupted',
+  end_time = current_timestamp
+where
+    status = 'running';
+
+
+-- Replaces the view created in 9/01.
+-- Remove the worker id from this view.  In actuality this is almost a no-op
+-- because no server information was ever getting populated here due to a bug
+-- in the update mask when updating a session at the time we activate a session.
 create view session_list as
   select
     s.public_id, s.user_id, s.host_id, s.target_id,

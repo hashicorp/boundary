@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -181,7 +181,7 @@ func TestTofu(t testing.TB) []byte {
 }
 
 // TestWorker inserts a worker into the db to satisfy foreign key constraints.
-func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *store.Worker {
+func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Worker {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -193,11 +193,10 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	id = "test_session_worker-" + id
 
 	name := "test-worker-" + id
-	worker := &store.Worker{
-		PublicId: id,
-		Name:     name,
-		Address:  "127.0.0.1",
-	}
+	worker := servers.NewWorker(scope.Global.String(),
+		servers.WithPublicId(id),
+		servers.WithName(name),
+		servers.WithAddress("127.0.0.1"))
 	_, _, err = serversRepo.UpsertWorker(context.Background(), worker)
 	require.NoError(t, err)
 	return worker

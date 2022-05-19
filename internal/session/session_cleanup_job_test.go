@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -289,7 +288,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// updateServer is a helper for updating the update time for our
 	// servers. The controller is read back so that we can reference
 	// the most up-to-date fields.
-	updateServer := func(t *testing.T, w *store.Worker) *store.Worker {
+	updateServer := func(t *testing.T, w *servers.Worker) *servers.Worker {
 		t.Helper()
 		_, rowsUpdated, err := serversRepo.UpsertWorker(ctx, w)
 		require.NoError(err)
