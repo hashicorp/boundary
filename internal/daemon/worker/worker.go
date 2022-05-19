@@ -186,9 +186,9 @@ func (w *Worker) Start() error {
 		return err
 	}
 
-	var nodeCreds types.NodeCredentials
-	if err := nodeCreds.GenerateRegistrationParameters(w.baseContext, w.NodeeFileStorage); err != nil {
-		return err
+	nodeCreds, err := types.NewNodeCredentials(w.baseContext, w.NodeeFileStorage)
+	if err != nil {
+		return fmt.Errorf("error generating new node creds: %w", err)
 	}
 	w.NodeeKeyId, err = nodee.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 	if err != nil {
