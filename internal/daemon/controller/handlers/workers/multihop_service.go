@@ -6,8 +6,8 @@ import (
 
 	pbs "github.com/hashicorp/nodeenrollment/multihop"
 	"github.com/hashicorp/nodeenrollment/nodeauth"
-	"github.com/hashicorp/nodeenrollment/noderegistration"
-	"github.com/hashicorp/nodeenrollment/nodetls"
+	"github.com/hashicorp/nodeenrollment/registration"
+	"github.com/hashicorp/nodeenrollment/tls"
 	"github.com/hashicorp/nodeenrollment/types"
 )
 
@@ -33,7 +33,7 @@ func (m *multihopServiceServer) FetchNodeCredentials(ctx context.Context, req *t
 	if err != nil {
 		return nil, fmt.Errorf("%s: error getting current parameters: %w", op, err)
 	}
-	return noderegistration.FetchNodeCredentials(ctx, storage, req, opt...)
+	return registration.FetchNodeCredentials(ctx, storage, req, opt...)
 }
 
 func (m *multihopServiceServer) GenerateServerCertificates(ctx context.Context, req *types.GenerateServerCertificatesRequest) (*types.GenerateServerCertificatesResponse, error) {
@@ -42,5 +42,5 @@ func (m *multihopServiceServer) GenerateServerCertificates(ctx context.Context, 
 	if err != nil {
 		return nil, fmt.Errorf("%s: error getting current parameters: %w", op, err)
 	}
-	return nodetls.GenerateServerCertificates(ctx, storage, req, opt...)
+	return tls.GenerateServerCertificates(ctx, storage, req, opt...)
 }

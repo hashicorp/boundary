@@ -91,7 +91,7 @@ require github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f // this i
 
 require (
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220512190651-85bdcdd684e6
-	github.com/hashicorp/nodeenrollment v0.0.0-20220516125915-9a115b0fb887
+	github.com/hashicorp/nodeenrollment v0.0.0-20220519180751-27ee40a67a33
 )
 
 require (

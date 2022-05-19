@@ -36,7 +36,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
-	"github.com/hashicorp/nodeenrollment/noderegistration"
+	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	ua "go.uber.org/atomic"
@@ -407,5 +407,5 @@ func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 }
 
 func (c *Controller) AuthorizeNodeeWorker(keyId string) error {
-	return noderegistration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, keyId)
+	return registration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, keyId)
 }
