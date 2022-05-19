@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/types/scope"
-
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
@@ -16,12 +14,10 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -178,28 +174,6 @@ func TestTofu(t testing.TB) []byte {
 	tofu, err := base62.Random(20)
 	require.NoError(err)
 	return []byte(tofu)
-}
-
-// TestWorker inserts a worker into the db to satisfy foreign key constraints.
-func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Worker {
-	t.Helper()
-	rw := db.New(conn)
-	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
-	require.NoError(t, err)
-
-	id, err := uuid.GenerateUUID()
-	require.NoError(t, err)
-	id = "test_session_worker-" + id
-
-	name := "test-worker-" + id
-	worker := servers.NewWorker(scope.Global.String(),
-		servers.WithPublicId(id),
-		servers.WithName(name),
-		servers.WithAddress("127.0.0.1"))
-	_, _, err = serversRepo.UpsertWorker(context.Background(), worker)
-	require.NoError(t, err)
-	return worker
 }
 
 // TestCert is a temporary test func that intentionally doesn't take testing.T

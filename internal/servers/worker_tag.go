@@ -14,9 +14,13 @@ type TagSource string
 
 const (
 	ConfigurationTagSource TagSource = "configuration"
-	ApiTagSource                     = "api"
+	ApiTagSource           TagSource = "api"
 )
 
 func (t TagSource) isValid() bool {
 	return t == ConfigurationTagSource || t == ApiTagSource
+}
+
+func (t TagSource) String() string {
+	return string(t)
 }
