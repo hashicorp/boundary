@@ -86,6 +86,12 @@ type Dynamic interface {
 	Purpose() Purpose
 }
 
+// Static is a static credential that is stored directly in a credential store.
+type Static interface {
+	boundary.Resource
+	GetStoreId() string
+}
+
 // A Request represents a request for a credential from the SourceId for
 // the given purpose. For dynamic credentials, the SourceId is the PublicId
 // of a credential library.
@@ -118,8 +124,8 @@ type Password string
 // PrivateKey represents a secret private key.
 type PrivateKey []byte
 
-// UserPassword is a credential containing a username and a password.
-type UserPassword interface {
+// UsernamePassword is a credential containing a username and a password.
+type UsernamePassword interface {
 	Credential
 	Username() string
 	Password() Password

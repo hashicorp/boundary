@@ -327,14 +327,14 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			for _, dc := range got {
 				switch dc.Library().CredentialType() {
 				case credential.UsernamePasswordType:
-					if upc, ok := dc.(credential.UserPassword); ok {
+					if upc, ok := dc.(credential.UsernamePassword); ok {
 						assert.NotEmpty(upc.Username())
 						assert.NotEmpty(upc.Password())
 						break
 					}
-					assert.Fail("want UserPassword credential from library with credential type UserPassword")
+					assert.Fail("want UserPassword credential from library with credential type UsernamePassword")
 				case credential.UnspecifiedType:
-					if _, ok := dc.(credential.UserPassword); ok {
+					if _, ok := dc.(credential.UsernamePassword); ok {
 						assert.Fail("do not want UserPassword credential from library with credential type Unspecified")
 					}
 				}
