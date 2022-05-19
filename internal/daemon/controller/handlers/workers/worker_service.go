@@ -83,6 +83,8 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	wConf := servers.NewWorkerConfig(reqServer.PrivateId,
+		// TODO: Change the name to its own field to make this explicit.
+		servers.WithName(reqServer.PrivateId),
 		servers.WithAddress(reqServer.Address),
 		servers.WithWorkerTags(workerTags...))
 	controllers, _, err := serverRepo.UpsertWorkerConfig(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))

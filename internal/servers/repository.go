@@ -60,6 +60,7 @@ func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*Worker,
 // listWorkersWithReader will return a listing of resources and honor the WithLimit option or the repo
 // defaultLimit. It accepts a reader, allowing it to be used within a transaction or without.
 func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*Worker, error) {
+	const op = "workers.listWorkersWithReader"
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
@@ -79,12 +80,16 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 		[]interface{}{},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, errors.Wrap(ctx, err, "workers.listWorkersWithReader")
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
 	}
 
 	workers := make([]*Worker, 0, len(wAggs))
 	for _, a := range wAggs {
-		workers = append(workers, a.toWorker())
+		w, err := a.toWorker(ctx)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error converting workerAggregate to Worker"))
+		}
+		workers = append(workers, w)
 	}
 	return workers, nil
 }

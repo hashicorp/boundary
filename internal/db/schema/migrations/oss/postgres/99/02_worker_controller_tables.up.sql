@@ -99,8 +99,15 @@ create table server_worker_tag (
 
 -- worker_aggregate view allows the worker and configuration to be read at the
 -- same time.
--- TODO: In the future add tags to this as well.
 create view server_worker_aggregate as
+  with worker_config_tags(worker_id, tags) as (
+    select
+      ct.worker_id,
+      -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
+      string_agg(distinct concat_ws('Y', ct.key, ct.value), 'Z') as tags
+    from server_worker_tag ct
+    group by ct.worker_id
+  )
 select
   w.public_id,
   w.scope_id,
@@ -113,10 +120,16 @@ select
   wc.name as worker_config_name,
   wc.address as worker_config_address,
   wc.update_time as worker_config_update_time,
-  wc.create_time as worker_config_create_time
+  wc.create_time as worker_config_create_time,
+  -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
+  ct.tags as worker_config_tags
 from server_worker w
-  join server_worker_config wc on
-    w.public_id = wc.worker_id;
+  left join server_worker_config wc on
+    w.public_id = wc.worker_id
+  left join worker_config_tags ct on
+    w.public_id = ct.worker_id;
+comment on view server_worker_aggregate is
+'server_worker_aggregate contains the worker resource with its worker provided config values and its configuration and api provided tags.';
 
 
 -- Aaand drop server_tag

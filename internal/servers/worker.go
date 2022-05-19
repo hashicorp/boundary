@@ -1,7 +1,11 @@
 package servers
 
 import (
+	"context"
+	"strings"
+
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"google.golang.org/protobuf/proto"
 )
@@ -52,6 +56,9 @@ func (w *Worker) clone() *Worker {
 	}
 }
 
+// CanonicalAddress returns the actual address boundary believes should be used
+// to communicate with this worker.  This will be the worker resource's address
+// unless it is not set in which case it will use the worker provided address.
 func (w *Worker) CanonicalAddress() string {
 	switch {
 	case w.Address != "":
@@ -61,6 +68,27 @@ func (w *Worker) CanonicalAddress() string {
 	}
 }
 
+// CanonicalTags is the deduplicated set of tags contained on both the resource
+// set over the API as well as the tags reported by the worker itself.
+func (w *Worker) CanonicalTags() map[string][]string {
+	dedupedTags := make(map[Tag]struct{})
+	for _, t := range w.Tags {
+		dedupedTags[*t] = struct{}{}
+	}
+	if w.Config != nil {
+		for _, t := range w.Config.Tags {
+			dedupedTags[*t] = struct{}{}
+		}
+	}
+	tags := make(map[string][]string)
+	for t := range dedupedTags {
+		tags[t.Key] = append(tags[t.Key], t.Value)
+	}
+	return tags
+}
+
+// LastConnectionUpdate contains the last time the worker has reported to the
+// controller its connection status.
 func (w *Worker) LastConnectionUpdate() *timestamp.Timestamp {
 	return w.Config.GetUpdateTime()
 }
@@ -70,6 +98,8 @@ func (Worker) TableName() string {
 	return "server_worker"
 }
 
+// workerAggregate contains an aggregated view of the values associated with
+// a single worker.
 type workerAggregate struct {
 	PublicId               string `gorm:"primary_key"`
 	ScopeId                string
@@ -83,9 +113,11 @@ type workerAggregate struct {
 	WorkerConfigAddress    string
 	WorkerConfigCreateTime *timestamp.Timestamp
 	WorkerConfigUpdateTime *timestamp.Timestamp
+	WorkerConfigTags       string
 }
 
-func (a *workerAggregate) toWorker() *Worker {
+func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
+	const op = "servers.(workerAggregate).toWorker"
 	worker := NewWorker(a.ScopeId,
 		WithPublicId(a.PublicId),
 		WithName(a.Name),
@@ -95,13 +127,44 @@ func (a *workerAggregate) toWorker() *Worker {
 	worker.UpdateTime = a.UpdateTime
 	worker.Version = a.Version
 
-	cfg := NewWorkerConfig(a.PublicId,
+	configOptions := []Option{
 		WithName(a.WorkerConfigName),
-		WithAddress(a.WorkerConfigAddress))
+		WithAddress(a.WorkerConfigAddress),
+	}
+	tags, err := tagsFromAggregatedTagString(ctx, a.WorkerConfigTags)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing config tag string"))
+	}
+	if len(tags) > 0 {
+		configOptions = append(configOptions, WithWorkerTags(tags...))
+	}
+	cfg := NewWorkerConfig(a.PublicId, configOptions...)
 	cfg.CreateTime = a.WorkerConfigCreateTime
 	cfg.UpdateTime = a.WorkerConfigUpdateTime
+
 	worker.Config = cfg
-	return worker
+	return worker, nil
+}
+
+func tagsFromAggregatedTagString(ctx context.Context, s string) ([]*Tag, error) {
+	if s == "" {
+		return nil, nil
+	}
+	const op = "servers.tagsFromAggregatedTagString"
+	const aggregateDelimiter = "Z"
+	const pairDelimiter = "Y"
+	var tags []*Tag
+	for _, kv := range strings.Split(s, aggregateDelimiter) {
+		res := strings.SplitN(kv, pairDelimiter, 3)
+		if len(res) != 2 {
+			return nil, errors.New(ctx, errors.Internal, op, "invalid aggregated tag pairs")
+		}
+		tags = append(tags, &Tag{
+			Key:   res[0],
+			Value: res[1],
+		})
+	}
+	return tags, nil
 }
 
 func (a *workerAggregate) GetPublicId() string {

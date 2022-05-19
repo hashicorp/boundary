@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -894,78 +895,26 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// worker IDs below is used to contain their IDs in the same order. This is
 	// used to fetch tags for filtering. But we avoid allocation unless we
 	// actually need it.
-	var workers []*pb.WorkerInfo
-	var workerIds []string
-	hasWorkerFilter := len(t.GetWorkerFilter()) > 0
-	servers, err := serversRepo.ListWorkers(ctx)
+	selectedWorkers, err := serversRepo.ListWorkers(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, v := range servers {
-		if hasWorkerFilter {
-			workerIds = append(workerIds, v.GetPublicId())
-		}
-		workers = append(workers, &pb.WorkerInfo{Address: v.CanonicalAddress()})
-	}
 
-	if hasWorkerFilter && len(workerIds) > 0 {
-		finalWorkers := make([]*pb.WorkerInfo, 0, len(workers))
-		// Fetch the tags for the given worker IDs
-		workerTags, err := serversRepo.ListTagsForWorkers(ctx, workerIds)
-		if err != nil {
-			return nil, err
-		}
-		// Build the map for filtering. This is similar to the filter map we
-		// built from the worker config, but with one extra level: a map of the
-		// worker's ID to its filter map.
-		tagMap := make(map[string]map[string][]string)
-		for wId, tags := range workerTags {
-			currWorkerMap := tagMap[wId]
-			if currWorkerMap == nil {
-				currWorkerMap = make(map[string][]string)
-				tagMap[wId] = currWorkerMap
-			}
-			for _, tag := range tags {
-				currWorkerMap[tag.Key] = append(currWorkerMap[tag.Key], tag.Value)
-			}
-			// We don't need to reinsert after the fact because maps are
-			// reference types, so we don't need to re-insert into tagMap
-		}
-
-		// Create the evaluator
+	if len(t.GetWorkerFilter()) > 0 && len(selectedWorkers) > 0 {
 		eval, err := bexpr.CreateEvaluator(t.GetWorkerFilter())
 		if err != nil {
 			return nil, err
 		}
-
-		// Iterate through the known worker IDs, and evaluate. If evaluation
-		// returns true, add to the final worker slice, which is assigned back
-		// to workers after this.
-		for i, worker := range workerIds {
-			filterInput := map[string]interface{}{
-				"name": worker,
-				"tags": tagMap[worker],
-			}
-			ok, err := eval.Evaluate(filterInput)
-			if err != nil && !stderrors.Is(err, pointerstructure.ErrNotFound) {
-				return nil, handlers.ApiErrorWithCodeAndMessage(
-					codes.FailedPrecondition,
-					fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
-			}
-			if ok {
-				finalWorkers = append(finalWorkers, workers[i])
-			}
+		selectedWorkers, err = workerList(selectedWorkers).filtered(eval)
+		if err != nil {
+			return nil, err
 		}
-		workers = finalWorkers
 	}
-	if len(workers) == 0 {
+
+	if len(selectedWorkers) == 0 {
 		return nil, handlers.ApiErrorWithCodeAndMessage(
 			codes.FailedPrecondition,
 			"No workers are available to handle this session, or all have been filtered.")
-	}
-	workerAddresses := make([]string, 0, len(workers))
-	for _, worker := range workers {
-		workerAddresses = append(workerAddresses, worker.GetAddress())
 	}
 
 	requestedId := req.GetHostId()
@@ -1074,7 +1023,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess, workerAddresses)
+	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess, workerList(selectedWorkers).addresses())
 	if err != nil {
 		return nil, err
 	}
@@ -1202,7 +1151,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		PrivateKey:      privKey,
 		HostId:          chosenEndpoint.HostId,
 		Endpoint:        endpointUrl.String(),
-		WorkerInfo:      workers,
+		WorkerInfo:      workerList(selectedWorkers).workerInfos(),
 		ConnectionLimit: t.GetSessionConnectionLimit(),
 	}
 	marshaledSad, err := proto.Marshal(sad)
@@ -2171,4 +2120,47 @@ func credentialToProto(ctx context.Context, cred credential.Credential) (*server
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
 	}
+}
+
+// workerList is a helper type to make the selection of workers clearer and more declarative.
+type workerList []*servers.Worker
+
+// addresses converts the slice of workers to a slice of their addresses
+func (w workerList) addresses() []string {
+	ret := make([]string, 0, len(w))
+	for _, worker := range w {
+		ret = append(ret, worker.CanonicalAddress())
+	}
+	return ret
+}
+
+// workerInfos converts the slice of workers to a slice of their workerInfo protos
+func (w workerList) workerInfos() []*pb.WorkerInfo {
+	ret := make([]*pb.WorkerInfo, 0, len(w))
+	for _, worker := range w {
+		ret = append(ret, &pb.WorkerInfo{Address: worker.CanonicalAddress()})
+	}
+	return ret
+}
+
+// filtered returns a new workerList where all elements contained in it are the
+// ones which from the original workerList that pass the evaluator's evaluation.
+func (w workerList) filtered(eval *bexpr.Evaluator) (workerList, error) {
+	var ret []*servers.Worker
+	for _, worker := range w {
+		filterInput := map[string]interface{}{
+			"name": worker.GetName(),
+			"tags": worker.CanonicalTags(),
+		}
+		ok, err := eval.Evaluate(filterInput)
+		if err != nil && !stderrors.Is(err, pointerstructure.ErrNotFound) {
+			return nil, handlers.ApiErrorWithCodeAndMessage(
+				codes.FailedPrecondition,
+				fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
+		}
+		if ok {
+			ret = append(ret, worker)
+		}
+	}
+	return ret, nil
 }
