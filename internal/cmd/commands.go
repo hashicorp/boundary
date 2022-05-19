@@ -410,6 +410,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"credential-stores create static": func() (cli.Command, error) {
+			return &credentialstorescmd.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"credential-stores update": func() (cli.Command, error) {
 			return &credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
@@ -418,6 +424,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"credential-stores update vault": func() (cli.Command, error) {
 			return &credentialstorescmd.VaultCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"credential-stores update static": func() (cli.Command, error) {
+			return &credentialstorescmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

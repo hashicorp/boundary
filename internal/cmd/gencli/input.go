@@ -200,6 +200,21 @@ var inputStructs = map[string][]*cmdInfo{
 			NeedsSubtypeInCreate: true,
 			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
 		},
+		{
+			ResourceType:         resource.CredentialStore.String(),
+			Pkg:                  "credentialstores",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "static",
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
+		},
 	},
 	"credentiallibraries": {
 		{

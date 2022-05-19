@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -36,8 +37,8 @@ import (
 )
 
 var (
-	testAuthorizedActions           = []string{"no-op", "read", "update", "delete"}
-	testAuthorizedCollectionActions = map[string]*structpb.ListValue{
+	testAuthorizedActions                = []string{"no-op", "read", "update", "delete"}
+	testAuthorizedVaultCollectionActions = map[string]*structpb.ListValue{
 		"credential-libraries": {
 			Values: []*structpb.Value{
 				structpb.NewStringValue("create"),
@@ -45,6 +46,7 @@ var (
 			},
 		},
 	}
+	testAuthorizedStaticCollectionActions = map[string]*structpb.ListValue{}
 )
 
 func TestList(t *testing.T) {
@@ -60,8 +62,11 @@ func TestList(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repoFn := func() (*vault.Repository, error) {
+	vaultRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	staticRepoFn := func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(rw, rw, kms)
 	}
 
 	_, prjNoStores := iam.TestScopes(t, iamRepo)
@@ -78,7 +83,7 @@ func TestList(t *testing.T) {
 			Version:                     s.GetVersion(),
 			Type:                        vault.Subtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: testAuthorizedCollectionActions,
+			AuthorizedCollectionActions: testAuthorizedVaultCollectionActions,
 			Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 				VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 					Address:                  wrapperspb.String(s.GetVaultAddress()),
@@ -88,6 +93,20 @@ func TestList(t *testing.T) {
 					// TODO: Add all fields including tls related fields, namespace, etc...
 				},
 			},
+		})
+	}
+
+	for _, s := range credstatic.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 10) {
+		wantStores = append(wantStores, &pb.CredentialStore{
+			Id:                          s.GetPublicId(),
+			ScopeId:                     prj.GetPublicId(),
+			Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+			CreatedTime:                 s.GetCreateTime().GetTimestamp(),
+			UpdatedTime:                 s.GetUpdateTime().GetTimestamp(),
+			Version:                     s.GetVersion(),
+			Type:                        credstatic.Subtype.String(),
+			AuthorizedActions:           testAuthorizedActions,
+			AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
 		})
 	}
 
@@ -111,10 +130,16 @@ func TestList(t *testing.T) {
 			anonRes: &pbs.ListCredentialStoresResponse{},
 		},
 		{
-			name:    "Filter to One Store",
+			name:    "Filter to One Vault Store",
 			req:     &pbs.ListCredentialStoresRequest{ScopeId: prj.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantStores[1].GetId())},
 			res:     &pbs.ListCredentialStoresResponse{Items: wantStores[1:2]},
 			anonRes: &pbs.ListCredentialStoresResponse{Items: wantStores[1:2]},
+		},
+		{
+			name:    "Filter to One static Store",
+			req:     &pbs.ListCredentialStoresRequest{ScopeId: prj.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantStores[11].GetId())},
+			res:     &pbs.ListCredentialStoresResponse{Items: wantStores[11:12]},
+			anonRes: &pbs.ListCredentialStoresResponse{Items: wantStores[11:12]},
 		},
 		{
 			name:    "Filter on Attribute",
@@ -136,7 +161,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(repoFn, iamRepoFn)
+			s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -164,7 +189,7 @@ func TestList(t *testing.T) {
 	}
 }
 
-func TestCreate(t *testing.T) {
+func TestCreateVault(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -177,8 +202,11 @@ func TestCreate(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repoFn := func() (*vault.Repository, error) {
+	vaultRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	staticRepoFn := func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -344,22 +372,6 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Can't specify Update Time",
-			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
-				ScopeId:     prj.GetPublicId(),
-				UpdatedTime: timestamppb.Now(),
-				Type:        vault.Subtype.String(),
-				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
-					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
-						Address: wrapperspb.String(v.Addr),
-						Token:   wrapperspb.String(newToken()),
-					},
-				},
-			}},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
 			name: "Must specify type",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
@@ -433,7 +445,7 @@ func TestCreate(t *testing.T) {
 						},
 					},
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: testAuthorizedCollectionActions,
+					AuthorizedCollectionActions: testAuthorizedVaultCollectionActions,
 				},
 			},
 		},
@@ -474,7 +486,7 @@ func TestCreate(t *testing.T) {
 						},
 					},
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: testAuthorizedCollectionActions,
+					AuthorizedCollectionActions: testAuthorizedVaultCollectionActions,
 				},
 			},
 		},
@@ -483,7 +495,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(repoFn, iamRepoFn)
+			s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
 			require.NoError(err, "Error when getting new credential store service.")
 			defer cleanup(s)
 
@@ -533,6 +545,171 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+func TestCreateStatic(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	vaultRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	staticRepoFn := func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(rw, rw, kms)
+	}
+
+	_, prj := iam.TestScopes(t, iamRepo)
+	defaultCreated := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+
+	cleanup := func(s Service) {
+		ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
+		r, err := s.ListCredentialStores(ctx, &pbs.ListCredentialStoresRequest{ScopeId: prj.GetPublicId()})
+		require.NoError(t, err)
+		for _, i := range r.GetItems() {
+			_, err := s.DeleteCredentialStore(ctx, &pbs.DeleteCredentialStoreRequest{Id: i.GetId()})
+			require.NoError(t, err)
+		}
+	}
+
+	cases := []struct {
+		name     string
+		req      *pbs.CreateCredentialStoreRequest
+		res      *pbs.CreateCredentialStoreResponse
+		idPrefix string
+		err      error
+		wantErr  bool
+	}{
+		{
+			name: "Can't specify Id",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId: prj.GetPublicId(),
+				Id:      credstatic.CredentialStorePrefix + "_notallowed",
+				Type:    credstatic.Subtype.String(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Created Time",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId:     prj.GetPublicId(),
+				CreatedTime: timestamppb.Now(),
+				Type:        credstatic.Subtype.String(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify Update Time",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId:     prj.GetPublicId(),
+				UpdatedTime: timestamppb.Now(),
+				Type:        credstatic.Subtype.String(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Must specify type",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId: prj.GetPublicId(),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Create a valid static CredentialStore",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId: prj.GetPublicId(),
+				Type:    credstatic.Subtype.String(),
+			}},
+			idPrefix: credstatic.CredentialStorePrefix + "_",
+			res: &pbs.CreateCredentialStoreResponse{
+				Uri: fmt.Sprintf("credential-stores/%s_", credstatic.CredentialStorePrefix),
+				Item: &pb.CredentialStore{
+					ScopeId:                     prj.GetPublicId(),
+					Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:                     1,
+					Type:                        credstatic.Subtype.String(),
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid static CredentialStore with name and description",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId:     prj.GetPublicId(),
+				Name:        &wrapperspb.StringValue{Value: "name"},
+				Description: &wrapperspb.StringValue{Value: "desc"},
+				Type:        credstatic.Subtype.String(),
+			}},
+			idPrefix: credstatic.CredentialStorePrefix + "_",
+			res: &pbs.CreateCredentialStoreResponse{
+				Uri: fmt.Sprintf("credential-stores/%s_", credstatic.CredentialStorePrefix),
+				Item: &pb.CredentialStore{
+					ScopeId:                     prj.GetPublicId(),
+					Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:                     1,
+					Type:                        credstatic.Subtype.String(),
+					AuthorizedActions:           testAuthorizedActions,
+					Name:                        &wrapperspb.StringValue{Value: "name"},
+					Description:                 &wrapperspb.StringValue{Value: "desc"},
+					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
+				},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
+			require.NoError(err, "Error when getting new credential store service.")
+			defer cleanup(s)
+
+			got, gErr := s.CreateCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
+			if tc.wantErr || tc.err != nil {
+				require.Error(gErr)
+				if tc.err != nil {
+					assert.True(errors.Is(gErr, tc.err), "CreateCredentialStore(...) got error %v, wanted %v", gErr, tc.err)
+				}
+				return
+			}
+			require.NoError(gErr)
+			if tc.res == nil {
+				require.Nil(got)
+			}
+			cmpOptions := []cmp.Option{
+				protocmp.Transform(),
+				protocmp.SortRepeatedFields(got),
+			}
+			if got != nil {
+				assert.Contains(got.GetUri(), tc.res.Uri)
+				cmpOptions = append(cmpOptions, protocmp.IgnoreFields(&pbs.CreateCredentialStoreResponse{}, "uri"))
+
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), tc.idPrefix))
+				cmpOptions = append(cmpOptions, protocmp.IgnoreFields(&pb.CredentialStore{}, "id"))
+
+				gotCreateTime := got.GetItem().GetCreatedTime()
+				gotUpdateTime := got.GetItem().GetUpdatedTime()
+
+				// Verify it is a credential store created after the test setup's default credential store
+				assert.True(gotCreateTime.AsTime().After(defaultCreated.CreateTime.AsTime()), "New credential store should have been created after default credential store. Was created %v, which is after %v", gotCreateTime, defaultCreated)
+				assert.True(gotUpdateTime.AsTime().After(defaultCreated.CreateTime.AsTime()), "New credential store should have been updated after default credential store. Was updated %v, which is after %v", gotUpdateTime, defaultCreated)
+				cmpOptions = append(cmpOptions, protocmp.IgnoreFields(&pb.CredentialStore{}, "created_time"))
+				cmpOptions = append(cmpOptions, protocmp.IgnoreFields(&pb.CredentialStore{}, "updated_time"))
+			}
+			assert.Empty(cmp.Diff(got, tc.res, cmpOptions...), "CreateCredentialStore(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
 func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -544,14 +721,18 @@ func TestGet(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repoFn := func() (*vault.Repository, error) {
+	vaultRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	staticRepoFn := func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
-	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
-	s, err := NewService(repoFn, iamRepoFn)
+	vaultStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -561,33 +742,55 @@ func TestGet(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "success",
-			id:   store.GetPublicId(),
+			name: "vault success",
+			id:   vaultStore.GetPublicId(),
 			res: &pbs.GetCredentialStoreResponse{
 				Item: &pb.CredentialStore{
-					Id:                          store.GetPublicId(),
-					ScopeId:                     store.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Id:                          vaultStore.GetPublicId(),
+					ScopeId:                     vaultStore.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: vaultStore.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:                        vault.Subtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: testAuthorizedCollectionActions,
-					CreatedTime:                 store.CreateTime.GetTimestamp(),
-					UpdatedTime:                 store.UpdateTime.GetTimestamp(),
+					AuthorizedCollectionActions: testAuthorizedVaultCollectionActions,
+					CreatedTime:                 vaultStore.CreateTime.GetTimestamp(),
+					UpdatedTime:                 vaultStore.UpdateTime.GetTimestamp(),
 					Version:                     1,
 					Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 						VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
-							Address:                  wrapperspb.String(store.GetVaultAddress()),
-							TokenHmac:                base64.RawURLEncoding.EncodeToString(store.Token().GetTokenHmac()),
-							ClientCertificate:        wrapperspb.String(string(store.ClientCertificate().GetCertificate())),
-							ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(store.ClientCertificate().GetCertificateKeyHmac()),
+							Address:                  wrapperspb.String(vaultStore.GetVaultAddress()),
+							TokenHmac:                base64.RawURLEncoding.EncodeToString(vaultStore.Token().GetTokenHmac()),
+							ClientCertificate:        wrapperspb.String(string(vaultStore.ClientCertificate().GetCertificate())),
+							ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(vaultStore.ClientCertificate().GetCertificateKeyHmac()),
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "not found error",
+			name: "static success",
+			id:   staticStore.GetPublicId(),
+			res: &pbs.GetCredentialStoreResponse{
+				Item: &pb.CredentialStore{
+					Id:                          staticStore.GetPublicId(),
+					ScopeId:                     staticStore.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: staticStore.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:                        credstatic.Subtype.String(),
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
+					CreatedTime:                 staticStore.CreateTime.GetTimestamp(),
+					UpdatedTime:                 staticStore.UpdateTime.GetTimestamp(),
+					Version:                     1,
+				},
+			},
+		},
+		{
+			name: "vault not found error",
 			id:   fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
+			err:  handlers.NotFoundError(),
+		},
+		{
+			name: "static not found error",
+			id:   fmt.Sprintf("%s_1234567890", credstatic.CredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -632,14 +835,18 @@ func TestDelete(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repoFn := func() (*vault.Repository, error) {
+	vaultRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	staticRepoFn := func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
-	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)[0]
-	s, err := NewService(repoFn, iamRepoFn)
+	vaultStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)[0]
+	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -649,12 +856,21 @@ func TestDelete(t *testing.T) {
 		res  *pbs.DeleteCredentialStoreResponse
 	}{
 		{
-			name: "success",
-			id:   store.GetPublicId(),
+			name: "vault success",
+			id:   vaultStore.GetPublicId(),
 		},
 		{
-			name: "not found error",
+			name: "static success",
+			id:   staticStore.GetPublicId(),
+		},
+		{
+			name: "vault not found error",
 			id:   fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
+			err:  handlers.NotFoundError(),
+		},
+		{
+			name: "static not found error",
+			id:   fmt.Sprintf("%s_1234567890", credstatic.CredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -680,7 +896,7 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestUpdateVault(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -693,14 +909,17 @@ func TestUpdate(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repoFn := func() (*vault.Repository, error) {
+	vaultRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	staticRepoFn := func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(repoFn, iamRepoFn)
+	s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {
@@ -986,6 +1205,181 @@ func TestUpdate(t *testing.T) {
 			matcher: func(t *testing.T, err error) {
 				assert.Containsf(t, err.Error(), "cannot lookup token for updated store", "got error %v, wanted 'unable to lookup token'", err)
 			},
+		},
+	}
+	for _, tc := range roCases {
+		t.Run(fmt.Sprintf("ReadOnlyField/%s", tc.path), func(t *testing.T) {
+			req := &pbs.UpdateCredentialStoreRequest{
+				Id:         st.GetPublicId(),
+				Item:       tc.item,
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{tc.path}},
+			}
+			req.Item.Version = st.Version
+
+			got, gErr := s.UpdateCredentialStore(ctx, req)
+			assert.Error(t, gErr)
+			matcher := tc.matcher
+			if matcher == nil {
+				matcher = func(t *testing.T, e error) {
+					assert.Truef(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)), "got error %v, wanted invalid argument", gErr)
+				}
+			}
+			matcher(t, gErr)
+			assert.Nil(t, got)
+		})
+	}
+}
+
+func TestUpdateStatic(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	vaultRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(rw, rw, kms, sche)
+	}
+	staticRepoFn := func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(rw, rw, kms)
+	}
+
+	_, prj := iam.TestScopes(t, iamRepo)
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
+
+	s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
+	require.NoError(t, err)
+
+	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {
+		return &fieldmaskpb.FieldMask{Paths: paths}
+	}
+
+	freshStore := func() (*credstatic.CredentialStore, func()) {
+		t.Helper()
+		st := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+		clean := func() {
+			_, err := s.DeleteCredentialStore(ctx, &pbs.DeleteCredentialStoreRequest{Id: st.GetPublicId()})
+			require.NoError(t, err)
+		}
+		return st, clean
+	}
+
+	successCases := []struct {
+		name string
+		req  *pbs.UpdateCredentialStoreRequest
+		res  func(*pb.CredentialStore) *pb.CredentialStore
+	}{
+		{
+			name: "name",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("name"),
+				Item: &pb.CredentialStore{
+					Name: wrapperspb.String("new-name"),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Name = wrapperspb.String("new-name")
+				return out
+			},
+		},
+		{
+			name: "description",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("description"),
+				Item: &pb.CredentialStore{
+					Description: wrapperspb.String("new-description"),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Description = wrapperspb.String("new-description")
+				return out
+			},
+		},
+		{
+			name: "name-and-description",
+			req: &pbs.UpdateCredentialStoreRequest{
+				UpdateMask: fieldmask("name", "description"),
+				Item: &pb.CredentialStore{
+					Name:        wrapperspb.String("new-name"),
+					Description: wrapperspb.String("new-description"),
+				},
+			},
+			res: func(in *pb.CredentialStore) *pb.CredentialStore {
+				out := proto.Clone(in).(*pb.CredentialStore)
+				out.Name = wrapperspb.String("new-name")
+				out.Description = wrapperspb.String("new-description")
+				return out
+			},
+		},
+	}
+
+	for _, tc := range successCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			st, cleanup := freshStore()
+			defer cleanup()
+
+			if tc.req.Item.GetVersion() == 0 {
+				tc.req.Item.Version = 1
+			}
+			if tc.req.GetId() == "" {
+				tc.req.Id = st.GetPublicId()
+			}
+			resToChange, err := s.GetCredentialStore(ctx, &pbs.GetCredentialStoreRequest{Id: st.GetPublicId()})
+			require.NoError(err)
+			want := &pbs.UpdateCredentialStoreResponse{Item: tc.res(resToChange.GetItem())}
+
+			got, gErr := s.UpdateCredentialStore(ctx, tc.req)
+			require.NoError(gErr)
+			require.NotNil(got)
+
+			gotUpdateTime := got.GetItem().GetUpdatedTime()
+			created := st.GetCreateTime().GetTimestamp()
+			assert.True(gotUpdateTime.AsTime().After(created.AsTime()), "Should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+
+			want.Item.UpdatedTime = got.Item.UpdatedTime
+
+			assert.EqualValues(2, got.Item.Version)
+			want.Item.Version = 2
+
+			assert.Empty(cmp.Diff(got, want, protocmp.Transform()))
+		})
+	}
+
+	// cant update read only fields
+	st, cleanup := freshStore()
+	defer cleanup()
+
+	roCases := []struct {
+		path    string
+		item    *pb.CredentialStore
+		matcher func(t *testing.T, e error) // When not set defaults to checking against InvalidArgument Error
+	}{
+		{
+			path: "type",
+			item: &pb.CredentialStore{Type: "something"},
+		},
+		{
+			path: "scope_id",
+			item: &pb.CredentialStore{ScopeId: "global"},
+		},
+		{
+			path: "updated_time",
+			item: &pb.CredentialStore{UpdatedTime: timestamppb.Now()},
+		},
+		{
+			path: "created_time",
+			item: &pb.CredentialStore{UpdatedTime: timestamppb.Now()},
+		},
+		{
+			path: "authorized_actions",
+			item: &pb.CredentialStore{AuthorizedActions: append(testAuthorizedActions, "another")},
 		},
 	}
 	for _, tc := range roCases {
