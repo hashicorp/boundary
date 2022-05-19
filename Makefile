@@ -154,6 +154,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/scheduler/job/store/job.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
+	@protoc-go-inject-tag -input=./internal/credential/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 
