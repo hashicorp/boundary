@@ -1,6 +1,8 @@
 package servers
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 )
@@ -10,10 +12,10 @@ const (
 	WorkerPrefix = "w"
 )
 
-func newWorkerId() (string, error) {
+func newWorkerId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(WorkerPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, "vault.newCredentialStoreId")
+		return "", errors.Wrap(ctx, err, "servers.newWorkerId")
 	}
 	return id, nil
 }
