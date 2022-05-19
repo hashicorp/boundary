@@ -64,7 +64,7 @@ begin;
     password_hmac bytea not null
       constraint password_hmac_must_not_be_empty
         check(length(password_hmac) > 0),
-    dek_id text not null
+    key_id text not null
       constraint kms_data_key_version_fkey
         references kms_data_key_version (private_id)
         on delete restrict
@@ -109,5 +109,10 @@ begin;
 
   create trigger delete_credential_static_subtype after delete on credential_static_username_password_credential
     for each row execute procedure delete_credential_static_subtype();
+
+  insert into oplog_ticket (name, version)
+    values
+      ('credential_static_store', 1),
+      ('credential_static_username_password_credential', 1);
 
 commit;
