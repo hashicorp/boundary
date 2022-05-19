@@ -58,13 +58,17 @@ func (w *Worker) clone() *Worker {
 
 // CanonicalAddress returns the actual address boundary believes should be used
 // to communicate with this worker.  This will be the worker resource's address
-// unless it is not set in which case it will use the worker provided address.
+// unless it is not set in which case it will use address the worker provides
+// in its connection status updates.  If neither is available, an empty string
+// is returned.
 func (w *Worker) CanonicalAddress() string {
 	switch {
 	case w.Address != "":
 		return w.GetAddress()
-	default:
+	case w.Config != nil:
 		return w.Config.GetAddress()
+	default:
+		return ""
 	}
 }
 
@@ -88,8 +92,12 @@ func (w *Worker) CanonicalTags() map[string][]string {
 }
 
 // LastConnectionUpdate contains the last time the worker has reported to the
-// controller its connection status.
+// controller its connection status.  If the worker has never reported to a
+// controller then nil is returned.
 func (w *Worker) LastConnectionUpdate() *timestamp.Timestamp {
+	if w.Config == nil {
+		return nil
+	}
 	return w.Config.GetUpdateTime()
 }
 
@@ -127,6 +135,9 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	worker.UpdateTime = a.UpdateTime
 	worker.Version = a.Version
 
+	if a.WorkerConfigCreateTime == nil {
+		return worker, nil
+	}
 	configOptions := []Option{
 		WithName(a.WorkerConfigName),
 		WithAddress(a.WorkerConfigAddress),
