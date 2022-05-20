@@ -2,6 +2,7 @@ package servers
 
 import (
 	"context"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"math/rand"
 	"testing"
 	"time"
@@ -92,12 +93,15 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *store.Work
 	id = "test-session-worker-" + id
 
 	name := "test-worker-" + id
-	worker := &store.Worker{
-		PublicId: id,
-		Name:     name,
-		Address:  "127.0.0.1",
+	worker := &Worker{
+		Worker: &store.Worker{
+			PublicId: id,
+			Name:     name,
+			Address:  "127.0.0.1",
+			ScopeId:  scope.Global.String(),
+		},
 	}
 	_, _, err = serversRepo.UpsertWorker(context.Background(), worker)
 	require.NoError(t, err)
-	return worker
+	return worker.Worker
 }
