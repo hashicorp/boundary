@@ -2,7 +2,6 @@ package servers
 
 import (
 	"context"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"math/rand"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
