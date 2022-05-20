@@ -194,7 +194,7 @@ func TestTagUpdatingListing(t *testing.T) {
 	require.Equal(exp, tags)
 }
 
-func TestListServersWithLiveness(t *testing.T) {
+func TestListWorkersWithLiveness(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")

@@ -13,14 +13,6 @@ type Worker struct {
 	Tags []*Tag `gorm:"-"`
 }
 
-// A Tag is a custom key/value pair which can be attached to a Worker.
-// Multiple Tags may contain the same key and different values in which
-// case both key/value pairs are valid.
-type Tag struct {
-	Key   string
-	Value string
-}
-
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
 // WithAddress, and WithWorkerTags. All other options are ignored.
 func NewWorker(scopeId string, opt ...Option) *Worker {

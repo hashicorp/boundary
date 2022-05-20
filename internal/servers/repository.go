@@ -119,7 +119,8 @@ func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Re
 
 // ListTagsForWorkers returns a map from the worker's id to the list of Tags
 // that are for that worker.  All options are ignored.
-func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, opt ...Option) (map[string][]*Tag, error) {
+func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, _ ...Option) (map[string][]*Tag, error) {
+	const op = "servers.ListTagsForWorkers"
 	var workerTags []*store.WorkerTag
 	if err := r.reader.SearchWhere(
 		ctx,
@@ -128,7 +129,7 @@ func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string,
 		[]interface{}{workerIds},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, errors.Wrap(ctx, err, "servers.ListTagsForWorkers", errors.WithMsg(fmt.Sprintf("worker IDs %v", workerIds)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("worker IDs %v", workerIds)))
 	}
 
 	ret := make(map[string][]*Tag, len(workerIds))
@@ -185,7 +186,7 @@ func (r *Repository) UpsertWorker(ctx context.Context, worker *Worker, opt ...Op
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				_, err = w.Delete(ctx, &store.WorkerTag{}, db.WithWhere(deleteTagsSql, worker.GetPublicId()))
+				_, err = w.Delete(ctx, &store.WorkerTag{}, db.WithWhere(deleteConfigTagsSql, worker.GetPublicId()))
 				if err != nil {
 					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(worker.GetPublicId()))
 				}
@@ -204,6 +205,7 @@ func (r *Repository) UpsertWorker(ctx context.Context, worker *Worker, opt ...Op
 							WorkerId: worker.GetPublicId(),
 							Key:      v.Key,
 							Value:    v.Value,
+							Source:   string(ConfigurationTagSource),
 						})
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {

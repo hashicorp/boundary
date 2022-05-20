@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -358,8 +359,8 @@ func TestRepository_orphanedConnections(t *testing.T) {
 
 	// Create two "workers". One will remain untouched while the other "goes
 	// away and comes back" (worker 2).
-	worker1 := TestWorker(t, conn, wrapper)
-	worker2 := TestWorker(t, conn, wrapper)
+	worker1 := servers.TestWorker(t, conn, wrapper)
+	worker2 := servers.TestWorker(t, conn, wrapper)
 
 	// Create a few sessions on each, activate, and authorize a connection
 	var connIds []string

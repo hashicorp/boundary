@@ -59,6 +59,19 @@ create trigger worker_update_time_column before update on server_worker
   for each row execute procedure update_time_column();
 
 -- Create table worker tag
+create table server_worker_tag_enm (
+  source text primary key
+    constraint only_predefined_server_worker_tag_sources_allowed
+      check (
+          source in ('configuration', 'api')
+        )
+);
+
+insert into server_worker_tag_enm (source)
+values
+  ('configuration'),
+  ('api');
+
 create table server_worker_tag (
   worker_id wt_public_id
     constraint server_worker_fkey
@@ -67,7 +80,12 @@ create table server_worker_tag (
         on update cascade,
   key wt_tagpair,
   value wt_tagpair,
-  primary key(worker_id, key, value)
+  source text not null
+    constraint server_worker_tag_enm_fkey
+      references server_worker_tag_enm(source)
+        on delete restrict
+        on update cascade,
+  primary key(worker_id, key, value, source)
 );
 
 -- Aaand drop server_tag

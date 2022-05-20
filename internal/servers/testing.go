@@ -10,10 +10,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -39,7 +37,7 @@ func TestKkmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrappin
 	return testKey
 }
 
-func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey string) *store.RootCertificate {
+func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey string) *RootCertificate {
 	t.Helper()
 	rw := db.New(conn)
 
@@ -55,10 +53,10 @@ func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey 
 		rootCertKeys, kmsKey, CurrentState)
 	err = rw.Create(ctx, cert)
 	require.NoError(t, err)
-	return cert.RootCertificate
+	return cert
 }
 
-func TestWorkerAuth(ctx context.Context, t *testing.T, conn *db.DB, worker *store.Worker, kmsKey string) *store.WorkerAuth {
+func TestWorkerAuth(ctx context.Context, t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *WorkerAuth {
 	t.Helper()
 	rw := db.New(conn)
 	wSignPubKey := populateBytes(defaultLength)
@@ -78,30 +76,25 @@ func TestWorkerAuth(ctx context.Context, t *testing.T, conn *db.DB, worker *stor
 	err = rw.Create(ctx, workerAuth)
 	require.NoError(t, err)
 
-	return workerAuth.WorkerAuth
+	return workerAuth
 }
 
-func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *store.Worker {
+func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *Worker {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	serversRepo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	id, err := uuid.GenerateUUID()
+	id, err := newWorkerId(context.Background())
 	require.NoError(t, err)
-	id = "test-session-worker-" + id
-
 	name := "test-worker-" + id
-	worker := &Worker{
-		Worker: &store.Worker{
-			PublicId: id,
-			Name:     name,
-			Address:  "127.0.0.1",
-			ScopeId:  scope.Global.String(),
-		},
-	}
+
+	worker := NewWorker(scope.Global.String(),
+		WithPublicId(id),
+		WithName(name),
+		WithAddress("127.0.0.1"))
 	_, _, err = serversRepo.UpsertWorker(context.Background(), worker)
 	require.NoError(t, err)
-	return worker.Worker
+	return worker
 }

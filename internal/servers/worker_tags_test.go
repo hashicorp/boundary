@@ -6,19 +6,16 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/servers/store"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestWorkerTags_Create(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
 
-	workerPublicid, err := newWorkerId(context.Background())
-	require.NoError(t, err)
-	worker := NewWorker(scope.Global.String(), WithPublicId(workerPublicid))
+	worker := TestWorker(t, conn, wrapper)
 
 	tests := []struct {
 		name          string
@@ -26,12 +23,41 @@ func TestWorkerTags_Create(t *testing.T) {
 		wantCreateErr bool
 	}{
 		{
-			name: "success",
+			name: "success api source",
+			want: &store.WorkerTag{
+				WorkerId: worker.GetPublicId(),
+				Key:      "key",
+				Value:    "value",
+				Source:   ApiTagSource.String(),
+			},
+		},
+		{
+			name: "success config source",
+			want: &store.WorkerTag{
+				WorkerId: worker.GetPublicId(),
+				Key:      "key",
+				Value:    "value",
+				Source:   ConfigurationTagSource.String(),
+			},
+		},
+		{
+			name: "unknown source",
+			want: &store.WorkerTag{
+				WorkerId: worker.GetPublicId(),
+				Key:      "key",
+				Value:    "value",
+				Source:   "unknown",
+			},
+			wantCreateErr: true,
+		},
+		{
+			name: "no source",
 			want: &store.WorkerTag{
 				WorkerId: worker.GetPublicId(),
 				Key:      "key",
 				Value:    "value",
 			},
+			wantCreateErr: true,
 		},
 		{
 			name: "bad worker id",
@@ -56,6 +82,7 @@ func TestWorkerTags_Create(t *testing.T) {
 				WorkerId: worker.GetPublicId(),
 				Value:    "value",
 			},
+			wantCreateErr: true,
 		},
 		{
 			name: "missing value",
@@ -63,6 +90,7 @@ func TestWorkerTags_Create(t *testing.T) {
 				WorkerId: worker.GetPublicId(),
 				Key:      "key",
 			},
+			wantCreateErr: true,
 		},
 	}
 
@@ -72,6 +100,8 @@ func TestWorkerTags_Create(t *testing.T) {
 			err := rw.Create(context.Background(), tt.want)
 			if tt.wantCreateErr {
 				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
