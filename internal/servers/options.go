@@ -18,14 +18,19 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withAddress     string
-	withPublicId    string
-	withLimit       int
-	withLiveness    time.Duration
-	withUpdateTags  bool
-	withWorkerTags  []*Tag
+	withName                           string
+	withDescription                    string
+	withAddress                        string
+	withPublicId                       string
+	withLimit                          int
+	withLiveness                       time.Duration
+	withUpdateTags                     bool
+	withWorkerTags                     []*Tag
+	withWorkerKeyIdentifier            string
+	withWorkerKeys                     WorkerKeys
+	withControllerEncryptionPrivateKey []byte
+	withKeyId                          string
+	withNonce                          []byte
 }
 
 func getDefaultOptions() options {
@@ -91,5 +96,35 @@ func WithUpdateTags(updateTags bool) Option {
 func WithWorkerTags(tags ...*Tag) Option {
 	return func(o *options) {
 		o.withWorkerTags = tags
+	}
+}
+
+func WithWorkerKeyIdentifier(workerKeyIdentifier string) Option {
+	return func(o *options) {
+		o.withWorkerKeyIdentifier = workerKeyIdentifier
+	}
+}
+
+func WithWorkerKeys(workerKeys WorkerKeys) Option {
+	return func(o *options) {
+		o.withWorkerKeys = workerKeys
+	}
+}
+
+func WithControllerEncryptionPrivateKey(controllerKey []byte) Option {
+	return func(o *options) {
+		o.withControllerEncryptionPrivateKey = controllerKey
+	}
+}
+
+func WithKeyId(keyId string) Option {
+	return func(o *options) {
+		o.withKeyId = keyId
+	}
+}
+
+func WithNonce(nonce []byte) Option {
+	return func(o *options) {
+		o.withNonce = nonce
 	}
 }

@@ -65,4 +65,49 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withWorkerTags = tags
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithWorkerKeys", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+
+		keys := WorkerKeys{
+			workerEncryptionPubKey: populateBytes(20),
+			workerSigningPubKey:    populateBytes(20),
+		}
+
+		opts := getOpts(WithWorkerKeys(keys))
+		testOpts = getDefaultOptions()
+		testOpts.withWorkerKeys = keys
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithControllerEncryptionPrivateKey", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+
+		key := populateBytes(20)
+
+		opts := getOpts(WithControllerEncryptionPrivateKey(key))
+		testOpts = getDefaultOptions()
+		testOpts.withControllerEncryptionPrivateKey = key
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithKeyId", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+
+		opts := getOpts(WithKeyId("hi i'm another key id"))
+		testOpts = getDefaultOptions()
+		testOpts.withKeyId = "hi i'm another key id"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithNonce", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+
+		nonce := populateBytes(20)
+
+		opts := getOpts(WithNonce(nonce))
+		testOpts = getDefaultOptions()
+		testOpts.withNonce = nonce
+		assert.Equal(opts, testOpts)
+	})
 }
