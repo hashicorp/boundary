@@ -109,6 +109,7 @@ type workerAggregate struct {
 	UpdateTime             *timestamp.Timestamp
 	Address                string
 	Version                uint32
+	ApiTags                string
 	WorkerStatusName       string
 	WorkerStatusAddress    string
 	WorkerStatusCreateTime *timestamp.Timestamp
@@ -118,11 +119,20 @@ type workerAggregate struct {
 
 func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	const op = "servers.(workerAggregate).toWorker"
-	worker := NewWorker(a.ScopeId,
+	workerOptions := []Option{
 		WithPublicId(a.PublicId),
 		WithName(a.Name),
 		WithDescription(a.Description),
-		WithAddress(a.Address))
+		WithAddress(a.Address),
+	}
+	tags, err := tagsFromAggregatedTagString(ctx, a.ApiTags)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing config tag string"))
+	}
+	if len(tags) > 0 {
+		workerOptions = append(workerOptions, WithWorkerTags(tags...))
+	}
+	worker := NewWorker(a.ScopeId, workerOptions...)
 	worker.CreateTime = a.CreateTime
 	worker.UpdateTime = a.UpdateTime
 	worker.Version = a.Version
@@ -134,7 +144,7 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 		WithName(a.WorkerStatusName),
 		WithAddress(a.WorkerStatusAddress),
 	}
-	tags, err := tagsFromAggregatedTagString(ctx, a.WorkerConfigTags)
+	tags, err = tagsFromAggregatedTagString(ctx, a.WorkerConfigTags)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing config tag string"))
 	}

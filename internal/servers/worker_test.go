@@ -112,6 +112,7 @@ func TestWorkerAggregate(t *testing.T) {
 				WorkerId: id,
 				Key:      "key",
 				Value:    "val",
+				Source:   ConfigurationTagSource.String(),
 			}))
 
 		got := getAggWorker(id)
@@ -134,16 +135,19 @@ func TestWorkerAggregate(t *testing.T) {
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val",
+			Source:   ConfigurationTagSource.String(),
 		}))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
 			WorkerId: id,
 			Key:      "key",
 			Value:    "val2",
+			Source:   ConfigurationTagSource.String(),
 		}))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
 			WorkerId: id,
 			Key:      "key2",
 			Value:    "val2",
+			Source:   ConfigurationTagSource.String(),
 		}))
 
 		got := getAggWorker(id)
@@ -153,6 +157,68 @@ func TestWorkerAggregate(t *testing.T) {
 			{Key: "key", Value: "val"},
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
+		})
+	}
+
+	// Worker with an api tag
+	{
+		id, err := newWorkerId(ctx)
+		require.NoError(t, err)
+		require.NoError(t, rw.Create(ctx,
+			NewWorker(scope.Global.String(), WithPublicId(id))))
+		require.NoError(t, rw.Create(ctx,
+			NewWorkerStatus(id, WithAddress("address"))))
+		require.NoError(t, rw.Create(ctx,
+			&store.WorkerTag{
+				WorkerId: id,
+				Key:      "key",
+				Value:    "val",
+				Source:   ApiTagSource.String(),
+			}))
+
+		got := getAggWorker(id)
+		assert.Equal(t, id, got.GetPublicId())
+		assert.Equal(t, uint32(1), got.GetVersion())
+		assert.NotNil(t, got.ReportedStatus)
+		assert.Empty(t, got.ReportedStatus.Tags)
+		assert.Equal(t, got.Tags, []*Tag{{Key: "key", Value: "val"}})
+	}
+
+	// Worker with mix of tag sources
+	{
+		id, err := newWorkerId(ctx)
+		require.NoError(t, err)
+		require.NoError(t, rw.Create(ctx,
+			NewWorker(scope.Global.String(), WithPublicId(id))))
+		require.NoError(t, rw.Create(ctx,
+			NewWorkerStatus(id, WithAddress("address"))))
+		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+			WorkerId: id,
+			Key:      "key",
+			Value:    "val",
+			Source:   ConfigurationTagSource.String(),
+		}))
+		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+			WorkerId: id,
+			Key:      "key",
+			Value:    "val2",
+			Source:   ApiTagSource.String(),
+		}))
+		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
+			WorkerId: id,
+			Key:      "key2",
+			Value:    "val2",
+			Source:   ApiTagSource.String(),
+		}))
+
+		got := getAggWorker(id)
+		require.NotNil(t, got.ReportedStatus)
+		assert.ElementsMatch(t, got.Tags, []*Tag{
+			{Key: "key", Value: "val2"},
+			{Key: "key2", Value: "val2"},
+		})
+		assert.ElementsMatch(t, got.ReportedStatus.Tags, []*Tag{
+			{Key: "key", Value: "val"},
 		})
 	}
 }

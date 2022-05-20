@@ -233,7 +233,7 @@ func TestTagUpdatingListing(t *testing.T) {
 	require.NoError(err)
 	ctx := context.Background()
 
-	wConf := servers.NewWorkerStatus("test_worker_1",
+	wStatus := servers.NewWorkerStatus("test_worker_1",
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -245,10 +245,10 @@ func TestTagUpdatingListing(t *testing.T) {
 				Value: "value2",
 			}))
 
-	_, _, err = repo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerStatus(ctx, wStatus, servers.WithUpdateTags(true))
 	require.NoError(err)
 
-	wConf = servers.NewWorkerStatus("test_worker_2",
+	wStatus = servers.NewWorkerStatus("test_worker_2",
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -259,7 +259,7 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag2",
 				Value: "value2",
 			}))
-	_, _, err = repo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerStatus(ctx, wStatus, servers.WithUpdateTags(true))
 	require.NoError(err)
 
 	tags, err := repo.ListTagsForWorkers(ctx, []string{"test_worker_1", "test_worker_2"})
@@ -290,7 +290,7 @@ func TestTagUpdatingListing(t *testing.T) {
 	require.Equal(exp, tags)
 
 	// Update without saying to update tags
-	wConf = servers.NewWorkerStatus("test_worker_2",
+	wStatus = servers.NewWorkerStatus("test_worker_2",
 		servers.WithAddress("192.168.1.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -301,14 +301,14 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag22",
 				Value: "value22",
 			}))
-	_, _, err = repo.UpsertWorkerStatus(ctx, wConf)
+	_, _, err = repo.UpsertWorkerStatus(ctx, wStatus)
 	require.NoError(err)
 	tags, err = repo.ListTagsForWorkers(ctx, []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)
 	require.Equal(exp, tags)
 
 	// Update tags and test again
-	_, _, err = repo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(true))
+	_, _, err = repo.UpsertWorkerStatus(ctx, wStatus, servers.WithUpdateTags(true))
 	require.NoError(err)
 	tags, err = repo.ListTagsForWorkers(ctx, []string{"test_worker_1", "test_worker_2"})
 	require.NoError(err)

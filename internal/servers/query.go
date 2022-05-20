@@ -6,6 +6,7 @@ const (
 	delete 
 	from server_worker_tag 
 	where 
-	  source = 'configuration' and
-	  and worker_id = ?`
+	  	source = 'configuration'
+	  and
+		worker_id = ?`
 )

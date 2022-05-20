@@ -188,7 +188,7 @@ func TestCloseConnections_ManuallyDeletedConfig(t *testing.T) {
 	job, err := newSessionConnectionCleanupJob(rw, deadWorkerConnCloseMinGrace)
 	require.NoError(err)
 
-	worker := TestWorker(t, conn, wrapper)
+	worker := servers.TestWorker(t, conn, wrapper)
 	sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithDbOpts(db.WithSkipVetForWrite(true)))
 	sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
 	require.NoError(err)
