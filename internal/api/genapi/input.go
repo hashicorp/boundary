@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
@@ -435,6 +436,43 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: true,
 	},
+	{
+		inProto:     &credentials.UserPasswordAttributes{},
+		outFile:     "credentials/user_password_attributes.gen.go",
+		subtypeName: "UserPasswordCredential",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Username",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Password",
+				SkipDefault: true,
+			},
+			{
+				Name:        "PasswordHmac",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
+		inProto: &credentials.Credential{},
+		outFile: "credentials/credential.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			createTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "credentials",
+		parentTypeName:      "credential-store",
+		versionEnabled:      true,
+		createResponseTypes: true,
+		typeOnCreate:        true,
+	},
+
 	// Host related resources
 	{
 		inProto: &hostcatalogs.HostCatalog{},

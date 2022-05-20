@@ -25,6 +25,7 @@ const (
 	ManagedGroup
 	CredentialStore
 	CredentialLibrary
+	Credential
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
@@ -57,6 +58,7 @@ func (r Type) String() string {
 		"managed-group",
 		"credential-store",
 		"credential-library",
+		"credential",
 	}[r]
 }
 
@@ -89,4 +91,5 @@ var Map = map[string]Type{
 	ManagedGroup.String():      ManagedGroup,
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
+	Credential.String():        Credential,
 }

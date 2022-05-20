@@ -108,7 +108,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 func Test_ValidateType(t *testing.T) {
 	t.Parallel()
 	var g Grant
-	for i := resource.Unknown; i <= resource.CredentialLibrary; i++ {
+	for i := resource.Unknown; i <= resource.Credential; i++ {
 		g.typ = i
 		if i == resource.Controller || i == resource.Worker {
 			assert.Error(t, g.validateType())

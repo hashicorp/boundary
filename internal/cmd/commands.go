@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentiallibrariescmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/credentialscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentialstorescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
@@ -430,6 +431,54 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"credential-stores update static": func() (cli.Command, error) {
 			return &credentialstorescmd.StaticCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+
+		"credentials": func() (cli.Command, error) {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"credentials read": func() (cli.Command, error) {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"credentials delete": func() (cli.Command, error) {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"credentials list": func() (cli.Command, error) {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"credentials create": func() (cli.Command, error) {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"credentials create user-password": func() (cli.Command, error) {
+			return &credentialscmd.UserpasswordCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"credentials update": func() (cli.Command, error) {
+			return &credentialscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"credentials update user-password": func() (cli.Command, error) {
+			return &credentialscmd.UserpasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
