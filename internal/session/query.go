@@ -324,9 +324,15 @@ where
 	closeConnectionsForDeadServersCte = `
    with
    dead_workers (worker_id, last_update_time) as (
-         select worker_id, update_time
-           from server_worker_config
-          where update_time < wt_sub_seconds_from_now(@grace_period_seconds)
+         select
+			w.public_id as worker_id,
+			wc.update_time as last_update_time
+           from server_worker w
+			left join server_worker_config wc
+				on w.public_id = wc.worker_id
+          where
+			wc.update_time is null
+			or wc.update_time < wt_sub_seconds_from_now(@grace_period_seconds)
    ),
    closed_connections (connection_id, worker_id) as (
          update session_connection
@@ -336,7 +342,7 @@ where
       returning public_id, worker_id
    )
    select closed_connections.worker_id,
-          dead_workers.last_update_time,
+          coalesce(dead_workers.last_update_time, current_timestamp) as last_update_time,
           count(closed_connections.connection_id) as number_connections_closed
      from closed_connections
      join dead_workers

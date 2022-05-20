@@ -168,6 +168,61 @@ func TestSessionConnectionCleanupJobNewJobErr(t *testing.T) {
 	require.Nil(job)
 }
 
+func TestCloseConnections_ManuallyDeletedConfig(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(err)
+	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	serversRepo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(err)
+
+	gracePeriod := 1 * time.Second
+	job, err := newSessionConnectionCleanupJob(rw, deadWorkerConnCloseMinGrace)
+	require.NoError(err)
+
+	worker := TestWorker(t, conn, wrapper)
+	sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithDbOpts(db.WithSkipVetForWrite(true)))
+	sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
+	require.NoError(err)
+	c, cs, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), worker.GetPublicId())
+	require.NoError(err)
+	require.Len(cs, 1)
+	require.Equal(StatusAuthorized, cs[0].Status)
+
+	_, cs, err = connRepo.ConnectConnection(ctx, ConnectWith{
+		ConnectionId:       c.GetPublicId(),
+		ClientTcpAddress:   "127.0.0.1",
+		ClientTcpPort:      22,
+		EndpointTcpAddress: "127.0.0.1",
+		EndpointTcpPort:    22,
+		UserClientIp:       "127.0.0.1",
+	})
+
+	// The single worker's connections aren't cleaned up
+	_, _, err = serversRepo.UpsertWorkerConfig(ctx, worker.Config)
+	assert.NoError(t, err)
+	result, err := job.closeConnectionsForDeadWorkers(ctx, gracePeriod)
+	require.NoError(err)
+	require.Empty(result)
+
+	// the manually deleted status causes the connections to be cleaned
+	_, _, err = serversRepo.UpsertWorkerConfig(ctx, worker.Config)
+	assert.NoError(t, err)
+	_, err = rw.Delete(ctx, worker.Config)
+	assert.NoError(t, err)
+	result, err = job.closeConnectionsForDeadWorkers(ctx, gracePeriod)
+	require.NoError(err)
+	require.Len(result, 1)
+}
+
 func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

@@ -149,14 +149,14 @@ type WorkerTag struct {
 	unknownFields protoimpl.UnknownFields
 
 	// worker_id is the public key that key of the worker this tag is for.
-	// @inject_tag: `gorm:"default:null"`
-	WorkerId string `protobuf:"bytes,10,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"primary_key"`
+	WorkerId string `protobuf:"bytes,10,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" gorm:"primary_key"`
 	// key is the key of the tag. This must be set.
-	// @inject_tag: `gorm:"default:null"`
-	Key string `protobuf:"bytes,20,opt,name=key,proto3" json:"key,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"primary_key"`
+	Key string `protobuf:"bytes,20,opt,name=key,proto3" json:"key,omitempty" gorm:"primary_key"`
 	// value is the value
-	// @inject_tag: `gorm:"default:null"`
-	Value string `protobuf:"bytes,30,opt,name=value,proto3" json:"value,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"primary_key"`
+	Value string `protobuf:"bytes,30,opt,name=value,proto3" json:"value,omitempty" gorm:"primary_key"`
 }
 
 func (x *WorkerTag) Reset() {
@@ -220,8 +220,8 @@ type WorkerConfig struct {
 	unknownFields protoimpl.UnknownFields
 
 	// worker_id is the public key that key of the worker this tag is for.
-	// @inject_tag: `gorm:"default:null"`
-	WorkerId string `protobuf:"bytes,10,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"primary_key"`
+	WorkerId string `protobuf:"bytes,10,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" gorm:"primary_key"`
 	// The create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,20,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`

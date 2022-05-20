@@ -49,11 +49,11 @@ message WorkerTag {
   string worker_id = 10;
 
   // key is the key of the tag. This must be set.
-  // @inject_tag: `gorm:"default:null"`
+  // @inject_tag: `gorm:"primary_key"`
   string key = 20;
 
   // value is the value
-  // @inject_tag: `gorm:"default:null"`
+  // @inject_tag: `gorm:"primary_key"`
   string value = 30;
 }
 
