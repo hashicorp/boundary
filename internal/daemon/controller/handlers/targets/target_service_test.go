@@ -40,7 +40,7 @@ func TestWorkerList_Filter(t *testing.T) {
 				Key:   fmt.Sprintf("key%d", i),
 				Value: fmt.Sprintf("value%d", i),
 			}))
-		w.Config = servers.NewWorkerConfig("",
+		w.ReportedStatus = servers.NewWorkerStatus("",
 			servers.WithName(fmt.Sprintf("config%d", i)),
 			servers.WithWorkerTags(&servers.Tag{
 				Key: "key",

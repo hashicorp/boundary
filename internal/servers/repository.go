@@ -69,7 +69,7 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 
 	var where string
 	if liveness > 0 {
-		where = fmt.Sprintf("worker_config_update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
+		where = fmt.Sprintf("worker_status_update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
 	}
 
 	var wAggs []*workerAggregate
@@ -148,18 +148,18 @@ func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string,
 	return ret, nil
 }
 
-// UpsertWorkerConfig creates a new worker if one with the provided public id doesn't
-// already exist. If it does, UpsertWorkerConfig updates the worker. The
+// UpsertWorkerStatus creates a new worker if one with the provided public id doesn't
+// already exist. If it does, UpsertWorkerStatus updates the worker. The
 // WithUpdateTags option is the only one used. All others are ignored.
-func (r *Repository) UpsertWorkerConfig(ctx context.Context, workerConf *WorkerConfig, opt ...Option) ([]*store.Controller, int, error) {
-	const op = "servers.UpsertWorkerConfig"
+func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStatus, opt ...Option) ([]*store.Controller, int, error) {
+	const op = "servers.UpsertWorkerStatus"
 
 	switch {
-	case workerConf == nil:
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "workerConf is nil")
-	case workerConf.Address == "":
+	case wStatus == nil:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "wStatus is nil")
+	case wStatus.Address == "":
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "address is empty")
-	case workerConf.WorkerId == "":
+	case wStatus.WorkerId == "":
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker id is empty")
 	}
 
@@ -172,12 +172,13 @@ func (r *Repository) UpsertWorkerConfig(ctx context.Context, workerConf *WorkerC
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			workerOps := []Option{WithPublicId(workerConf.GetWorkerId())}
-			if workerConf.GetName() != "" {
+			workerOps := []Option{WithPublicId(wStatus.GetWorkerId())}
+			if wStatus.GetName() != "" {
 				// If this worker doesn't exist yet, that means it is a KMS only worker.
 				// KMS workers have their resource name set to the name provided in the config at
 				// creation time.
-				workerOps = append(workerOps, WithName(workerConf.GetName()))
+				// TODO (talanknight): Decide if this is actually the desired behavior.
+				workerOps = append(workerOps, WithName(wStatus.GetName()))
 			}
 			worker := NewWorker(scope.Global.String(), workerOps...)
 			workerCreateConflict := &db.OnConflict{
@@ -193,7 +194,7 @@ func (r *Repository) UpsertWorkerConfig(ctx context.Context, workerConf *WorkerC
 				Target: db.Columns{"worker_id"},
 				Action: append(db.SetColumns([]string{"name", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
 			}
-			err = w.Create(ctx, workerConf, db.WithOnConflict(onConfigConflict), db.WithReturnRowsAffected(&rowsUpdated))
+			err = w.Create(ctx, wStatus, db.WithOnConflict(onConfigConflict), db.WithReturnRowsAffected(&rowsUpdated))
 			if err != nil {
 				return errors.Wrap(ctx, err, op+":Upsert")
 			}
@@ -209,29 +210,29 @@ func (r *Repository) UpsertWorkerConfig(ctx context.Context, workerConf *WorkerC
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				_, err = w.Delete(ctx, &store.WorkerTag{}, db.WithWhere(deleteTagsSql, workerConf.GetWorkerId()))
+				_, err = w.Exec(ctx, deleteTagsByWorkerIdSql, []interface{}{wStatus.GetWorkerId()})
 				if err != nil {
-					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(workerConf.GetWorkerId()))
+					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(wStatus.GetWorkerId()))
 				}
 
 				// If tags were cleared out entirely, then we'll have nothing
 				// to do here, e.g., it will result in deletion of all tags.
 				// Otherwise, go through and stage each tuple for insertion
 				// below.
-				if len(workerConf.Tags) > 0 {
-					tags := make([]interface{}, 0, len(workerConf.Tags))
-					for _, v := range workerConf.Tags {
+				if len(wStatus.Tags) > 0 {
+					tags := make([]interface{}, 0, len(wStatus.Tags))
+					for _, v := range wStatus.Tags {
 						if v == nil {
-							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s", workerConf.GetWorkerId()))
+							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s", wStatus.GetWorkerId()))
 						}
 						tags = append(tags, &store.WorkerTag{
-							WorkerId: workerConf.GetWorkerId(),
+							WorkerId: wStatus.GetWorkerId(),
 							Key:      v.Key,
 							Value:    v.Value,
 						})
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {
-						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(workerConf.GetWorkerId()))
+						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(wStatus.GetWorkerId()))
 					}
 				}
 			}

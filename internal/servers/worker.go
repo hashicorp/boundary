@@ -16,8 +16,8 @@ import (
 type Worker struct {
 	*store.Worker
 
-	Config *WorkerConfig `gorm:"-"`
-	Tags   []*Tag        `gorm:"-"`
+	ReportedStatus *WorkerStatus `gorm:"-"`
+	Tags           []*Tag        `gorm:"-"`
 }
 
 // A Tag is a custom key/value pair which can be attached to a Worker.
@@ -65,8 +65,8 @@ func (w *Worker) CanonicalAddress() string {
 	switch {
 	case w.Address != "":
 		return w.GetAddress()
-	case w.Config != nil:
-		return w.Config.GetAddress()
+	case w.ReportedStatus != nil:
+		return w.ReportedStatus.GetAddress()
 	default:
 		return ""
 	}
@@ -79,8 +79,8 @@ func (w *Worker) CanonicalTags() map[string][]string {
 	for _, t := range w.Tags {
 		dedupedTags[*t] = struct{}{}
 	}
-	if w.Config != nil {
-		for _, t := range w.Config.Tags {
+	if w.ReportedStatus != nil {
+		for _, t := range w.ReportedStatus.Tags {
 			dedupedTags[*t] = struct{}{}
 		}
 	}
@@ -95,10 +95,10 @@ func (w *Worker) CanonicalTags() map[string][]string {
 // controller its connection status.  If the worker has never reported to a
 // controller then nil is returned.
 func (w *Worker) LastConnectionUpdate() *timestamp.Timestamp {
-	if w.Config == nil {
+	if w.ReportedStatus == nil {
 		return nil
 	}
-	return w.Config.GetUpdateTime()
+	return w.ReportedStatus.GetUpdateTime()
 }
 
 // TableName overrides the table name used by Worker to `server_worker`
@@ -117,10 +117,10 @@ type workerAggregate struct {
 	UpdateTime             *timestamp.Timestamp
 	Address                string
 	Version                uint32
-	WorkerConfigName       string
-	WorkerConfigAddress    string
-	WorkerConfigCreateTime *timestamp.Timestamp
-	WorkerConfigUpdateTime *timestamp.Timestamp
+	WorkerStatusName       string
+	WorkerStatusAddress    string
+	WorkerStatusCreateTime *timestamp.Timestamp
+	WorkerStatusUpdateTime *timestamp.Timestamp
 	WorkerConfigTags       string
 }
 
@@ -135,25 +135,25 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	worker.UpdateTime = a.UpdateTime
 	worker.Version = a.Version
 
-	if a.WorkerConfigCreateTime == nil {
+	if a.WorkerStatusCreateTime == nil {
 		return worker, nil
 	}
-	configOptions := []Option{
-		WithName(a.WorkerConfigName),
-		WithAddress(a.WorkerConfigAddress),
+	statusOptions := []Option{
+		WithName(a.WorkerStatusName),
+		WithAddress(a.WorkerStatusAddress),
 	}
 	tags, err := tagsFromAggregatedTagString(ctx, a.WorkerConfigTags)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing config tag string"))
 	}
 	if len(tags) > 0 {
-		configOptions = append(configOptions, WithWorkerTags(tags...))
+		statusOptions = append(statusOptions, WithWorkerTags(tags...))
 	}
-	cfg := NewWorkerConfig(a.PublicId, configOptions...)
-	cfg.CreateTime = a.WorkerConfigCreateTime
-	cfg.UpdateTime = a.WorkerConfigUpdateTime
+	cfg := NewWorkerStatus(a.PublicId, statusOptions...)
+	cfg.CreateTime = a.WorkerStatusCreateTime
+	cfg.UpdateTime = a.WorkerStatusUpdateTime
 
-	worker.Config = cfg
+	worker.ReportedStatus = cfg
 	return worker, nil
 }
 

@@ -57,9 +57,9 @@ message WorkerTag {
   string value = 30;
 }
 
-// WorkerConfig contains the fields that the worker reports to the controller
-// as values associated with itself.
-message WorkerConfig {
+// WorkerStatus contains the fields that the worker reports to the controller
+// in its status  updates.
+message WorkerStatus {
   // worker_id is the public key that key of the worker this tag is for.
   // @inject_tag: `gorm:"primary_key"`
   string worker_id = 10;

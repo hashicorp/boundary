@@ -31,7 +31,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorkerConfig(ctx, servers.NewWorkerConfig(
+	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
 		"test_worker1",
 		servers.WithAddress("127.0.0.1")))
 

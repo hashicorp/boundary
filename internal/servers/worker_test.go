@@ -16,8 +16,8 @@ import (
 
 func TestWorkerCanonicalAddress(t *testing.T) {
 	worker := NewWorker(scope.Global.String())
-	worker.Config = NewWorkerConfig("foo", WithAddress("config"))
-	assert.Equal(t, "config", worker.CanonicalAddress())
+	worker.ReportedStatus = NewWorkerStatus("foo", WithAddress("status"))
+	assert.Equal(t, "status", worker.CanonicalAddress())
 	worker.Address = "worker"
 	assert.Equal(t, "worker", worker.CanonicalAddress())
 }
@@ -29,7 +29,7 @@ func TestWorkerCanonicalTags(t *testing.T) {
 			&Tag{Key: "key", Value: "shared"},
 			&Tag{Key: "key2", Value: "apis key2 unique"},
 		))
-	w.Config = NewWorkerConfig("",
+	w.ReportedStatus = NewWorkerStatus("",
 		WithWorkerTags(
 			&Tag{Key: "key", Value: "configs unique"},
 			&Tag{Key: "key", Value: "shared"},
@@ -57,7 +57,7 @@ func TestWorkerAggregate(t *testing.T) {
 		return got
 	}
 
-	// Worker without a config
+	// Worker without a status
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
@@ -73,30 +73,30 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, id, got.GetName())
 		assert.Equal(t, "address", got.GetAddress())
 		assert.Equal(t, uint32(1), got.GetVersion())
-		assert.Nil(t, got.Config)
+		assert.Nil(t, got.ReportedStatus)
 		assert.Empty(t, got.CanonicalTags())
 	}
 
-	// Worker with config
+	// Worker with status
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
 		require.NoError(t, rw.Create(ctx,
 			NewWorker(scope.Global.String(), WithPublicId(id))))
 		require.NoError(t, rw.Create(ctx,
-			NewWorkerConfig(id,
+			NewWorkerStatus(id,
 				WithAddress("address"),
 				WithName(id))))
 
 		got := getAggWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
-		assert.NotNil(t, got.Config)
-		assert.Equal(t, id, got.Config.GetWorkerId())
-		assert.Equal(t, id, got.Config.GetName())
-		assert.NotNil(t, got.Config.CreateTime)
-		assert.NotNil(t, got.Config.UpdateTime)
-		assert.Equal(t, "address", got.Config.GetAddress())
+		assert.NotNil(t, got.ReportedStatus)
+		assert.Equal(t, id, got.ReportedStatus.GetWorkerId())
+		assert.Equal(t, id, got.ReportedStatus.GetName())
+		assert.NotNil(t, got.ReportedStatus.CreateTime)
+		assert.NotNil(t, got.ReportedStatus.UpdateTime)
+		assert.Equal(t, "address", got.ReportedStatus.GetAddress())
 	}
 
 	// Worker with a config tag
@@ -106,7 +106,7 @@ func TestWorkerAggregate(t *testing.T) {
 		require.NoError(t, rw.Create(ctx,
 			NewWorker(scope.Global.String(), WithPublicId(id))))
 		require.NoError(t, rw.Create(ctx,
-			NewWorkerConfig(id, WithAddress("address"))))
+			NewWorkerStatus(id, WithAddress("address"))))
 		require.NoError(t, rw.Create(ctx,
 			&store.WorkerTag{
 				WorkerId: id,
@@ -117,9 +117,9 @@ func TestWorkerAggregate(t *testing.T) {
 		got := getAggWorker(id)
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
-		assert.NotNil(t, got.Config)
+		assert.NotNil(t, got.ReportedStatus)
 		assert.Empty(t, got.Tags)
-		assert.Equal(t, got.Config.Tags, []*Tag{{Key: "key", Value: "val"}})
+		assert.Equal(t, got.ReportedStatus.Tags, []*Tag{{Key: "key", Value: "val"}})
 	}
 
 	// Worker with many config tag
@@ -129,7 +129,7 @@ func TestWorkerAggregate(t *testing.T) {
 		require.NoError(t, rw.Create(ctx,
 			NewWorker(scope.Global.String(), WithPublicId(id))))
 		require.NoError(t, rw.Create(ctx,
-			NewWorkerConfig(id, WithAddress("address"))))
+			NewWorkerStatus(id, WithAddress("address"))))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
 			WorkerId: id,
 			Key:      "key",
@@ -147,9 +147,9 @@ func TestWorkerAggregate(t *testing.T) {
 		}))
 
 		got := getAggWorker(id)
-		require.NotNil(t, got.Config)
+		require.NotNil(t, got.ReportedStatus)
 		assert.Empty(t, got.Tags)
-		assert.ElementsMatch(t, got.Config.Tags, []*Tag{
+		assert.ElementsMatch(t, got.ReportedStatus.Tags, []*Tag{
 			{Key: "key", Value: "val"},
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},

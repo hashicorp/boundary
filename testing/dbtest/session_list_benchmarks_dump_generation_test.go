@@ -131,7 +131,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			require.NoError(err)
 			serversRepo, err := servers.NewRepository(rw, rw, kms)
 			require.NoError(err)
-			_, _, err = serversRepo.UpsertWorkerConfig(ctx, servers.NewWorkerConfig(
+			_, _, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
 				"test_worker_1",
 				servers.WithAddress("127.0.0.1")))
 			require.NoError(err)

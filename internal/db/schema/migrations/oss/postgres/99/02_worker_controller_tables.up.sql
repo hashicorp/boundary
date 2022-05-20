@@ -58,7 +58,7 @@ create trigger worker_insert_time_column before insert on server_worker
 create trigger worker_update_time_column before update on server_worker
   for each row execute procedure update_time_column();
 
-create table server_worker_config (
+create table server_worker_status (
   worker_id wt_public_id primary key
     constraint server_worker_fkey
       references server_worker(public_id)
@@ -70,19 +70,19 @@ create table server_worker_config (
   address wt_network_address not null,
   name wt_name
 );
-comment on table server_worker_config  is
-  'server_worker_config is a table where each row represents values that a Boundary worker reports to a controller.';
+comment on table server_worker_status  is
+  'server_worker_status is a table where each row represents values that a Boundary worker reports to a controller.';
 
-create trigger immutable_columns before update on server_worker_config
+create trigger immutable_columns before update on server_worker_status
   for each row execute procedure immutable_columns('worker_id', 'create_time');
 
-create trigger default_create_time_column before insert on server_worker_config
+create trigger default_create_time_column before insert on server_worker_status
   for each row execute procedure default_create_time();
 
-create trigger worker_insert_time_column before insert on server_worker_config
+create trigger worker_insert_time_column before insert on server_worker_status
   for each row execute procedure update_time_column();
 
-create trigger worker_update_time_column before update on server_worker_config
+create trigger worker_update_time_column before update on server_worker_status
   for each row execute procedure update_time_column();
 
 -- Create table worker tag
@@ -117,15 +117,15 @@ select
   w.create_time,
   w.update_time,
   w.version,
-  wc.name as worker_config_name,
-  wc.address as worker_config_address,
-  wc.update_time as worker_config_update_time,
-  wc.create_time as worker_config_create_time,
+  ws.name as worker_status_name,
+  ws.address as worker_status_address,
+  ws.update_time as worker_status_update_time,
+  ws.create_time as worker_status_create_time,
   -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
   ct.tags as worker_config_tags
 from server_worker w
-  left join server_worker_config wc on
-    w.public_id = wc.worker_id
+  left join server_worker_status ws on
+    w.public_id = ws.worker_id
   left join worker_config_tags ct on
     w.public_id = ct.worker_id;
 comment on view server_worker_aggregate is

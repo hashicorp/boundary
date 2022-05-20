@@ -108,7 +108,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, rowsUpdated, err := serversRepo.UpsertWorkerConfig(ctx, worker1.Config)
+	_, rowsUpdated, err := serversRepo.UpsertWorkerStatus(ctx, worker1.ReportedStatus)
 	require.NoError(err)
 	require.Equal(1, rowsUpdated)
 
@@ -207,16 +207,16 @@ func TestCloseConnections_ManuallyDeletedConfig(t *testing.T) {
 	})
 
 	// The single worker's connections aren't cleaned up
-	_, _, err = serversRepo.UpsertWorkerConfig(ctx, worker.Config)
+	_, _, err = serversRepo.UpsertWorkerStatus(ctx, worker.ReportedStatus)
 	assert.NoError(t, err)
 	result, err := job.closeConnectionsForDeadWorkers(ctx, gracePeriod)
 	require.NoError(err)
 	require.Empty(result)
 
 	// the manually deleted status causes the connections to be cleaned
-	_, _, err = serversRepo.UpsertWorkerConfig(ctx, worker.Config)
+	_, _, err = serversRepo.UpsertWorkerStatus(ctx, worker.ReportedStatus)
 	assert.NoError(t, err)
-	_, err = rw.Delete(ctx, worker.Config)
+	_, err = rw.Delete(ctx, worker.ReportedStatus)
 	assert.NoError(t, err)
 	result, err = job.closeConnectionsForDeadWorkers(ctx, gracePeriod)
 	require.NoError(err)
@@ -345,7 +345,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// the most up-to-date fields.
 	updateServer := func(t *testing.T, w *servers.Worker) *servers.Worker {
 		t.Helper()
-		_, rowsUpdated, err := serversRepo.UpsertWorkerConfig(ctx, w.Config)
+		_, rowsUpdated, err := serversRepo.UpsertWorkerStatus(ctx, w.ReportedStatus)
 		require.NoError(err)
 		require.Equal(1, rowsUpdated)
 		servers, err := serversRepo.ListWorkers(ctx)

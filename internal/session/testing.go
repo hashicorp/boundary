@@ -192,15 +192,15 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	id = "test_session_worker-" + id
 
 	name := "test-worker-" + id
-	conf := servers.NewWorkerConfig(id,
+	wStatus := servers.NewWorkerStatus(id,
 		servers.WithName(name),
 		servers.WithAddress("127.0.0.1"))
-	_, _, err = serversRepo.UpsertWorkerConfig(context.Background(), conf)
+	_, _, err = serversRepo.UpsertWorkerStatus(context.Background(), wStatus)
 	require.NoError(t, err)
 
 	wrk := servers.NewWorker(scope.Global.String(), servers.WithPublicId(id))
 	require.NoError(t, rw.LookupById(context.Background(), wrk))
-	wrk.Config = conf
+	wrk.ReportedStatus = wStatus
 
 	return wrk
 }

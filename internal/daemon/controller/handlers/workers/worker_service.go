@@ -82,12 +82,12 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
-	wConf := servers.NewWorkerConfig(reqServer.PrivateId,
+	wConf := servers.NewWorkerStatus(reqServer.PrivateId,
 		// TODO: Change the name to its own field to make this explicit.
 		servers.WithName(reqServer.PrivateId),
 		servers.WithAddress(reqServer.Address),
 		servers.WithWorkerTags(workerTags...))
-	controllers, _, err := serverRepo.UpsertWorkerConfig(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
+	controllers, _, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)

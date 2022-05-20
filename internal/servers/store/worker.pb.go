@@ -212,9 +212,9 @@ func (x *WorkerTag) GetValue() string {
 	return ""
 }
 
-// WorkerConfig contains the fields that the worker reports to the controller
-// as values associated with itself.
-type WorkerConfig struct {
+// WorkerStatus contains the fields that the worker reports to the controller
+// in its status  updates.
+type WorkerStatus struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -236,8 +236,8 @@ type WorkerConfig struct {
 	Address string `protobuf:"bytes,50,opt,name=address,proto3" json:"address,omitempty" gorm:"default:null"`
 }
 
-func (x *WorkerConfig) Reset() {
-	*x = WorkerConfig{}
+func (x *WorkerStatus) Reset() {
+	*x = WorkerStatus{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_controller_storage_servers_store_v1_worker_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -245,13 +245,13 @@ func (x *WorkerConfig) Reset() {
 	}
 }
 
-func (x *WorkerConfig) String() string {
+func (x *WorkerStatus) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*WorkerConfig) ProtoMessage() {}
+func (*WorkerStatus) ProtoMessage() {}
 
-func (x *WorkerConfig) ProtoReflect() protoreflect.Message {
+func (x *WorkerStatus) ProtoReflect() protoreflect.Message {
 	mi := &file_controller_storage_servers_store_v1_worker_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -263,40 +263,40 @@ func (x *WorkerConfig) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use WorkerConfig.ProtoReflect.Descriptor instead.
-func (*WorkerConfig) Descriptor() ([]byte, []int) {
+// Deprecated: Use WorkerStatus.ProtoReflect.Descriptor instead.
+func (*WorkerStatus) Descriptor() ([]byte, []int) {
 	return file_controller_storage_servers_store_v1_worker_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *WorkerConfig) GetWorkerId() string {
+func (x *WorkerStatus) GetWorkerId() string {
 	if x != nil {
 		return x.WorkerId
 	}
 	return ""
 }
 
-func (x *WorkerConfig) GetCreateTime() *timestamp.Timestamp {
+func (x *WorkerStatus) GetCreateTime() *timestamp.Timestamp {
 	if x != nil {
 		return x.CreateTime
 	}
 	return nil
 }
 
-func (x *WorkerConfig) GetUpdateTime() *timestamp.Timestamp {
+func (x *WorkerStatus) GetUpdateTime() *timestamp.Timestamp {
 	if x != nil {
 		return x.UpdateTime
 	}
 	return nil
 }
 
-func (x *WorkerConfig) GetName() string {
+func (x *WorkerStatus) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *WorkerConfig) GetAddress() string {
+func (x *WorkerStatus) GetAddress() string {
 	if x != nil {
 		return x.Address
 	}
@@ -340,8 +340,8 @@ var file_controller_storage_servers_store_v1_worker_proto_rawDesc = []byte{
 	0x08, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79,
 	0x18, 0x14, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76,
 	0x61, 0x6c, 0x75, 0x65, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75,
-	0x65, 0x22, 0xf3, 0x01, 0x0a, 0x0c, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x43, 0x6f, 0x6e, 0x66,
-	0x69, 0x67, 0x12, 0x1b, 0x0a, 0x09, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18,
+	0x65, 0x22, 0xf3, 0x01, 0x0a, 0x0c, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x53, 0x74, 0x61, 0x74,
+	0x75, 0x73, 0x12, 0x1b, 0x0a, 0x09, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18,
 	0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x49, 0x64, 0x12,
 	0x4b, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x14,
 	0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65,
@@ -378,14 +378,14 @@ var file_controller_storage_servers_store_v1_worker_proto_msgTypes = make([]prot
 var file_controller_storage_servers_store_v1_worker_proto_goTypes = []interface{}{
 	(*Worker)(nil),              // 0: controller.storage.servers.store.v1.Worker
 	(*WorkerTag)(nil),           // 1: controller.storage.servers.store.v1.WorkerTag
-	(*WorkerConfig)(nil),        // 2: controller.storage.servers.store.v1.WorkerConfig
+	(*WorkerStatus)(nil),        // 2: controller.storage.servers.store.v1.WorkerStatus
 	(*timestamp.Timestamp)(nil), // 3: controller.storage.timestamp.v1.Timestamp
 }
 var file_controller_storage_servers_store_v1_worker_proto_depIdxs = []int32{
 	3, // 0: controller.storage.servers.store.v1.Worker.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	3, // 1: controller.storage.servers.store.v1.Worker.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	3, // 2: controller.storage.servers.store.v1.WorkerConfig.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
-	3, // 3: controller.storage.servers.store.v1.WorkerConfig.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // 2: controller.storage.servers.store.v1.WorkerStatus.create_time:type_name -> controller.storage.timestamp.v1.Timestamp
+	3, // 3: controller.storage.servers.store.v1.WorkerStatus.update_time:type_name -> controller.storage.timestamp.v1.Timestamp
 	4, // [4:4] is the sub-list for method output_type
 	4, // [4:4] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
@@ -424,7 +424,7 @@ func file_controller_storage_servers_store_v1_worker_proto_init() {
 			}
 		}
 		file_controller_storage_servers_store_v1_worker_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WorkerConfig); i {
+			switch v := v.(*WorkerStatus); i {
 			case 0:
 				return &v.state
 			case 1:
