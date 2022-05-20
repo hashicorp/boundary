@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentiallibraries"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentials"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -62,7 +63,9 @@ var (
 	vaultCollectionTypeMap = map[resource.Type]action.ActionSet{
 		resource.CredentialLibrary: credentiallibraries.CollectionActions,
 	}
-	staticCollectionTypeMap = map[resource.Type]action.ActionSet{}
+	staticCollectionTypeMap = map[resource.Type]action.ActionSet{
+		resource.Credential: credentials.CollectionActions,
+	}
 )
 
 func init() {

@@ -46,7 +46,14 @@ var (
 			},
 		},
 	}
-	testAuthorizedStaticCollectionActions = map[string]*structpb.ListValue{}
+	testAuthorizedStaticCollectionActions = map[string]*structpb.ListValue{
+		"credentials": {
+			Values: []*structpb.Value{
+				structpb.NewStringValue("create"),
+				structpb.NewStringValue("list"),
+			},
+		},
+	}
 )
 
 func TestList(t *testing.T) {
