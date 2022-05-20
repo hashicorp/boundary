@@ -8,7 +8,10 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix, CredentialPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix); err != nil {
+		panic(err)
+	}
+	if err := subtypes.Register(credential.Domain, UserPasswordSubtype, CredentialPrefix); err != nil {
 		panic(err)
 	}
 }
@@ -18,7 +21,8 @@ const (
 	CredentialStorePrefix = "cs"
 	CredentialPrefix      = "cred"
 
-	Subtype = subtypes.Subtype("static")
+	Subtype             = subtypes.Subtype("static")
+	UserPasswordSubtype = subtypes.Subtype("userpassword")
 )
 
 func newCredentialStoreId() (string, error) {
