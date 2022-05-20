@@ -79,6 +79,7 @@ func TestWorkerAuth(ctx context.Context, t *testing.T, conn *db.DB, worker *Work
 	return workerAuth
 }
 
+// TestWorker inserts a worker into the db to satisfy foreign key constraints.
 func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *Worker {
 	t.Helper()
 	rw := db.New(conn)
@@ -89,12 +90,15 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *Worker {
 	id, err := newWorkerId(context.Background())
 	require.NoError(t, err)
 	name := "test-worker-" + id
-
-	worker := NewWorker(scope.Global.String(),
-		WithPublicId(id),
+	wStatus := NewWorkerStatus(id,
 		WithName(name),
 		WithAddress("127.0.0.1"))
-	_, _, err = serversRepo.UpsertWorker(context.Background(), worker)
+	_, _, err = serversRepo.UpsertWorkerStatus(context.Background(), wStatus)
 	require.NoError(t, err)
-	return worker
+
+	wrk := NewWorker(scope.Global.String(), WithPublicId(id))
+	require.NoError(t, rw.LookupById(context.Background(), wrk))
+	wrk.ReportedStatus = wStatus
+
+	return wrk
 }
