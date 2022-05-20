@@ -129,7 +129,8 @@ func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Re
 
 // ListTagsForWorkers returns a map from the worker's id to the list of Tags
 // that are for that worker.  All options are ignored.
-func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, opt ...Option) (map[string][]*Tag, error) {
+func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, _ ...Option) (map[string][]*Tag, error) {
+	const op = "servers.ListTagsForWorkers"
 	var workerTags []*store.WorkerTag
 	if err := r.reader.SearchWhere(
 		ctx,
@@ -138,7 +139,7 @@ func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string,
 		[]interface{}{workerIds},
 		db.WithLimit(-1),
 	); err != nil {
-		return nil, errors.Wrap(ctx, err, "servers.ListTagsForWorkers", errors.WithMsg(fmt.Sprintf("worker IDs %v", workerIds)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("worker IDs %v", workerIds)))
 	}
 
 	ret := make(map[string][]*Tag, len(workerIds))
@@ -229,6 +230,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStat
 							WorkerId: wStatus.GetWorkerId(),
 							Key:      v.Key,
 							Value:    v.Value,
+							Source:   string(ConfigurationTagSource),
 						})
 					}
 					if err = w.CreateItems(ctx, tags); err != nil {

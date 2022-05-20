@@ -68,7 +68,7 @@ func TestStatus(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := session.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -235,7 +235,7 @@ func TestStatusSessionClosed(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := session.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -416,7 +416,7 @@ func TestStatusDeadConnection(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := session.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,

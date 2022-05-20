@@ -44,8 +44,8 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Create two "workers". One will remain untouched while the other "goes
 	// away and comes back" (worker 2).
-	worker1 := TestWorker(t, conn, wrapper)
-	worker2 := TestWorker(t, conn, wrapper)
+	worker1 := servers.TestWorker(t, conn, wrapper)
+	worker2 := servers.TestWorker(t, conn, wrapper)
 
 	// Create a few sessions on each, activate, and authorize a connection
 	var connIds []string
@@ -251,10 +251,10 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// firstly, the last worker will have no connections at all, and we will be
 	// closing the others in stages to test multiple servers being closed at
 	// once.
-	worker1 := TestWorker(t, conn, wrapper)
-	worker2 := TestWorker(t, conn, wrapper)
-	worker3 := TestWorker(t, conn, wrapper)
-	worker4 := TestWorker(t, conn, wrapper)
+	worker1 := servers.TestWorker(t, conn, wrapper)
+	worker2 := servers.TestWorker(t, conn, wrapper)
+	worker3 := servers.TestWorker(t, conn, wrapper)
+	worker4 := servers.TestWorker(t, conn, wrapper)
 
 	// Create sessions on the first three, activate, and authorize connections
 	var worker1ConnIds, worker2ConnIds, worker3ConnIds []string
@@ -526,7 +526,7 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	}
 
 	// Setup deleted worker connections
-	deletedWorker := TestWorker(t, conn, wrapper)
+	deletedWorker := servers.TestWorker(t, conn, wrapper)
 	dActiveConn := createConnection(deletedWorker.GetPublicId())
 	dClosedConn := createConnection(deletedWorker.GetPublicId())
 	connRepo.closeConnections(ctx, []CloseWith{{
@@ -539,7 +539,7 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	require.NoError(err)
 
 	// Non deleted worker case
-	activeWorker := TestWorker(t, conn, wrapper)
+	activeWorker := servers.TestWorker(t, conn, wrapper)
 	activeConn := createConnection(activeWorker.GetPublicId())
 	closedConn := createConnection(activeWorker.GetPublicId())
 	connRepo.closeConnections(ctx, []CloseWith{{

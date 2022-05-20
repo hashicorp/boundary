@@ -55,6 +55,10 @@ message WorkerTag {
   // value is the value
   // @inject_tag: `gorm:"primary_key"`
   string value = 30;
+
+  // source is the source of the tag. Either 'configuration' or 'api'.
+  // @inject_tag: `gorm:"default:not_null"`
+  string source = 40;
 }
 
 // WorkerStatus contains the fields that the worker reports to the controller
