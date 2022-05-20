@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
@@ -698,6 +699,20 @@ func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error checking if sessions are no longer active"))
 	}
 	return notActive, nil
+}
+
+func (r *Repository) deleteSessionsTerminatedBefore(ctx context.Context, threshold time.Duration) (int, error) {
+	const op = "session.(Repository).deleteTerminated"
+
+	args := []any{
+		sql.Named("threshold_seconds", threshold.Seconds()),
+	}
+
+	c, err := r.writer.Exec(ctx, deleteTerminated, args)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("error deleting terminated sessions"))
+	}
+	return c, nil
 }
 
 func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*State, error) {
