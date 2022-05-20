@@ -741,12 +741,8 @@ github.com/hashicorp/golang-lru v0.5.4 h1:YDjusn29QI/Das2iO9M0BHnIbxPeyuCHsjMW+l
 github.com/hashicorp/golang-lru v0.5.4/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
-github.com/hashicorp/nodeenrollment v0.0.0-20220516125915-9a115b0fb887 h1:Ov/lPq1YFKt6CLPCriEL21NqMndrJEKNLIZW9qJYpaE=
-github.com/hashicorp/nodeenrollment v0.0.0-20220516125915-9a115b0fb887/go.mod h1:8l3RSuZJAibZKnqX6tvLaeoFzPhDf4oCRVsyFjU5Soc=
-github.com/hashicorp/nodeenrollment v0.0.0-20220519052605-83a44d379ae6 h1:NrZnIV4TYGDymhzcx/xNIe02obXSrJsPJrPm+OZdXug=
-github.com/hashicorp/nodeenrollment v0.0.0-20220519052605-83a44d379ae6/go.mod h1:8l3RSuZJAibZKnqX6tvLaeoFzPhDf4oCRVsyFjU5Soc=
-github.com/hashicorp/nodeenrollment v0.0.0-20220519180751-27ee40a67a33 h1:kVIAR0iBLc224QqU4l9QQuJBN8MuEjanc7rHzuCIUVM=
-github.com/hashicorp/nodeenrollment v0.0.0-20220519180751-27ee40a67a33/go.mod h1:8l3RSuZJAibZKnqX6tvLaeoFzPhDf4oCRVsyFjU5Soc=
+github.com/hashicorp/nodeenrollment v0.0.0-20220520141833-ad7323153acc h1:7RE6UxjVxa3uUS0A4RZwVRFnBJqNQnm5nzNwqPJy4VM=
+github.com/hashicorp/nodeenrollment v0.0.0-20220520141833-ad7323153acc/go.mod h1:3054+zYuaQzgXjoy8kyd8whmx1dXUSomyMTRnWHzVXs=
 github.com/hashicorp/vault/api v1.3.1 h1:pkDkcgTh47PRjY1NEFeofqR4W/HkNUi9qIakESO2aRM=
 github.com/hashicorp/vault/api v1.3.1/go.mod h1:QeJoWxMFt+MsuWcYhmwRLwKEXrjwAFFywzhptMsTIUw=
 github.com/hashicorp/vault/sdk v0.1.13/go.mod h1:B+hVj7TpuQY1Y/GPbCpffmgd+tSEwvhkWnjtSYCaS2M=
@@ -1093,6 +1089,8 @@ github.com/ory/dockertest/v3 v3.7.0 h1:Bijzonc69Ont3OU0a3TWKJ1Rzlh3TsDXP1JrTAkSm
 github.com/ory/dockertest/v3 v3.7.0/go.mod h1:PvCCgnP7AfBZeVrzwiUTjZx/IUXlGLC1zQlUQrLIlUE=
 github.com/pascaldekloe/goe v0.1.0 h1:cBOtyMzM9HTpWjXfbbunk26uA6nG3a8n06Wieeh0MwY=
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
+github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
+github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pelletier/go-toml v1.7.0/go.mod h1:vwGMzjaWMwyfHwgIBhI2YUM4fB6nL6lVAvS1LBMMhTE=
 github.com/pelletier/go-toml v1.8.1/go.mod h1:T2/BmBdy8dvIRq1a/8aqjN41wvWlN4lrapLU/GW4pbc=
