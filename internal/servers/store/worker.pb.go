@@ -158,8 +158,8 @@ type WorkerTag struct {
 	// @inject_tag: `gorm:"default:null"`
 	Value string `protobuf:"bytes,30,opt,name=value,proto3" json:"value,omitempty" gorm:"default:null"`
 	// source is the source of the tag. Either 'configuration' or 'api'.
-	// @inject_tag: `gorm:"default:null"`
-	Source string `protobuf:"bytes,40,opt,name=source,proto3" json:"source,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"default:not_null"`
+	Source string `protobuf:"bytes,40,opt,name=source,proto3" json:"source,omitempty" gorm:"default:not_null"`
 }
 
 func (x *WorkerTag) Reset() {
