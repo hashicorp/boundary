@@ -4,4 +4,6 @@ package static
 const (
 	nameField        = "Name"
 	descriptionField = "Description"
+	usernameField    = "Username"
+	passwordField    = "Password"
 )

@@ -1,10 +1,13 @@
 package static
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,4 +40,47 @@ func Test_TestCredentialStores(t *testing.T) {
 	count := 4
 	css := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), count)
 	assert.Len(css, count)
+}
+
+func Test_TestUserPasswordCredential(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kkms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
+
+	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+
+	cred := TestUserPasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), WithName("my-name"), WithDescription("my-description"))
+	require.NotNil(cred)
+	assert.NotEmpty(cred.GetPublicId())
+	assert.Equal(cred.Name, "my-name")
+	assert.Equal(cred.Description, "my-description")
+	assert.Equal(cred.Username, "user")
+	assert.Equal(cred.Password, []byte("pass"))
+
+	// Validate hmac
+	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
+	hm, err := crypto.HmacSha256(context.Background(), cred.Password, databaseWrapper, []byte(cred.StoreId), nil, crypto.WithEd25519())
+	require.NoError(err)
+	assert.Equal([]byte(hm), cred.PasswordHmac)
+}
+
+func Test_TestUserPasswordCredentials(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
+
+	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+
+	count := 4
+	creds := TestUserPasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), count)
+	assert.Len(creds, count)
 }
