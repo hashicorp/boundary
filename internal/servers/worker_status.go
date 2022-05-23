@@ -41,7 +41,7 @@ func (w *WorkerStatus) clone() *WorkerStatus {
 	}
 }
 
-// TableName overrides the table name used by WorkerStatus to `server_worker_config`
+// TableName overrides the table name used by WorkerStatus to `server_worker_status`
 func (WorkerStatus) TableName() string {
 	return "server_worker_status"
 }

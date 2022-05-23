@@ -159,6 +159,11 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	return worker, nil
 }
 
+// tagsForAggregatedTagString parses a deliminated string in the format returned
+// by the database for the server_worker_aggregate view and returns []*Tag.
+// The string is in the format of key1Yvalue1Zkey2Yvalue2Zkey3Yvalue3. Y and Z
+// ares chosen for deliminators since tag keys and values are restricted from
+// having capitalized letters in them.
 func tagsFromAggregatedTagString(ctx context.Context, s string) ([]*Tag, error) {
 	if s == "" {
 		return nil, nil
