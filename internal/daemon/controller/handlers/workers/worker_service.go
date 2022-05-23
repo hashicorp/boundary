@@ -57,7 +57,8 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	const op = "workers.(workerServiceServer).Status"
 	// TODO: on the worker, if we get errors back from this repeatedly, do we
 	// terminate all sessions since we can't know if they were canceled?
-	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
+	wstat := req.GetWorkerStatus()
+	ws.updateTimes.Store(wstat.PublicId, time.Now())
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
@@ -82,10 +83,10 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
-	wConf := servers.NewWorkerStatus(reqServer.PrivateId,
+	wConf := servers.NewWorkerStatus(wstat.PublicId,
 		// TODO: Change the name to its own field to make this explicit.
-		servers.WithName(reqServer.PrivateId),
-		servers.WithAddress(reqServer.Address),
+		servers.WithName(wstat.Name),
+		servers.WithAddress(wstat.Address),
 		servers.WithWorkerTags(workerTags...))
 	controllers, _, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
@@ -93,9 +94,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
 
-	responseControllers := []*servers.Server{}
+	responseControllers := []*servers.ServerController{}
 	for _, c := range controllers {
-		thisController := &servers.Server{
+		thisController := &servers.ServerController{
 			PrivateId:  c.PrivateId,
 			Address:    c.Address,
 			CreateTime: c.CreateTime,
@@ -104,7 +105,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		responseControllers = append(responseControllers, thisController)
 	}
 	ret := &pbs.StatusResponse{
-		Controllers: responseControllers,
+		SessionControllers: responseControllers,
 	}
 
 	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))

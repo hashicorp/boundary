@@ -44,7 +44,7 @@ message Worker {
 // WorkerTag is a tag for a worker.  The primary key is comprised of the
 // worker_id, key, value, and source.
 message WorkerTag {
-  // worker_id is the public key that key of the worker this tag is for.
+  // worker_id is the public key of the worker that this tag is for.
   // @inject_tag: `gorm:"primary_key"`
   string worker_id = 10;
 
@@ -64,7 +64,7 @@ message WorkerTag {
 // WorkerStatus contains the fields that the worker reports to the controller
 // in its status  updates.
 message WorkerStatus {
-  // worker_id is the public key that key of the worker this tag is for.
+  // worker_id is the public key of the worker that this tag is for.
   // @inject_tag: `gorm:"primary_key"`
   string worker_id = 10;
 
