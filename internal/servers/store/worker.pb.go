@@ -148,7 +148,7 @@ type WorkerTag struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// worker_id is the public key that key of the worker this tag is for.
+	// worker_id is the public key of the worker that this tag is for.
 	// @inject_tag: `gorm:"primary_key"`
 	WorkerId string `protobuf:"bytes,10,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" gorm:"primary_key"`
 	// key is the key of the tag. This must be set.
@@ -229,7 +229,7 @@ type WorkerStatus struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// worker_id is the public key that key of the worker this tag is for.
+	// worker_id is the public key of the worker that this tag is for.
 	// @inject_tag: `gorm:"primary_key"`
 	WorkerId string `protobuf:"bytes,10,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" gorm:"primary_key"`
 	// The create_time is set by the database.
