@@ -126,7 +126,8 @@ func TestRepository_ListSession(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantCnt, len(got))
 			for i := 0; i < len(got); i++ {
-				assert.Equal(tt.withConnections, len(got[i].Connections))
+				// connections should not be returned for list requests
+				assert.Equal(0, len(got[i].Connections))
 				for _, c := range got[i].Connections {
 					assert.Equal("127.0.0.1", c.ClientTcpAddress)
 					assert.Equal(uint32(22), c.ClientTcpPort)
