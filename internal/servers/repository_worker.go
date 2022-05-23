@@ -98,15 +98,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStat
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			workerOps := []Option{WithPublicId(wStatus.GetWorkerId())}
-			if wStatus.GetName() != "" {
-				// If this worker doesn't exist yet, that means it is a KMS only worker.
-				// KMS workers have their resource name set to the name provided in the config at
-				// creation time.
-				// TODO (talanknight): Decide if this is actually the desired behavior.
-				workerOps = append(workerOps, WithName(wStatus.GetName()))
-			}
-			worker := NewWorker(scope.Global.String(), workerOps...)
+			worker := NewWorker(scope.Global.String(), WithPublicId(wStatus.GetWorkerId()))
 			workerCreateConflict := &db.OnConflict{
 				Target: db.Columns{"public_id"},
 				Action: db.DoNothing(true),
@@ -136,32 +128,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStat
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				_, err = w.Exec(ctx, deleteTagsByWorkerIdSql, []interface{}{wStatus.GetWorkerId()})
-				if err != nil {
-					return errors.Wrap(ctx, err, op+":DeleteTags", errors.WithMsg(wStatus.GetWorkerId()))
-				}
-
-				// If tags were cleared out entirely, then we'll have nothing
-				// to do here, e.g., it will result in deletion of all tags.
-				// Otherwise, go through and stage each tuple for insertion
-				// below.
-				if len(wStatus.Tags) > 0 {
-					tags := make([]interface{}, 0, len(wStatus.Tags))
-					for _, v := range wStatus.Tags {
-						if v == nil {
-							return errors.New(ctx, errors.InvalidParameter, op+":RangeTags", fmt.Sprintf("found nil tag value for worker %s", wStatus.GetWorkerId()))
-						}
-						tags = append(tags, &store.WorkerTag{
-							WorkerId: wStatus.GetWorkerId(),
-							Key:      v.Key,
-							Value:    v.Value,
-							Source:   string(ConfigurationTagSource),
-						})
-					}
-					if err = w.CreateItems(ctx, tags); err != nil {
-						return errors.Wrap(ctx, err, op+":CreateTags", errors.WithMsg(wStatus.GetWorkerId()))
-					}
-				}
+				setWorkerTags(ctx, w, wStatus.GetWorkerId(), ConfigurationTagSource, wStatus.Tags)
 			}
 
 			return nil
@@ -172,4 +139,47 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStat
 	}
 
 	return controllers, int(rowsUpdated), nil
+}
+
+// setWorkerTags removes all existing tags from the same source and worker id
+// and creates new ones based on the ones provided.  This function should be
+// called from inside a db transaction.
+func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, tags []*Tag) error {
+	const op = "servers.setWorkerTags"
+	switch {
+	case !ts.isValid():
+		return errors.New(ctx, errors.InvalidParameter, op, "invalid tag source provided")
+	case id == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "worker id is empty")
+	case w == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "db.Writer is nil")
+	}
+	_, err := w.Exec(ctx, deleteTagsByWorkerIdSql, []interface{}{ts.String(), id})
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("couldn't delete exist tags for worker %q", id)))
+	}
+
+	// If tags were cleared out entirely, then we'll have nothing
+	// to do here, e.g., it will result in deletion of all tags.
+	// Otherwise, go through and stage each tuple for insertion
+	// below.
+	if len(tags) > 0 {
+		uTags := make([]interface{}, 0, len(tags))
+		for _, v := range tags {
+			if v == nil {
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("found nil tag value for worker %s", id))
+			}
+			uTags = append(uTags, &store.WorkerTag{
+				WorkerId: id,
+				Key:      v.Key,
+				Value:    v.Value,
+				Source:   ts.String(),
+			})
+		}
+		if err = w.CreateItems(ctx, uTags); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error creating tags for worker %q", id)))
+		}
+	}
+
+	return nil
 }
