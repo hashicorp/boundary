@@ -1,8 +1,7 @@
 begin;
 
--- Replaces the view created in 1/01 to include connections
--- Replaced in 31/0_session_list_no_connections
-drop view session_with_state;
+-- Replaces the view created in 2/09_session_list_view
+drop view session_list;
 create view session_list as
   select
     s.public_id,
@@ -28,24 +27,12 @@ create view session_list as
     ss.state,
     ss.previous_end_time,
     ss.start_time,
-    ss.end_time,
-    sc.public_id as connection_id,
-    sc.client_tcp_address,
-    sc.client_tcp_port,
-    sc.endpoint_tcp_address,
-    sc.endpoint_tcp_port,
-    sc.bytes_up,
-    sc.bytes_down,
-    sc.closed_reason
+    ss.end_time
   from
     session s
   join
     session_state ss
   on
-    s.public_id = ss.session_id
-  left join
-    session_connection sc
-  on
-    s.public_id = sc.session_id;
+    s.public_id = ss.session_id;
 
 commit;
