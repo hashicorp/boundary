@@ -37,14 +37,19 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 }
 
 func (w *Worker) clone() *Worker {
+	if w == nil {
+		return nil
+	}
 	tags := make([]*Tag, 0, len(w.Tags))
 	for _, t := range w.Tags {
 		tags = append(tags, &Tag{Key: t.Key, Value: t.Value})
 	}
 	cw := proto.Clone(w.Worker)
+	crs := w.ReportedStatus.clone()
 	return &Worker{
-		Worker: cw.(*store.Worker),
-		Tags:   tags,
+		Worker:         cw.(*store.Worker),
+		Tags:           tags,
+		ReportedStatus: crs,
 	}
 }
 

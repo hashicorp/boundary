@@ -35,7 +35,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		worker := workers[0]
 		assert.Equal(t, wStatus1.GetWorkerId(), worker.GetPublicId())
 		assert.Equal(t, wStatus1.Address, worker.CanonicalAddress())
-		assert.Equal(t, wStatus1.GetName(), worker.Name)
+		assert.Empty(t, worker.Name)
 		assert.Equal(t, worker.ReportedStatus.CreateTime, worker.CreateTime)
 		assert.Equal(t, worker.LastConnectionUpdate(), worker.UpdateTime)
 		assert.Equal(t, uint32(1), worker.Version)

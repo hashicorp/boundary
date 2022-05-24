@@ -15,10 +15,17 @@ func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*Worker,
 	return r.listWorkersWithReader(ctx, r.reader, opt...)
 }
 
-// listWorkersWithReader will return a listing of resources and honor the WithLimit option or the repo
-// defaultLimit. It accepts a reader, allowing it to be used within a transaction or without.
+// listWorkersWithReader will return a listing of resources and honor the
+// WithLimit option or the repo defaultLimit.  If WithLiveness is set to a
+// negative value then the last status update time is ignored.
+// This method accepts a reader, allowing it to be used within a transaction
+// or without.
 func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*Worker, error) {
 	const op = "workers.listWorkersWithReader"
+	switch {
+	case isNil(reader):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
+	}
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
@@ -97,7 +104,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStat
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(read db.Reader, w db.Writer) error {
+		func(reader db.Reader, w db.Writer) error {
 			worker := NewWorker(scope.Global.String(), WithPublicId(wStatus.GetWorkerId()))
 			workerCreateConflict := &db.OnConflict{
 				Target: db.Columns{"public_id"},
@@ -118,7 +125,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStat
 			}
 
 			// Fetch current controllers to feed to the workers
-			controllers, err = r.listControllersWithReader(ctx, read)
+			controllers, err = r.listControllersWithReader(ctx, reader)
 			if err != nil {
 				return errors.Wrap(ctx, err, op+":ListController")
 			}
@@ -151,7 +158,7 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 		return errors.New(ctx, errors.InvalidParameter, op, "invalid tag source provided")
 	case id == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "worker id is empty")
-	case w == nil:
+	case isNil(w):
 		return errors.New(ctx, errors.InvalidParameter, op, "db.Writer is nil")
 	}
 	_, err := w.Exec(ctx, deleteTagsByWorkerIdSql, []interface{}{ts.String(), id})
