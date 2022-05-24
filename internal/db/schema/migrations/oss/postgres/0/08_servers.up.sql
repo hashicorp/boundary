@@ -14,7 +14,7 @@ create table server (
     address text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    primary key (private_id, type)
+    primary key (private_id)
   );
   
 create trigger 

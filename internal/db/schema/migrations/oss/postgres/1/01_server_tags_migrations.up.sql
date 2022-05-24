@@ -1,27 +1,13 @@
 begin;
 
 -- This series of expressions fixes the primary key on the server table
--- PG 12+
-alter table session
-  drop constraint if exists session_server_id_server_type_fkey;
--- PG 11
-alter table session
-  drop constraint if exists session_server_id_fkey;
-alter table server
-  drop constraint server_pkey;
+
 alter table server
   drop column name;
-alter table server
-  add primary key (private_id);
+
 alter table server
   add constraint server_id_must_not_be_empty
   check(length(trim(private_id)) > 0);
-alter table session
-  add constraint session_server_id_fkey
-  foreign key (server_id)
-  references server(private_id)
-  on delete set null
-  on update cascade;
 
 create domain wt_bexprfilter as text
 check(

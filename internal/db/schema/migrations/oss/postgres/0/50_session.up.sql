@@ -108,8 +108,8 @@ begin;
     -- the worker proxying the connection between the user and the host
     server_id text, -- fk3
     server_type text,-- fk3
-    foreign key (server_id, server_type)
-      references server (private_id, type)
+    foreign key (server_id)
+      references server (private_id)
       on delete set null
       on update cascade,
     -- the target the host was chosen from and the user was authorized to
