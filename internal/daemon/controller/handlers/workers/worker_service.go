@@ -57,8 +57,24 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	const op = "workers.(workerServiceServer).Status"
 	// TODO: on the worker, if we get errors back from this repeatedly, do we
 	// terminate all sessions since we can't know if they were canceled?
+
+	// Obtain worker status fields from deprecated message if needed
 	wstat := req.GetWorkerStatus()
-	ws.updateTimes.Store(wstat.PublicId, time.Now())
+	reqServer := req.GetWorker()
+	wName := wstat.GetName()
+	if wName == "" {
+		wName = reqServer.GetPrivateId()
+	}
+	wAddr := wstat.GetAddress()
+	if wAddr == "" {
+		wAddr = reqServer.GetAddress()
+	}
+	wTags := wstat.GetTags()
+	if len(wTags) == 0 {
+		wTags = reqServer.GetTags()
+	}
+
+	ws.updateTimes.Store(wName, time.Now())
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
@@ -71,10 +87,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
 	}
 
-	reqServer := req.GetWorker()
 	// Convert API tags to storage tags
-	workerTags := make([]*servers.Tag, 0, len(reqServer.Tags))
-	for k, v := range reqServer.Tags {
+	workerTags := make([]*servers.Tag, 0, len(wTags))
+	for k, v := range wTags {
 		for _, val := range v.GetValues() {
 			workerTags = append(workerTags, &servers.Tag{
 				Key:   k,
@@ -83,10 +98,10 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
-	wConf := servers.NewWorkerStatus(wstat.PublicId,
+	wConf := servers.NewWorkerStatus(wName,
 		// TODO: Change the name to its own field to make this explicit.
-		servers.WithName(wstat.Name),
-		servers.WithAddress(wstat.Address),
+		servers.WithName(wName),
+		servers.WithAddress(wAddr),
 		servers.WithWorkerTags(workerTags...))
 	controllers, _, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
@@ -94,18 +109,16 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
 
-	responseControllers := []*servers.ServerController{}
+	responseControllers := []*pbs.UpstreamServer{}
 	for _, c := range controllers {
-		thisController := &servers.ServerController{
-			PrivateId:  c.PrivateId,
-			Address:    c.Address,
-			CreateTime: c.CreateTime,
-			UpdateTime: c.UpdateTime,
+		thisController := &pbs.UpstreamServer{
+			Address: c.Address,
+			Type:    1,
 		}
 		responseControllers = append(responseControllers, thisController)
 	}
 	ret := &pbs.StatusResponse{
-		SessionControllers: responseControllers,
+		CalculatedUpstreams: responseControllers,
 	}
 
 	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))

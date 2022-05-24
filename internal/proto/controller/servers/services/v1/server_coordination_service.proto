@@ -56,11 +56,27 @@ message JobStatus {
   Job job = 1;
 }
 
+enum RESPONSETYPE {
+  RESPONSETYPE_UNSPECIFIED = 0;
+  RESPONSETYPE_CONTROLLER = 1;
+  RESPONSETYPE_WORKER = 2;
+}
+
+// UpstreamServer returns the controller address in the StatusResponse but may be used in the future to return
+// worker address.
+message UpstreamServer {
+  // RESPONSETYPE specifies between controller or worker.
+  RESPONSETYPE type = 10;
+
+  // Address of the daemon
+  string address = 20;
+}
+
 message StatusRequest {
   // The worker info. We could use information from the TLS connection but this
   // is easier and going the other route doesn't provide much benefit -- if you
   // get access to the key and spoof the connection, you're already compromised.
-  servers.v1.Server worker = 10;
+  servers.v1.Server worker = 10 [deprecated = true];
 
   // Jobs which this worker wants to report the status.
   repeated JobStatus jobs = 20;
@@ -71,9 +87,7 @@ message StatusRequest {
   // won't change very often, if ever.
   bool update_tags = 30;
 
-  // The worker info. We could use information from the TLS connection but this
-  // is easier and going the other route doesn't provide much benefit -- if you
-  // get access to the key and spoof the connection, you're already compromised.
+  // Replaces the worker field.
   servers.v1.ServerWorkerStatus worker_status = 40;
 }
 
@@ -100,6 +114,6 @@ message StatusResponse {
   // enclave.
   repeated JobChangeRequest jobs_requests = 20;
 
-  // Active controllers. This can be used for connection management.
-  repeated servers.v1.ServerController session_controllers = 30;
+  // UpstreamServer currently returns the controller address in the StatusResponse
+  repeated UpstreamServer calculated_upstreams = 30;
 }
