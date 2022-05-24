@@ -54,7 +54,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Len(t, workers, 1)
 		worker := workers[0]
 		// The resource's name remains untouched
-		assert.Equal(t, wStatus1.GetName(), worker.Name)
+		assert.Empty(t, worker.Name)
 		// The ReportedStatus's name is correctly cleared
 		assert.Empty(t, worker.ReportedStatus.Name)
 		// The last connection update time was increased
@@ -74,16 +74,6 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		status    *servers.WorkerStatus
 		errAssert func(*testing.T, error)
 	}{
-		{
-			name: "with the same name",
-			status: servers.NewWorkerStatus("worker_with_the_same_name",
-				servers.WithAddress("failed address"),
-				servers.WithName(wStatus1.Name)),
-			errAssert: func(t *testing.T, err error) {
-				t.Helper()
-				assert.True(t, errors.IsUniqueError(err))
-			},
-		},
 		{
 			name: "no address",
 			status: servers.NewWorkerStatus("worker_with_no_address",
