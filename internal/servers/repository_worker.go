@@ -83,6 +83,7 @@ func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string,
 // UpsertWorkerStatus creates a new worker if one with the provided public id doesn't
 // already exist. If it does, UpsertWorkerStatus updates the worker. The
 // WithUpdateTags option is the only one used. All others are ignored.
+// Workers are intentionally not oplogged.
 func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStatus, opt ...Option) ([]*store.Controller, int, error) {
 	const op = "servers.UpsertWorkerStatus"
 
@@ -150,6 +151,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStat
 // setWorkerTags removes all existing tags from the same source and worker id
 // and creates new ones based on the ones provided.  This function should be
 // called from inside a db transaction.
+// Workers/worker tags are intentionally not oplogged.
 func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, tags []*Tag) error {
 	const op = "servers.setWorkerTags"
 	switch {
