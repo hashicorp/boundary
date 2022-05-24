@@ -16,10 +16,9 @@ func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*Worker,
 }
 
 // listWorkersWithReader will return a listing of resources and honor the
-// WithLimit option or the repo defaultLimit.  If WithLiveness is set to a
-// negative value then the last status update time is ignored.
-// This method accepts a reader, allowing it to be used within a transaction
-// or without.
+// WithLimit option.  If WithLiveness is set to a negative value then the last
+// status update time is ignored. This method accepts a reader, allowing it to
+// be used within a transaction or without.
 func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*Worker, error) {
 	const op = "workers.listWorkersWithReader"
 	switch {
@@ -43,7 +42,7 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 		&wAggs,
 		where,
 		[]interface{}{},
-		db.WithLimit(-1),
+		db.WithLimit(opts.withLimit),
 	); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
 	}
