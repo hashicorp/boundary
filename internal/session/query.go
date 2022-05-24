@@ -315,18 +315,25 @@ where
 	// * not closed
 	// * belong to servers that have not reported in within an acceptable
 	// threshold of time
+	// * belong to servers where we do not know when they last reported.
 	//
 	// and marks them as closed.
 	//
 	// The query returns the set of servers that have had connections closed
 	// along with their last update time and the number of connections closed on
-	// each.
+	// each.  If we do not know the last update time, we use the current time.
 	closeConnectionsForDeadServersCte = `
    with
    dead_workers (worker_id, last_update_time) as (
-         select public_id, update_time
-           from server_worker
-          where update_time < wt_sub_seconds_from_now(@grace_period_seconds)
+         select
+			w.public_id as worker_id,
+			ws.update_time as last_update_time
+           from server_worker w
+			left join server_worker_status ws
+				on w.public_id = ws.worker_id
+          where
+			ws.update_time is null
+			or ws.update_time < wt_sub_seconds_from_now(@grace_period_seconds)
    ),
    closed_connections (connection_id, worker_id) as (
          update session_connection
@@ -336,7 +343,7 @@ where
       returning public_id, worker_id
    )
    select closed_connections.worker_id,
-          dead_workers.last_update_time,
+          coalesce(dead_workers.last_update_time, current_timestamp) as last_update_time,
           count(closed_connections.connection_id) as number_connections_closed
      from closed_connections
      join dead_workers

@@ -1,6 +1,7 @@
 package servers
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -45,4 +46,15 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms) (*Repository, error) 
 		writer: w,
 		kms:    kms,
 	}, nil
+}
+
+func isNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
 }

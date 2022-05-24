@@ -58,6 +58,33 @@ create trigger worker_insert_time_column before insert on server_worker
 create trigger worker_update_time_column before update on server_worker
   for each row execute procedure update_time_column();
 
+create table server_worker_status (
+  worker_id wt_public_id primary key
+    constraint server_worker_fkey
+      references server_worker(public_id)
+      on delete cascade
+      on update cascade,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  -- This is the calculated address that the worker reports it is reachable on.
+  address wt_network_address not null,
+  name wt_name
+);
+comment on table server_worker_status  is
+  'server_worker_status is a table where each row represents values that a Boundary worker reports to a controller.';
+
+create trigger immutable_columns before update on server_worker_status
+  for each row execute procedure immutable_columns('worker_id', 'create_time');
+
+create trigger default_create_time_column before insert on server_worker_status
+  for each row execute procedure default_create_time();
+
+create trigger worker_insert_time_column before insert on server_worker_status
+  for each row execute procedure update_time_column();
+
+create trigger worker_update_time_column before update on server_worker_status
+  for each row execute procedure update_time_column();
+
 -- Create table worker tag
 create table server_worker_tag_enm (
   source text primary key
@@ -87,6 +114,45 @@ create table server_worker_tag (
         on update cascade,
   primary key(worker_id, key, value, source)
 );
+
+-- worker_aggregate view allows the worker and configuration to be read at the
+-- same time.
+create view server_worker_aggregate as
+  with worker_config_tags(worker_id, source, tags) as (
+    select
+      ct.worker_id,
+      ct.source,
+      -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
+      string_agg(distinct concat_ws('Y', ct.key, ct.value), 'Z') as tags
+    from server_worker_tag ct
+    group by ct.worker_id, ct.source
+  )
+select
+  w.public_id,
+  w.scope_id,
+  w.description,
+  w.name,
+  w.address,
+  w.create_time,
+  w.update_time,
+  w.version,
+  ws.name as worker_status_name,
+  ws.address as worker_status_address,
+  ws.update_time as worker_status_update_time,
+  ws.create_time as worker_status_create_time,
+  -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
+  wt.tags as api_tags,
+  ct.tags as worker_config_tags
+from server_worker w
+  left join server_worker_status ws on
+    w.public_id = ws.worker_id
+  left join worker_config_tags wt on
+      w.public_id = wt.worker_id and wt.source = 'api'
+  left join worker_config_tags ct on
+    w.public_id = ct.worker_id and ct.source = 'configuration';
+comment on view server_worker_aggregate is
+'server_worker_aggregate contains the worker resource with its worker provided config values and its configuration and api provided tags.';
+
 
 -- Aaand drop server_tag
 drop table server_tag;

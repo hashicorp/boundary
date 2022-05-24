@@ -5,9 +5,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/servers/store"
-	"github.com/hashicorp/boundary/internal/types/scope"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -18,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -38,9 +36,8 @@ func TestStatus(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, servers.NewWorker(
-		scope.Global.String(),
-		servers.WithPublicId("test_worker1"),
+	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
+		"test_worker1",
 		servers.WithAddress("127.0.0.1")))
 
 	serversRepoFn := func() (*servers.Repository, error) {
@@ -107,7 +104,7 @@ func TestStatus(t *testing.T) {
 			req: &pbs.StatusRequest{
 				Worker: &servers.Server{
 					PrivateId:  worker1.PublicId,
-					Address:    worker1.Address,
+					Address:    worker1.CanonicalAddress(),
 					CreateTime: worker1.CreateTime,
 					UpdateTime: worker1.UpdateTime,
 				},
@@ -127,7 +124,7 @@ func TestStatus(t *testing.T) {
 			req: &pbs.StatusRequest{
 				Worker: &servers.Server{
 					PrivateId:  worker1.PublicId,
-					Address:    worker1.Address,
+					Address:    worker1.CanonicalAddress(),
 					CreateTime: worker1.CreateTime,
 					UpdateTime: worker1.UpdateTime,
 				},
@@ -206,9 +203,8 @@ func TestStatusSessionClosed(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, servers.NewWorker(
-		scope.Global.String(),
-		servers.WithPublicId("test_worker1"),
+	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
+		"test_worker1",
 		servers.WithAddress("127.0.0.1")))
 
 	serversRepoFn := func() (*servers.Repository, error) {
@@ -292,7 +288,7 @@ func TestStatusSessionClosed(t *testing.T) {
 			req: &pbs.StatusRequest{
 				Worker: &servers.Server{
 					PrivateId:  worker1.PublicId,
-					Address:    worker1.Address,
+					Address:    worker1.CanonicalAddress(),
 					CreateTime: worker1.CreateTime,
 					UpdateTime: worker1.UpdateTime,
 				},
@@ -388,9 +384,8 @@ func TestStatusDeadConnection(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, servers.NewWorker(
-		scope.Global.String(),
-		servers.WithPublicId("test_worker1"),
+	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
+		"test_worker1",
 		servers.WithAddress("127.0.0.1")))
 
 	serversRepoFn := func() (*servers.Repository, error) {
@@ -462,7 +457,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	req := &pbs.StatusRequest{
 		Worker: &servers.Server{
 			PrivateId:  worker1.PublicId,
-			Address:    worker1.Address,
+			Address:    worker1.CanonicalAddress(),
 			CreateTime: worker1.CreateTime,
 			UpdateTime: worker1.UpdateTime,
 		},
