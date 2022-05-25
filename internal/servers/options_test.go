@@ -1,6 +1,9 @@
 package servers
 
 import (
+	"context"
+	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -132,11 +135,14 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithNewIdFunc", func(t *testing.T) {
-		opts := getOpts(WithUpdateTags(true))
+		assert := assert.New(t)
+		testFn := func(context.Context) (string, error) { return "", nil }
+		opts := getOpts(WithNewIdFunc(testFn))
 		testOpts := getDefaultOptions()
-		testOpts.withUpdateTags = true
-		opts.withNewIdFunc = nil
-		testOpts.withNewIdFunc = nil
-		assert.Equal(t, opts, testOpts)
+		testOpts.withNewIdFunc = testFn
+		assert.Equal(
+			runtime.FuncForPC(reflect.ValueOf(opts.withNewIdFunc).Pointer()).Name(),
+			runtime.FuncForPC(reflect.ValueOf(testOpts.withNewIdFunc).Pointer()).Name(),
+		)
 	})
 }
