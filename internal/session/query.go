@@ -118,10 +118,19 @@ select expiration_time, connection_limit, current_connection_count
 from
 	session_connection_limit, session_connection_count;
 `
+	nonTerminatedSessionPublicIdList = `
+select public_id, scope_id, user_id from session
+where
+	session.termination_reason is null
+and
+	scope_id = any(@scope_ids)
+;
+`
 
 	sessionPublicIdList = `
 select public_id, scope_id, user_id from session
-%s
+where
+	scope_id = any(@scope_ids)
 ;
 `
 

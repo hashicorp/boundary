@@ -152,7 +152,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 			RootScopeId:                  req.GetScopeId(),
 			Type:                         resource.Session,
 			Recursive:                    req.GetRecursive(),
-			AuthzProtectedEntityProvider: repo,
+			AuthzProtectedEntityProvider: session.ListForAuthzCheck(repo, session.WithTerminated(req.IncludeTerminated)),
 			ActionSet:                    IdActions,
 		},
 	)

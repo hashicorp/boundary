@@ -232,6 +232,7 @@ func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
+	ctx := context.Background()
 
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
@@ -260,16 +261,17 @@ func TestList(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(context.Background(), t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(ctx, t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	hcOther := static.TestCatalogs(t, conn, pWithOtherSessions.GetPublicId(), 1)[0]
 	hsOther := static.TestSets(t, conn, hcOther.GetPublicId(), 1)[0]
 	hOther := static.TestHosts(t, conn, hcOther.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hsOther.GetPublicId(), []*static.Host{hOther})
-	tarOther := tcp.TestTarget(context.Background(), t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
+	tarOther := tcp.TestTarget(ctx, t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
 
 	var wantSession []*pb.Session
 	var totalSession []*pb.Session
+	var wantIncludeTerminatedSessions []*pb.Session
 	for i := 0; i < 10; i++ {
 		sess := session.TestSession(t, conn, wrap, session.ComposedOf{
 			UserId:      uId,
@@ -308,6 +310,7 @@ func TestList(t *testing.T) {
 		})
 
 		totalSession = append(totalSession, wantSession[i])
+		wantIncludeTerminatedSessions = append(wantIncludeTerminatedSessions, wantSession[i])
 
 		sess = session.TestSession(t, conn, wrap, session.ComposedOf{
 			UserId:      uIdOther,
@@ -346,6 +349,53 @@ func TestList(t *testing.T) {
 		})
 	}
 
+	{
+		sess := session.TestSession(t, conn, wrap, session.ComposedOf{
+			UserId:      uId,
+			HostId:      h.GetPublicId(),
+			TargetId:    tar.GetPublicId(),
+			HostSetId:   hs.GetPublicId(),
+			AuthTokenId: at.GetPublicId(),
+			ScopeId:     pWithSessions.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
+		})
+
+		sess, err := sessRepo.CancelSession(ctx, sess.PublicId, sess.Version)
+		require.NoError(t, err)
+		terminated, err := sessRepo.TerminateCompletedSessions(ctx)
+		require.NoError(t, err)
+		require.Equal(t, 1, terminated)
+
+		sess, _, err = sessRepo.LookupSession(ctx, sess.PublicId)
+		require.NoError(t, err)
+		status, states := convertStates(sess.States)
+
+		expected := &pb.Session{
+			Id:                sess.GetPublicId(),
+			ScopeId:           pWithSessions.GetPublicId(),
+			AuthTokenId:       at.GetPublicId(),
+			UserId:            at.GetIamUserId(),
+			TargetId:          sess.TargetId,
+			Endpoint:          sess.Endpoint,
+			HostSetId:         sess.HostSetId,
+			HostId:            sess.HostId,
+			Version:           sess.Version,
+			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
+			CreatedTime:       sess.CreateTime.GetTimestamp(),
+			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
+			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
+			Status:            status,
+			States:            states,
+			Certificate:       sess.Certificate,
+			TerminationReason: sess.TerminationReason,
+			Type:              tcp.Subtype.String(),
+			AuthorizedActions: testAuthorizedActions,
+			Connections:       []*pb.Connection{}, // connections should not be returned for list
+		}
+
+		wantIncludeTerminatedSessions = append(wantIncludeTerminatedSessions, expected)
+	}
+
 	cases := []struct {
 		name string
 		req  *pbs.ListSessionsRequest
@@ -356,6 +406,11 @@ func TestList(t *testing.T) {
 			name: "List Many Sessions",
 			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
 			res:  &pbs.ListSessionsResponse{Items: wantSession},
+		},
+		{
+			name: "List Many Include Terminated",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), IncludeTerminated: true},
+			res:  &pbs.ListSessionsResponse{Items: wantIncludeTerminatedSessions},
 		},
 		{
 			name: "List No Sessions",

@@ -32,6 +32,7 @@ type options struct {
 	withServerId          string
 	withDbOpts            []db.Option
 	withWorkerStateDelay  time.Duration
+	withTerminated        bool
 }
 
 func getDefaultOptions() options {
@@ -119,5 +120,12 @@ func WithDbOpts(opts ...db.Option) Option {
 func WithWorkerStateDelay(d time.Duration) Option {
 	return func(o *options) {
 		o.withWorkerStateDelay = d
+	}
+}
+
+// WithTerminated is used to include terminated sessions in a list request.
+func WithTerminated(withTerminated bool) Option {
+	return func(o *options) {
+		o.withTerminated = withTerminated
 	}
 }
