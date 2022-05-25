@@ -133,7 +133,8 @@ func WithNonce(nonce []byte) Option {
 	}
 }
 
-// WithNewIdFunc allows an optional factory function for new worker IDs to be specified
+// WithNewIdFunc allows an optional factory function for new worker IDs to be
+// specified (this option is likely only useful for tests).
 func WithNewIdFunc(fn func(context.Context) (string, error)) Option {
 	return func(o *options) {
 		o.withNewIdFunc = fn

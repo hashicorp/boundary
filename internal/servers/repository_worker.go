@@ -193,11 +193,11 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 }
 
 // CreateWorker will create a worker in the repository and return the written
-// worker.  Creating a worker is intentionally oplogged.  A worker's
+// worker.  Creating a worker is not intentionally oplogged.  A worker's
 // ReportedStatus and Tags are intentionally ignored when creating a worker (not
 // included).  Currently, a worker can only be created in the global scope
 //
-// Options supported: WithNewIdFunc
+// Options supported: WithNewIdFunc (this option is likely only useful for tests)
 func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "servers.CreateWorker"
 	switch {
