@@ -110,15 +110,24 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	responseControllers := []*pbs.UpstreamServer{}
+	deprecatedControllers := []*servers.Server{}
 	for _, c := range controllers {
 		thisController := &pbs.UpstreamServer{
 			Address: c.Address,
 			Type:    1,
 		}
 		responseControllers = append(responseControllers, thisController)
+		depController := &servers.Server{
+			PrivateId:  c.PrivateId,
+			Address:    c.Address,
+			CreateTime: c.CreateTime,
+			UpdateTime: c.UpdateTime,
+		}
+		deprecatedControllers = append(deprecatedControllers, depController)
 	}
 	ret := &pbs.StatusResponse{
 		CalculatedUpstreams: responseControllers,
+		Controllers:         deprecatedControllers,
 	}
 
 	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))
