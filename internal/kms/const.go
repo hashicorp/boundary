@@ -27,6 +27,9 @@ const (
 	// KeyPurposeWorkerAuth is used for worker auth
 	KeyPurposeWorkerAuth
 
+	// KeyPurposeWorkerStorage is used to specify the worker credential storage dir
+	KeyPurposeWorkerStorage
+
 	// KeyPurposeTokens is used for token encryption
 	KeyPurposeTokens
 
@@ -56,6 +59,8 @@ func (k KeyPurpose) String() string {
 		return "recovery"
 	case KeyPurposeWorkerAuth:
 		return "workerauth"
+	case KeyPurposeWorkerStorage:
+		return "workerstorage"
 	case KeyPurposeTokens:
 		return "tokens"
 	case KeyPurposeSessions:

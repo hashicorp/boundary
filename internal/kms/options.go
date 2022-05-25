@@ -62,9 +62,9 @@ func WithWorkerAuthWrapper(w wrapping.Wrapper) Option {
 	}
 }
 
-// WithWorkerStorageWraper sets the external pki worker storage wrapper for a
+// WithWorkerStorageWrapper sets the external pki worker storage wrapper for a
 // given scope
-func WithWorkerStorageWraper(w wrapping.Wrapper) Option {
+func WithWorkerStorageWrapper(w wrapping.Wrapper) Option {
 	return func(o *options) {
 		o.withWorkerStorageWrapper = w
 	}

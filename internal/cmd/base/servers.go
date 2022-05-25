@@ -534,7 +534,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				if opts.withSkipWorkerAuthKmsInstantiation {
 					continue
 				}
-			case globals.KmsPurposeRoot, globals.KmsPurposeConfig, globals.KmsPurposeWorkerStorage:
+			case globals.KmsPurposeRoot, globals.KmsPurposeConfig:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
@@ -598,8 +598,6 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				b.RootKms = wrapper
 			case globals.KmsPurposeWorkerAuth:
 				b.WorkerAuthKms = wrapper
-			case globals.KmsPurposeWorkerStorage:
-				b.WorkerStorage = wrapper
 			case globals.KmsPurposeRecovery:
 				b.RecoveryKms = wrapper
 			case globals.KmsPurposeConfig:

@@ -104,13 +104,8 @@ func (k *Kms) AddExternalWrappers(ctx context.Context, opt ...Option) error {
 		}
 	}
 	if opts.withWorkerStorageWrapper != nil {
-		ext.workerStorage = opts.withWorkerStorageWrapper
-		keyId, err := ext.workerStorage.KeyId(ctx)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("error reading worker storage wrapper key ID"))
-		}
-		if keyId == "" {
-			return errors.New(ctx, errors.InvalidParameter, op, "worker storage wrapper has no key ID")
+		if err := k.underlying.AddExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerStorage.String()), opts.withWorkerStorageWrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add worker storage wrapper"))
 		}
 	}
 	if opts.withRecoveryWrapper != nil {

@@ -173,6 +173,9 @@ type TestWorkerOpts struct {
 	// The worker auth KMS to use, or one will be created
 	WorkerAuthKms wrapping.Wrapper
 
+	// The worker credential storage KMS to use, or one will be created
+	WorkerStorage wrapping.Wrapper
+
 	// The name to use for the worker, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
 	Name string

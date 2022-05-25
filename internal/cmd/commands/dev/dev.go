@@ -339,10 +339,9 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:       "worker-storage-dir",
-		Target:     &c.flagWorkerAuthStorageDir,
-		Completion: complete.PredictSet("true", "false"),
-		Usage:      "Specifies the directory to store worker authentication credentials in dev mode.",
+		Name:   "worker-storage-dir",
+		Target: &c.flagWorkerAuthStorageDir,
+		Usage:  "Specifies the directory to store worker authentication credentials in dev mode.",
 	})
 
 	f.BoolVar(&base.BoolVar{
