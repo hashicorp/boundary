@@ -5,10 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	//"github.com/hashicorp/boundary/internal/daemon/controller"
-	//"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/go-hclog"
-	//wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/require"
