@@ -701,6 +701,14 @@ var inputStructs = []*structInfo{
 			readTemplate,
 			listTemplate,
 		},
+		extraFields: []fieldInfo{
+			{
+				Name:      "IncludeTerminated",
+				ProtoName: "include_terminated",
+				FieldType: "bool",
+				Query:     true,
+			},
+		},
 		pluralResourceName:  "sessions",
 		createResponseTypes: true,
 		fieldFilter:         []string{"private_key"},

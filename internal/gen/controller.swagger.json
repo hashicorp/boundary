@@ -2523,6 +2523,13 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "include_terminated",
+            "description": "Experimental. By default only non-terminated (i.e. pending, active, canceling) are returned.\nSet this option to include terminated sessions as well.",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
