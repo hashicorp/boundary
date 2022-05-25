@@ -30,6 +30,9 @@ func NewWorkerStatus(workerId string, opt ...Option) *WorkerStatus {
 }
 
 func (w *WorkerStatus) clone() *WorkerStatus {
+	if w == nil {
+		return nil
+	}
 	tags := make([]*Tag, 0, len(w.Tags))
 	for _, t := range w.Tags {
 		tags = append(tags, &Tag{Key: t.Key, Value: t.Value})

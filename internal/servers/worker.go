@@ -37,14 +37,19 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 }
 
 func (w *Worker) clone() *Worker {
+	if w == nil {
+		return nil
+	}
 	tags := make([]*Tag, 0, len(w.Tags))
 	for _, t := range w.Tags {
 		tags = append(tags, &Tag{Key: t.Key, Value: t.Value})
 	}
 	cw := proto.Clone(w.Worker)
+	crs := w.ReportedStatus.clone()
 	return &Worker{
-		Worker: cw.(*store.Worker),
-		Tags:   tags,
+		Worker:         cw.(*store.Worker),
+		Tags:           tags,
+		ReportedStatus: crs,
 	}
 }
 
@@ -159,6 +164,11 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	return worker, nil
 }
 
+// tagsForAggregatedTagString parses a deliminated string in the format returned
+// by the database for the server_worker_aggregate view and returns []*Tag.
+// The string is in the format of key1Yvalue1Zkey2Yvalue2Zkey3Yvalue3. Y and Z
+// ares chosen for deliminators since tag keys and values are restricted from
+// having capitalized letters in them.
 func tagsFromAggregatedTagString(ctx context.Context, s string) ([]*Tag, error) {
 	if s == "" {
 		return nil, nil
