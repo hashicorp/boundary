@@ -4742,7 +4742,7 @@
         },
         "closed_reason": {
           "type": "string",
-          "title": "closed_reason of the conneciont"
+          "title": "closed_reason of the connection"
         }
       },
       "title": "Connection contains information about a specific connection in a session"
@@ -4836,14 +4836,6 @@
           "description": "Output only. The current status of this Session.",
           "readOnly": true
         },
-        "worker_info": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/controller.api.resources.sessions.v1.WorkerInfo"
-          },
-          "description": "Output only. Worker information given to the client.",
-          "readOnly": true
-        },
         "certificate": {
           "type": "string",
           "format": "byte",
@@ -4892,15 +4884,6 @@
           "format": "date-time",
           "description": "Output only. The time the Session stopped being in this state.",
           "readOnly": true
-        }
-      }
-    },
-    "controller.api.resources.sessions.v1.WorkerInfo": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string",
-          "description": "The address of the worker."
         }
       }
     },

@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/servers/store"
-
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -74,21 +72,22 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	reqServer := req.GetWorker()
 	// Convert API tags to storage tags
-	workerTags := make(map[string]*store.TagValues)
+	workerTags := make([]*servers.Tag, 0, len(reqServer.Tags))
 	for k, v := range reqServer.Tags {
-		thisTag := &store.TagValues{
-			Values: v.GetValues(),
+		for _, val := range v.GetValues() {
+			workerTags = append(workerTags, &servers.Tag{
+				Key:   k,
+				Value: val,
+			})
 		}
-		workerTags[k] = thisTag
 	}
-	worker := &store.Worker{
-		PrivateId:  reqServer.PrivateId,
-		Address:    reqServer.Address,
-		CreateTime: reqServer.CreateTime,
-		UpdateTime: reqServer.UpdateTime,
-		Tags:       workerTags,
-	}
-	controllers, _, err := serverRepo.UpsertWorker(ctx, worker, servers.WithUpdateTags(req.GetUpdateTags()))
+
+	wConf := servers.NewWorkerStatus(reqServer.PrivateId,
+		// TODO: Change the name to its own field to make this explicit.
+		servers.WithName(reqServer.PrivateId),
+		servers.WithAddress(reqServer.Address),
+		servers.WithWorkerTags(workerTags...))
+	controllers, _, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
@@ -199,17 +198,19 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 		}
-		tags, err := serversRepo.ListTagsForWorkers(ctx, []string{req.ServerId})
+		workerTags, err := serversRepo.ListTagsForWorkers(ctx, []string{req.ServerId})
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up tags for server", "server_id", req.ServerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
 		}
 		// Build the map for filtering.
 		tagMap := make(map[string][]string)
-		for _, tag := range tags {
-			tagMap[tag.Key] = append(tagMap[tag.Key], tag.Value)
-			// We don't need to reinsert after the fact because maps are
-			// reference types, so we don't need to re-insert into tagMap
+		for _, tags := range workerTags {
+			for _, tag := range tags {
+				tagMap[tag.Key] = append(tagMap[tag.Key], tag.Value)
+				// We don't need to reinsert after the fact because maps are
+				// reference types, so we don't need to re-insert into tagMap
+			}
 		}
 
 		// Create the evaluator
@@ -318,12 +319,7 @@ func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.Act
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	sessionInfo, sessionStates, err := sessRepo.ActivateSession(
-		ctx,
-		req.GetSessionId(),
-		req.GetVersion(),
-		req.GetWorkerId(),
-		[]byte(req.GetTofuToken()))
+	sessionInfo, sessionStates, err := sessRepo.ActivateSession(ctx, req.GetSessionId(), req.GetVersion(), []byte(req.GetTofuToken()))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error looking up session: %v", err)
 	}

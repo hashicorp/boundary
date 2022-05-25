@@ -107,7 +107,7 @@ func (j *sessionConnectionCleanupJob) Run(ctx context.Context) error {
 	for _, result := range results {
 		event.WriteError(ctx, op, stderrors.New("worker has not reported status within acceptable grace period, all connections closed"),
 			event.WithInfo(
-				"private_id", result.WorkerId,
+				"public_id", result.WorkerId,
 				"update_time", result.LastUpdateTime,
 				"grace_period_seconds", j.gracePeriod.Seconds(),
 				"number_connections_closed", result.NumberConnectionsClosed,
@@ -116,7 +116,46 @@ func (j *sessionConnectionCleanupJob) Run(ctx context.Context) error {
 		j.totalClosed += result.NumberConnectionsClosed
 	}
 
+	{
+		count, err := j.closeWorkerlessConnections(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if count > 0 {
+			event.WriteError(ctx, op, stderrors.New("connections with no worker closed"),
+				event.WithInfo(
+					"number_connections_closed", count,
+				))
+			j.totalClosed += count
+		}
+	}
+
 	return nil
+}
+
+// closeWorkerlessConnections will close all connections which do not have a
+// worker id associated with them.
+func (j *sessionConnectionCleanupJob) closeWorkerlessConnections(ctx context.Context) (int, error) {
+	const op = "session.(sessionConnectionCleanupJob).closeWorkerlessConnections"
+	count := 0
+	_, err := j.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
+			count, err = w.Exec(ctx, closeWorkerlessConnections, []interface{}{})
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return count, errors.Wrap(ctx, err, op)
+	}
+
+	return count, nil
 }
 
 // closeConnectionsForDeadWorkers will run

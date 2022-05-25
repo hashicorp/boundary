@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -132,11 +131,9 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			require.NoError(err)
 			serversRepo, err := servers.NewRepository(rw, rw, kms)
 			require.NoError(err)
-			worker := &store.Worker{
-				PrivateId: "test1",
-				Address:   "127.0.0.1",
-			}
-			_, _, err = serversRepo.UpsertWorker(ctx, worker)
+			_, _, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
+				"test_worker_1",
+				servers.WithAddress("127.0.0.1")))
 			require.NoError(err)
 
 			usersStart := time.Now()
@@ -196,7 +193,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 						ScopeId:     users[userIndex].scopeId,
 						Endpoint:    "tcp://127.0.0.1:22",
 					})
-					cycleSessionStates(t, ctx, sess, sessRepo, connRepo, conn, worker, scenario.connsPerSession)
+					cycleSessionStates(t, ctx, sess, sessRepo, connRepo, conn, scenario.connsPerSession)
 					return nil
 				})
 			}
@@ -220,8 +217,8 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 	}
 }
 
-func cycleSessionStates(t testing.TB, ctx context.Context, sess *session.Session, sessRepo *session.Repository, connRepo *session.ConnectionRepository, conn *db.DB, worker *store.Worker, numConns int) {
-	sess, _, err := sessRepo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, []byte(`tofu`))
+func cycleSessionStates(t testing.TB, ctx context.Context, sess *session.Session, sessRepo *session.Repository, connRepo *session.ConnectionRepository, conn *db.DB, numConns int) {
+	sess, _, err := sessRepo.ActivateSession(ctx, sess.PublicId, sess.Version, []byte(`tofu`))
 	require.NoError(t, err)
 	var closeWiths []session.CloseWith
 	for i := 0; i < numConns; i++ {

@@ -36,9 +36,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
-	"github.com/hashicorp/nodeenrollment/noderegistration"
-	nodeefile "github.com/hashicorp/nodeenrollment/nodestorage/file"
+	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
+	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -210,11 +210,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 
 	// Set up repo stuff
 	dbase := db.New(c.conf.Database)
-	kmsRepo, err := kms.NewRepository(dbase, dbase)
-	if err != nil {
-		return nil, fmt.Errorf("error creating kms repository: %w", err)
-	}
-	c.kms, err = kms.NewKms(kmsRepo)
+	c.kms, err = kms.New(ctx, dbase, dbase)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -412,5 +408,5 @@ func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 }
 
 func (c *Controller) AuthorizeNodeeWorker(keyId string) error {
-	return noderegistration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, keyId)
+	return registration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, keyId)
 }

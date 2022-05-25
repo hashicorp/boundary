@@ -22,11 +22,7 @@ import (
 func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) {
 	rw := db.New(b.Database)
 
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return nil, fmt.Errorf("error creating kms repository: %w", err)
-	}
-	kmsCache, err := kms.NewKms(kmsRepo)
+	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -80,11 +76,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password.AuthMethod, *iam.User, error) {
 	rw := db.New(b.Database)
 
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating kms repository: %w", err)
-	}
-	kmsCache, err := kms.NewKms(kmsRepo)
+	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -279,11 +271,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scope, error) {
 	rw := db.New(b.Database)
 
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating kms repository: %w", err)
-	}
-	kmsCache, err := kms.NewKms(kmsRepo)
+	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -362,11 +350,7 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCatalog, *static.HostSet, *static.Host, error) {
 	rw := db.New(b.Database)
 
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error creating kms repository: %w", err)
-	}
-	kmsCache, err := kms.NewKms(kmsRepo)
+	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -473,11 +457,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error) {
 	rw := db.New(b.Database)
 
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return nil, fmt.Errorf("error creating kms repository: %w", err)
-	}
-	kmsCache, err := kms.NewKms(kmsRepo)
+	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}
@@ -608,11 +588,7 @@ func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.
 	}
 	rw := db.New(b.Database)
 
-	kmsRepo, err := kms.NewRepository(rw, rw)
-	if err != nil {
-		return nil, fmt.Errorf("error creating kms repository: %w", err)
-	}
-	kmsCache, err := kms.NewKms(kmsRepo)
+	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kms cache: %w", err)
 	}

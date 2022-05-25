@@ -20,7 +20,7 @@ import (
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
 	"github.com/hashicorp/nodeenrollment/nodeauth"
-	"github.com/hashicorp/nodeenrollment/nodetypes"
+	"github.com/hashicorp/nodeenrollment/types"
 	"google.golang.org/grpc"
 )
 
@@ -83,9 +83,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 	fetchCredsFn := func(
 		ctx context.Context,
 		_ nodee.Storage,
-		req *nodetypes.FetchNodeCredentialsRequest,
+		req *types.FetchNodeCredentialsRequest,
 		_ ...nodee.Option,
-	) (*nodetypes.FetchNodeCredentialsResponse, error) {
+	) (*types.FetchNodeCredentialsResponse, error) {
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
 			return nil, nodeauth.NewTempError(errors.New("error fetching controller connection, client is nil"))
@@ -100,9 +100,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 	generateServerCertificatesFn := func(
 		ctx context.Context,
 		_ nodee.Storage,
-		req *nodetypes.GenerateServerCertificatesRequest,
+		req *types.GenerateServerCertificatesRequest,
 		_ ...nodee.Option,
-	) (*nodetypes.GenerateServerCertificatesResponse, error) {
+	) (*types.GenerateServerCertificatesResponse, error) {
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
 			return nil, nodeauth.NewTempError(errors.New("error fetching controller connection, client is nil"))

@@ -80,7 +80,7 @@ update-ui-version:
 	else \
 		echo "==> Setting to latest commit matching '$(UI_COMMITISH)'"; \
 	fi; \
-	./scripts/uiclone.sh && ./scripts/uiupdate.sh
+	./scripts/uiupdate.sh
 
 .PHONY: build-ui
 build-ui:
@@ -149,6 +149,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
 	@protoc-go-inject-tag -input=./internal/servers/store/controller.pb.go
 	@protoc-go-inject-tag -input=./internal/servers/store/worker.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/store/root_certificate.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/store/worker_auth.pb.go
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/targettest/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/tcp/store/target.pb.go

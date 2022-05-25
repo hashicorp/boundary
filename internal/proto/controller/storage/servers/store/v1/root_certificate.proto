@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the pki package.
+package controller.storage.servers.store.v1;
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
+
+// RootCertificate contains all fields related to a RootCertificate resource
+message RootCertificate {
+  // The serial number of the root certificate
+  // @inject_tag: `gorm:"not_null"`
+  uint64 serial_number = 10;
+
+  // Certificate is the PEM encoded certificate.
+  // @inject_tag: `gorm:"not_null"`
+  bytes certificate = 20;
+
+  // Not valid before is the timestamp at which this certificate's validity period starts
+  storage.timestamp.v1.Timestamp not_valid_before = 30;
+
+  // Not valid after is the timestamp at which this certificate's validity period ends
+  storage.timestamp.v1.Timestamp not_valid_after = 40;
+
+  // The public key associated with this certificate
+  // @inject_tag: `gorm:"not_null"`
+  bytes public_key = 50;
+
+  // The private key associated with this certificate
+  // This is a ciphertext field
+  // @inject_tag: `gorm:"not_null"`
+  bytes private_key = 60;
+
+  // The id of the kms database key used for encrypting this entry.
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 70;
+
+  // State is an enum value indicating if this is the next or current root cert
+  // @inject_tag: `gorm:"not_null"`
+  string state = 80;
+}

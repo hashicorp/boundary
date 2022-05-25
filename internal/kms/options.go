@@ -1,6 +1,8 @@
 package kms
 
 import (
+	"io"
+
 	"github.com/hashicorp/boundary/internal/db"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
@@ -19,15 +21,17 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit                int
-	withRootWrapper          wrapping.Wrapper
-	withWorkerAuthWrapper    wrapping.Wrapper
+	withLimit             int
+	withRootWrapper       wrapping.Wrapper
+	withWorkerAuthWrapper wrapping.Wrapper
 	withWorkerStorageWrapper wrapping.Wrapper
-	withRecoveryWrapper      wrapping.Wrapper
-	withRepository           *Repository
-	withOrderByVersion       db.OrderBy
-	withKeyId                string
-	withScopeIds             []string
+	withRecoveryWrapper   wrapping.Wrapper
+	withOrderByVersion    db.OrderBy
+	withKeyId             string
+	withScopeIds          []string
+	withRandomReader      io.Reader
+	withReader            db.Reader
+	withWriter            db.Writer
 }
 
 func getDefaultOptions() options {
@@ -73,14 +77,6 @@ func WithRecoveryWrapper(w wrapping.Wrapper) Option {
 	}
 }
 
-// WithRepository sets a repository for a given wrapper lookup, useful if in the
-// middle of a transaction where the reader/writer need to be specified
-func WithRepository(repo *Repository) Option {
-	return func(o *options) {
-		o.withRepository = repo
-	}
-}
-
 // WithOrderByVersion provides an option to specify ordering by the
 // CreateTime field.
 func WithOrderByVersion(orderBy db.OrderBy) Option {
@@ -102,5 +98,25 @@ func WithKeyId(keyId string) Option {
 func WithScopeIds(scopeId ...string) Option {
 	return func(o *options) {
 		o.withScopeIds = scopeId
+	}
+}
+
+// WithRandomReader(...) option allows an optional random reader to be
+// provided.  By default the reader from crypto/rand will be used.
+func WithRandomReader(randomReader io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = randomReader
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction. The purpose of the
+// WithReaderWriter(...) option is to allow the caller to create the scope and
+// all of its keys in the same transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.withReader = r
+		o.withWriter = w
 	}
 }

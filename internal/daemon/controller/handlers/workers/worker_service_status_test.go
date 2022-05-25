@@ -5,8 +5,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/servers/store"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -17,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -37,10 +36,9 @@ func TestStatus(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, &store.Worker{
-		PrivateId: "test_worker1",
-		Address:   "127.0.0.1",
-	})
+	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
+		"test_worker1",
+		servers.WithAddress("127.0.0.1")))
 
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
@@ -70,7 +68,7 @@ func TestStatus(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := session.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -83,14 +81,14 @@ func TestStatus(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu := session.TestTofu(t)
-	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker1.PrivateId, tofu)
+	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
 	require.NoError(t, err)
 	require.NoError(t, err)
 
 	s := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
-	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PrivateId)
+	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -105,8 +103,8 @@ func TestStatus(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				Worker: &servers.Server{
-					PrivateId:  worker1.PrivateId,
-					Address:    worker1.Address,
+					PrivateId:  worker1.PublicId,
+					Address:    worker1.CanonicalAddress(),
 					CreateTime: worker1.CreateTime,
 					UpdateTime: worker1.UpdateTime,
 				},
@@ -125,8 +123,8 @@ func TestStatus(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				Worker: &servers.Server{
-					PrivateId:  worker1.PrivateId,
-					Address:    worker1.Address,
+					PrivateId:  worker1.PublicId,
+					Address:    worker1.CanonicalAddress(),
 					CreateTime: worker1.CreateTime,
 					UpdateTime: worker1.UpdateTime,
 				},
@@ -205,10 +203,9 @@ func TestStatusSessionClosed(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, &store.Worker{
-		PrivateId: "test_worker1",
-		Address:   "127.0.0.1",
-	})
+	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
+		"test_worker1",
+		servers.WithAddress("127.0.0.1")))
 
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
@@ -238,7 +235,7 @@ func TestStatusSessionClosed(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := session.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -251,7 +248,7 @@ func TestStatusSessionClosed(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu := session.TestTofu(t)
-	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker1.PrivateId, tofu)
+	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
 	require.NoError(t, err)
 	sess2 := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -264,13 +261,13 @@ func TestStatusSessionClosed(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu2 := session.TestTofu(t)
-	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker1.PrivateId, tofu2)
+	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
 	s := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
-	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PrivateId)
+	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -290,8 +287,8 @@ func TestStatusSessionClosed(t *testing.T) {
 			},
 			req: &pbs.StatusRequest{
 				Worker: &servers.Server{
-					PrivateId:  worker1.PrivateId,
-					Address:    worker1.Address,
+					PrivateId:  worker1.PublicId,
+					Address:    worker1.CanonicalAddress(),
 					CreateTime: worker1.CreateTime,
 					UpdateTime: worker1.UpdateTime,
 				},
@@ -387,10 +384,9 @@ func TestStatusDeadConnection(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorker(ctx, &store.Worker{
-		PrivateId: "test_worker1",
-		Address:   "127.0.0.1",
-	})
+	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
+		"test_worker1",
+		servers.WithAddress("127.0.0.1")))
 
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
@@ -420,7 +416,7 @@ func TestStatusDeadConnection(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := session.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -433,7 +429,7 @@ func TestStatusDeadConnection(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu := session.TestTofu(t)
-	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, worker1.PrivateId, tofu)
+	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
 	require.NoError(t, err)
 	sess2 := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -446,22 +442,22 @@ func TestStatusDeadConnection(t *testing.T) {
 		ConnectionLimit: 10,
 	})
 	tofu2 := session.TestTofu(t)
-	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, worker1.PrivateId, tofu2)
+	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
 	s := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
-	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PrivateId)
+	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
 	require.NoError(t, err)
-	deadConn, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker1.PrivateId)
+	deadConn, _, err := connRepo.AuthorizeConnection(ctx, sess2.PublicId, worker1.PublicId)
 	require.NoError(t, err)
 	require.NotEqual(t, deadConn.PublicId, connection.PublicId)
 
 	req := &pbs.StatusRequest{
 		Worker: &servers.Server{
-			PrivateId:  worker1.PrivateId,
-			Address:    worker1.Address,
+			PrivateId:  worker1.PublicId,
+			Address:    worker1.CanonicalAddress(),
 			CreateTime: worker1.CreateTime,
 			UpdateTime: worker1.UpdateTime,
 		},

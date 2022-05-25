@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-secure-stdlib/base62"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -94,7 +94,7 @@ listener "tcp" {
 }
 
 worker {
-	name = "dev-worker"
+	name = "w_1234567890"
 	description = "A default worker created in dev mode"
 	controllers = ["127.0.0.1"]
 	tags {
@@ -213,7 +213,7 @@ func (w *Worker) InitNameIfEmpty() (string, error) {
 func initNameIfEmpty(name *string) error {
 	if *name == "" {
 		var err error
-		if *name, err = base62.Random(10); err != nil {
+		if *name, err = db.NewPublicId("w"); err != nil {
 			return err
 		}
 	}

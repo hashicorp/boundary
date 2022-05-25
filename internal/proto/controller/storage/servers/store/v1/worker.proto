@@ -1,17 +1,18 @@
 syntax = "proto3";
 
 package controller.storage.servers.store.v1;
-option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 
+option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
+
 // Worker contains all fields related to a Worker resource
 message Worker {
-  // Private ID of the resource
-  string private_id = 10;
+  // public_id is a surrogate key suitable for use in a public API
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
 
   // Name of the resource (optional)
-  // Description of the resource (optional)
   // @inject_tag: `gorm:"default:null"`
   string name = 20;
 
@@ -19,21 +20,67 @@ message Worker {
   // @inject_tag: `gorm:"default:null"`
   string description = 30;
 
-  // Address for the worker
+  // Address for the worker. This is optional.
+  // @inject_tag: `gorm:"default:null"`
   string address = 40;
 
-  // First seen time from the RDBMS
-  storage.timestamp.v1.Timestamp create_time = 50;
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 50;
 
-  // Last time there was an update
-  storage.timestamp.v1.Timestamp update_time = 60;
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 60;
 
-  // @gotags: `gorm:"-"`
-  map<string, TagValues> tags = 70;
+  // The scope_id of the owning scope and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 70;
+
+  // version allows optimistic locking of the resource.
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 80;
 }
 
-// TagValues is used because map fields cannot be repeated but can be a
-// message
-message TagValues {
-  repeated string values = 10;
+// WorkerTag is a tag for a worker.  The primary key is comprised of the
+// worker_id, key, value, and source.
+message WorkerTag {
+  // worker_id is the public key that key of the worker this tag is for.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // key is the key of the tag. This must be set.
+  // @inject_tag: `gorm:"primary_key"`
+  string key = 20;
+
+  // value is the value
+  // @inject_tag: `gorm:"primary_key"`
+  string value = 30;
+
+  // source is the source of the tag. Either 'configuration' or 'api'.
+  // @inject_tag: `gorm:"default:not_null"`
+  string source = 40;
+}
+
+// WorkerStatus contains the fields that the worker reports to the controller
+// in its status  updates.
+message WorkerStatus {
+  // worker_id is the public key that key of the worker this tag is for.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // Name of the resource (optional)
+  // @inject_tag: `gorm:"default:null"`
+  string name = 40;
+
+  // Address for the worker. This must be set.
+  // @inject_tag: `gorm:"default:null"`
+  string address = 50;
 }
