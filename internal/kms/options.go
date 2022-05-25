@@ -21,17 +21,17 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit             int
-	withRootWrapper       wrapping.Wrapper
-	withWorkerAuthWrapper wrapping.Wrapper
+	withLimit                int
+	withRootWrapper          wrapping.Wrapper
+	withWorkerAuthWrapper    wrapping.Wrapper
 	withWorkerStorageWrapper wrapping.Wrapper
-	withRecoveryWrapper   wrapping.Wrapper
-	withOrderByVersion    db.OrderBy
-	withKeyId             string
-	withScopeIds          []string
-	withRandomReader      io.Reader
-	withReader            db.Reader
-	withWriter            db.Writer
+	withRecoveryWrapper      wrapping.Wrapper
+	withOrderByVersion       db.OrderBy
+	withKeyId                string
+	withScopeIds             []string
+	withRandomReader         io.Reader
+	withReader               db.Reader
+	withWriter               db.Writer
 }
 
 func getDefaultOptions() options {
