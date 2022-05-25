@@ -1,6 +1,7 @@
 package servers
 
 import (
+	"context"
 	"time"
 )
 
@@ -31,10 +32,13 @@ type options struct {
 	withControllerEncryptionPrivateKey []byte
 	withKeyId                          string
 	withNonce                          []byte
+	withNewIdFunc                      func(context.Context) (string, error)
 }
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withNewIdFunc: newWorkerId,
+	}
 }
 
 // WithDescription provides an optional description.
@@ -126,5 +130,12 @@ func WithKeyId(keyId string) Option {
 func WithNonce(nonce []byte) Option {
 	return func(o *options) {
 		o.withNonce = nonce
+	}
+}
+
+// WithNewIdFunc allows an optional factory function for new worker IDs to be specified
+func WithNewIdFunc(fn func(context.Context) (string, error)) Option {
+	return func(o *options) {
+		o.withNewIdFunc = fn
 	}
 }
