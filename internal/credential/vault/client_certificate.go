@@ -75,7 +75,7 @@ func (c *ClientCertificate) SetTableName(n string) {
 func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(ClientCertificate).encrypt"
 	if len(c.CertificateKey) == 0 {
-		errors.New(ctx, errors.InvalidParameter, op, "no certificate key defined")
+		return errors.New(ctx, errors.InvalidParameter, op, "no certificate key defined")
 	}
 	if err := structwrapping.WrapStruct(ctx, cipher, c.ClientCertificate, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
@@ -86,7 +86,7 @@ func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper
 	}
 	c.KeyId = keyId
 	if err := c.hmacCertificateKey(ctx, cipher); err != nil {
-		errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }

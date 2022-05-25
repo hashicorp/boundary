@@ -193,7 +193,7 @@ func TestMigrateDatabase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			u := tc.urlProvider()
 			ui := cli.NewMockUi()
-			clean, errCode := migrateDatabase(ctx, ui, dialect, u, tc.initialized)
+			clean, errCode := migrateDatabase(ctx, ui, dialect, u, tc.initialized, 10)
 			clean()
 			assert.EqualValues(t, tc.expectedCode, errCode)
 			assert.Equal(t, tc.expectedOutput, ui.OutputWriter.String())

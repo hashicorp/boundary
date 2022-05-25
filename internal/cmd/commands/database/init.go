@@ -239,6 +239,8 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
+	c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
+
 	var migrationUrlToParse string
 	if c.Config.Controller.Database.MigrationUrl != "" {
 		migrationUrlToParse = c.Config.Controller.Database.MigrationUrl
@@ -262,7 +264,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, false, c.DatabaseMaxOpenConnections)
 	defer clean()
 	switch errCode {
 	case 0:
