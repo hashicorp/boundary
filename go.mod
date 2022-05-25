@@ -90,17 +90,15 @@ require (
 require github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f // this is a branch and should be updated before merging
 
 require (
-	github.com/hashicorp/nodeenrollment v0.0.0-20220520141833-ad7323153acc
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220515130442-cac0b5ac133b
-	github.com/prometheus/client_golang v1.12.1
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	github.com/hashicorp/nodeenrollment v0.0.0-20220520141833-ad7323153acc
 )
 
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/AlecAivazis/survey/v2 v2.2.9 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
-	github.com/DATA-DOG/go-sqlmock v1.5.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
