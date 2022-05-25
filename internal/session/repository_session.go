@@ -207,32 +207,31 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	return &session, authzSummary, nil
 }
 
-// FetchAuthzProtectedEntitiesByScope implements boundary.AuthzProtectedEntityProvider
-func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, scopeIds []string) (map[string][]boundary.AuthzProtectedEntity, error) {
-	const op = "session.(Repository).FetchAuthzProtectedEntityInfo"
+// fetchAuthzProtectedSessionsByScope fetches sessions for the given scopes.
+// Note that the sessions are not fully populated, and only contain the
+// necessary information to implement the boundary.AuthzProtectedEntity
+// interface. Supports the WithTerminated option.
+func (r *Repository) fetchAuthzProtectedSessionsByScope(
+	ctx context.Context, scopeIds []string, opt ...Option,
+) (map[string][]boundary.AuthzProtectedEntity, error) {
+	const op = "session.(Repository).fetchAuthzProtectedSessionsByScope"
 
-	var where string
-	var args []interface{}
+	opts := getOpts(opt...)
 
-	inClauseCnt := 0
-
-	switch len(scopeIds) {
-	case 0:
+	if len(scopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
-	case 1:
-		inClauseCnt += 1
-		where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), scopeIds[0]))
-	default:
-		idsInClause := make([]string, 0, len(scopeIds))
-		for _, id := range scopeIds {
-			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
-		}
-		where = fmt.Sprintf("where scope_id in (%s)", strings.Join(idsInClause, ","))
 	}
 
-	q := sessionPublicIdList
-	query := fmt.Sprintf(q, where)
+	args := []interface{}{
+		sql.Named("scope_ids", "{"+strings.Join(scopeIds, ",")+"}"),
+	}
+
+	var query string
+	if opts.withTerminated {
+		query = sessionPublicIdList
+	} else {
+		query = nonTerminatedSessionPublicIdList
+	}
 
 	rows, err := r.reader.Query(ctx, query, args)
 	if err != nil {

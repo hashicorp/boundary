@@ -1592,3 +1592,232 @@ func TestRepository_deleteTerminated(t *testing.T) {
 		})
 	}
 }
+
+func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	ctx := context.Background()
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+
+	_, pWithOtherSessions := iam.TestScopes(t, iamRepo)
+
+	hcOther := static.TestCatalogs(t, conn, pWithOtherSessions.GetPublicId(), 1)[0]
+	hsOther := static.TestSets(t, conn, hcOther.GetPublicId(), 1)[0]
+	hOther := static.TestHosts(t, conn, hcOther.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hsOther.GetPublicId(), []*static.Host{hOther})
+	tarOther := tcp.TestTarget(ctx, t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
+
+	composedOfOther := ComposedOf{
+		UserId:      composedOf.UserId,
+		HostId:      hOther.GetPublicId(),
+		TargetId:    tarOther.GetPublicId(),
+		HostSetId:   hsOther.GetPublicId(),
+		AuthTokenId: composedOf.AuthTokenId,
+		ScopeId:     pWithOtherSessions.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	}
+
+	type testCase struct {
+		name              string
+		createCnt         int
+		terminateCnt      int
+		otherCnt          int
+		otherTerminateCnt int
+		opts              []Option
+		reqScopes         []string
+		wantCnt           int
+		wantOtherCnt      int
+		wantErr           bool
+	}
+
+	cases := []testCase{
+		{
+			name:      "NonTerminated/none",
+			createCnt: 0,
+			reqScopes: []string{composedOf.ScopeId},
+			wantCnt:   0,
+			wantErr:   false,
+		},
+		{
+			name:      "NonTerminated/one",
+			createCnt: 1,
+			reqScopes: []string{composedOf.ScopeId},
+			wantCnt:   1,
+			wantErr:   false,
+		},
+		{
+			name:      "NonTerminated/many",
+			createCnt: 5,
+			reqScopes: []string{composedOf.ScopeId},
+			wantCnt:   5,
+			wantErr:   false,
+		},
+		{
+			name:         "NonTerminated/many one terminated",
+			createCnt:    5,
+			terminateCnt: 1,
+			reqScopes:    []string{composedOf.ScopeId},
+			wantCnt:      4,
+			wantErr:      false,
+		},
+		{
+			name:         "NonTerminated/many terminated",
+			createCnt:    5,
+			terminateCnt: 3,
+			reqScopes:    []string{composedOf.ScopeId},
+			wantCnt:      2,
+			wantErr:      false,
+		},
+		{
+			name:         "NonTerminated/many multiple scopes",
+			createCnt:    5,
+			terminateCnt: 3,
+			reqScopes:    []string{composedOf.ScopeId, composedOfOther.ScopeId},
+			wantCnt:      2,
+			wantErr:      false,
+		},
+		{
+			name:              "NonTerminated/many multiple scopes",
+			createCnt:         5,
+			terminateCnt:      3,
+			otherCnt:          3,
+			otherTerminateCnt: 1,
+			reqScopes:         []string{composedOf.ScopeId, composedOfOther.ScopeId},
+			wantCnt:           2,
+			wantOtherCnt:      2,
+			wantErr:           false,
+		},
+		{
+			name:              "NonTerminated/no scopes",
+			createCnt:         2,
+			terminateCnt:      1,
+			otherCnt:          2,
+			otherTerminateCnt: 1,
+			reqScopes:         []string{},
+			wantErr:           true,
+		},
+		{
+			name:      "none",
+			opts:      []Option{WithTerminated(true)},
+			createCnt: 0,
+			reqScopes: []string{composedOf.ScopeId},
+			wantCnt:   0,
+			wantErr:   false,
+		},
+		{
+			name:      "one",
+			opts:      []Option{WithTerminated(true)},
+			createCnt: 1,
+			reqScopes: []string{composedOf.ScopeId},
+			wantCnt:   1,
+			wantErr:   false,
+		},
+		{
+			name:      "many",
+			opts:      []Option{WithTerminated(true)},
+			createCnt: 5,
+			reqScopes: []string{composedOf.ScopeId},
+			wantCnt:   5,
+			wantErr:   false,
+		},
+		{
+			name:         "many one terminated",
+			opts:         []Option{WithTerminated(true)},
+			createCnt:    5,
+			terminateCnt: 1,
+			reqScopes:    []string{composedOf.ScopeId},
+			wantCnt:      5,
+			wantErr:      false,
+		},
+		{
+			name:         "many terminated",
+			opts:         []Option{WithTerminated(true)},
+			createCnt:    5,
+			terminateCnt: 3,
+			reqScopes:    []string{composedOf.ScopeId},
+			wantCnt:      5,
+			wantErr:      false,
+		},
+		{
+			name:         "many multiple scopes",
+			opts:         []Option{WithTerminated(true)},
+			createCnt:    5,
+			terminateCnt: 3,
+			reqScopes:    []string{composedOf.ScopeId, composedOfOther.ScopeId},
+			wantCnt:      5,
+			wantErr:      false,
+		},
+		{
+			name:              "many multiple scopes",
+			opts:              []Option{WithTerminated(true)},
+			createCnt:         5,
+			terminateCnt:      3,
+			otherCnt:          3,
+			otherTerminateCnt: 1,
+			reqScopes:         []string{composedOf.ScopeId, composedOfOther.ScopeId},
+			wantCnt:           5,
+			wantOtherCnt:      3,
+			wantErr:           false,
+		},
+		{
+			name:              "no scopes",
+			opts:              []Option{WithTerminated(true)},
+			createCnt:         2,
+			terminateCnt:      1,
+			otherCnt:          2,
+			otherTerminateCnt: 1,
+			reqScopes:         []string{},
+			wantErr:           true,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+
+			testSessions := []*Session{}
+			for i := 0; i < tt.createCnt; i++ {
+				s := TestSession(t, conn, wrapper, composedOf)
+				_ = TestState(t, conn, s.PublicId, StatusActive)
+				testSessions = append(testSessions, s)
+			}
+			for i := 0; i < tt.terminateCnt; i++ {
+				_, err := repo.CancelSession(ctx, testSessions[i].PublicId, testSessions[i].Version)
+				require.NoError(err)
+			}
+			terminated, err := repo.TerminateCompletedSessions(ctx)
+			require.NoError(err)
+			require.Equal(tt.terminateCnt, terminated)
+
+			otherTestSessions := []*Session{}
+			for i := 0; i < tt.otherCnt; i++ {
+				s := TestSession(t, conn, wrapper, composedOfOther)
+				_ = TestState(t, conn, s.PublicId, StatusActive)
+				otherTestSessions = append(otherTestSessions, s)
+			}
+			for i := 0; i < tt.otherTerminateCnt; i++ {
+				_, err := repo.CancelSession(ctx, otherTestSessions[i].PublicId, otherTestSessions[i].Version)
+				require.NoError(err)
+			}
+			terminated, err = repo.TerminateCompletedSessions(ctx)
+			require.NoError(err)
+			require.Equal(tt.otherTerminateCnt, terminated)
+
+			assert.Equal(tt.otherCnt, len(otherTestSessions))
+
+			got, err := repo.fetchAuthzProtectedSessionsByScope(ctx, tt.reqScopes, tt.opts...)
+			if tt.wantErr {
+				require.Error(err)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got[composedOf.ScopeId]))
+			assert.Equal(tt.wantOtherCnt, len(got[composedOfOther.ScopeId]))
+		})
+	}
+}
