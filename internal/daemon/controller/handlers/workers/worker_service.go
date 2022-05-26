@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-bexpr"
 	"google.golang.org/grpc/codes"
@@ -63,12 +64,6 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
 	}
-	sessRepo, err := ws.sessionRepoFn()
-	connectionRepo, err := ws.connectionRepoFn()
-	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting sessions repo"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
-	}
 
 	reqServer := req.GetWorker()
 	// Convert API tags to storage tags
@@ -82,15 +77,19 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
-	wConf := servers.NewWorkerStatus(reqServer.PrivateId,
-		// TODO: Change the name to its own field to make this explicit.
+	wConf := servers.NewWorkerForStatus(scope.Global.String(),
 		servers.WithName(reqServer.PrivateId),
 		servers.WithAddress(reqServer.Address),
 		servers.WithWorkerTags(workerTags...))
-	controllers, _, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
+	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
+	}
+	controllers, err := serverRepo.ListControllers(ctx)
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting current controllers"))
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting current controllers: %v", err)
 	}
 
 	responseControllers := []*servers.Server{}
@@ -139,9 +138,22 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
-	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, req.Worker.PrivateId, stateReport)
+	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error comparing state of sessions for worker: %s: %v", req.Worker.PrivateId, err)
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting sessions repo"))
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
+	}
+	connectionRepo, err := ws.connectionRepoFn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting connection repo"))
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
+	}
+
+	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, wrk.GetPublicId(), stateReport)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal,
+			"Error comparing state of sessions for worker %q with public id %q: %v",
+			req.Worker.PrivateId, wrk.GetPublicId(), err)
 	}
 	for _, na := range notActive {
 		var connChanges []*pbs.Connection
@@ -198,20 +210,13 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 		}
-		workerTags, err := serversRepo.ListTagsForWorkers(ctx, []string{req.ServerId})
+		w, err := serversRepo.LookupWorkerByWorkerReportedName(ctx, req.GetServerId())
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up tags for server", "server_id", req.ServerId))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by name", "name", req.ServerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
 		}
 		// Build the map for filtering.
-		tagMap := make(map[string][]string)
-		for _, tags := range workerTags {
-			for _, tag := range tags {
-				tagMap[tag.Key] = append(tagMap[tag.Key], tag.Value)
-				// We don't need to reinsert after the fact because maps are
-				// reference types, so we don't need to re-insert into tagMap
-			}
-		}
+		tagMap := w.CanonicalTags()
 
 		// Create the evaluator
 		eval, err := bexpr.CreateEvaluator(sessionInfo.WorkerFilter)
@@ -219,8 +224,12 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "server_id", req.ServerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 		}
+		name := w.GetName()
+		if name == "" {
+			name = w.GetWorkerReportedName()
+		}
 		filterInput := map[string]interface{}{
-			"name": req.ServerId,
+			"name": name,
 			"tags": tagMap,
 		}
 		ok, err := eval.Evaluate(filterInput)
@@ -347,7 +356,19 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
 	}
 
-	connectionInfo, connStates, authzSummary, err := session.AuthorizeConnection(ctx, sessionRepo, connectionRepo, req.GetSessionId(), req.GetWorkerId())
+	serversRepo, err := ws.serversRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting servers repo: %v", err)
+	}
+	w, err := serversRepo.LookupWorkerByWorkerReportedName(ctx, req.GetWorkerId())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error looking up worker: %v", err)
+	}
+	if w == nil {
+		return nil, status.Errorf(codes.NotFound, "worker not found with name %q", req.GetWorkerId())
+	}
+
+	connectionInfo, connStates, authzSummary, err := session.AuthorizeConnection(ctx, sessionRepo, connectionRepo, req.GetSessionId(), w.GetPublicId())
 	if err != nil {
 		return nil, err
 	}

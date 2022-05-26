@@ -40,6 +40,20 @@ create table server_worker (
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
+  last_status_time timestamp with time zone,
+  constraint last_status_time_after_create_time
+    check (last_status_time >= create_time),
+  -- This is the calculated address that the worker reports it is reachable on.
+  -- This must be set if the worker has ever received a status update.
+  worker_reported_address wt_network_address
+    constraint worker_reported_address_must_be_set_by_status
+      check (
+          (last_status_time is null and worker_reported_address is null)
+          or
+          (last_status_time is not null and worker_reported_address is not null)
+        ),
+  -- This is the name that the worker reports in it's status updates.
+  worker_reported_name wt_name unique,
   constraint server_worker_scope_id_name_uq
     unique(scope_id, name)
 );
@@ -55,35 +69,41 @@ create trigger default_create_time_column before insert on server_worker
 create trigger worker_insert_time_column before insert on server_worker
   for each row execute procedure update_time_column();
 
-create trigger worker_update_time_column before update on server_worker
+create trigger worker_update_time_column before update of version, description, name, address on server_worker
   for each row execute procedure update_time_column();
 
-create table server_worker_status (
-  worker_id wt_public_id primary key
-    constraint server_worker_fkey
-      references server_worker(public_id)
-      on delete cascade
-      on update cascade,
-  create_time wt_timestamp,
-  update_time wt_timestamp,
-  -- This is the calculated address that the worker reports it is reachable on.
-  address wt_network_address not null,
-  name wt_name
-);
-comment on table server_worker_status  is
-  'server_worker_status is a table where each row represents values that a Boundary worker reports to a controller.';
+create trigger update_version_column after update of version, description, name, address on server_worker
+  for each row execute procedure update_version_column();
 
-create trigger immutable_columns before update on server_worker_status
-  for each row execute procedure immutable_columns('worker_id', 'create_time');
+create function update_server_worker_last_update_time_column()
+  returns trigger
+as $$
+begin
+  new.last_status_time = now();
+  return new;
+end;
+$$ language plpgsql;
+comment on function update_server_worker_last_update_time_column is
+  'function used to update the last_update_time column in server_worker to now';
 
-create trigger default_create_time_column before insert on server_worker_status
-  for each row execute procedure default_create_time();
+create trigger update_server_worker_last_update_time_column before update of worker_reported_address, worker_reported_name on server_worker
+  for each row execute procedure update_server_worker_last_update_time_column();
 
-create trigger worker_insert_time_column before insert on server_worker_status
-  for each row execute procedure update_time_column();
+create function insert_server_worker_last_update_time_column()
+  returns trigger
+as $$
+begin
+  if new.worker_reported_address is not null or new.worker_reported_name is not null then
+    new.last_status_time = now();
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+comment on function insert_server_worker_last_update_time_column is
+  'function used to update the last_update_time column in server_worker to now';
 
-create trigger worker_update_time_column before update on server_worker_status
-  for each row execute procedure update_time_column();
+create trigger insert_server_worker_last_update_time_column before insert on server_worker
+  for each row execute procedure insert_server_worker_last_update_time_column();
 
 -- Create table worker tag
 create table server_worker_tag_enm (
@@ -136,16 +156,13 @@ select
   w.create_time,
   w.update_time,
   w.version,
-  ws.name as worker_status_name,
-  ws.address as worker_status_address,
-  ws.update_time as worker_status_update_time,
-  ws.create_time as worker_status_create_time,
+  w.worker_reported_name,
+  w.worker_reported_address,
+  w.last_status_time,
   -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
   wt.tags as api_tags,
   ct.tags as worker_config_tags
 from server_worker w
-  left join server_worker_status ws on
-    w.public_id = ws.worker_id
   left join worker_config_tags wt on
       w.public_id = wt.worker_id and wt.source = 'api'
   left join worker_config_tags ct on

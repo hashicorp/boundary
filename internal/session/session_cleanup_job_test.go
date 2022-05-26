@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -108,9 +109,10 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, rowsUpdated, err := serversRepo.UpsertWorkerStatus(ctx, worker1.ReportedStatus)
+	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
+		servers.WithName(worker1.GetWorkerReportedName()),
+		servers.WithAddress(worker1.GetWorkerReportedAddress())))
 	require.NoError(err)
-	require.Equal(1, rowsUpdated)
 
 	// Run the job.
 	require.NoError(job.Run(ctx))
@@ -166,61 +168,6 @@ func TestSessionConnectionCleanupJobNewJobErr(t *testing.T) {
 		errors.WithMsg(fmt.Sprintf("invalid gracePeriod, must be greater than %s", deadWorkerConnCloseMinGrace)),
 	))
 	require.Nil(job)
-}
-
-func TestCloseConnections_ManuallyDeletedConfig(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	require := require.New(t)
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(err)
-	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
-	require.NoError(err)
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
-	require.NoError(err)
-
-	gracePeriod := 1 * time.Second
-	job, err := newSessionConnectionCleanupJob(rw, deadWorkerConnCloseMinGrace)
-	require.NoError(err)
-
-	worker := servers.TestWorker(t, conn, wrapper)
-	sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithDbOpts(db.WithSkipVetForWrite(true)))
-	sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
-	require.NoError(err)
-	c, cs, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), worker.GetPublicId())
-	require.NoError(err)
-	require.Len(cs, 1)
-	require.Equal(StatusAuthorized, cs[0].Status)
-
-	_, cs, err = connRepo.ConnectConnection(ctx, ConnectWith{
-		ConnectionId:       c.GetPublicId(),
-		ClientTcpAddress:   "127.0.0.1",
-		ClientTcpPort:      22,
-		EndpointTcpAddress: "127.0.0.1",
-		EndpointTcpPort:    22,
-		UserClientIp:       "127.0.0.1",
-	})
-
-	// The single worker's connections aren't cleaned up
-	_, _, err = serversRepo.UpsertWorkerStatus(ctx, worker.ReportedStatus)
-	assert.NoError(t, err)
-	result, err := job.closeConnectionsForDeadWorkers(ctx, gracePeriod)
-	require.NoError(err)
-	require.Empty(result)
-
-	// the manually deleted status causes the connections to be cleaned
-	_, _, err = serversRepo.UpsertWorkerStatus(ctx, worker.ReportedStatus)
-	assert.NoError(t, err)
-	_, err = rw.Delete(ctx, worker.ReportedStatus)
-	assert.NoError(t, err)
-	result, err = job.closeConnectionsForDeadWorkers(ctx, gracePeriod)
-	require.NoError(err)
-	require.Len(result, 1)
 }
 
 func TestCloseConnectionsForDeadWorkers(t *testing.T) {
@@ -345,21 +292,13 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// the most up-to-date fields.
 	updateServer := func(t *testing.T, w *servers.Worker) *servers.Worker {
 		t.Helper()
-		_, rowsUpdated, err := serversRepo.UpsertWorkerStatus(ctx, w.ReportedStatus)
+		// The worker provided name will derive the WorkerId every time
+		// UpsertWorkerStatus is called. Setting the Worker Id on the caller
+		// side is an error.
+		w.PublicId = ""
+		wkr, err := serversRepo.UpsertWorkerStatus(ctx, w)
 		require.NoError(err)
-		require.Equal(1, rowsUpdated)
-		servers, err := serversRepo.ListWorkers(ctx)
-		require.NoError(err)
-		for _, server := range servers {
-			if server.PublicId == w.PublicId {
-				return server
-			}
-		}
-
-		require.FailNowf("server %q not found after updating", w.PublicId)
-		// Looks weird but needed to build, as we fail in testify instead
-		// of returning an error
-		return nil
+		return wkr
 	}
 
 	// requireConnectionStatus is a helper expecting all connections on a worker
@@ -454,7 +393,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		require.Equal([]closeConnectionsForDeadWorkersResult{
 			{
 				WorkerId:                worker1.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker1.LastConnectionUpdate().AsTime()),
+				LastUpdateTime:          timestampPbAsUTC(t, worker1.GetLastStatusTime().AsTime()),
 				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
 			},
 		}, result)
@@ -478,12 +417,12 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		require.ElementsMatch([]closeConnectionsForDeadWorkersResult{
 			{
 				WorkerId:                worker2.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker2.LastConnectionUpdate().AsTime()),
+				LastUpdateTime:          timestampPbAsUTC(t, worker2.GetLastStatusTime().AsTime()),
 				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
 			},
 			{
 				WorkerId:                worker3.PublicId,
-				LastUpdateTime:          timestampPbAsUTC(t, worker3.LastConnectionUpdate().AsTime()),
+				LastUpdateTime:          timestampPbAsUTC(t, worker3.GetLastStatusTime().AsTime()),
 				NumberConnectionsClosed: 12, // 18 per server, with 6 closed already
 			},
 		}, result)

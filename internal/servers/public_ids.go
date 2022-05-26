@@ -19,3 +19,11 @@ func newWorkerId(ctx context.Context) (string, error) {
 	}
 	return id, nil
 }
+
+func newWorkerIdFromName(ctx context.Context, name string) (string, error) {
+	id, err := db.NewPublicId(WorkerPrefix, db.WithPrngValues([]string{name}))
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "servers.newWorkerId")
+	}
+	return id, nil
+}

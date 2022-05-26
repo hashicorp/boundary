@@ -77,7 +77,6 @@ func TestServer_ShutdownWorker(t *testing.T) {
 
 	tcl := targets.NewClient(client)
 	tgtL, err := tcl.List(ctx, scope.Global.String(), targets.WithRecursive(true))
-	// tgt, err := tcl.Read(ctx, "ttcp_1234567890")
 	require.NoError(err)
 	require.Len(tgtL.Items, 1)
 	tgt := tgtL.Items[0]
