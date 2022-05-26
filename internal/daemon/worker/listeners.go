@@ -13,7 +13,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
+	"github.com/hashicorp/boundary/internal/daemon/worker/services"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
@@ -136,11 +137,11 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 	)
-	multihopService := workers.NewMultihopServiceServer(
+	multihopService := cluster.NewMultihopServiceServer(
 		nodeauth.MakeCurrentParametersFactory(w.baseContext, nodee.NopTransactionStorage(w.NodeeFileStorage)),
 	)
 	multihop.RegisterMultihopServiceServer(downstreamServer, multihopService)
-	statusSessionService := workers.NewWorkerProxyServiceServer(w.controllerStatusConn, w.controllerSessionConn)
+	statusSessionService := services.NewWorkerProxyServiceServer(w.controllerStatusConn, w.controllerSessionConn)
 	pbs.RegisterServerCoordinationServiceServer(downstreamServer, statusSessionService)
 	pbs.RegisterSessionServiceServer(downstreamServer, statusSessionService)
 
