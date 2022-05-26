@@ -10,6 +10,46 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
+// DeleteWorker will delete a worker from the repository.
+func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Option) (int, error) {
+	const op = "servers.(Repository).DeleteWorker"
+	if publicId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	}
+	worker := allocWorker()
+	worker.Worker.PublicId = publicId
+
+	var rowsDeleted int
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			deleteWorker := worker.clone()
+			var err error
+			rowsDeleted, err = w.Delete(
+				ctx,
+				deleteWorker,
+			)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsDeleted > 1 {
+				// return err, which will result in a rollback of the delete
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been deleted")
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
+	}
+	if rowsDeleted == 0 {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("delete failed for worker with workerId: %s", publicId)))
+	}
+	return rowsDeleted, nil
+}
+
 // ListWorkers is a passthrough to listWorkersWithReader that uses the repo's normal reader.
 func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*Worker, error) {
 	return r.listWorkersWithReader(ctx, r.reader, opt...)
