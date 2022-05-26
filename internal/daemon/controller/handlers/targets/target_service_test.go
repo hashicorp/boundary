@@ -34,20 +34,22 @@ func TestWorkerList_Addresses(t *testing.T) {
 func TestWorkerList_Filter(t *testing.T) {
 	var workers []*servers.Worker
 	for i := 0; i < 5; i++ {
-		w := servers.NewWorker(scope.Global.String(),
-			servers.WithName(fmt.Sprintf("test_worker_%d", i)),
-			servers.WithWorkerTags(&servers.Tag{
-				Key:   fmt.Sprintf("key%d", i),
-				Value: fmt.Sprintf("value%d", i),
-			}))
-		w.ReportedStatus = servers.NewWorkerStatus("",
-			servers.WithName(fmt.Sprintf("config%d", i)),
-			servers.WithWorkerTags(&servers.Tag{
-				Key: "key",
-				// Note that the value is either 0 or 1
-				Value: fmt.Sprintf("configvalue%d", i%2),
-			}))
-		workers = append(workers, w)
+		switch {
+		case i%2 == 0:
+			workers = append(workers, servers.NewWorker(scope.Global.String(),
+				servers.WithName(fmt.Sprintf("test_worker_%d", i)),
+				servers.WithWorkerTags(&servers.Tag{
+					Key:   fmt.Sprintf("key%d", i),
+					Value: fmt.Sprintf("value%d", i),
+				})))
+		default:
+			workers = append(workers, servers.NewWorkerForStatus(scope.Global.String(),
+				servers.WithName(fmt.Sprintf("test_worker_%d", i)),
+				servers.WithWorkerTags(&servers.Tag{
+					Key:   "key",
+					Value: "configvalue",
+				})))
+		}
 	}
 
 	{
@@ -58,17 +60,17 @@ func TestWorkerList_Filter(t *testing.T) {
 		assert.Len(t, got, 0)
 	}
 	{
-		ev, err := bexpr.CreateEvaluator(`"/name" matches "test_worker_[12]" and "configvalue0" in "/tags/key"`)
+		ev, err := bexpr.CreateEvaluator(`"/name" matches "test_worker_[12]" and "configvalue" in "/tags/key"`)
 		require.NoError(t, err)
 		got, err := workerList(workers).filtered(ev)
 		require.NoError(t, err)
 		assert.Len(t, got, 1)
 	}
 	{
-		ev, err := bexpr.CreateEvaluator(`"configvalue0" in "/tags/key"`)
+		ev, err := bexpr.CreateEvaluator(`"configvalue" in "/tags/key"`)
 		require.NoError(t, err)
 		got, err := workerList(workers).filtered(ev)
 		require.NoError(t, err)
-		assert.Len(t, got, 3)
+		assert.Len(t, got, 2)
 	}
 }

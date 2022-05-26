@@ -21,7 +21,6 @@ type options struct {
 	withName                           string
 	withDescription                    string
 	withAddress                        string
-	withPublicId                       string
 	withLimit                          int
 	withLiveness                       time.Duration
 	withUpdateTags                     bool
@@ -55,13 +54,6 @@ func WithName(name string) Option {
 func WithAddress(address string) Option {
 	return func(o *options) {
 		o.withAddress = address
-	}
-}
-
-// WithPublicId provides an optional public id
-func WithPublicId(id string) Option {
-	return func(o *options) {
-		o.withPublicId = id
 	}
 }
 
