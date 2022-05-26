@@ -56,8 +56,10 @@ func TestServer_SetupKMSes(t *testing.T) {
 		},
 		{
 			name: "multi purpose",
-			purposes: []string{globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth,
-				globals.KmsPurposeWorkerStorage, globals.KmsPurposeConfig},
+			purposes: []string{
+				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth,
+				globals.KmsPurposeWorkerStorage, globals.KmsPurposeConfig,
+			},
 		},
 	}
 	logger := hclog.Default()
