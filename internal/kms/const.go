@@ -27,7 +27,7 @@ const (
 	// KeyPurposeWorkerAuth is used for worker auth
 	KeyPurposeWorkerAuth
 
-	// KeyPurposeWorkerStorage is used to specify the worker credential storage dir
+	// KeyPurposeWorkerStorage is used for worker credential storage
 	KeyPurposeWorkerStorage
 
 	// KeyPurposeTokens is used for token encryption
