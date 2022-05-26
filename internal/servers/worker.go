@@ -56,20 +56,23 @@ func (w *Worker) clone() *Worker {
 	if w == nil {
 		return nil
 	}
-	apiTags := make([]*Tag, 0, len(w.apiTags))
-	for _, t := range w.apiTags {
-		apiTags = append(apiTags, &Tag{Key: t.Key, Value: t.Value})
-	}
-	configTags := make([]*Tag, 0, len(w.apiTags))
-	for _, t := range w.configTags {
-		configTags = append(configTags, &Tag{Key: t.Key, Value: t.Value})
-	}
 	cw := proto.Clone(w.Worker)
-	return &Worker{
-		Worker:     cw.(*store.Worker),
-		apiTags:    apiTags,
-		configTags: configTags,
+	cWorker := &Worker{
+		Worker: cw.(*store.Worker),
 	}
+	if w.apiTags != nil {
+		cWorker.apiTags = make([]*Tag, 0, len(w.apiTags))
+		for _, t := range w.apiTags {
+			cWorker.apiTags = append(cWorker.apiTags, &Tag{Key: t.Key, Value: t.Value})
+		}
+	}
+	if w.configTags != nil {
+		cWorker.configTags = make([]*Tag, 0, len(w.configTags))
+		for _, t := range w.configTags {
+			cWorker.configTags = append(cWorker.configTags, &Tag{Key: t.Key, Value: t.Value})
+		}
+	}
+	return cWorker
 }
 
 // CanonicalAddress returns the actual address boundary believes should be used

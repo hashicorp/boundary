@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -396,6 +397,42 @@ func TestRepository_CreateWorker(t *testing.T) {
 			wantErrContains: "unable to create worker",
 		},
 		{
+			name: "no worker reported address",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				w.WorkerReportedAddress = "foo"
+				return w
+			},
+			repo:            testRepo,
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "worker reported address is not empty",
+		},
+		{
+			name: "no worker reported name",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				w.WorkerReportedName = "foo"
+				return w
+			},
+			repo:            testRepo,
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "worker reported name is not empty",
+		},
+		{
+			name: "no last status update",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				w.LastStatusTime = timestamp.Now()
+				return w
+			},
+			repo:            testRepo,
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "last status time is not nil",
+		},
+		{
 			name: "success",
 			setup: func() *servers.Worker {
 				w := servers.NewWorker(scope.Global.String())
@@ -433,9 +470,6 @@ func TestRepository_CreateWorker(t *testing.T) {
 			}
 			err = rw.LookupByPublicId(testCtx, found)
 			require.NoError(err)
-			if found.Tags == nil {
-				found.Tags = []*servers.Tag{}
-			}
 			assert.Equal(got, found)
 		})
 	}

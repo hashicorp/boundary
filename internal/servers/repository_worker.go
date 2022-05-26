@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // LookupWorkerByWorkerReportedName returns the worker which has had a status update
@@ -247,6 +248,12 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	case worker.ScopeId != scope.Global.String():
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("scope id must be %q", scope.Global.String()))
+	case worker.WorkerReportedAddress != "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported address is not empty")
+	case worker.WorkerReportedName != "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported name is not empty")
+	case worker.LastStatusTime != nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "last status time is not nil")
 	}
 
 	opts := getOpts(opt...)
