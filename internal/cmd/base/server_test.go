@@ -55,8 +55,9 @@ func TestServer_SetupKMSes(t *testing.T) {
 			purposes: []string{globals.KmsPurposeRoot},
 		},
 		{
-			name:     "multi purpose",
-			purposes: []string{globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth, globals.KmsPurposeConfig},
+			name: "multi purpose",
+			purposes: []string{globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth,
+				globals.KmsPurposeWorkerStorage, globals.KmsPurposeConfig},
 		},
 	}
 	logger := hclog.Default()
@@ -89,6 +90,8 @@ func TestServer_SetupKMSes(t *testing.T) {
 					assert.NotNil(s.RootKms)
 				case globals.KmsPurposeWorkerAuth:
 					assert.NotNil(s.WorkerAuthKms)
+				case globals.KmsPurposeWorkerStorage:
+					assert.NotNil(s.WorkerStorageKms)
 				case globals.KmsPurposeRecovery:
 					assert.NotNil(s.RecoveryKms)
 				}

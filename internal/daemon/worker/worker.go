@@ -186,7 +186,7 @@ func (w *Worker) Start() error {
 		return err
 	}
 
-	nodeCreds, err := types.NewNodeCredentials(w.baseContext, w.NodeeFileStorage, nodee.WithWrapper(w.conf.WorkerStorage))
+	nodeCreds, err := types.NewNodeCredentials(w.baseContext, w.NodeeFileStorage, nodee.WithWrapper(w.conf.WorkerStorageKms))
 	if err != nil {
 		return fmt.Errorf("error generating new node creds: %w", err)
 	}

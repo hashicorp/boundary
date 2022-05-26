@@ -218,7 +218,6 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		ctx,
 		kms.WithRootWrapper(c.conf.RootKms),
 		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
-		kms.WithWorkerStorageWrapper(c.conf.WorkerStorage),
 		kms.WithRecoveryWrapper(c.conf.RecoveryKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)

@@ -146,6 +146,9 @@ func (k *Kms) GetExternalWrappers(ctx context.Context) *ExternalWrappers {
 	if workerAuth, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String())); err == nil {
 		ret.workerAuth = workerAuth
 	}
+	if workerStorage, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerStorage.String())); err == nil {
+		ret.workerStorage = workerStorage
+	}
 	if recovery, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRecovery.String())); err == nil {
 		ret.recovery = recovery
 	}
@@ -263,7 +266,8 @@ func stdNewKmsPurposes() []wrappingKms.KeyPurpose {
 	for _, p := range ValidDekPurposes() {
 		purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
 	}
-	purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
+	purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), wrappingKms.KeyPurpose(KeyPurposeWorkerStorage.String()),
+		wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
 	return purposes
 }
 

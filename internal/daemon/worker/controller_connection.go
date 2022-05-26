@@ -78,7 +78,7 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 				nodeauth.MakeCurrentParametersFactory(
 					ctx,
 					nodee.NopTransactionStorage(w.NodeeFileStorage),
-					nodee.WithWrapper(w.conf.WorkerStorage),
+					nodee.WithWrapper(w.conf.WorkerStorageKms),
 				))(ctx, addr)
 		}
 

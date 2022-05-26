@@ -6,7 +6,7 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
-//replace github.com/hashicorp/nodeenrollment => ../nodeenrollment
+replace github.com/hashicorp/nodeenrollment => ../nodeenrollment
 
 require (
 	github.com/armon/go-metrics v0.3.9 // indirect
