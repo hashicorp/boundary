@@ -90,7 +90,8 @@ require (
 require github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f // this is a branch and should be updated before merging
 
 require (
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220512190651-85bdcdd684e6
+	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220515130442-cac0b5ac133b
 	github.com/hashicorp/nodeenrollment v0.0.0-20220520141833-ad7323153acc
 )
 
@@ -98,7 +99,6 @@ require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/AlecAivazis/survey/v2 v2.2.9 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
-	github.com/DATA-DOG/go-sqlmock v1.5.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
@@ -172,7 +172,6 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/sethvargo/go-diceware v0.3.0 // indirect
@@ -195,14 +194,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gorm.io/driver/sqlite v1.2.4 // indirect
-	modernc.org/cc/v3 v3.32.4 // indirect
-	modernc.org/ccgo/v3 v3.9.2 // indirect
-	modernc.org/libc v1.9.5 // indirect
-	modernc.org/mathutil v1.2.2 // indirect
-	modernc.org/memory v1.0.4 // indirect
-	modernc.org/opt v0.1.1 // indirect
-	modernc.org/sqlite v1.10.6 // indirect
-	modernc.org/strutil v1.1.0 // indirect
-	modernc.org/token v1.0.0 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )

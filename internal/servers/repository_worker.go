@@ -191,3 +191,51 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 
 	return nil
 }
+
+// CreateWorker will create a worker in the repository and return the written
+// worker.  Creating a worker is not intentionally oplogged.  A worker's
+// ReportedStatus and Tags are intentionally ignored when creating a worker (not
+// included).  Currently, a worker can only be created in the global scope
+//
+// Options supported: WithNewIdFunc (this option is likely only useful for tests)
+func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
+	const op = "servers.CreateWorker"
+	switch {
+	case worker == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing worker")
+	case worker.PublicId != "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id is not empty")
+	case worker.ScopeId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	case worker.ScopeId != scope.Global.String():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("scope id must be %q", scope.Global.String()))
+	}
+
+	opts := getOpts(opt...)
+	var err error
+	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate worker id"))
+	}
+
+	var returnedWorker *Worker
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			returnedWorker = worker.clone()
+			err := w.Create(
+				ctx,
+				returnedWorker,
+			)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker"))
+	}
+	return returnedWorker, nil
+}
