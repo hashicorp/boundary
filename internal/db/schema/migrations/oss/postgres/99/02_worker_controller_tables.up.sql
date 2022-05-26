@@ -41,7 +41,7 @@ create table server_worker (
   update_time wt_timestamp,
   version wt_version,
   last_status_time timestamp with time zone,
-  constraint last_status_time_after_create_time
+  constraint last_status_time_not_before_create_time
     check (last_status_time >= create_time),
   -- This is the calculated address that the worker reports it is reachable on.
   -- This must be set if the worker has ever received a status update.
@@ -69,7 +69,7 @@ create trigger default_create_time_column before insert on server_worker
 create trigger worker_insert_time_column before insert on server_worker
   for each row execute procedure update_time_column();
 
-create trigger worker_update_time_column before update of version, description, name, address on server_worker
+create trigger worker_update_time_column before update on server_worker
   for each row execute procedure update_time_column();
 
 create trigger update_version_column after update of version, description, name, address on server_worker
@@ -84,12 +84,12 @@ begin
 end;
 $$ language plpgsql;
 comment on function update_server_worker_last_update_time_column is
-  'function used to update the last_update_time column in server_worker to now';
+  'function used to update the last_status_time column in server_worker to now';
 
 create trigger update_server_worker_last_update_time_column before update of worker_reported_address, worker_reported_name on server_worker
   for each row execute procedure update_server_worker_last_update_time_column();
 
-create function insert_server_worker_last_update_time_column()
+create function insert_server_worker_update_last_status_time_column()
   returns trigger
 as $$
 begin
@@ -99,11 +99,11 @@ begin
   return new;
 end;
 $$ language plpgsql;
-comment on function insert_server_worker_last_update_time_column is
-  'function used to update the last_update_time column in server_worker to now';
+comment on function insert_server_worker_update_last_status_time_column is
+  'function used to update the last_status_time column in server_worker to now';
 
 create trigger insert_server_worker_last_update_time_column before insert on server_worker
-  for each row execute procedure insert_server_worker_last_update_time_column();
+  for each row execute procedure insert_server_worker_update_last_status_time_column();
 
 -- Create table worker tag
 create table server_worker_tag_enm (

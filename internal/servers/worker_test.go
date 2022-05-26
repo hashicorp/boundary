@@ -275,10 +275,10 @@ func TestWorker_Update(t *testing.T) {
 			assert: func(t *testing.T, init, up *Worker) {
 				t.Helper()
 				assert.Equal(t, "base update with worker reported address", up.WorkerReportedAddress)
-				assert.Equal(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
 				assert.Equal(t, uint32(1), up.Version)
 				assert.NotNil(t, up.GetLastStatusTime())
-				assert.Greater(t, up.GetLastStatusTime().AsTime(), up.GetCreateTime().AsTime())
+				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
+				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
 			},
 		},
 		{
@@ -320,10 +320,10 @@ func TestWorker_Update(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "base update with worker reported fields", up.WorkerReportedAddress)
 				assert.Equal(t, "base update with worker reported fields", up.WorkerReportedName)
-				assert.Equal(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
+				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
 				assert.Equal(t, uint32(1), up.Version)
 				assert.NotNil(t, up.GetLastStatusTime())
-				assert.Greater(t, up.GetLastStatusTime().AsTime(), up.GetCreateTime().AsTime())
+				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
 			},
 		},
 		{
@@ -386,7 +386,7 @@ func TestWorker_Update(t *testing.T) {
 				assert.NotNil(t, up.GetLastStatusTime())
 				assert.Greater(t, up.GetLastStatusTime().AsTime(), init.GetLastStatusTime().AsTime())
 				// We don't modify the worker version while operating only on the worker fields
-				assert.Equal(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
+				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
 				assert.Equal(t, uint32(1), up.Version)
 			},
 		},
@@ -410,7 +410,7 @@ func TestWorker_Update(t *testing.T) {
 				assert.NotNil(t, up.GetLastStatusTime())
 				assert.Greater(t, up.GetLastStatusTime().AsTime(), init.GetLastStatusTime().AsTime())
 				// We don't modify the worker version while operating only on the worker fields
-				assert.Equal(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
+				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
 				assert.Equal(t, uint32(1), up.Version)
 			},
 		},

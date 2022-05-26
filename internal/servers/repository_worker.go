@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // LookupWorkerByWorkerReportedName returns the worker which has had a status update
