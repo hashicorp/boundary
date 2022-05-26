@@ -39,6 +39,18 @@ message Worker {
   // version allows optimistic locking of the resource.
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 80;
+
+  // Name of the resource (optional)
+  // @inject_tag: `gorm:"default:null"`
+  string worker_reported_name = 90;
+
+  // Address for the worker. This must be set.
+  // @inject_tag: `gorm:"default:null"`
+  string worker_reported_address = 100;
+
+  // The last_status_time is the last time a worker daemon sent a status update.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp last_status_time = 110;
 }
 
 // WorkerTag is a tag for a worker.  The primary key is comprised of the
@@ -59,28 +71,4 @@ message WorkerTag {
   // source is the source of the tag. Either 'configuration' or 'api'.
   // @inject_tag: `gorm:"default:not_null"`
   string source = 40;
-}
-
-// WorkerStatus contains the fields that the worker reports to the controller
-// in its status  updates.
-message WorkerStatus {
-  // worker_id is the public key that key of the worker this tag is for.
-  // @inject_tag: `gorm:"primary_key"`
-  string worker_id = 10;
-
-  // The create_time is set by the database.
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp create_time = 20;
-
-  // The update_time is set by the database.
-  // @inject_tag: `gorm:"default:current_timestamp"`
-  timestamp.v1.Timestamp update_time = 30;
-
-  // Name of the resource (optional)
-  // @inject_tag: `gorm:"default:null"`
-  string name = 40;
-
-  // Address for the worker. This must be set.
-  // @inject_tag: `gorm:"default:null"`
-  string address = 50;
 }

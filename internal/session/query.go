@@ -327,13 +327,10 @@ where
    dead_workers (worker_id, last_update_time) as (
          select
 			w.public_id as worker_id,
-			ws.update_time as last_update_time
+			w.last_status_time as last_update_time
            from server_worker w
-			left join server_worker_status ws
-				on w.public_id = ws.worker_id
           where
-			ws.update_time is null
-			or ws.update_time < wt_sub_seconds_from_now(@grace_period_seconds)
+			w.last_status_time < wt_sub_seconds_from_now(@grace_period_seconds)
    ),
    closed_connections (connection_id, worker_id) as (
          update session_connection
@@ -343,7 +340,7 @@ where
       returning public_id, worker_id
    )
    select closed_connections.worker_id,
-          coalesce(dead_workers.last_update_time, current_timestamp) as last_update_time,
+          dead_workers.last_update_time as last_update_time,
           count(closed_connections.connection_id) as number_connections_closed
      from closed_connections
      join dead_workers
