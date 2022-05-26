@@ -49,6 +49,9 @@
     },
     {
       "name": "controller.api.services.v1.UserService"
+    },
+    {
+      "name": "controller.api.services.v1.WorkerService"
     }
   ],
   "schemes": [
@@ -3649,6 +3652,153 @@
           "controller.api.services.v1.UserService"
         ]
       }
+    },
+    "/v1/workers": {
+      "get": {
+        "summary": "Lists all Workers.",
+        "operationId": "WorkerService_ListWorkers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListWorkersResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Worker.",
+        "operationId": "WorkerService_CreateWorker",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      }
+    },
+    "/v1/workers/{id}": {
+      "get": {
+        "summary": "Gets a single Worker.",
+        "operationId": "WorkerService_GetWorker",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Worker.",
+        "operationId": "WorkerService_DeleteWorker",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteWorkerResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Worker.",
+        "operationId": "WorkerService_UpdateWorker",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -5346,6 +5496,125 @@
       },
       "title": "User contains all fields related to a User resource"
     },
+    "controller.api.resources.workers.v1.Worker": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the User.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The ID of the Scope this resource is in."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for this resource.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set description for identification purposes."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "address": {
+          "type": "string",
+          "description": "The address that this worker is reachable at."
+        },
+        "canonical_address": {
+          "type": "string",
+          "description": "Output only.  This is the address used by authorized session.  The value\nis the same as the address field if set. Otherwise it uses the address the\nworker reports.",
+          "readOnly": true
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The tags attached to this worker.",
+          "readOnly": true
+        },
+        "canonical_tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The deduplicated union of the tags reported by the worker and\nthe tags added through the user facing api.  This is used when applying\nworker filters.",
+          "readOnly": true
+        },
+        "last_status_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this worker daemon last reported its status.",
+          "readOnly": true
+        },
+        "worker_config": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.WorkerConfig",
+          "description": "Output only. The set of information the worker daemon has reported about\nitself.",
+          "readOnly": true
+        }
+      },
+      "title": "Worker contains all fields related to a Worker resource"
+    },
+    "controller.api.resources.workers.v1.WorkerConfig": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Output only.  The address the worker daemon reports itself as reachable at.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Output only.  The name the worker daemon reports itself having.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "string",
+          "description": "Output only.  The boundary version the worker has reported itself as running.",
+          "readOnly": true
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The tags reporteed by the worker daemon.",
+          "readOnly": true
+        }
+      },
+      "description": "WorkerConfig contains configuration values reported by the worker daemon."
+    },
     "controller.api.services.v1.AddGroupMembersResponse": {
       "type": "object",
       "properties": {
@@ -5610,6 +5879,17 @@
         }
       }
     },
+    "controller.api.services.v1.CreateWorkerResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+        }
+      }
+    },
     "controller.api.services.v1.DeleteAccountResponse": {
       "type": "object"
     },
@@ -5650,6 +5930,9 @@
       "type": "object"
     },
     "controller.api.services.v1.DeleteUserResponse": {
+      "type": "object"
+    },
+    "controller.api.services.v1.DeleteWorkerResponse": {
       "type": "object"
     },
     "controller.api.services.v1.GetAccountResponse": {
@@ -5769,6 +6052,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.GetWorkerResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
     },
@@ -5933,6 +6224,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.users.v1.User"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListWorkersResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
           }
         }
       }
@@ -6190,6 +6492,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateWorkerResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
     },
