@@ -44,7 +44,8 @@ message Worker {
   // @inject_tag: `gorm:"default:null"`
   string worker_reported_name = 90;
 
-  // Address for the worker. This must be set.
+  // Address for the worker. This must be set when the worker has received
+  // at least 1 status update fromt he worker daemon.
   // @inject_tag: `gorm:"default:null"`
   string worker_reported_address = 100;
 

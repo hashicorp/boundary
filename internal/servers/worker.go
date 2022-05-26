@@ -37,7 +37,7 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 }
 
 // NewWorkerForStatus returns a new Worker usable for status updates.
-// Valid options are WithName WithAddress, and WithWorkerTags, all of which
+// Valid options are WithName, WithAddress, and WithWorkerTags, all of which
 // are assigned to the worker reported variations of these fields.
 // All other options are ignored.
 func NewWorkerForStatus(scopeId string, opt ...Option) *Worker {

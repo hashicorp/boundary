@@ -54,7 +54,8 @@ type Worker struct {
 	// Name of the resource (optional)
 	// @inject_tag: `gorm:"default:null"`
 	WorkerReportedName string `protobuf:"bytes,90,opt,name=worker_reported_name,json=workerReportedName,proto3" json:"worker_reported_name,omitempty" gorm:"default:null"`
-	// Address for the worker. This must be set.
+	// Address for the worker. This must be set when the worker has received
+	// at least 1 status update fromt he worker daemon.
 	// @inject_tag: `gorm:"default:null"`
 	WorkerReportedAddress string `protobuf:"bytes,100,opt,name=worker_reported_address,json=workerReportedAddress,proto3" json:"worker_reported_address,omitempty" gorm:"default:null"`
 	// The last_status_time is the last time a worker daemon sent a status update.
