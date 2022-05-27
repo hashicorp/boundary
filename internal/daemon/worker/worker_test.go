@@ -1,13 +1,16 @@
 package worker
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,4 +125,25 @@ func TestWorkerNew(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSetupWorkerCredentialStorage(t *testing.T) {
+	ctx := context.Background()
+	assert, require := assert.New(t), require.New(t)
+	ts := db.TestWrapper(t)
+	keyId, err := ts.KeyId(ctx)
+
+	tw := NewTestWorker(t, &TestWorkerOpts{
+		WorkerStorageKms: ts,
+		DisableAutoStart: true,
+	})
+
+	err = tw.Worker().Start()
+	require.NoError(err)
+	wKeyId, err := tw.Config().WorkerStorageKms.KeyId(ctx)
+	require.NoError(err)
+	assert.Equal(keyId, wKeyId)
+
+	err = tw.Worker().Shutdown()
+	require.NoError(err)
 }
