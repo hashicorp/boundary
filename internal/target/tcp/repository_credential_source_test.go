@@ -342,8 +342,10 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 	type args struct {
 		targetIdOverride      *string
 		targetVersionOverride *uint32
-		createCnt             int
-		deleteCnt             int
+		createLibCnt          int
+		createStaticCnt       int
+		deleteLibCnt          int
+		deleteStaticCnt       int
 	}
 	tests := []struct {
 		name            string
@@ -353,27 +355,50 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		wantErrCode     errors.Code
 	}{
 		{
-			name: "valid",
+			name: "valid-lib-only",
 			args: args{
-				createCnt: 5,
-				deleteCnt: 5,
+				createLibCnt: 5,
+				deleteLibCnt: 5,
 			},
 			wantRowsDeleted: 5,
 			wantErr:         false,
 		},
 		{
+			name: "valid-static-only",
+			args: args{
+				createStaticCnt: 5,
+				deleteStaticCnt: 5,
+			},
+			wantRowsDeleted: 5,
+			wantErr:         false,
+		},
+		{
+			name: "valid-mixed",
+			args: args{
+				createLibCnt:    5,
+				deleteLibCnt:    5,
+				createStaticCnt: 5,
+				deleteStaticCnt: 5,
+			},
+			wantRowsDeleted: 10,
+			wantErr:         false,
+		},
+		{
 			name: "valid-keeping-some",
 			args: args{
-				createCnt: 5,
-				deleteCnt: 2,
+				createLibCnt:    5,
+				deleteLibCnt:    3,
+				createStaticCnt: 5,
+				deleteStaticCnt: 2,
 			},
-			wantRowsDeleted: 2,
+			wantRowsDeleted: 5,
 			wantErr:         false,
 		},
 		{
 			name: "no-deletes",
 			args: args{
-				createCnt: 5,
+				createLibCnt:    5,
+				createStaticCnt: 5,
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
@@ -383,8 +408,8 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 			name: "not-found",
 			args: args{
 				targetIdOverride: func() *string { id := tcp.TestId(t); return &id }(),
-				createCnt:        5,
-				deleteCnt:        5,
+				createLibCnt:     5,
+				deleteLibCnt:     5,
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
@@ -394,8 +419,8 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 			name: "missing-target-id",
 			args: args{
 				targetIdOverride: func() *string { id := ""; return &id }(),
-				createCnt:        5,
-				deleteCnt:        5,
+				createLibCnt:     5,
+				deleteLibCnt:     5,
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
@@ -405,8 +430,8 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 			name: "zero-version",
 			args: args{
 				targetVersionOverride: func() *uint32 { v := uint32(0); return &v }(),
-				createCnt:             5,
-				deleteCnt:             5,
+				createLibCnt:          5,
+				deleteLibCnt:          5,
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
@@ -416,40 +441,47 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 			name: "bad-version",
 			args: args{
 				targetVersionOverride: func() *uint32 { v := uint32(1000); return &v }(),
-				createCnt:             5,
-				deleteCnt:             5,
+				createLibCnt:          5,
+				deleteLibCnt:          5,
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
 			wantErrCode:     errors.VersionMismatch,
 		},
 	}
-	css := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), len(tests))
+	csVault := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), len(tests))
+	csStatic := static.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), len(tests))
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			cs := css[i]
+			csv := csVault[i]
+			css := csStatic[i]
 
 			ctx := context.Background()
 			tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, tt.name)
 
-			cls := make([]*target.CredentialLibrary, 0, tt.args.createCnt)
 			var ids target.CredentialSources
-			if tt.args.createCnt > 0 {
-				credLibs := vault.TestCredentialLibraries(t, conn, wrapper, cs.PublicId, tt.args.createCnt)
-				for _, cl := range credLibs {
-					cls = append(cls, target.TestNewCredentialLibrary(tar.GetPublicId(), cl.PublicId, credential.ApplicationPurpose))
-					ids.ApplicationCredentialIds = append(ids.ApplicationCredentialIds, cl.GetPublicId())
-				}
+			credLibs := vault.TestCredentialLibraries(t, conn, wrapper, csv.PublicId, tt.args.createLibCnt)
+			for _, cl := range credLibs {
+				ids.ApplicationCredentialIds = append(ids.ApplicationCredentialIds, cl.GetPublicId())
 			}
+			creds := static.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", css.PublicId, proj.GetPublicId(), tt.args.createStaticCnt)
+			for _, c := range creds {
+				ids.ApplicationCredentialIds = append(ids.ApplicationCredentialIds, c.GetPublicId())
+			}
+
 			_, _, addedCredSources, err := repo.AddTargetCredentialSources(ctx, tar.GetPublicId(), 1, ids)
 			require.NoError(err)
-			assert.Equal(tt.args.createCnt, len(addedCredSources))
+			assert.Equal(tt.args.createLibCnt+tt.args.createStaticCnt, len(addedCredSources))
 
-			deleteCredSources := make([]*target.CredentialLibrary, 0, tt.args.deleteCnt)
-			for i := 0; i < tt.args.deleteCnt; i++ {
-				deleteCredSources = append(deleteCredSources, cls[i])
+			var deleteIds target.CredentialSources
+			for i := 0; i < tt.args.deleteLibCnt; i++ {
+				deleteIds.ApplicationCredentialIds = append(deleteIds.ApplicationCredentialIds, credLibs[i].GetPublicId())
 			}
+			for i := 0; i < tt.args.deleteStaticCnt; i++ {
+				deleteIds.ApplicationCredentialIds = append(deleteIds.ApplicationCredentialIds, creds[i].GetPublicId())
+			}
+
 			var targetId string
 			switch {
 			case tt.args.targetIdOverride != nil:
@@ -464,7 +496,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 			default:
 				targetVersion = 2
 			}
-			deletedRows, err := repo.DeleteTargetCredentialSources(ctx, targetId, targetVersion, deleteCredSources)
+			deletedRows, err := repo.DeleteTargetCredentialSources(ctx, targetId, targetVersion, deleteIds)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
@@ -492,9 +524,6 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 
 		ctx := context.Background()
 		projTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "add-existing")
-		cl1 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib1.PublicId, credential.ApplicationPurpose)
-		cl2 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib2.PublicId, credential.ApplicationPurpose)
-		cl3 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib3.PublicId, credential.ApplicationPurpose)
 
 		ids := target.CredentialSources{
 			ApplicationCredentialIds: []string{lib1.GetPublicId(), lib2.GetPublicId()},
@@ -504,13 +533,19 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		assert.Len(gotCredSources, 2)
 
 		// Deleting an unassociated source should return an error
-		delCount, err := repo.DeleteTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, []*target.CredentialLibrary{cl3})
+		delCount, err := repo.DeleteTargetCredentialSources(ctx, projTarget.GetPublicId(), 2,
+			target.CredentialSources{
+				ApplicationCredentialIds: []string{lib3.GetPublicId()},
+			})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
 		assert.Equal(0, delCount)
 
 		// Deleting sources which includes an unassociated source should return an error
-		delCount, err = repo.DeleteTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, []*target.CredentialLibrary{cl1, cl2, cl3})
+		delCount, err = repo.DeleteTargetCredentialSources(ctx, projTarget.GetPublicId(), 2,
+			target.CredentialSources{
+				ApplicationCredentialIds: []string{lib1.GetPublicId(), lib2.GetPublicId(), lib3.GetPublicId()},
+			})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.MultipleRecords), err))
 		assert.Equal(0, delCount)

@@ -2526,8 +2526,11 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 	s, err := testService(t, conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
 
-	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
-	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	csVault := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
+	cls := vault.TestCredentialLibraries(t, conn, wrapper, csVault.GetPublicId(), 2)
+
+	csStatic := credstatic.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
+	creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", csStatic.GetPublicId(), proj.GetPublicId(), 2)
 
 	ctx := context.Background()
 	removeCases := []struct {
@@ -2538,30 +2541,93 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 		wantErr                   bool
 	}{
 		{
-			name:                    "Remove from empty",
-			tar:                     tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
+			name:                    "Remove library from empty",
+			tar:                     tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty lib"),
 			removeCredentialSources: []string{cls[1].GetPublicId()},
 			wantErr:                 true,
 		},
 		{
-			name:                      "Remove 1 of 2 sources",
-			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
+			name:                    "Remove static from empty",
+			tar:                     tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty static"),
+			removeCredentialSources: []string{creds[1].GetPublicId()},
+			wantErr:                 true,
+		},
+		{
+			name: "Remove 1 of 2 libraries",
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial lib",
+				target.WithCredentialLibraries([]*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose),
+				})),
 			removeCredentialSources:   []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[0].GetPublicId()},
 		},
 		{
-			name: "Remove 1 duplicate set of 2 sources",
-			tar:  tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
+			name: "Remove 1 of 2 static credentials",
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove partial static",
+				target.WithStaticCredentials([]*target.StaticCredential{
+					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose),
+					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.ApplicationPurpose),
+				})),
+			removeCredentialSources:   []string{creds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{creds[0].GetPublicId()},
+		},
+		{
+			name: "Remove 1 duplicate set of 2 libraries",
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate lib",
+				target.WithCredentialLibraries([]*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose),
+				})),
 			removeCredentialSources: []string{
 				cls[1].GetPublicId(), cls[1].GetPublicId(),
 			},
 			resultCredentialSourceIds: []string{cls[0].GetPublicId()},
 		},
 		{
+			name: "Remove 1 duplicate set of 2 static credentials",
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove duplicate static",
+				target.WithStaticCredentials([]*target.StaticCredential{
+					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose),
+					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.ApplicationPurpose),
+				})),
+			removeCredentialSources: []string{
+				creds[1].GetPublicId(), creds[1].GetPublicId(),
+			},
+			resultCredentialSourceIds: []string{creds[0].GetPublicId()},
+		},
+		{
+			name: "Remove mixed sources from target",
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove mixed",
+				target.WithCredentialLibraries([]*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose),
+				}),
+				target.WithStaticCredentials([]*target.StaticCredential{
+					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose),
+					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.ApplicationPurpose),
+				})),
+			removeCredentialSources: []string{
+				cls[1].GetPublicId(), creds[0].GetPublicId(),
+			},
+			resultCredentialSourceIds: []string{
+				cls[0].GetPublicId(), creds[1].GetPublicId(),
+			},
+		},
+		{
 			name: "Remove all sources from target",
-			tar:  tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove all", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose), target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose)})),
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "remove all",
+				target.WithCredentialLibraries([]*target.CredentialLibrary{
+					target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose),
+					target.TestNewCredentialLibrary("", cls[1].GetPublicId(), credential.ApplicationPurpose),
+				}),
+				target.WithStaticCredentials([]*target.StaticCredential{
+					target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose),
+					target.TestNewStaticCredential("", creds[1].GetPublicId(), credential.ApplicationPurpose),
+				})),
 			removeCredentialSources: []string{
 				cls[0].GetPublicId(), cls[1].GetPublicId(),
+				creds[0].GetPublicId(), creds[1].GetPublicId(),
 			},
 			resultCredentialSourceIds: []string{},
 		},

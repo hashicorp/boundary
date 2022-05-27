@@ -160,21 +160,13 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 
 // DeleteTargetCredentialSources deletes credential sources from a target in the repository.
 // The target's current db version must match the targetVersion or an error will be returned.
-func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cls []*CredentialLibrary, _ ...Option) (int, error) {
+func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, idsByPurpose CredentialSources, _ ...Option) (int, error) {
 	const op = "target.(Repository).DeleteTargetCredentialSources"
 	if targetId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
-	}
-	if len(cls) == 0 {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing credential source ids")
-	}
-
-	deleteCredLibs := make([]interface{}, 0, len(cls))
-	for _, cl := range cls {
-		deleteCredLibs = append(deleteCredLibs, cl)
 	}
 
 	t := allocTargetView()
@@ -183,6 +175,11 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
+
+	deleteCredLibs, deleteStaticCred, err := r.createSources(ctx, targetId, t.Subtype(), idsByPurpose)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
 
 	alloc, ok := subtypeRegistry.allocFunc(t.Subtype())
 	if !ok {
@@ -226,15 +223,41 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
-			credLibsOplogMsgs := make([]*oplog.Message, 0, len(deleteCredLibs))
-			rowsDeleted, err = w.DeleteItems(ctx, deleteCredLibs, db.NewOplogMsgs(&credLibsOplogMsgs))
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target credential sources"))
+			if len(deleteCredLibs) > 0 {
+				i := make([]interface{}, 0, len(deleteCredLibs))
+				for _, cl := range deleteCredLibs {
+					i = append(i, cl)
+				}
+
+				credLibsOplogMsgs := make([]*oplog.Message, 0, len(deleteCredLibs))
+				cnt, err := w.DeleteItems(ctx, i, db.NewOplogMsgs(&credLibsOplogMsgs))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target credential libraries"))
+				}
+				if cnt != len(deleteCredLibs) {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("credential libraries deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
+				}
+				rowsDeleted += cnt
+				msgs = append(msgs, credLibsOplogMsgs...)
 			}
-			if rowsDeleted != len(deleteCredLibs) {
-				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("credential sources deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
+
+			if len(deleteStaticCred) > 0 {
+				i := make([]interface{}, 0, len(deleteStaticCred))
+				for _, cl := range deleteStaticCred {
+					i = append(i, cl)
+				}
+
+				staticCredOplogMsgs := make([]*oplog.Message, 0, len(deleteStaticCred))
+				cnt, err := w.DeleteItems(ctx, i, db.NewOplogMsgs(&staticCredOplogMsgs))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target static credential"))
+				}
+				if cnt != len(deleteStaticCred) {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("static credential deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
+				}
+				rowsDeleted += cnt
+				msgs = append(msgs, staticCredOplogMsgs...)
 			}
-			msgs = append(msgs, credLibsOplogMsgs...)
 
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))

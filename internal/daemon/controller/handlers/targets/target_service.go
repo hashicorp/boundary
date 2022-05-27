@@ -1490,11 +1490,14 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 		return nil, nil, nil, err
 	}
 
-	credLibs, err := createCredLibs(targetId, applicationIds, nil, egressIds)
-	if err != nil {
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
+	var ids target.CredentialSources
+	if len(applicationIds) > 0 {
+		ids.ApplicationCredentialIds = strutil.RemoveDuplicates(applicationIds, false)
 	}
-	_, err = repo.DeleteTargetCredentialSources(ctx, targetId, version, credLibs)
+	if len(egressIds) > 0 {
+		ids.EgressCredentialIds = strutil.RemoveDuplicates(egressIds, false)
+	}
+	_, err = repo.DeleteTargetCredentialSources(ctx, targetId, version, ids)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove credential sources from target: %v.", err)
@@ -2080,13 +2083,13 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
