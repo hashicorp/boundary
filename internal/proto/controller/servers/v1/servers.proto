@@ -2,42 +2,7 @@ syntax = "proto3";
 
 package controller.servers.v1;
 
-import "controller/storage/timestamp/v1/timestamp.proto";
-
 option go_package = "github.com/hashicorp/boundary/internal/servers;servers";
-
-// Server is the old message used to relay worker status information and controller addresses. It is deprecated
-// and should not be used going forward.
-message Server {
-  // Private ID of the resource
-  string private_id = 10;
-
-  // Type of the resource (controller, worker)
-  string type = 20;
-
-  // Name of the resource. This is deprecated because we ended up setting the
-  // private ID and name to be identical, and there is currently no reason we
-  // can think of to allow a given server's name to match another within the
-  // same cluster. So we simply use the private ID and deprecate this.
-  // @inject_tag: `gorm:"-"`
-  string name = 30 [deprecated = true];
-
-  // Description of the resource
-  string description = 40;
-
-  // Address for the server
-  string address = 50;
-
-  // First seen time from the RDBMS
-  storage.timestamp.v1.Timestamp create_time = 60;
-
-  // Last time there was an update
-  storage.timestamp.v1.Timestamp update_time = 70;
-
-  // Tags for workers
-  // @inject_tag: `gorm:"-"`
-  map<string, TagValues> tags = 80;
-}
 
 // TagValues is used because map fields cannot be repeated but can be a
 // message
@@ -47,15 +12,15 @@ message TagValues {
 
 // ServerWorkerStatus is the new message used in place of Server to relay status request info.
 message ServerWorkerStatus {
+  // Id of the worker.
+  string public_id = 10;
+  
   // Name of the resource (optional)
-  // @inject_tag: `gorm:"default:null"`
-  string name = 10;
+  string name = 20;
 
   // Address for the worker. This must be set.
-  // @inject_tag: `gorm:"default:null"`
-  string address = 20;
+  string address = 30;
 
   // Tags for workers
-  // @inject_tag: `gorm:"-"`
-  map<string, TagValues> tags = 30;
+  map<string, TagValues> tags = 40;
 }

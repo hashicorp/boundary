@@ -58,23 +58,10 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	// TODO: on the worker, if we get errors back from this repeatedly, do we
 	// terminate all sessions since we can't know if they were canceled?
 
-	// Obtain worker status fields from deprecated message if needed
 	wstat := req.GetWorkerStatus()
-	reqServer := req.GetWorker()
-	wName := wstat.GetName()
-	if wName == "" {
-		wName = reqServer.GetPrivateId()
-	}
-	wAddr := wstat.GetAddress()
-	if wAddr == "" {
-		wAddr = reqServer.GetAddress()
-	}
-	wTags := wstat.GetTags()
-	if len(wTags) == 0 {
-		wTags = reqServer.GetTags()
-	}
+	wId, wName := wstat.GetPublicId(), wstat.GetName()
 
-	ws.updateTimes.Store(wName, time.Now())
+	ws.updateTimes.Store(wId, time.Now())
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
@@ -88,6 +75,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	// Convert API tags to storage tags
+	wTags := wstat.GetTags()
 	workerTags := make([]*servers.Tag, 0, len(wTags))
 	for k, v := range wTags {
 		for _, val := range v.GetValues() {
@@ -98,10 +86,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
-	wConf := servers.NewWorkerStatus(wName,
-		// TODO: Change the name to its own field to make this explicit.
+	wConf := servers.NewWorkerStatus(wId,
 		servers.WithName(wName),
-		servers.WithAddress(wAddr),
+		servers.WithAddress(wstat.GetAddress()),
 		servers.WithWorkerTags(workerTags...))
 	controllers, _, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
@@ -110,24 +97,16 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	responseControllers := []*pbs.UpstreamServer{}
-	deprecatedControllers := []*servers.Server{}
 	for _, c := range controllers {
 		thisController := &pbs.UpstreamServer{
 			Address: c.Address,
 			Type:    1,
 		}
 		responseControllers = append(responseControllers, thisController)
-		depController := &servers.Server{
-			PrivateId:  c.PrivateId,
-			Address:    c.Address,
-			CreateTime: c.CreateTime,
-			UpdateTime: c.UpdateTime,
-		}
-		deprecatedControllers = append(deprecatedControllers, depController)
 	}
 	ret := &pbs.StatusResponse{
 		CalculatedUpstreams: responseControllers,
-		Controllers:         deprecatedControllers,
+		WorkerId:            wId,
 	}
 
 	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))
@@ -162,9 +141,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 	}
 
-	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, req.Worker.PrivateId, stateReport)
+	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, wId, stateReport)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error comparing state of sessions for worker: %s: %v", req.Worker.PrivateId, err)
+		return nil, status.Errorf(codes.Internal, "Error comparing state of sessions for worker: %s: %v", wId, err)
 	}
 	for _, na := range notActive {
 		var connChanges []*pbs.Connection
