@@ -7,6 +7,8 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
@@ -904,4 +906,25 @@ func TestSetupWorkerPublicAddress(t *testing.T) {
 			require.Equal(t, tt.expPublicAddress, tt.inputConfig.Worker.PublicAddr)
 		})
 	}
+}
+
+func TestSetupWorkerCredentialStorage(t *testing.T) {
+	ctx := context.Background()
+	assert, require := assert.New(t), require.New(t)
+	ts := db.TestWrapper(t)
+	keyId, err := ts.KeyId(ctx)
+
+	tw := worker.NewTestWorker(t, &worker.TestWorkerOpts{
+		WorkerStorage:    ts,
+		DisableAutoStart: true,
+	})
+
+	err = tw.Worker().Start()
+	require.NoError(err)
+	wKeyId, err := tw.Config().WorkerStorageKms.KeyId(ctx)
+	require.NoError(err)
+	assert.Equal(keyId, wKeyId)
+
+	err = tw.Worker().Shutdown()
+	require.NoError(err)
 }
