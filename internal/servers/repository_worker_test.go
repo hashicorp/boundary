@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
 )
+
 func TestDeleteWorker(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -73,7 +74,7 @@ func TestDeleteWorker(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "servers.(Repository).DeleteWorker: Delete failed for worker with workerId:",
+			wantErrMsg:      "servers.(Repository).DeleteWorker: delete failed for worker with workerId:",
 		},
 	}
 	for _, tt := range tests {
