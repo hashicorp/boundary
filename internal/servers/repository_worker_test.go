@@ -552,7 +552,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 	}
 }
 
-func TestRepository_UpdateUser(t *testing.T) {
+func TestRepository_UpdateWorker(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
