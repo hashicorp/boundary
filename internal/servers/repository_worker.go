@@ -287,6 +287,8 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
 	case worker.PublicId == "":
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	case version == 0:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "version is zero")
 	}
 
 	for _, f := range fieldMaskPaths {
