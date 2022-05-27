@@ -14,7 +14,7 @@ message TagValues {
 message ServerWorkerStatus {
   // Id of the worker.
   string public_id = 10;
-  
+
   // Name of the resource (optional)
   string name = 20;
 
