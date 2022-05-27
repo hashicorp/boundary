@@ -45,7 +45,7 @@ func Test_TestTcpTarget(t *testing.T) {
 	for _, s := range foundSources {
 		foundIds = append(foundIds, s.Id())
 	}
-	require.Equal(sets, foundIds)
+	require.ElementsMatch(sets, foundIds)
 }
 
 func Test_TestCredentialLibrary(t *testing.T) {
@@ -80,5 +80,5 @@ func Test_TestCredentialLibrary(t *testing.T) {
 	for _, s := range foundSources {
 		foundIds = append(foundIds, s.Id())
 	}
-	require.Equal(libIds, foundIds)
+	require.ElementsMatch(libIds, foundIds)
 }

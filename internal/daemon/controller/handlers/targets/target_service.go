@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -1434,12 +1435,16 @@ func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	credLibs, err := createCredLibs(targetId, applicationIds, nil, egressIds)
-	if err != nil {
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
+
+	ids := make(target.CredentialSources)
+	if len(applicationIds) > 0 {
+		ids[credential.ApplicationPurpose] = strutil.RemoveDuplicates(applicationIds, false)
+	}
+	if len(egressIds) > 0 {
+		ids[credential.EgressPurpose] = strutil.RemoveDuplicates(egressIds, false)
 	}
 
-	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, credLibs)
+	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, ids)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add credential sources to target: %v.", err)
@@ -2019,13 +2024,13 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}

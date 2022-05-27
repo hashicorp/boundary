@@ -203,8 +203,8 @@ func Vet(ctx context.Context, t target.Target) error {
 	return nil
 }
 
-// VetCredentialLibraries allows for any CredentialLibraries.
-func VetCredentialLibraries(_ context.Context, _ []*target.CredentialLibrary) error {
+// VetCredentialSources allows for any CredentialLibraries.
+func VetCredentialSources(_ context.Context, _ []*target.CredentialLibrary, _ []*target.CredentialStatic) error {
 	return nil
 }
 
