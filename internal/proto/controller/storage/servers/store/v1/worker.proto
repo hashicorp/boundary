@@ -50,7 +50,7 @@ message Worker {
   string worker_reported_address = 100;
 
   // The last_status_time is the last time a worker daemon sent a status update.
-  // @inject_tag: `gorm:"default:current_timestamp"`
+  // @inject_tag: `gorm:"default:null"`
   timestamp.v1.Timestamp last_status_time = 110;
 }
 

@@ -16,10 +16,87 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
 )
+
+func TestDeleteWorker(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	type args struct {
+		worker *servers.Worker
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name: "valid",
+			args: args{
+				worker: servers.TestWorker(t, conn, wrapper),
+			},
+			wantRowsDeleted: 1,
+			wantErr:         false,
+		},
+		{
+			name: "no-public-id",
+			args: args{
+				worker: func() *servers.Worker {
+					w := servers.Worker{Worker: &store.Worker{}}
+					return &w
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "servers.(Repository).DeleteWorker: missing public id: parameter violation: error #100",
+		},
+		{
+			name: "not-found",
+			args: args{
+				worker: func() *servers.Worker {
+					w := servers.Worker{Worker: &store.Worker{}}
+					id, err := db.NewPublicId("w")
+					require.NoError(t, err)
+					w.PublicId = id
+					return &w
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "servers.(Repository).DeleteWorker: delete failed for worker with workerId:",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			deletedRows, err := repo.DeleteWorker(ctx, tt.args.worker.Worker.PublicId)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				assert.Contains(err.Error(), tt.wantErrMsg)
+
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+
+			// Validate that the worker no longer exists
+			err = rw.LookupByPublicId(ctx, tt.args.worker)
+			assert.ErrorIs(err, dbw.ErrRecordNotFound)
+		})
+	}
+}
 
 func TestLookupWorkerByWorkerReportedName(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")

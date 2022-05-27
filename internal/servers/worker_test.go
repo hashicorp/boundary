@@ -97,7 +97,9 @@ func TestWorkerAggregate(t *testing.T) {
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(), WithAddress("address"))
+		ws := NewWorkerForStatus(scope.Global.String(),
+			WithAddress("address"),
+			WithName(id))
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx,
@@ -120,7 +122,9 @@ func TestWorkerAggregate(t *testing.T) {
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(), WithAddress("address"))
+		ws := NewWorkerForStatus(scope.Global.String(),
+			WithAddress("address"),
+			WithName(id))
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
@@ -156,7 +160,9 @@ func TestWorkerAggregate(t *testing.T) {
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(), WithAddress("address"))
+		ws := NewWorkerForStatus(scope.Global.String(),
+			WithAddress("address"),
+			WithName(id))
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx,
@@ -179,7 +185,9 @@ func TestWorkerAggregate(t *testing.T) {
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(), WithAddress("address"))
+		ws := NewWorkerForStatus(scope.Global.String(),
+			WithAddress("address"),
+			WithName(id))
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
@@ -258,6 +266,32 @@ func TestWorker_Update(t *testing.T) {
 			},
 		},
 		{
+			name: "base update with worker reported address and name",
+			initial: Worker{
+				Worker: &store.Worker{
+					ScopeId:     scope.Global.String(),
+					PublicId:    newId(),
+					Description: "base update with status",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					WorkerReportedName:    "base update with worker reported address and name",
+					WorkerReportedAddress: "base update with worker reported address and name",
+				},
+			},
+			mask: []string{"WorkerReportedAddress", "WorkerReportedName"},
+			assert: func(t *testing.T, init, up *Worker) {
+				t.Helper()
+				assert.Equal(t, "base update with worker reported address and name", up.WorkerReportedAddress)
+				assert.Equal(t, "base update with worker reported address and name", up.WorkerReportedName)
+				assert.Equal(t, uint32(1), up.Version)
+				assert.NotNil(t, up.GetLastStatusTime())
+				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
+				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
+			},
+		},
+		{
 			name: "base update with worker reported address",
 			initial: Worker{
 				Worker: &store.Worker{
@@ -271,15 +305,8 @@ func TestWorker_Update(t *testing.T) {
 					WorkerReportedAddress: "base update with worker reported address",
 				},
 			},
-			mask: []string{"WorkerReportedAddress"},
-			assert: func(t *testing.T, init, up *Worker) {
-				t.Helper()
-				assert.Equal(t, "base update with worker reported address", up.WorkerReportedAddress)
-				assert.Equal(t, uint32(1), up.Version)
-				assert.NotNil(t, up.GetLastStatusTime())
-				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
-				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
-			},
+			mask:            []string{"WorkerReportedAddress"},
+			wantUpdateError: true,
 		},
 		{
 			// If any status fields are set then worker reported address must
@@ -333,6 +360,7 @@ func TestWorker_Update(t *testing.T) {
 					ScopeId:               scope.Global.String(),
 					PublicId:              newId(),
 					WorkerReportedAddress: "worker reported update with base",
+					WorkerReportedName:    "worker reported update with base",
 				},
 			},
 			update: Worker{
@@ -357,6 +385,7 @@ func TestWorker_Update(t *testing.T) {
 					ScopeId:               scope.Global.String(),
 					PublicId:              newId(),
 					WorkerReportedAddress: "worker reported clearing address",
+					WorkerReportedName:    "worker reported clearing address",
 				},
 			},
 			update: Worker{
@@ -372,6 +401,7 @@ func TestWorker_Update(t *testing.T) {
 					ScopeId:               scope.Global.String(),
 					PublicId:              newId(),
 					WorkerReportedAddress: "start",
+					WorkerReportedName:    "start",
 				},
 			},
 			update: Worker{
@@ -403,16 +433,8 @@ func TestWorker_Update(t *testing.T) {
 			update: Worker{
 				Worker: &store.Worker{},
 			},
-			nullMask: []string{"WorkerReportedName"},
-			assert: func(t *testing.T, init, up *Worker) {
-				t.Helper()
-				assert.Empty(t, up.GetWorkerReportedName())
-				assert.NotNil(t, up.GetLastStatusTime())
-				assert.Greater(t, up.GetLastStatusTime().AsTime(), init.GetLastStatusTime().AsTime())
-				// We don't modify the worker version while operating only on the worker fields
-				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
-				assert.Equal(t, uint32(1), up.Version)
-			},
+			nullMask:        []string{"WorkerReportedName"},
+			wantUpdateError: true,
 		},
 	}
 	for _, tc := range cases {
@@ -479,22 +501,6 @@ func TestWorker_Create(t *testing.T) {
 			want: wanted{},
 		},
 		{
-			name: "non status fields with worker reported address",
-			in: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					Name:                  "non status fields with worker reported address",
-					Description:           "non status fields with worker reported address",
-					Address:               "address",
-					WorkerReportedAddress: "non status fields with worker reported address",
-				},
-			},
-			want: wanted{
-				lastStatusUpdated: true,
-			},
-		},
-		{
 			name: "with status fields",
 			in: Worker{
 				Worker: &store.Worker{
@@ -518,7 +524,7 @@ func TestWorker_Create(t *testing.T) {
 				},
 			},
 			want: wanted{
-				lastStatusUpdated: true,
+				createError: true,
 			},
 		},
 		{
@@ -537,6 +543,23 @@ func TestWorker_Create(t *testing.T) {
 			},
 		},
 		{
+			name: "non status fields with worker reported fields",
+			in: Worker{
+				Worker: &store.Worker{
+					ScopeId:               scope.Global.String(),
+					PublicId:              newId(),
+					Name:                  "non status fields with worker reported fields",
+					Description:           "non status fields with worker reported fields",
+					Address:               "address",
+					WorkerReportedAddress: "non status fields with worker reported fields",
+					WorkerReportedName:    "non status fields with worker reported fields",
+				},
+			},
+			want: wanted{
+				lastStatusUpdated: true,
+			},
+		},
+		{
 			// The worker reported address is a required field if any of the
 			// worker reported fields are set.
 			name: "non status fields with worker reported name",
@@ -548,6 +571,22 @@ func TestWorker_Create(t *testing.T) {
 					Description:        "non status fields with worker reported name",
 					Address:            "address",
 					WorkerReportedName: "non status fields with worker reported name",
+				},
+			},
+			want: wanted{
+				createError: true,
+			},
+		},
+		{
+			name: "non status fields with worker reported address",
+			in: Worker{
+				Worker: &store.Worker{
+					ScopeId:               scope.Global.String(),
+					PublicId:              newId(),
+					Name:                  "non status fields with worker reported address",
+					Description:           "non status fields with worker reported address",
+					Address:               "address",
+					WorkerReportedAddress: "non status fields with worker reported address",
 				},
 			},
 			want: wanted{

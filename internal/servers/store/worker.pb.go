@@ -59,8 +59,8 @@ type Worker struct {
 	// @inject_tag: `gorm:"default:null"`
 	WorkerReportedAddress string `protobuf:"bytes,100,opt,name=worker_reported_address,json=workerReportedAddress,proto3" json:"worker_reported_address,omitempty" gorm:"default:null"`
 	// The last_status_time is the last time a worker daemon sent a status update.
-	// @inject_tag: `gorm:"default:current_timestamp"`
-	LastStatusTime *timestamp.Timestamp `protobuf:"bytes,110,opt,name=last_status_time,json=lastStatusTime,proto3" json:"last_status_time,omitempty" gorm:"default:current_timestamp"`
+	// @inject_tag: `gorm:"default:null"`
+	LastStatusTime *timestamp.Timestamp `protobuf:"bytes,110,opt,name=last_status_time,json=lastStatusTime,proto3" json:"last_status_time,omitempty" gorm:"default:null"`
 }
 
 func (x *Worker) Reset() {
