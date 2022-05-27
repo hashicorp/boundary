@@ -84,7 +84,7 @@ create trigger worker_update_time_column before update on server_worker
 create trigger update_version_column after update of version, description, name, address on server_worker
   for each row execute procedure update_version_column();
 
-create function update_server_worker_last_status_time()
+create function update_server_worker_update_last_status_time_column()
   returns trigger
 as $$
 begin
@@ -92,11 +92,11 @@ begin
   return new;
 end;
 $$ language plpgsql;
-comment on function update_server_worker_last_status_time is
+comment on function update_server_worker_update_last_status_time_column is
   'function used to update the last_status_time column in server_worker to now';
 
 create trigger update_server_worker_last_status_time_column before update of worker_reported_address, worker_reported_name on server_worker
-  for each row execute procedure update_server_worker_last_status_time();
+  for each row execute procedure update_server_worker_update_last_status_time_column();
 
 create function insert_server_worker_update_last_status_time_column()
   returns trigger
