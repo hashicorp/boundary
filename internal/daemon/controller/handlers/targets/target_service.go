@@ -1462,12 +1462,15 @@ func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string
 		return nil, nil, nil, err
 	}
 
-	credLibs, err := createCredLibs(targetId, applicationIds, nil, egressIds)
-	if err != nil {
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
+	var ids target.CredentialSources
+	if len(applicationIds) > 0 {
+		ids.ApplicationCredentialIds = strutil.RemoveDuplicates(applicationIds, false)
+	}
+	if len(egressIds) > 0 {
+		ids.EgressCredentialIds = strutil.RemoveDuplicates(egressIds, false)
 	}
 
-	_, _, _, err = repo.SetTargetCredentialSources(ctx, targetId, version, credLibs)
+	_, _, _, err = repo.SetTargetCredentialSources(ctx, targetId, version, ids)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
@@ -2053,13 +2056,13 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -2139,26 +2142,6 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
-}
-
-func createCredLibs(targetId string, applicationIds, ingressIds, egressIds []string) ([]*target.CredentialLibrary, error) {
-	credLibs := make([]*target.CredentialLibrary, 0, len(applicationIds)+len(ingressIds)+len(egressIds))
-
-	byPurpose := map[credential.Purpose][]string{
-		credential.ApplicationPurpose: strutil.RemoveDuplicates(applicationIds, false),
-		credential.IngressPurpose:     strutil.RemoveDuplicates(ingressIds, false),
-		credential.EgressPurpose:      strutil.RemoveDuplicates(egressIds, false),
-	}
-	for purpose, ids := range byPurpose {
-		for _, id := range ids {
-			l, err := target.NewCredentialLibrary(targetId, id, purpose)
-			if err != nil {
-				return nil, err
-			}
-			credLibs = append(credLibs, l)
-		}
-	}
-	return credLibs, nil
 }
 
 // credentialToProto converts the strongly typed credential.Credential into a known proto.Message.

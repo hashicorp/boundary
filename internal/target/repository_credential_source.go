@@ -11,37 +11,9 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
-
-// credentialLibrariesPurposeMap is used to group CredentialLibraries by purpose.
-type credentialLibrariesPurposeMap map[string][]*CredentialLibrary
-
-func (c credentialLibrariesPurposeMap) add(cl *CredentialLibrary) {
-	var s []*CredentialLibrary
-	var ok bool
-
-	s, ok = c[cl.GetCredentialPurpose()]
-	if !ok {
-		s = make([]*CredentialLibrary, 0, 1)
-	}
-
-	s = append(s, cl)
-	c[cl.GetCredentialPurpose()] = s
-}
-
-func newCredentialLibrariesPurposeMap(cls []*CredentialLibrary) credentialLibrariesPurposeMap {
-	clpm := make(credentialLibrariesPurposeMap)
-	for _, p := range credential.ValidPurposes {
-		clpm[p.String()] = make([]*CredentialLibrary, 0)
-	}
-	for _, cl := range cls {
-		clpm.add(cl)
-	}
-	return clpm
-}
 
 // AddTargetCredentialSources adds the credential source ids by purpose to the targetId in the repository.
 // The target and the list of credential sources attached to the target, after ids are added,
@@ -274,7 +246,7 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 // SetTargetCredentialSources will set the target's credential sources. Set will add
 // and/or delete credential sources as need to reconcile the existing credential sources
 // with the request. If clIds is empty, all the credential sources will be cleared from the target.
-func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, cls []*CredentialLibrary, _ ...Option) ([]HostSource, []CredentialSource, int, error) {
+func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, ids CredentialSources, _ ...Option) ([]HostSource, []CredentialSource, int, error) {
 	const op = "target.(Repository).SetTargetCredentialSources"
 	if targetId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
@@ -283,19 +255,29 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 
-	clpm := newCredentialLibrariesPurposeMap(cls)
+	var (
+		addCredLibs   []*CredentialLibrary
+		delCredLibs   []*CredentialLibrary
+		addStaticCred []*StaticCredential
+		delStaticCred []*StaticCredential
+	)
 
-	var changes []*change
-
-	for purpose, cls := range clpm {
-		c, err := r.changes(ctx, targetId, cls, purpose)
+	byPurpose := map[credential.Purpose][]string{
+		credential.ApplicationPurpose: ids.ApplicationCredentialIds,
+		credential.EgressPurpose:      ids.EgressCredentialIds,
+	}
+	for p, ids := range byPurpose {
+		addL, delL, addS, delS, err := r.changes(ctx, targetId, ids, p)
 		if err != nil {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
-		changes = append(changes, c...)
+		addCredLibs = append(addCredLibs, addL...)
+		delCredLibs = append(delCredLibs, delL...)
+		addStaticCred = append(addStaticCred, addS...)
+		delStaticCred = append(delStaticCred, delS...)
 	}
 
-	if len(changes) == 0 {
+	if len(addCredLibs)+len(delCredLibs)+len(addStaticCred)+len(delStaticCred) == 0 {
 		// Nothing needs to be changed, return early
 		hostSets, err := fetchHostSources(ctx, r.reader, targetId)
 		if err != nil {
@@ -306,16 +288,6 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 		return hostSets, credSources, db.NoRowsAffected, nil
-	}
-
-	var deleteCredLibs, addCredLibs []interface{}
-	for _, c := range changes {
-		switch c.action {
-		case "delete":
-			deleteCredLibs = append(deleteCredLibs, c.credentialLibrary)
-		case "add":
-			addCredLibs = append(addCredLibs, c.credentialLibrary)
-		}
 	}
 
 	t := allocTargetView()
@@ -334,7 +306,8 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	if !ok {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
-	if err := vetCredentialSources(ctx, cls, nil); err != nil {
+	// Validate add sources on target
+	if err := vetCredentialSources(ctx, addCredLibs, addStaticCred); err != nil {
 		return nil, nil, db.NoRowsAffected, err
 	}
 
@@ -379,8 +352,12 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 			// add new credential libraries
 			if len(addCredLibs) > 0 {
+				i := make([]interface{}, 0, len(addCredLibs))
+				for _, cl := range addCredLibs {
+					i = append(i, cl)
+				}
 				addMsgs := make([]*oplog.Message, 0, len(addCredLibs))
-				if err := w.CreateItems(ctx, addCredLibs, db.NewOplogMsgs(&addMsgs)); err != nil {
+				if err := w.CreateItems(ctx, i, db.NewOplogMsgs(&addMsgs)); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add target credential libraries"))
 				}
 				rowsAffected += len(addMsgs)
@@ -389,19 +366,58 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 			}
 
 			// delete existing credential libraries not part of set
-			if len(deleteCredLibs) > 0 {
-				delMsgs := make([]*oplog.Message, 0, len(deleteCredLibs))
-				rowsDeleted, err := w.DeleteItems(ctx, deleteCredLibs, db.NewOplogMsgs(&delMsgs))
+			if len(delCredLibs) > 0 {
+				i := make([]interface{}, 0, len(delCredLibs))
+				for _, cl := range delCredLibs {
+					i = append(i, cl)
+				}
+				delMsgs := make([]*oplog.Message, 0, len(delCredLibs))
+				rowsDeleted, err := w.DeleteItems(ctx, i, db.NewOplogMsgs(&delMsgs))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target credential libraries"))
 				}
 				if rowsDeleted != len(delMsgs) {
-					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("target credential libraries deleted %d did not match request for %d", rowsDeleted, len(deleteCredLibs)))
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("target credential libraries deleted %d did not match request for %d", rowsDeleted, len(delCredLibs)))
 				}
 				rowsAffected += rowsDeleted
 				msgs = append(msgs, delMsgs...)
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 			}
+
+			// add new static credential
+			if len(addStaticCred) > 0 {
+				i := make([]interface{}, 0, len(addStaticCred))
+				for _, cl := range addStaticCred {
+					i = append(i, cl)
+				}
+				addMsgs := make([]*oplog.Message, 0, len(addStaticCred))
+				if err := w.CreateItems(ctx, i, db.NewOplogMsgs(&addMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add target static credential "))
+				}
+				rowsAffected += len(addMsgs)
+				msgs = append(msgs, addMsgs...)
+				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
+			}
+
+			// delete existing static credentials not part of set
+			if len(delStaticCred) > 0 {
+				i := make([]interface{}, 0, len(delStaticCred))
+				for _, cl := range delStaticCred {
+					i = append(i, cl)
+				}
+				delMsgs := make([]*oplog.Message, 0, len(delStaticCred))
+				rowsDeleted, err := w.DeleteItems(ctx, i, db.NewOplogMsgs(&delMsgs))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target static credential"))
+				}
+				if rowsDeleted != len(delMsgs) {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("target static credential deleted %d did not match request for %d", rowsDeleted, len(delStaticCred)))
+				}
+				rowsAffected += rowsDeleted
+				msgs = append(msgs, delMsgs...)
+				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
+			}
+
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
@@ -423,17 +439,17 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	return hostSources, credSources, rowsAffected, nil
 }
 
-type change struct {
-	action            string
-	credentialLibrary *CredentialLibrary
-}
-
 type changeQueryResult struct {
-	Action    string
-	LibraryId string
+	Action   string
+	Type     string
+	SourceId string
 }
 
-func (r *Repository) changes(ctx context.Context, targetId string, cls []*CredentialLibrary, purpose string) ([]*change, error) {
+func (r *Repository) changes(ctx context.Context, targetId string, ids []string, purpose credential.Purpose) (
+	addCredLib, delCredLib []*CredentialLibrary,
+	addStaticCred, delStaticCred []*StaticCredential,
+	err error,
+) {
 	const op = "target.(Repository).changes"
 
 	// TODO ensure that all cls have the same purpose as the given purpose?
@@ -441,8 +457,8 @@ func (r *Repository) changes(ctx context.Context, targetId string, cls []*Creden
 	var inClauseSpots []string
 	var params []interface{}
 	params = append(params, sql.Named("target_id", targetId), sql.Named("purpose", purpose))
-	for idx, cl := range cls {
-		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), cl.CredentialLibraryId))
+	for idx, id := range ids {
+		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), id))
 		inClauseSpots = append(inClauseSpots, fmt.Sprintf("@%d", idx+1))
 	}
 	inClause := strings.Join(inClauseSpots, ",")
@@ -453,28 +469,41 @@ func (r *Repository) changes(ctx context.Context, targetId string, cls []*Creden
 	query := fmt.Sprintf(setChangesQuery, inClause)
 	rows, err := r.reader.Query(ctx, query, params)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("query failed"))
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("query failed"))
 	}
 	defer rows.Close()
 
-	var changes []*change
 	for rows.Next() {
 		var chg changeQueryResult
 		if err := r.reader.ScanRows(ctx, rows, &chg); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+			return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
-		changes = append(changes, &change{
-			action: chg.Action,
-			credentialLibrary: &CredentialLibrary{
-				CredentialLibrary: &store.CredentialLibrary{
-					TargetId:            targetId,
-					CredentialLibraryId: chg.LibraryId,
-					CredentialPurpose:   purpose,
-				},
-			},
-		})
+		switch chg.Type {
+		case "library":
+			lib, err := NewCredentialLibrary(targetId, chg.SourceId, purpose)
+			if err != nil {
+				return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
+			}
+			switch chg.Action {
+			case "delete":
+				delCredLib = append(delCredLib, lib)
+			default:
+				addCredLib = append(addCredLib, lib)
+			}
+		case "static":
+			cred, err := NewStaticCredential(targetId, chg.SourceId, purpose)
+			if err != nil {
+				return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
+			}
+			switch chg.Action {
+			case "delete":
+				delStaticCred = append(delStaticCred, cred)
+			default:
+				addStaticCred = append(addStaticCred, cred)
+			}
+		}
 	}
-	return changes, nil
+	return addCredLib, delCredLib, addStaticCred, delStaticCred, nil
 }
 
 func fetchCredentialSources(ctx context.Context, r db.Reader, targetId string) ([]CredentialSource, error) {
@@ -524,7 +553,7 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 	}
 
 	credLibs := make([]*CredentialLibrary, 0, totalCreds)
-	credStatic := make([]*StaticCredential, 0, totalCreds)
+	staticCred := make([]*StaticCredential, 0, totalCreds)
 	byPurpose := map[credential.Purpose][]string{
 		credential.ApplicationPurpose: credSources.ApplicationCredentialIds,
 		credential.EgressPurpose:      credSources.EgressCredentialIds,
@@ -543,7 +572,7 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 				if err != nil {
 					return nil, nil, errors.Wrap(ctx, err, op)
 				}
-				credStatic = append(credStatic, cred)
+				staticCred = append(staticCred, cred)
 			}
 		}
 	}
@@ -552,9 +581,9 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 	if !ok {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("is an unsupported target type %s", tSubtype))
 	}
-	if err := vetCredentialSources(ctx, credLibs, credStatic); err != nil {
+	if err := vetCredentialSources(ctx, credLibs, staticCred); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 
-	return credLibs, credStatic, nil
+	return credLibs, staticCred, nil
 }

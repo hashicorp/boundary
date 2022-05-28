@@ -2392,15 +2392,11 @@ func TestSetTargetCredentialSources(t *testing.T) {
 	s, err := testService(t, conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
 
-	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
-	cls := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	storeVault := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
+	cls := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), 2)
 
-	resultingTargetSource := func(id string) *pb.CredentialSource {
-		return &pb.CredentialSource{
-			Id:                id,
-			CredentialStoreId: store.GetPublicId(),
-		}
-	}
+	storeStatic := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
+	creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", storeStatic.GetPublicId(), proj.GetPublicId(), 2)
 
 	ctx := context.Background()
 	setCases := []struct {
@@ -2411,26 +2407,58 @@ func TestSetTargetCredentialSources(t *testing.T) {
 		resultCredentialSources   []*pb.CredentialLibrary
 	}{
 		{
-			name:                      "Set on empty target",
-			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty"),
+			name:                      "Set libary on empty target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty libary"),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
-			name:                      "Set on populated target",
-			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			name:                      "Set static on empty target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty static"),
+			setCredentialSources:      []string{creds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
+		},
+		{
+			name:                      "Set library on library populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated libary-libary", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
-			name:                      "Set duplicate sources on populated target",
-			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			name:                      "Set static on library populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static-libary", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			setCredentialSources:      []string{creds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
+		},
+		{
+			name:                      "Set library on static populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
+			setCredentialSources:      []string{cls[1].GetPublicId()},
+			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
+		},
+		{
+			name:                      "Set static on static populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated static-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
+			setCredentialSources:      []string{creds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
+		},
+		{
+			name:                      "Set duplicate library on populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
 		},
 		{
-			name:                      "Set empty on populated target",
-			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
+			name:                      "Set duplicate static on populated target",
+			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
+			setCredentialSources:      []string{creds[1].GetPublicId(), creds[1].GetPublicId()},
+			resultCredentialSourceIds: []string{creds[1].GetPublicId()},
+		},
+		{
+			name: "Set empty on populated target",
+			tar: tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "another populated",
+				target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)}),
+				target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setCredentialSources:      []string{},
 			resultCredentialSourceIds: nil,
 		},
@@ -2457,9 +2485,6 @@ func TestSetTargetCredentialSources(t *testing.T) {
 				assert.Empty(t, cmp.Diff(tc.resultCredentialSources, got.GetItem().GetApplicationCredentialSourceIds(), protocmp.Transform()))
 			} else {
 				assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetApplicationCredentialSourceIds()))
-				for _, cl := range got.GetItem().GetApplicationCredentialSources() {
-					assert.Empty(t, cmp.Diff(resultingTargetSource(cl.GetId()), cl, protocmp.Transform()))
-				}
 			}
 		})
 	}
