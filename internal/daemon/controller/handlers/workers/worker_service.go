@@ -60,6 +60,13 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	wstat := req.GetWorkerStatus()
 	wId, wName := wstat.GetPublicId(), wstat.GetName()
+	if wId == "" && wName == "" {
+		return &pbs.StatusResponse{}, status.Error(codes.Internal, "Error acquiring worker name or public ID.")
+	}
+	wAddr := wstat.GetAddress()
+	if wAddr == "" {
+		return &pbs.StatusResponse{}, status.Error(codes.Internal, "Error acquiring worker address.")
+	}
 
 	ws.updateTimes.Store(wId, time.Now())
 	serverRepo, err := ws.serversRepoFn()
@@ -77,18 +84,16 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	// Convert API tags to storage tags
 	wTags := wstat.GetTags()
 	workerTags := make([]*servers.Tag, 0, len(wTags))
-	for k, v := range wTags {
-		for _, val := range v.GetValues() {
-			workerTags = append(workerTags, &servers.Tag{
-				Key:   k,
-				Value: val,
-			})
-		}
+	for _, v := range wTags {
+		workerTags = append(workerTags, &servers.Tag{
+			Key:   v.GetKey(),
+			Value: v.GetValue(),
+		})
 	}
 
 	wConf := servers.NewWorkerStatus(wId,
 		servers.WithName(wName),
-		servers.WithAddress(wstat.GetAddress()),
+		servers.WithAddress(wAddr),
 		servers.WithWorkerTags(workerTags...))
 	controllers, _, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
@@ -100,7 +105,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	for _, c := range controllers {
 		thisController := &pbs.UpstreamServer{
 			Address: c.Address,
-			Type:    1,
+			Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
 		}
 		responseControllers = append(responseControllers, thisController)
 	}

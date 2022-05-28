@@ -582,7 +582,10 @@ type StatusRequest struct {
 	// changed allows us to avoid constant database operations for something that
 	// won't change very often, if ever.
 	UpdateTags bool `protobuf:"varint,30,opt,name=update_tags,json=updateTags,proto3" json:"update_tags,omitempty"`
-	// Replaces the old worker field.
+	// Replaces the old worker field:
+	// The worker info. We could use information from the TLS connection but this
+	// is easier and going the other route doesn't provide much benefit -- if you
+	// get access to the key and spoof the connection, you're already compromised.
 	WorkerStatus *servers.ServerWorkerStatus `protobuf:"bytes,40,opt,name=worker_status,json=workerStatus,proto3" json:"worker_status,omitempty"`
 }
 

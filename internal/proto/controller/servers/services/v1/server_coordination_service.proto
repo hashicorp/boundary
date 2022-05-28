@@ -73,9 +73,6 @@ message UpstreamServer {
 }
 
 message StatusRequest {
-  // The worker info. We could use information from the TLS connection but this
-  // is easier and going the other route doesn't provide much benefit -- if you
-  // get access to the key and spoof the connection, you're already compromised.
   reserved 10;
   reserved "worker";
 
@@ -88,7 +85,10 @@ message StatusRequest {
   // won't change very often, if ever.
   bool update_tags = 30;
 
-  // Replaces the old worker field.
+  // Replaces the old worker field:
+  // The worker info. We could use information from the TLS connection but this
+  // is easier and going the other route doesn't provide much benefit -- if you
+  // get access to the key and spoof the connection, you're already compromised.
   servers.v1.ServerWorkerStatus worker_status = 40;
 }
 
@@ -105,7 +105,6 @@ message JobChangeRequest {
 }
 
 message StatusResponse {
-  // Active controllers. This can be used for connection management.
   reserved 10;
   reserved "controllers";
 

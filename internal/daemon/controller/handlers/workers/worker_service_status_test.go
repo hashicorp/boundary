@@ -102,31 +102,30 @@ func TestStatus(t *testing.T) {
 			name:    "No Sessions",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				Worker: &servers.Server{
-					PrivateId:  worker1.PublicId,
-					Address:    worker1.CanonicalAddress(),
-					CreateTime: worker1.CreateTime,
-					UpdateTime: worker1.UpdateTime,
+				WorkerStatus: &servers.ServerWorkerStatus{
+					PublicId: worker1.PublicId,
+					Name:     worker1.Name,
+					Address:  worker1.CanonicalAddress(),
 				},
 			},
 			want: &pbs.StatusResponse{
-				Controllers: []*servers.Server{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
 					{
-						PrivateId: "test_controller1",
-						Address:   "127.0.0.1",
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
 					},
 				},
+				WorkerId: worker1.PublicId,
 			},
 		},
 		{
 			name:    "Still Active",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				Worker: &servers.Server{
-					PrivateId:  worker1.PublicId,
-					Address:    worker1.CanonicalAddress(),
-					CreateTime: worker1.CreateTime,
-					UpdateTime: worker1.UpdateTime,
+				WorkerStatus: &servers.ServerWorkerStatus{
+					PublicId: worker1.PublicId,
+					Name:     worker1.Name,
+					Address:  worker1.CanonicalAddress(),
 				},
 				Jobs: []*pbs.JobStatus{
 					{
@@ -149,12 +148,13 @@ func TestStatus(t *testing.T) {
 				},
 			},
 			want: &pbs.StatusResponse{
-				Controllers: []*servers.Server{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
 					{
-						PrivateId: "test_controller1",
-						Address:   "127.0.0.1",
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
 					},
 				},
+				WorkerId: worker1.PublicId,
 			},
 		},
 	}
@@ -176,14 +176,15 @@ func TestStatus(t *testing.T) {
 					got,
 					cmpopts.IgnoreUnexported(
 						pbs.StatusResponse{},
-						servers.Server{},
+						servers.ServerWorkerStatus{},
+						pbs.UpstreamServer{},
 						pbs.JobChangeRequest{},
 						pbs.Job{},
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
 					),
-					cmpopts.IgnoreFields(servers.Server{}, "CreateTime", "UpdateTime"),
+					cmpopts.IgnoreFields(servers.ServerWorkerStatus{}, "Tags"),
 				),
 			)
 		})
@@ -286,11 +287,10 @@ func TestStatusSessionClosed(t *testing.T) {
 				require.NoError(t, err)
 			},
 			req: &pbs.StatusRequest{
-				Worker: &servers.Server{
-					PrivateId:  worker1.PublicId,
-					Address:    worker1.CanonicalAddress(),
-					CreateTime: worker1.CreateTime,
-					UpdateTime: worker1.UpdateTime,
+				WorkerStatus: &servers.ServerWorkerStatus{
+					PublicId: worker1.PublicId,
+					Name:     worker1.Name,
+					Address:  worker1.CanonicalAddress(),
 				},
 				Jobs: []*pbs.JobStatus{
 					{
@@ -313,10 +313,10 @@ func TestStatusSessionClosed(t *testing.T) {
 				},
 			},
 			want: &pbs.StatusResponse{
-				Controllers: []*servers.Server{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
 					{
-						PrivateId: "test_controller1",
-						Address:   "127.0.0.1",
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
 					},
 				},
 				JobsRequests: []*pbs.JobChangeRequest{
@@ -333,6 +333,7 @@ func TestStatusSessionClosed(t *testing.T) {
 						RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
 					},
 				},
+				WorkerId: worker1.PublicId,
 			},
 		},
 	}
@@ -357,14 +358,15 @@ func TestStatusSessionClosed(t *testing.T) {
 					got,
 					cmpopts.IgnoreUnexported(
 						pbs.StatusResponse{},
-						servers.Server{},
+						servers.ServerWorkerStatus{},
+						pbs.UpstreamServer{},
 						pbs.JobChangeRequest{},
 						pbs.Job{},
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
 					),
-					cmpopts.IgnoreFields(servers.Server{}, "CreateTime", "UpdateTime"),
+					cmpopts.IgnoreFields(servers.ServerWorkerStatus{}, "Tags"),
 				),
 			)
 		})
@@ -455,11 +457,10 @@ func TestStatusDeadConnection(t *testing.T) {
 	require.NotEqual(t, deadConn.PublicId, connection.PublicId)
 
 	req := &pbs.StatusRequest{
-		Worker: &servers.Server{
-			PrivateId:  worker1.PublicId,
-			Address:    worker1.CanonicalAddress(),
-			CreateTime: worker1.CreateTime,
-			UpdateTime: worker1.UpdateTime,
+		WorkerStatus: &servers.ServerWorkerStatus{
+			PublicId: worker1.PublicId,
+			Name:     worker1.Name,
+			Address:  worker1.CanonicalAddress(),
 		},
 		Jobs: []*pbs.JobStatus{
 			{
@@ -482,12 +483,13 @@ func TestStatusDeadConnection(t *testing.T) {
 		},
 	}
 	want := &pbs.StatusResponse{
-		Controllers: []*servers.Server{
+		CalculatedUpstreams: []*pbs.UpstreamServer{
 			{
-				PrivateId: "test_controller1",
-				Address:   "127.0.0.1",
+				Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+				Address: "127.0.0.1",
 			},
 		},
+		WorkerId: worker1.PublicId,
 	}
 
 	got, err := s.Status(ctx, req)
@@ -497,14 +499,15 @@ func TestStatusDeadConnection(t *testing.T) {
 			got,
 			cmpopts.IgnoreUnexported(
 				pbs.StatusResponse{},
-				servers.Server{},
+				servers.ServerWorkerStatus{},
+				pbs.UpstreamServer{},
 				pbs.JobChangeRequest{},
 				pbs.Job{},
 				pbs.Job_SessionInfo{},
 				pbs.SessionJobInfo{},
 				pbs.Connection{},
 			),
-			cmpopts.IgnoreFields(servers.Server{}, "CreateTime", "UpdateTime"),
+			cmpopts.IgnoreFields(servers.ServerWorkerStatus{}, "Tags"),
 		),
 	)
 

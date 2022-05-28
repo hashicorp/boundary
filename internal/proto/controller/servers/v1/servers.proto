@@ -4,10 +4,10 @@ package controller.servers.v1;
 
 option go_package = "github.com/hashicorp/boundary/internal/servers;servers";
 
-// TagValues is used because map fields cannot be repeated but can be a
-// message
-message TagValues {
-  repeated string values = 10;
+// TagPair matches a key to a value.
+message TagPair {
+  string key = 1;
+  string value = 2;
 }
 
 // ServerWorkerStatus is the new message used in place of Server to relay status request info.
@@ -22,5 +22,5 @@ message ServerWorkerStatus {
   string address = 30;
 
   // Tags for workers
-  map<string, TagValues> tags = 40;
+  repeated TagPair tags = 40;
 }
