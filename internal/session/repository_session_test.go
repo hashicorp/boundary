@@ -1443,7 +1443,7 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	libIds := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
 
 	ids := target.CredentialSources{
-		cred.ApplicationPurpose: []string{libIds[0].GetPublicId(), libIds[1].GetPublicId()},
+		ApplicationCredentialIds: []string{libIds[0].GetPublicId(), libIds[1].GetPublicId()},
 	}
 	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), ids)
 	require.NoError(err)

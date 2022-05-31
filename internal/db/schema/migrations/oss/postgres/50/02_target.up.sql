@@ -20,8 +20,8 @@ begin;
     primary key(target_id, credential_static_id, credential_purpose)
   );
   comment on table target_credential_static is
-    'target_credential_static is a join table between the target and credential_static tables. '
-    'It also contains the credential purpose that the relationship represents.';
+    'target_credential_static is a join table between the target, credential_static, and credential_purpose_enm tables. '
+    'A row in the target_credential_static table represents the assignment of a static credential to a target for the specified purpose.';
 
   create trigger default_create_time_column before insert on target_credential_static
     for each row execute procedure default_create_time();

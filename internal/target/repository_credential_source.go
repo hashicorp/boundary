@@ -94,7 +94,8 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 3)
+			numOplogMsgs := 1 + len(addCredLibs) + len(addCredStatic)
+			msgs := make([]*oplog.Message, 0, numOplogMsgs)
 			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
@@ -469,18 +470,20 @@ func fetchCredentialSources(ctx context.Context, r db.Reader, targetId string) (
 	return ret, nil
 }
 
-func (r *Repository) createSources(ctx context.Context, tId string, tSubtype subtypes.Subtype, idsByPurpose CredentialSources) ([]*CredentialLibrary, []*CredentialStatic, error) {
+func (r *Repository) createSources(ctx context.Context, tId string, tSubtype subtypes.Subtype, credSources CredentialSources) ([]*CredentialLibrary, []*CredentialStatic, error) {
 	const op = "target.(Repository).createSources"
 
-	var ids []string
-	for _, i := range idsByPurpose {
-		ids = append(ids, i...)
-	}
+	// Get a list of unique ids being attached to the target, to be used for looking up the source type (library or static)
+	ids := make([]string, 0, len(credSources.ApplicationCredentialIds)+len(credSources.EgressCredentialIds))
+	ids = append(ids, credSources.ApplicationCredentialIds...)
+	ids = append(ids, credSources.EgressCredentialIds...)
+	totalCreds := len(ids)
 	ids = strutil.RemoveDuplicates(ids, false)
 	if len(ids) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential sources")
 	}
 
+	// Fetch credentials from database to determine the type of credential
 	var credView []*credentialView
 	if err := r.reader.SearchWhere(ctx, &credView, "public_id in (?)", []interface{}{ids}); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("can't retrieve credentials"))
@@ -489,16 +492,23 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 		return nil, nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
 			fmt.Sprintf("mismatch between request and returned source ids, expected %d got %d", len(ids), len(credView)))
 	}
-	typeById := make(map[string]string, len(ids))
+
+	// Create a map between credential source ID and it's type (library or static).
+	// This will allow for a quick lookup when calling the corresponding New below
+	credTypeById := make(map[string]string, len(ids))
 	for _, cv := range credView {
-		typeById[cv.GetPublicId()] = cv.GetType()
+		credTypeById[cv.GetPublicId()] = cv.GetType()
 	}
 
-	credLibs := make([]*CredentialLibrary, 0, len(ids))
-	credStatic := make([]*CredentialStatic, 0, len(ids))
-	for purpose, ids := range idsByPurpose {
+	credLibs := make([]*CredentialLibrary, 0, totalCreds)
+	credStatic := make([]*CredentialStatic, 0, totalCreds)
+	byPurpose := map[credential.Purpose][]string{
+		credential.ApplicationPurpose: credSources.ApplicationCredentialIds,
+		credential.EgressPurpose:      credSources.EgressCredentialIds,
+	}
+	for purpose, ids := range byPurpose {
 		for _, id := range ids {
-			switch typeById[id] {
+			switch credTypeById[id] {
 			case "library":
 				lib, err := NewCredentialLibrary(tId, id, purpose)
 				if err != nil {

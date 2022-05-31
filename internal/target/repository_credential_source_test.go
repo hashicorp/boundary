@@ -39,10 +39,10 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	setupFn := func(tar target.Target) ([]target.CredentialSource, []*target.CredentialLibrary) {
 		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 10)
 		cls := make([]*target.CredentialLibrary, 0, len(credLibs))
-		ids := make(target.CredentialSources)
+		var ids target.CredentialSources
 		for _, cl := range credLibs {
 			cls = append(cls, target.TestNewCredentialLibrary(tar.GetPublicId(), cl.PublicId, credential.ApplicationPurpose))
-			ids[credential.ApplicationPurpose] = append(ids[credential.ApplicationPurpose], cl.GetPublicId())
+			ids.ApplicationCredentialIds = append(ids.ApplicationCredentialIds, cl.GetPublicId())
 		}
 
 		_, _, created, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, ids)
@@ -125,7 +125,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 					context.Background(),
 					tar.GetPublicId(),
 					1,
-					target.CredentialSources{credential.ApplicationPurpose: []string{lib1.GetPublicId(), lib2.GetPublicId()}})
+					target.CredentialSources{ApplicationCredentialIds: []string{lib1.GetPublicId(), lib2.GetPublicId()}})
 				require.NoError(t, err)
 				require.Equal(t, 2, len(created))
 				return created, cls

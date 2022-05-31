@@ -1436,15 +1436,15 @@ func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string
 		return nil, nil, nil, err
 	}
 
-	ids := make(target.CredentialSources)
+	var creds target.CredentialSources
 	if len(applicationIds) > 0 {
-		ids[credential.ApplicationPurpose] = strutil.RemoveDuplicates(applicationIds, false)
+		creds.ApplicationCredentialIds = strutil.RemoveDuplicates(applicationIds, false)
 	}
 	if len(egressIds) > 0 {
-		ids[credential.EgressPurpose] = strutil.RemoveDuplicates(egressIds, false)
+		creds.EgressCredentialIds = strutil.RemoveDuplicates(egressIds, false)
 	}
 
-	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, ids)
+	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, creds)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add credential sources to target: %v.", err)

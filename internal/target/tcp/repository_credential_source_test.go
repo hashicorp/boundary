@@ -77,7 +77,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			name: "valid-single-library",
 			args: args{
 				targetVersion: 1,
-				ids:           target.CredentialSources{credential.ApplicationPurpose: []string{lib1.PublicId}},
+				ids:           target.CredentialSources{ApplicationCredentialIds: []string{lib1.PublicId}},
 			},
 			wantCredSources: map[string]target.CredentialSource{
 				lib1.PublicId + "_" + string(credential.ApplicationPurpose): &target.TargetCredentialSource{
@@ -93,7 +93,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			name: "valid-single-static",
 			args: args{
 				targetVersion: 1,
-				ids:           target.CredentialSources{credential.ApplicationPurpose: []string{cred1.PublicId}},
+				ids:           target.CredentialSources{ApplicationCredentialIds: []string{cred1.PublicId}},
 			},
 			wantCredSources: map[string]target.CredentialSource{
 				cred1.PublicId + "_" + string(credential.ApplicationPurpose): &target.TargetCredentialSource{
@@ -109,7 +109,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			name: "valid-multiple-libraries",
 			args: args{
 				targetVersion: 1,
-				ids:           target.CredentialSources{credential.ApplicationPurpose: []string{lib1.PublicId, lib2.PublicId, lib3.PublicId}},
+				ids:           target.CredentialSources{ApplicationCredentialIds: []string{lib1.PublicId, lib2.PublicId, lib3.PublicId}},
 			},
 			wantCredSources: map[string]target.CredentialSource{
 				lib1.PublicId + "_" + string(credential.ApplicationPurpose): &target.TargetCredentialSource{
@@ -137,7 +137,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			name: "valid-multiple-static",
 			args: args{
 				targetVersion: 1,
-				ids:           target.CredentialSources{credential.ApplicationPurpose: []string{cred1.PublicId, cred2.PublicId, cred3.PublicId}},
+				ids:           target.CredentialSources{ApplicationCredentialIds: []string{cred1.PublicId, cred2.PublicId, cred3.PublicId}},
 			},
 			wantCredSources: map[string]target.CredentialSource{
 				cred1.PublicId + "_" + string(credential.ApplicationPurpose): &target.TargetCredentialSource{
@@ -166,7 +166,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 1,
 				ids: target.CredentialSources{
-					credential.ApplicationPurpose: []string{cred1.PublicId, cred2.PublicId, lib1.PublicId, lib2.PublicId},
+					ApplicationCredentialIds: []string{cred1.PublicId, cred2.PublicId, lib1.PublicId, lib2.PublicId},
 				},
 			},
 			wantCredSources: map[string]target.CredentialSource{
@@ -202,7 +202,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 1,
 				ids: target.CredentialSources{
-					credential.ApplicationPurpose: []string{lib1.PublicId, cred2.PublicId, "invalid-source-id", lib3.PublicId, cred3.PublicId},
+					ApplicationCredentialIds: []string{lib1.PublicId, cred2.PublicId, "invalid-source-id", lib3.PublicId, cred3.PublicId},
 				},
 			},
 			wantErr:     true,
@@ -212,7 +212,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			name: "egress-credential-purpose-library",
 			args: args{
 				targetVersion: 1,
-				ids:           target.CredentialSources{credential.EgressPurpose: []string{lib1.PublicId}},
+				ids:           target.CredentialSources{EgressCredentialIds: []string{lib1.PublicId}},
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
@@ -221,7 +221,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			name: "egress-credential-purpose-static",
 			args: args{
 				targetVersion: 1,
-				ids:           target.CredentialSources{credential.EgressPurpose: []string{cred1.PublicId}},
+				ids:           target.CredentialSources{EgressCredentialIds: []string{cred1.PublicId}},
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
@@ -230,7 +230,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			name: "bad-version",
 			args: args{
 				targetVersion: 1000,
-				ids:           target.CredentialSources{credential.ApplicationPurpose: []string{lib1.PublicId}},
+				ids:           target.CredentialSources{ApplicationCredentialIds: []string{lib1.PublicId}},
 			},
 			wantErr:     true,
 			wantErrCode: errors.VersionMismatch,
@@ -286,7 +286,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 		projTarget := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, "add-existing")
 
 		ids := target.CredentialSources{
-			credential.ApplicationPurpose: []string{lib1.PublicId},
+			ApplicationCredentialIds: []string{lib1.PublicId},
 		}
 		_, _, gotCredSources, err := repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 1, ids)
 		require.NoError(err)
@@ -295,7 +295,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 
 		// Adding lib1 again should error
 		ids = target.CredentialSources{
-			credential.ApplicationPurpose: []string{lib1.PublicId},
+			ApplicationCredentialIds: []string{lib1.PublicId},
 		}
 		_, _, _, err = repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, ids)
 		require.Error(err)
@@ -303,7 +303,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 
 		// Adding multiple with lib1 in set should error
 		ids = target.CredentialSources{
-			credential.ApplicationPurpose: []string{lib3.PublicId, lib2.PublicId, lib1.PublicId},
+			ApplicationCredentialIds: []string{lib3.PublicId, lib2.PublicId, lib1.PublicId},
 		}
 		_, _, _, err = repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, ids)
 		require.Error(err)
@@ -319,7 +319,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		ids := target.CredentialSources{
-			credential.ApplicationPurpose: []string{lib1.PublicId},
+			ApplicationCredentialIds: []string{lib1.PublicId},
 		}
 		_, _, _, err := repo.AddTargetCredentialSources(context.Background(), "fake-target-id", 1, ids)
 
@@ -434,12 +434,12 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 			tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, tt.name)
 
 			cls := make([]*target.CredentialLibrary, 0, tt.args.createCnt)
-			ids := make(target.CredentialSources)
+			var ids target.CredentialSources
 			if tt.args.createCnt > 0 {
 				credLibs := vault.TestCredentialLibraries(t, conn, wrapper, cs.PublicId, tt.args.createCnt)
 				for _, cl := range credLibs {
 					cls = append(cls, target.TestNewCredentialLibrary(tar.GetPublicId(), cl.PublicId, credential.ApplicationPurpose))
-					ids[credential.ApplicationPurpose] = append(ids[credential.ApplicationPurpose], cl.GetPublicId())
+					ids.ApplicationCredentialIds = append(ids.ApplicationCredentialIds, cl.GetPublicId())
 				}
 			}
 			_, _, addedCredSources, err := repo.AddTargetCredentialSources(ctx, tar.GetPublicId(), 1, ids)
@@ -497,7 +497,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		cl3 := target.TestNewCredentialLibrary(projTarget.GetPublicId(), lib3.PublicId, credential.ApplicationPurpose)
 
 		ids := target.CredentialSources{
-			credential.ApplicationPurpose: []string{lib1.GetPublicId(), lib2.GetPublicId()},
+			ApplicationCredentialIds: []string{lib1.GetPublicId(), lib2.GetPublicId()},
 		}
 		_, _, gotCredSources, err := repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 1, ids)
 		require.NoError(err)
@@ -542,10 +542,10 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	setupFn := func(tar target.Target) ([]target.CredentialSource, []*target.CredentialLibrary) {
 		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 10)
 		cls := make([]*target.CredentialLibrary, 0, len(credLibs))
-		ids := make(target.CredentialSources)
+		var ids target.CredentialSources
 		for _, cl := range credLibs {
 			cls = append(cls, target.TestNewCredentialLibrary(tar.GetPublicId(), cl.PublicId, credential.ApplicationPurpose))
-			ids[credential.ApplicationPurpose] = append(ids[credential.ApplicationPurpose], cl.GetPublicId())
+			ids.ApplicationCredentialIds = append(ids.ApplicationCredentialIds, cl.GetPublicId())
 		}
 
 		_, _, created, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, ids)

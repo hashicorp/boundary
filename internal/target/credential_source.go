@@ -16,9 +16,12 @@ type CredentialSource interface {
 	TargetId() string
 }
 
-// CredentialSources is map of credential publicIds mapped to their
-// purpose on the target.
-type CredentialSources map[credential.Purpose][]string
+// CredentialSources contains slices of credential publicIds
+// per purpose to be attacehd to the target.
+type CredentialSources struct {
+	ApplicationCredentialIds []string
+	EgressCredentialIds      []string
+}
 
 // A TargetCredentialSource represents the relationship between a target and a
 // credential library and includes the id of the credential store that the
