@@ -301,6 +301,60 @@ func TestDevWorker(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDev_WorkerCredentialStorageDir(t *testing.T) {
+	tests := []struct {
+		name            string
+		devWorkerConfig string
+		storagePath     string
+	}{
+		{
+			name: "Relative Storage Directory",
+			devWorkerConfig: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				controllers = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				storage_path = ".."
+			}
+			`,
+			storagePath: "..",
+		},
+		{
+			name: "Nonexistent Storage Directory",
+			devWorkerConfig: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				controllers = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				storage_path = "nonexistent_dir/here"
+			}
+			`,
+			storagePath: "nonexistent_dir/here",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := Parse(devConfig + tt.devWorkerConfig)
+			require.NoError(t, err)
+			require.Equal(t, tt.storagePath, parsed.Worker.StoragePath)
+		})
+	}
+}
+
 func TestParsingName(t *testing.T) {
 	t.Parallel()
 	config := `

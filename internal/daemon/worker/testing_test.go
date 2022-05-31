@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,4 +61,30 @@ func TestTestWorkerLookupSessionMissing(t *testing.T) {
 	actual, ok := tw.LookupSession("missing")
 	require.False(ok)
 	require.Equal(TestSessionInfo{}, actual)
+}
+
+func TestTestWorker_WorkerStorageKms(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		wrapper wrapping.Wrapper
+	}{
+		{
+			name:    "Nil Wrapper",
+			wrapper: nil,
+		},
+		{
+			name:    "Valid Wrapper",
+			wrapper: db.TestWrapper(t),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			tw := NewTestWorker(t, &TestWorkerOpts{
+				WorkerStorageKms: tt.wrapper,
+			})
+			require.Equal(tt.wrapper, tw.Config().WorkerStorageKms)
+		})
+	}
 }

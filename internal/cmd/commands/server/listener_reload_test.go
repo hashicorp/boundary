@@ -94,7 +94,9 @@ func TestServer_ReloadListener(t *testing.T) {
 	}
 	defer os.RemoveAll(td)
 
-	controllerKey, workerAuthKey, recoveryKey := config.DevKeyGeneration()
+	controllerKey := config.DevKeyGeneration()
+	workerAuthKey := config.DevKeyGeneration()
+	recoveryKey := config.DevKeyGeneration()
 
 	cmd := testServerCommand(t, testServerCommandOpts{
 		CreateDevDatabase: true,

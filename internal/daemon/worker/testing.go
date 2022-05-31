@@ -314,6 +314,7 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
 		WorkerAuthKms:             tw.w.conf.WorkerAuthKms,
+		WorkerStorageKms:          tw.w.conf.WorkerStorageKms,
 		Name:                      opts.Name,
 		InitialControllers:        tw.ControllerAddrs(),
 		Logger:                    tw.w.conf.Logger,
