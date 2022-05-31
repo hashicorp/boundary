@@ -98,7 +98,7 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 	}
 	wAgg := &workerAggregate{}
 	wAgg.PublicId = id
-	err := reader.LookupById(ctx, wAgg, db.WithDebug(true))
+	err := reader.LookupById(ctx, wAgg)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
