@@ -64,7 +64,9 @@ create table server_worker (
           (last_status_time is not null and worker_reported_name is not null)
         )
     constraint worker_reported_name_must_be_lowercase
-      check (lower(trim(worker_reported_name)) = worker_reported_name),
+      check (lower(trim(worker_reported_name)) = worker_reported_name)
+    constraint worker_reported_name_only_has_printable_characters
+      check (worker_reported_name !~ '[^[:print:]]'),
   constraint server_worker_scope_id_name_uq
     unique(scope_id, name)
 );

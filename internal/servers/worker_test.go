@@ -380,6 +380,24 @@ func TestWorker_Update(t *testing.T) {
 			},
 		},
 		{
+			name: "worker reported update name to unprintable",
+			initial: Worker{
+				Worker: &store.Worker{
+					ScopeId:               scope.Global.String(),
+					PublicId:              newId(),
+					WorkerReportedAddress: "worker reported update name to unprintable",
+					WorkerReportedName:    "worker reported update name to unprintable",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					WorkerReportedName: "unprintable \u0008 name",
+				},
+			},
+			mask:            []string{"WorkerReportedName"},
+			wantUpdateError: true,
+		},
+		{
 			name: "worker reported clearing address",
 			initial: Worker{
 				Worker: &store.Worker{
@@ -505,14 +523,25 @@ func TestWorker_Create(t *testing.T) {
 			name: "with upper case worker reported name",
 			in: Worker{
 				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Name:        "With Upper Case Worker Reported Name",
-					Description: "with upper case worker reported name",
-					Address:     "address",
+					ScopeId:               scope.Global.String(),
+					PublicId:              newId(),
+					WorkerReportedName:    "With Upper Case Worker Reported Name",
+					WorkerReportedAddress: "address",
 				},
 			},
-			want: wanted{},
+			want: wanted{createError: true},
+		},
+		{
+			name: "with unprintable worker reported name",
+			in: Worker{
+				Worker: &store.Worker{
+					ScopeId:               scope.Global.String(),
+					PublicId:              newId(),
+					WorkerReportedName:    "unprintable \u0008 worker reported name",
+					WorkerReportedAddress: "address",
+				},
+			},
+			want: wanted{createError: true},
 		},
 		{
 			name: "with status fields",
