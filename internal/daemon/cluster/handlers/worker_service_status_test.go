@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,9 +36,6 @@ func TestStatus(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithAddress("127.0.0.1")))
-
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
 	}
@@ -103,7 +99,7 @@ func TestStatus(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				Worker: &servers.Server{
-					PrivateId:  worker1.PublicId,
+					PrivateId:  worker1.GetWorkerReportedName(),
 					Address:    worker1.CanonicalAddress(),
 					CreateTime: worker1.CreateTime,
 					UpdateTime: worker1.UpdateTime,
@@ -123,7 +119,7 @@ func TestStatus(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				Worker: &servers.Server{
-					PrivateId:  worker1.PublicId,
+					PrivateId:  worker1.GetWorkerReportedName(),
 					Address:    worker1.CanonicalAddress(),
 					CreateTime: worker1.CreateTime,
 					UpdateTime: worker1.UpdateTime,
@@ -203,9 +199,6 @@ func TestStatusSessionClosed(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithAddress("127.0.0.1")))
-
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
 	}
@@ -286,7 +279,7 @@ func TestStatusSessionClosed(t *testing.T) {
 			},
 			req: &pbs.StatusRequest{
 				Worker: &servers.Server{
-					PrivateId:  worker1.PublicId,
+					PrivateId:  worker1.GetWorkerReportedName(),
 					Address:    worker1.CanonicalAddress(),
 					CreateTime: worker1.CreateTime,
 					UpdateTime: worker1.UpdateTime,
