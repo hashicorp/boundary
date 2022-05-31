@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package controller.api.resources.workers.v1;
+
+import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers;workers";
+
+// WorkerConfig contains configuration values reported by the worker daemon.
+message WorkerConfig {
+  // Output only.  The address the worker daemon reports itself as reachable at.
+  string address = 10;
+
+  // Output only.  The name the worker daemon reports itself having.
+  string name = 20;
+
+  // Output only.  The boundary version the worker has reported itself as running.
+  string version = 30;
+
+  // Output only. The tags reporteed by the worker daemon.
+  map<string, google.protobuf.ListValue> tags = 40;
+}
+
+// Worker contains all fields related to a Worker resource
+message Worker {
+  // Output only. The ID of the User.
+  string id = 10; // @gotags: `class:"public"`
+
+  // The ID of the Scope this resource is in.
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+
+  // Output only. Scope information for this resource.
+  resources.scopes.v1.ScopeInfo scope = 30;
+
+  // Optional name for identification purposes.
+  google.protobuf.StringValue name = 40 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "name"
+      that: "name"
+    }
+  ]; // @gotags: `class:"sensitive"`
+
+  // Optional user-set description for identification purposes.
+  google.protobuf.StringValue description = 50 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "description"
+      that: "description"
+    }
+  ]; // @gotags: `class:"sensitive"`
+
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+
+  // Output only. The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+
+  // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 80; // @gotags: `class:"public"`
+
+  // The address that this worker is reachable at.
+  google.protobuf.StringValue address = 90; // @gotags: `class:"public"`
+
+  // Output only.  This is the address used by authorized session.  The value
+  // is the same as the address field if set. Otherwise it uses the address the
+  // worker reports.
+  string canonical_address = 100; // @gotags: `class:"public"`
+
+  // Output only. The tags attached to this worker.
+  map<string, google.protobuf.ListValue> tags = 110; // @gotags: `class:"public"`
+
+  // Output only. The deduplicated union of the tags reported by the worker and
+  // the tags added through the user facing api.  This is used when applying
+  // worker filters.
+  map<string, google.protobuf.ListValue> canonical_tags = 120; // @gotags: `class:"public"`
+
+  // Output only. The time this worker daemon last reported its status.
+  google.protobuf.Timestamp last_status_time = 130 [json_name = "last_status_time"]; // @gotags: `class:"public"`
+
+  // Output only. The set of information the worker daemon has reported about
+  // itself.
+  WorkerConfig worker_config = 140 [json_name = "worker_config"];
+
+// TODO: Add worker auth related fields.
+}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
@@ -49,11 +50,12 @@ func TestClientCertificate_New(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		args           args
-		want           *ClientCertificate
-		wantErr        bool
-		wantEncryptErr bool
+		name               string
+		args               args
+		want               *ClientCertificate
+		wantErr            bool
+		wantEncryptErr     bool
+		wantEncryptErrCode errors.Code
 	}{
 		{
 			name: "missing-certificate",
@@ -64,7 +66,7 @@ func TestClientCertificate_New(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "valid-missing-key",
+			name: "missing-key",
 			args: args{
 				certificate: []byte(certPem),
 			},
@@ -73,7 +75,8 @@ func TestClientCertificate_New(t *testing.T) {
 					Certificate: []byte(certPem),
 				},
 			},
-			wantEncryptErr: true,
+			wantEncryptErr:     true,
+			wantEncryptErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "valid",
@@ -116,10 +119,12 @@ func TestClientCertificate_New(t *testing.T) {
 			err = got.encrypt(ctx, databaseWrapper)
 			if tt.wantEncryptErr {
 				require.Error(err)
-			} else {
-				require.NoError(err)
-				require.NoError(got.decrypt(ctx, databaseWrapper))
+				assert.Truef(errors.Match(errors.T(tt.wantEncryptErrCode), err), "%v", err)
+				return
 			}
+
+			require.NoError(err)
+			assert.NoError(got.decrypt(ctx, databaseWrapper))
 		})
 	}
 }

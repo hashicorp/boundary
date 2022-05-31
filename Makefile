@@ -327,3 +327,13 @@ ci-verify:
 # This is used for release builds by .github/workflows/build.yml
 version:
 	@go run ./cmd/boundary version | awk '/Version Number:/ { print $$3 }'
+
+EDITION?=
+.PHONY: edition
+# This is used for release builds by .github/workflows/build.yml
+edition:
+	@if [ -z "$(EDITION)" ]; then \
+		go run ./cmd/boundary version -format=json | jq -r '.version_metadata // "oss"'; \
+	else \
+		echo $(EDITION); \
+	fi; \

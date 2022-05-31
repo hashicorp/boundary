@@ -179,11 +179,11 @@ func TestList(t *testing.T) {
 		require.NoError(err)
 		expected[i] = tcr.Item
 	}
+	filterItem := expected[3]
 	ul, err = tarClient.List(tc.Context(), proj.GetPublicId())
 	require.NoError(err)
 	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ul.Items))
 
-	filterItem := ul.Items[3]
 	ul, err = tarClient.List(tc.Context(), proj.GetPublicId(),
 		targets.WithFilter(fmt.Sprintf(`"/item/id"==%q`, filterItem.Id)))
 	require.NoError(err)

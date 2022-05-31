@@ -259,7 +259,7 @@ plugins {
 		return base.CommandUserError
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true)
+	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true, c.Config.Controller.Database.MaxOpenConnections)
 	defer clean()
 	if errCode != 0 {
 		return errCode

@@ -36,6 +36,11 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 	}
 }
 
+// allocWorker will allocate a Worker
+func allocWorker() Worker {
+	return Worker{Worker: &store.Worker{}}
+}
+
 func (w *Worker) clone() *Worker {
 	if w == nil {
 		return nil

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/hashicorp/boundary/internal/db/schema"
@@ -20,6 +21,7 @@ import (
 	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	pgDriver "gorm.io/driver/postgres"
 )
 
 // setup the tests (initialize the database one-time and intialized
@@ -71,6 +73,23 @@ func TestSetup(t testing.TB, dialect string, opt ...TestOption) (*DB, string) {
 		assert.NoError(t, sqlDB.Close(), "Got error closing gorm db.")
 	})
 	return db, url
+}
+
+// TestSetupWithMock will return a test DB and an associated Sqlmock which can
+// be used to mock out the db responses.
+func TestSetupWithMock(t *testing.T) (*DB, sqlmock.Sqlmock) {
+	t.Helper()
+	require := require.New(t)
+	db, mock, err := sqlmock.New()
+	require.NoError(err)
+	require.NoError(err)
+	dbw, err := dbw.OpenWith(pgDriver.New(pgDriver.Config{
+		Conn: db,
+	}))
+	require.NoError(err)
+	return &DB{
+		wrapped: dbw,
+	}, mock
 }
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog

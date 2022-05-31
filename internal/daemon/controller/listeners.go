@@ -13,7 +13,7 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
+	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/go-multierror"
@@ -140,12 +140,12 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		),
 	)
 
-	workerService := workers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
+	workerService := handlers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
 		c.workerStatusUpdateTimes, c.kms)
 	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 	pbs.RegisterSessionServiceServer(workerServer, workerService)
 
-	multihopService := workers.NewMultihopServiceServer(
+	multihopService := handlers.NewMultihopServiceServer(
 		nodeauth.MakeCurrentParametersFactory(c.baseContext, nodee.NopTransactionStorage(c.NodeeFileStorage)),
 	)
 	multihop.RegisterMultihopServiceServer(workerServer, multihopService)
