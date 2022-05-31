@@ -40,7 +40,7 @@ create table server_worker (
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
-  last_status_time timestamp with time zone,
+  last_status_time wt_timestamp,
   constraint last_status_time_not_before_create_time
     check (last_status_time >= create_time),
   -- This is the calculated address that the worker reports it is reachable on.
