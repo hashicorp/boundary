@@ -70,7 +70,7 @@ func TestDeleteWorker(t *testing.T) {
 			},
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrMsg:      "servers.(Repository).DeleteWorker: Delete failed for worker with workerId:",
+			wantErrMsg:      "servers.(Repository).DeleteWorker: delete failed for worker with workerId:",
 		},
 	}
 	for _, tt := range tests {
