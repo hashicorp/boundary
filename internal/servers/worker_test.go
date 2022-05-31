@@ -2,6 +2,7 @@ package servers
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -81,7 +82,7 @@ func TestWorkerAggregate(t *testing.T) {
 		require.NoError(t, err)
 		w := NewWorkerForStatus(scope.Global.String(),
 			WithAddress("address"),
-			WithName(id))
+			WithName(strings.ToLower(id)))
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
@@ -89,7 +90,7 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
-		assert.Equal(t, id, got.GetWorkerReportedName())
+		assert.Equal(t, strings.ToLower(id), got.GetWorkerReportedName())
 		assert.Equal(t, "address", got.GetWorkerReportedAddress())
 	}
 
@@ -99,7 +100,7 @@ func TestWorkerAggregate(t *testing.T) {
 		require.NoError(t, err)
 		ws := NewWorkerForStatus(scope.Global.String(),
 			WithAddress("address"),
-			WithName(id))
+			WithName(strings.ToLower(id)))
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx,
@@ -124,7 +125,7 @@ func TestWorkerAggregate(t *testing.T) {
 		require.NoError(t, err)
 		ws := NewWorkerForStatus(scope.Global.String(),
 			WithAddress("address"),
-			WithName(id))
+			WithName(strings.ToLower(id)))
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
@@ -162,7 +163,7 @@ func TestWorkerAggregate(t *testing.T) {
 		require.NoError(t, err)
 		ws := NewWorkerForStatus(scope.Global.String(),
 			WithAddress("address"),
-			WithName(id))
+			WithName(strings.ToLower(id)))
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx,
@@ -187,7 +188,7 @@ func TestWorkerAggregate(t *testing.T) {
 		require.NoError(t, err)
 		ws := NewWorkerForStatus(scope.Global.String(),
 			WithAddress("address"),
-			WithName(id))
+			WithName(strings.ToLower(id)))
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
@@ -495,6 +496,19 @@ func TestWorker_Create(t *testing.T) {
 					PublicId:    newId(),
 					Name:        "with non status fields",
 					Description: "with non status fields",
+					Address:     "address",
+				},
+			},
+			want: wanted{},
+		},
+		{
+			name: "with upper case worker reported name",
+			in: Worker{
+				Worker: &store.Worker{
+					ScopeId:     scope.Global.String(),
+					PublicId:    newId(),
+					Name:        "With Upper Case Worker Reported Name",
+					Description: "with upper case worker reported name",
 					Address:     "address",
 				},
 			},

@@ -118,6 +118,17 @@ func TestLookupWorkerByWorkerReportedName(t *testing.T) {
 		require.NoError(t, err)
 		assert.Nil(t, got)
 	})
+	t.Run("db error", func(t *testing.T) {
+		conn, mock := db.TestSetupWithMock(t)
+		rw := db.New(conn)
+		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
+		r, err := servers.NewRepository(rw, rw, kms)
+		require.NoError(t, err)
+		got, err := r.LookupWorkerByWorkerReportedName(ctx, w.GetWorkerReportedName())
+		assert.NoError(t, mock.ExpectationsWereMet())
+		assert.Truef(t, errors.Match(errors.T(errors.Op("servers.(Repository).LookupWorkerByWorkerReportedName")), err), "got error %v", err)
+		assert.Nil(t, got)
+	})
 }
 
 func TestLookupWorker(t *testing.T) {
@@ -136,8 +147,19 @@ func TestLookupWorker(t *testing.T) {
 		assert.Empty(t, cmp.Diff(w.Worker, got.Worker, protocmp.Transform()))
 	})
 	t.Run("not found", func(t *testing.T) {
-		got, err := repo.LookupWorkerByWorkerReportedName(ctx, "w_unknownid")
+		got, err := repo.LookupWorker(ctx, "w_unknownid")
 		require.NoError(t, err)
+		assert.Nil(t, got)
+	})
+	t.Run("db error", func(t *testing.T) {
+		conn, mock := db.TestSetupWithMock(t)
+		rw := db.New(conn)
+		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
+		r, err := servers.NewRepository(rw, rw, kms)
+		require.NoError(t, err)
+		got, err := r.LookupWorker(ctx, w.GetPublicId())
+		assert.NoError(t, mock.ExpectationsWereMet())
+		assert.Truef(t, errors.Match(errors.T(errors.Op("servers.(Repository).LookupWorker")), err), "got error %v", err)
 		assert.Nil(t, got)
 	})
 }
@@ -167,11 +189,13 @@ func TestUpsertWorkerStatus(t *testing.T) {
 
 	failureCases := []struct {
 		name      string
+		repo      *servers.Repository
 		status    *servers.Worker
 		errAssert func(*testing.T, error)
 	}{
 		{
 			name: "no address",
+			repo: repo,
 			status: servers.NewWorkerForStatus(scope.Global.String(),
 				servers.WithName("worker_with_no_address")),
 			errAssert: func(t *testing.T, err error) {
@@ -181,6 +205,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		},
 		{
 			name: "cant specifying public id",
+			repo: repo,
 			status: func() *servers.Worker {
 				w := servers.NewWorkerForStatus(scope.Global.String(),
 					servers.WithName("worker_with_no_address"),
@@ -195,6 +220,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		},
 		{
 			name: "no name",
+			repo: repo,
 			status: servers.NewWorkerForStatus(scope.Global.String(),
 				servers.WithAddress("no_name_address")),
 			errAssert: func(t *testing.T, err error) {
@@ -204,6 +230,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		},
 		{
 			name:   "no status",
+			repo:   repo,
 			status: nil,
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
@@ -212,6 +239,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		},
 		{
 			name: "empty scope",
+			repo: repo,
 			status: servers.NewWorkerForStatus("",
 				servers.WithAddress("address"),
 				servers.WithName("config_name1")),
@@ -220,10 +248,45 @@ func TestUpsertWorkerStatus(t *testing.T) {
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
 			},
 		},
+		{
+			name: "providing api tags",
+			repo: repo,
+			status: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String(),
+					servers.WithWorkerTags(&servers.Tag{Key: "test", Value: "test"}))
+				w.WorkerReportedAddress = "some_address"
+				w.WorkerReportedName = "providing api tags"
+				return w
+			}(),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name: "database failure",
+			repo: func() *servers.Repository {
+				conn, mock := db.TestSetupWithMock(t)
+				rw := db.New(conn)
+				mock.ExpectBegin()
+				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "create-error"))
+				mock.ExpectRollback()
+				r, err := servers.NewRepository(rw, rw, kms)
+				require.NoError(t, err)
+				return r
+			}(),
+			status: servers.NewWorkerForStatus(scope.Global.String(),
+				servers.WithName("database failure"),
+				servers.WithAddress("address")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.Error(t, err)
+			},
+		},
 	}
 	for _, tc := range failureCases {
 		t.Run(fmt.Sprintf("Failures %s", tc.name), func(t *testing.T) {
-			_, err = repo.UpsertWorkerStatus(ctx, tc.status)
+			_, err = tc.repo.UpsertWorkerStatus(ctx, tc.status)
 			assert.Error(t, err)
 			tc.errAssert(t, err)
 
