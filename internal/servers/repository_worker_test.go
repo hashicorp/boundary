@@ -736,4 +736,68 @@ func TestRepository_UpdateWorker(t *testing.T) {
 		assert.Zero(t, numUpdated)
 		assert.Equal(t, wkr.GetUpdateTime().AsTime(), result.GetUpdateTime().AsTime())
 	})
+
+	errorCases := []struct {
+		name    string
+		input   *servers.Worker
+		path    []string
+		version uint32
+		wantErr *errors.Template
+	}{
+		{
+			name:    "nil worker",
+			path:    []string{"name"},
+			version: 1,
+			wantErr: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:    "empty path",
+			input:   servers.TestWorker(t, conn, wrapper),
+			version: 1,
+			wantErr: errors.T(errors.EmptyFieldMask),
+		},
+		{
+			name:    "0 version",
+			input:   servers.TestWorker(t, conn, wrapper),
+			path:    []string{"name"},
+			version: 0,
+			wantErr: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "no public id",
+			input: func() *servers.Worker {
+				w := servers.TestWorker(t, conn, wrapper)
+				w.PublicId = ""
+				return w
+			}(),
+			path:    []string{"name"},
+			version: 0,
+			wantErr: errors.T(errors.InvalidParameter),
+		},
+		{
+			name:    "unrecognized path",
+			input:   servers.TestWorker(t, conn, wrapper),
+			path:    []string{"UnrecognizedField"},
+			version: 1,
+			wantErr: errors.T(errors.InvalidFieldMask),
+		},
+		{
+			name: "not found worker",
+			input: func() *servers.Worker {
+				w := servers.TestWorker(t, conn, wrapper)
+				w.PublicId = "w_notfoundworker"
+				return w
+			}(),
+			path:    []string{"name"},
+			version: 1,
+			wantErr: errors.T(errors.RecordNotFound),
+		},
+	}
+	for _, tt := range errorCases {
+		t.Run(tt.name, func(t *testing.T) {
+			_, updated, err := repo.UpdateWorker(ctx, tt.input, tt.version, tt.path)
+			assert.Equal(t, 0, updated)
+			assert.True(t, errors.Match(tt.wantErr, err))
+		})
+	}
 }

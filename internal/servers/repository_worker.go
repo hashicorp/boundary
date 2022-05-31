@@ -281,6 +281,11 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 // error is returned.  If any paths besides those listed above are included in
 // the path then an error is returned.
 func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version uint32, fieldMaskPaths []string, opt ...Option) (*Worker, int, error) {
+	const (
+		nameField    = "name"
+		descField    = "description"
+		addressField = "address"
+	)
 	const op = "servers.(Repository).UpdateWorker"
 	switch {
 	case worker == nil:
@@ -293,9 +298,9 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 
 	for _, f := range fieldMaskPaths {
 		switch {
-		case strings.EqualFold("name", f):
-		case strings.EqualFold("description", f):
-		case strings.EqualFold("address", f):
+		case strings.EqualFold(nameField, f):
+		case strings.EqualFold(descField, f):
+		case strings.EqualFold(addressField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -304,9 +309,9 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			"name":        worker.Name,
-			"description": worker.Description,
-			"address":     worker.Address,
+			nameField:    worker.Name,
+			descField:    worker.Description,
+			addressField: worker.Address,
 		},
 		fieldMaskPaths,
 		nil,
@@ -314,7 +319,6 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "no fields to update")
 	}
-	worker = worker.clone()
 
 	var rowsUpdated int
 	var ret *Worker
@@ -324,6 +328,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
+			worker := worker.clone()
 			rowsUpdated, err = w.Update(ctx, worker, dbMask, nullFields, db.WithVersion(&version))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
