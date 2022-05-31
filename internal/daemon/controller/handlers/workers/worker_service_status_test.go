@@ -21,6 +21,8 @@ import (
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestStatus(t *testing.T) {
@@ -157,6 +159,27 @@ func TestStatus(t *testing.T) {
 				WorkerId: worker1.PublicId,
 			},
 		},
+		{
+			name:    "No Name or Id",
+			wantErr: true,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &servers.ServerWorkerStatus{
+					Address: worker1.CanonicalAddress(),
+				},
+			},
+			wantErrMsg: status.Error(codes.Internal, "Neither the public id nor name are set in the request. At least one is required.").Error(),
+		},
+		{
+			name:    "No Address",
+			wantErr: true,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &servers.ServerWorkerStatus{
+					PublicId: worker1.PublicId,
+					Name:     worker1.Name,
+				},
+			},
+			wantErrMsg: status.Error(codes.Internal, "Address is not set but is required.").Error(),
+		},
 	}
 
 	for _, tc := range cases {
@@ -166,7 +189,7 @@ func TestStatus(t *testing.T) {
 			got, err := s.Status(ctx, tc.req)
 			if tc.wantErr {
 				require.Error(err)
-				assert.Nil(got)
+				assert.Equal(got, &pbs.StatusResponse{})
 				assert.Equal(tc.wantErrMsg, err.Error())
 				return
 			}

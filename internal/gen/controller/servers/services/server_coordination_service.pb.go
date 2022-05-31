@@ -518,7 +518,7 @@ type UpstreamServer struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// TYPE specifies between controller or worker.
+	// type specifies between controller or worker.
 	Type UpstreamServer_TYPE `protobuf:"varint,10,opt,name=type,proto3,enum=controller.servers.services.v1.UpstreamServer_TYPE" json:"type,omitempty"`
 	// Address of the daemon
 	Address string `protobuf:"bytes,20,opt,name=address,proto3" json:"address,omitempty"`
@@ -710,7 +710,8 @@ type StatusResponse struct {
 	JobsRequests []*JobChangeRequest `protobuf:"bytes,20,rep,name=jobs_requests,json=jobsRequests,proto3" json:"jobs_requests,omitempty"`
 	// UpstreamServer currently returns the controller address in the StatusResponse.
 	CalculatedUpstreams []*UpstreamServer `protobuf:"bytes,30,rep,name=calculated_upstreams,json=calculatedUpstreams,proto3" json:"calculated_upstreams,omitempty"`
-	// Returns the ID of the worker which made the request, in non-first requests.
+	// The ID of the worker which made the request. The worker can send this value in subsequent requests so the
+	// controller does not need to do a database lookup for the id using the name field.
 	WorkerId string `protobuf:"bytes,40,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
 }
 

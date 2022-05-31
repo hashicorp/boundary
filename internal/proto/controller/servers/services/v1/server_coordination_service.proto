@@ -65,7 +65,7 @@ message UpstreamServer {
     TYPE_WORKER = 2;
   }
 
-  // TYPE specifies between controller or worker.
+  // type specifies between controller or worker.
   TYPE type = 10;
 
   // Address of the daemon
@@ -118,6 +118,7 @@ message StatusResponse {
   // UpstreamServer currently returns the controller address in the StatusResponse.
   repeated UpstreamServer calculated_upstreams = 30;
 
-  // Returns the ID of the worker which made the request, in non-first requests.
+  // The ID of the worker which made the request. The worker can send this value in subsequent requests so the
+  // controller does not need to do a database lookup for the id using the name field.
   string worker_id = 40;
 }
