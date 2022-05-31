@@ -792,12 +792,27 @@ func TestRepository_UpdateWorker(t *testing.T) {
 			version: 1,
 			wantErr: errors.T(errors.RecordNotFound),
 		},
+		{
+			name: "duplicate name",
+			input: func() *servers.Worker {
+				w1 := servers.TestWorker(t, conn, wrapper)
+				w1.Name = "somenamethatijustmadeup"
+				w1, _, err := repo.UpdateWorker(ctx, w1, w1.Version, []string{"name"}, nil)
+				require.NoError(t, err)
+				w2 := servers.TestWorker(t, conn, wrapper)
+				w2.Name = w1.Name
+				return w2
+			}(),
+			path:    []string{"name"},
+			version: 1,
+			wantErr: errors.T("worker with name \"somenamethatijustmadeup\" already exists"),
+		},
 	}
 	for _, tt := range errorCases {
 		t.Run(tt.name, func(t *testing.T) {
 			_, updated, err := repo.UpdateWorker(ctx, tt.input, tt.version, tt.path)
 			assert.Equal(t, 0, updated)
-			assert.True(t, errors.Match(tt.wantErr, err))
+			assert.Truef(t, errors.Match(tt.wantErr, err), "Didn't match error %v", err)
 		})
 	}
 }
