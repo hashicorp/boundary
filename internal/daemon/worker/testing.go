@@ -55,7 +55,7 @@ func (tw *TestWorker) Name() string {
 func (tw *TestWorker) ControllerAddrs() []string {
 	var addrs []string
 	lastStatus := tw.w.LastStatusSuccess()
-	for _, v := range lastStatus.GetControllers() {
+	for _, v := range lastStatus.GetCalculatedUpstreams() {
 		addrs = append(addrs, v.Address)
 	}
 

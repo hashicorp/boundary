@@ -135,21 +135,21 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 
 	// Send status information
 	client := w.controllerStatusConn.Load().(pbs.ServerCoordinationServiceClient)
-	var tags map[string]*servers.TagValues
+	var tags []*servers.TagPair
 	// If we're not going to request a tag update, no reason to have these
 	// marshaled on every status call.
 	if w.updateTags.Load() {
-		tags = w.tags.Load().(map[string]*servers.TagValues)
+		tags = w.tags.Load().([]*servers.TagPair)
 	}
 	statusCtx, statusCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
 	defer statusCancel()
 
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
-		Worker: &servers.Server{
-			PrivateId: w.conf.RawConfig.Worker.Name,
-			Address:   w.conf.RawConfig.Worker.PublicAddr,
-			Tags:      tags,
+		WorkerStatus: &servers.ServerWorkerStatus{
+			Name:    w.conf.RawConfig.Worker.Name,
+			Address: w.conf.RawConfig.Worker.PublicAddr,
+			Tags:    tags,
 		},
 		UpdateTags: w.updateTags.Load(),
 	})
@@ -189,9 +189,10 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		}
 	} else {
 		w.updateTags.Store(false)
-		addrs := make([]resolver.Address, 0, len(result.Controllers))
-		strAddrs := make([]string, 0, len(result.Controllers))
-		for _, v := range result.Controllers {
+
+		addrs := make([]resolver.Address, 0, len(result.CalculatedUpstreams))
+		strAddrs := make([]string, 0, len(result.CalculatedUpstreams))
+		for _, v := range result.CalculatedUpstreams {
 			addrs = append(addrs, resolver.Address{Addr: v.Address})
 			strAddrs = append(strAddrs, v.Address)
 		}
