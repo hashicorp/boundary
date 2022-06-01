@@ -18,7 +18,8 @@ func TestTestWorker(t *testing.T) {
 	assert.NotNil(t, tWorker)
 	assert.True(t, strings.HasPrefix(tWorker.GetPublicId(), WorkerPrefix))
 
-	lkpWorker := NewWorker(scope.Global.String(), WithPublicId(tWorker.GetPublicId()))
+	lkpWorker := NewWorker(scope.Global.String())
+	lkpWorker.PublicId = tWorker.GetPublicId()
 	rw := db.New(conn)
 	require.NoError(t, rw.LookupById(context.Background(), lkpWorker))
 	assert.NotNil(t, lkpWorker)

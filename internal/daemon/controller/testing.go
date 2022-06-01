@@ -705,10 +705,10 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 // WaitForNextWorkerStatusUpdate waits for the next status check from a worker to
 // come in. If it does not come in within the default status grace
 // period, this function returns an error.
-func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
+func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string) error {
 	const op = "controller.(TestController).WaitForNextWorkerStatusUpdate"
 	ctx := context.TODO()
-	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerId)
+	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerStatusName)
 	waitStatusStart := time.Now()
 	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
 	defer cancel()
@@ -747,7 +747,7 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 				return false
 			}
 
-			if workerStatusUpdateId == workerId {
+			if workerStatusUpdateId == workerStatusName {
 				waitStatusCurrent = workerStatusUpdateTime
 				return false
 			}
@@ -765,10 +765,10 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 	}
 
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report from worker", "worker", workerId))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report from worker", "worker", workerStatusName))
 		return err
 	}
-	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerId)
+	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerStatusName)
 	return nil
 }
 

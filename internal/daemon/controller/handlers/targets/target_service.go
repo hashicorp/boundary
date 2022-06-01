@@ -2153,7 +2153,7 @@ func (w workerList) filtered(eval *bexpr.Evaluator) (workerList, error) {
 		//   we are separating reported status name and the resource name.
 		name := worker.GetName()
 		if name == "" {
-			name = worker.ReportedStatus.GetName()
+			name = worker.GetWorkerReportedName()
 		}
 		filterInput := map[string]interface{}{
 			"name": name,

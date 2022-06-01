@@ -50,6 +50,68 @@ func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Opt
 	return rowsDeleted, nil
 }
 
+// LookupWorkerByWorkerReportedName returns the worker which has had a status update
+// where the worker has reported this name.  This is different from the name
+// on the resource itself which is set over the API.  In the event that no
+// worker is found that matches then nil, nil will be returned.
+func (r *Repository) LookupWorkerByWorkerReportedName(ctx context.Context, name string) (*Worker, error) {
+	const op = "servers.(Repository).LookupWorkerByWorkerReportedName"
+	switch {
+	case name == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "name is empty")
+	}
+	// we derive the id instead of doing a query to be consistant with the
+	// UpsertWorkerStatus flow which uses this function to upsert a worker.
+	id, err := newWorkerIdFromName(ctx, name)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error while calculating the worker's id"))
+	}
+	w, err := lookupWorker(ctx, r.reader, id)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return w, nil
+}
+
+// LookupWorker returns the worker for the provided publicId.  This returns
+// nil nil in the situation where no worker can be found with that public id.
+func (r *Repository) LookupWorker(ctx context.Context, publicId string, _ ...Option) (*Worker, error) {
+	const op = "servers.(Repository).LookupWorker"
+	switch {
+	case publicId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "publicId is empty")
+	}
+	w, err := lookupWorker(ctx, r.reader, publicId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return w, nil
+}
+
+// lookupWorker returns the worker for the provided id.  This returns
+// nil nil in the situation where no worker can be found with that public id.
+func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, error) {
+	const op = "servers.lookupWorker"
+	switch {
+	case id == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "id is empty")
+	}
+	wAgg := &workerAggregate{}
+	wAgg.PublicId = id
+	err := reader.LookupById(ctx, wAgg)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	w, err := wAgg.toWorker(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return w, nil
+}
+
 // ListWorkers is a passthrough to listWorkersWithReader that uses the repo's normal reader.
 func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*Worker, error) {
 	return r.listWorkersWithReader(ctx, r.reader, opt...)
@@ -73,7 +135,7 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 
 	var where string
 	if liveness > 0 {
-		where = fmt.Sprintf("worker_status_update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
+		where = fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
 	}
 
 	var wAggs []*workerAggregate
@@ -98,76 +160,57 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 	return workers, nil
 }
 
-// ListTagsForWorkers returns a map from the worker's id to the list of Tags
-// that are for that worker.  All options are ignored.
-func (r *Repository) ListTagsForWorkers(ctx context.Context, workerIds []string, _ ...Option) (map[string][]*Tag, error) {
-	const op = "servers.ListTagsForWorkers"
-	var workerTags []*store.WorkerTag
-	if err := r.reader.SearchWhere(
-		ctx,
-		&workerTags,
-		"worker_id in (?)",
-		[]interface{}{workerIds},
-		db.WithLimit(-1),
-	); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("worker IDs %v", workerIds)))
-	}
-
-	ret := make(map[string][]*Tag, len(workerIds))
-	for _, t := range workerTags {
-		ret[t.WorkerId] = append(ret[t.WorkerId], &Tag{Key: t.Key, Value: t.Value})
-	}
-	return ret, nil
-}
-
-// UpsertWorkerStatus creates a new worker if one with the provided public id doesn't
-// already exist. If it does, UpsertWorkerStatus updates the worker. The
-// WithUpdateTags option is the only one used. All others are ignored.
+// UpsertWorkerStatus creates a new worker if one with the provided public id
+// doesn't already exist. If it does, UpsertWorkerStatus updates the worker
+// status.  This returns the Worker object with the updated WorkerStatus applied.
+// The WithUpdateTags option is the only ones used. All others are ignored.
 // Workers are intentionally not oplogged.
-func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStatus, opt ...Option) ([]*store.Controller, int, error) {
+func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "servers.UpsertWorkerStatus"
 
 	switch {
-	case wStatus == nil:
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "wStatus is nil")
-	case wStatus.Address == "":
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "address is empty")
-	case wStatus.WorkerId == "":
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker id is empty")
+	case worker == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
+	case worker.GetWorkerReportedAddress() == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported address is empty")
+	case worker.ScopeId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
+	case worker.PublicId != "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
+	case worker.GetWorkerReportedName() == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported name is empty")
+	case len(worker.apiTags) > 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "api tags is not empty")
 	}
+
+	// Only retain the worker reported fields.
+	worker = NewWorkerForStatus(worker.GetScopeId(),
+		WithName(worker.GetWorkerReportedName()),
+		WithAddress(worker.GetWorkerReportedAddress()),
+		WithWorkerTags(worker.configTags...))
 
 	opts := getOpts(opt...)
 
-	var rowsUpdated int64
-	var controllers []*store.Controller
-	_, err := r.writer.DoTx(
+	var err error
+	worker.PublicId, err = newWorkerIdFromName(ctx, worker.GetWorkerReportedName())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id"))
+	}
+
+	var ret *Worker
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			worker := NewWorker(scope.Global.String(), WithPublicId(wStatus.GetWorkerId()))
+			worker := worker.clone()
 			workerCreateConflict := &db.OnConflict{
 				Target: db.Columns{"public_id"},
-				Action: db.DoNothing(true),
+				Action: append(db.SetColumns([]string{"worker_reported_name", "worker_reported_address"}),
+					db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 			}
 			if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict)); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
-			}
-
-			var err error
-			onConfigConflict := &db.OnConflict{
-				Target: db.Columns{"worker_id"},
-				Action: append(db.SetColumns([]string{"name", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
-			}
-			err = w.Create(ctx, wStatus, db.WithOnConflict(onConfigConflict), db.WithReturnRowsAffected(&rowsUpdated))
-			if err != nil {
-				return errors.Wrap(ctx, err, op+":Upsert")
-			}
-
-			// Fetch current controllers to feed to the workers
-			controllers, err = r.listControllersWithReader(ctx, reader)
-			if err != nil {
-				return errors.Wrap(ctx, err, op+":ListController")
 			}
 
 			// If we've been told to update tags, we need to clean out old
@@ -175,17 +218,26 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, wStatus *WorkerStat
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				setWorkerTags(ctx, w, wStatus.GetWorkerId(), ConfigurationTagSource, wStatus.Tags)
+				setWorkerTags(ctx, w, worker.GetPublicId(), ConfigurationTagSource, worker.configTags)
+			}
+
+			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
+			if err := reader.LookupById(ctx, wAgg); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error looking up worker aggregate"))
+			}
+			ret, err = wAgg.toWorker(ctx)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error converting worker aggregate to worker"))
 			}
 
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, db.NoRowsAffected, err
+		return nil, err
 	}
 
-	return controllers, int(rowsUpdated), nil
+	return ret, nil
 }
 
 // setWorkerTags removes all existing tags from the same source and worker id
@@ -249,6 +301,12 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	case worker.ScopeId != scope.Global.String():
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("scope id must be %q", scope.Global.String()))
+	case worker.WorkerReportedAddress != "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported address is not empty")
+	case worker.WorkerReportedName != "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported name is not empty")
+	case worker.LastStatusTime != nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "last status time is not nil")
 	}
 
 	opts := getOpts(opt...)
