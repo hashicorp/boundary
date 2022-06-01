@@ -3,8 +3,10 @@ package servers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -112,39 +114,45 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 	return w, nil
 }
 
-// ListWorkers is a passthrough to listWorkersWithReader that uses the repo's normal reader.
-func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*Worker, error) {
-	return r.listWorkersWithReader(ctx, r.reader, opt...)
-}
-
-// listWorkersWithReader will return a listing of resources and honor the
-// WithLimit option. If WithLiveness is zero the default liveness value is used,
-// if it is negative then the last status update time is ignored. This method
-// accepts a reader, allowing it to be used within a transaction or without.
-func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*Worker, error) {
-	const op = "workers.listWorkersWithReader"
+// ListWorkers will return a listing of Workers and honor the WithLimit option.
+// If WithLiveness is zero the default liveness value is used, if it is negative
+// then the last status update time is ignored.
+func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
+	const op = "workers.(Repository).ListWorkers"
 	switch {
-	case isNil(reader):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
+	case len(scopeIds) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope ids set")
 	}
+
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
 		liveness = DefaultLiveness
 	}
 
-	var where string
+	var where []string
+	var whereArgs []interface{}
 	if liveness > 0 {
-		where = fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
+		where = append(where, fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds())))
+	}
+	if len(scopeIds) > 0 {
+		where = append(where, "scope_id in (?)")
+		whereArgs = append(whereArgs, scopeIds)
+	}
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
 	}
 
 	var wAggs []*workerAggregate
-	if err := reader.SearchWhere(
+	if err := r.reader.SearchWhere(
 		ctx,
 		&wAggs,
-		where,
-		[]interface{}{},
-		db.WithLimit(opts.withLimit),
+		strings.Join(where, " and "),
+		whereArgs,
+		db.WithLimit(limit),
 	); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
 	}
@@ -282,6 +290,90 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 	}
 
 	return nil
+}
+
+// UpdateWorker will update a worker in the repository and return the resulting
+// worker. fieldMaskPaths provides field_mask.proto paths for fields that should
+// be updated.  Fields will be set to NULL if the field is a zero value and
+// included in fieldMask. Name, Description, and Address are the only updatable
+// fields, if no updatable fields are included in the fieldMaskPaths, then an
+// error is returned.  If any paths besides those listed above are included in
+// the path then an error is returned.
+func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version uint32, fieldMaskPaths []string, opt ...Option) (*Worker, int, error) {
+	const (
+		nameField    = "name"
+		descField    = "description"
+		addressField = "address"
+	)
+	const op = "servers.(Repository).UpdateWorker"
+	switch {
+	case worker == nil:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
+	case worker.PublicId == "":
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	case version == 0:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "version is zero")
+	}
+
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold(nameField, f):
+		case strings.EqualFold(descField, f):
+		case strings.EqualFold(addressField, f):
+		default:
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+		}
+	}
+
+	var dbMask, nullFields []string
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+		map[string]interface{}{
+			nameField:    worker.Name,
+			descField:    worker.Description,
+			addressField: worker.Address,
+		},
+		fieldMaskPaths,
+		nil,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "no fields to update")
+	}
+
+	var rowsUpdated int
+	var ret *Worker
+	var err error
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			worker := worker.clone()
+			rowsUpdated, err = w.Update(ctx, worker, dbMask, nullFields, db.WithVersion(&version))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
+
+			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
+			if err := reader.LookupById(ctx, wAgg); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if ret, err = wAgg.toWorker(ctx); err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		if errors.IsUniqueError(err) {
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("worker with name %q already exists", worker.Name))
+		}
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", worker.GetPublicId())))
+	}
+	return ret, rowsUpdated, nil
 }
 
 // CreateWorker will create a worker in the repository and return the written
