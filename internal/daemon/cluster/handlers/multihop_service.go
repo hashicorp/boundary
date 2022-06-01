@@ -45,7 +45,6 @@ var _ multihop.MultihopServiceServer = (*multihopServiceServer)(nil)
 
 func (m *multihopServiceServer) FetchNodeCredentials(ctx context.Context, req *types.FetchNodeCredentialsRequest) (*types.FetchNodeCredentialsResponse, error) {
 	const op = "cluster.handlers.(multihopServiceServer).FetchNodeCredentials"
-	// log.Println(op, m.direct)
 	switch m.direct {
 	case true:
 		return registration.FetchNodeCredentials(ctx, m.storage, req, m.options...)
