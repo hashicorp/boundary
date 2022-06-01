@@ -53,7 +53,7 @@ create table server_worker (
           (last_status_time is not null and worker_reported_address is not null)
         ),
   -- This is the name that the worker reports in it's status updates.
-  worker_reported_name wt_name unique
+  worker_reported_name wt_name
     -- TODO: When we are recording the worker node's key id allow that as an
     --  alternative value that must be set besides worker_reported_name if
     --  last_status_time is set.
@@ -68,7 +68,9 @@ create table server_worker (
     constraint worker_reported_name_only_has_printable_characters
       check (worker_reported_name !~ '[^[:print:]]'),
   constraint server_worker_scope_id_name_uq
-    unique(scope_id, name)
+    unique(scope_id, name),
+  constraint server_worker_scope_id_worker_reported_name_uq
+    unique(scope_id, worker_reported_name)
 );
 comment on table server_worker  is
   'server_worker is a table where each row represents a Boundary worker.';
