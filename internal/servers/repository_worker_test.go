@@ -291,7 +291,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			tc.errAssert(t, err)
 
 			// Still only the original worker exists.
-			workers, err := repo.ListWorkers(ctx)
+			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 			require.NoError(t, err)
 			assert.Len(t, workers, 1)
 		})
@@ -304,7 +304,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 		{
-			workers, err := repo.ListWorkers(ctx)
+			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 			require.NoError(t, err)
 			assert.Len(t, workers, 2)
 		}
@@ -407,7 +407,7 @@ func TestListWorkersWithLiveness(t *testing.T) {
 	}
 
 	// Default liveness, should only list 1
-	result, err := serversRepo.ListWorkers(ctx)
+	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
 	require.NoError(err)
 	require.Len(result, 1)
 	requireIds([]string{worker1.GetPublicId()}, result)
@@ -420,13 +420,13 @@ func TestListWorkersWithLiveness(t *testing.T) {
 
 	// Static liveness. Should get two, so long as this did not take
 	// more than 5s to execute.
-	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(time.Second*5))
+	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, servers.WithLiveness(time.Second*5))
 	require.NoError(err)
 	require.Len(result, 2)
 	requireIds([]string{worker1.GetPublicId(), worker2.GetPublicId()}, result)
 
 	// Liveness disabled, should get all three workers.
-	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(-1))
+	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, servers.WithLiveness(-1))
 	require.NoError(err)
 	require.Len(result, 3)
 	requireIds([]string{worker1.GetPublicId(), worker2.GetPublicId(), worker3.GetPublicId()}, result)
