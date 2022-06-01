@@ -36,7 +36,7 @@ func (ws *workerProxyServiceServer) Status(ctx context.Context, req *pbs.StatusR
 	if resp != nil {
 		// We don't currently support distributing new addreses to workers
 		// multiple hops away so ensure they're stripped out
-		resp.Controllers = nil
+		resp.CalculatedUpstreams = nil
 	}
 
 	return resp, err
