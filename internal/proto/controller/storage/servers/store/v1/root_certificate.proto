@@ -7,6 +7,16 @@ import "controller/storage/timestamp/v1/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
 
+// CertificateAuthority is a versioned entity used to lock the database when rotation RootCertificates
+message CertificateAuthority {
+  // @inject_tag: `gorm:"primary_key"`
+  string private_id = 10;
+
+  // version allows optimistic locking of the resource.
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 20;
+}
+
 // RootCertificate contains all fields related to a RootCertificate resource
 message RootCertificate {
   // The serial number of the root certificate
@@ -39,4 +49,8 @@ message RootCertificate {
   // State is an enum value indicating if this is the next or current root cert
   // @inject_tag: `gorm:"not_null"`
   string state = 80;
+
+  // A reference to the CertificateAuthority
+  // @inject_tag: `gorm:"not_null"`
+  string issuing_ca = 90;
 }

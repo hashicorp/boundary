@@ -190,17 +190,12 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		}
 	} else {
 		w.updateTags.Store(false)
-
-		addrs := make([]resolver.Address, 0, len(result.CalculatedUpstreams))
-		strAddrs := make([]string, 0, len(result.CalculatedUpstreams))
-		for _, v := range result.CalculatedUpstreams {
-			addrs = append(addrs, resolver.Address{Addr: v.Address})
-			strAddrs = append(strAddrs, v.Address)
-		}
-		switch len(strAddrs) {
-		case 0:
-			event.WriteError(statusCtx, op, errors.New("got no controller addresses from controller; possibly prior to first status save, not persisting"))
-		default:
+		// This may be nil if we are in a multiple hop scenario
+		if len(result.CalculatedUpstreams) > 0 {
+			addrs := make([]resolver.Address, 0, len(result.CalculatedUpstreams))
+			for _, v := range result.CalculatedUpstreams {
+				addrs = append(addrs, resolver.Address{Addr: v.Address})
+			}
 			w.Resolver().UpdateState(resolver.State{Addresses: addrs})
 		}
 		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
