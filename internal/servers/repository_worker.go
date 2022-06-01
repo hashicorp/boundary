@@ -3,6 +3,7 @@ package servers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -50,16 +51,41 @@ func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Opt
 	return rowsDeleted, nil
 }
 
-// ListWorkers is a passthrough to listWorkersWithReader that uses the repo's normal reader.
-func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*Worker, error) {
-	return r.listWorkersWithReader(ctx, r.reader, opt...)
+// TODO: Remove this LookupWorker function completely in favor of what is provided in the other PR.
+func (r *Repository) LookupWorker(ctx context.Context, publicId string, opt ...Option) (*Worker, error) {
+	const op = "workers.(Repository).LookupWorker"
+	if publicId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "publicId is empty")
+	}
+	agg := &workerAggregate{PublicId: publicId}
+	if err := r.reader.LookupById(ctx, agg); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	w, err := agg.toWorker(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return w, nil
+}
+
+// ListWorkers lists all workers with
+func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
+	const op = "workers.(Repository).ListWorkers"
+	switch {
+	case len(scopeIds) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope ids set")
+	}
+	return r.listWorkersWithReader(ctx, r.reader, scopeIds, opt...)
 }
 
 // listWorkersWithReader will return a listing of resources and honor the
 // WithLimit option. If WithLiveness is zero the default liveness value is used,
 // if it is negative then the last status update time is ignored. This method
 // accepts a reader, allowing it to be used within a transaction or without.
-func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*Worker, error) {
+func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, scopeIds []string, opt ...Option) ([]*Worker, error) {
 	const op = "workers.listWorkersWithReader"
 	switch {
 	case isNil(reader):
@@ -71,17 +97,22 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 		liveness = DefaultLiveness
 	}
 
-	var where string
+	var where []string
+	var whereArgs []interface{}
 	if liveness > 0 {
-		where = fmt.Sprintf("worker_status_update_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
+		where = append(where, fmt.Sprintf("worker_status_update_time > now() - interval '%d seconds'", uint32(liveness.Seconds())))
+	}
+	if len(scopeIds) > 0 {
+		where = append(where, "scope_id in (?)")
+		whereArgs = append(whereArgs, scopeIds)
 	}
 
 	var wAggs []*workerAggregate
 	if err := reader.SearchWhere(
 		ctx,
 		&wAggs,
-		where,
-		[]interface{}{},
+		strings.Join(where, " and "),
+		whereArgs,
 		db.WithLimit(opts.withLimit),
 	); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))

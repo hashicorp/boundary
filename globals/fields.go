@@ -73,4 +73,10 @@ const (
 	CredentialTypeField                  = "credential_type"
 	CredentialMappingOverridesField      = "credential_mapping_overrides"
 	MetricNamespace                      = "boundary"
+	LastStatusTimeField                  = "last_status_time"
+	AddressField                         = "address"
+	CanonicalAddressField                = "canonical_address"
+	TagsField                            = "tags"
+	CanonicalTagsField                   = "canonical_tags"
+	ConfigurationField                   = "configuration"
 )

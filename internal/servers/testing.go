@@ -80,7 +80,7 @@ func TestWorkerAuth(ctx context.Context, t *testing.T, conn *db.DB, worker *Work
 }
 
 // TestWorker inserts a worker into the db to satisfy foreign key constraints.
-func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *Worker {
+func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)

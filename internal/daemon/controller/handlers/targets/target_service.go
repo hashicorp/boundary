@@ -895,7 +895,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// worker IDs below is used to contain their IDs in the same order. This is
 	// used to fetch tags for filtering. But we avoid allocation unless we
 	// actually need it.
-	selectedWorkers, err := serversRepo.ListWorkers(ctx)
+	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
 	if err != nil {
 		return nil, err
 	}
