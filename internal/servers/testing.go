@@ -3,6 +3,7 @@ package servers
 import (
 	"context"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,7 +90,7 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *Worker {
 
 	id, err := newWorkerId(context.Background())
 	require.NoError(t, err)
-	name := "test-worker-" + id
+	name := "test-worker-" + strings.ToLower(id)
 	wrk := NewWorkerForStatus(scope.Global.String(),
 		WithName(name),
 		WithAddress("127.0.0.1"))

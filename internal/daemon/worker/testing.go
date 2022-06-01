@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -320,6 +321,7 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		if err != nil {
 			t.Fatal(err)
 		}
+		nextOpts.Name = strings.ToLower(nextOpts.Name)
 		event.WriteSysEvent(context.TODO(), op, "worker name generated", "name", nextOpts.Name)
 	}
 	return NewTestWorker(t, nextOpts)

@@ -39,8 +39,11 @@ import (
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
+	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/mr-tron/base58"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 type Controller struct {
@@ -311,6 +314,7 @@ func (c *Controller) Start() error {
 		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
 		return nil
 	}
+
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
 	var err error
@@ -406,6 +410,16 @@ func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 	return c.workerStatusUpdateTimes
 }
 
-func (c *Controller) AuthorizeNodeeWorker(keyId string) error {
-	return registration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, keyId)
+func (c *Controller) AuthorizeNodeeWorker(request string) error {
+	const op = "controller.(Controller).AuthorizeWorker"
+	reqBytes, err := base58.FastBase58Decoding(request)
+	if err != nil {
+		return fmt.Errorf("(%s) error base64-decoding fetch node creds next proto value", op)
+	}
+	// Decode the proto into the request
+	req := new(types.FetchNodeCredentialsRequest)
+	if err := proto.Unmarshal(reqBytes, req); err != nil {
+		return fmt.Errorf("(%s) error unmarshaling common name value: %w", op, err)
+	}
+	return registration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, req)
 }

@@ -58,6 +58,10 @@ func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Opt
 // worker is found that matches then nil, nil will be returned.
 func (r *Repository) LookupWorkerByWorkerReportedName(ctx context.Context, name string) (*Worker, error) {
 	const op = "servers.(Repository).LookupWorkerByWorkerReportedName"
+	switch {
+	case name == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "name is empty")
+	}
 	// we derive the id instead of doing a query to be consistant with the
 	// UpsertWorkerStatus flow which uses this function to upsert a worker.
 	id, err := newWorkerIdFromName(ctx, name)
@@ -75,6 +79,10 @@ func (r *Repository) LookupWorkerByWorkerReportedName(ctx context.Context, name 
 // nil nil in the situation where no worker can be found with that public id.
 func (r *Repository) LookupWorker(ctx context.Context, publicId string, _ ...Option) (*Worker, error) {
 	const op = "servers.(Repository).LookupWorker"
+	switch {
+	case publicId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "publicId is empty")
+	}
 	w, err := lookupWorker(ctx, r.reader, publicId)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -86,6 +94,10 @@ func (r *Repository) LookupWorker(ctx context.Context, publicId string, _ ...Opt
 // nil nil in the situation where no worker can be found with that public id.
 func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, error) {
 	const op = "servers.lookupWorker"
+	switch {
+	case id == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "id is empty")
+	}
 	wAgg := &workerAggregate{}
 	wAgg.PublicId = id
 	err := reader.LookupById(ctx, wAgg)
@@ -193,6 +205,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
+			worker := worker.clone()
 			workerCreateConflict := &db.OnConflict{
 				Target: db.Columns{"public_id"},
 				Action: append(db.SetColumns([]string{"worker_reported_name", "worker_reported_address"}),
