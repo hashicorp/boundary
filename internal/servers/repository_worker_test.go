@@ -291,7 +291,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			tc.errAssert(t, err)
 
 			// Still only the original worker exists.
-			workers, err := repo.ListWorkers(ctx)
+			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 			require.NoError(t, err)
 			assert.Len(t, workers, 1)
 		})
@@ -304,7 +304,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 		{
-			workers, err := repo.ListWorkers(ctx)
+			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 			require.NoError(t, err)
 			assert.Len(t, workers, 2)
 		}
@@ -366,7 +366,77 @@ func TestTagUpdatingListing(t *testing.T) {
 	assert.ElementsMatch(t, []string{"value21", "value22"}, worker1.CanonicalTags()["tag22"])
 }
 
-func TestListWorkersWithLiveness(t *testing.T) {
+func TestListWorkers(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	const testLimit = 10
+	repo, err := servers.NewRepository(rw, rw, kms, servers.WithLimit(testLimit))
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	tests := []struct {
+		name      string
+		createCnt int
+		reqScopes []string
+		opts      []servers.Option
+		wantCnt   int
+		wantErr   bool
+	}{
+		{
+			name:      "no-limit",
+			createCnt: testLimit + 1,
+			reqScopes: []string{scope.Global.String()},
+			opts:      []servers.Option{servers.WithLimit(-1)},
+			wantCnt:   testLimit + 1,
+			wantErr:   false,
+		},
+		{
+			name:      "default-limit",
+			createCnt: testLimit + 1,
+			reqScopes: []string{scope.Global.String()},
+			wantCnt:   testLimit,
+			wantErr:   false,
+		},
+		{
+			name:      "custom-limit",
+			createCnt: testLimit + 1,
+			reqScopes: []string{scope.Global.String()},
+			opts:      []servers.Option{servers.WithLimit(3)},
+			wantCnt:   3,
+			wantErr:   false,
+		},
+		{
+			name:      "no-scope",
+			createCnt: 1,
+			reqScopes: nil,
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := servers.NewWorker(scope.Global.String())
+			db.TestDeleteWhere(t, conn, w, "true")
+			for i := 0; i < tt.createCnt; i++ {
+				servers.TestWorker(t, conn, wrapper)
+			}
+			// the purpose of these tests isn't to check liveness, so disable
+			// liveness checking.
+			opts := append(tt.opts, servers.WithLiveness(-1))
+			got, err := repo.ListWorkers(ctx, tt.reqScopes, opts...)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Len(t, got, tt.wantCnt)
+		})
+	}
+}
+
+func TestListWorkers_WithLiveness(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -407,7 +477,7 @@ func TestListWorkersWithLiveness(t *testing.T) {
 	}
 
 	// Default liveness, should only list 1
-	result, err := serversRepo.ListWorkers(ctx)
+	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
 	require.NoError(err)
 	require.Len(result, 1)
 	requireIds([]string{worker1.GetPublicId()}, result)
@@ -420,13 +490,13 @@ func TestListWorkersWithLiveness(t *testing.T) {
 
 	// Static liveness. Should get two, so long as this did not take
 	// more than 5s to execute.
-	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(time.Second*5))
+	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, servers.WithLiveness(time.Second*5))
 	require.NoError(err)
 	require.Len(result, 2)
 	requireIds([]string{worker1.GetPublicId(), worker2.GetPublicId()}, result)
 
 	// Liveness disabled, should get all three workers.
-	result, err = serversRepo.ListWorkers(ctx, servers.WithLiveness(-1))
+	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, servers.WithLiveness(-1))
 	require.NoError(err)
 	require.Len(result, 3)
 	requireIds([]string{worker1.GetPublicId(), worker2.GetPublicId(), worker3.GetPublicId()}, result)
