@@ -61,20 +61,15 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	wstat := req.GetWorkerStatus()
 	wId, wName := wstat.GetPublicId(), wstat.GetName()
-	if wId == "" && wName == "" {
-		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Neither the public id nor name are set in the request. At least one is required.")
+	if wName == "" {
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name is not set in the request but is required.")
 	}
+	ws.updateTimes.Store(wName, time.Now())
 	wAddr := wstat.GetAddress()
 	if wAddr == "" {
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Address is not set but is required.")
 	}
 
-	// TODO: use new return values of UpsertWorkerStatus or LookupByName call to populate this field.
-	if wId != "" {
-		ws.updateTimes.Store(wId, time.Now())
-	} else {
-		ws.updateTimes.Store(wName, time.Now())
-	}
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
@@ -95,11 +90,14 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		servers.WithName(wName),
 		servers.WithAddress(wAddr),
 		servers.WithWorkerTags(workerTags...))
+	// TODO: set WithPublicId in here
 	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
+	wId = wrk.GetPublicId()
+	ws.updateTimes.Store(wId, time.Now())
 	controllers, err := serverRepo.ListControllers(ctx)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting current controllers"))
