@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/nodeenrollment"
+	"github.com/mr-tron/base58"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -26,13 +28,13 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	nodee "github.com/hashicorp/nodeenrollment"
-	"github.com/hashicorp/nodeenrollment/nodeauth"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/hashicorp/nodeenrollment/util/splitlistener"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
+	"google.golang.org/protobuf/proto"
 )
 
 type randFn func(length int) (string, error)
@@ -73,9 +75,10 @@ type Worker struct {
 	updateTags *ua.Bool
 
 	// PoC: Testing bits for BYOW
-	NodeeFileStorage *nodeefile.FileStorage
-	NodeeKeyId       string
-	nodeeTeeListener *nodeauth.TeeListener
+	NodeeFileStorage         *nodeefile.FileStorage
+	NodeeCurrentKeyId        string
+	NodeeRegistrationRequest string
+	nodeeSplitListener       *splitlistener.SplitListener
 
 	// Test-specific options
 	TestOverrideX509VerifyDnsName  string
@@ -190,7 +193,20 @@ func (w *Worker) Start() error {
 	if err != nil {
 		return fmt.Errorf("error generating new node creds: %w", err)
 	}
-	w.NodeeKeyId, err = nodee.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+
+	req, err := nodeCreds.CreateFetchNodeCredentialsRequest(w.baseContext)
+	if err != nil {
+		return fmt.Errorf("error creating fetch credentials request: %w", err)
+	}
+	reqBytes, err := proto.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("error marshaling fetch credentials request: %w", err)
+	}
+	w.NodeeRegistrationRequest = base58.FastBase58Encoding(reqBytes)
+	if err != nil {
+		return fmt.Errorf("error encoding registration request: %w", err)
+	}
+	w.NodeeCurrentKeyId, err = nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 	if err != nil {
 		return fmt.Errorf("error deriving key id: %w", err)
 	}

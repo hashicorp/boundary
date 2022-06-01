@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/nodeenrollment"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -602,7 +601,7 @@ func (c *Command) Run(args []string) int {
 			opts = append(opts, base.WithContainerImage(c.flagContainerImage))
 		}
 		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
-			c.UI.Error(fmt.Errorf("Error creating dev database container %w", err).Error())
+			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 			return base.CommandCliError
 		}
 
@@ -677,23 +676,22 @@ func (c *Command) Run(args []string) int {
 		}
 
 		if !c.flagUseEphemeralKmsWorkerAuthMethod {
-			if c.worker.NodeeKeyId == "" {
-				c.UI.Error("No worker key ID found at worker registration time")
+			req := c.worker.NodeeRegistrationRequest
+			if req == "" {
+				c.UI.Error("No worker registration request found at worker start time")
 				return base.CommandCliError
 			}
-			c.InfoKeys = append(c.InfoKeys, "worker key identifier")
-			c.Info["worker key identifier"] = c.worker.NodeeKeyId
+			c.InfoKeys = append(c.InfoKeys, "worker registration request")
+			c.Info["worker registration request"] = req
+			c.InfoKeys = append(c.InfoKeys, "worker current key id")
+			c.Info["worker current key id"] = c.worker.NodeeCurrentKeyId
 			go func() {
 				for {
 					select {
 					case <-c.Context.Done():
 						return
 					case <-time.After(time.Second):
-						waitingNodes := nodeenrollment.DefaultRegistrationCache.Items()
-						if len(waitingNodes) == 0 {
-							continue
-						}
-						if err := c.controller.AuthorizeNodeeWorker(c.worker.NodeeKeyId); err != nil {
+						if err := c.controller.AuthorizeNodeeWorker(req); err != nil {
 							c.UI.Error(fmt.Errorf("Error authorizing node: %w", err).Error())
 							errorEncountered.Store(true)
 							return
