@@ -38,10 +38,6 @@ func TestStatus(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
-		"test_worker1",
-		servers.WithAddress("127.0.0.1")))
-
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
 	}
@@ -105,8 +101,8 @@ func TestStatus(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
-					PublicId: worker1.PublicId,
-					Name:     worker1.Name,
+					PublicId: worker1.GetWorkerReportedName(),
+					Name:     worker1.GetWorkerReportedName,
 					Address:  worker1.CanonicalAddress(),
 				},
 			},
@@ -126,7 +122,7 @@ func TestStatus(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.PublicId,
-					Name:     worker1.Name,
+					Name:     worker1.GetWorkerReportedName(),
 					Address:  worker1.CanonicalAddress(),
 				},
 				Jobs: []*pbs.JobStatus{
@@ -175,7 +171,7 @@ func TestStatus(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.PublicId,
-					Name:     worker1.Name,
+					Name:     worker1.GetWorkerReportedName(),
 				},
 			},
 			wantErrMsg: status.Error(codes.Internal, "Address is not set but is required.").Error(),
@@ -227,10 +223,6 @@ func TestStatusSessionClosed(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
-		"test_worker1",
-		servers.WithAddress("127.0.0.1")))
-
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
 	}
@@ -312,7 +304,7 @@ func TestStatusSessionClosed(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.PublicId,
-					Name:     worker1.Name,
+					Name:     worker1.GetWorkerReportedName(),
 					Address:  worker1.CanonicalAddress(),
 				},
 				Jobs: []*pbs.JobStatus{
@@ -409,9 +401,8 @@ func TestStatusDeadConnection(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
-		"test_worker1",
-		servers.WithAddress("127.0.0.1")))
+
+	worker1 := servers.TestWorker(t, conn, wrapper)
 
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
@@ -440,8 +431,6 @@ func TestStatusDeadConnection(t *testing.T) {
 		target.WithHostSources([]string{hs.GetPublicId()}),
 		target.WithSessionConnectionLimit(-1),
 	)
-
-	worker1 := servers.TestWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -482,7 +471,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	req := &pbs.StatusRequest{
 		WorkerStatus: &servers.ServerWorkerStatus{
 			PublicId: worker1.PublicId,
-			Name:     worker1.Name,
+			Name:     worker1.GetWorkerReportedName(),
 			Address:  worker1.CanonicalAddress(),
 		},
 		Jobs: []*pbs.JobStatus{

@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -131,8 +132,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			require.NoError(err)
 			serversRepo, err := servers.NewRepository(rw, rw, kms)
 			require.NoError(err)
-			_, _, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
-				"test_worker_1",
+			_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
 				servers.WithAddress("127.0.0.1")))
 			require.NoError(err)
 

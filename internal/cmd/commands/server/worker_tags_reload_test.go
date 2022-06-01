@@ -44,7 +44,7 @@ listener "tcp" {
 
 const tag1Config = `
 worker {
-	name = "w_1234567890"
+	name = "test"
 	description = "A default worker created in dev mode"
 	controllers = ["%s"]
 	tags {
@@ -55,7 +55,7 @@ worker {
 
 const tag2Config = `
 worker {
-	name = "w_1234567890"
+	name = "test"
 	description = "A default worker created in dev mode"
 	controllers = ["%s"]
 	tags {
@@ -98,18 +98,17 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		t.Helper()
 		serversRepo, err := testController.Controller().ServersRepoFn()
 		require.NoError(err)
-		tags, err := serversRepo.ListTagsForWorkers(testController.Context(), []string{name})
+		w, err := serversRepo.LookupWorkerByWorkerReportedName(testController.Context(), name)
 		require.NoError(err)
-		require.Len(tags[name], 2)
-		require.Equal(key, tags[name][0].Key)
-		require.Equal(values[0], tags[name][0].Value)
-		require.Equal(key, tags[name][1].Key)
-		require.Equal(values[1], tags[name][1].Value)
+		require.NotNil(w)
+		v, ok := w.CanonicalTags()[key]
+		require.True(ok)
+		require.ElementsMatch(values, v)
 	}
 
 	// Give time to populate up to the controller
 	time.Sleep(10 * time.Second)
-	fetchWorkerTags("w_1234567890", "type", []string{"dev", "local"})
+	fetchWorkerTags("test", "type", []string{"dev", "local"})
 
 	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, key, testController.ClusterAddrs()[0]))
 
@@ -121,7 +120,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	}
 
 	time.Sleep(10 * time.Second)
-	fetchWorkerTags("w_1234567890", "foo", []string{"bar", "baz"})
+	fetchWorkerTags("test", "foo", []string{"bar", "baz"})
 
 	close(cmd.ShutdownCh)
 
