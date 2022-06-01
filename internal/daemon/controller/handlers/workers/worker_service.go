@@ -278,7 +278,7 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 		out.CanonicalAddress = in.CanonicalAddress()
 	}
 	if outputFields.Has(globals.LastStatusTimeField) {
-		out.LastStatusTime = in.LastConnectionUpdate().GetTimestamp()
+		out.LastStatusTime = in.GetLastStatusTime().GetTimestamp()
 	}
 	if outputFields.Has(globals.CanonicalTagsField) && len(in.CanonicalTags()) > 0 {
 		var err error
@@ -287,36 +287,28 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 			return nil, err
 		}
 	}
-	if outputFields.Has(globals.TagsField) && len(in.Tags) > 0 {
+	if outputFields.Has(globals.TagsField) && len(in.GetApiTags()) > 0 {
 		var err error
-		v := make(map[string][]string)
-		for _, t := range in.Tags {
-			v[t.Key] = append(v[t.Key], t.Value)
-		}
-		out.Tags, err = tagsToMapProto(v)
+		out.Tags, err = tagsToMapProto(in.GetApiTags())
 		if err != nil {
 			return nil, err
 		}
 	}
-	if outputFields.Has(globals.ConfigurationField) && in.ReportedStatus != nil {
-		if in.ReportedStatus.GetAddress() != "" ||
-			in.ReportedStatus.GetName() != "" ||
-			len(in.ReportedStatus.Tags) > 0 {
+	if outputFields.Has(globals.ConfigurationField) {
+		if in.GetWorkerReportedAddress() != "" ||
+			in.GetWorkerReportedName() != "" ||
+			len(in.GetConfigTags()) > 0 {
 			out.WorkerConfig = &pb.WorkerConfig{}
 		}
-		if len(in.ReportedStatus.Tags) > 0 {
+		if len(in.GetConfigTags()) > 0 {
 			var err error
-			v := make(map[string][]string)
-			for _, t := range in.ReportedStatus.Tags {
-				v[t.Key] = append(v[t.Key], t.Value)
-			}
-			out.GetWorkerConfig().Tags, err = tagsToMapProto(v)
+			out.GetWorkerConfig().Tags, err = tagsToMapProto(in.GetConfigTags())
 			if err != nil {
 				return nil, err
 			}
 		}
-		out.GetWorkerConfig().Address = in.ReportedStatus.GetAddress()
-		out.GetWorkerConfig().Name = in.ReportedStatus.GetName()
+		out.GetWorkerConfig().Address = in.GetWorkerReportedAddress()
+		out.GetWorkerConfig().Name = in.GetWorkerReportedName()
 	}
 
 	return &out, nil

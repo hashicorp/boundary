@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -48,10 +49,10 @@ func TestGet(t *testing.T) {
 		Version:           worker.GetVersion(),
 		AuthorizedActions: testAuthorizedActions,
 		CanonicalAddress:  worker.CanonicalAddress(),
-		LastStatusTime:    worker.ReportedStatus.GetUpdateTime().GetTimestamp(),
+		LastStatusTime:    worker.GetLastStatusTime().GetTimestamp(),
 		WorkerConfig: &pb.WorkerConfig{
-			Address: worker.ReportedStatus.GetAddress(),
-			Name:    worker.ReportedStatus.GetName(),
+			Address: worker.GetWorkerReportedAddress(),
+			Name:    worker.GetWorkerReportedName(),
 		},
 	}
 
@@ -129,10 +130,10 @@ func TestList(t *testing.T) {
 			Version:           w.GetVersion(),
 			AuthorizedActions: testAuthorizedActions,
 			CanonicalAddress:  w.CanonicalAddress(),
-			LastStatusTime:    w.ReportedStatus.GetUpdateTime().GetTimestamp(),
+			LastStatusTime:    w.GetLastStatusTime().GetTimestamp(),
 			WorkerConfig: &pb.WorkerConfig{
-				Address: w.ReportedStatus.GetAddress(),
-				Name:    w.ReportedStatus.GetName(),
+				Address: w.GetWorkerReportedAddress(),
+				Name:    w.GetWorkerReportedName(),
 			},
 		})
 	}
@@ -170,7 +171,7 @@ func TestList(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			s, err := NewService(context.Background(), repoFn, iamRepoFn)
-			require.NoError(err, "Couldn't create new group service.")
+			require.NoError(err, "Couldn't create new worker service.")
 
 			// Test with a non-anon user
 			got, gErr := s.ListWorkers(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
@@ -180,6 +181,12 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
+			sort.Slice(tc.res.Items, func(i, j int) bool {
+				return tc.res.Items[i].GetId() < tc.res.Items[j].GetId()
+			})
+			sort.Slice(got.Items, func(i, j int) bool {
+				return got.Items[i].GetId() < got.Items[j].GetId()
+			})
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListWorkers(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Test the anon case
