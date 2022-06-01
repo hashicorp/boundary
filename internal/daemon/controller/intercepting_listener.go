@@ -9,7 +9,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/observability/event"
 	nodee "github.com/hashicorp/nodeenrollment"
-	"github.com/hashicorp/nodeenrollment/nodeauth"
 )
 
 // tempError is an error that satisfies the temporary error interface that is
@@ -79,7 +78,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 
 	tlsConn := conn.(*tls.Conn)
 	switch {
-	case nodeauth.ContainsNodeAuthAlpnProto(tlsConn.ConnectionState().NegotiatedProtocol):
+	case nodee.ContainsKnownAlpnProto(tlsConn.ConnectionState().NegotiatedProtocol):
 		keyId, err := nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId)
 		if err != nil {
 			if err := conn.Close(); err != nil {

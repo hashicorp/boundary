@@ -8,11 +8,91 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestDeleteWorker(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	type args struct {
+		worker *servers.Worker
+	}
+	tests := []struct {
+		name            string
+		args            args
+		wantRowsDeleted int
+		wantErr         bool
+		wantErrMsg      string
+	}{
+		{
+			name: "valid",
+			args: args{
+				worker: servers.TestWorker(t, conn, wrapper),
+			},
+			wantRowsDeleted: 1,
+			wantErr:         false,
+		},
+		{
+			name: "no-public-id",
+			args: args{
+				worker: func() *servers.Worker {
+					w := servers.Worker{Worker: &store.Worker{}}
+					return &w
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "servers.(Repository).DeleteWorker: missing public id: parameter violation: error #100",
+		},
+		{
+			name: "not-found",
+			args: args{
+				worker: func() *servers.Worker {
+					w := servers.Worker{Worker: &store.Worker{}}
+					id, err := db.NewPublicId("w")
+					require.NoError(t, err)
+					w.PublicId = id
+					return &w
+				}(),
+			},
+			wantRowsDeleted: 0,
+			wantErr:         true,
+			wantErrMsg:      "servers.(Repository).DeleteWorker: delete failed for worker with workerId:",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			deletedRows, err := repo.DeleteWorker(ctx, tt.args.worker.Worker.PublicId)
+			if tt.wantErr {
+				assert.Error(err)
+				assert.Equal(0, deletedRows)
+				assert.Contains(err.Error(), tt.wantErrMsg)
+
+				return
+			}
+			assert.NoError(err)
+			assert.Equal(tt.wantRowsDeleted, deletedRows)
+
+			// Validate that the worker no longer exists
+			err = rw.LookupByPublicId(ctx, tt.args.worker)
+			assert.ErrorIs(err, dbw.ErrRecordNotFound)
+		})
+	}
+}
 
 func TestUpsertWorkerStatus(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
@@ -314,4 +394,154 @@ func TestListWorkersWithLiveness(t *testing.T) {
 	require.NoError(err)
 	require.Len(result, 3)
 	requireIds([]string{workConf1.WorkerId, workConf2.WorkerId, workConf3.WorkerId}, result)
+}
+
+func TestRepository_CreateWorker(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	testRepo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	testNewIdFn := func(context.Context) (string, error) {
+		return "", errors.New(testCtx, errors.Internal, "test", "testNewIdFn-error")
+	}
+
+	tests := []struct {
+		name            string
+		setup           func() *servers.Worker
+		repo            *servers.Repository
+		opt             []servers.Option
+		wantErr         bool
+		wantErrIs       errors.Code
+		wantErrContains string
+	}{
+		{
+			name: "missing-worker",
+			setup: func() *servers.Worker {
+				return nil
+			},
+			repo:            testRepo,
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "missing worker",
+		},
+		{
+			name: "public-id-not-empty",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				var err error
+				w.PublicId, err = db.NewPublicId(servers.WorkerPrefix)
+				require.NoError(t, err)
+				return w
+			},
+			repo:            testRepo,
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "public id is not empty",
+		},
+		{
+			name: "empty-scope-id",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				w.ScopeId = ""
+				return w
+			},
+			repo:            testRepo,
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "missing scope id",
+		},
+		{
+			name: "org-scope-id",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(org.PublicId)
+				return w
+			},
+			repo:            testRepo,
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "scope id must be \"global\"",
+		},
+		{
+			name: "new-id-error",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				return w
+			},
+			repo:            testRepo,
+			opt:             []servers.Option{servers.WithNewIdFunc(testNewIdFn)},
+			wantErr:         true,
+			wantErrIs:       errors.Internal,
+			wantErrContains: "testNewIdFn-error",
+		},
+		{
+			name: "create-error",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				return w
+			},
+			repo: func() *servers.Repository {
+				conn, mock := db.TestSetupWithMock(t)
+				writer := db.New(conn)
+				mock.ExpectBegin()
+				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New(testCtx, errors.Internal, "test", "create-error"))
+				mock.ExpectRollback()
+				r, err := servers.NewRepository(rw, writer, kms)
+				require.NoError(t, err)
+				return r
+			}(),
+			wantErr:         true,
+			wantErrContains: "unable to create worker",
+		},
+		{
+			name: "success",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				return w
+			},
+			repo: testRepo,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			testWorker := tc.setup()
+			got, err := tc.repo.CreateWorker(testCtx, testWorker, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tc.wantErrIs != errors.Unknown {
+					assert.True(errors.Match(errors.T(tc.wantErrIs), err))
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(got)
+			assert.NotEmpty(got.PublicId)
+			assert.NotEmpty(got.UpdateTime)
+			assert.NotEmpty(got.CreateTime)
+
+			found := &servers.Worker{
+				Worker: &store.Worker{
+					PublicId: got.PublicId,
+				},
+			}
+			err = rw.LookupByPublicId(testCtx, found)
+			require.NoError(err)
+			if found.Tags == nil {
+				found.Tags = []*servers.Tag{}
+			}
+			assert.Equal(got, found)
+		})
+	}
 }

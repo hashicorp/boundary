@@ -13,14 +13,16 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
+	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
-	"github.com/hashicorp/nodeenrollment/nodeauth"
+	"github.com/hashicorp/nodeenrollment/protocol"
 	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/hashicorp/nodeenrollment/util/splitlistener"
+	"github.com/hashicorp/nodeenrollment/util/temperror"
 	"google.golang.org/grpc"
 )
 
@@ -50,6 +52,8 @@ func (w *Worker) startListeners() error {
 }
 
 func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger) (func(), error) {
+	const op = "worker.configureForWorker"
+
 	handler, err := w.handler(HandlerProperties{ListenerConfig: ln.Config})
 	if err != nil {
 		return nil, err
@@ -88,12 +92,13 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 	) (*types.FetchNodeCredentialsResponse, error) {
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
-			return nil, nodeauth.NewTempError(errors.New("error fetching controller connection, client is nil"))
+			return nil, temperror.New(errors.New("error fetching controller connection, client is nil"))
 		}
 		multihopClient, ok := client.(multihop.MultihopServiceClient)
 		if !ok {
-			return nil, nodeauth.NewTempError(errors.New("client could not be understood as a multihop service client"))
+			return nil, temperror.New(errors.New("client could not be understood as a multihop service client"))
 		}
+		// log.Println("proxying fetch node credentials request")
 		return multihopClient.FetchNodeCredentials(ctx, req)
 	}
 
@@ -105,51 +110,56 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 	) (*types.GenerateServerCertificatesResponse, error) {
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
-			return nil, nodeauth.NewTempError(errors.New("error fetching controller connection, client is nil"))
+			return nil, temperror.New(errors.New("error fetching controller connection, client is nil"))
 		}
 		multihopClient, ok := client.(multihop.MultihopServiceClient)
 		if !ok {
-			return nil, nodeauth.NewTempError(errors.New("client could not be understood as a multihop service client"))
+			return nil, temperror.New(errors.New("client could not be understood as a multihop service client"))
 		}
+		// log.Println("proxying generate server cert request")
 		return multihopClient.GenerateServerCertificates(ctx, req)
 	}
 
-	interceptingListener, err := nodeauth.NewInterceptingListener(
-		ln.ProxyListener,
-		&tls.Config{
-			GetConfigForClient: w.getSessionTls,
-		},
-		nodeauth.MakeCurrentParametersFactory(
-			w.baseContext,
-			nodee.NopTransactionStorage(w.NodeeFileStorage),
-		),
-		fetchCredsFn,
-		generateServerCertificatesFn,
-	)
+	interceptingListener, err := protocol.NewInterceptingListener(
+		&protocol.InterceptingListenerConfiguration{
+			Context:      w.baseContext,
+			Storage:      w.NodeeFileStorage,
+			BaseListener: ln.ProxyListener,
+			BaseTlsConfiguration: &tls.Config{
+				GetConfigForClient: w.getSessionTls,
+			},
+			FetchCredsFunc:                 fetchCredsFn,
+			GenerateServerCertificatesFunc: generateServerCertificatesFn,
+		})
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
 	}
 
-	w.nodeeTeeListener = nodeauth.NewTeeListener(interceptingListener)
+	w.nodeeSplitListener = splitlistener.New(interceptingListener)
 
 	downstreamServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 	)
-	multihopService := workers.NewMultihopServiceServer(
-		nodeauth.MakeCurrentParametersFactory(w.baseContext, nodee.NopTransactionStorage(w.NodeeFileStorage)),
+	multihopService, err := handlers.NewMultihopServiceServer(
+		w.NodeeFileStorage,
+		false,
+		w.controllerMultihopConn,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
+	}
 	multihop.RegisterMultihopServiceServer(downstreamServer, multihopService)
-	statusSessionService := workers.NewWorkerProxyServiceServer(w.controllerStatusConn, w.controllerSessionConn)
+	statusSessionService := NewWorkerProxyServiceServer(w.controllerStatusConn, w.controllerSessionConn)
 	pbs.RegisterServerCoordinationServiceServer(downstreamServer, statusSessionService)
 	pbs.RegisterSessionServiceServer(downstreamServer, statusSessionService)
 
 	ln.GrpcServer = downstreamServer
 
 	return func() {
-		go w.nodeeTeeListener.Start()
-		go httpServer.Serve(w.nodeeTeeListener.OtherListener())
-		go ln.GrpcServer.Serve(w.nodeeTeeListener.NodeeListener())
+		go w.nodeeSplitListener.Start()
+		go httpServer.Serve(w.nodeeSplitListener.OtherListener())
+		go ln.GrpcServer.Serve(w.nodeeSplitListener.NodeEnrollmentListener())
 	}, nil
 }
 
@@ -162,21 +172,21 @@ func (w *Worker) stopServersAndListeners() error {
 	// really likes to hang on closing. Maybe because it's never served a
 	// connection? This is a workaround to force it until I can dig in.
 	var cancel context.CancelFunc
-	if w.nodeeTeeListener != nil {
+	if w.nodeeSplitListener != nil {
 		var ctx context.Context
 		ctx, cancel = context.WithTimeout(w.baseContext, 2*time.Second)
 		go func() {
 			<-ctx.Done()
-			w.nodeeTeeListener.Stop()
+			w.nodeeSplitListener.Stop()
 			cancel()
 		}()
 	}
 
 	stopErrors := mg.Wait()
 
-	if w.nodeeTeeListener != nil {
+	if w.nodeeSplitListener != nil {
 		cancel()
-		err := w.nodeeTeeListener.Stop()
+		err := w.nodeeSplitListener.Stop()
 		if err != nil {
 			stopErrors = multierror.Append(stopErrors, err)
 		}
@@ -227,8 +237,8 @@ func (w *Worker) stopAnyListeners() error {
 	}
 	var closeErrors *multierror.Error
 	var err error
-	if w.nodeeTeeListener != nil {
-		err = w.nodeeTeeListener.Stop()
+	if w.nodeeSplitListener != nil {
+		err = w.nodeeSplitListener.Stop()
 	} else if w.proxyListener.ProxyListener != nil {
 		err = w.proxyListener.ProxyListener.Close()
 	}

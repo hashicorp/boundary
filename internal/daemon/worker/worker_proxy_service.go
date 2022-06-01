@@ -1,4 +1,4 @@
-package workers
+package worker
 
 import (
 	"context"
@@ -31,7 +31,15 @@ var (
 )
 
 func (ws *workerProxyServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
-	return ws.scsClient.Load().(pbs.ServerCoordinationServiceClient).Status(ctx, req)
+	resp, err := ws.scsClient.Load().(pbs.ServerCoordinationServiceClient).Status(ctx, req)
+
+	if resp != nil {
+		// We don't currently support distributing new addreses to workers
+		// multiple hops away so ensure they're stripped out
+		resp.Controllers = nil
+	}
+
+	return resp, err
 }
 
 func (ws *workerProxyServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {

@@ -23,9 +23,9 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	nodee "github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
-	"github.com/hashicorp/nodeenrollment/nodeauth"
+	"github.com/hashicorp/nodeenrollment/protocol"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/credentials/insecure"
@@ -74,12 +74,7 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 		case w.conf.WorkerAuthKms != nil:
 			conn, err = w.v1KmsAuthDialFn(ctx, addr)
 		default:
-			conn, err = nodeauth.AuthDialFn(
-				nodeauth.MakeCurrentParametersFactory(
-					ctx,
-					nodee.NopTransactionStorage(w.NodeeFileStorage),
-					nodee.WithWrapper(w.conf.WorkerStorageKms),
-				))(ctx, addr)
+			conn, err = protocol.Dial(ctx, w.NodeeFileStorage, addr, nodeenrollment.WithWrapper(w.conf.WorkerStorageKms))
 		}
 
 		if !w.everAuthenticated.Load() && err == nil && conn != nil {
