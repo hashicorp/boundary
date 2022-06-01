@@ -301,7 +301,7 @@ func TestDevWorker(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestDev_WorkerCredentialStorageDir(t *testing.T) {
+func TestDevWorkerCredentialStorageDir(t *testing.T) {
 	tests := []struct {
 		name            string
 		devWorkerConfig string
@@ -353,6 +353,13 @@ func TestDev_WorkerCredentialStorageDir(t *testing.T) {
 			require.Equal(t, tt.storagePath, parsed.Worker.StoragePath)
 		})
 	}
+}
+
+func TestDevKeyGeneration(t *testing.T) {
+	dk := DevKeyGeneration()
+	numBytes := 32
+	require.Equal(t, numBytes, len(dk))
+	require.NotEqual(t, dk, DevKeyGeneration())
 }
 
 func TestParsingName(t *testing.T) {

@@ -64,7 +64,6 @@ func TestTestWorkerLookupSessionMissing(t *testing.T) {
 }
 
 func TestTestWorker_WorkerStorageKms(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		wrapper wrapping.Wrapper
