@@ -101,8 +101,8 @@ func TestStatus(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
-					PublicId: worker1.GetWorkerReportedName(),
-					Name:     worker1.GetWorkerReportedName,
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetWorkerReportedName(),
 					Address:  worker1.CanonicalAddress(),
 				},
 			},
@@ -121,7 +121,7 @@ func TestStatus(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
-					PublicId: worker1.PublicId,
+					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetWorkerReportedName(),
 					Address:  worker1.CanonicalAddress(),
 				},
@@ -163,18 +163,18 @@ func TestStatus(t *testing.T) {
 					Address: worker1.CanonicalAddress(),
 				},
 			},
-			wantErrMsg: status.Error(codes.Internal, "Neither the public id nor name are set in the request. At least one is required.").Error(),
+			wantErrMsg: status.Error(codes.InvalidArgument, "Neither the public id nor name are set in the request. At least one is required.").Error(),
 		},
 		{
 			name:    "No Address",
 			wantErr: true,
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
-					PublicId: worker1.PublicId,
+					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetWorkerReportedName(),
 				},
 			},
-			wantErrMsg: status.Error(codes.Internal, "Address is not set but is required.").Error(),
+			wantErrMsg: status.Error(codes.InvalidArgument, "Address is not set but is required.").Error(),
 		},
 	}
 
@@ -303,7 +303,7 @@ func TestStatusSessionClosed(t *testing.T) {
 			},
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
-					PublicId: worker1.PublicId,
+					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetWorkerReportedName(),
 					Address:  worker1.CanonicalAddress(),
 				},
@@ -470,7 +470,7 @@ func TestStatusDeadConnection(t *testing.T) {
 
 	req := &pbs.StatusRequest{
 		WorkerStatus: &servers.ServerWorkerStatus{
-			PublicId: worker1.PublicId,
+			PublicId: worker1.GetPublicId(),
 			Name:     worker1.GetWorkerReportedName(),
 			Address:  worker1.CanonicalAddress(),
 		},

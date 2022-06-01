@@ -298,7 +298,7 @@ func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 		w.tags.Store([]*servers.TagPair{})
 		return
 	}
-	tags := make([]*servers.TagPair, 0)
+	tags := []*servers.TagPair{}
 	for k, vals := range incoming {
 		for _, v := range vals {
 			tags = append(tags, &servers.TagPair{

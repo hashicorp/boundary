@@ -62,14 +62,14 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	wstat := req.GetWorkerStatus()
 	wId, wName := wstat.GetPublicId(), wstat.GetName()
 	if wId == "" && wName == "" {
-		return &pbs.StatusResponse{}, status.Error(codes.Internal, "Neither the public id nor name are set in the request. At least one is required.")
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Neither the public id nor name are set in the request. At least one is required.")
 	}
 	wAddr := wstat.GetAddress()
 	if wAddr == "" {
-		return &pbs.StatusResponse{}, status.Error(codes.Internal, "Address is not set but is required.")
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Address is not set but is required.")
 	}
 
-	// TODO: use new return values of UpsertWorkerStatus or LookupByName call to pupulate this field.
+	// TODO: use new return values of UpsertWorkerStatus or LookupByName call to populate this field.
 	if wId != "" {
 		ws.updateTimes.Store(wId, time.Now())
 	} else {
