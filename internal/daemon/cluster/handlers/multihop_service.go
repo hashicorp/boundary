@@ -64,7 +64,6 @@ func (m *multihopServiceServer) FetchNodeCredentials(ctx context.Context, req *t
 
 func (m *multihopServiceServer) GenerateServerCertificates(ctx context.Context, req *types.GenerateServerCertificatesRequest) (*types.GenerateServerCertificatesResponse, error) {
 	const op = "cluster.handlers.(multihopServiceServer).GenerateServerCertificates"
-	// log.Println(op, m.direct)
 	switch m.direct {
 	case true:
 		return tls.GenerateServerCertificates(ctx, m.storage, req, m.options...)
