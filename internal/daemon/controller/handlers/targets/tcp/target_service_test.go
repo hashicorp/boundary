@@ -2789,9 +2789,9 @@ func TestAuthorizeSession(t *testing.T) {
 			// Tell our DB that there is a worker ready to serve the data
 			workerService := cluster.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 			_, err = workerService.Status(ctx, &spbs.StatusRequest{
-				Worker: &spb.Server{
-					PrivateId: "w_1234567890",
-					Address:   "localhost:8457",
+				WorkerStatus: &spb.ServerWorkerStatus{
+					PublicId: "w_1234567890",
+					Address:  "localhost:8457",
 				},
 			})
 			require.NoError(t, err)
@@ -3077,9 +3077,9 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			// Tell our DB that there is a worker ready to serve the data
 			workerService := cluster.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 			_, err = workerService.Status(ctx, &spbs.StatusRequest{
-				Worker: &spb.Server{
-					PrivateId: "w_1234567890",
-					Address:   "localhost:8457",
+				WorkerStatus: &spb.ServerWorkerStatus{
+					PublicId: "w_1234567890",
+					Address:  "localhost:8457",
 				},
 			})
 			require.NoError(t, err)
@@ -3208,9 +3208,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	workerExists := func(tar target.Target) (version uint32) {
 		workerService := cluster.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 		_, err := workerService.Status(context.Background(), &spbs.StatusRequest{
-			Worker: &spb.Server{
-				PrivateId: "w_1234567890",
-				Address:   "localhost:123",
+			WorkerStatus: &spb.ServerWorkerStatus{
+				PublicId: "w_1234567890",
+				Address:  "localhost:123",
 			},
 		})
 		require.NoError(t, err)
