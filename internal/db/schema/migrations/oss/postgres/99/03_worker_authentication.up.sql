@@ -16,6 +16,39 @@ values
   ('next'),
   ('current');
 
+create table worker_auth_ca(
+ private_id text primary key
+   constraint only_roots_id_allowed
+     check (private_id in ('roots')),
+ version wt_version,
+ create_time wt_timestamp,
+ update_time wt_timestamp
+);
+
+create trigger
+  immutable_columns
+  before
+    update on worker_auth_ca
+  for each row execute procedure immutable_columns('private_id','create_time');
+
+create trigger worker_auth_ca_default_create_time_column
+  before
+    insert on worker_auth_ca
+  for each row execute procedure default_create_time();
+
+create trigger worker_auth_ca_update_time_column
+  before
+    update on worker_auth_ca
+  for each row execute procedure update_time_column();
+
+insert into worker_auth_ca(private_id) values('roots');
+
+create trigger update_version_column after update on worker_auth_ca
+  for each row execute procedure update_version_column();
+
+comment on table worker_auth_ca is
+  'worker_auth_ca is a one-row versioned table used for locking for certificate rotation on the worker_auth_ca_certificate table.';
+
 create table worker_auth_ca_certificate(
  serial_number numeric,
  certificate  bytea not null
@@ -40,8 +73,18 @@ create table worker_auth_ca_certificate(
    constraint worker_auth_operational_indicator_enm_fkey
      references worker_auth_operational_indicator_enm(state)
        on delete restrict
-       on update cascade
+       on update cascade,
+  issuing_ca text not null
+    constraint worker_auth_ca_fkey
+      references worker_auth_ca(private_id)
 );
+
+create trigger
+  immutable_columns
+  before
+    update on worker_auth_ca_certificate
+  for each row execute procedure immutable_columns('serial_number', 'certificate', 'not_valid_before', 'not_valid_after',
+    'public_key', 'private_key', 'key_id', 'state', 'issuing_ca');
 
 comment on table worker_auth_ca_certificate is
   'worker_auth_ca_certificate is a table where each row represents a root certificate for used for worker authentication.';
@@ -70,6 +113,13 @@ create table worker_auth_authorized(
   nonce bytea
 );
 
+create trigger
+  immutable_columns
+  before
+    update on worker_auth_authorized
+  for each row execute procedure immutable_columns('worker_key_identifier', 'worker_id', 'worker_signing_pub_key',
+    'worker_encryption_pub_key', 'controller_encryption_priv_key', 'key_id', 'nonce');
+
 comment on table worker_auth_authorized is
   'worker_auth_authorized is a table where each row represents key and cert data associated with an authorized worker.';
 
@@ -92,5 +142,11 @@ create table worker_auth_certificate_bundle(
 
 comment on table worker_auth_certificate_bundle is
   'worker_auth_certificate_bundle is a table where each row represents a cert bundle issued by a ca certificate for a worker.';
+
+create trigger
+  immutable_columns
+  before
+    update on worker_auth_certificate_bundle
+  for each row execute procedure immutable_columns('certificate_public_key', 'worker_key_identifier', 'cert_bundle');
 
 commit;

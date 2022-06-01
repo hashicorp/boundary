@@ -11,6 +11,38 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// The CertificateAuthority id will always be set to "roots".
+// The const ca_id contains this value
+const ca_id = "roots"
+
+// CertificateAuthority is a versioned entity used to lock the database when rotation RootCertificates
+type CertificateAuthority struct {
+	*store.CertificateAuthority
+	tableName string `gorm:"-"`
+}
+
+func newCertificateAuthority() *CertificateAuthority {
+	ca := &CertificateAuthority{
+		CertificateAuthority: &store.CertificateAuthority{
+			PrivateId: ca_id,
+		},
+	}
+	return ca
+}
+
+// TableName returns the table name.
+func (r *CertificateAuthority) TableName() string {
+	if r.tableName != "" {
+		return r.tableName
+	}
+	return "worker_auth_ca"
+}
+
+// SetTableName sets the table name.
+func (r *CertificateAuthority) SetTableName(n string) {
+	r.tableName = n
+}
+
 // RootCertificate contains fields related to a RootCertificate resource
 // This includes public/ private keys, the PEM encoded certificate, and the certificate validity period
 type RootCertificate struct {
@@ -18,6 +50,7 @@ type RootCertificate struct {
 	tableName string `gorm:"-"`
 }
 
+// RootCertificateKeys contains the public and private keys for use in constructing a RootCertificate
 type RootCertificateKeys struct {
 	publicKey  []byte
 	privateKey []byte
@@ -63,12 +96,13 @@ func newRootCertificate(ctx context.Context, serialNumber uint64, certificate []
 			PrivateKey:     rootCertificateKeys.privateKey,
 			KeyId:          keyId,
 			State:          string(state),
+			IssuingCa:      ca_id,
 		},
 	}
 	return l, nil
 }
 
-func AllocRootCertificate() *RootCertificate {
+func allocRootCertificate() *RootCertificate {
 	return &RootCertificate{
 		RootCertificate: &store.RootCertificate{},
 	}
@@ -81,6 +115,7 @@ func (r *RootCertificate) clone() *RootCertificate {
 	}
 }
 
+// Validate the RootCertificate. On success, return nil
 func (r *RootCertificate) ValidateNewRootCertificate(ctx context.Context) error {
 	const op = "servers.(RootCertificate).ValidateNewRootCertificate"
 	if &r.SerialNumber == nil {
