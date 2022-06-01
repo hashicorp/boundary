@@ -92,7 +92,7 @@ require github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f // this i
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220515130442-cac0b5ac133b
-	github.com/hashicorp/nodeenrollment v0.0.0-20220520141833-ad7323153acc
+	github.com/hashicorp/nodeenrollment v0.0.0-20220601055910-5718dde51fae
 )
 
 require (
@@ -166,7 +166,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v1.0.2 // indirect
-	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
