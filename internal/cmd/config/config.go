@@ -208,6 +208,7 @@ func initNameIfEmpty(name *string) error {
 		if *name, err = db.NewPublicId("w"); err != nil {
 			return err
 		}
+		*name = strings.ToLower(*name)
 	}
 	return nil
 }

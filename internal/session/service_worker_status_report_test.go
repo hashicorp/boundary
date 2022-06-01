@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,8 +32,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerStatus(
-		"test_worker1",
+	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
 		servers.WithAddress("127.0.0.1")))
 
 	repo, err := session.NewRepository(rw, rw, kms)

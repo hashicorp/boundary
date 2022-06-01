@@ -75,6 +75,7 @@ func TestRootCertStore(t *testing.T) {
 				NotValidAfter:  afterTimestamp,
 				KeyId:          testKey,
 				State:          "next",
+				IssuingCa:      ca_id,
 			},
 			wantErr: false,
 		},
@@ -98,6 +99,7 @@ func TestRootCertStore(t *testing.T) {
 				NotValidAfter:  afterTimestamp,
 				KeyId:          testKey,
 				State:          "current",
+				IssuingCa:      ca_id,
 			},
 			wantErr: false,
 		},
@@ -240,7 +242,12 @@ func TestDuplicateRootCert(t *testing.T) {
 	beforeTimestamp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-1 * time.Hour))}
 	afterTimestamp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(1 * time.Hour))}
 
-	// Make two current and next  root CAs
+	// Attempt to create a duplicate CA and expect a failure
+	certAuthority := newCertificateAuthority()
+	err = rw.Create(ctx, certAuthority)
+	require.Error(t, err)
+
+	// Make two current and next root certs
 	current1, err := newRootCertificate(ctx, rand.Uint64(), populateBytes(defaultLength), beforeTimestamp, afterTimestamp,
 		RootCertificateKeys{publicKey: populateBytes(defaultLength), privateKey: populateBytes(defaultLength)},
 		testKey, CurrentState)

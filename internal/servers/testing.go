@@ -3,6 +3,7 @@ package servers
 import (
 	"context"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,16 +90,13 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 
 	id, err := newWorkerId(context.Background())
 	require.NoError(t, err)
-	name := "test-worker-" + id
-	wStatus := NewWorkerStatus(id,
+	name := "test-worker-" + strings.ToLower(id)
+	wrk := NewWorkerForStatus(scope.Global.String(),
 		WithName(name),
 		WithAddress("127.0.0.1"))
-	_, _, err = serversRepo.UpsertWorkerStatus(context.Background(), wStatus)
+	wrk, err = serversRepo.UpsertWorkerStatus(context.Background(), wrk)
 	require.NoError(t, err)
-
-	wrk := NewWorker(scope.Global.String(), WithPublicId(id))
-	require.NoError(t, rw.LookupById(context.Background(), wrk))
-	wrk.ReportedStatus = wStatus
+	require.NotNil(t, wrk)
 
 	return wrk
 }

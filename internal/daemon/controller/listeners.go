@@ -17,9 +17,8 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/go-multierror"
-	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
-	"github.com/hashicorp/nodeenrollment/nodeauth"
+	"github.com/hashicorp/nodeenrollment/protocol"
 	"google.golang.org/grpc"
 )
 
@@ -106,18 +105,16 @@ func (c *Controller) configureForApi(ln *base.ServerListener) ([]func(), error) 
 }
 
 func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error) {
-	l, err := nodeauth.NewInterceptingListener(
-		ln.ClusterListener,
-		&tls.Config{
-			GetConfigForClient: c.validateWorkerTls,
-		},
-		nodeauth.MakeCurrentParametersFactory(
-			c.baseContext,
-			nodee.NopTransactionStorage(c.NodeeFileStorage),
-		),
-		nil,
-		nil,
-	)
+	const op = "controller.configureForCluster"
+	l, err := protocol.NewInterceptingListener(
+		&protocol.InterceptingListenerConfiguration{
+			Context:      c.baseContext,
+			Storage:      c.NodeeFileStorage,
+			BaseListener: ln.ClusterListener,
+			BaseTlsConfiguration: &tls.Config{
+				GetConfigForClient: c.validateWorkerTls,
+			},
+		})
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
 	}
@@ -145,9 +142,14 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 	pbs.RegisterSessionServiceServer(workerServer, workerService)
 
-	multihopService := handlers.NewMultihopServiceServer(
-		nodeauth.MakeCurrentParametersFactory(c.baseContext, nodee.NopTransactionStorage(c.NodeeFileStorage)),
+	multihopService, err := handlers.NewMultihopServiceServer(
+		c.NodeeFileStorage,
+		true,
+		nil,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
+	}
 	multihop.RegisterMultihopServiceServer(workerServer, multihopService)
 
 	metric.InitializeClusterCollectors(c.conf.PrometheusRegisterer, workerServer)

@@ -44,8 +44,6 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/nodeenrollment"
-	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -579,34 +577,6 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 func handleNodes(c *Controller) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
-		case http.MethodGet:
-			type vals struct {
-				WaitingNodes []string `json:"waiting_nodes"`
-			}
-			var err error
-			var currVals vals
-			waitingNodes := nodeenrollment.DefaultRegistrationCache.Items()
-			for keyId, val := range waitingNodes {
-				ni := val.(*types.NodeInformation)
-				if ni.Authorized {
-					continue
-				}
-				currVals.WaitingNodes = append(currVals.WaitingNodes, keyId)
-			}
-			ret, err := json.Marshal(currVals)
-			if err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				w.WriteHeader(500)
-				return
-			}
-			_, err = w.Write(ret)
-			if err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				w.WriteHeader(500)
-				return
-			}
-			w.WriteHeader(200)
-			return
 
 		case http.MethodPost:
 			body, err := io.ReadAll(req.Body)
@@ -617,7 +587,7 @@ func handleNodes(c *Controller) http.Handler {
 				return
 			}
 			type val struct {
-				KeyId string `json:"key_id"`
+				Request string `json:"request"`
 			}
 			var currVal val
 			if err := json.Unmarshal(body, &currVal); err != nil {
@@ -625,7 +595,7 @@ func handleNodes(c *Controller) http.Handler {
 				w.WriteHeader(500)
 				return
 			}
-			if err := c.AuthorizeNodeeWorker(currVal.KeyId); err != nil {
+			if err := c.AuthorizeNodeeWorker(currVal.Request); err != nil {
 				_, _ = w.Write([]byte(err.Error()))
 				w.WriteHeader(500)
 				return
