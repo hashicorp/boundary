@@ -3,8 +3,10 @@ package servers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
+	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -282,6 +284,90 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 	}
 
 	return nil
+}
+
+// UpdateWorker will update a worker in the repository and return the resulting
+// worker. fieldMaskPaths provides field_mask.proto paths for fields that should
+// be updated.  Fields will be set to NULL if the field is a zero value and
+// included in fieldMask. Name, Description, and Address are the only updatable
+// fields, if no updatable fields are included in the fieldMaskPaths, then an
+// error is returned.  If any paths besides those listed above are included in
+// the path then an error is returned.
+func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version uint32, fieldMaskPaths []string, opt ...Option) (*Worker, int, error) {
+	const (
+		nameField    = "name"
+		descField    = "description"
+		addressField = "address"
+	)
+	const op = "servers.(Repository).UpdateWorker"
+	switch {
+	case worker == nil:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
+	case worker.PublicId == "":
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	case version == 0:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "version is zero")
+	}
+
+	for _, f := range fieldMaskPaths {
+		switch {
+		case strings.EqualFold(nameField, f):
+		case strings.EqualFold(descField, f):
+		case strings.EqualFold(addressField, f):
+		default:
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+		}
+	}
+
+	var dbMask, nullFields []string
+	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+		map[string]interface{}{
+			nameField:    worker.Name,
+			descField:    worker.Description,
+			addressField: worker.Address,
+		},
+		fieldMaskPaths,
+		nil,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "no fields to update")
+	}
+
+	var rowsUpdated int
+	var ret *Worker
+	var err error
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			worker := worker.clone()
+			rowsUpdated, err = w.Update(ctx, worker, dbMask, nullFields, db.WithVersion(&version))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsUpdated > 1 {
+				// return err, which will result in a rollback of the update
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
+
+			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
+			if err := reader.LookupById(ctx, wAgg); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if ret, err = wAgg.toWorker(ctx); err != nil {
+				return err
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		if errors.IsUniqueError(err) {
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("worker with name %q already exists", worker.Name))
+		}
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", worker.GetPublicId())))
+	}
+	return ret, rowsUpdated, nil
 }
 
 // CreateWorker will create a worker in the repository and return the written
