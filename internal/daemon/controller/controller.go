@@ -314,6 +314,7 @@ func (c *Controller) Start() error {
 		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
 		return nil
 	}
+
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
 	var err error
