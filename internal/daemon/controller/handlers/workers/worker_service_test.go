@@ -128,7 +128,7 @@ func TestList(t *testing.T) {
 
 	var wantWorkers []*pb.Worker
 	for i := 0; i < 10; i++ {
-		w := servers.TestWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("worker %d", i)))
+		w := servers.TestWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("worker%d", i)))
 		wantWorkers = append(wantWorkers, &pb.Worker{
 			Id:                w.GetPublicId(),
 			ScopeId:           w.GetScopeId(),
@@ -166,6 +166,20 @@ func TestList(t *testing.T) {
 			},
 		},
 		{
+			name: "Filter to a single workers",
+			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/name"=="worker2"`},
+			res: &pbs.ListWorkersResponse{
+				Items: wantWorkers[2:3],
+			},
+		},
+		{
+			name: "Filter to a 2 workers",
+			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/name" matches "worker[23]"`},
+			res: &pbs.ListWorkersResponse{
+				Items: wantWorkers[2:4],
+			},
+		},
+		{
 			name: "Filter to no workers",
 			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/id"=="doesntmatch"`},
 			res:  &pbs.ListWorkersResponse{},
@@ -190,11 +204,8 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			sort.Slice(tc.res.Items, func(i, j int) bool {
-				return tc.res.Items[i].GetId() < tc.res.Items[j].GetId()
-			})
 			sort.Slice(got.Items, func(i, j int) bool {
-				return got.Items[i].GetId() < got.Items[j].GetId()
+				return got.Items[i].GetName().GetValue() < got.Items[j].GetName().GetValue()
 			})
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListWorkers(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
