@@ -97,6 +97,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
 	wId = wrk.GetPublicId()
+	if wId == "" {
+		return &pbs.StatusResponse{}, status.Error(codes.Internal, "Error acquiring worker Id.")
+	}
 	ws.updateTimes.Store(wId, time.Now())
 	controllers, err := serverRepo.ListControllers(ctx)
 	if err != nil {

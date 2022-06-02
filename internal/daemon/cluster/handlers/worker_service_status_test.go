@@ -156,14 +156,15 @@ func TestStatus(t *testing.T) {
 			},
 		},
 		{
-			name:    "No Name or Id",
+			name:    "No Name",
 			wantErr: true,
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
-					Address: worker1.CanonicalAddress(),
+					PublicId: worker1.GetPublicId(),
+					Address:  worker1.CanonicalAddress(),
 				},
 			},
-			wantErrMsg: status.Error(codes.InvalidArgument, "Neither the public id nor name are set in the request. At least one is required.").Error(),
+			wantErrMsg: status.Error(codes.InvalidArgument, "Name is not set in the request but is required.").Error(),
 		},
 		{
 			name:    "No Address",
