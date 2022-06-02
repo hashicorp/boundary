@@ -114,39 +114,47 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 	return w, nil
 }
 
-// ListWorkers is a passthrough to listWorkersWithReader that uses the repo's normal reader.
-func (r *Repository) ListWorkers(ctx context.Context, opt ...Option) ([]*Worker, error) {
-	return r.listWorkersWithReader(ctx, r.reader, opt...)
-}
-
-// listWorkersWithReader will return a listing of resources and honor the
-// WithLimit option. If WithLiveness is zero the default liveness value is used,
-// if it is negative then the last status update time is ignored. This method
-// accepts a reader, allowing it to be used within a transaction or without.
-func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*Worker, error) {
-	const op = "workers.listWorkersWithReader"
+// ListWorkers will return a listing of Workers and honor the WithLimit option.
+// If WithLiveness is zero the default liveness value is used, if it is negative
+// then the last status update time is ignored.
+// If WithLimit < 0, then unlimited results are returned. If WithLimit == 0, then
+// default limits are used for results.
+func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
+	const op = "servers.(Repository).ListWorkers"
 	switch {
-	case isNil(reader):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
+	case len(scopeIds) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope ids set")
 	}
+
 	opts := getOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
 		liveness = DefaultLiveness
 	}
 
-	var where string
+	var where []string
+	var whereArgs []interface{}
 	if liveness > 0 {
-		where = fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds()))
+		where = append(where, fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds())))
+	}
+	if len(scopeIds) > 0 {
+		where = append(where, "scope_id in (?)")
+		whereArgs = append(whereArgs, scopeIds)
+	}
+
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
 	}
 
 	var wAggs []*workerAggregate
-	if err := reader.SearchWhere(
+	if err := r.reader.SearchWhere(
 		ctx,
 		&wAggs,
-		where,
-		[]interface{}{},
-		db.WithLimit(opts.withLimit),
+		strings.Join(where, " and "),
+		whereArgs,
+		db.WithLimit(limit),
 	); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
 	}
