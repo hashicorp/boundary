@@ -256,7 +256,7 @@ func TestDelete(t *testing.T) {
 			},
 		},
 		{
-			name:    "Delete bad group id",
+			name:    "Delete bad worker id",
 			scopeId: w.GetScopeId(),
 			req: &pbs.DeleteWorkerRequest{
 				Id: servers.WorkerPrefix + "_doesntexis",
