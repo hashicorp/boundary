@@ -56,7 +56,7 @@ func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, op
 	return l, nil
 }
 
-func AllocWorkerAuth() *WorkerAuth {
+func allocWorkerAuth() *WorkerAuth {
 	return &WorkerAuth{
 		WorkerAuth: &store.WorkerAuth{},
 	}
@@ -132,15 +132,15 @@ func newWorkerCertBundle(ctx context.Context, certificatePublicKey []byte, worke
 
 	l := &WorkerCertBundle{
 		WorkerCertBundle: &store.WorkerCertBundle{
-			CertificatePublicKey: certificatePublicKey,
-			WorkerKeyIdentifier:  workerKeyIdentifier,
-			CertBundle:           certBundle,
+			RootCertificatePublicKey: certificatePublicKey,
+			WorkerKeyIdentifier:      workerKeyIdentifier,
+			CertBundle:               certBundle,
 		},
 	}
 	return l, nil
 }
 
-func AllocWorkerCertBundle() *WorkerCertBundle {
+func allocWorkerCertBundle() *WorkerCertBundle {
 	return &WorkerCertBundle{
 		WorkerCertBundle: &store.WorkerCertBundle{},
 	}
@@ -156,7 +156,7 @@ func (w *WorkerCertBundle) clone() *WorkerCertBundle {
 // Validate is called before storing a WorkerCertBundle in the db
 func (w *WorkerCertBundle) ValidateNewWorkerCertBundle(ctx context.Context) error {
 	const op = "servers.(WorkerAuth).validateNewWorkerCertBundle"
-	if w.CertificatePublicKey == nil {
+	if w.RootCertificatePublicKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing CertificatePublicKey")
 	}
 	if w.WorkerKeyIdentifier == "" {

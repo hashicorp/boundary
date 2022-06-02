@@ -26,7 +26,7 @@ func populateBytes(length int) []byte {
 	return fieldBytes
 }
 
-func TestKkmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) string {
+func TestKmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) string {
 	t.Helper()
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kmsCache := kms.TestKms(t, conn, wrapper)

@@ -4,11 +4,31 @@ import (
 	"context"
 	"strings"
 
+	"github.com/fatih/structs"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
+
+type workerAuthWorkerId struct {
+	WorkerId string
+}
+
+// AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib
+// This is intended for use in worker authorization; AuthorizeNode in the lib accepts the option WithState
+// so that the workerId is passed through to storage and associated with a WorkerAuth record
+func AttachWorkerIdToState(ctx context.Context, workerId string) (*structpb.Struct, error) {
+	const op = "servers.(Worker).AttachWorkerIdToState"
+	if workerId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing workerId")
+	}
+
+	workerMap := &workerAuthWorkerId{WorkerId: workerId}
+	stateOpt := structs.Map(workerMap)
+	return structpb.NewStruct(stateOpt)
+}
 
 // A Worker is a server that provides an address which can be used to proxy
 // session connections. It can be tagged with custom tags and is used when

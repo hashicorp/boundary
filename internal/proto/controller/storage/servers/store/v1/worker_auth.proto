@@ -40,11 +40,11 @@ message WorkerAuth {
 // WorkerCertBundle contains all fields related to a WorkerCertBundle resource
 message WorkerCertBundle {
   // The public key of the issuing root certificate
-  // @inject_tag: `gorm:"not_null"`
-  bytes certificate_public_key = 10;
+  // @inject_tag: `gorm:"primary_key"`
+  bytes root_certificate_public_key = 10;
 
   // The WorkerAuth worker_key_identifier this cert bundle record is for
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"primary_key"`
   string worker_key_identifier = 20;
 
   // CertBundle is the marshaled protobuf certificate bundle for a WorkerAuth
