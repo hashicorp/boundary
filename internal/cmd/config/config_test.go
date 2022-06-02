@@ -63,10 +63,10 @@ func TestDevController(t *testing.T) {
 				},
 				{
 					Type:    "aead",
-					Purpose: []string{"worker-storage"},
+					Purpose: []string{"worker-auth-storage"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
-						"key_id":    "global_worker-storage",
+						"key_id":    "global_worker-auth-storage",
 					},
 				},
 				{
@@ -95,7 +95,7 @@ func TestDevController(t *testing.T) {
 	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevWorkerStorageKey = actual.Seals[2].Config["key"]
+	exp.DevWorkerAuthStorageKey = actual.Seals[2].Config["key"]
 	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
 
 	assert.Equal(t, exp, actual)
@@ -301,7 +301,109 @@ func TestDevWorker(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDevCombined(t *testing.T) {
+	actual, err := DevCombined()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	truePointer := new(bool)
+	*truePointer = true
+	exp := &Config{
+		Eventing: event.DefaultEventerConfig(),
+		SharedConfig: &configutil.SharedConfig{
+			DisableMlock: true,
+			Listeners: []*listenerutil.ListenerConfig{
+				{
+					Type:               "tcp",
+					Purpose:            []string{"api"},
+					TLSDisable:         true,
+					CorsEnabled:        truePointer,
+					CorsAllowedOrigins: []string{"*"},
+				},
+				{
+					Type:    "tcp",
+					Purpose: []string{"cluster"},
+				},
+				{
+					Type:       "tcp",
+					Purpose:    []string{"ops"},
+					TLSDisable: true,
+				},
+				{
+					Type:    "tcp",
+					Purpose: []string{"proxy"},
+				},
+			},
+			Seals: []*configutil.KMS{
+				{
+					Type:    "aead",
+					Purpose: []string{"root"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_root",
+					},
+				},
+				{
+					Type:    "aead",
+					Purpose: []string{"worker-auth"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_worker-auth",
+					},
+				},
+				{
+					Type:    "aead",
+					Purpose: []string{"worker-auth-storage"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_worker-auth-storage",
+					},
+				},
+				{
+					Type:    "aead",
+					Purpose: []string{"recovery"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_recovery",
+					},
+				},
+			},
+		},
+		Controller: &Controller{
+			Name:        "dev-controller",
+			Description: "A default controller created in dev mode",
+		},
+		DevController: true,
+		Worker: &Worker{
+			Name:           "w_1234567890",
+			Description:    "A default worker created in dev mode",
+			Controllers:    []string{"127.0.0.1"},
+			ControllersRaw: []interface{}{"127.0.0.1"},
+			Tags: map[string][]string{
+				"type": {"dev", "local"},
+			},
+		},
+	}
+
+	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
+	exp.Listeners[1].RawConfig = actual.Listeners[1].RawConfig
+	exp.Listeners[2].RawConfig = actual.Listeners[2].RawConfig
+	exp.Listeners[3].RawConfig = actual.Listeners[3].RawConfig
+	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
+	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
+	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
+	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
+	exp.DevControllerKey = actual.Seals[0].Config["key"]
+	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
+	exp.DevWorkerAuthStorageKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
+	exp.Worker.TagsRaw = actual.Worker.TagsRaw
+	assert.Equal(t, exp, actual)
+}
+
 func TestDevWorkerCredentialStorageDir(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		devWorkerConfig string
@@ -350,12 +452,13 @@ func TestDevWorkerCredentialStorageDir(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parsed, err := Parse(devConfig + tt.devWorkerConfig)
 			require.NoError(t, err)
-			require.Equal(t, tt.storagePath, parsed.Worker.StoragePath)
+			require.Equal(t, tt.storagePath, parsed.Worker.AuthStoragePath)
 		})
 	}
 }
 
 func TestDevKeyGeneration(t *testing.T) {
+	t.Parallel()
 	dk := DevKeyGeneration()
 	numBytes := 32
 	require.Equal(t, numBytes, len(dk))

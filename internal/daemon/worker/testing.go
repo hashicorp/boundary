@@ -174,7 +174,7 @@ type TestWorkerOpts struct {
 	WorkerAuthKms wrapping.Wrapper
 
 	// The worker credential storage KMS to use, or one will be created
-	WorkerStorageKms wrapping.Wrapper
+	WorkerAuthStorageKms wrapping.Wrapper
 
 	// The name to use for the worker, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
@@ -263,8 +263,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	switch {
 	case opts.WorkerAuthKms != nil:
 		tw.b.WorkerAuthKms = opts.WorkerAuthKms
-	case opts.WorkerStorageKms != nil:
-		tw.b.WorkerStorageKms = opts.WorkerStorageKms
+	case opts.WorkerAuthStorageKms != nil:
+		tw.b.WorkerAuthStorageKms = opts.WorkerAuthStorageKms
 	default:
 		if err := tw.b.SetupKMSes(tw.b.Context, nil, opts.Config); err != nil {
 			t.Fatal(err)
@@ -314,7 +314,7 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
 		WorkerAuthKms:             tw.w.conf.WorkerAuthKms,
-		WorkerStorageKms:          tw.w.conf.WorkerStorageKms,
+		WorkerAuthStorageKms:      tw.w.conf.WorkerAuthStorageKms,
 		Name:                      opts.Name,
 		InitialControllers:        tw.ControllerAddrs(),
 		Logger:                    tw.w.conf.Logger,

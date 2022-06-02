@@ -53,7 +53,7 @@ func Test_New(t *testing.T) {
 						purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
 					}
 					purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()),
-						wrappingKms.KeyPurpose(KeyPurposeWorkerStorage.String()), wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
+						wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String()), wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
 
 					r := dbw.New(rw.UnderlyingDB())
 					w := dbw.New(rw.UnderlyingDB())

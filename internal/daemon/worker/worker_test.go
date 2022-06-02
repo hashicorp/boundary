@@ -134,13 +134,13 @@ func TestSetupWorkerCredentialStorage(t *testing.T) {
 	keyId, err := ts.KeyId(ctx)
 
 	tw := NewTestWorker(t, &TestWorkerOpts{
-		WorkerStorageKms: ts,
-		DisableAutoStart: true,
+		WorkerAuthStorageKms: ts,
+		DisableAutoStart:     true,
 	})
 
 	err = tw.Worker().Start()
 	require.NoError(err)
-	wKeyId, err := tw.Config().WorkerStorageKms.KeyId(ctx)
+	wKeyId, err := tw.Config().WorkerAuthStorageKms.KeyId(ctx)
 	require.NoError(err)
 	assert.Equal(keyId, wKeyId)
 

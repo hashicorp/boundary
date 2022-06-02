@@ -20,16 +20,16 @@ func TestExternalWrappers(t *testing.T) {
 	rootWrapper := db.TestWrapper(t)
 	recoveryWrapper := db.TestWrapper(t)
 	workerAuthWrapper := db.TestWrapper(t)
-	workerStorageWrapper := db.TestWrapper(t)
+	workerAuthStorageWrapper := db.TestWrapper(t)
 
 	k := TestKms(t, conn, rootWrapper)
-	err := k.AddExternalWrappers(testCtx, WithRecoveryWrapper(recoveryWrapper), WithWorkerAuthWrapper(workerAuthWrapper), WithWorkerStorageWrapper(workerStorageWrapper))
+	err := k.AddExternalWrappers(testCtx, WithRecoveryWrapper(recoveryWrapper), WithWorkerAuthWrapper(workerAuthWrapper), WithWorkerAuthStorageWrapper(workerAuthStorageWrapper))
 	require.NoError(err)
 
 	assert.Equal(rootWrapper, k.GetExternalWrappers(testCtx).Root())
 	assert.Equal(recoveryWrapper, k.GetExternalWrappers(testCtx).Recovery())
 	assert.Equal(workerAuthWrapper, k.GetExternalWrappers(testCtx).WorkerAuth())
-	assert.Equal(workerStorageWrapper, k.GetExternalWrappers(testCtx).WorkerStorage())
+	assert.Equal(workerAuthStorageWrapper, k.GetExternalWrappers(testCtx).WorkerAuthStorage())
 
 	err = k.AddExternalWrappers(testCtx, WithRootWrapper(&invalidWrapper{}))
 	assert.Error(err)
@@ -37,7 +37,7 @@ func TestExternalWrappers(t *testing.T) {
 	assert.Error(err)
 	err = k.AddExternalWrappers(testCtx, WithWorkerAuthWrapper(&invalidWrapper{}))
 	assert.Error(err)
-	err = k.AddExternalWrappers(testCtx, WithWorkerStorageWrapper(&invalidWrapper{}))
+	err = k.AddExternalWrappers(testCtx, WithWorkerAuthStorageWrapper(&invalidWrapper{}))
 	assert.Error(err)
 }
 

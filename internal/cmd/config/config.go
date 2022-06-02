@@ -58,10 +58,10 @@ kms "aead" {
 }
 
 kms "aead" {
-    purpose = "worker-storage"
+    purpose = "worker-auth-storage"
 	aead_type = "aes-gcm"
 	key = "%s"
-	key_id = "global_worker-storage"
+	key_id = "global_worker-auth-storage"
 }
 
 kms "aead" {
@@ -112,12 +112,12 @@ type Config struct {
 	Controller *Controller `hcl:"controller"`
 
 	// Dev-related options
-	DevController       bool   `hcl:"-"`
-	DevUiPassthroughDir string `hcl:"-"`
-	DevControllerKey    string `hcl:"-"`
-	DevWorkerAuthKey    string `hcl:"-"`
-	DevWorkerStorageKey string `hcl:"-"`
-	DevRecoveryKey      string `hcl:"-"`
+	DevController           bool   `hcl:"-"`
+	DevUiPassthroughDir     string `hcl:"-"`
+	DevControllerKey        string `hcl:"-"`
+	DevWorkerAuthKey        string `hcl:"-"`
+	DevWorkerAuthStorageKey string `hcl:"-"`
+	DevRecoveryKey          string `hcl:"-"`
 
 	// Eventing configuration for the controller
 	Eventing *event.EventerConfig `hcl:"events"`
@@ -197,7 +197,7 @@ type Worker struct {
 	StatusGracePeriodDuration time.Duration `hcl:"-"`
 
 	// StoragePath represents the location a pki worker stores its node credentials, if set.
-	StoragePath string `hcl:"storage_path"`
+	AuthStoragePath string `hcl:"storage_path"`
 }
 
 func (w *Worker) InitNameIfEmpty() (string, error) {
@@ -263,10 +263,10 @@ func DevKeyGeneration() string {
 func DevController() (*Config, error) {
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
-	workerStorageKey := DevKeyGeneration()
+	workerAuthStorageKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
 
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, workerStorageKey, recoveryKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, workerAuthStorageKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -274,7 +274,7 @@ func DevController() (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
-	parsed.DevWorkerStorageKey = workerStorageKey
+	parsed.DevWorkerAuthStorageKey = workerAuthStorageKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
@@ -282,9 +282,9 @@ func DevController() (*Config, error) {
 func DevCombined() (*Config, error) {
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
-	workerStorageKey := DevKeyGeneration()
+	workerAuthStorageKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, workerStorageKey, recoveryKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, workerAuthStorageKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -292,7 +292,7 @@ func DevCombined() (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
-	parsed.DevWorkerStorageKey = workerStorageKey
+	parsed.DevWorkerAuthStorageKey = workerAuthStorageKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }

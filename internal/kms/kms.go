@@ -103,11 +103,6 @@ func (k *Kms) AddExternalWrappers(ctx context.Context, opt ...Option) error {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add worker auth wrapper"))
 		}
 	}
-	if opts.withWorkerStorageWrapper != nil {
-		if err := k.underlying.AddExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerStorage.String()), opts.withWorkerStorageWrapper); err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add worker storage wrapper"))
-		}
-	}
 	if opts.withRecoveryWrapper != nil {
 		if err := k.underlying.AddExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRecovery.String()), opts.withRecoveryWrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add recovery wrapper"))
@@ -146,8 +141,8 @@ func (k *Kms) GetExternalWrappers(ctx context.Context) *ExternalWrappers {
 	if workerAuth, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String())); err == nil {
 		ret.workerAuth = workerAuth
 	}
-	if workerStorage, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerStorage.String())); err == nil {
-		ret.workerStorage = workerStorage
+	if workerAuthStorage, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String())); err == nil {
+		ret.workerAuthStorage = workerAuthStorage
 	}
 	if recovery, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRecovery.String())); err == nil {
 		ret.recovery = recovery
@@ -266,7 +261,7 @@ func stdNewKmsPurposes() []wrappingKms.KeyPurpose {
 	for _, p := range ValidDekPurposes() {
 		purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
 	}
-	purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), wrappingKms.KeyPurpose(KeyPurposeWorkerStorage.String()),
+	purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String()),
 		wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
 	return purposes
 }

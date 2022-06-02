@@ -63,7 +63,7 @@ func TestTestWorkerLookupSessionMissing(t *testing.T) {
 	require.Equal(TestSessionInfo{}, actual)
 }
 
-func TestTestWorker_WorkerStorageKms(t *testing.T) {
+func TestTestWorker_WorkerAuthStorageKms(t *testing.T) {
 	tests := []struct {
 		name    string
 		wrapper wrapping.Wrapper
@@ -81,9 +81,9 @@ func TestTestWorker_WorkerStorageKms(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 			tw := NewTestWorker(t, &TestWorkerOpts{
-				WorkerStorageKms: tt.wrapper,
+				WorkerAuthStorageKms: tt.wrapper,
 			})
-			require.Equal(tt.wrapper, tw.Config().WorkerStorageKms)
+			require.Equal(tt.wrapper, tw.Config().WorkerAuthStorageKms)
 		})
 	}
 }

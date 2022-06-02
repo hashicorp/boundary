@@ -82,12 +82,12 @@ type Server struct {
 	StderrLock *sync.Mutex
 	Eventer    *event.Eventer
 
-	RootKms            wrapping.Wrapper
-	WorkerAuthKms      wrapping.Wrapper
-	WorkerStorageKms   wrapping.Wrapper
-	RecoveryKms        wrapping.Wrapper
-	Kms                *kms.Kms
-	SecureRandomReader io.Reader
+	RootKms              wrapping.Wrapper
+	WorkerAuthKms        wrapping.Wrapper
+	WorkerAuthStorageKms wrapping.Wrapper
+	RecoveryKms          wrapping.Wrapper
+	Kms                  *kms.Kms
+	SecureRandomReader   io.Reader
 
 	PrometheusRegisterer prometheus.Registerer
 
@@ -534,7 +534,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				if opts.withSkipWorkerAuthKmsInstantiation {
 					continue
 				}
-			case globals.KmsPurposeRoot, globals.KmsPurposeConfig, globals.KmsPurposeWorkerStorage:
+			case globals.KmsPurposeRoot, globals.KmsPurposeConfig, globals.KmsPurposeWorkerAuthStorage:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
@@ -598,8 +598,8 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				b.RootKms = wrapper
 			case globals.KmsPurposeWorkerAuth:
 				b.WorkerAuthKms = wrapper
-			case globals.KmsPurposeWorkerStorage:
-				b.WorkerStorageKms = wrapper
+			case globals.KmsPurposeWorkerAuthStorage:
+				b.WorkerAuthStorageKms = wrapper
 			case globals.KmsPurposeRecovery:
 				b.RecoveryKms = wrapper
 			case globals.KmsPurposeConfig:

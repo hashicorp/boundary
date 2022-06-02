@@ -58,7 +58,7 @@ func TestServer_SetupKMSes(t *testing.T) {
 			name: "multi purpose",
 			purposes: []string{
 				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth,
-				globals.KmsPurposeWorkerStorage, globals.KmsPurposeConfig,
+				globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeConfig,
 			},
 		},
 	}
@@ -92,8 +92,8 @@ func TestServer_SetupKMSes(t *testing.T) {
 					assert.NotNil(s.RootKms)
 				case globals.KmsPurposeWorkerAuth:
 					assert.NotNil(s.WorkerAuthKms)
-				case globals.KmsPurposeWorkerStorage:
-					assert.NotNil(s.WorkerStorageKms)
+				case globals.KmsPurposeWorkerAuthStorage:
+					assert.NotNil(s.WorkerAuthStorageKms)
 				case globals.KmsPurposeRecovery:
 					assert.NotNil(s.RecoveryKms)
 				}

@@ -184,12 +184,12 @@ func (w *Worker) Start() error {
 
 	var err error
 	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
-		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.StoragePath))
+		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
 	if err != nil {
 		return err
 	}
 
-	nodeCreds, err := types.NewNodeCredentials(w.baseContext, w.NodeeFileStorage, nodeenrollment.WithWrapper(w.conf.WorkerStorageKms))
+	nodeCreds, err := types.NewNodeCredentials(w.baseContext, w.NodeeFileStorage, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
 	if err != nil {
 		return fmt.Errorf("error generating new node creds: %w", err)
 	}
