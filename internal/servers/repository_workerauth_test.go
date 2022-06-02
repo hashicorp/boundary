@@ -6,20 +6,21 @@ import (
 	"testing"
 
 	"github.com/fatih/structs"
-	"github.com/mitchellh/mapstructure"
-	"google.golang.org/protobuf/types/known/structpb"
-
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/curve25519"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Test RootCertificate storage
@@ -233,4 +234,175 @@ func TestUnsupportedMessages(t *testing.T) {
 
 	err = storage.Remove(ctx, &types.NodeCredentials{Id: "bogus"})
 	require.Error(err)
+}
+
+func TestStoreNodeInformationTx(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	testWrapper := db.TestWrapper(t)
+	testKeyId, err := testWrapper.KeyId(testCtx)
+	require.NoError(t, err)
+
+	kmsCache := kms.TestKms(t, conn, testWrapper)
+	// Ensures the global scope contains a valid root key
+	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+	require.NoError(t, err)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	testRootStorage, err := NewRepositoryStorage(testCtx, rw, rw, kmsCache)
+	require.NoError(t, err)
+
+	_, err = rotation.RotateRootCertificates(testCtx, testRootStorage)
+	require.NoError(t, err)
+
+	// Create struct to pass in with workerId that will be passed along to
+	// storage
+	testWorker := TestWorker(t, conn, testWrapper)
+
+	testState, err := AttachWorkerIdToState(testCtx, testWorker.PublicId)
+	require.NoError(t, err)
+
+	testNodeInfoFn := func() *types.NodeInformation {
+		// This happens on the worker
+		fileStorage, err := file.NewFileStorage(testCtx)
+		require.NoError(t, err)
+		nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+		require.NoError(t, err)
+
+		nodePubKey, err := curve25519.X25519(nodeCreds.EncryptionPrivateKeyBytes, curve25519.Basepoint)
+		require.NoError(t, err)
+		// Add in node information to storage so we have a key to use
+		nodeInfo := &types.NodeInformation{
+			Id:                              testKeyId,
+			CertificatePublicKeyPkix:        nodeCreds.CertificatePublicKeyPkix,
+			CertificatePublicKeyType:        nodeCreds.CertificatePrivateKeyType,
+			EncryptionPublicKeyBytes:        nodePubKey,
+			EncryptionPublicKeyType:         nodeCreds.EncryptionPrivateKeyType,
+			ServerEncryptionPrivateKeyBytes: []byte("whatever"),
+			RegistrationNonce:               nodeCreds.RegistrationNonce,
+			State:                           testState,
+		}
+		return nodeInfo
+	}
+
+	tests := []struct {
+		name            string
+		writer          db.Writer
+		databaseWrapper wrapping.Wrapper
+		node            *types.NodeInformation
+		wantErr         bool
+		wantErrIs       errors.Code
+		wantErrContains string
+	}{
+		{
+			name:            "missing-writer",
+			databaseWrapper: databaseWrapper,
+			node:            testNodeInfoFn(),
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "missing writer",
+		},
+		{
+			name:            "missing-wrapper",
+			writer:          rw,
+			node:            testNodeInfoFn(),
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "missing database wrapper",
+		},
+		{
+			name:            "missing-node",
+			writer:          rw,
+			databaseWrapper: databaseWrapper,
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "missing NodeInformation",
+		},
+		{
+			name:            "key-id-error",
+			writer:          rw,
+			databaseWrapper: &mockTestWrapper{err: errors.New(testCtx, errors.Internal, "testing", "key-id-error")},
+			node:            testNodeInfoFn(),
+			wantErr:         true,
+			wantErrIs:       errors.Internal,
+			wantErrContains: "key-id-error",
+		},
+		{
+			name:   "encrypt-error",
+			writer: rw,
+			databaseWrapper: &mockTestWrapper{
+				encryptError: true,
+				err:          errors.New(testCtx, errors.Encrypt, "testing", "encrypt-error"),
+			},
+			node:            testNodeInfoFn(),
+			wantErr:         true,
+			wantErrIs:       errors.Encrypt,
+			wantErrContains: "encrypt-error",
+		},
+		{
+			name:            "create-error",
+			writer:          &db.Db{},
+			databaseWrapper: databaseWrapper,
+			node:            testNodeInfoFn(),
+			wantErr:         true,
+			wantErrContains: "db.Create",
+		},
+		{
+			name:            "success",
+			writer:          rw,
+			databaseWrapper: databaseWrapper,
+			node:            testNodeInfoFn(),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			err := StoreNodeInformationTx(testCtx, tc.writer, tc.databaseWrapper, tc.node)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != errors.Unknown {
+					assert.True(errors.Match(errors.T(tc.wantErrIs), err))
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+		})
+	}
+}
+
+type mockTestWrapper struct {
+	wrapping.Wrapper
+	decryptError bool
+	encryptError bool
+	err          error
+	keyId        string
+}
+
+func (m *mockTestWrapper) KeyId(context.Context) (string, error) {
+	if m.err != nil {
+		return "", m.err
+	}
+	return m.keyId, nil
+}
+
+func (m *mockTestWrapper) Encrypt(ctx context.Context, plaintext []byte, options ...wrapping.Option) (*wrapping.BlobInfo, error) {
+	if m.err != nil && m.encryptError {
+		return nil, m.err
+	}
+	panic("todo")
+}
+
+func (m *mockTestWrapper) Decrypt(ctx context.Context, ciphertext *wrapping.BlobInfo, options ...wrapping.Option) ([]byte, error) {
+	if m.err != nil && m.decryptError {
+		return nil, m.err
+	}
+	return []byte("decrypted"), nil
 }

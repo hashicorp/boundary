@@ -74,8 +74,14 @@ func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodee.Messa
 	// Determine type of message to store
 	switch t := msg.(type) {
 	case *types.NodeInformation:
-		err := r.storeNodeInformation(ctx, t)
+		// Encrypt the private key
+		databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
 		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(read db.Reader, w db.Writer) error {
+			return StoreNodeInformationTx(ctx, w, databaseWrapper, t)
+		}); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	case *types.RootCertificates:
@@ -90,11 +96,26 @@ func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodee.Messa
 	return nil
 }
 
+// StoreNodeInformationTx stores NodeInformation.  No options are currently
+// supported.
+//
+// This function encapsulates all the work required within a dbw.TxHandler and
+// allows this capability to be shared with other repositories or just called
+// within a transaction.  To be clear, this repository function doesn't include
+// its own transaction and is intended to be used within a transaction provided
+// by the caller.
+//
 // Node information is stored in two parts:
 // * the workerAuth record is stored with a reference to a worker
 // * certificate bundles are stored with a reference to the workerAuth record and issuing root certificate
-func (r *WorkerAuthRepositoryStorage) storeNodeInformation(ctx context.Context, node *types.NodeInformation) error {
+func StoreNodeInformationTx(ctx context.Context, writer db.Writer, databaseWrapper wrapping.Wrapper, node *types.NodeInformation, _ ...Option) error {
 	const op = "servers.(WorkerAuthRepositoryStorage).storeNodeInformation"
+	if isNil(writer) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing writer")
+	}
+	if isNil(databaseWrapper) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing database wrapper")
+	}
 	if node == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformation")
 	}
@@ -104,11 +125,7 @@ func (r *WorkerAuthRepositoryStorage) storeNodeInformation(ctx context.Context, 
 	nodeAuth.WorkerEncryptionPubKey = node.EncryptionPublicKeyBytes
 	nodeAuth.WorkerSigningPubKey = node.CertificatePublicKeyPkix
 
-	// Encrypt the private key
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
+	var err error
 	nodeAuth.KeyId, err = databaseWrapper.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
@@ -134,30 +151,25 @@ func (r *WorkerAuthRepositoryStorage) storeNodeInformation(ctx context.Context, 
 		return errors.Wrap(ctx, err, op)
 	}
 
-	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(read db.Reader, w db.Writer) error {
-		// Store WorkerAuth
-		storeNodeAuth := nodeAuth.clone()
-		if err := w.Create(ctx, &storeNodeAuth); err != nil {
+	// Store WorkerAuth
+	if err := writer.Create(ctx, &nodeAuth); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	// Then store cert bundles associated with this WorkerAuth
+	for _, c := range node.CertificateBundles {
+		if err := storeWorkerCertBundle(ctx, c, nodeAuth.WorkerKeyIdentifier, writer); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		// Then store cert bundles associated with this WorkerAuth
-		for _, c := range node.CertificateBundles {
-			if err := r.storeWorkerCertBundle(ctx, c, nodeAuth.WorkerKeyIdentifier, w); err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-		}
-		return nil
-	},
-	)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
 	}
 
 	return nil
 }
 
-func (r *WorkerAuthRepositoryStorage) storeWorkerCertBundle(ctx context.Context, bundle *types.CertificateBundle,
-	workerKeyIdentifier string, writer db.Writer,
+func storeWorkerCertBundle(
+	ctx context.Context,
+	bundle *types.CertificateBundle,
+	workerKeyIdentifier string,
+	writer db.Writer,
 ) error {
 	const op = "servers.(WorkerAuthRepositoryStorage).storeWorkerCertBundle"
 	if bundle == nil {
