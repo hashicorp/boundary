@@ -102,7 +102,6 @@ var (
 	uInt32ValueName = (&wrapperspb.UInt32Value{}).ProtoReflect().Descriptor().FullName()
 	int32ValueName  = (&wrapperspb.Int32Value{}).ProtoReflect().Descriptor().FullName()
 	structValueName = (&_struct.Struct{}).ProtoReflect().Descriptor().FullName()
-	mapValueName    = (&_struct.ListValue{}).ProtoReflect().Descriptor().FullName()
 	timestampName   = (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().FullName()
 	valueName       = (&_struct.Value{}).ProtoReflect().Descriptor().FullName()
 )

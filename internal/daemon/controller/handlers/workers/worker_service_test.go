@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
@@ -38,7 +40,10 @@ func TestGet(t *testing.T) {
 		return servers.NewRepository(rw, rw, kms)
 	}
 
-	worker := servers.TestWorker(t, conn, wrap)
+	worker := servers.TestWorker(t, conn, wrap,
+		servers.WithName("test worker names"),
+		servers.WithDescription("test worker description"),
+		servers.WithAddress("test worker address"))
 
 	wantWorker := &pb.Worker{
 		Id:                worker.GetPublicId(),
@@ -47,6 +52,9 @@ func TestGet(t *testing.T) {
 		CreatedTime:       worker.CreateTime.GetTimestamp(),
 		UpdatedTime:       worker.UpdateTime.GetTimestamp(),
 		Version:           worker.GetVersion(),
+		Name:              wrapperspb.String(worker.GetName()),
+		Description:       wrapperspb.String(worker.GetDescription()),
+		Address:           wrapperspb.String(worker.GetAddress()),
 		AuthorizedActions: testAuthorizedActions,
 		CanonicalAddress:  worker.CanonicalAddress(),
 		LastStatusTime:    worker.GetLastStatusTime().GetTimestamp(),
@@ -120,7 +128,7 @@ func TestList(t *testing.T) {
 
 	var wantWorkers []*pb.Worker
 	for i := 0; i < 10; i++ {
-		w := servers.TestWorker(t, conn, wrap)
+		w := servers.TestWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("worker %d", i)))
 		wantWorkers = append(wantWorkers, &pb.Worker{
 			Id:                w.GetPublicId(),
 			ScopeId:           w.GetScopeId(),
@@ -128,6 +136,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       w.CreateTime.GetTimestamp(),
 			UpdatedTime:       w.UpdateTime.GetTimestamp(),
 			Version:           w.GetVersion(),
+			Name:              wrapperspb.String(w.GetName()),
 			AuthorizedActions: testAuthorizedActions,
 			CanonicalAddress:  w.CanonicalAddress(),
 			LastStatusTime:    w.GetLastStatusTime().GetTimestamp(),

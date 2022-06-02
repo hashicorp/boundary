@@ -81,21 +81,34 @@ func TestWorkerAuth(ctx context.Context, t *testing.T, conn *db.DB, worker *Work
 }
 
 // TestWorker inserts a worker into the db to satisfy foreign key constraints.
+// The worker provided fields are auto generated. WithName, WithDescription,
+// and WithAddress are applied to the resource name, description and address if
+// present.
 func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	serversRepo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
+	ctx := context.Background()
 
-	id, err := newWorkerId(context.Background())
+	namePart, err := newWorkerId(context.Background())
 	require.NoError(t, err)
-	name := "test-worker-" + strings.ToLower(id)
+	name := "test-worker-" + strings.ToLower(namePart)
 	wrk := NewWorkerForStatus(scope.Global.String(),
 		WithName(name),
 		WithAddress("127.0.0.1"))
 	wrk, err = serversRepo.UpsertWorkerStatus(context.Background(), wrk)
 	require.NoError(t, err)
+	require.NotNil(t, wrk)
+	opts := getOpts(opt...)
+
+	wrk.Name = opts.withName
+	wrk.Description = opts.withDescription
+	wrk.Address = opts.withAddress
+	wrk, n, err := serversRepo.UpdateWorker(ctx, wrk, wrk.Version, []string{"name", "description", "address"})
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
 	require.NotNil(t, wrk)
 
 	return wrk
