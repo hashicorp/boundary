@@ -138,7 +138,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 	return &pbs.ListWorkersResponse{Items: finalItems}, nil
 }
 
-// GetWorkers implements the interface pbs.WorkerServiceServer.
+// GetWorker implements the interface pbs.WorkerServiceServer.
 func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs.GetWorkerResponse, error) {
 	const op = "workers.(Service).GetWorker"
 
@@ -176,6 +176,22 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 	return &pbs.GetWorkerResponse{Item: item}, nil
 }
 
+// DeleteWorker implements the interface pbs.WorkerServiceServer.
+func (s Service) DeleteWorker(ctx context.Context, req *pbs.DeleteWorkerRequest) (*pbs.DeleteWorkerResponse, error) {
+	if err := validateDeleteRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	_, err := s.deleteFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*servers.Worker, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -204,6 +220,22 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*servers.Worker, e
 		return nil, handlers.NotFoundErrorf("Worker %q doesn't exist.", id)
 	}
 	return w, nil
+}
+
+func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "workers.(Service).deleteFromRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return false, err
+	}
+	rows, err := repo.DeleteWorker(ctx, id)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return false, nil
+		}
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete worker"))
+	}
+	return rows > 0, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -355,4 +387,8 @@ func validateListRequest(req *pbs.ListWorkersRequest) error {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
+}
+
+func validateDeleteRequest(req *pbs.DeleteWorkerRequest) error {
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, servers.WorkerPrefix)
 }

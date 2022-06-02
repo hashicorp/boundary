@@ -221,3 +221,66 @@ func TestList(t *testing.T) {
 		})
 	}
 }
+
+func TestDelete(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrap)
+	repoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, kms)
+	}
+	ctx := context.Background()
+
+	s, err := NewService(ctx, repoFn, iamRepoFn)
+	require.NoError(t, err, "Error when getting new worker service.")
+
+	w := servers.TestWorker(t, conn, wrap)
+
+	cases := []struct {
+		name    string
+		scopeId string
+		req     *pbs.DeleteWorkerRequest
+		res     *pbs.DeleteWorkerResponse
+		err     error
+	}{
+		{
+			name:    "Delete an Existing Worker",
+			scopeId: w.GetScopeId(),
+			req: &pbs.DeleteWorkerRequest{
+				Id: w.GetPublicId(),
+			},
+		},
+		{
+			name:    "Delete bad group id",
+			scopeId: w.GetScopeId(),
+			req: &pbs.DeleteWorkerRequest{
+				Id: servers.WorkerPrefix + "_doesntexis",
+			},
+			err: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name:    "Bad Worker Id formatting",
+			scopeId: w.GetScopeId(),
+			req: &pbs.DeleteWorkerRequest{
+				Id: "bad_format",
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, gErr := s.DeleteWorker(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "DeleteWorker(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+			assert.EqualValuesf(tc.res, got, "DeleteWorker(%+v) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
