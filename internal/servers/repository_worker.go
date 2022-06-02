@@ -117,8 +117,10 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 // ListWorkers will return a listing of Workers and honor the WithLimit option.
 // If WithLiveness is zero the default liveness value is used, if it is negative
 // then the last status update time is ignored.
+// If WithLimit < 0, then unlimited results are returned. If WithLimit == 0, then
+// default limits are used for results.
 func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
-	const op = "workers.(Repository).ListWorkers"
+	const op = "servers.(Repository).ListWorkers"
 	switch {
 	case len(scopeIds) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope ids set")
