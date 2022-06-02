@@ -103,13 +103,26 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	require.NotNil(t, wrk)
 	opts := getOpts(opt...)
 
-	wrk.Name = opts.withName
-	wrk.Description = opts.withDescription
-	wrk.Address = opts.withAddress
-	wrk, n, err := serversRepo.UpdateWorker(ctx, wrk, wrk.Version, []string{"name", "description", "address"})
-	require.NoError(t, err)
-	require.Equal(t, 1, n)
-	require.NotNil(t, wrk)
+	var mask []string
+	if opts.withName != "" {
+		wrk.Name = opts.withName
+		mask = append(mask, "name")
+	}
+	if opts.withDescription != "" {
+		wrk.Description = opts.withDescription
+		mask = append(mask, "description")
+	}
+	if opts.withAddress != "" {
+		wrk.Address = opts.withAddress
+		mask = append(mask, "address")
+	}
+	if len(mask) > 0 {
+		var n int
+		wrk, n, err = serversRepo.UpdateWorker(ctx, wrk, wrk.Version, mask)
+		require.NoError(t, err)
+		require.Equal(t, 1, n)
+		require.NotNil(t, wrk)
+	}
 
 	return wrk
 }
