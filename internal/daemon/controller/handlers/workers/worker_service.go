@@ -237,6 +237,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 }
 
 func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*pb.Worker, error) {
+	const op = "workers.toProto"
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building worker proto")
@@ -284,14 +285,14 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 		var err error
 		out.Tags, err = tagsToMapProto(in.CanonicalTags())
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing canonical tags proto"))
 		}
 	}
 	if outputFields.Has(globals.TagsField) && len(in.GetApiTags()) > 0 {
 		var err error
 		out.Tags, err = tagsToMapProto(in.GetApiTags())
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing api tags proto"))
 		}
 	}
 	if outputFields.Has(globals.ConfigurationField) {
@@ -304,7 +305,7 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 			var err error
 			out.GetWorkerConfig().Tags, err = tagsToMapProto(in.GetConfigTags())
 			if err != nil {
-				return nil, err
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
 			}
 		}
 		out.GetWorkerConfig().Address = in.GetWorkerReportedAddress()
