@@ -423,7 +423,7 @@ func TestDevWorkerCredentialStorageDir(t *testing.T) {
 				tags {
 					type = ["dev", "local"]
 				}
-				storage_path = ".."
+				auth_storage_path = ".."
 			}
 			`,
 			storagePath: "..",
@@ -442,7 +442,7 @@ func TestDevWorkerCredentialStorageDir(t *testing.T) {
 				tags {
 					type = ["dev", "local"]
 				}
-				storage_path = "nonexistent_dir/here"
+				auth_storage_path = "nonexistent_dir/here"
 			}
 			`,
 			storagePath: "nonexistent_dir/here",

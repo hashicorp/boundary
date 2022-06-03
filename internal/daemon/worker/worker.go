@@ -184,13 +184,6 @@ func (w *Worker) Start() error {
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.controllerResolver.Store(controllerResolver)
 
-	var err error
-	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
-		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
-	if err != nil {
-		return err
-	}
-
 	if err := w.startListeners(); err != nil {
 		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
