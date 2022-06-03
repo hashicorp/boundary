@@ -162,7 +162,7 @@ func New(conf *Config) (*Worker, error) {
 	}
 
 	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
-		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.StoragePath))
+		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
 	if err != nil {
 		return nil, err
 	}
