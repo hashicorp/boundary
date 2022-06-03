@@ -37,15 +37,12 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
-	"github.com/hashicorp/nodeenrollment"
-	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type Controller struct {
@@ -419,36 +416,25 @@ func (c *Controller) AuthorizeNodeeWorker(request string) error {
 	if err != nil {
 		return fmt.Errorf("(%s) error base58-decoding fetch node creds next proto value: %w", op, err)
 	}
-
-	serversRepo, err := c.ServersRepoFn()
-	if err != nil {
-		return fmt.Errorf("(%s) error fetching servers repo: %w", op, err)
-	}
-	worker, err := serversRepo.CreateWorker(c.baseContext, &servers.Worker{
-		Worker: &store.Worker{
-			ScopeId: scope.Global.String(),
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("(%s) error creating worker: %w", op, err)
-	}
-
-	workerAuthStorage, err := c.WorkerAuthRepoStorageFn()
-	if err != nil {
-		return fmt.Errorf("(%s) error fetching worker auth storage: %w", op, err)
-	}
-
 	// Decode the proto into the request
 	req := new(types.FetchNodeCredentialsRequest)
 	if err := proto.Unmarshal(reqBytes, req); err != nil {
 		return fmt.Errorf("(%s) error unmarshaling common name value: %w", op, err)
 	}
-	state, err := structpb.NewStruct(map[string]any{
-		"worker_id": worker.PublicId,
-	})
+
+	serversRepo, err := c.ServersRepoFn()
 	if err != nil {
-		return fmt.Errorf("(%s) error generating state struct: %w", op, err)
+		return fmt.Errorf("(%s) error fetching servers repo: %w", op, err)
 	}
-	_, err = registration.AuthorizeNode(c.baseContext, workerAuthStorage, req, nodeenrollment.WithState(state))
+
+	_, err = serversRepo.CreateWorker(c.baseContext, &servers.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, servers.WithFetchNodeCredentialsRequest(req))
+	if err != nil {
+		return fmt.Errorf("(%s) error creating worker: %w", op, err)
+	}
+
 	return err
 }
