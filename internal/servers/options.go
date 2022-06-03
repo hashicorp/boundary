@@ -3,6 +3,8 @@ package servers
 import (
 	"context"
 	"time"
+
+	"github.com/hashicorp/nodeenrollment/types"
 )
 
 // getOpts - iterate the inbound Options and return a struct
@@ -20,6 +22,7 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withName                           string
+	withPublicId                       string
 	withDescription                    string
 	withAddress                        string
 	withLimit                          int
@@ -32,6 +35,7 @@ type options struct {
 	withKeyId                          string
 	withNonce                          []byte
 	withNewIdFunc                      func(context.Context) (string, error)
+	withFetchNodeCredentialsRequest    *types.FetchNodeCredentialsRequest
 }
 
 func getDefaultOptions() options {
@@ -51,6 +55,13 @@ func WithDescription(desc string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithPublicId provides an optional public Id used for skipping one db call.
+func WithPublicId(id string) Option {
+	return func(o *options) {
+		o.withPublicId = id
 	}
 }
 
@@ -130,5 +141,13 @@ func WithNonce(nonce []byte) Option {
 func WithNewIdFunc(fn func(context.Context) (string, error)) Option {
 	return func(o *options) {
 		o.withNewIdFunc = fn
+	}
+}
+
+// WithFetchNodeCredentialsRequest allows an optional
+// FetchNodeCredentialsRequest to be specified.
+func WithFetchNodeCredentialsRequest(req *types.FetchNodeCredentialsRequest) Option {
+	return func(o *options) {
+		o.withFetchNodeCredentialsRequest = req
 	}
 }

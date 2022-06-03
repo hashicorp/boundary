@@ -346,12 +346,24 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			wantErrContains: "encrypt-error",
 		},
 		{
-			name:            "create-error",
+			name:            "create-error-no-db",
 			writer:          &db.Db{},
 			databaseWrapper: databaseWrapper,
 			node:            testNodeInfoFn(),
 			wantErr:         true,
 			wantErrContains: "db.Create",
+		},
+		{
+			name:            "create-error-validation",
+			writer:          rw,
+			databaseWrapper: databaseWrapper,
+			node: func() *types.NodeInformation {
+				ni := testNodeInfoFn()
+				ni.State = nil
+				return ni
+			}(),
+			wantErr:         true,
+			wantErrContains: "missing WorkerId",
 		},
 		{
 			name:            "success",

@@ -5579,6 +5579,14 @@
           "$ref": "#/definitions/controller.api.resources.workers.v1.WorkerConfig",
           "description": "Output only. The set of information the worker daemon has reported about\nitself.",
           "readOnly": true
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for the requester.",
+          "readOnly": true
         }
       },
       "title": "Worker contains all fields related to a Worker resource"
@@ -5594,11 +5602,6 @@
         "name": {
           "type": "string",
           "description": "Output only.  The name the worker daemon reports itself having.",
-          "readOnly": true
-        },
-        "version": {
-          "type": "string",
-          "description": "Output only.  The boundary version the worker has reported itself as running.",
           "readOnly": true
         },
         "tags": {

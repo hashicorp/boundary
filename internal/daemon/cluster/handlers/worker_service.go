@@ -58,30 +58,42 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	const op = "workers.(workerServiceServer).Status"
 	// TODO: on the worker, if we get errors back from this repeatedly, do we
 	// terminate all sessions since we can't know if they were canceled?
-	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
+
+	wStat := req.GetWorkerStatus()
+	switch {
+	case wStat.GetName() == "":
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name is not set in the request but is required.")
+	case wStat.GetAddress() == "":
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Address is not set but is required.")
+	}
+	// This Store call is currently only for testing purposes
+	ws.updateTimes.Store(wStat.GetName(), time.Now())
+
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
 	}
 
-	reqServer := req.GetWorker()
 	// Convert API tags to storage tags
-	workerTags := make([]*servers.Tag, 0, len(reqServer.Tags))
-	for k, v := range reqServer.Tags {
-		for _, val := range v.GetValues() {
-			workerTags = append(workerTags, &servers.Tag{
-				Key:   k,
-				Value: val,
-			})
-		}
+	wTags := wStat.GetTags()
+	workerTags := make([]*servers.Tag, 0, len(wTags))
+	for _, v := range wTags {
+		workerTags = append(workerTags, &servers.Tag{
+			Key:   v.GetKey(),
+			Value: v.GetValue(),
+		})
 	}
 
 	wConf := servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithName(reqServer.PrivateId),
-		servers.WithAddress(reqServer.Address),
+		servers.WithName(wStat.GetName()),
+		servers.WithAddress(wStat.GetAddress()),
 		servers.WithWorkerTags(workerTags...))
-	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
+	opts := []servers.Option{servers.WithUpdateTags(req.GetUpdateTags())}
+	if wStat.GetPublicId() != "" {
+		opts = append(opts, servers.WithPublicId(wStat.GetPublicId()))
+	}
+	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
@@ -92,18 +104,17 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting current controllers: %v", err)
 	}
 
-	responseControllers := []*servers.Server{}
+	responseControllers := []*pbs.UpstreamServer{}
 	for _, c := range controllers {
-		thisController := &servers.Server{
-			PrivateId:  c.PrivateId,
-			Address:    c.Address,
-			CreateTime: c.CreateTime,
-			UpdateTime: c.UpdateTime,
+		thisController := &pbs.UpstreamServer{
+			Address: c.Address,
+			Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
 		}
 		responseControllers = append(responseControllers, thisController)
 	}
 	ret := &pbs.StatusResponse{
-		Controllers: responseControllers,
+		CalculatedUpstreams: responseControllers,
+		WorkerId:            wrk.GetPublicId(),
 	}
 
 	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))
@@ -152,8 +163,8 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, wrk.GetPublicId(), stateReport)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal,
-			"Error comparing state of sessions for worker %q with public id %q: %v",
-			req.Worker.PrivateId, wrk.GetPublicId(), err)
+			"Error comparing state of sessions for worker with public id %q: %v",
+			wrk.GetPublicId(), err)
 	}
 	for _, na := range notActive {
 		var connChanges []*pbs.Connection

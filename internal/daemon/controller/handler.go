@@ -35,6 +35,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
@@ -224,6 +225,13 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		}
 		services.RegisterCredentialLibraryServiceServer(s, cl)
 	}
+	if _, ok := currentServices[services.WorkerService_ServiceDesc.ServiceName]; !ok {
+		ws, err := workers.NewService(c.baseContext, c.ServersRepoFn, c.IamRepoFn)
+		if err != nil {
+			return fmt.Errorf("failed to create worker handler service: %w", err)
+		}
+		services.RegisterWorkerServiceServer(s, ws)
+	}
 	if _, ok := s.GetServiceInfo()[opsservices.HealthService_ServiceDesc.ServiceName]; !ok {
 		hs := health.NewService()
 		opsservices.RegisterHealthServiceServer(s, hs)
@@ -280,6 +288,9 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 	}
 	if err := services.RegisterCredentialLibraryServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register credential library service handler: %w", err)
+	}
+	if err := services.RegisterWorkerServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register worker service handler: %w", err)
 	}
 
 	return nil

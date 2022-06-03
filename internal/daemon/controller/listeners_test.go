@@ -23,7 +23,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
-	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -250,9 +249,6 @@ func TestStartListeners(t *testing.T) {
 
 			c.baseContext = ctx
 			c.baseCancel = cancel
-
-			c.NodeeFileStorage, err = nodeefile.NewFileStorage(c.baseContext)
-			require.NoError(t, err)
 
 			err = c.startListeners()
 			require.NoError(t, err)

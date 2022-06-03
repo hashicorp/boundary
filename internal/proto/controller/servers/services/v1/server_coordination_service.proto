@@ -56,11 +56,25 @@ message JobStatus {
   Job job = 1;
 }
 
+// UpstreamServer returns the controller address in the StatusResponse but may be used in the future to return
+// worker address.
+message UpstreamServer {
+  enum TYPE {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_CONTROLLER = 1;
+    TYPE_WORKER = 2;
+  }
+
+  // type specifies between controller or worker.
+  TYPE type = 10;
+
+  // Address of the daemon
+  string address = 20;
+}
+
 message StatusRequest {
-  // The worker info. We could use information from the TLS connection but this
-  // is easier and going the other route doesn't provide much benefit -- if you
-  // get access to the key and spoof the connection, you're already compromised.
-  servers.v1.Server worker = 10;
+  reserved 10;
+  reserved "worker";
 
   // Jobs which this worker wants to report the status.
   repeated JobStatus jobs = 20;
@@ -70,6 +84,12 @@ message StatusRequest {
   // changed allows us to avoid constant database operations for something that
   // won't change very often, if ever.
   bool update_tags = 30;
+
+  // Replaces the old worker field:
+  // The worker info. We could use information from the TLS connection but this
+  // is easier and going the other route doesn't provide much benefit -- if you
+  // get access to the key and spoof the connection, you're already compromised.
+  servers.v1.ServerWorkerStatus worker_status = 40;
 }
 
 enum CHANGETYPE {
@@ -85,8 +105,8 @@ message JobChangeRequest {
 }
 
 message StatusResponse {
-  // Active controllers. This can be used for connection management.
-  repeated servers.v1.Server controllers = 10;
+  reserved 10;
+  reserved "controllers";
 
   // List of jobs and the expected state changes.  For example, this will
   // include jobs witch change type of canceled for jobs which are active on a
@@ -94,4 +114,11 @@ message StatusResponse {
   // job such as a worker -> worker proxy for establishing a session through an
   // enclave.
   repeated JobChangeRequest jobs_requests = 20;
+
+  // UpstreamServer currently returns the controller address in the StatusResponse.
+  repeated UpstreamServer calculated_upstreams = 30;
+
+  // The ID of the worker which made the request. The worker can send this value in subsequent requests so the
+  // controller does not need to do a database lookup for the id using the name field.
+  string worker_id = 40;
 }

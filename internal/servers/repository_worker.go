@@ -8,8 +8,13 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/registration"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // DeleteWorker will delete a worker from the repository.
@@ -173,7 +178,7 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 // UpsertWorkerStatus creates a new worker if one with the provided public id
 // doesn't already exist. If it does, UpsertWorkerStatus updates the worker
 // status.  This returns the Worker object with the updated WorkerStatus applied.
-// The WithUpdateTags option is the only ones used. All others are ignored.
+// The WithPublicId and WithUpdateTags options are the only ones used. All others are ignored.
 // Workers are intentionally not oplogged.
 func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "servers.UpsertWorkerStatus"
@@ -202,9 +207,14 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	opts := getOpts(opt...)
 
 	var err error
-	worker.PublicId, err = newWorkerIdFromName(ctx, worker.GetWorkerReportedName())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id"))
+	switch {
+	case opts.withPublicId != "":
+		worker.PublicId = opts.withPublicId
+	default:
+		worker.PublicId, err = newWorkerIdFromName(ctx, worker.GetWorkerReportedName())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id"))
+		}
 	}
 
 	var ret *Worker
@@ -383,7 +393,8 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 // ReportedStatus and Tags are intentionally ignored when creating a worker (not
 // included).  Currently, a worker can only be created in the global scope
 //
-// Options supported: WithNewIdFunc (this option is likely only useful for tests)
+// Options supported: WithFetchNodeCredentialsRequest and WithNewIdFunc (this
+// option is likely only useful for tests)
 func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "servers.CreateWorker"
 	switch {
@@ -408,26 +419,55 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate worker id"))
 	}
+	state, err := structpb.NewStruct(map[string]any{
+		"worker_id": worker.PublicId,
+	})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating state struct", err))
+	}
+
+	var databaseWrapper wrapping.Wrapper
+	var workerAuthRepo *WorkerAuthRepositoryStorage
+	if opts.withFetchNodeCredentialsRequest != nil {
+		// used to encrypt the privKey within the NodeInformation
+		databaseWrapper, err = r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+	}
 
 	var returnedWorker *Worker
-	_, err = r.writer.DoTx(
+	if _, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			returnedWorker = worker.clone()
-			err := w.Create(
+			if err := w.Create(
 				ctx,
 				returnedWorker,
-			)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
+			); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker"))
+			}
+			if opts.withFetchNodeCredentialsRequest != nil {
+				workerAuthRepo, err = NewRepositoryStorage(ctx, r.reader, r.writer, r.kms)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker auth repository"))
+				}
+				nodeInfo, err := registration.AuthorizeNode(ctx, workerAuthRepo, opts.withFetchNodeCredentialsRequest, nodeenrollment.WithSkipStorage(true))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to authorize node"))
+				}
+				nodeInfo.State = state
+				if err := StoreNodeInformationTx(ctx, w, databaseWrapper, nodeInfo); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to store node information"))
+				}
 			}
 			return nil
 		},
-	)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker"))
+	); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return returnedWorker, nil
 }

@@ -106,10 +106,16 @@ func (c *Controller) configureForApi(ln *base.ServerListener) ([]func(), error) 
 
 func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error) {
 	const op = "controller.configureForCluster"
+
+	workerAuthStorage, err := c.WorkerAuthRepoStorageFn()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching worker auth storage: %w", err)
+	}
+
 	l, err := protocol.NewInterceptingListener(
 		&protocol.InterceptingListenerConfiguration{
 			Context:      c.baseContext,
-			Storage:      c.NodeeFileStorage,
+			Storage:      workerAuthStorage,
 			BaseListener: ln.ClusterListener,
 			BaseTlsConfiguration: &tls.Config{
 				GetConfigForClient: c.validateWorkerTls,
@@ -143,7 +149,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	pbs.RegisterSessionServiceServer(workerServer, workerService)
 
 	multihopService, err := handlers.NewMultihopServiceServer(
-		c.NodeeFileStorage,
+		workerAuthStorage,
 		true,
 		nil,
 	)

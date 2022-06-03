@@ -2646,9 +2646,6 @@ func TestAuthorizeSession(t *testing.T) {
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
 	}
-	connectionRepoFn := func() (*session.ConnectionRepository, error) {
-		return session.NewConnectionRepository(ctx, rw, rw, kms)
-	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
@@ -2787,14 +2784,7 @@ func TestAuthorizeSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			workerService := cluster.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
-			_, err = workerService.Status(ctx, &spbs.StatusRequest{
-				Worker: &spb.Server{
-					PrivateId: "w_1234567890",
-					Address:   "localhost:8457",
-				},
-			})
-			require.NoError(t, err)
+			servers.TestWorker(t, conn, wrapper)
 
 			asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
@@ -2902,9 +2892,6 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
-	}
-	connectionRepoFn := func() (*session.ConnectionRepository, error) {
-		return session.NewConnectionRepository(ctx, rw, rw, kms)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -3075,14 +3062,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			workerService := cluster.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
-			_, err = workerService.Status(ctx, &spbs.StatusRequest{
-				Worker: &spb.Server{
-					PrivateId: "w_1234567890",
-					Address:   "localhost:8457",
-				},
-			})
-			require.NoError(t, err)
+			servers.TestWorker(t, conn, wrapper)
 
 			asRes, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
@@ -3208,9 +3188,10 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	workerExists := func(tar target.Target) (version uint32) {
 		workerService := cluster.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 		_, err := workerService.Status(context.Background(), &spbs.StatusRequest{
-			Worker: &spb.Server{
-				PrivateId: "w_1234567890",
-				Address:   "localhost:123",
+			WorkerStatus: &spb.ServerWorkerStatus{
+				PublicId: "w_1234567890",
+				Name:     "w_1234567890",
+				Address:  "localhost:123",
 			},
 		})
 		require.NoError(t, err)

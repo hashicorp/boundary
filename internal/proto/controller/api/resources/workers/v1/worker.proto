@@ -18,9 +18,6 @@ message WorkerConfig {
   // Output only.  The name the worker daemon reports itself having.
   string name = 20;
 
-  // Output only.  The boundary version the worker has reported itself as running.
-  string version = 30;
-
   // Output only. The tags reporteed by the worker daemon.
   map<string, google.protobuf.ListValue> tags = 40;
 }
@@ -87,5 +84,8 @@ message Worker {
   // itself.
   WorkerConfig worker_config = 140 [json_name = "worker_config"];
 
-// TODO: Add worker auth related fields.
+  // TODO: Add worker auth related fields.
+
+  // Output only. The available actions on this resource for the requester.
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }
