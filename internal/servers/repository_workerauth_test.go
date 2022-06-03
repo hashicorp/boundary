@@ -185,7 +185,8 @@ func TestStoreWorkerAuth(t *testing.T) {
 	require.NoError(err)
 
 	// The AuthorizeNode request will result in a WorkerAuth record being stored
-	require.NoError(registration.AuthorizeNode(ctx, storage, fetchReq, nodeenrollment.WithState(state)))
+	_, err = registration.AuthorizeNode(ctx, storage, fetchReq, nodeenrollment.WithState(state))
+	require.NoError(err)
 
 	// We should now look for a node information value in storage and validate that it's populated
 	nodeInfos, err := storage.List(ctx, (*types.NodeInformation)(nil))
