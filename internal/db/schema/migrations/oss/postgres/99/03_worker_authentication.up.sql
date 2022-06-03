@@ -44,7 +44,7 @@ create trigger worker_auth_ca_update_time_column
 insert into worker_auth_ca(private_id) values('roots');
 
 create trigger update_version_column after update on worker_auth_ca
-  for each row execute procedure update_version_column();
+  for each row execute procedure update_version_column(private_id);
 
 comment on table worker_auth_ca is
   'worker_auth_ca is a one-row versioned table used for locking for certificate rotation on the worker_auth_ca_certificate table.';
@@ -110,7 +110,7 @@ create table worker_auth_authorized(
       references kms_data_key_version (private_id)
       on delete restrict
       on update cascade,
-  nonce bytea
+  nonce bytea -- encrypted value
 );
 
 create trigger
@@ -124,7 +124,7 @@ comment on table worker_auth_authorized is
   'worker_auth_authorized is a table where each row represents key and cert data associated with an authorized worker.';
 
 create table worker_auth_certificate_bundle(
- certificate_public_key bytea not null
+ root_certificate_public_key bytea not null
    constraint worker_auth_ca_certificate_fkey
      references worker_auth_ca_certificate(public_key)
      on delete cascade
@@ -137,7 +137,7 @@ create table worker_auth_certificate_bundle(
  cert_bundle bytea
    constraint current_cert_bundle_must_not_be_empty
      check(length(cert_bundle) > 0),
- primary key(certificate_public_key, worker_key_identifier)
+ primary key(root_certificate_public_key, worker_key_identifier)
 );
 
 comment on table worker_auth_certificate_bundle is
@@ -147,6 +147,6 @@ create trigger
   immutable_columns
   before
     update on worker_auth_certificate_bundle
-  for each row execute procedure immutable_columns('certificate_public_key', 'worker_key_identifier', 'cert_bundle');
+  for each row execute procedure immutable_columns('root_certificate_public_key', 'worker_key_identifier', 'cert_bundle');
 
 commit;

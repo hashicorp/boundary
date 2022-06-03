@@ -421,5 +421,6 @@ func (c *Controller) AuthorizeNodeeWorker(request string) error {
 	if err := proto.Unmarshal(reqBytes, req); err != nil {
 		return fmt.Errorf("(%s) error unmarshaling common name value: %w", op, err)
 	}
-	return registration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, req)
+	_, err = registration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, req)
+	return err
 }

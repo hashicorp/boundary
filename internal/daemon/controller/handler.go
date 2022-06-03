@@ -290,7 +290,7 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 		return fmt.Errorf("failed to register credential library service handler: %w", err)
 	}
 	if err := services.RegisterWorkerServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
-		return fmt.Errorf("failed to register user service handler: %w", err)
+		return fmt.Errorf("failed to register worker service handler: %w", err)
 	}
 
 	return nil
