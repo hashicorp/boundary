@@ -86,6 +86,8 @@ type Command struct {
 	flagCreateLoopbackHostPlugin        bool
 	flagPluginExecutionDir              string
 	flagUseEphemeralKmsWorkerAuthMethod bool
+	flagWorkerAuthStorageDir            string
+	flagWorkerAuthStorageSkipCleanup    bool
 }
 
 func (c *Command) Synopsis() string {
@@ -335,6 +337,18 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "If set, the original \"ephemeral\" method of worker auth will be used to connect the initial dev worker to the controller.",
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:   "worker-auth-storage-dir",
+		Target: &c.flagWorkerAuthStorageDir,
+		Usage:  "Specifies the directory to store worker authentication credentials in dev mode.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "worker-auth-storage-skip-cleanup",
+		Target: &c.flagWorkerAuthStorageSkipCleanup,
+		Usage:  "Prevents deletion of temp worker credential storage directory if set",
+	})
+
 	f.BoolVar(&base.BoolVar{
 		Name:   "create-loopback-host-plugin",
 		Target: &c.flagCreateLoopbackHostPlugin,
@@ -391,6 +405,7 @@ func (c *Command) Run(args []string) int {
 	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
+	c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
@@ -756,6 +771,9 @@ func (c *Command) Run(args []string) int {
 			}
 
 			if !c.flagControllerOnly {
+				if !c.flagWorkerAuthStorageSkipCleanup {
+					c.worker.NodeeFileStorage.Cleanup()
+				}
 				if err := c.worker.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 				}

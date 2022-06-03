@@ -21,16 +21,17 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit             int
-	withRootWrapper       wrapping.Wrapper
-	withWorkerAuthWrapper wrapping.Wrapper
-	withRecoveryWrapper   wrapping.Wrapper
-	withOrderByVersion    db.OrderBy
-	withKeyId             string
-	withScopeIds          []string
-	withRandomReader      io.Reader
-	withReader            db.Reader
-	withWriter            db.Writer
+	withLimit                    int
+	withRootWrapper              wrapping.Wrapper
+	withWorkerAuthWrapper        wrapping.Wrapper
+	withWorkerAuthStorageWrapper wrapping.Wrapper
+	withRecoveryWrapper          wrapping.Wrapper
+	withOrderByVersion           db.OrderBy
+	withKeyId                    string
+	withScopeIds                 []string
+	withRandomReader             io.Reader
+	withReader                   db.Reader
+	withWriter                   db.Writer
 }
 
 func getDefaultOptions() options {
@@ -58,6 +59,14 @@ func WithRootWrapper(w wrapping.Wrapper) Option {
 func WithWorkerAuthWrapper(w wrapping.Wrapper) Option {
 	return func(o *options) {
 		o.withWorkerAuthWrapper = w
+	}
+}
+
+// WithWorkerAuthStorageWrapper sets the external pki worker storage wrapper for a
+// given scope
+func WithWorkerAuthStorageWrapper(w wrapping.Wrapper) Option {
+	return func(o *options) {
+		o.withWorkerAuthStorageWrapper = w
 	}
 }
 

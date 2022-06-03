@@ -258,7 +258,8 @@ func stdNewKmsPurposes() []wrappingKms.KeyPurpose {
 	for _, p := range ValidDekPurposes() {
 		purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
 	}
-	purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
+	purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String()),
+		wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
 	return purposes
 }
 
