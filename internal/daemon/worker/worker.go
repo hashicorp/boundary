@@ -294,13 +294,16 @@ func (w *Worker) Resolver() *manual.Resolver {
 
 func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	if len(incoming) == 0 {
-		w.tags.Store(map[string]*servers.TagValues{})
+		w.tags.Store([]*servers.TagPair{})
 		return
 	}
-	tags := make(map[string]*servers.TagValues, len(incoming))
-	for k, v := range incoming {
-		tags[k] = &servers.TagValues{
-			Values: append(make([]string, 0, len(v)), v...),
+	tags := []*servers.TagPair{}
+	for k, vals := range incoming {
+		for _, v := range vals {
+			tags = append(tags, &servers.TagPair{
+				Key:   k,
+				Value: v,
+			})
 		}
 	}
 	w.tags.Store(tags)
