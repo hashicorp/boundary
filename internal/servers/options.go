@@ -3,6 +3,8 @@ package servers
 import (
 	"context"
 	"time"
+
+	"github.com/hashicorp/nodeenrollment/types"
 )
 
 // getOpts - iterate the inbound Options and return a struct
@@ -32,6 +34,7 @@ type options struct {
 	withKeyId                          string
 	withNonce                          []byte
 	withNewIdFunc                      func(context.Context) (string, error)
+	withFetchNodeCredentialsRequest    *types.FetchNodeCredentialsRequest
 }
 
 func getDefaultOptions() options {
@@ -130,5 +133,13 @@ func WithNonce(nonce []byte) Option {
 func WithNewIdFunc(fn func(context.Context) (string, error)) Option {
 	return func(o *options) {
 		o.withNewIdFunc = fn
+	}
+}
+
+// WithFetchNodeCredentialsRequest allows an optional
+// FetchNodeCredentialsRequest to be specified.
+func WithFetchNodeCredentialsRequest(req *types.FetchNodeCredentialsRequest) Option {
+	return func(o *options) {
+		o.withFetchNodeCredentialsRequest = req
 	}
 }
