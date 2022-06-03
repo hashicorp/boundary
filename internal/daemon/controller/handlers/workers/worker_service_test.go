@@ -173,7 +173,7 @@ func TestList(t *testing.T) {
 			},
 		},
 		{
-			name: "Filter to a 2 workers",
+			name: "Filter to 2 workers",
 			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/name" matches "worker[23]"`},
 			res: &pbs.ListWorkersResponse{
 				Items: wantWorkers[2:4],

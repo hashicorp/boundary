@@ -92,13 +92,13 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	namePart, err := newWorkerId(context.Background())
+	namePart, err := newWorkerId(ctx)
 	require.NoError(t, err)
 	name := "test-worker-" + strings.ToLower(namePart)
 	wrk := NewWorkerForStatus(scope.Global.String(),
 		WithName(name),
 		WithAddress("127.0.0.1"))
-	wrk, err = serversRepo.UpsertWorkerStatus(context.Background(), wrk)
+	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)
 	opts := getOpts(opt...)
