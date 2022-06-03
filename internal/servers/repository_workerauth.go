@@ -31,7 +31,7 @@ var (
 )
 
 type rootCertificatesVersion struct {
-	Version uint32
+	Version uint32 `mapstructure:"version" structs:"version"`
 }
 
 // WorkerAuthRepositoryStorage is the Worker Auth database repository
