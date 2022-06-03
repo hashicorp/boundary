@@ -74,7 +74,7 @@ func E(ctx context.Context, opt ...Option) error {
 		Code:    code,
 		Op:      opts.withOp,
 		Wrapped: opts.withErrWrapped,
-		Msg:     opts.withErrMsg,
+		Msg:     fmt.Sprintf(opts.withErrMsg, opts.withErrMsgArgs...),
 	}
 	if opts.withoutEvent {
 		return err
