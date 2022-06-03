@@ -20,8 +20,11 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -283,4 +286,412 @@ func TestDelete(t *testing.T) {
 			assert.EqualValuesf(tc.res, got, "DeleteWorker(%+v) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
+}
+
+func TestUpdate(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	repo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	repoFn := func() (*servers.Repository, error) {
+		return repo, nil
+	}
+
+	wkr := servers.TestWorker(t, conn, wrapper,
+		servers.WithName("default"),
+		servers.WithDescription("default"),
+		servers.WithAddress("default"))
+
+	version := wkr.GetVersion()
+
+	resetWorker := func() {
+		version++
+		_, _, err = repo.UpdateWorker(context.Background(), wkr, version, []string{"Name", "Description", "Address"})
+		require.NoError(t, err, "Failed to reset worker.")
+		version++
+	}
+
+	wCreated := wkr.GetCreateTime().GetTimestamp().AsTime()
+	toMerge := &pbs.UpdateWorkerRequest{
+		Id: wkr.GetPublicId(),
+	}
+	workerService, err := NewService(ctx, repoFn, iamRepoFn)
+	require.NoError(t, err)
+	expectedScope := &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
+	expectedConfig := &pb.WorkerConfig{
+		Address: wkr.GetWorkerReportedAddress(),
+		Name:    wkr.GetWorkerReportedName(),
+	}
+
+	cases := []struct {
+		name string
+		req  *pbs.UpdateWorkerRequest
+		res  *pbs.UpdateWorkerResponse
+		err  error
+	}{
+		{
+			name: "Update an Existing Worker",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description", "address"},
+				},
+				Item: &pb.Worker{
+					Name:        wrapperspb.String("name"),
+					Description: wrapperspb.String("desc"),
+					Address:     wrapperspb.String("address"),
+				},
+			},
+			res: &pbs.UpdateWorkerResponse{
+				Item: &pb.Worker{
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("name"),
+					Description:       wrapperspb.String("desc"),
+					Address:           wrapperspb.String("address"),
+					CanonicalAddress:  "address",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					WorkerConfig:      expectedConfig,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description,type"},
+				},
+				Item: &pb.Worker{
+					Name:        wrapperspb.String("name"),
+					Description: wrapperspb.String("desc"),
+				},
+			},
+			res: &pbs.UpdateWorkerResponse{
+				Item: &pb.Worker{
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("name"),
+					Description:       wrapperspb.String("desc"),
+					Address:           wrapperspb.String("default"),
+					CanonicalAddress:  "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					WorkerConfig:      expectedConfig,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "No Update Mask",
+			req: &pbs.UpdateWorkerRequest{
+				Item: &pb.Worker{
+					Name:        wrapperspb.String("updated name"),
+					Description: wrapperspb.String("updated desc"),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Empty Path",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Worker{
+					Name:        wrapperspb.String("updated name"),
+					Description: wrapperspb.String("updated desc"),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Update port to 0",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"default_port"}},
+				Item:       &pb.Worker{},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Only non-existant paths in Mask",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				Item: &pb.Worker{
+					Name:        wrapperspb.String("updated name"),
+					Description: wrapperspb.String("updated desc"),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Unset Name",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Worker{
+					Description: wrapperspb.String("ignored"),
+				},
+			},
+			res: &pbs.UpdateWorkerResponse{
+				Item: &pb.Worker{
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Description:       wrapperspb.String("default"),
+					Address:           wrapperspb.String("default"),
+					CanonicalAddress:  "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					WorkerConfig:      expectedConfig,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Unset Description",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Worker{
+					Name: wrapperspb.String("ignored"),
+				},
+			},
+			res: &pbs.UpdateWorkerResponse{
+				Item: &pb.Worker{
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("default"),
+					Address:           wrapperspb.String("default"),
+					CanonicalAddress:  "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					WorkerConfig:      expectedConfig,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update Only Name",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Worker{
+					Name:        wrapperspb.String("updated"),
+					Description: wrapperspb.String("ignored"),
+				},
+			},
+			res: &pbs.UpdateWorkerResponse{
+				Item: &pb.Worker{
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("updated"),
+					Description:       wrapperspb.String("default"),
+					Address:           wrapperspb.String("default"),
+					CanonicalAddress:  "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					WorkerConfig:      expectedConfig,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update Only Description",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Worker{
+					Name:        wrapperspb.String("ignored"),
+					Description: wrapperspb.String("notignored"),
+				},
+			},
+			res: &pbs.UpdateWorkerResponse{
+				Item: &pb.Worker{
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("default"),
+					Description:       wrapperspb.String("notignored"),
+					Address:           wrapperspb.String("default"),
+					CanonicalAddress:  "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					WorkerConfig:      expectedConfig,
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update a Non Existing Worker",
+			req: &pbs.UpdateWorkerRequest{
+				Id: servers.WorkerPrefix + "_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Worker{
+					Description: wrapperspb.String("desc"),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Cant change Worker Defined Name",
+			req: &pbs.UpdateWorkerRequest{
+				Id: wkr.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"worker_config.name"},
+				},
+				Item: &pb.Worker{
+					WorkerConfig: &pb.WorkerConfig{
+						Name: "name",
+					},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant change Worker Defined Address",
+			req: &pbs.UpdateWorkerRequest{
+				Id: wkr.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"worker_config.address"},
+				},
+				Item: &pb.Worker{
+					WorkerConfig: &pb.WorkerConfig{
+						Address: "address",
+					},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant change Id",
+			req: &pbs.UpdateWorkerRequest{
+				Id: wkr.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"id"},
+				},
+				Item: &pb.Worker{
+					Id: "w_somethinge",
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify Created Time",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"created_time"},
+				},
+				Item: &pb.Worker{
+					CreatedTime: timestamppb.Now(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify Updated Time",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"updated_time"},
+				},
+				Item: &pb.Worker{
+					UpdatedTime: timestamppb.Now(),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.req.Item.Version = version
+
+			req := proto.Clone(toMerge).(*pbs.UpdateWorkerRequest)
+			proto.Merge(req, tc.req)
+
+			got, gErr := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, scope.Global.String()), req)
+			if tc.err != nil {
+				require.Error(t, gErr)
+				assert.True(t, errors.Is(gErr, tc.err), "UpdateWorker(%+v) got error %v, wanted %v", req, gErr, tc.err)
+			}
+
+			if tc.err == nil {
+				defer resetWorker()
+			}
+
+			if got != nil {
+				assert.NotNilf(t, tc.res, "Expected UpdareWorker response to be nil, but was %v", got)
+				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
+				// Verify it is a set updated after it was created
+				assert.True(t, gotUpdateTime.After(wCreated), "Updated resource should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, wCreated)
+
+				// Clear all values which are hard to compare against.
+				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+			}
+			if tc.res != nil {
+				tc.res.Item.Version = version + 1
+			}
+			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateWorker(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestUpdate_BadVersion(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	_, proj := iam.TestScopes(t, iamRepo)
+
+	rw := db.New(conn)
+	repo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err, "Couldn't create new worker repo.")
+	repoFn := func() (*servers.Repository, error) {
+		return repo, nil
+	}
+	ctx := context.Background()
+
+	workerService, err := NewService(ctx, repoFn, iamRepoFn)
+	require.NoError(t, err, "Failed to create a new host set service.")
+
+	wkr := servers.TestWorker(t, conn, wrapper)
+
+	upTar, err := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), &pbs.UpdateWorkerRequest{
+		Id: wkr.GetPublicId(),
+		Item: &pb.Worker{
+			Description: wrapperspb.String("updated"),
+			Version:     72,
+		},
+		UpdateMask: &field_mask.FieldMask{Paths: []string{"description"}},
+	})
+	assert.Nil(t, upTar)
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, handlers.NotFoundError()), "Got %v, wanted not found error.", err)
 }
