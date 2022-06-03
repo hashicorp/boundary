@@ -14,6 +14,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // DeleteWorker will delete a worker from the repository.
@@ -413,6 +414,12 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate worker id"))
 	}
+	state, err := structpb.NewStruct(map[string]any{
+		"worker_id": worker.PublicId,
+	})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating state struct", err))
+	}
 
 	var databaseWrapper wrapping.Wrapper
 	var workerAuthRepo *WorkerAuthRepositoryStorage
@@ -447,6 +454,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to authorize node"))
 				}
+				nodeInfo.State = state
 				if err := StoreNodeInformationTx(ctx, w, databaseWrapper, nodeInfo); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to store node information"))
 				}

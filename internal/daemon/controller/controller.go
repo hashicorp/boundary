@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -36,9 +37,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
-	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
-	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	ua "go.uber.org/atomic"
@@ -70,18 +69,19 @@ type Controller struct {
 	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
-	AuthTokenRepoFn       common.AuthTokenRepoFactory
-	VaultCredentialRepoFn common.VaultCredentialRepoFactory
-	IamRepoFn             common.IamRepoFactory
-	OidcRepoFn            common.OidcAuthRepoFactory
-	PasswordAuthRepoFn    common.PasswordAuthRepoFactory
-	ServersRepoFn         common.ServersRepoFactory
-	SessionRepoFn         common.SessionRepoFactory
-	ConnectionRepoFn      common.ConnectionRepoFactory
-	StaticHostRepoFn      common.StaticRepoFactory
-	PluginHostRepoFn      common.PluginHostRepoFactory
-	HostPluginRepoFn      common.HostPluginRepoFactory
-	TargetRepoFn          common.TargetRepoFactory
+	AuthTokenRepoFn         common.AuthTokenRepoFactory
+	VaultCredentialRepoFn   common.VaultCredentialRepoFactory
+	IamRepoFn               common.IamRepoFactory
+	OidcRepoFn              common.OidcAuthRepoFactory
+	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
+	ServersRepoFn           common.ServersRepoFactory
+	SessionRepoFn           common.SessionRepoFactory
+	ConnectionRepoFn        common.ConnectionRepoFactory
+	StaticHostRepoFn        common.StaticRepoFactory
+	PluginHostRepoFn        common.PluginHostRepoFactory
+	HostPluginRepoFn        common.HostPluginRepoFactory
+	TargetRepoFn            common.TargetRepoFactory
+	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -92,9 +92,6 @@ type Controller struct {
 	// Used to signal the Health Service to start
 	// replying to queries with "503 Service Unavailable".
 	HealthService *health.Service
-
-	// PoC: Testing bits for BYOW
-	NodeeFileStorage *nodeefile.FileStorage
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
@@ -304,6 +301,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)
 	}
+	c.WorkerAuthRepoStorageFn = func() (*servers.WorkerAuthRepositoryStorage, error) {
+		return servers.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
+	}
 
 	return c, nil
 }
@@ -317,12 +317,11 @@ func (c *Controller) Start() error {
 
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
-	var err error
-	c.NodeeFileStorage, err = nodeefile.NewFileStorage(c.baseContext)
+	workerAuthStorage, err := c.WorkerAuthRepoStorageFn()
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching worker auth storage: %w", err)
 	}
-	_, err = rotation.RotateRootCertificates(c.baseContext, c.NodeeFileStorage)
+	_, err = rotation.RotateRootCertificates(c.baseContext, workerAuthStorage)
 	if err != nil {
 		return err
 	}
@@ -410,17 +409,32 @@ func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 	return c.workerStatusUpdateTimes
 }
 
+// This is a temporary function until the API is up
 func (c *Controller) AuthorizeNodeeWorker(request string) error {
-	const op = "controller.(Controller).AuthorizeWorker"
+	const op = "controller.(Controller).AuthorizeNodeeWorker"
 	reqBytes, err := base58.FastBase58Decoding(request)
 	if err != nil {
-		return fmt.Errorf("(%s) error base64-decoding fetch node creds next proto value", op)
+		return fmt.Errorf("(%s) error base58-decoding fetch node creds next proto value: %w", op, err)
 	}
 	// Decode the proto into the request
 	req := new(types.FetchNodeCredentialsRequest)
 	if err := proto.Unmarshal(reqBytes, req); err != nil {
 		return fmt.Errorf("(%s) error unmarshaling common name value: %w", op, err)
 	}
-	_, err = registration.AuthorizeNode(c.baseContext, c.NodeeFileStorage, req)
+
+	serversRepo, err := c.ServersRepoFn()
+	if err != nil {
+		return fmt.Errorf("(%s) error fetching servers repo: %w", op, err)
+	}
+
+	_, err = serversRepo.CreateWorker(c.baseContext, &servers.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, servers.WithFetchNodeCredentialsRequest(req))
+	if err != nil {
+		return fmt.Errorf("(%s) error creating worker: %w", op, err)
+	}
+
 	return err
 }

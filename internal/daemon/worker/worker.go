@@ -161,6 +161,12 @@ func New(conf *Config) (*Worker, error) {
 		return nil, fmt.Errorf("exactly one proxy listener is required")
 	}
 
+	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
+		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.StoragePath))
+	if err != nil {
+		return nil, err
+	}
+
 	return w, nil
 }
 
@@ -177,13 +183,6 @@ func (w *Worker) Start() error {
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.controllerResolver.Store(controllerResolver)
-
-	var err error
-	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
-		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.StoragePath))
-	if err != nil {
-		return err
-	}
 
 	if err := w.startListeners(); err != nil {
 		return fmt.Errorf("error starting worker listeners: %w", err)
