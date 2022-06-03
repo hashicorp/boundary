@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/nodeenrollment"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/mapstructure"
@@ -340,19 +341,24 @@ func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodee.Messag
 		return errors.New(ctx, errors.InvalidParameter, op, "given message cannot be loaded as it has no ID")
 	}
 
+	var err error
 	switch t := msg.(type) {
 	case *types.NodeInformation:
-		err := r.loadNodeInformation(ctx, t)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
+		err = r.loadNodeInformation(ctx, t)
+
 	case *types.RootCertificates:
-		err := r.loadRootCertificates(ctx, t)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
+		err = r.loadRootCertificates(ctx, t)
+
 	default:
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("message type %T not supported for Load", t))
+	}
+
+	if err != nil {
+		if err == nodeenrollment.ErrNotFound {
+			// Don't wrap as this will confuse things
+			return err
+		}
+		return errors.Wrap(ctx, err, op)
 	}
 
 	return nil

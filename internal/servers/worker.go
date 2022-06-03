@@ -13,7 +13,7 @@ import (
 )
 
 type workerAuthWorkerId struct {
-	WorkerId string
+	WorkerId string `mapstructure:"worker_id"`
 }
 
 // AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib
