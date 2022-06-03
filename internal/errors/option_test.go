@@ -22,6 +22,13 @@ func Test_getOpts(t *testing.T) {
 		opts = GetOpts(WithMsg("test msg"))
 		testOpts.withErrMsg = "test msg"
 		assert.Equal(opts, testOpts)
+
+		opts = GetOpts(WithMsg("%s msg", "test"))
+		testOpts.withErrMsg = "%s msg"
+		testOpts.withErrMsgArgs = []any{"test"}
+		assert.Equal(opts, testOpts)
+
+		assert.Equal("#1 test msg: unknown: error #0", E(context.Background(), WithMsg("#%d %s msg", 1, "test")).Error())
 	})
 	t.Run("WithWrap", func(t *testing.T) {
 		assert := assert.New(t)

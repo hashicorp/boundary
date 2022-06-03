@@ -17,6 +17,7 @@ type Options struct {
 	withCode       Code
 	withErrWrapped error
 	withErrMsg     string
+	withErrMsgArgs []any
 	withOp         Op
 	withoutEvent   bool
 }
@@ -34,10 +35,12 @@ func WithWrap(e error) Option {
 }
 
 // WithMsg provides an option to provide a message when creating a new
-// error.
-func WithMsg(msg string) Option {
+// error.  If args are provided, the the msg string is used as a fmt specifier
+// for the arguments and the resulting string is used as the msg.
+func WithMsg(msg string, args ...any) Option {
 	return func(o *Options) {
 		o.withErrMsg = msg
+		o.withErrMsgArgs = args
 	}
 }
 
