@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -691,15 +692,15 @@ func (c *Command) Run(args []string) int {
 		}
 
 		if !c.flagUseEphemeralKmsWorkerAuthMethod {
-			req := c.worker.NodeeRegistrationRequest
+			req := c.worker.WorkerAuthRegistrationRequest
 			if req == "" {
-				c.UI.Error("No worker registration request found at worker start time")
+				c.UI.Error("No worker auth registration request found at worker start time")
 				return base.CommandCliError
 			}
-			c.InfoKeys = append(c.InfoKeys, "worker registration request")
-			c.Info["worker registration request"] = req
-			c.InfoKeys = append(c.InfoKeys, "worker current key id")
-			c.Info["worker current key id"] = c.worker.NodeeCurrentKeyId
+			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
+			c.Info["worker auth registration request"] = req
+			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
+			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId
 			go func() {
 				for {
 					select {
@@ -772,7 +773,9 @@ func (c *Command) Run(args []string) int {
 
 			if !c.flagControllerOnly {
 				if !c.flagWorkerAuthStorageSkipCleanup {
-					c.worker.NodeeFileStorage.Cleanup()
+					if fileStorage, ok := c.worker.WorkerAuthStorage.(*nodeefile.FileStorage); ok {
+						fileStorage.Cleanup()
+					}
 				}
 				if err := c.worker.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())

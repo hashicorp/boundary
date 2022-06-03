@@ -158,7 +158,7 @@ func TestStoreWorkerAuth(t *testing.T) {
 	require.NoError(err)
 
 	// This happens on the worker
-	fileStorage, err := file.NewFileStorage(ctx)
+	fileStorage, err := file.New(ctx)
 	require.NoError(err)
 	nodeCreds, err := types.NewNodeCredentials(ctx, fileStorage)
 	require.NoError(err)
@@ -270,7 +270,7 @@ func TestStoreNodeInformationTx(t *testing.T) {
 
 	testNodeInfoFn := func() *types.NodeInformation {
 		// This happens on the worker
-		fileStorage, err := file.NewFileStorage(testCtx)
+		fileStorage, err := file.New(testCtx)
 		require.NoError(t, err)
 		nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
 		require.NoError(t, err)

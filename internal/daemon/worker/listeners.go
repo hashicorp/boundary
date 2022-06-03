@@ -123,7 +123,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 	interceptingListener, err := protocol.NewInterceptingListener(
 		&protocol.InterceptingListenerConfiguration{
 			Context:      w.baseContext,
-			Storage:      w.NodeeFileStorage,
+			Storage:      w.WorkerAuthStorage,
 			BaseListener: ln.ProxyListener,
 			BaseTlsConfiguration: &tls.Config{
 				GetConfigForClient: w.getSessionTls,
@@ -135,14 +135,14 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
 	}
 
-	w.nodeeSplitListener = splitlistener.New(interceptingListener)
+	w.workerAuthSplitListener = splitlistener.New(interceptingListener)
 
 	downstreamServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 	)
 	multihopService, err := handlers.NewMultihopServiceServer(
-		w.NodeeFileStorage,
+		w.WorkerAuthStorage,
 		false,
 		w.controllerMultihopConn,
 	)
@@ -157,9 +157,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 	ln.GrpcServer = downstreamServer
 
 	return func() {
-		go w.nodeeSplitListener.Start()
-		go httpServer.Serve(w.nodeeSplitListener.OtherListener())
-		go ln.GrpcServer.Serve(w.nodeeSplitListener.NodeEnrollmentListener())
+		go w.workerAuthSplitListener.Start()
+		go httpServer.Serve(w.workerAuthSplitListener.OtherListener())
+		go ln.GrpcServer.Serve(w.workerAuthSplitListener.NodeEnrollmentListener())
 	}, nil
 }
 
@@ -172,21 +172,21 @@ func (w *Worker) stopServersAndListeners() error {
 	// really likes to hang on closing. Maybe because it's never served a
 	// connection? This is a workaround to force it until I can dig in.
 	var cancel context.CancelFunc
-	if w.nodeeSplitListener != nil {
+	if w.workerAuthSplitListener != nil {
 		var ctx context.Context
 		ctx, cancel = context.WithTimeout(w.baseContext, 2*time.Second)
 		go func() {
 			<-ctx.Done()
-			w.nodeeSplitListener.Stop()
+			w.workerAuthSplitListener.Stop()
 			cancel()
 		}()
 	}
 
 	stopErrors := mg.Wait()
 
-	if w.nodeeSplitListener != nil {
+	if w.workerAuthSplitListener != nil {
 		cancel()
-		err := w.nodeeSplitListener.Stop()
+		err := w.workerAuthSplitListener.Stop()
 		if err != nil {
 			stopErrors = multierror.Append(stopErrors, err)
 		}
@@ -237,8 +237,8 @@ func (w *Worker) stopAnyListeners() error {
 	}
 	var closeErrors *multierror.Error
 	var err error
-	if w.nodeeSplitListener != nil {
-		err = w.nodeeSplitListener.Stop()
+	if w.workerAuthSplitListener != nil {
+		err = w.workerAuthSplitListener.Stop()
 	} else if w.proxyListener.ProxyListener != nil {
 		err = w.proxyListener.ProxyListener.Close()
 	}

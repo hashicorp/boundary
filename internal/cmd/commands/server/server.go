@@ -464,7 +464,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 		if c.WorkerAuthKms == nil {
-			req := c.worker.NodeeRegistrationRequest
+			req := c.worker.WorkerAuthRegistrationRequest
 			if req == "" {
 				retErr := fmt.Errorf("No worker registration request found at worker startup time")
 				if err := c.worker.Shutdown(); err != nil {
@@ -477,10 +477,10 @@ func (c *Command) Run(args []string) int {
 				}
 				return base.CommandCliError
 			}
-			c.InfoKeys = append(c.InfoKeys, "worker registration request")
-			c.Info["worker registration request"] = req
-			c.InfoKeys = append(c.InfoKeys, "worker current key id")
-			c.Info["worker current key id"] = c.worker.NodeeCurrentKeyId
+			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
+			c.Info["worker auth registration request"] = req
+			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
+			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId
 		}
 	}
 

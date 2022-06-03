@@ -74,11 +74,11 @@ type Worker struct {
 	// SIGHUP.
 	updateTags *ua.Bool
 
-	// PoC: Testing bits for BYOW
-	NodeeFileStorage         *nodeefile.FileStorage
-	NodeeCurrentKeyId        string
-	NodeeRegistrationRequest string
-	nodeeSplitListener       *splitlistener.SplitListener
+	// The storage for node enrollment
+	WorkerAuthStorage             nodeenrollment.Storage
+	WorkerAuthCurrentKeyId        string
+	WorkerAuthRegistrationRequest string
+	workerAuthSplitListener       *splitlistener.SplitListener
 
 	// Test-specific options
 	TestOverrideX509VerifyDnsName  string
@@ -161,7 +161,7 @@ func New(conf *Config) (*Worker, error) {
 		return nil, fmt.Errorf("exactly one proxy listener is required")
 	}
 
-	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
+	w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
 		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
 	if err != nil {
 		return nil, err
@@ -188,7 +188,7 @@ func (w *Worker) Start() error {
 		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
 
-	nodeCreds, err := types.NewNodeCredentials(w.baseContext, w.NodeeFileStorage, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+	nodeCreds, err := types.NewNodeCredentials(w.baseContext, w.WorkerAuthStorage, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
 	if err != nil {
 		return fmt.Errorf("error generating new node creds: %w", err)
 	}
@@ -201,11 +201,11 @@ func (w *Worker) Start() error {
 	if err != nil {
 		return fmt.Errorf("error marshaling fetch credentials request: %w", err)
 	}
-	w.NodeeRegistrationRequest = base58.FastBase58Encoding(reqBytes)
+	w.WorkerAuthRegistrationRequest = base58.FastBase58Encoding(reqBytes)
 	if err != nil {
 		return fmt.Errorf("error encoding registration request: %w", err)
 	}
-	w.NodeeCurrentKeyId, err = nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+	w.WorkerAuthCurrentKeyId, err = nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 	if err != nil {
 		return fmt.Errorf("error deriving key id: %w", err)
 	}
