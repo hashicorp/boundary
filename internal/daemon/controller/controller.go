@@ -412,8 +412,9 @@ func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 	return c.workerStatusUpdateTimes
 }
 
+// This is a temporary function until the API is up
 func (c *Controller) AuthorizeNodeeWorker(request string) error {
-	const op = "controller.(Controller).AuthorizeWorker"
+	const op = "controller.(Controller).AuthorizeNodeeWorker"
 	reqBytes, err := base58.FastBase58Decoding(request)
 	if err != nil {
 		return fmt.Errorf("(%s) error base58-decoding fetch node creds next proto value: %w", op, err)
