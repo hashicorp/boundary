@@ -165,7 +165,7 @@ func (r *Repository) listWorkersWithReader(ctx context.Context, reader db.Reader
 // UpsertWorkerStatus creates a new worker if one with the provided public id
 // doesn't already exist. If it does, UpsertWorkerStatus updates the worker
 // status.  This returns the Worker object with the updated WorkerStatus applied.
-// The WithUpdateTags option is the only ones used. All others are ignored.
+// The WithPublicId and WithUpdateTags options are the only ones used. All others are ignored.
 // Workers are intentionally not oplogged.
 func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "servers.UpsertWorkerStatus"

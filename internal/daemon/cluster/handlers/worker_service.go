@@ -59,17 +59,15 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	// TODO: on the worker, if we get errors back from this repeatedly, do we
 	// terminate all sessions since we can't know if they were canceled?
 
-	wstat := req.GetWorkerStatus()
-	wId, wName := wstat.GetPublicId(), wstat.GetName()
-	if wName == "" {
+	wStat := req.GetWorkerStatus()
+	switch {
+	case wStat.GetName() == "":
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name is not set in the request but is required.")
-	}
-	// This Store call is currently only for testing purposes
-	ws.updateTimes.Store(wName, time.Now())
-	wAddr := wstat.GetAddress()
-	if wAddr == "" {
+	case wStat.GetAddress() == "":
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Address is not set but is required.")
 	}
+	// This Store call is currently only for testing purposes
+	ws.updateTimes.Store(wStat.GetName(), time.Now())
 
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
@@ -78,7 +76,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	// Convert API tags to storage tags
-	wTags := wstat.GetTags()
+	wTags := wStat.GetTags()
 	workerTags := make([]*servers.Tag, 0, len(wTags))
 	for _, v := range wTags {
 		workerTags = append(workerTags, &servers.Tag{
@@ -88,15 +86,18 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	wConf := servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithName(wName),
-		servers.WithAddress(wAddr),
+		servers.WithName(wStat.GetName()),
+		servers.WithAddress(wStat.GetAddress()),
 		servers.WithWorkerTags(workerTags...))
-	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()), servers.WithPublicId(wId))
+	opts := []servers.Option{servers.WithUpdateTags(req.GetUpdateTags())}
+	if wStat.GetPublicId() != "" {
+		opts = append(opts, servers.WithPublicId(wStat.GetPublicId()))
+	}
+	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
-	wId = wrk.GetPublicId()
 	controllers, err := serverRepo.ListControllers(ctx)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting current controllers"))
@@ -113,7 +114,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 	ret := &pbs.StatusResponse{
 		CalculatedUpstreams: responseControllers,
-		WorkerId:            wId,
+		WorkerId:            wrk.GetPublicId(),
 	}
 
 	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))

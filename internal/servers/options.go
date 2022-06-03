@@ -55,7 +55,7 @@ func WithName(name string) Option {
 	}
 }
 
-// WithName provides an optional public Id used for skipping one db call.
+// WithPublicId provides an optional public Id used for skipping one db call.
 func WithPublicId(id string) Option {
 	return func(o *options) {
 		o.withPublicId = id
