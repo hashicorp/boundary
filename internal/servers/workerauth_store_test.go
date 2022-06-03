@@ -255,6 +255,7 @@ func TestDuplicateRootCert(t *testing.T) {
 	current2, err := newRootCertificate(ctx, rand.Uint64(), populateBytes(defaultLength), beforeTimestamp, afterTimestamp,
 		RootCertificateKeys{publicKey: populateBytes(defaultLength), privateKey: populateBytes(defaultLength)},
 		testKey, CurrentState)
+	require.NoError(t, err)
 	next1, err := newRootCertificate(ctx, rand.Uint64(), populateBytes(defaultLength), beforeTimestamp, afterTimestamp,
 		RootCertificateKeys{publicKey: populateBytes(defaultLength), privateKey: populateBytes(defaultLength)},
 		testKey, NextState)

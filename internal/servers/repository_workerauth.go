@@ -248,8 +248,13 @@ func (r *WorkerAuthRepositoryStorage) storeRootCertificates(ctx context.Context,
 	}
 
 	nextCert, err := r.convertRootCertificate(ctx, cert.Next)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert next root certificate"))
+	}
 	currentCert, err := r.convertRootCertificate(ctx, cert.Current)
-
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert current root certificate"))
+	}
 	// Use passed version
 	var result rootCertificatesVersion
 	err = mapstructure.Decode(cert.State.AsMap(), &result)
