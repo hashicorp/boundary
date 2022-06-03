@@ -147,10 +147,9 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		WorkerStatus: &servers.ServerWorkerStatus{
-			PublicId: w.conf.RawConfig.Worker.Name,
-			Name:     w.conf.RawConfig.Worker.Name,
-			Address:  w.conf.RawConfig.Worker.PublicAddr,
-			Tags:     tags,
+			Name:    w.conf.RawConfig.Worker.Name,
+			Address: w.conf.RawConfig.Worker.PublicAddr,
+			Tags:    tags,
 		},
 		UpdateTags: w.updateTags.Load(),
 	})

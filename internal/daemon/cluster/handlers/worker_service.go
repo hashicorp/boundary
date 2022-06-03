@@ -64,6 +64,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	if wName == "" {
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name is not set in the request but is required.")
 	}
+	// This Store call is currently only for testing purposes
 	ws.updateTimes.Store(wName, time.Now())
 	wAddr := wstat.GetAddress()
 	if wAddr == "" {
@@ -90,17 +91,12 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		servers.WithName(wName),
 		servers.WithAddress(wAddr),
 		servers.WithWorkerTags(workerTags...))
-	// TODO: set WithPublicId in here
-	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()))
+	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, servers.WithUpdateTags(req.GetUpdateTags()), servers.WithPublicId(wId))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
 	wId = wrk.GetPublicId()
-	if wId == "" {
-		return &pbs.StatusResponse{}, status.Error(codes.Internal, "Error acquiring worker Id.")
-	}
-	ws.updateTimes.Store(wId, time.Now())
 	controllers, err := serverRepo.ListControllers(ctx)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting current controllers"))

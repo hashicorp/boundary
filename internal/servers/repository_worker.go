@@ -194,9 +194,14 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	opts := getOpts(opt...)
 
 	var err error
-	worker.PublicId, err = newWorkerIdFromName(ctx, worker.GetWorkerReportedName())
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id"))
+	switch {
+	case opts.withPublicId != "":
+		worker.PublicId = opts.withPublicId
+	default:
+		worker.PublicId, err = newWorkerIdFromName(ctx, worker.GetWorkerReportedName())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id"))
+		}
 	}
 
 	var ret *Worker
