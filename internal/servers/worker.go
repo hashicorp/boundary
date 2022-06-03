@@ -4,11 +4,31 @@ import (
 	"context"
 	"strings"
 
+	"github.com/fatih/structs"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
+
+type workerAuthWorkerId struct {
+	WorkerId string
+}
+
+// AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib
+// This is intended for use in worker authorization; AuthorizeNode in the lib accepts the option WithState
+// so that the workerId is passed through to storage and associated with a WorkerAuth record
+func AttachWorkerIdToState(ctx context.Context, workerId string) (*structpb.Struct, error) {
+	const op = "servers.(Worker).AttachWorkerIdToState"
+	if workerId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing workerId")
+	}
+
+	workerMap := &workerAuthWorkerId{WorkerId: workerId}
+	stateOpt := structs.Map(workerMap)
+	return structpb.NewStruct(stateOpt)
+}
 
 // A Worker is a server that provides an address which can be used to proxy
 // session connections. It can be tagged with custom tags and is used when
@@ -16,23 +36,39 @@ import (
 type Worker struct {
 	*store.Worker
 
-	ReportedStatus *WorkerStatus `gorm:"-"`
-	Tags           []*Tag        `gorm:"-"`
+	apiTags    []*Tag `gorm:"-"`
+	configTags []*Tag `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
-// WithAddress, and WithWorkerTags. All other options are ignored.
+// WithAddress, and WithWorkerTags. All other options are ignored.  This does
+// not set any of the worker reported values.
 func NewWorker(scopeId string, opt ...Option) *Worker {
 	opts := getOpts(opt...)
 	return &Worker{
 		Worker: &store.Worker{
 			ScopeId:     scopeId,
-			PublicId:    opts.withPublicId,
 			Name:        opts.withName,
 			Description: opts.withDescription,
 			Address:     opts.withAddress,
 		},
-		Tags: opts.withWorkerTags,
+		apiTags: opts.withWorkerTags,
+	}
+}
+
+// NewWorkerForStatus returns a new Worker usable for status updates.
+// Valid options are WithName, WithAddress, and WithWorkerTags, all of which
+// are assigned to the worker reported variations of these fields.
+// All other options are ignored.
+func NewWorkerForStatus(scopeId string, opt ...Option) *Worker {
+	opts := getOpts(opt...)
+	return &Worker{
+		Worker: &store.Worker{
+			ScopeId:               scopeId,
+			WorkerReportedName:    opts.withName,
+			WorkerReportedAddress: opts.withAddress,
+		},
+		configTags: opts.withWorkerTags,
 	}
 }
 
@@ -45,17 +81,23 @@ func (w *Worker) clone() *Worker {
 	if w == nil {
 		return nil
 	}
-	tags := make([]*Tag, 0, len(w.Tags))
-	for _, t := range w.Tags {
-		tags = append(tags, &Tag{Key: t.Key, Value: t.Value})
-	}
 	cw := proto.Clone(w.Worker)
-	crs := w.ReportedStatus.clone()
-	return &Worker{
-		Worker:         cw.(*store.Worker),
-		Tags:           tags,
-		ReportedStatus: crs,
+	cWorker := &Worker{
+		Worker: cw.(*store.Worker),
 	}
+	if w.apiTags != nil {
+		cWorker.apiTags = make([]*Tag, 0, len(w.apiTags))
+		for _, t := range w.apiTags {
+			cWorker.apiTags = append(cWorker.apiTags, &Tag{Key: t.Key, Value: t.Value})
+		}
+	}
+	if w.configTags != nil {
+		cWorker.configTags = make([]*Tag, 0, len(w.configTags))
+		for _, t := range w.configTags {
+			cWorker.configTags = append(cWorker.configTags, &Tag{Key: t.Key, Value: t.Value})
+		}
+	}
+	return cWorker
 }
 
 // CanonicalAddress returns the actual address boundary believes should be used
@@ -64,27 +106,21 @@ func (w *Worker) clone() *Worker {
 // in its connection status updates.  If neither is available, an empty string
 // is returned.
 func (w *Worker) CanonicalAddress() string {
-	switch {
-	case w.Address != "":
+	if w.GetAddress() != "" {
 		return w.GetAddress()
-	case w.ReportedStatus != nil:
-		return w.ReportedStatus.GetAddress()
-	default:
-		return ""
 	}
+	return w.GetWorkerReportedAddress()
 }
 
 // CanonicalTags is the deduplicated set of tags contained on both the resource
 // set over the API as well as the tags reported by the worker itself.
 func (w *Worker) CanonicalTags() map[string][]string {
 	dedupedTags := make(map[Tag]struct{})
-	for _, t := range w.Tags {
+	for _, t := range w.apiTags {
 		dedupedTags[*t] = struct{}{}
 	}
-	if w.ReportedStatus != nil {
-		for _, t := range w.ReportedStatus.Tags {
-			dedupedTags[*t] = struct{}{}
-		}
+	for _, t := range w.configTags {
+		dedupedTags[*t] = struct{}{}
 	}
 	tags := make(map[string][]string)
 	for t := range dedupedTags {
@@ -93,14 +129,30 @@ func (w *Worker) CanonicalTags() map[string][]string {
 	return tags
 }
 
-// LastConnectionUpdate contains the last time the worker has reported to the
+func (w *Worker) GetApiTags() map[string][]string {
+	tags := make(map[string][]string)
+	for _, t := range w.apiTags {
+		tags[t.Key] = append(tags[t.Key], t.Value)
+	}
+	return tags
+}
+
+func (w *Worker) GetConfigTags() map[string][]string {
+	tags := make(map[string][]string)
+	for _, t := range w.configTags {
+		tags[t.Key] = append(tags[t.Key], t.Value)
+	}
+	return tags
+}
+
+// GetLastStatusTime contains the last time the worker has reported to the
 // controller its connection status.  If the worker has never reported to a
 // controller then nil is returned.
-func (w *Worker) LastConnectionUpdate() *timestamp.Timestamp {
-	if w.ReportedStatus == nil {
+func (w *Worker) GetLastStatusTime() *timestamp.Timestamp {
+	if w == nil || w.Worker == nil || w.Worker.GetLastStatusTime().AsTime() == timestamp.NegativeInfinityTS {
 		return nil
 	}
-	return w.ReportedStatus.GetUpdateTime()
+	return w.Worker.GetLastStatusTime()
 }
 
 // TableName overrides the table name used by Worker to `server_worker`
@@ -111,61 +163,50 @@ func (Worker) TableName() string {
 // workerAggregate contains an aggregated view of the values associated with
 // a single worker.
 type workerAggregate struct {
-	PublicId               string `gorm:"primary_key"`
-	ScopeId                string
-	Name                   string
-	Description            string
-	CreateTime             *timestamp.Timestamp
-	UpdateTime             *timestamp.Timestamp
-	Address                string
-	Version                uint32
-	ApiTags                string
-	WorkerStatusName       string
-	WorkerStatusAddress    string
-	WorkerStatusCreateTime *timestamp.Timestamp
-	WorkerStatusUpdateTime *timestamp.Timestamp
-	WorkerConfigTags       string
+	PublicId              string `gorm:"primary_key"`
+	ScopeId               string
+	Name                  string
+	Description           string
+	CreateTime            *timestamp.Timestamp
+	UpdateTime            *timestamp.Timestamp
+	Address               string
+	Version               uint32
+	ApiTags               string
+	WorkerReportedName    string
+	WorkerReportedAddress string
+	LastStatusTime        *timestamp.Timestamp
+	WorkerConfigTags      string
 }
 
 func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	const op = "servers.(workerAggregate).toWorker"
-	workerOptions := []Option{
-		WithPublicId(a.PublicId),
-		WithName(a.Name),
-		WithDescription(a.Description),
-		WithAddress(a.Address),
+	worker := &Worker{
+		Worker: &store.Worker{
+			PublicId:              a.PublicId,
+			Name:                  a.Name,
+			Description:           a.Description,
+			Address:               a.Address,
+			CreateTime:            a.CreateTime,
+			UpdateTime:            a.UpdateTime,
+			ScopeId:               a.ScopeId,
+			Version:               a.Version,
+			WorkerReportedAddress: a.WorkerReportedAddress,
+			WorkerReportedName:    a.WorkerReportedName,
+			LastStatusTime:        a.LastStatusTime,
+		},
 	}
 	tags, err := tagsFromAggregatedTagString(ctx, a.ApiTags)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing config tag string"))
 	}
-	if len(tags) > 0 {
-		workerOptions = append(workerOptions, WithWorkerTags(tags...))
-	}
-	worker := NewWorker(a.ScopeId, workerOptions...)
-	worker.CreateTime = a.CreateTime
-	worker.UpdateTime = a.UpdateTime
-	worker.Version = a.Version
+	worker.apiTags = tags
 
-	if a.WorkerStatusCreateTime == nil {
-		return worker, nil
-	}
-	statusOptions := []Option{
-		WithName(a.WorkerStatusName),
-		WithAddress(a.WorkerStatusAddress),
-	}
 	tags, err = tagsFromAggregatedTagString(ctx, a.WorkerConfigTags)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing config tag string"))
 	}
-	if len(tags) > 0 {
-		statusOptions = append(statusOptions, WithWorkerTags(tags...))
-	}
-	cfg := NewWorkerStatus(a.PublicId, statusOptions...)
-	cfg.CreateTime = a.WorkerStatusCreateTime
-	cfg.UpdateTime = a.WorkerStatusUpdateTime
+	worker.configTags = tags
 
-	worker.ReportedStatus = cfg
 	return worker, nil
 }
 

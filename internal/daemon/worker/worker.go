@@ -178,15 +178,15 @@ func (w *Worker) Start() error {
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.controllerResolver.Store(controllerResolver)
 
-	if err := w.startListeners(); err != nil {
-		return fmt.Errorf("error starting worker listeners: %w", err)
-	}
-
 	var err error
 	w.NodeeFileStorage, err = nodeefile.NewFileStorage(w.baseContext,
 		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
 	if err != nil {
 		return err
+	}
+
+	if err := w.startListeners(); err != nil {
+		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
 
 	nodeCreds, err := types.NewNodeCredentials(w.baseContext, w.NodeeFileStorage, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))

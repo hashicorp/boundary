@@ -3,6 +3,7 @@ package servers
 import (
 	"context"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,7 +26,7 @@ func populateBytes(length int) []byte {
 	return fieldBytes
 }
 
-func TestKkmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) string {
+func TestKmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) string {
 	t.Helper()
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -89,16 +90,13 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *Worker {
 
 	id, err := newWorkerId(context.Background())
 	require.NoError(t, err)
-	name := "test-worker-" + id
-	wStatus := NewWorkerStatus(id,
+	name := "test-worker-" + strings.ToLower(id)
+	wrk := NewWorkerForStatus(scope.Global.String(),
 		WithName(name),
 		WithAddress("127.0.0.1"))
-	_, _, err = serversRepo.UpsertWorkerStatus(context.Background(), wStatus)
+	wrk, err = serversRepo.UpsertWorkerStatus(context.Background(), wrk)
 	require.NoError(t, err)
-
-	wrk := NewWorker(scope.Global.String(), WithPublicId(id))
-	require.NoError(t, rw.LookupById(context.Background(), wrk))
-	wrk.ReportedStatus = wStatus
+	require.NotNil(t, wrk)
 
 	return wrk
 }

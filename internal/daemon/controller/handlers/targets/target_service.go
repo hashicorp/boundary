@@ -895,7 +895,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// worker IDs below is used to contain their IDs in the same order. This is
 	// used to fetch tags for filtering. But we avoid allocation unless we
 	// actually need it.
-	selectedWorkers, err := serversRepo.ListWorkers(ctx)
+	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -2153,7 +2153,7 @@ func (w workerList) filtered(eval *bexpr.Evaluator) (workerList, error) {
 		//   we are separating reported status name and the resource name.
 		name := worker.GetName()
 		if name == "" {
-			name = worker.ReportedStatus.GetName()
+			name = worker.GetWorkerReportedName()
 		}
 		filterInput := map[string]interface{}{
 			"name": name,
