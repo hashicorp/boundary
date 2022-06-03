@@ -136,7 +136,8 @@ func WithNewIdFunc(fn func(context.Context) (string, error)) Option {
 	}
 }
 
-// WithFetchNodeCredentialsRequest allows an optional NodeInformation to be specified.
+// WithFetchNodeCredentialsRequest allows an optional
+// FetchNodeCredentialsRequest to be specified.
 func WithFetchNodeCredentialsRequest(req *types.FetchNodeCredentialsRequest) Option {
 	return func(o *options) {
 		o.withFetchNodeCredentialsRequest = req
