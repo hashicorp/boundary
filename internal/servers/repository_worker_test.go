@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -17,6 +18,10 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
+	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
+	"github.com/hashicorp/nodeenrollment/rotation"
+	"github.com/hashicorp/nodeenrollment/storage/file"
+	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -508,8 +513,8 @@ func TestRepository_CreateWorker(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	testRepo, err := servers.NewRepository(rw, rw, kms)
+	testKms := kms.TestKms(t, conn, wrapper)
+	testRepo, err := servers.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -519,10 +524,17 @@ func TestRepository_CreateWorker(t *testing.T) {
 		return "", errors.New(testCtx, errors.Internal, "test", "testNewIdFn-error")
 	}
 
+	rootStorage, err := servers.NewRepositoryStorage(testCtx, rw, rw, testKms)
+	require.NoError(t, err)
+	_, err = rotation.RotateRootCertificates(testCtx, rootStorage)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name            string
 		setup           func() *servers.Worker
 		repo            *servers.Repository
+		fetchReq        *types.FetchNodeCredentialsRequest
+		reader          db.Reader
 		opt             []servers.Option
 		wantErr         bool
 		wantErrIs       errors.Code
@@ -599,7 +611,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 				mock.ExpectBegin()
 				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New(testCtx, errors.Internal, "test", "create-error"))
 				mock.ExpectRollback()
-				r, err := servers.NewRepository(rw, writer, kms)
+				r, err := servers.NewRepository(rw, writer, testKms)
 				require.NoError(t, err)
 				return r
 			}(),
@@ -643,11 +655,69 @@ func TestRepository_CreateWorker(t *testing.T) {
 			wantErrContains: "last status time is not nil",
 		},
 		{
-			name: "success",
+			name: "no-database-key",
 			setup: func() *servers.Worker {
 				w := servers.NewWorker(scope.Global.String())
 				return w
 			},
+			reader: rw,
+			fetchReq: func() *types.FetchNodeCredentialsRequest {
+				// This happens on the worker
+				fileStorage, err := file.NewFileStorage(testCtx)
+				require.NoError(t, err)
+				defer fileStorage.Cleanup()
+
+				nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+				require.NoError(t, err)
+				// Create request using worker id
+				fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
+				require.NoError(t, err)
+				return fetchReq
+			}(),
+			repo: func() *servers.Repository {
+				mockConn, mock := db.TestSetupWithMock(t)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "no-database-key"))
+				k := kms.TestKms(t, mockConn, wrapper)
+				r, err := servers.NewRepository(rw, rw, k)
+				require.NoError(t, err)
+				return r
+			}(),
+			wantErr:         true,
+			wantErrContains: "unable to get wrapper",
+		},
+		{
+			name: "bad-fetch-node-req",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				return w
+			},
+			reader:          rw,
+			fetchReq:        &types.FetchNodeCredentialsRequest{},
+			repo:            testRepo,
+			wantErr:         true,
+			wantErrContains: "unable to authorize node",
+		},
+		{
+			name: "success-with-fetch-node-req",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				return w
+			},
+			reader: rw,
+			fetchReq: func() *types.FetchNodeCredentialsRequest {
+				// This happens on the worker
+				fileStorage, err := file.NewFileStorage(testCtx)
+				require.NoError(t, err)
+				defer fileStorage.Cleanup()
+
+				nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+				require.NoError(t, err)
+				// Create request using worker id
+				fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
+				require.NoError(t, err)
+				return fetchReq
+			}(),
 			repo: testRepo,
 		},
 	}
@@ -655,6 +725,9 @@ func TestRepository_CreateWorker(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testWorker := tc.setup()
+
+			tc.opt = append(tc.opt, servers.WithFetchNodeCredentialsRequest(tc.fetchReq))
+
 			got, err := tc.repo.CreateWorker(testCtx, testWorker, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
@@ -681,6 +754,13 @@ func TestRepository_CreateWorker(t *testing.T) {
 			err = rw.LookupByPublicId(testCtx, found)
 			require.NoError(err)
 			assert.Equal(got, found)
+
+			if tc.fetchReq != nil {
+				worker := &servers.WorkerAuth{
+					WorkerAuth: &store.WorkerAuth{},
+				}
+				require.NoError(tc.reader.LookupWhere(testCtx, worker, "worker_id = ?", []any{found.PublicId}))
+			}
 		})
 	}
 }
