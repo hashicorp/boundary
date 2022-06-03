@@ -29,15 +29,12 @@ func TestExternalWrappers(t *testing.T) {
 	assert.Equal(rootWrapper, k.GetExternalWrappers(testCtx).Root())
 	assert.Equal(recoveryWrapper, k.GetExternalWrappers(testCtx).Recovery())
 	assert.Equal(workerAuthWrapper, k.GetExternalWrappers(testCtx).WorkerAuth())
-	assert.Equal(workerAuthStorageWrapper, k.GetExternalWrappers(testCtx).WorkerAuthStorage())
 
 	err = k.AddExternalWrappers(testCtx, WithRootWrapper(&invalidWrapper{}))
 	assert.Error(err)
 	err = k.AddExternalWrappers(testCtx, WithRecoveryWrapper(&invalidWrapper{}))
 	assert.Error(err)
 	err = k.AddExternalWrappers(testCtx, WithWorkerAuthWrapper(&invalidWrapper{}))
-	assert.Error(err)
-	err = k.AddExternalWrappers(testCtx, WithWorkerAuthStorageWrapper(&invalidWrapper{}))
 	assert.Error(err)
 }
 

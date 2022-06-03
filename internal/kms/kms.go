@@ -141,9 +141,6 @@ func (k *Kms) GetExternalWrappers(ctx context.Context) *ExternalWrappers {
 	if workerAuth, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String())); err == nil {
 		ret.workerAuth = workerAuth
 	}
-	if workerAuthStorage, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String())); err == nil {
-		ret.workerAuthStorage = workerAuthStorage
-	}
 	if recovery, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRecovery.String())); err == nil {
 		ret.recovery = recovery
 	}
