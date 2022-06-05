@@ -442,7 +442,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
+		func(read db.Reader, w db.Writer) error {
 			returnedWorker = worker.clone()
 			if err := w.Create(
 				ctx,
@@ -451,7 +451,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker"))
 			}
 			if opts.withFetchNodeCredentialsRequest != nil {
-				workerAuthRepo, err = NewRepositoryStorage(ctx, r.reader, r.writer, r.kms)
+				workerAuthRepo, err = NewRepositoryStorage(ctx, read, w, r.kms)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker auth repository"))
 				}

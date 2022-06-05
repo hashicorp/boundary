@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -313,6 +314,36 @@ func Test_ACLAllowed(t *testing.T) {
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read},
 				{action: action.ReadSelf, authorized: true},
+			},
+		},
+		{
+			name:     "create worker with create",
+			resource: Resource{ScopeId: scope.Global.String(), Type: resource.Worker},
+			scopeGrants: []scopeGrant{
+				{
+					scope: scope.Global.String(),
+					grants: []string{
+						"type=worker;actions=create",
+					},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.CreateWorkerRequest, authorized: true},
+			},
+		},
+		{
+			name:     "create worker with request only",
+			resource: Resource{ScopeId: scope.Global.String(), Type: resource.Worker},
+			scopeGrants: []scopeGrant{
+				{
+					scope: scope.Global.String(),
+					grants: []string{
+						"type=worker;actions=create:worker-request",
+					},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.CreateWorkerRequest, authorized: true},
 			},
 		},
 	}
