@@ -95,6 +95,10 @@ func TestAction(t *testing.T) {
 			action: NoOp,
 			want:   "no-op",
 		},
+		{
+			action: CreateWorkerRequest,
+			want:   "create:worker-request",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
@@ -213,6 +217,43 @@ func TestOnlySelf(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, tt.actions.OnlySelf())
+		})
+	}
+}
+
+func TestIsActionOrParent(t *testing.T) {
+	tests := []struct {
+		name string
+		base Type
+		comp Type
+		want bool
+	}{
+		{
+			name: "same",
+			base: Cancel,
+			comp: Cancel,
+			want: true,
+		},
+		{
+			name: "different",
+			base: Cancel,
+			comp: Read,
+		},
+		{
+			name: "different base and comp",
+			base: List,
+			comp: CancelSelf,
+		},
+		{
+			name: "same base and comp",
+			base: Cancel,
+			comp: CancelSelf,
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.base.IsActionOrParent(tt.comp))
 		})
 	}
 }

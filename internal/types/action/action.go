@@ -1,12 +1,12 @@
 package action
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
-// Type defines a type for the Actions of Resources
-// actions are also stored as a lookup db table named iam_action
 type Type uint
 
-// not using iota intentionally, since the values are stored in the db as well.
 const (
 	Unknown                   Type = 0
 	List                      Type = 1
@@ -53,6 +53,7 @@ const (
 	AddHostSources            Type = 42
 	SetHostSources            Type = 43
 	RemoveHostSources         Type = 44
+	CreateWorkerRequest       Type = 45
 )
 
 var Map = map[string]Type{
@@ -100,6 +101,7 @@ var Map = map[string]Type{
 	AddHostSources.String():            AddHostSources,
 	SetHostSources.String():            SetHostSources,
 	RemoveHostSources.String():         RemoveHostSources,
+	CreateWorkerRequest.String():       CreateWorkerRequest,
 }
 
 func (a Type) String() string {
@@ -149,7 +151,18 @@ func (a Type) String() string {
 		"add-host-sources",
 		"set-host-sources",
 		"remove-host-sources",
+		"create:worker-request",
 	}[a]
+}
+
+// IsActionOrParent tests whether the given action is either the same as the
+// suspect or is a parent of the suspect. This is used in some parts of ACL
+// checking.
+func (act Type) IsActionOrParent(suspect Type) bool {
+	if act == suspect {
+		return true
+	}
+	return strings.HasPrefix(suspect.String(), fmt.Sprintf("%s:", act.String()))
 }
 
 // ActionSet stores a slice of action types
