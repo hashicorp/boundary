@@ -32,7 +32,7 @@ type TestWorker struct {
 	name   string
 }
 
-// Worker returns the underlying controller
+// Worker returns the underlying worker
 func (tw *TestWorker) Worker() *Worker {
 	return tw.w
 }
