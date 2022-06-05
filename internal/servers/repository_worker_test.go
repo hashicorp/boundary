@@ -663,7 +663,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			reader: rw,
 			fetchReq: func() *types.FetchNodeCredentialsRequest {
 				// This happens on the worker
-				fileStorage, err := file.NewFileStorage(testCtx)
+				fileStorage, err := file.New(testCtx)
 				require.NoError(t, err)
 				defer fileStorage.Cleanup()
 
@@ -707,7 +707,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			reader: rw,
 			fetchReq: func() *types.FetchNodeCredentialsRequest {
 				// This happens on the worker
-				fileStorage, err := file.NewFileStorage(testCtx)
+				fileStorage, err := file.New(testCtx)
 				require.NoError(t, err)
 				defer fileStorage.Cleanup()
 
