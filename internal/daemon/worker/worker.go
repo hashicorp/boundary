@@ -28,9 +28,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
-	"github.com/hashicorp/nodeenrollment/util/splitlistener"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
@@ -75,10 +75,10 @@ type Worker struct {
 	updateTags *ua.Bool
 
 	// The storage for node enrollment
-	WorkerAuthStorage             *nodeefile.FileStorage
+	WorkerAuthStorage             *nodeefile.Storage
 	WorkerAuthCurrentKeyId        string
 	WorkerAuthRegistrationRequest string
-	workerAuthSplitListener       *splitlistener.SplitListener
+	workerAuthSplitListener       *nodeenet.SplitListener
 
 	// Test-specific options
 	TestOverrideX509VerifyDnsName  string
