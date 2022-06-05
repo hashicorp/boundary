@@ -36,7 +36,7 @@ var (
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
 	CollectionActions = action.ActionSet{
-		action.Create,
+		action.CreateWorkerRequest,
 		action.List,
 	}
 )
