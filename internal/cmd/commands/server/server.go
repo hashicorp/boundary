@@ -463,22 +463,10 @@ func (c *Command) Run(args []string) int {
 			}
 			return base.CommandCliError
 		}
-		if c.WorkerAuthKms == nil {
-			req := c.worker.WorkerAuthRegistrationRequest
-			if req == "" {
-				retErr := fmt.Errorf("No worker registration request found at worker startup time")
-				if err := c.worker.Shutdown(); err != nil {
-					c.UI.Error(retErr.Error())
-					retErr = fmt.Errorf("Error shutting down worker: %w", err)
-				}
-				c.UI.Error(retErr.Error())
-				if err := c.controller.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-				}
-				return base.CommandCliError
-			}
+
+		if c.WorkerAuthKms == nil && c.worker.WorkerAuthRegistrationRequest != "" {
 			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
-			c.Info["worker auth registration request"] = req
+			c.Info["worker auth registration request"] = c.worker.WorkerAuthRegistrationRequest
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId
 		}
@@ -646,6 +634,14 @@ func (c *Command) StartWorker() error {
 	c.worker, err = worker.New(conf)
 	if err != nil {
 		return fmt.Errorf("Error initializing worker: %w", err)
+	}
+
+	if c.WorkerAuthKms == nil {
+		if c.worker.WorkerAuthStorage == nil {
+			return fmt.Errorf("No worker auth KMS specified and no worker auth storage found")
+		}
+		c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
+		c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
 	}
 
 	if err := c.worker.Start(); err != nil {

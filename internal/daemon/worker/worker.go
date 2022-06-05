@@ -75,7 +75,7 @@ type Worker struct {
 	updateTags *ua.Bool
 
 	// The storage for node enrollment
-	WorkerAuthStorage             nodeenrollment.Storage
+	WorkerAuthStorage             *nodeefile.FileStorage
 	WorkerAuthCurrentKeyId        string
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *splitlistener.SplitListener
@@ -188,26 +188,81 @@ func (w *Worker) Start() error {
 		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
 
-	nodeCreds, err := types.NewNodeCredentials(w.baseContext, w.WorkerAuthStorage, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
-	if err != nil {
-		return fmt.Errorf("error generating new node creds: %w", err)
+	// Check for worker auth creds and if not create new ones
+	var createNodeAuthCreds bool
+	var createFetchRequest bool
+	nodeCreds, err := types.LoadNodeCredentials(w.baseContext, w.WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+	switch {
+	case err == nil:
+		if nodeCreds == nil {
+			event.WriteSysEvent(w.baseContext, op, "no error loading worker auth creds but nil creds, creating new creds for registration")
+			createNodeAuthCreds = true
+			createFetchRequest = true
+			break
+		}
+
+		// Check that we have valid creds, or that we have generated creds but
+		// simply are still waiting on authentication (in which case we don't
+		// want to invalidate what we've already sent)
+		var validCreds bool
+		switch len(nodeCreds.CertificateBundles) {
+		case 0:
+			// Still waiting on initial creds, so don't invalidate the request
+			// by creating new credentials. However, we will generate and
+			// display a new valid request in case the first was lost.
+			createFetchRequest = true
+
+		default:
+			now := time.Now()
+			for _, bundle := range nodeCreds.CertificateBundles {
+				if bundle.CertificateNotBefore.AsTime().Before(now) && bundle.CertificateNotAfter.AsTime().After(now) {
+					validCreds = true
+					break
+				}
+			}
+
+			// Certificates are both expired, create new credential request
+			createNodeAuthCreds = !validCreds
+			createFetchRequest = !validCreds
+		}
+
+	case errors.Is(err, nodeenrollment.ErrNotFound):
+		createNodeAuthCreds = true
+		createFetchRequest = true
+
+	default:
+		// Some other type of error happened, bail out
+		return fmt.Errorf("error loading worker auth creds: %w", err)
 	}
 
-	req, err := nodeCreds.CreateFetchNodeCredentialsRequest(w.baseContext)
-	if err != nil {
-		return fmt.Errorf("error creating fetch credentials request: %w", err)
+	if createNodeAuthCreds {
+		nodeCreds, err = types.NewNodeCredentials(w.baseContext, w.WorkerAuthStorage, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+		if err != nil {
+			return fmt.Errorf("error generating new worker auth creds: %w", err)
+		}
 	}
-	reqBytes, err := proto.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("error marshaling fetch credentials request: %w", err)
-	}
-	w.WorkerAuthRegistrationRequest = base58.FastBase58Encoding(reqBytes)
-	if err != nil {
-		return fmt.Errorf("error encoding registration request: %w", err)
-	}
-	w.WorkerAuthCurrentKeyId, err = nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
-	if err != nil {
-		return fmt.Errorf("error deriving key id: %w", err)
+
+	if createFetchRequest {
+		if nodeCreds == nil {
+			return fmt.Errorf("need to create fetch request but worker auth creds are nil: %w", err)
+		}
+
+		req, err := nodeCreds.CreateFetchNodeCredentialsRequest(w.baseContext)
+		if err != nil {
+			return fmt.Errorf("error creating worker auth fetch credentials request: %w", err)
+		}
+		reqBytes, err := proto.Marshal(req)
+		if err != nil {
+			return fmt.Errorf("error marshaling worker auth fetch credentials request: %w", err)
+		}
+		w.WorkerAuthRegistrationRequest = base58.FastBase58Encoding(reqBytes)
+		if err != nil {
+			return fmt.Errorf("error encoding worker auth registration request: %w", err)
+		}
+		w.WorkerAuthCurrentKeyId, err = nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+		if err != nil {
+			return fmt.Errorf("error deriving worker auth key id: %w", err)
+		}
 	}
 
 	if err := w.startControllerConnections(); err != nil {
