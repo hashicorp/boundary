@@ -52,42 +52,42 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                        string
-	flagLogFormat                       string
-	flagCombineLogs                     bool
-	flagLoginName                       string
-	flagPassword                        string
-	flagUnprivilegedLoginName           string
-	flagUnprivilegedPassword            string
-	flagIdSuffix                        string
-	flagHostAddress                     string
-	flagTargetDefaultPort               int
-	flagTargetSessionMaxSeconds         int
-	flagTargetSessionConnectionLimit    int
-	flagControllerAPIListenAddr         string
-	flagControllerClusterListenAddr     string
-	flagControllerPublicClusterAddr     string
-	flagControllerOnly                  bool
-	flagWorkerAuthKey                   string
-	flagWorkerProxyListenAddr           string
-	flagWorkerPublicAddr                string
-	flagOpsListenAddr                   string
-	flagUiPassthroughDir                string
-	flagRecoveryKey                     string
-	flagDatabaseUrl                     string
-	flagContainerImage                  string
-	flagDisableDatabaseDestruction      bool
-	flagEventFormat                     string
-	flagAudit                           string
-	flagObservations                    string
-	flagSysEvents                       string
-	flagEveryEventAllowFilters          []string
-	flagEveryEventDenyFilters           []string
-	flagCreateLoopbackHostPlugin        bool
-	flagPluginExecutionDir              string
-	flagUseEphemeralKmsWorkerAuthMethod bool
-	flagWorkerAuthStorageDir            string
-	flagWorkerAuthStorageSkipCleanup    bool
+	flagLogLevel                     string
+	flagLogFormat                    string
+	flagCombineLogs                  bool
+	flagLoginName                    string
+	flagPassword                     string
+	flagUnprivilegedLoginName        string
+	flagUnprivilegedPassword         string
+	flagIdSuffix                     string
+	flagHostAddress                  string
+	flagTargetDefaultPort            int
+	flagTargetSessionMaxSeconds      int
+	flagTargetSessionConnectionLimit int
+	flagControllerAPIListenAddr      string
+	flagControllerClusterListenAddr  string
+	flagControllerPublicClusterAddr  string
+	flagControllerOnly               bool
+	flagWorkerAuthKey                string
+	flagWorkerProxyListenAddr        string
+	flagWorkerPublicAddr             string
+	flagOpsListenAddr                string
+	flagUiPassthroughDir             string
+	flagRecoveryKey                  string
+	flagDatabaseUrl                  string
+	flagContainerImage               string
+	flagDisableDatabaseDestruction   bool
+	flagEventFormat                  string
+	flagAudit                        string
+	flagObservations                 string
+	flagSysEvents                    string
+	flagEveryEventAllowFilters       []string
+	flagEveryEventDenyFilters        []string
+	flagCreateLoopbackHostPlugin     bool
+	flagPluginExecutionDir           string
+	flagUseKmsWorkerAuthMethod       bool
+	flagWorkerAuthStorageDir         string
+	flagWorkerAuthStorageSkipCleanup bool
 }
 
 func (c *Command) Synopsis() string {
@@ -332,9 +332,9 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
 	})
 	f.BoolVar(&base.BoolVar{
-		Name:   "use-ephemeral-kms-worker-auth-method",
-		Target: &c.flagUseEphemeralKmsWorkerAuthMethod,
-		Usage:  "If set, the original \"ephemeral\" method of worker auth will be used to connect the initial dev worker to the controller.",
+		Name:   "use-kms-worker-auth-method",
+		Target: &c.flagUseKmsWorkerAuthMethod,
+		Usage:  "If set, the original KMS-based method of worker auth will be used to connect the initial dev worker to the controller.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -562,7 +562,7 @@ func (c *Command) Run(args []string) int {
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
-	if err := c.SetupKMSes(c.Context, c.UI, c.Config, base.WithSkipWorkerAuthKmsInstantiation(!c.flagUseEphemeralKmsWorkerAuthMethod)); err != nil {
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config, base.WithSkipWorkerAuthKmsInstantiation(!c.flagUseKmsWorkerAuthMethod)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -570,7 +570,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
 	}
-	if c.flagUseEphemeralKmsWorkerAuthMethod {
+	if c.flagUseKmsWorkerAuthMethod {
 		if c.WorkerAuthKms == nil {
 			c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 			return base.CommandUserError
@@ -690,7 +690,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		if !c.flagUseEphemeralKmsWorkerAuthMethod {
+		if !c.flagUseKmsWorkerAuthMethod {
 			req := c.worker.WorkerAuthRegistrationRequest
 			if req == "" {
 				c.UI.Error("No worker auth registration request found at worker start time")
