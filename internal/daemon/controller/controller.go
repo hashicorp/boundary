@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
+	serversjob "github.com/hashicorp/boundary/internal/servers/job"
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
@@ -37,7 +38,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
-	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	ua "go.uber.org/atomic"
@@ -317,15 +317,6 @@ func (c *Controller) Start() error {
 
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
 
-	workerAuthStorage, err := c.WorkerAuthRepoStorageFn()
-	if err != nil {
-		return fmt.Errorf("error fetching worker auth storage: %w", err)
-	}
-	_, err = rotation.RotateRootCertificates(c.baseContext, workerAuthStorage)
-	if err != nil {
-		return err
-	}
-
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
@@ -375,6 +366,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, c.conf.StatusGracePeriodDuration); err != nil {
+		return err
+	}
+	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
 		return err
 	}
 
