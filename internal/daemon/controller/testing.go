@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"strconv"
 	"strings"
@@ -373,6 +374,11 @@ type TestControllerOpts struct {
 	// If true, the controller will not be started
 	DisableAutoStart bool
 
+	// DisableEventing, if true the test controller will not create events
+	// You must not run the test in parallel (no calls to t.Parallel) since the
+	// this option relies on modifying the system wide default eventer.
+	DisableEventing bool
+
 	// DisableAuthorizationFailures will still cause authz checks to be
 	// performed but they won't cause 403 Forbidden. Useful for API-level
 	// testing to avoid a lot of faff.
@@ -543,8 +549,32 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	}
 	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
 
-	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
-		t.Fatal(err)
+	switch {
+	case opts.DisableEventing:
+		opts.Config.Eventing = &event.EventerConfig{
+			AuditEnabled:        false,
+			ObservationsEnabled: false,
+			SysEventsEnabled:    false,
+		}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex:  tc.b.StderrLock,
+			Output: ioutil.Discard,
+		})
+		e, err := event.NewEventer(
+			testLogger,
+			tc.b.StderrLock,
+			opts.Config.Controller.Name,
+			*opts.Config.Eventing,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tc.b.Eventer = e
+		event.TestWithoutEventing(t) // this ensures the sys eventer will also stop eventing
+	default:
+		if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	// Initialize status grace period
