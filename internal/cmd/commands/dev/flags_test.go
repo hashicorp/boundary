@@ -64,7 +64,7 @@ func TestCommand_Flags(t *testing.T) {
 	assert.Contains(completions, "-event-allow-filter")
 	assert.Contains(completions, "-event-deny-filter")
 	assert.Contains(completions, "-plugin-execution-dir")
-	assert.Contains(completions, "-use-ephemeral-kms-worker-auth-method")
+	assert.Contains(completions, "-use-kms-worker-auth-method")
 	assert.Contains(completions, "-worker-auth-storage-dir")
 	assert.Contains(completions, "-worker-auth-storage-skip-cleanup")
 
