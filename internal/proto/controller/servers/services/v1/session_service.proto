@@ -36,6 +36,9 @@ message LookupSessionRequest {
   // The name of the requesting worker, used for filtering to ensure this
   // worker is allowed to handle this session.
   string server_id = 20; // @gotags: `class:"public"`
+  // The key id of the requesting worker, used for filtering
+  // if the server name is not provided
+  string worker_key_id = 30; // @gotags: `class:"public"`
 }
 
 // LookupSessionResponse contains information necessary for a client to

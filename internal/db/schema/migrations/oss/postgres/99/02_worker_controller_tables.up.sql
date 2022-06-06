@@ -54,19 +54,27 @@ create table server_worker (
         ),
   -- This is the name that the worker reports in it's status updates.
   worker_reported_name wt_name
-    -- TODO: When we are recording the worker node's key id allow that as an
-    --  alternative value that must be set besides worker_reported_name if
-    --  last_status_time is set.
     constraint worker_reported_name_must_be_set_by_status
       check (
           (last_status_time is null and worker_reported_name is null)
           or
           (last_status_time is not null and worker_reported_name is not null)
+          or
+          (last_status_time is not null and worker_reported_key_id is not null)
         )
     constraint worker_reported_name_must_be_lowercase
       check (lower(trim(worker_reported_name)) = worker_reported_name)
     constraint worker_reported_name_only_has_printable_characters
       check (worker_reported_name !~ '[^[:print:]]'),
+  worker_reported_key_id text
+    constraint worker_reported_key_id_must_be_set_by_status
+      check (
+          (last_status_time is null and worker_reported_key_id is null)
+          or
+          (last_status_time is not null and worker_reported_name is not null)
+          or
+          (last_status_time is not null and worker_reported_key_id is not null)
+        ),
   constraint server_worker_scope_id_name_uq
     unique(scope_id, name),
   constraint server_worker_scope_id_worker_reported_name_uq

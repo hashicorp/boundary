@@ -68,6 +68,7 @@ func NewWorkerForStatus(scopeId string, opt ...Option) *Worker {
 			ScopeId:               scopeId,
 			WorkerReportedName:    opts.withName,
 			WorkerReportedAddress: opts.withAddress,
+			WorkerReportedKeyId:   opts.withKeyId,
 		},
 		configTags: opts.withWorkerTags,
 	}
@@ -187,6 +188,7 @@ type workerAggregate struct {
 	WorkerReportedName    string
 	WorkerReportedAddress string
 	LastStatusTime        *timestamp.Timestamp
+	WorkerReportedKeyId   string
 	WorkerConfigTags      string
 }
 
@@ -205,6 +207,7 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 			WorkerReportedAddress: a.WorkerReportedAddress,
 			WorkerReportedName:    a.WorkerReportedName,
 			LastStatusTime:        a.LastStatusTime,
+			WorkerReportedKeyId:   a.WorkerReportedKeyId,
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 	}

@@ -190,10 +190,6 @@ func (w *Worker) Start() error {
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.controllerResolver.Store(controllerResolver)
 
-	if err := w.startListeners(); err != nil {
-		return fmt.Errorf("error starting worker listeners: %w", err)
-	}
-
 	if w.conf.WorkerAuthKms == nil {
 		// In this section, we look for existing worker credentials. The two
 		// variables below store whether to create new credentials and whether
@@ -291,8 +287,17 @@ func (w *Worker) Start() error {
 				return fmt.Errorf("error deriving worker auth key id: %w", err)
 			}
 		}
+		// Regardless, we want to load the currentKeyId
+		currentKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+		if err != nil {
+			return fmt.Errorf("error deriving worker auth key id: %w", err)
+		}
+		w.WorkerAuthCurrentKeyId.Store(currentKeyId)
 	}
 
+	if err := w.startListeners(); err != nil {
+		return fmt.Errorf("error starting worker listeners: %w", err)
+	}
 	if err := w.StartControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
@@ -499,8 +504,9 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	defer cancel()
 
 	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
-		ServerId:  w.conf.RawConfig.Worker.Name,
-		SessionId: sessionId,
+		ServerId:    w.conf.RawConfig.Worker.Name,
+		SessionId:   sessionId,
+		WorkerKeyId: w.WorkerAuthCurrentKeyId.Load(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error validating session: %w", err)
