@@ -395,7 +395,7 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 	}
 	if outputFields.Has(globals.CanonicalTagsField) && len(in.CanonicalTags()) > 0 {
 		var err error
-		out.Tags, err = tagsToMapProto(in.CanonicalTags())
+		out.CanonicalTags, err = tagsToMapProto(in.CanonicalTags())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing canonical tags proto"))
 		}

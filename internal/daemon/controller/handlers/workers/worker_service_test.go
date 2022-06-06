@@ -31,6 +31,17 @@ import (
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
+func structListValue(t *testing.T, ss ...string) *structpb.ListValue {
+	t.Helper()
+	var val []interface{}
+	for _, s := range ss {
+		val = append(val, s)
+	}
+	lv, err := structpb.NewList(val)
+	require.NoError(t, err)
+	return lv
+}
+
 func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -40,14 +51,29 @@ func TestGet(t *testing.T) {
 	}
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
+	repo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
 	repoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+		return repo, nil
 	}
 
 	worker := servers.TestWorker(t, conn, wrap,
 		servers.WithName("test worker names"),
 		servers.WithDescription("test worker description"),
-		servers.WithAddress("test worker address"))
+		servers.WithAddress("test worker address"),
+		servers.WithWorkerTags(&servers.Tag{"key", "val"}))
+	// Add config tags to the created worker
+	worker, err = repo.UpsertWorkerStatus(context.Background(),
+		servers.NewWorkerForStatus(worker.GetScopeId(),
+			servers.WithName(worker.GetWorkerReportedName()),
+			servers.WithAddress(worker.GetWorkerReportedAddress()),
+			servers.WithWorkerTags(&servers.Tag{
+				Key:   "config",
+				Value: "test",
+			})),
+		servers.WithUpdateTags(true),
+		servers.WithPublicId(worker.GetPublicId()))
+	require.NoError(t, err)
 
 	wantWorker := &pb.Worker{
 		Id:                worker.GetPublicId(),
@@ -62,9 +88,19 @@ func TestGet(t *testing.T) {
 		AuthorizedActions: testAuthorizedActions,
 		CanonicalAddress:  worker.CanonicalAddress(),
 		LastStatusTime:    worker.GetLastStatusTime().GetTimestamp(),
+		CanonicalTags: map[string]*structpb.ListValue{
+			"key":    structListValue(t, "val"),
+			"config": structListValue(t, "test"),
+		},
+		Tags: map[string]*structpb.ListValue{
+			"key": structListValue(t, "val"),
+		},
 		WorkerConfig: &pb.WorkerConfig{
 			Address: worker.GetWorkerReportedAddress(),
 			Name:    worker.GetWorkerReportedName(),
+			Tags: map[string]*structpb.ListValue{
+				"config": structListValue(t, "test"),
+			},
 		},
 	}
 
@@ -631,11 +667,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Worker{
 					Tags: map[string]*structpb.ListValue{
-						"foo": func() *structpb.ListValue {
-							l, err := structpb.NewList([]interface{}{"bar"})
-							require.NoError(t, err)
-							return l
-						}(),
+						"foo": structListValue(t, "bar"),
 					},
 				},
 			},
@@ -650,11 +682,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Worker{
 					CanonicalTags: map[string]*structpb.ListValue{
-						"foo": func() *structpb.ListValue {
-							l, err := structpb.NewList([]interface{}{"bar"})
-							require.NoError(t, err)
-							return l
-						}(),
+						"foo": structListValue(t, "bar"),
 					},
 				},
 			},
