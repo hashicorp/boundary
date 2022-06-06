@@ -145,11 +145,32 @@ func TestLookupWorker(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	w := servers.TestWorker(t, conn, wrapper)
+	w := servers.TestWorker(t, conn, wrapper,
+		servers.WithName("name"),
+		servers.WithDescription("description"),
+		servers.WithAddress("address"),
+		servers.WithWorkerTags(&servers.Tag{"key", "val"}))
+	w, err = repo.UpsertWorkerStatus(context.Background(),
+		servers.NewWorkerForStatus(w.GetScopeId(),
+			servers.WithName(w.GetWorkerReportedName()),
+			servers.WithAddress(w.GetWorkerReportedAddress()),
+			servers.WithWorkerTags(&servers.Tag{
+				Key:   "config",
+				Value: "test",
+			})),
+		servers.WithUpdateTags(true))
+	require.NoError(t, err)
+
 	t.Run("success", func(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, w.GetPublicId())
 		require.NoError(t, err)
-		assert.Empty(t, cmp.Diff(w.Worker, got.Worker, protocmp.Transform()))
+		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
+		assert.Equal(t, map[string][]string{"key": {"val"}}, got.GetApiTags())
+		assert.Equal(t, map[string][]string{"config": {"test"}}, got.GetConfigTags())
+		assert.Equal(t, map[string][]string{
+			"key":    {"val"},
+			"config": {"test"},
+		}, got.CanonicalTags())
 	})
 	t.Run("not found", func(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, "w_unknownid")
