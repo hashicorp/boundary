@@ -90,7 +90,16 @@ message Worker {
   // itself.
   WorkerConfig worker_config = 140 [json_name = "worker_config"];
 
-  // TODO: Add worker auth related fields.
+  // node_credentials_token is input only. Supports the worker led node
+  // enrollment flow where this credentials token is produced by a worker. This
+  // token is a base58 encoded types.FetchNodeCredentialsRequest from
+  // https://github.com/hashicorp/nodeenrollment
+  google.protobuf.StringValue node_credentials_token = 150 [json_name = "node_credentials_token"]; // @gotags: `class:"public"`
+
+  // node_authorization_token is output only. Supports the server led node
+  // enrollment flow where this authorization token is given to the work so it
+  // can be authorized.  See: https://github.com/hashicorp/nodeenrollment
+  google.protobuf.StringValue node_authorization_token = 155 [json_name = "node_authorization_token"]; // @gotags: `class:"public"`
 
   // Output only. The available actions on this resource for the requester.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
