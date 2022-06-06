@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -622,6 +623,57 @@ func TestUpdate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Cant specify tags",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"tags"},
+				},
+				Item: &pb.Worker{
+					Tags: map[string]*structpb.ListValue{
+						"foo": func() *structpb.ListValue {
+							l, err := structpb.NewList([]interface{}{"bar"})
+							require.NoError(t, err)
+							return l
+						}(),
+					},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify canonical tags",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"canonical_tags"},
+				},
+				Item: &pb.Worker{
+					CanonicalTags: map[string]*structpb.ListValue{
+						"foo": func() *structpb.ListValue {
+							l, err := structpb.NewList([]interface{}{"bar"})
+							require.NoError(t, err)
+							return l
+						}(),
+					},
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Cant specify canonical address",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"canonical_address"},
+				},
+				Item: &pb.Worker{
+					CanonicalAddress: "should_fail",
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -641,10 +693,10 @@ func TestUpdate(t *testing.T) {
 			}
 
 			if got != nil {
-				assert.NotNilf(t, tc.res, "Expected UpdareWorker response to be nil, but was %v", got)
+				assert.NotNilf(t, tc.res, "Expected UpdateWorker response to be nil, but was %v", got)
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
-				// Verify it is a set updated after it was created
-				assert.True(t, gotUpdateTime.After(wCreated), "Updated resource should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, wCreated)
+				// Verify updated set after it was created
+				assert.True(t, gotUpdateTime.After(wCreated), "Updated resource should have been updated after its creation. Was updated %v, which is after %v", gotUpdateTime, wCreated)
 
 				// Clear all values which are hard to compare against.
 				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil

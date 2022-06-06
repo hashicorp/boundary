@@ -68,7 +68,7 @@ message Worker {
       this: "address"
       that: "address"
     }
-  ]; // @gotags: `class:"sensitive"`
+  ]; // @gotags: `class:"public"`
 
   // Output only.  This is the address used by authorized session.  The value
   // is the same as the address field if set. Otherwise it uses the address the

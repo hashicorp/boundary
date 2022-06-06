@@ -116,7 +116,7 @@ type Worker struct {
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
 	// The address that this worker is reachable at.
-	Address *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=address,proto3" json:"address,omitempty"` // @gotags: `class:"sensitive"`
+	Address *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=address,proto3" json:"address,omitempty"` // @gotags: `class:"public"`
 	// Output only.  This is the address used by authorized session.  The value
 	// is the same as the address field if set. Otherwise it uses the address the
 	// worker reports.
