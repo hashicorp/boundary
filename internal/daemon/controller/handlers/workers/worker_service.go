@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -24,6 +25,8 @@ import (
 )
 
 var (
+	maskManager handlers.MaskManager
+
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
@@ -40,6 +43,13 @@ var (
 		action.List,
 	}
 )
+
+func init() {
+	var err error
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Worker{}}, handlers.MaskSource{&pb.Worker{}}); err != nil {
+		panic(err)
+	}
+}
 
 // Service handles request as described by the pbs.WorkerServiceServer interface.
 type Service struct {
@@ -192,6 +202,44 @@ func (s Service) DeleteWorker(ctx context.Context, req *pbs.DeleteWorkerRequest)
 	return nil, nil
 }
 
+// UpdateWorker implements the interface pbs.WorkerServiceServer.
+func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest) (*pbs.UpdateWorkerResponse, error) {
+	const op = "workers.(Service).UpdateWorker"
+
+	if err := validateUpdateRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	w, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, w, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.UpdateWorkerResponse{Item: item}, nil
+}
+
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*servers.Worker, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -236,6 +284,38 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete worker"))
 	}
 	return rows > 0, nil
+}
+
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Worker) (*servers.Worker, error) {
+	const op = "workers.(Service).updateInRepo"
+	var opts []servers.Option
+	if desc := item.GetDescription(); desc != nil {
+		opts = append(opts, servers.WithDescription(desc.GetValue()))
+	}
+	if name := item.GetName(); name != nil {
+		opts = append(opts, servers.WithName(name.GetValue()))
+	}
+	if addr := item.GetAddress(); addr != nil {
+		opts = append(opts, servers.WithAddress(addr.GetValue()))
+	}
+	w := servers.NewWorker(scopeId, opts...)
+	w.PublicId = id
+	dbMask := maskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, rowsUpdated, err := repo.UpdateWorker(ctx, w, item.GetVersion(), dbMask)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update worker"))
+	}
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("Worker %q doesn't exist or incorrect version provided.", id)
+	}
+	return out, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -392,4 +472,23 @@ func validateListRequest(req *pbs.ListWorkersRequest) error {
 
 func validateDeleteRequest(req *pbs.DeleteWorkerRequest) error {
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, servers.WorkerPrefix)
+}
+
+func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if req.GetItem().GetWorkerConfig() != nil {
+			badFields[globals.ConfigurationField] = "This is a read only field."
+		}
+		if req.GetItem().GetCanonicalAddress() != "" {
+			badFields[globals.CanonicalAddressField] = "This is a read only field."
+		}
+		if req.GetItem().GetCanonicalTags() != nil {
+			badFields[globals.CanonicalAddressField] = "This is a read only field."
+		}
+		if req.GetItem().GetTags() != nil {
+			badFields[globals.TagsField] = "These values cannot be updated in this type of request."
+		}
+		return badFields
+	}, servers.WorkerPrefix)
 }
