@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
 	"github.com/hashicorp/nodeenrollment/registration"
+	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/tls"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/hashicorp/nodeenrollment/util/temperror"
@@ -78,5 +79,24 @@ func (m *multihopServiceServer) GenerateServerCertificates(ctx context.Context, 
 			return nil, temperror.New(errors.New("client could not be understood as a multihop service client"))
 		}
 		return multihopClient.GenerateServerCertificates(ctx, req)
+	}
+}
+
+func (m *multihopServiceServer) RotateNodeCredentials(ctx context.Context, req *types.RotateNodeCredentialsRequest) (*types.RotateNodeCredentialsResponse, error) {
+	const op = "cluster.handlers.(multihopServiceServer).RotateNodeCredentials"
+	switch m.direct {
+	case true:
+		return rotation.RotateNodeCredentials(ctx, m.storage, req, m.options...)
+
+	default:
+		client := m.client.Load()
+		if client == nil {
+			return nil, fmt.Errorf("%s: error fetching multihop connection, client is nil", op)
+		}
+		multihopClient, ok := client.(multihop.MultihopServiceClient)
+		if !ok {
+			return nil, temperror.New(errors.New("client could not be understood as a multihop service client"))
+		}
+		return multihopClient.RotateNodeCredentials(ctx, req)
 	}
 }
