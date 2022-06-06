@@ -125,6 +125,7 @@ func StoreNodeInformationTx(ctx context.Context, writer db.Writer, databaseWrapp
 	nodeAuth.WorkerKeyIdentifier = node.Id
 	nodeAuth.WorkerEncryptionPubKey = node.EncryptionPublicKeyBytes
 	nodeAuth.WorkerSigningPubKey = node.CertificatePublicKeyPkix
+	nodeAuth.Nonce = node.RegistrationNonce
 
 	var err error
 	nodeAuth.KeyId, err = databaseWrapper.KeyId(ctx)
@@ -132,10 +133,6 @@ func StoreNodeInformationTx(ctx context.Context, writer db.Writer, databaseWrapp
 		return errors.Wrap(ctx, err, op)
 	}
 	nodeAuth.ControllerEncryptionPrivKey, err = encrypt(ctx, node.ServerEncryptionPrivateKeyBytes, databaseWrapper)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	nodeAuth.Nonce, err = encrypt(ctx, node.RegistrationNonce, databaseWrapper)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -383,6 +380,7 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 
 	node.EncryptionPublicKeyBytes = authorizedWorker.WorkerEncryptionPubKey
 	node.CertificatePublicKeyPkix = authorizedWorker.WorkerSigningPubKey
+	node.RegistrationNonce = authorizedWorker.Nonce
 
 	// Default values are used for key types
 	node.EncryptionPublicKeyType = types.KEYTYPE_X25519
@@ -395,10 +393,6 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.Wrap(ctx, err, op)
 	}
 	node.ServerEncryptionPrivateKeyBytes, err = decrypt(ctx, authorizedWorker.ControllerEncryptionPrivKey, databaseWrapper)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	node.RegistrationNonce, err = decrypt(ctx, authorizedWorker.Nonce, databaseWrapper)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
