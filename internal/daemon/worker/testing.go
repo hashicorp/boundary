@@ -198,6 +198,9 @@ type TestWorkerOpts struct {
 	// Overrides worker's nonceFn, for cases where we want to have control
 	// over the nonce we send to the Controller
 	NonceFn randFn
+
+	// If set, override the normal auth rotation period
+	AuthRotationPeriod time.Duration
 }
 
 func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
@@ -296,6 +299,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		tw.Shutdown()
 		t.Fatal(err)
 	}
+
+	tw.w.TestOverrideAuthRotationPeriod = opts.AuthRotationPeriod
 
 	if opts.NonceFn != nil {
 		tw.w.nonceFn = opts.NonceFn

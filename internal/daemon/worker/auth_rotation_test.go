@@ -2,6 +2,7 @@ package worker_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
@@ -10,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/nodeenrollment/rotation"
+	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
@@ -19,10 +20,10 @@ import (
 )
 
 // TestRotationTicking ensures that we see new credential information for a
-// worker on both the controller side and worker side in a periodic fashion. It
-// does not test the function that performs most of the actual rotation logic;
-// that is in a separate test.
+// worker on both the controller side and worker side in a periodic fashion
 func TestRotationTicking(t *testing.T) {
+	t.Parallel()
+
 	require, assert := require.New(t), assert.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
@@ -37,9 +38,12 @@ func TestRotationTicking(t *testing.T) {
 	})
 	t.Cleanup(c.Shutdown)
 
+	const rotationPeriod = 10 * time.Second
+
 	w := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		InitialControllers: c.ClusterAddrs(),
 		Logger:             logger.Named("worker"),
+		AuthRotationPeriod: rotationPeriod,
 	})
 	t.Cleanup(w.Shutdown)
 
@@ -49,23 +53,21 @@ func TestRotationTicking(t *testing.T) {
 	workerAuthRepo, err := c.Controller().WorkerAuthRepoStorageFn()
 	require.NoError(err)
 
-	// Ensure roots exist
-	_, err = rotation.RotateRootCertificates(c.Context(), workerAuthRepo)
-	require.NoError(err)
+	// Give time for the job to ensure that roots are created
+	time.Sleep(5 * time.Second)
 
 	// Verify that there are no nodes authorized yet
-	workers, err := workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
+	auths, err := workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
 	require.NoError(err)
-	assert.Len(workers, 0)
+	assert.Len(auths, 0)
 
 	// Perform initial authentication of worker to controller
 	reqBytes, err := base58.FastBase58Decoding(w.Worker().WorkerAuthRegistrationRequest)
 	require.NoError(err)
 
-	// Decode the proto into the request
+	// Decode the proto into the request and create the worker
 	req := new(types.FetchNodeCredentialsRequest)
 	require.NoError(proto.Unmarshal(reqBytes, req))
-
 	_, err = serversRepo.CreateWorker(c.Context(), &servers.Worker{
 		Worker: &store.Worker{
 			ScopeId: scope.Global.String(),
@@ -73,8 +75,30 @@ func TestRotationTicking(t *testing.T) {
 	}, servers.WithFetchNodeCredentialsRequest(req))
 	require.NoError(err)
 
-	// Verify we see one authorized worker now and hold on to its public id
-	workers, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
+	// Verify we see one authorized set of credentials now
+	auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
 	require.NoError(err)
-	assert.Len(workers, 1)
+	assert.Len(auths, 1)
+	// Fetch creds and store current key
+	currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId)
+	require.NoError(err)
+	currKey := currNodeCreds.CertificatePublicKeyPkix
+
+	// Now we wait and check that we see new values in the DB and different
+	// creds on the worker after each rotation period
+	for i := 2; i < 5; i++ {
+		time.Sleep(rotationPeriod)
+
+		// Verify we see the expected number, since we aren't expiring any it
+		// should be equal to the number of times we did rotations
+		auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
+		require.NoError(err)
+		assert.Len(auths, i)
+
+		// Fetch creds and compare current key
+		currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId)
+		require.NoError(err)
+		assert.NotEqual(currKey, currNodeCreds.CertificatePublicKeyPkix)
+		currKey = currNodeCreds.CertificatePublicKeyPkix
+	}
 }

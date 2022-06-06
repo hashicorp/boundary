@@ -25,13 +25,14 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 	timer := time.NewTimer(defaultResetDuration)
 	// You're not supposed to call reset on timers that haven't been stopped or
 	// expired, so we stop it here so it resets in the loop below. That way if
-	// we want to adjust time, we can set the resetDuration value from within
-	// the loop
+	// we want to adjust time, e.g. for tests, we can set the resetDuration
+	// value from within the loop
 	timer.Stop()
 	var resetDuration time.Duration // will start at 0, so we run immediately
 	for {
-		// Useful for testing
-		// resetDuration = 20 * time.Second
+		if w.TestOverrideAuthRotationPeriod != 0 {
+			resetDuration = w.TestOverrideAuthRotationPeriod
+		}
 
 		timer.Reset(resetDuration)
 		select {
@@ -88,8 +89,9 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			// Figure out the midpoint; if we're after it, try to rotate
 			delta := latestValid.Sub(earliestValid)
 			shouldRotate := now.Before(earliestValid.Add(delta / 2))
-			// Useful for testing
-			// shouldRotate = true
+			if w.TestOverrideAuthRotationPeriod != 0 {
+				shouldRotate = true
+			}
 
 			if !shouldRotate {
 				continue
@@ -106,7 +108,10 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 }
 
 // rotateWorkerAuth is a one-stop shop to perform a rotation, given a valid set
-// of current node credentials
+// of current node credentials. Note that it doesn't really sanity check inputs;
+// it is meant to be called from other functions that have validated these
+// inputs and is separated out purely for (a) cleanliness/readability of the
+// ticking function and (b) possible future re-use.
 func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.NodeCredentials) error {
 	const op = "worker.rotateWorkerAuth"
 

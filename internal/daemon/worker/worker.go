@@ -83,6 +83,7 @@ type Worker struct {
 	// Test-specific options
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
+	TestOverrideAuthRotationPeriod time.Duration
 }
 
 func New(conf *Config) (*Worker, error) {
