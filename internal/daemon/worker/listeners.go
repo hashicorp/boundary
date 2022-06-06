@@ -19,9 +19,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
+	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
 	"github.com/hashicorp/nodeenrollment/types"
-	"github.com/hashicorp/nodeenrollment/util/splitlistener"
 	"github.com/hashicorp/nodeenrollment/util/temperror"
 	"google.golang.org/grpc"
 )
@@ -135,7 +135,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
 	}
 
-	w.workerAuthSplitListener = splitlistener.New(interceptingListener)
+	w.workerAuthSplitListener = nodeenet.NewSplitListener(interceptingListener)
 
 	downstreamServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(math.MaxInt32),

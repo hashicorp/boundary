@@ -29,7 +29,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -701,6 +700,8 @@ func (c *Command) Run(args []string) int {
 			c.Info["worker auth registration request"] = req
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId
+			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
+			c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
 			go func() {
 				for {
 					select {
@@ -773,9 +774,7 @@ func (c *Command) Run(args []string) int {
 
 			if !c.flagControllerOnly {
 				if !c.flagWorkerAuthStorageSkipCleanup {
-					if fileStorage, ok := c.worker.WorkerAuthStorage.(*nodeefile.FileStorage); ok {
-						fileStorage.Cleanup()
-					}
+					c.worker.WorkerAuthStorage.Cleanup()
 				}
 				if err := c.worker.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
