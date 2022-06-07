@@ -68,7 +68,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 
-	addCredLibs, addCredStatic, err := r.createSources(ctx, targetId, t.Subtype(), idsByPurpose)
+	addCredLibs, addStaticCreds, err := r.createSources(ctx, targetId, t.Subtype(), idsByPurpose)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -94,7 +94,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			numOplogMsgs := 1 + len(addCredLibs) + len(addCredStatic)
+			numOplogMsgs := 1 + len(addCredLibs) + len(addStaticCreds)
 			msgs := make([]*oplog.Message, 0, numOplogMsgs)
 			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {
@@ -126,14 +126,14 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 				msgs = append(msgs, credLibsOplogMsgs...)
 			}
 
-			if len(addCredStatic) > 0 {
-				i := make([]interface{}, 0, len(addCredStatic))
-				for _, c := range addCredStatic {
+			if len(addStaticCreds) > 0 {
+				i := make([]interface{}, 0, len(addStaticCreds))
+				for _, c := range addStaticCreds {
 					i = append(i, c)
 				}
-				credStaticOplogMsgs := make([]*oplog.Message, 0, len(addCredStatic))
+				credStaticOplogMsgs := make([]*oplog.Message, 0, len(addStaticCreds))
 				if err := w.CreateItems(ctx, i, db.NewOplogMsgs(&credStaticOplogMsgs)); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target credential static"))
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target static credential"))
 				}
 				msgs = append(msgs, credStaticOplogMsgs...)
 			}
@@ -470,7 +470,7 @@ func fetchCredentialSources(ctx context.Context, r db.Reader, targetId string) (
 	return ret, nil
 }
 
-func (r *Repository) createSources(ctx context.Context, tId string, tSubtype subtypes.Subtype, credSources CredentialSources) ([]*CredentialLibrary, []*CredentialStatic, error) {
+func (r *Repository) createSources(ctx context.Context, tId string, tSubtype subtypes.Subtype, credSources CredentialSources) ([]*CredentialLibrary, []*StaticCredential, error) {
 	const op = "target.(Repository).createSources"
 
 	// Get a list of unique ids being attached to the target, to be used for looking up the source type (library or static)
@@ -484,7 +484,7 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 	}
 
 	// Fetch credentials from database to determine the type of credential
-	var credView []*credentialView
+	var credView []*credentialSourceView
 	if err := r.reader.SearchWhere(ctx, &credView, "public_id in (?)", []interface{}{ids}); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("can't retrieve credentials"))
 	}
@@ -501,7 +501,7 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 	}
 
 	credLibs := make([]*CredentialLibrary, 0, totalCreds)
-	credStatic := make([]*CredentialStatic, 0, totalCreds)
+	credStatic := make([]*StaticCredential, 0, totalCreds)
 	byPurpose := map[credential.Purpose][]string{
 		credential.ApplicationPurpose: credSources.ApplicationCredentialIds,
 		credential.EgressPurpose:      credSources.EgressCredentialIds,
@@ -516,7 +516,7 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 				}
 				credLibs = append(credLibs, lib)
 			case "static":
-				cred, err := NewCredentialStatic(tId, id, purpose)
+				cred, err := NewStaticCredential(tId, id, purpose)
 				if err != nil {
 					return nil, nil, errors.Wrap(ctx, err, op)
 				}

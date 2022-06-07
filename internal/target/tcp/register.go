@@ -40,7 +40,7 @@ func vet(ctx context.Context, t target.Target) error {
 
 // vetCredentialSources checks that all the provided credential sources have a CredentialPurpose
 // of ApplicationPurpose. Any other CredentialPurpose will result in an error.
-func vetCredentialSources(ctx context.Context, libs []*target.CredentialLibrary, creds []*target.CredentialStatic) error {
+func vetCredentialSources(ctx context.Context, libs []*target.CredentialLibrary, creds []*target.StaticCredential) error {
 	const op = "tcp.vetCredentialLibraries"
 
 	for _, c := range libs {

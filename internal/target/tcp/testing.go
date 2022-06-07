@@ -45,9 +45,9 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, scopeId, name st
 		err := rw.CreateItems(context.Background(), newCredLibs)
 		require.NoError(err)
 	}
-	if len(opts.WithCredentialStatics) > 0 {
-		newCreds := make([]interface{}, 0, len(opts.WithCredentialStatics))
-		for _, c := range opts.WithCredentialStatics {
+	if len(opts.WithStaticCredentials) > 0 {
+		newCreds := make([]interface{}, 0, len(opts.WithStaticCredentials))
+		for _, c := range opts.WithStaticCredentials {
 			c.TargetId = tar.GetPublicId()
 			newCreds = append(newCreds, c)
 		}

@@ -23,15 +23,15 @@ func TestNewCredentialLibrary(targetId, credentialLibraryId string, purpose cred
 	}
 }
 
-// TestNewCredentialStatic creates a new in memory CredentialStatic
-// representing the relationship between targetId and credentialStaticId with
+// TestNewStaticCredential creates a new in memory StaticCredential
+// representing the relationship between targetId and credentialId with
 // the given purpose.
-func TestNewCredentialStatic(targetId, credentialId string, purpose credential.Purpose) *CredentialStatic {
-	return &CredentialStatic{
-		CredentialStatic: &store.CredentialStatic{
-			TargetId:           targetId,
-			CredentialStaticId: credentialId,
-			CredentialPurpose:  string(purpose),
+func TestNewStaticCredential(targetId, credentialId string, purpose credential.Purpose) *StaticCredential {
+	return &StaticCredential{
+		StaticCredential: &store.StaticCredential{
+			TargetId:          targetId,
+			CredentialId:      credentialId,
+			CredentialPurpose: string(purpose),
 		},
 	}
 }

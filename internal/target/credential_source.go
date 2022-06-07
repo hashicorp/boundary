@@ -58,14 +58,14 @@ func (ts *TargetCredentialSource) TargetId() string {
 	return ts.GetTargetId()
 }
 
-// credentialView provides a common way to return credentials regardless of their
-// underlying type.
-type credentialView struct {
-	*store.CredentialView
+// credentialSourceView provides a common way to return credential sources regardless of their
+// underlying type (library or static).
+type credentialSourceView struct {
+	*store.CredentialSourceView
 	tableName string `gorm:"-"`
 }
 
 // TableName returns the tablename to override the default gorm table name
-func (ts *credentialView) TableName() string {
+func (csv *credentialSourceView) TableName() string {
 	return "credential_source_all_types"
 }

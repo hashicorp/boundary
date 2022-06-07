@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCredentialStatic_New(t *testing.T) {
+func TestStaticCredential_New(t *testing.T) {
 	type args struct {
 		targetId string
 		credId   string
@@ -19,7 +19,7 @@ func TestCredentialStatic_New(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *target.CredentialStatic
+		want    *target.StaticCredential
 		wantErr errors.Code
 	}{
 		{
@@ -42,11 +42,11 @@ func TestCredentialStatic_New(t *testing.T) {
 				targetId: "targ_0000000",
 				credId:   "cred_0000000",
 			},
-			want: &target.CredentialStatic{
-				CredentialStatic: &store.CredentialStatic{
-					TargetId:           "targ_0000000",
-					CredentialStaticId: "cred_0000000",
-					CredentialPurpose:  string(credential.ApplicationPurpose),
+			want: &target.StaticCredential{
+				StaticCredential: &store.StaticCredential{
+					TargetId:          "targ_0000000",
+					CredentialId:      "cred_0000000",
+					CredentialPurpose: string(credential.ApplicationPurpose),
 				},
 			},
 		},
@@ -55,7 +55,7 @@ func TestCredentialStatic_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := target.NewCredentialStatic(tt.args.targetId, tt.args.credId, credential.ApplicationPurpose)
+			got, err := target.NewStaticCredential(tt.args.targetId, tt.args.credId, credential.ApplicationPurpose)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)

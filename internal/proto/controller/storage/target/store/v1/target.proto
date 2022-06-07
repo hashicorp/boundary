@@ -91,14 +91,14 @@ message CredentialLibrary {
   timestamp.v1.Timestamp create_time = 40;
 }
 
-message CredentialStatic {
+message StaticCredential {
   // target_id of the Target
   // @inject_tag: gorm:"primary_key"
   string target_id = 10;
 
-  // credential_static_id of the static Credential
-  // @inject_tag: gorm:"primary_key"
-  string credential_static_id = 20;
+  // credential_id of the static Credential
+  // @inject_tag: `gorm:"column:credential_static_id;primary_key"
+  string credential_id = 20;
 
   // credential_purpose is the purpose of the credential for the target
   // @inject_tag: gorm:"primary_key"
@@ -127,8 +127,8 @@ message CredentialSource {
   timestamp.v1.Timestamp create_time = 40;
 }
 
-message CredentialView {
-  // public_id of the Credential
+message CredentialSourceView {
+  // public_id of the Credential source
   // @inject_tag: gorm:"primary_key"
   string public_id = 10;
 

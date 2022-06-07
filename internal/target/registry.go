@@ -23,7 +23,7 @@ type VetFunc func(context.Context, Target) error
 
 // VetCredentialSourcesFunc is a function that checks the given CredentialSources, both
 // library and static to ensure that they are valid for a Target subtype.
-type VetCredentialSourcesFunc func(context.Context, []*CredentialLibrary, []*CredentialStatic) error
+type VetCredentialSourcesFunc func(context.Context, []*CredentialLibrary, []*StaticCredential) error
 
 type registryEntry struct {
 	newFunc                  NewFunc

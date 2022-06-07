@@ -1,5 +1,6 @@
 begin;
 
+  -- target_credential_static is referenced as target.StaticCredential in the Boundary domain model
   create table target_credential_static (
     target_id wt_public_id not null
       constraint target_fkey

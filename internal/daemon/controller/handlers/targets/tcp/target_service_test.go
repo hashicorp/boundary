@@ -2271,7 +2271,7 @@ func TestAddTargetCredentialSources(t *testing.T) {
 		},
 		{
 			name:            "Add library on static cred populated target",
-			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-static sources", target.WithCredentialStatics([]*target.CredentialStatic{target.TestNewCredentialStatic("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{cls[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), cls[1].GetPublicId()},
 		},
@@ -2283,7 +2283,7 @@ func TestAddTargetCredentialSources(t *testing.T) {
 		},
 		{
 			name:            "Add static cred on static cred populated target",
-			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static-static sources", target.WithCredentialStatics([]*target.CredentialStatic{target.TestNewCredentialStatic("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static-static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{creds[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), creds[1].GetPublicId()},
 		},
@@ -2295,7 +2295,7 @@ func TestAddTargetCredentialSources(t *testing.T) {
 		},
 		{
 			name:            "Add duplicated sources on static cred populated target",
-			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for static sources", target.WithCredentialStatics([]*target.CredentialStatic{target.TestNewCredentialStatic("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
+			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId(), creds[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId()},
 		},

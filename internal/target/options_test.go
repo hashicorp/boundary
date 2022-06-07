@@ -141,34 +141,34 @@ func Test_GetOpts(t *testing.T) {
 		}
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithCredentialStatics", func(t *testing.T) {
+	t.Run("WithStaticCredentials", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := GetOpts(WithCredentialStatics([]*CredentialStatic{
+		opts := GetOpts(WithStaticCredentials([]*StaticCredential{
 			{
-				CredentialStatic: &store.CredentialStatic{
-					CredentialStaticId: "alice",
-					CredentialPurpose:  string(credential.ApplicationPurpose),
+				StaticCredential: &store.StaticCredential{
+					CredentialId:      "alice",
+					CredentialPurpose: string(credential.ApplicationPurpose),
 				},
 			},
 			{
-				CredentialStatic: &store.CredentialStatic{
-					CredentialStaticId: "bob",
-					CredentialPurpose:  string(credential.EgressPurpose),
+				StaticCredential: &store.StaticCredential{
+					CredentialId:      "bob",
+					CredentialPurpose: string(credential.EgressPurpose),
 				},
 			},
 		}))
 		testOpts := getDefaultOptions()
-		testOpts.WithCredentialStatics = []*CredentialStatic{
+		testOpts.WithStaticCredentials = []*StaticCredential{
 			{
-				CredentialStatic: &store.CredentialStatic{
-					CredentialStaticId: "alice",
-					CredentialPurpose:  string(credential.ApplicationPurpose),
+				StaticCredential: &store.StaticCredential{
+					CredentialId:      "alice",
+					CredentialPurpose: string(credential.ApplicationPurpose),
 				},
 			},
 			{
-				CredentialStatic: &store.CredentialStatic{
-					CredentialStaticId: "bob",
-					CredentialPurpose:  string(credential.EgressPurpose),
+				StaticCredential: &store.StaticCredential{
+					CredentialId:      "bob",
+					CredentialPurpose: string(credential.EgressPurpose),
 				},
 			},
 		}

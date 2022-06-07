@@ -31,7 +31,7 @@ type options struct {
 	WithType                   subtypes.Subtype
 	WithHostSources            []string
 	WithCredentialLibraries    []*CredentialLibrary
-	WithCredentialStatics      []*CredentialStatic
+	WithStaticCredentials      []*StaticCredential
 	WithSessionMaxSeconds      uint32
 	WithSessionConnectionLimit int32
 	WithPublicId               string
@@ -52,7 +52,7 @@ func getDefaultOptions() options {
 		WithType:                   "",
 		WithHostSources:            nil,
 		WithCredentialLibraries:    nil,
-		WithCredentialStatics:      nil,
+		WithStaticCredentials:      nil,
 		WithSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
 		WithSessionConnectionLimit: 1,
 		WithPublicId:               "",
@@ -139,10 +139,10 @@ func WithCredentialLibraries(cl []*CredentialLibrary) Option {
 	}
 }
 
-// WithCredentialStatics provides an option for providing a list of static credentials.
-func WithCredentialStatics(c []*CredentialStatic) Option {
+// WithStaticCredentials provides an option for providing a list of static credentials.
+func WithStaticCredentials(c []*StaticCredential) Option {
 	return func(o *options) {
-		o.WithCredentialStatics = c
+		o.WithStaticCredentials = c
 	}
 }
 
