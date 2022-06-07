@@ -5586,6 +5586,12 @@
           "type": "string",
           "title": "worker_auth_token is input only. Supports the worker led node\nenrollment flow where this credentials token is produced by a worker. This\ntoken is a base58 encoded types.FetchNodeCredentialsRequest from\nhttps://github.com/hashicorp/nodeenrollment"
         },
+        "active_connection_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Output only. The number of connections that this worker is currently handling.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

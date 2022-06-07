@@ -81,4 +81,5 @@ const (
 	ConfigurationField                   = "configuration"
 	WorkerAuthTokenField                 = "worker_auth_token"
 	WorkerConfigField                    = "worker_config"
+	ActiveConnectionCountField           = "active_session_count"
 )

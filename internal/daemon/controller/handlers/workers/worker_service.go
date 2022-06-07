@@ -462,6 +462,9 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 	if outputFields.Has(globals.LastStatusTimeField) {
 		out.LastStatusTime = in.GetLastStatusTime().GetTimestamp()
 	}
+	if outputFields.Has(globals.ActiveConnectionCountField) {
+		out.ActiveConnectionCount = in.ActiveConnectionCount()
+	}
 	if outputFields.Has(globals.CanonicalTagsField) && len(in.CanonicalTags()) > 0 {
 		var err error
 		out.CanonicalTags, err = tagsToMapProto(in.CanonicalTags())

@@ -96,6 +96,9 @@ message Worker {
   // https://github.com/hashicorp/nodeenrollment
   google.protobuf.StringValue worker_auth_token = 150 [json_name = "worker_auth_token"]; // @gotags: `class:"public"`
 
+  // Output only. The number of connections that this worker is currently handling.
+  uint32 active_connection_count = 160 [json_name = "active_connection_count"]; // @gotags: `class:"public"`
+
   // Output only. The available actions on this resource for the requester.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }

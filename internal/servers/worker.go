@@ -36,8 +36,9 @@ func AttachWorkerIdToState(ctx context.Context, workerId string) (*structpb.Stru
 type Worker struct {
 	*store.Worker
 
-	apiTags    []*Tag `gorm:"-"`
-	configTags []*Tag `gorm:"-"`
+	activeConnectionCount uint32 `gorm:"-"`
+	apiTags               []*Tag `gorm:"-"`
+	configTags            []*Tag `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
@@ -112,6 +113,12 @@ func (w *Worker) CanonicalAddress() string {
 	return w.GetWorkerReportedAddress()
 }
 
+// ActiveConnectionCount is the current number of sessions this worker is handling
+// according to the controllers.
+func (w *Worker) ActiveConnectionCount() uint32 {
+	return w.activeConnectionCount
+}
+
 // CanonicalTags is the deduplicated set of tags contained on both the resource
 // set over the API as well as the tags reported by the worker itself.
 func (w *Worker) CanonicalTags() map[string][]string {
@@ -129,6 +136,7 @@ func (w *Worker) CanonicalTags() map[string][]string {
 	return tags
 }
 
+// GetApiTags returns the tags for this worker which has been set by the api.
 func (w *Worker) GetApiTags() map[string][]string {
 	tags := make(map[string][]string)
 	for _, t := range w.apiTags {
@@ -137,6 +145,8 @@ func (w *Worker) GetApiTags() map[string][]string {
 	return tags
 }
 
+// GetConfigTags returns the tags for this worker which has been set through
+// the worker daemon's configuration file.
 func (w *Worker) GetConfigTags() map[string][]string {
 	tags := make(map[string][]string)
 	for _, t := range w.configTags {
@@ -172,6 +182,8 @@ type workerAggregate struct {
 	Address               string
 	Version               uint32
 	ApiTags               string
+	ActiveConnectionCount uint32
+	// Config Fields
 	WorkerReportedName    string
 	WorkerReportedAddress string
 	LastStatusTime        *timestamp.Timestamp
@@ -194,6 +206,7 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 			WorkerReportedName:    a.WorkerReportedName,
 			LastStatusTime:        a.LastStatusTime,
 		},
+		activeConnectionCount: a.ActiveConnectionCount,
 	}
 	tags, err := tagsFromAggregatedTagString(ctx, a.ApiTags)
 	if err != nil {

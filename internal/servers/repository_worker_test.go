@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
@@ -25,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestDeleteWorker(t *testing.T) {
@@ -162,10 +164,43 @@ func TestLookupWorker(t *testing.T) {
 		servers.WithPublicId(w.GetPublicId()))
 	require.NoError(t, err)
 
+	sessRepo, err := session.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	connRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms, session.WithWorkerStateDelay(0))
+	require.NoError(t, err)
+	// 1 session with 2 connections
+	{
+		composedOf := session.TestSessionParams(t, conn, wrapper, iam.TestRepo(t, conn, wrapper))
+		future := timestamppb.New(time.Now().Add(time.Hour))
+		exp := &timestamp.Timestamp{Timestamp: future}
+		composedOf.ConnectionLimit = -1
+		sess := session.TestSession(t, conn, wrapper, composedOf, session.WithDbOpts(db.WithSkipVetForWrite(true)), session.WithExpirationTime(exp))
+		sess, _, err = sessRepo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
+		require.NoError(t, err)
+		c, _, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), w.GetPublicId())
+		require.NoError(t, err)
+		require.NotNil(t, c)
+		c, _, err = connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), w.GetPublicId())
+		require.NoError(t, err)
+		require.NotNil(t, c)
+	}
+
+	// 1 session with 1 connection
+	{
+		sess2 := session.TestDefaultSession(t, conn, wrapper, iam.TestRepo(t, conn, wrapper),
+			session.WithDbOpts(db.WithSkipVetForWrite(true)))
+		sess2, _, err = sessRepo.ActivateSession(ctx, sess2.GetPublicId(), sess2.Version, []byte("foo"))
+		require.NoError(t, err)
+		c, _, err := connRepo.AuthorizeConnection(ctx, sess2.GetPublicId(), w.GetPublicId())
+		require.NoError(t, err)
+		require.NotNil(t, c)
+	}
+
 	t.Run("success", func(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, w.GetPublicId())
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
+		assert.Equal(t, uint32(3), got.ActiveConnectionCount())
 		assert.Equal(t, map[string][]string{"key": {"val"}}, got.GetApiTags())
 		assert.Equal(t, map[string][]string{"config": {"test"}}, got.GetConfigTags())
 		assert.Equal(t, map[string][]string{
