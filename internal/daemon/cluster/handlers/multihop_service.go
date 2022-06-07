@@ -24,6 +24,8 @@ type multihopServiceServer struct {
 	options []nodeenrollment.Option
 }
 
+// NewMultihopServiceServer creates a new service implementing
+// MultihopServiceServer, storing values used for the implementing functions.
 func NewMultihopServiceServer(storage nodeenrollment.Storage, direct bool, client *atomic.Value, opt ...nodeenrollment.Option) (*multihopServiceServer, error) {
 	const op = "cluster.handlers.NewMultihopServiceServer"
 
@@ -44,6 +46,9 @@ func NewMultihopServiceServer(storage nodeenrollment.Storage, direct bool, clien
 
 var _ multihop.MultihopServiceServer = (*multihopServiceServer)(nil)
 
+// FetchNodeCredentials implements the MultihopServiceServer interface. If it's
+// direct (e.g. running on a controller) it handles the request directly,
+// otherwise sends it to its next hop.
 func (m *multihopServiceServer) FetchNodeCredentials(ctx context.Context, req *types.FetchNodeCredentialsRequest) (*types.FetchNodeCredentialsResponse, error) {
 	const op = "cluster.handlers.(multihopServiceServer).FetchNodeCredentials"
 	switch m.direct {
@@ -63,6 +68,9 @@ func (m *multihopServiceServer) FetchNodeCredentials(ctx context.Context, req *t
 	}
 }
 
+// GenerateServerCertificates implements the MultihopServiceServer interface. If
+// it's direct (e.g. running on a controller) it handles the request directly,
+// otherwise sends it to its next hop.
 func (m *multihopServiceServer) GenerateServerCertificates(ctx context.Context, req *types.GenerateServerCertificatesRequest) (*types.GenerateServerCertificatesResponse, error) {
 	const op = "cluster.handlers.(multihopServiceServer).GenerateServerCertificates"
 	switch m.direct {
@@ -82,6 +90,9 @@ func (m *multihopServiceServer) GenerateServerCertificates(ctx context.Context, 
 	}
 }
 
+// RotateNodeCredentials implements the MultihopServiceServer interface. If it's
+// direct (e.g. running on a controller) it handles the request directly,
+// otherwise sends it to its next hop.
 func (m *multihopServiceServer) RotateNodeCredentials(ctx context.Context, req *types.RotateNodeCredentialsRequest) (*types.RotateNodeCredentialsResponse, error) {
 	const op = "cluster.handlers.(multihopServiceServer).RotateNodeCredentials"
 	switch m.direct {
