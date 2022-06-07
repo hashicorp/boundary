@@ -566,38 +566,40 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 
 func validateCreateRequest(req *pbs.CreateWorkerRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		const (
+			mustBeGlobalMsg  = "Must be 'global'"
+			cannotBeEmptyMsg = "Cannot be empty."
+			readOnlyFieldMsg = "This is a read only field."
+		)
 		badFields := map[string]string{}
 		if scope.Global.String() != req.GetItem().GetScopeId() {
-			badFields[globals.ScopeIdField] = "Must be 'global'"
+			badFields[globals.ScopeIdField] = mustBeGlobalMsg
 		}
 		// FIXME: in the future, we won't require this token since we'll support
 		// the server led flow where a token is returned when a worker is created.
 		if req.GetItem().NodeCredentialsToken == nil {
-			badFields[globals.NodeCredentialsTokenField] = "Cannot be empty"
+			badFields[globals.NodeCredentialsTokenField] = cannotBeEmptyMsg
 		}
 		if req.GetItem().NodeAuthorizationToken != nil {
-			badFields[globals.NodeAuthorizationToken] = "This is an output only field."
-		}
-		if req.GetItem().GetId() != "" {
-			badFields[globals.IdField] = "This is an output only field."
+			badFields[globals.NodeAuthorizationToken] = readOnlyFieldMsg
 		}
 		if req.GetItem().CanonicalAddress != "" {
-			badFields[globals.CanonicalAddressField] = "This is an output only field."
+			badFields[globals.CanonicalAddressField] = readOnlyFieldMsg
 		}
 		if req.GetItem().Tags != nil {
-			badFields[globals.TagsField] = "This is an output only field."
+			badFields[globals.TagsField] = readOnlyFieldMsg
 		}
 		if req.GetItem().CanonicalTags != nil {
-			badFields[globals.CanonicalTagsField] = "This is an output only field."
+			badFields[globals.CanonicalTagsField] = readOnlyFieldMsg
 		}
 		if req.GetItem().LastStatusTime != nil {
-			badFields[globals.LastStatusTimeField] = "This is an output only field."
+			badFields[globals.LastStatusTimeField] = readOnlyFieldMsg
 		}
 		if req.GetItem().WorkerConfig != nil {
-			badFields[globals.WorkerConfigField] = "This is an output only field."
+			badFields[globals.WorkerConfigField] = readOnlyFieldMsg
 		}
 		if req.GetItem().AuthorizedActions != nil {
-			badFields[globals.AuthorizedActionsField] = "This is an output only field."
+			badFields[globals.AuthorizedActionsField] = readOnlyFieldMsg
 		}
 		return badFields
 	})
