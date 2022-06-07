@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/textproto"
@@ -67,7 +66,6 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	mux.Handle("/v1/nodes", handleNodes(c))
 	mux.Handle("/v1/", grpcGwMux)
 	mux.Handle("/", handleUi(c))
 
@@ -571,42 +569,6 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		}
 
 		h.ServeHTTP(w, req)
-	})
-}
-
-func handleNodes(c *Controller) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		switch req.Method {
-
-		case http.MethodPost:
-			body, err := io.ReadAll(req.Body)
-			req.Body.Close()
-			if err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				w.WriteHeader(500)
-				return
-			}
-			type val struct {
-				Request string `json:"request"`
-			}
-			var currVal val
-			if err := json.Unmarshal(body, &currVal); err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				w.WriteHeader(500)
-				return
-			}
-			if err := c.AuthorizeNodeeWorker(currVal.Request); err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				w.WriteHeader(500)
-				return
-			}
-			w.WriteHeader(204)
-			return
-
-		default:
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
 	})
 }
 
