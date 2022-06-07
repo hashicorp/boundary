@@ -27,7 +27,6 @@ func TestWithoutEventing(t testing.TB) *Eventer {
 		ObservationsEnabled: false,
 		SysEventsEnabled:    false,
 	}
-	// testConfig := TestEventerConfig(t, "InitSysEventer")
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex:  testLock,
