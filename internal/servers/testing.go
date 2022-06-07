@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
@@ -103,6 +104,18 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	require.NotNil(t, wrk)
 	opts := getOpts(opt...)
 
+	if len(opts.withWorkerTags) > 0 {
+		var tags []interface{}
+		for _, t := range opts.withWorkerTags {
+			tags = append(tags, &store.WorkerTag{
+				WorkerId: wrk.GetPublicId(),
+				Key:      t.Key,
+				Value:    t.Value,
+				Source:   "api",
+			})
+		}
+		require.NoError(t, rw.CreateItems(ctx, tags))
+	}
 	var mask []string
 	if opts.withName != "" {
 		wrk.Name = opts.withName

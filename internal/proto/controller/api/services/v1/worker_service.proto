@@ -37,14 +37,14 @@ service WorkerService {
     };
   }
 
-  // CreateWorker creates and stores a Worker in boundary.  The provided
+  // CreateWorkerLed creates and stores a Worker in boundary.  The provided
   // request must include the Scope id in which the Worker will be created.
   // If the Scope id is missing, malformed or references a non existing
   // resource, an error is returned.  If a name is provided that is in
   // use in another Worker in the same scope, an error is returned.
-  rpc CreateWorker(CreateWorkerRequest) returns (CreateWorkerResponse) {
+  rpc CreateWorkerLed(CreateWorkerLedRequest) returns (CreateWorkerLedResponse) {
     option (google.api.http) = {
-      post: "/v1/workers"
+      post: "/v1/workers:create:worker-led"
       body: "item"
       response_body: "item"
     };
@@ -102,11 +102,11 @@ message ListWorkersResponse {
   repeated resources.workers.v1.Worker items = 1;
 }
 
-message CreateWorkerRequest {
+message CreateWorkerLedRequest {
   resources.workers.v1.Worker item = 1;
 }
 
-message CreateWorkerResponse {
+message CreateWorkerLedResponse {
   string uri = 1; // @gotags: `class:"public"`
   resources.workers.v1.Worker item = 2;
 }

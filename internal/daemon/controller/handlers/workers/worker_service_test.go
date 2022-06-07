@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
@@ -17,7 +18,12 @@ import (
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
+	"github.com/hashicorp/nodeenrollment/rotation"
+	"github.com/hashicorp/nodeenrollment/storage/file"
+	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -31,6 +37,17 @@ import (
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
+func structListValue(t *testing.T, ss ...string) *structpb.ListValue {
+	t.Helper()
+	var val []interface{}
+	for _, s := range ss {
+		val = append(val, s)
+	}
+	lv, err := structpb.NewList(val)
+	require.NoError(t, err)
+	return lv
+}
+
 func TestGet(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -40,14 +57,29 @@ func TestGet(t *testing.T) {
 	}
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
+	repo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
 	repoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+		return repo, nil
 	}
 
 	worker := servers.TestWorker(t, conn, wrap,
 		servers.WithName("test worker names"),
 		servers.WithDescription("test worker description"),
-		servers.WithAddress("test worker address"))
+		servers.WithAddress("test worker address"),
+		servers.WithWorkerTags(&servers.Tag{"key", "val"}))
+	// Add config tags to the created worker
+	worker, err = repo.UpsertWorkerStatus(context.Background(),
+		servers.NewWorkerForStatus(worker.GetScopeId(),
+			servers.WithName(worker.GetWorkerReportedName()),
+			servers.WithAddress(worker.GetWorkerReportedAddress()),
+			servers.WithWorkerTags(&servers.Tag{
+				Key:   "config",
+				Value: "test",
+			})),
+		servers.WithUpdateTags(true),
+		servers.WithPublicId(worker.GetPublicId()))
+	require.NoError(t, err)
 
 	wantWorker := &pb.Worker{
 		Id:                worker.GetPublicId(),
@@ -62,9 +94,19 @@ func TestGet(t *testing.T) {
 		AuthorizedActions: testAuthorizedActions,
 		CanonicalAddress:  worker.CanonicalAddress(),
 		LastStatusTime:    worker.GetLastStatusTime().GetTimestamp(),
+		CanonicalTags: map[string]*structpb.ListValue{
+			"key":    structListValue(t, "val"),
+			"config": structListValue(t, "test"),
+		},
+		Tags: map[string]*structpb.ListValue{
+			"key": structListValue(t, "val"),
+		},
 		WorkerConfig: &pb.WorkerConfig{
 			Address: worker.GetWorkerReportedAddress(),
 			Name:    worker.GetWorkerReportedName(),
+			Tags: map[string]*structpb.ListValue{
+				"config": structListValue(t, "test"),
+			},
 		},
 	}
 
@@ -631,11 +673,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Worker{
 					Tags: map[string]*structpb.ListValue{
-						"foo": func() *structpb.ListValue {
-							l, err := structpb.NewList([]interface{}{"bar"})
-							require.NoError(t, err)
-							return l
-						}(),
+						"foo": structListValue(t, "bar"),
 					},
 				},
 			},
@@ -650,11 +688,7 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Worker{
 					CanonicalTags: map[string]*structpb.ListValue{
-						"foo": func() *structpb.ListValue {
-							l, err := structpb.NewList([]interface{}{"bar"})
-							require.NoError(t, err)
-							return l
-						}(),
+						"foo": structListValue(t, "bar"),
 					},
 				},
 			},
@@ -746,4 +780,397 @@ func TestUpdate_BadVersion(t *testing.T) {
 	assert.Nil(t, upTar)
 	assert.Error(t, err)
 	assert.True(t, errors.Is(err, handlers.NotFoundError()), "Got %v, wanted not found error.", err)
+}
+
+func TestCreateWorkerLed(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	testRootWrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, testRootWrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	rw := db.New(conn)
+	testKms := kms.TestKms(t, conn, testRootWrapper)
+	repoFn := func() (*servers.Repository, error) {
+		return servers.NewRepository(rw, rw, testKms)
+	}
+	testCtx := context.Background()
+
+	testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+	require.NoError(t, err, "Error when getting new worker service.")
+
+	// Get an initial set of authorized node credentials
+	rootStorage, err := servers.NewRepositoryStorage(testCtx, rw, rw, testKms)
+	require.NoError(t, err)
+	_, err = rotation.RotateRootCertificates(testCtx, rootStorage)
+	require.NoError(t, err)
+
+	fetchReqFn := func() string {
+		// This happens on the worker
+		fileStorage, err := file.New(testCtx)
+		require.NoError(t, err)
+		defer fileStorage.Cleanup()
+
+		nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+		require.NoError(t, err)
+		// Create request using worker id
+		fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
+		require.NoError(t, err)
+
+		fetchEncoded, err := proto.Marshal(fetchReq)
+		require.NoError(t, err)
+
+		return base58.Encode(fetchEncoded)
+	}
+
+	tests := []struct {
+		name            string
+		scopeId         string
+		service         Service
+		req             *pbs.CreateWorkerLedRequest
+		res             *pbs.CreateWorkerLedResponse
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:    "invalid-scope",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         "invalid-scope",
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "Must be 'global'",
+		},
+		{
+			name:    "missing-node-credentials-token",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.WorkerAuthTokenField,
+		},
+		{
+			name:    "invalid-id",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					Id:              "invalid-id",
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.IdField,
+		},
+		{
+			name:    "invalid-canonical-address",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:          scope.Global.String(),
+					WorkerAuthToken:  &wrapperspb.StringValue{Value: fetchReqFn()},
+					CanonicalAddress: "invalid-canonical-address",
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.CanonicalAddressField,
+		},
+		{
+			name:    "invalid-tags",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					Tags: map[string]*structpb.ListValue{
+						"invalid": {Values: []*structpb.Value{
+							structpb.NewStringValue("invalid-tags"),
+						}},
+					},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.TagsField,
+		},
+		{
+			name:    "invalid-canonical-tags",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					CanonicalTags: map[string]*structpb.ListValue{
+						"invalid": {Values: []*structpb.Value{
+							structpb.NewStringValue("invalid-canonical-tags"),
+						}},
+					},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.CanonicalTagsField,
+		},
+		{
+			name:    "invalid-last-status-time",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					LastStatusTime:  timestamppb.Now(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.LastStatusTimeField,
+		},
+		{
+			name:    "invalid-worker-config",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					WorkerConfig:    &pb.WorkerConfig{},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.WorkerConfigField,
+		},
+		{
+			name:    "invalid-authorized-actions",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:           scope.Global.String(),
+					WorkerAuthToken:   &wrapperspb.StringValue{Value: fetchReqFn()},
+					AuthorizedActions: []string{"invalid-authorized-actions"},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.AuthorizedActionsField,
+		},
+		{
+			name:    "invalid-create-time",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					CreatedTime:     timestamppb.Now(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.CreatedTimeField,
+		},
+		{
+			name:    "invalid-update-time",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					UpdatedTime:     timestamppb.Now(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.UpdatedTimeField,
+		},
+		{
+			name:    "invalid-version",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					Version:         1,
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.VersionField,
+		},
+		{
+			name:    "invalid-auth",
+			service: testSrv,
+			scopeId: "splat-auth-scope",
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "non-existent scope \"splat-auth-scope\"",
+		},
+		{
+			name:    "invalid-base58-encoding",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: "invalid;semicolon"},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "error decoding node_credentials_token",
+		},
+		{
+			name:    "invalid-marshal",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: "notNodeCreds"},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "error unmarshaling node_credentials_token",
+		},
+		{
+			name: "create-error",
+			service: func() Service {
+				repoFn := func() (*servers.Repository, error) {
+					return servers.NewRepository(rw, &db.Db{}, testKms)
+				}
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+				require.NoError(t, err, "Error when getting new worker service.")
+				return testSrv
+			}(),
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					Name:            &wrapperspb.StringValue{Value: "success"},
+					Description:     &wrapperspb.StringValue{Value: "success-description"},
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "error creating worker",
+		},
+		{
+			name: "bad-repo-function-in-create",
+			service: func() Service {
+				// var cnt gives us a way for the repoFn to fail the 2nd time
+				// it's called so we can get past the AuthRequest check in
+				// CreateWorker(...) and test the createInRepo(...) failure
+				// path if the repoFn returns and err.
+				cnt := 0
+				repoFn := func() (*servers.Repository, error) {
+					cnt = cnt + 1
+					switch {
+					case cnt > 1:
+						return nil, errors.New(testCtx, errors.Internal, "bad-repo-function", "error creating repo")
+					default:
+						return servers.NewRepository(rw, rw, testKms)
+					}
+				}
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+				require.NoError(t, err, "Error when getting new worker service.")
+				return testSrv
+			}(),
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					Name:            &wrapperspb.StringValue{Value: "success"},
+					Description:     &wrapperspb.StringValue{Value: "success-description"},
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "error creating worker: bad-repo-function: error creating repo",
+		},
+		{
+			name:    "success",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateWorkerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:         scope.Global.String(),
+					Name:            &wrapperspb.StringValue{Value: "success"},
+					Description:     &wrapperspb.StringValue{Value: "success-description"},
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+				},
+			},
+			res: &pbs.CreateWorkerLedResponse{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					Name:        &wrapperspb.StringValue{Value: "success"},
+					Description: &wrapperspb.StringValue{Value: "success-description"},
+					Version:     1,
+				},
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := tc.service.CreateWorkerLed(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			{
+				// we only need to check that these "read-only" fields were set
+				// outbound. Other portions of the domain is responsible for
+				// testing that these values are correct and there's no reason
+				// to repeat those tests here.
+				assert.NotEmpty(got.GetItem().GetId())
+				assert.NotEmpty(got.GetItem().CreatedTime)
+				assert.NotEmpty(got.GetItem().UpdatedTime)
+				assert.NotEmpty(got.GetItem().Scope)
+				assert.NotEmpty(got.GetItem().AuthorizedActions)
+				{
+					tc.res.Item.Id = got.GetItem().GetId()
+					tc.res.Item.CreatedTime = got.GetItem().GetCreatedTime()
+					tc.res.Item.UpdatedTime = got.GetItem().GetUpdatedTime()
+					tc.res.Item.Scope = got.GetItem().Scope
+					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
+				}
+			}
+			assert.Equal(tc.res, got)
+		})
+	}
 }

@@ -28,12 +28,12 @@ type WorkerServiceClient interface {
 	// If the scope ID is missing, malformed, or reference a non existing scope,
 	// an error is returned.
 	ListWorkers(ctx context.Context, in *ListWorkersRequest, opts ...grpc.CallOption) (*ListWorkersResponse, error)
-	// CreateWorker creates and stores a Worker in boundary.  The provided
+	// CreateWorkerLed creates and stores a Worker in boundary.  The provided
 	// request must include the Scope id in which the Worker will be created.
 	// If the Scope id is missing, malformed or references a non existing
 	// resource, an error is returned.  If a name is provided that is in
 	// use in another Worker in the same scope, an error is returned.
-	CreateWorker(ctx context.Context, in *CreateWorkerRequest, opts ...grpc.CallOption) (*CreateWorkerResponse, error)
+	CreateWorkerLed(ctx context.Context, in *CreateWorkerLedRequest, opts ...grpc.CallOption) (*CreateWorkerLedResponse, error)
 	// UpdateWorker updates an existing Worker in boundary.  The provided
 	// Worker must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
@@ -74,9 +74,9 @@ func (c *workerServiceClient) ListWorkers(ctx context.Context, in *ListWorkersRe
 	return out, nil
 }
 
-func (c *workerServiceClient) CreateWorker(ctx context.Context, in *CreateWorkerRequest, opts ...grpc.CallOption) (*CreateWorkerResponse, error) {
-	out := new(CreateWorkerResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.WorkerService/CreateWorker", in, out, opts...)
+func (c *workerServiceClient) CreateWorkerLed(ctx context.Context, in *CreateWorkerLedRequest, opts ...grpc.CallOption) (*CreateWorkerLedResponse, error) {
+	out := new(CreateWorkerLedResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.WorkerService/CreateWorkerLed", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -115,12 +115,12 @@ type WorkerServiceServer interface {
 	// If the scope ID is missing, malformed, or reference a non existing scope,
 	// an error is returned.
 	ListWorkers(context.Context, *ListWorkersRequest) (*ListWorkersResponse, error)
-	// CreateWorker creates and stores a Worker in boundary.  The provided
+	// CreateWorkerLed creates and stores a Worker in boundary.  The provided
 	// request must include the Scope id in which the Worker will be created.
 	// If the Scope id is missing, malformed or references a non existing
 	// resource, an error is returned.  If a name is provided that is in
 	// use in another Worker in the same scope, an error is returned.
-	CreateWorker(context.Context, *CreateWorkerRequest) (*CreateWorkerResponse, error)
+	CreateWorkerLed(context.Context, *CreateWorkerLedRequest) (*CreateWorkerLedResponse, error)
 	// UpdateWorker updates an existing Worker in boundary.  The provided
 	// Worker must not have any read only fields set.  The update mask must be
 	// included in the request and contain at least 1 mutable field.  To unset
@@ -146,8 +146,8 @@ func (UnimplementedWorkerServiceServer) GetWorker(context.Context, *GetWorkerReq
 func (UnimplementedWorkerServiceServer) ListWorkers(context.Context, *ListWorkersRequest) (*ListWorkersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWorkers not implemented")
 }
-func (UnimplementedWorkerServiceServer) CreateWorker(context.Context, *CreateWorkerRequest) (*CreateWorkerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateWorker not implemented")
+func (UnimplementedWorkerServiceServer) CreateWorkerLed(context.Context, *CreateWorkerLedRequest) (*CreateWorkerLedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateWorkerLed not implemented")
 }
 func (UnimplementedWorkerServiceServer) UpdateWorker(context.Context, *UpdateWorkerRequest) (*UpdateWorkerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorker not implemented")
@@ -204,20 +204,20 @@ func _WorkerService_ListWorkers_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorkerService_CreateWorker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateWorkerRequest)
+func _WorkerService_CreateWorkerLed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateWorkerLedRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WorkerServiceServer).CreateWorker(ctx, in)
+		return srv.(WorkerServiceServer).CreateWorkerLed(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/controller.api.services.v1.WorkerService/CreateWorker",
+		FullMethod: "/controller.api.services.v1.WorkerService/CreateWorkerLed",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkerServiceServer).CreateWorker(ctx, req.(*CreateWorkerRequest))
+		return srv.(WorkerServiceServer).CreateWorkerLed(ctx, req.(*CreateWorkerLedRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -274,8 +274,8 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorkerService_ListWorkers_Handler,
 		},
 		{
-			MethodName: "CreateWorker",
-			Handler:    _WorkerService_CreateWorker_Handler,
+			MethodName: "CreateWorkerLed",
+			Handler:    _WorkerService_CreateWorkerLed_Handler,
 		},
 		{
 			MethodName: "UpdateWorker",
