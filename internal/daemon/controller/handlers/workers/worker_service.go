@@ -190,7 +190,7 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 }
 
 // CreateWorker implements the interface pbs.WorkerServiceServer.
-func (s Service) CreateWorker(ctx context.Context, req *pbs.CreateWorkerRequest) (*pbs.CreateWorkerResponse, error) {
+func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRequest) (*pbs.CreateWorkerLedResponse, error) {
 	const op = "workers.(Service).CreateWorker"
 
 	if err := validateCreateRequest(req); err != nil {
@@ -200,7 +200,7 @@ func (s Service) CreateWorker(ctx context.Context, req *pbs.CreateWorkerRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	reqBytes, err := base58.FastBase58Decoding(req.GetItem().NodeCredentialsToken.GetValue())
+	reqBytes, err := base58.FastBase58Decoding(req.GetItem().WorkerAuthToken.GetValue())
 	if err != nil {
 		return nil, fmt.Errorf("%s: error decoding node_credentials_token: %w", op, err)
 	}
@@ -233,7 +233,7 @@ func (s Service) CreateWorker(ctx context.Context, req *pbs.CreateWorkerRequest)
 		return nil, err
 	}
 
-	return &pbs.CreateWorkerResponse{Item: item}, nil
+	return &pbs.CreateWorkerLedResponse{Item: item}, nil
 }
 
 // DeleteWorker implements the interface pbs.WorkerServiceServer.
@@ -564,7 +564,7 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 	}, servers.WorkerPrefix)
 }
 
-func validateCreateRequest(req *pbs.CreateWorkerRequest) error {
+func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		const (
 			mustBeGlobalMsg  = "Must be 'global'"
@@ -577,11 +577,8 @@ func validateCreateRequest(req *pbs.CreateWorkerRequest) error {
 		}
 		// FIXME: in the future, we won't require this token since we'll support
 		// the server led flow where a token is returned when a worker is created.
-		if req.GetItem().NodeCredentialsToken == nil {
-			badFields[globals.NodeCredentialsTokenField] = cannotBeEmptyMsg
-		}
-		if req.GetItem().NodeAuthorizationToken != nil {
-			badFields[globals.NodeAuthorizationToken] = readOnlyFieldMsg
+		if req.GetItem().WorkerAuthToken == nil {
+			badFields[globals.WorkerAuthTokenField] = cannotBeEmptyMsg
 		}
 		if req.GetItem().CanonicalAddress != "" {
 			badFields[globals.CanonicalAddressField] = readOnlyFieldMsg

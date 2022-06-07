@@ -754,7 +754,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	assert.True(t, errors.Is(err, handlers.NotFoundError()), "Got %v, wanted not found error.", err)
 }
 
-func TestCreate(t *testing.T) {
+func TestCreateWorkerLed(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	testRootWrapper := db.TestWrapper(t)
@@ -800,8 +800,8 @@ func TestCreate(t *testing.T) {
 		name            string
 		scopeId         string
 		service         Service
-		req             *pbs.CreateWorkerRequest
-		res             *pbs.CreateWorkerResponse
+		req             *pbs.CreateWorkerLedRequest
+		res             *pbs.CreateWorkerLedResponse
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -810,10 +810,10 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-scope",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              "invalid-scope",
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					ScopeId:         "invalid-scope",
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 				},
 			},
 			wantErr:         true,
@@ -824,39 +824,24 @@ func TestCreate(t *testing.T) {
 			name:    "missing-node-credentials-token",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
 					ScopeId: scope.Global.String(),
 				},
 			},
 			wantErr:         true,
 			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
-			wantErrContains: globals.NodeCredentialsTokenField,
-		},
-		{
-			name:    "invalid-node-authorization-token",
-			service: testSrv,
-			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
-				Item: &workers.Worker{
-					ScopeId:                scope.Global.String(),
-					NodeCredentialsToken:   &wrapperspb.StringValue{Value: fetchReqFn()},
-					NodeAuthorizationToken: &wrapperspb.StringValue{Value: "invalid-node-authorization-token"},
-				},
-			},
-			wantErr:         true,
-			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
-			wantErrContains: globals.NodeAuthorizationToken,
+			wantErrContains: globals.WorkerAuthTokenField,
 		},
 		{
 			name:    "invalid-id",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					Id:                   "invalid-id",
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					Id:              "invalid-id",
 				},
 			},
 			wantErr:         true,
@@ -867,11 +852,11 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-canonical-address",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					CanonicalAddress:     "invalid-canonical-address",
+					ScopeId:          scope.Global.String(),
+					WorkerAuthToken:  &wrapperspb.StringValue{Value: fetchReqFn()},
+					CanonicalAddress: "invalid-canonical-address",
 				},
 			},
 			wantErr:         true,
@@ -882,10 +867,10 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-tags",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					Tags: map[string]*structpb.ListValue{
 						"invalid": {Values: []*structpb.Value{
 							structpb.NewStringValue("invalid-tags"),
@@ -901,10 +886,10 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-canonical-tags",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 					CanonicalTags: map[string]*structpb.ListValue{
 						"invalid": {Values: []*structpb.Value{
 							structpb.NewStringValue("invalid-canonical-tags"),
@@ -920,11 +905,11 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-last-status-time",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					LastStatusTime:       timestamppb.Now(),
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					LastStatusTime:  timestamppb.Now(),
 				},
 			},
 			wantErr:         true,
@@ -935,11 +920,11 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-worker-config",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					WorkerConfig:         &pb.WorkerConfig{},
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					WorkerConfig:    &pb.WorkerConfig{},
 				},
 			},
 			wantErr:         true,
@@ -950,11 +935,11 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-authorized-actions",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					AuthorizedActions:    []string{"invalid-authorized-actions"},
+					ScopeId:           scope.Global.String(),
+					WorkerAuthToken:   &wrapperspb.StringValue{Value: fetchReqFn()},
+					AuthorizedActions: []string{"invalid-authorized-actions"},
 				},
 			},
 			wantErr:         true,
@@ -965,11 +950,11 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-create-time",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					CreatedTime:          timestamppb.Now(),
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					CreatedTime:     timestamppb.Now(),
 				},
 			},
 			wantErr:         true,
@@ -980,11 +965,11 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-update-time",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					UpdatedTime:          timestamppb.Now(),
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					UpdatedTime:     timestamppb.Now(),
 				},
 			},
 			wantErr:         true,
@@ -995,11 +980,11 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-version",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					Version:              1,
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					Version:         1,
 				},
 			},
 			wantErr:         true,
@@ -1010,10 +995,10 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-auth",
 			service: testSrv,
 			scopeId: "splat-auth-scope",
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 				},
 			},
 			wantErr:         true,
@@ -1023,10 +1008,10 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-base58-encoding",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: "invalid;semicolon"},
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: "invalid;semicolon"},
 				},
 			},
 			wantErr:         true,
@@ -1036,10 +1021,10 @@ func TestCreate(t *testing.T) {
 			name:    "invalid-marshal",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: "notNodeCreds"},
+					ScopeId:         scope.Global.String(),
+					WorkerAuthToken: &wrapperspb.StringValue{Value: "notNodeCreds"},
 				},
 			},
 			wantErr:         true,
@@ -1056,12 +1041,12 @@ func TestCreate(t *testing.T) {
 				return testSrv
 			}(),
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					Name:                 &wrapperspb.StringValue{Value: "success"},
-					Description:          &wrapperspb.StringValue{Value: "success-description"},
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					ScopeId:         scope.Global.String(),
+					Name:            &wrapperspb.StringValue{Value: "success"},
+					Description:     &wrapperspb.StringValue{Value: "success-description"},
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 				},
 			},
 			wantErr:         true,
@@ -1089,12 +1074,12 @@ func TestCreate(t *testing.T) {
 				return testSrv
 			}(),
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					Name:                 &wrapperspb.StringValue{Value: "success"},
-					Description:          &wrapperspb.StringValue{Value: "success-description"},
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					ScopeId:         scope.Global.String(),
+					Name:            &wrapperspb.StringValue{Value: "success"},
+					Description:     &wrapperspb.StringValue{Value: "success-description"},
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 				},
 			},
 			wantErr:         true,
@@ -1104,15 +1089,15 @@ func TestCreate(t *testing.T) {
 			name:    "success",
 			service: testSrv,
 			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerRequest{
+			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
-					ScopeId:              scope.Global.String(),
-					Name:                 &wrapperspb.StringValue{Value: "success"},
-					Description:          &wrapperspb.StringValue{Value: "success-description"},
-					NodeCredentialsToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+					ScopeId:         scope.Global.String(),
+					Name:            &wrapperspb.StringValue{Value: "success"},
+					Description:     &wrapperspb.StringValue{Value: "success-description"},
+					WorkerAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
 				},
 			},
-			res: &pbs.CreateWorkerResponse{
+			res: &pbs.CreateWorkerLedResponse{
 				Item: &workers.Worker{
 					ScopeId:     scope.Global.String(),
 					Name:        &wrapperspb.StringValue{Value: "success"},
@@ -1125,7 +1110,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := tc.service.CreateWorker(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			got, err := tc.service.CreateWorkerLed(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
 			if tc.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -1147,11 +1132,13 @@ func TestCreate(t *testing.T) {
 				assert.NotEmpty(got.GetItem().GetId())
 				assert.NotEmpty(got.GetItem().CreatedTime)
 				assert.NotEmpty(got.GetItem().UpdatedTime)
+				assert.NotEmpty(got.GetItem().Scope)
 				assert.NotEmpty(got.GetItem().AuthorizedActions)
 				{
 					tc.res.Item.Id = got.GetItem().GetId()
 					tc.res.Item.CreatedTime = got.GetItem().GetCreatedTime()
 					tc.res.Item.UpdatedTime = got.GetItem().GetUpdatedTime()
+					tc.res.Item.Scope = got.GetItem().Scope
 					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
 				}
 			}

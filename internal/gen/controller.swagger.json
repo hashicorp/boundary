@@ -3688,31 +3688,6 @@
         "tags": [
           "controller.api.services.v1.WorkerService"
         ]
-      },
-      "post": {
-        "summary": "Creates a single Worker.",
-        "operationId": "WorkerService_CreateWorker",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "item",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.WorkerService"
-        ]
       }
     },
     "/v1/workers/{id}": {
@@ -3793,6 +3768,33 @@
             "in": "query",
             "required": false,
             "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      }
+    },
+    "/v1/workers:create:worker-led": {
+      "post": {
+        "summary": "Creates a single Worker.",
+        "operationId": "WorkerService_CreateWorkerLed",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
           }
         ],
         "tags": [
@@ -5580,13 +5582,9 @@
           "description": "Output only. The set of information the worker daemon has reported about\nitself.",
           "readOnly": true
         },
-        "node_credentials_token": {
+        "worker_auth_token": {
           "type": "string",
-          "title": "node_credentials_token is input only. Supports the worker led node\nenrollment flow where this credentials token is produced by a worker. This\ntoken is a base58 encoded types.FetchNodeCredentialsRequest from\nhttps://github.com/hashicorp/nodeenrollment"
-        },
-        "node_authorization_token": {
-          "type": "string",
-          "title": "node_authorization_token is output only. Supports the server led node\nenrollment flow where this authorization token is given to the work so it\ncan be authorized.  See: https://github.com/hashicorp/nodeenrollment"
+          "title": "worker_auth_token is input only. Supports the worker led node\nenrollment flow where this credentials token is produced by a worker. This\ntoken is a base58 encoded types.FetchNodeCredentialsRequest from\nhttps://github.com/hashicorp/nodeenrollment"
         },
         "authorized_actions": {
           "type": "array",
@@ -5890,7 +5888,7 @@
         }
       }
     },
-    "controller.api.services.v1.CreateWorkerResponse": {
+    "controller.api.services.v1.CreateWorkerLedResponse": {
       "type": "object",
       "properties": {
         "uri": {

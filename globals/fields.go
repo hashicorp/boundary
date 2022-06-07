@@ -79,7 +79,6 @@ const (
 	TagsField                            = "tags"
 	CanonicalTagsField                   = "canonical_tags"
 	ConfigurationField                   = "configuration"
-	NodeCredentialsTokenField            = "node_credentials_token"
-	NodeAuthorizationToken               = "node_authorization_token"
+	WorkerAuthTokenField                 = "worker_auth_token"
 	WorkerConfigField                    = "worker_config"
 )
