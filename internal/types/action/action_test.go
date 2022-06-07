@@ -96,8 +96,8 @@ func TestAction(t *testing.T) {
 			want:   "no-op",
 		},
 		{
-			action: CreateWorkerRequest,
-			want:   "create:worker-request",
+			action: CreateWorkerLed,
+			want:   "create:worker-led",
 		},
 	}
 	for _, tt := range tests {

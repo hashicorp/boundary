@@ -119,8 +119,8 @@ func local_request_WorkerService_ListWorkers_0(ctx context.Context, marshaler ru
 
 }
 
-func request_WorkerService_CreateWorker_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateWorkerRequest
+func request_WorkerService_CreateWorkerLed_0(ctx context.Context, marshaler runtime.Marshaler, client WorkerServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq CreateWorkerLedRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -131,13 +131,13 @@ func request_WorkerService_CreateWorker_0(ctx context.Context, marshaler runtime
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := client.CreateWorker(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.CreateWorkerLed(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
 }
 
-func local_request_WorkerService_CreateWorker_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CreateWorkerRequest
+func local_request_WorkerService_CreateWorkerLed_0(ctx context.Context, marshaler runtime.Marshaler, server WorkerServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq CreateWorkerLedRequest
 	var metadata runtime.ServerMetadata
 
 	newReader, berr := utilities.IOReaderFactory(req.Body)
@@ -148,7 +148,7 @@ func local_request_WorkerService_CreateWorker_0(ctx context.Context, marshaler r
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
-	msg, err := server.CreateWorker(ctx, &protoReq)
+	msg, err := server.CreateWorkerLed(ctx, &protoReq)
 	return msg, metadata, err
 
 }
@@ -359,19 +359,19 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 
 	})
 
-	mux.Handle("POST", pattern_WorkerService_CreateWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_WorkerService_CreateWorkerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateWorker", runtime.WithHTTPPathPattern("/v1/workers"))
+		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateWorkerLed", runtime.WithHTTPPathPattern("/v1/workers:create:worker-led"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_WorkerService_CreateWorker_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_WorkerService_CreateWorkerLed_0(ctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -379,7 +379,7 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_WorkerService_CreateWorker_0(ctx, mux, outboundMarshaler, w, req, response_WorkerService_CreateWorker_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_WorkerService_CreateWorkerLed_0(ctx, mux, outboundMarshaler, w, req, response_WorkerService_CreateWorkerLed_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -514,24 +514,24 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 
 	})
 
-	mux.Handle("POST", pattern_WorkerService_CreateWorker_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_WorkerService_CreateWorkerLed_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateWorker", runtime.WithHTTPPathPattern("/v1/workers"))
+		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.WorkerService/CreateWorkerLed", runtime.WithHTTPPathPattern("/v1/workers:create:worker-led"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_WorkerService_CreateWorker_0(ctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_WorkerService_CreateWorkerLed_0(ctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_WorkerService_CreateWorker_0(ctx, mux, outboundMarshaler, w, req, response_WorkerService_CreateWorker_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_WorkerService_CreateWorkerLed_0(ctx, mux, outboundMarshaler, w, req, response_WorkerService_CreateWorkerLed_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -589,12 +589,12 @@ func (m response_WorkerService_GetWorker_0) XXX_ResponseBody() interface{} {
 	return response.Item
 }
 
-type response_WorkerService_CreateWorker_0 struct {
+type response_WorkerService_CreateWorkerLed_0 struct {
 	proto.Message
 }
 
-func (m response_WorkerService_CreateWorker_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*CreateWorkerResponse)
+func (m response_WorkerService_CreateWorkerLed_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*CreateWorkerLedResponse)
 	return response.Item
 }
 
@@ -612,7 +612,7 @@ var (
 
 	pattern_WorkerService_ListWorkers_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers"}, ""))
 
-	pattern_WorkerService_CreateWorker_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers"}, ""))
+	pattern_WorkerService_CreateWorkerLed_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "workers:create"}, "worker-led"))
 
 	pattern_WorkerService_UpdateWorker_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "workers", "id"}, ""))
 
@@ -624,7 +624,7 @@ var (
 
 	forward_WorkerService_ListWorkers_0 = runtime.ForwardResponseMessage
 
-	forward_WorkerService_CreateWorker_0 = runtime.ForwardResponseMessage
+	forward_WorkerService_CreateWorkerLed_0 = runtime.ForwardResponseMessage
 
 	forward_WorkerService_UpdateWorker_0 = runtime.ForwardResponseMessage
 
