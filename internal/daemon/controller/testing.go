@@ -558,7 +558,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 		testLogger := hclog.New(&hclog.LoggerOptions{
 			Mutex:  tc.b.StderrLock,
-			Output: ioutil.Discard,
+			Output: io.Discard,
 		})
 		e, err := event.NewEventer(
 			testLogger,
