@@ -182,7 +182,7 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 	// Call handle on the inner response, which will be encrypted to the
 	// new node credentials. This will also store the result,
 	// overwriting the current credentials.
-	_, err = newNodeCreds.HandleFetchNodeCredentialsResponse(
+	newNodeCreds, err = newNodeCreds.HandleFetchNodeCredentialsResponse(
 		ctx,
 		w.WorkerAuthStorage,
 		fetchResp,
@@ -191,6 +191,12 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 	if err != nil {
 		return berrors.Wrap(ctx, err, op)
 	}
+
+	newKeyId, err := nodeenrollment.KeyIdFromPkix(newNodeCreds.CertificatePublicKeyPkix)
+	if err != nil {
+		return berrors.Wrap(ctx, err, op)
+	}
+	w.WorkerAuthCurrentKeyId.Store(newKeyId)
 
 	return nil
 }

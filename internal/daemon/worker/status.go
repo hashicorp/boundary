@@ -145,10 +145,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	statusCtx, statusCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
 	defer statusCancel()
 
-	var keyId string
-	if w.WorkerAuthCurrentKeyId != "" {
-		keyId = w.WorkerAuthCurrentKeyId
-	}
+	keyId := w.WorkerAuthCurrentKeyId.Load()
 
 	if w.conf.RawConfig.Worker.Name == "" && keyId == "" {
 		event.WriteError(statusCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),

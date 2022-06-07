@@ -80,7 +80,7 @@ type Worker struct {
 
 	// The storage for node enrollment
 	WorkerAuthStorage             *nodeefile.Storage
-	WorkerAuthCurrentKeyId        string
+	WorkerAuthCurrentKeyId        *ua.String
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
 
@@ -110,6 +110,7 @@ func New(conf *Config) (*Worker, error) {
 		tags:                   new(atomic.Value),
 		updateTags:             ua.NewBool(false),
 		nonceFn:                base62.Random,
+		WorkerAuthCurrentKeyId: new(ua.String),
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
@@ -282,10 +283,11 @@ func (w *Worker) Start() error {
 			if err != nil {
 				return fmt.Errorf("error encoding worker auth registration request: %w", err)
 			}
-			w.WorkerAuthCurrentKeyId, err = nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+			currentKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 			if err != nil {
 				return fmt.Errorf("error deriving worker auth key id: %w", err)
 			}
+			w.WorkerAuthCurrentKeyId.Store(currentKeyId)
 		}
 		// Regardless, we want to load the currentKeyId
 		currentKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)

@@ -260,7 +260,7 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 
 			// Validate existing key was loaded or new key was created and loaded
 			if tt.expKeyId != "" {
-				assert.Equal(t, tt.expKeyId, tw.Worker().WorkerAuthCurrentKeyId)
+				assert.Equal(t, tt.expKeyId, tw.Worker().WorkerAuthCurrentKeyId.Load())
 			} else {
 				assert.NotEmpty(t, tw.Worker().WorkerAuthCurrentKeyId.Load())
 			}
