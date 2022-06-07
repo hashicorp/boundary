@@ -37,9 +37,9 @@ var (
 	_ oplog.ReplayableMessage = (*Target)(nil)
 )
 
-// newTarget creates a new in memory tcp target.  WithName, WithDescription and
+// NewTarget creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
-func newTarget(scopeId string, opt ...target.Option) (target.Target, error) {
+func (h targetHooks) NewTarget(scopeId string, opt ...target.Option) (target.Target, error) {
 	const op = "tcp.NewTarget"
 	opts := target.GetOpts(opt...)
 	if scopeId == "" {
@@ -59,8 +59,8 @@ func newTarget(scopeId string, opt ...target.Option) (target.Target, error) {
 	return t, nil
 }
 
-// allocTarget will allocate a tcp target
-func allocTarget() target.Target {
+// AllocTarget will allocate a tcp target
+func (h targetHooks) AllocTarget() target.Target {
 	return &Target{
 		Target: &store.Target{},
 	}

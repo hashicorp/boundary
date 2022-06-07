@@ -493,11 +493,11 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 	if target == nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target")
 	}
-	vet, ok := subtypeRegistry.vetFunc(target.GetType())
+	vet, ok := subtypeRegistry.vetForUpdateFunc(target.GetType())
 	if !ok {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
 	}
-	if err := vet(ctx, target); err != nil {
+	if err := vet(ctx, target, fieldMaskPaths); err != nil {
 		return nil, nil, nil, db.NoRowsAffected, err
 	}
 

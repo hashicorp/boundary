@@ -45,7 +45,7 @@ func TestHostSetASD(t *testing.T) {
 	require.NotNil(hSet2)
 
 	tarClient := targets.NewClient(client)
-	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2))
 	require.NoError(err)
 	require.NotNil(tar)
 	assert.Empty(tar.Item.HostSetIds)
@@ -97,7 +97,7 @@ func TestCredentialLibraryASD(t *testing.T) {
 	require.NotNil(r1)
 
 	tarClient := targets.NewClient(client)
-	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2))
 	require.NoError(err)
 	require.NotNil(tar)
 	assert.Empty(tar.Item.ApplicationCredentialLibraryIds)
@@ -160,7 +160,7 @@ func TestList(t *testing.T) {
 		expected = append(expected, &targets.Target{Name: fmt.Sprint(i)})
 	}
 
-	tcr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[0].Name))
+	tcr, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName(expected[0].Name), targets.WithTcpTargetDefaultPort(2))
 	require.NoError(err)
 	expected[0] = tcr.Item
 
@@ -237,7 +237,7 @@ func TestCrud(t *testing.T) {
 
 	tarClient := targets.NewClient(client)
 
-	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2))
 	checkResource(t, "create", tar.Item, err, "foo", 1)
 
 	tar, err = tarClient.Read(tc.Context(), tar.Item.Id)
@@ -268,7 +268,7 @@ func TestSet_Errors(t *testing.T) {
 
 	tarClient := targets.NewClient(client)
 
-	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"))
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2))
 	require.NoError(err)
 	assert.NotNil(tar)
 

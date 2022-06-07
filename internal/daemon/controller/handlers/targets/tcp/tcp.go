@@ -10,6 +10,8 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 )
 
+const defaultPortField = "attributes.default_port"
+
 type attribute struct {
 	*pb.TcpTargetAttributes
 }
@@ -24,8 +26,23 @@ func (a *attribute) Options() []target.Option {
 
 func (a *attribute) Vet() map[string]string {
 	badFields := map[string]string{}
-	if a.GetDefaultPort() != nil && a.GetDefaultPort().GetValue() == 0 {
-		badFields["attributes.default_port"] = "This optional field cannot be set to 0."
+	if a.GetDefaultPort() == nil {
+		badFields["attributes.default_port"] = "This field is required."
+	} else if a.GetDefaultPort().GetValue() == 0 {
+		badFields["attributes.default_port"] = "This field cannot be set to zero."
+	}
+	return badFields
+}
+
+func (a *attribute) VetForUpdate(p []string) map[string]string {
+	if !handlers.MaskContains(p, defaultPortField) {
+		return nil
+	}
+	badFields := map[string]string{}
+	if a.GetDefaultPort() == nil {
+		badFields["attributes.default_port"] = "This field is required."
+	} else if a.GetDefaultPort().GetValue() == 0 {
+		badFields["attributes.default_port"] = "This cannot be set to zero."
 	}
 	return badFields
 }
