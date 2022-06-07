@@ -740,8 +740,8 @@ github.com/hashicorp/golang-lru v0.5.4 h1:YDjusn29QI/Das2iO9M0BHnIbxPeyuCHsjMW+l
 github.com/hashicorp/golang-lru v0.5.4/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
-github.com/hashicorp/nodeenrollment v0.0.0-20220606184801-1fbc2905f26e h1:MIGJkv5gqsdW+3Zn2ryrQII8KY2yWJzQ9q6NcA8AH1Y=
-github.com/hashicorp/nodeenrollment v0.0.0-20220606184801-1fbc2905f26e/go.mod h1:8l3RSuZJAibZKnqX6tvLaeoFzPhDf4oCRVsyFjU5Soc=
+github.com/hashicorp/nodeenrollment v0.0.0-20220607152131-4f253e6da747 h1:/S1ePrvxgLI3jgL6XLVVQAOm3Ua0wS4PvRhmiTgG6hQ=
+github.com/hashicorp/nodeenrollment v0.0.0-20220607152131-4f253e6da747/go.mod h1:8l3RSuZJAibZKnqX6tvLaeoFzPhDf4oCRVsyFjU5Soc=
 github.com/hashicorp/vault/api v1.3.1 h1:pkDkcgTh47PRjY1NEFeofqR4W/HkNUi9qIakESO2aRM=
 github.com/hashicorp/vault/api v1.3.1/go.mod h1:QeJoWxMFt+MsuWcYhmwRLwKEXrjwAFFywzhptMsTIUw=
 github.com/hashicorp/vault/sdk v0.1.13/go.mod h1:B+hVj7TpuQY1Y/GPbCpffmgd+tSEwvhkWnjtSYCaS2M=
