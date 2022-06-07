@@ -16,6 +16,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startAuthRotationTicking"
 	if w.conf.WorkerAuthKms != nil {
 		// Nothing to do here, just immediately exit
+		// FIXME: Write a system event
 		return
 	}
 
@@ -33,8 +34,8 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 		if w.TestOverrideAuthRotationPeriod != 0 {
 			resetDuration = w.TestOverrideAuthRotationPeriod
 		}
-
 		timer.Reset(resetDuration)
+
 		select {
 		case <-cancelCtx.Done():
 			event.WriteSysEvent(cancelCtx, op, "auth rotation ticking shutting down")
@@ -87,10 +88,13 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			}
 
 			// Figure out the midpoint; if we're after it, try to rotate
-			delta := latestValid.Sub(earliestValid)
-			shouldRotate := now.Before(earliestValid.Add(delta / 2))
-			if w.TestOverrideAuthRotationPeriod != 0 {
+			var shouldRotate bool
+			switch {
+			case w.TestOverrideAuthRotationPeriod != 0:
 				shouldRotate = true
+			default:
+				delta := latestValid.Sub(earliestValid)
+				shouldRotate = now.Before(earliestValid.Add(delta / 2))
 			}
 
 			if !shouldRotate {
