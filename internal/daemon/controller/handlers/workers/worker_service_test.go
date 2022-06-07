@@ -1070,6 +1070,10 @@ func TestCreate(t *testing.T) {
 		{
 			name: "bad-repo-function-in-create",
 			service: func() Service {
+				// var cnt gives us a way for the repoFn to fail the 2nd time
+				// it's called so we can get past the AuthRequest check in
+				// CreateWorker(...) and test the createInRepo(...) failure
+				// path if the repoFn returns and err.
 				cnt := 0
 				repoFn := func() (*servers.Repository, error) {
 					cnt = cnt + 1
@@ -1113,6 +1117,7 @@ func TestCreate(t *testing.T) {
 					ScopeId:     scope.Global.String(),
 					Name:        &wrapperspb.StringValue{Value: "success"},
 					Description: &wrapperspb.StringValue{Value: "success-description"},
+					Version:     1,
 				},
 			},
 		},
@@ -1135,20 +1140,20 @@ func TestCreate(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(got)
 			{
+				// we only need to check that these "read-only" fields were set
+				// outbound. Other portions of the domain is responsible for
+				// testing that these values are correct and there's no reason
+				// to repeat those tests here.
 				assert.NotEmpty(got.GetItem().GetId())
-				assert.NotEmpty(got.GetItem().Scope)
 				assert.NotEmpty(got.GetItem().CreatedTime)
 				assert.NotEmpty(got.GetItem().UpdatedTime)
-				assert.NotEmpty(got.GetItem().Version)
 				assert.NotEmpty(got.GetItem().AuthorizedActions)
-			}
-			{
-				tc.res.Item.Id = got.GetItem().GetId()
-				tc.res.Item.Scope = got.GetItem().GetScope()
-				tc.res.Item.CreatedTime = got.GetItem().GetCreatedTime()
-				tc.res.Item.UpdatedTime = got.GetItem().GetUpdatedTime()
-				tc.res.Item.Version = got.GetItem().GetVersion()
-				tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
+				{
+					tc.res.Item.Id = got.GetItem().GetId()
+					tc.res.Item.CreatedTime = got.GetItem().GetCreatedTime()
+					tc.res.Item.UpdatedTime = got.GetItem().GetUpdatedTime()
+					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
+				}
 			}
 			assert.Equal(tc.res, got)
 		})
