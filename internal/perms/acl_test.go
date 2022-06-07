@@ -328,7 +328,7 @@ func Test_ACLAllowed(t *testing.T) {
 				},
 			},
 			actionsAuthorized: []actionAuthorized{
-				{action: action.CreateWorkerRequest, authorized: true},
+				{action: action.CreateWorkerLed, authorized: true},
 			},
 		},
 		{
@@ -338,12 +338,12 @@ func Test_ACLAllowed(t *testing.T) {
 				{
 					scope: scope.Global.String(),
 					grants: []string{
-						"type=worker;actions=create:worker-request",
+						"type=worker;actions=create:worker-led",
 					},
 				},
 			},
 			actionsAuthorized: []actionAuthorized{
-				{action: action.CreateWorkerRequest, authorized: true},
+				{action: action.CreateWorkerLed, authorized: true},
 			},
 		},
 	}
