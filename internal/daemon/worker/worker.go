@@ -28,10 +28,12 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/nodeenrollment/multihop"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	ua "go.uber.org/atomic"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/protobuf/proto"
@@ -48,6 +50,8 @@ type Worker struct {
 	started     *ua.Bool
 
 	tickerWg sync.WaitGroup
+
+	grpcClientConn *atomic.Value
 
 	controllerStatusConn *atomic.Value
 	everAuthenticated    *ua.Bool
@@ -95,6 +99,7 @@ func New(conf *Config) (*Worker, error) {
 		conf:                   conf,
 		logger:                 conf.Logger.Named("worker"),
 		started:                ua.NewBool(false),
+		grpcClientConn:         new(atomic.Value),
 		controllerStatusConn:   new(atomic.Value),
 		everAuthenticated:      ua.NewBool(false),
 		lastStatusSuccess:      new(atomic.Value),
@@ -288,7 +293,7 @@ func (w *Worker) Start() error {
 		}
 	}
 
-	if err := w.startControllerConnections(); err != nil {
+	if err := w.StartControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
 
@@ -396,6 +401,24 @@ func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	w.updateTags.Store(true)
 }
 
+// GrpcClientConn returns the underlying client connection
+func (w *Worker) GrpcClientConn() (*grpc.ClientConn, error) {
+	rawConn := w.grpcClientConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("unable to load grpc client conn")
+	}
+	cc, ok := rawConn.(*grpc.ClientConn)
+	if !ok {
+		return nil, fmt.Errorf("invalid grpc client connection %T", rawConn)
+	}
+	if cc == nil {
+		return nil, fmt.Errorf("client connection is nil")
+	}
+
+	return cc, nil
+}
+
+// ControllerSessionConn returns the underlying session service client
 func (w *Worker) ControllerSessionConn() (pbs.SessionServiceClient, error) {
 	rawConn := w.controllerSessionConn.Load()
 	if rawConn == nil {
@@ -410,6 +433,40 @@ func (w *Worker) ControllerSessionConn() (pbs.SessionServiceClient, error) {
 	}
 
 	return sessClient, nil
+}
+
+// ControllerServerCoordinationServiceConn returns the underlying server coordination service client
+func (w *Worker) ControllerServerCoordinationServiceConn() (pbs.ServerCoordinationServiceClient, error) {
+	rawConn := w.controllerStatusConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("unable to load controller service coordination service connection")
+	}
+	statusClient, ok := rawConn.(pbs.ServerCoordinationServiceClient)
+	if !ok {
+		return nil, fmt.Errorf("invalid service coordination service client %T", rawConn)
+	}
+	if statusClient == nil {
+		return nil, fmt.Errorf("service coordination service client is nil")
+	}
+
+	return statusClient, nil
+}
+
+// ControllerMultihopConn returns the underlying multihop service client
+func (w *Worker) ControllerMultihopConn() (multihop.MultihopServiceClient, error) {
+	rawConn := w.controllerMultihopConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("unable to load controller multihop service connection")
+	}
+	multihopClient, ok := rawConn.(multihop.MultihopServiceClient)
+	if !ok {
+		return nil, fmt.Errorf("invalid multihop client %T", rawConn)
+	}
+	if multihopClient == nil {
+		return nil, fmt.Errorf("session multihop is nil")
+	}
+
+	return multihopClient, nil
 }
 
 func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {

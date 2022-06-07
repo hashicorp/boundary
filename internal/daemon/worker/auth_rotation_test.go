@@ -16,6 +16,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -38,7 +39,7 @@ func TestRotationTicking(t *testing.T) {
 	})
 	t.Cleanup(c.Shutdown)
 
-	const rotationPeriod = 10 * time.Second
+	const rotationPeriod = 20 * time.Second
 
 	w := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		InitialControllers: c.ClusterAddrs(),
@@ -53,8 +54,9 @@ func TestRotationTicking(t *testing.T) {
 	workerAuthRepo, err := c.Controller().WorkerAuthRepoStorageFn()
 	require.NoError(err)
 
-	// Give time for the job to ensure that roots are created
-	time.Sleep(5 * time.Second)
+	// Give time for the job to ensure that roots are created and offset us from
+	// the rotation period
+	time.Sleep(rotationPeriod / 2)
 
 	// Verify that there are no nodes authorized yet
 	auths, err := workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
@@ -100,5 +102,14 @@ func TestRotationTicking(t *testing.T) {
 		require.NoError(err)
 		assert.NotEqual(currKey, currNodeCreds.CertificatePublicKeyPkix)
 		currKey = currNodeCreds.CertificatePublicKeyPkix
+
+		// Stop and start the client connections to ensure the new credentials
+		// are valid; if not, we won't establish a new connection and rotation
+		// will fail
+		w.Worker().Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
+		cc, err := w.Worker().GrpcClientConn()
+		require.NoError(err)
+		require.NoError(cc.Close())
+		require.NoError(w.Worker().StartControllerConnections())
 	}
 }
