@@ -84,7 +84,7 @@ type Worker struct {
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
 
-	// Test-specific options
+	// Test-specific options (and possibly hidden dev-mode flags)
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
 	TestOverrideAuthRotationPeriod time.Duration
