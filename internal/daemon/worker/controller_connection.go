@@ -33,8 +33,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (w *Worker) startControllerConnections() error {
-	const op = "worker.(Worker).startControllerConnections"
+// StartControllerConnections starts up the resolver and initiates controller
+// connection client creation
+func (w *Worker) StartControllerConnections() error {
+	const op = "worker.(Worker).StartControllerConnections"
 	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.Controllers))
 	for _, addr := range w.conf.RawConfig.Worker.Controllers {
 		switch {
@@ -162,6 +164,7 @@ func (w *Worker) createClientConn(addr string) error {
 	if err != nil {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
 	}
+	w.grpcClientConn.Store(cc)
 
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))

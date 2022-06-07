@@ -205,6 +205,7 @@ func TestStoreWorkerAuth(t *testing.T) {
 	assert.Equal(nodeInfo.EncryptionPublicKeyBytes, nodeLookup.EncryptionPublicKeyBytes)
 	assert.Equal(nodeInfo.RegistrationNonce, nodeLookup.RegistrationNonce)
 	assert.Equal(nodeInfo.CertificatePublicKeyPkix, nodeLookup.CertificatePublicKeyPkix)
+	assert.Equal(nodeInfo.State.AsMap(), nodeLookup.State.AsMap())
 
 	// Remove node
 	err = storage.Remove(ctx, nodeLookup)

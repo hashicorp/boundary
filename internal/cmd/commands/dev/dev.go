@@ -88,6 +88,7 @@ type Command struct {
 	flagUseKmsWorkerAuthMethod       bool
 	flagWorkerAuthStorageDir         string
 	flagWorkerAuthStorageSkipCleanup bool
+	flagWorkerAuthRotationInterval   time.Duration
 }
 
 func (c *Command) Synopsis() string {
@@ -352,6 +353,12 @@ func (c *Command) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "create-loopback-host-plugin",
 		Target: &c.flagCreateLoopbackHostPlugin,
+		Hidden: true,
+	})
+
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-rotation-interval",
+		Target: &c.flagWorkerAuthRotationInterval,
 		Hidden: true,
 	})
 
@@ -675,6 +682,10 @@ func (c *Command) Run(args []string) int {
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing worker: %w", err).Error())
 			return base.CommandCliError
+		}
+
+		if c.flagWorkerAuthRotationInterval > 0 {
+			c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthRotationInterval
 		}
 
 		if err := c.worker.Start(); err != nil {

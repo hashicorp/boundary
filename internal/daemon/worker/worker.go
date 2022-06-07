@@ -28,10 +28,12 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/nodeenrollment/multihop"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	ua "go.uber.org/atomic"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/protobuf/proto"
@@ -48,6 +50,8 @@ type Worker struct {
 	started     *ua.Bool
 
 	tickerWg sync.WaitGroup
+
+	grpcClientConn *atomic.Value
 
 	controllerStatusConn *atomic.Value
 	everAuthenticated    *ua.Bool
@@ -80,9 +84,10 @@ type Worker struct {
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
 
-	// Test-specific options
+	// Test-specific options (and possibly hidden dev-mode flags)
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
+	TestOverrideAuthRotationPeriod time.Duration
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -94,6 +99,7 @@ func New(conf *Config) (*Worker, error) {
 		conf:                   conf,
 		logger:                 conf.Logger.Named("worker"),
 		started:                ua.NewBool(false),
+		grpcClientConn:         new(atomic.Value),
 		controllerStatusConn:   new(atomic.Value),
 		everAuthenticated:      ua.NewBool(false),
 		lastStatusSuccess:      new(atomic.Value),
@@ -253,7 +259,12 @@ func (w *Worker) Start() error {
 		// NOTE: this block _must_ be before the `if createFetchRequest` block
 		// or the fetch request may have no credentials to work with
 		if createNodeAuthCreds {
-			nodeCreds, err = types.NewNodeCredentials(w.baseContext, w.WorkerAuthStorage, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+			nodeCreds, err = types.NewNodeCredentials(
+				w.baseContext,
+				w.WorkerAuthStorage,
+				nodeenrollment.WithRandomReader(w.conf.SecureRandomReader),
+				nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
+			)
 			if err != nil {
 				return fmt.Errorf("error generating new worker auth creds: %w", err)
 			}
@@ -263,7 +274,7 @@ func (w *Worker) Start() error {
 			if nodeCreds == nil {
 				return fmt.Errorf("need to create fetch request but worker auth creds are nil: %w", err)
 			}
-			req, err := nodeCreds.CreateFetchNodeCredentialsRequest(w.baseContext)
+			req, err := nodeCreds.CreateFetchNodeCredentialsRequest(w.baseContext, nodeenrollment.WithRandomReader(w.conf.SecureRandomReader))
 			if err != nil {
 				return fmt.Errorf("error creating worker auth fetch credentials request: %w", err)
 			}
@@ -282,14 +293,22 @@ func (w *Worker) Start() error {
 		}
 	}
 
-	if err := w.startControllerConnections(); err != nil {
+	if err := w.StartControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
 
-	w.tickerWg.Add(1)
+	// Rather than deal with some of the potential error conditions for Add on
+	// the waitgroup vs. Done (in case a function exits immediately), we will
+	// always start rotation and simply exit early if we're using KMS, and
+	// always add 2 here.
+	w.tickerWg.Add(2)
 	go func() {
 		defer w.tickerWg.Done()
 		w.startStatusTicking(w.baseContext)
+	}()
+	go func() {
+		defer w.tickerWg.Done()
+		w.startAuthRotationTicking(w.baseContext)
 	}()
 
 	w.workerStartTime = time.Now()
@@ -382,6 +401,24 @@ func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	w.updateTags.Store(true)
 }
 
+// GrpcClientConn returns the underlying client connection
+func (w *Worker) GrpcClientConn() (*grpc.ClientConn, error) {
+	rawConn := w.grpcClientConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("unable to load grpc client conn")
+	}
+	cc, ok := rawConn.(*grpc.ClientConn)
+	if !ok {
+		return nil, fmt.Errorf("invalid grpc client connection %T", rawConn)
+	}
+	if cc == nil {
+		return nil, fmt.Errorf("client connection is nil")
+	}
+
+	return cc, nil
+}
+
+// ControllerSessionConn returns the underlying session service client
 func (w *Worker) ControllerSessionConn() (pbs.SessionServiceClient, error) {
 	rawConn := w.controllerSessionConn.Load()
 	if rawConn == nil {
@@ -396,6 +433,40 @@ func (w *Worker) ControllerSessionConn() (pbs.SessionServiceClient, error) {
 	}
 
 	return sessClient, nil
+}
+
+// ControllerServerCoordinationServiceConn returns the underlying server coordination service client
+func (w *Worker) ControllerServerCoordinationServiceConn() (pbs.ServerCoordinationServiceClient, error) {
+	rawConn := w.controllerStatusConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("unable to load controller service coordination service connection")
+	}
+	statusClient, ok := rawConn.(pbs.ServerCoordinationServiceClient)
+	if !ok {
+		return nil, fmt.Errorf("invalid service coordination service client %T", rawConn)
+	}
+	if statusClient == nil {
+		return nil, fmt.Errorf("service coordination service client is nil")
+	}
+
+	return statusClient, nil
+}
+
+// ControllerMultihopConn returns the underlying multihop service client
+func (w *Worker) ControllerMultihopConn() (multihop.MultihopServiceClient, error) {
+	rawConn := w.controllerMultihopConn.Load()
+	if rawConn == nil {
+		return nil, errors.New("unable to load controller multihop service connection")
+	}
+	multihopClient, ok := rawConn.(multihop.MultihopServiceClient)
+	if !ok {
+		return nil, fmt.Errorf("invalid multihop client %T", rawConn)
+	}
+	if multihopClient == nil {
+		return nil, fmt.Errorf("session multihop is nil")
+	}
+
+	return multihopClient, nil
 }
 
 func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {

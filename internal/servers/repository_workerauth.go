@@ -397,6 +397,14 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.Wrap(ctx, err, op)
 	}
 
+	workerIdInfo := workerAuthWorkerId{WorkerId: authorizedWorker.GetWorkerId()}
+	workerIdMap := structs.Map(workerIdInfo)
+	state, err := structpb.NewStruct(workerIdMap)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	node.State = state
+
 	// Get cert bundles from the other table
 	certBundles, err := r.findCertBundles(ctx, node.Id)
 	if err != nil {
