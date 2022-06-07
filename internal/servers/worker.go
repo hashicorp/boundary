@@ -36,9 +36,9 @@ func AttachWorkerIdToState(ctx context.Context, workerId string) (*structpb.Stru
 type Worker struct {
 	*store.Worker
 
-	activeSessionCount uint32 `gorm:"-"`
-	apiTags            []*Tag `gorm:"-"`
-	configTags         []*Tag `gorm:"-"`
+	activeConnectionCount uint32 `gorm:"-"`
+	apiTags               []*Tag `gorm:"-"`
+	configTags            []*Tag `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
@@ -113,10 +113,10 @@ func (w *Worker) CanonicalAddress() string {
 	return w.GetWorkerReportedAddress()
 }
 
-// ActiveSessionCount is the current number of sessions this worker is handling
+// ActiveConnectionCount is the current number of sessions this worker is handling
 // according to the controllers.
-func (w *Worker) ActiveSessionCount() uint32 {
-	return w.activeSessionCount
+func (w *Worker) ActiveConnectionCount() uint32 {
+	return w.activeConnectionCount
 }
 
 // CanonicalTags is the deduplicated set of tags contained on both the resource
@@ -173,16 +173,16 @@ func (Worker) TableName() string {
 // workerAggregate contains an aggregated view of the values associated with
 // a single worker.
 type workerAggregate struct {
-	PublicId           string `gorm:"primary_key"`
-	ScopeId            string
-	Name               string
-	Description        string
-	CreateTime         *timestamp.Timestamp
-	UpdateTime         *timestamp.Timestamp
-	Address            string
-	Version            uint32
-	ApiTags            string
-	ActiveSessionCount uint32
+	PublicId              string `gorm:"primary_key"`
+	ScopeId               string
+	Name                  string
+	Description           string
+	CreateTime            *timestamp.Timestamp
+	UpdateTime            *timestamp.Timestamp
+	Address               string
+	Version               uint32
+	ApiTags               string
+	ActiveConnectionCount uint32
 	// Config Fields
 	WorkerReportedName    string
 	WorkerReportedAddress string
@@ -206,7 +206,7 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 			WorkerReportedName:    a.WorkerReportedName,
 			LastStatusTime:        a.LastStatusTime,
 		},
-		activeSessionCount: a.ActiveSessionCount,
+		activeConnectionCount: a.ActiveConnectionCount,
 	}
 	tags, err := tagsFromAggregatedTagString(ctx, a.ApiTags)
 	if err != nil {

@@ -12,10 +12,10 @@ with worker_config_tags(worker_id, source, tags) as (
   from server_worker_tag ct
   group by ct.worker_id, ct.source
 ),
- session_count (worker_id, count) as (
+ connection_count (worker_id, count) as (
    select
      worker_id,
-     count(distinct(session_id)) as count
+     count(1) as count
    from session_connection
    where closed_reason is null
    group by worker_id
@@ -32,7 +32,7 @@ select
   w.worker_reported_name,
   w.worker_reported_address,
   w.last_status_time,
-  sc.count as active_session_count,
+  cc.count as active_connection_count,
   -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
   wt.tags as api_tags,
   ct.tags as worker_config_tags
@@ -41,8 +41,8 @@ from server_worker w
       w.public_id = wt.worker_id and wt.source = 'api'
   left join worker_config_tags ct on
       w.public_id = ct.worker_id and ct.source = 'configuration'
-  left join session_count as sc on
-    w.public_id = sc.worker_id;
+  left join connection_count as cc on
+    w.public_id = cc.worker_id;
 comment on view server_worker_aggregate is
   'server_worker_aggregate contains the worker resource with its worker provided config values and its configuration and api provided tags.';
 
@@ -65,9 +65,5 @@ from session s
     s.public_id = ss.session_id
   left join session_connection sc on
     s.public_id = sc.session_id;
-
--- Drop the server and server_type_enm tables
-drop table server;
-drop table server_type_enm;
 
 commit;

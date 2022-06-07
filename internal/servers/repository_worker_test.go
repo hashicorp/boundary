@@ -200,7 +200,7 @@ func TestLookupWorker(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, w.GetPublicId())
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
-		assert.Equal(t, uint32(2), got.ActiveSessionCount())
+		assert.Equal(t, uint32(3), got.ActiveConnectionCount())
 		assert.Equal(t, map[string][]string{"key": {"val"}}, got.GetApiTags())
 		assert.Equal(t, map[string][]string{"config": {"test"}}, got.GetConfigTags())
 		assert.Equal(t, map[string][]string{
