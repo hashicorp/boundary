@@ -28,7 +28,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/servers"
 	serversjob "github.com/hashicorp/boundary/internal/servers/job"
-	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -38,11 +37,8 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
-	"github.com/hashicorp/nodeenrollment/types"
-	"github.com/mr-tron/base58"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 )
 
 type Controller struct {
@@ -401,34 +397,4 @@ func (c *Controller) Shutdown() error {
 // and auto reconnection.
 func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 	return c.workerStatusUpdateTimes
-}
-
-// This is a temporary function until the API is up
-func (c *Controller) AuthorizeNodeeWorker(request string) error {
-	const op = "controller.(Controller).AuthorizeNodeeWorker"
-	reqBytes, err := base58.FastBase58Decoding(request)
-	if err != nil {
-		return fmt.Errorf("(%s) error base58-decoding fetch node creds next proto value: %w", op, err)
-	}
-	// Decode the proto into the request
-	req := new(types.FetchNodeCredentialsRequest)
-	if err := proto.Unmarshal(reqBytes, req); err != nil {
-		return fmt.Errorf("(%s) error unmarshaling common name value: %w", op, err)
-	}
-
-	serversRepo, err := c.ServersRepoFn()
-	if err != nil {
-		return fmt.Errorf("(%s) error fetching servers repo: %w", op, err)
-	}
-
-	_, err = serversRepo.CreateWorker(c.baseContext, &servers.Worker{
-		Worker: &store.Worker{
-			ScopeId: scope.Global.String(),
-		},
-	}, servers.WithFetchNodeCredentialsRequest(req))
-	if err != nil {
-		return fmt.Errorf("(%s) error creating worker: %w", op, err)
-	}
-
-	return err
 }

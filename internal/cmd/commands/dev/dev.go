@@ -25,13 +25,18 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/cli"
+	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -719,7 +724,7 @@ func (c *Command) Run(args []string) int {
 					case <-c.Context.Done():
 						return
 					case <-time.After(time.Second):
-						if err := c.controller.AuthorizeNodeeWorker(req); err != nil {
+						if err := authorizeWorker(c.Context, c.controller, req); err != nil {
 							c.UI.Error(fmt.Errorf("Error authorizing node: %w", err).Error())
 							errorEncountered.Store(true)
 							return
@@ -804,4 +809,32 @@ func (c *Command) Run(args []string) int {
 	}
 
 	return base.CommandSuccess
+}
+
+func authorizeWorker(ctx context.Context, c *controller.Controller, request string) error {
+	reqBytes, err := base58.FastBase58Decoding(request)
+	if err != nil {
+		return fmt.Errorf("error base58-decoding fetch node creds next proto value: %w", err)
+	}
+	// Decode the proto into the request
+	req := new(types.FetchNodeCredentialsRequest)
+	if err := proto.Unmarshal(reqBytes, req); err != nil {
+		return fmt.Errorf("error unmarshaling common name value: %w", err)
+	}
+
+	serversRepo, err := c.ServersRepoFn()
+	if err != nil {
+		return fmt.Errorf("error fetching servers repo: %w", err)
+	}
+
+	_, err = serversRepo.CreateWorker(ctx, &servers.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, servers.WithFetchNodeCredentialsRequest(req))
+	if err != nil {
+		return fmt.Errorf("error creating worker: %w", err)
+	}
+
+	return err
 }
