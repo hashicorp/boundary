@@ -191,7 +191,7 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 
 // CreateWorker implements the interface pbs.WorkerServiceServer.
 func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRequest) (*pbs.CreateWorkerLedResponse, error) {
-	const op = "workers.(Service).CreateWorker"
+	const op = "workers.(Service).CreateWorkerLed"
 
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
