@@ -4,15 +4,40 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+// TestWithoutEventing allows the caller to "disable" all eventing for a test.
+// You must not run the test in parallel (no calls to t.Parallel) since the
+// function relies on modifying the system wide default eventer.
+func TestWithoutEventing(t testing.TB) *Eventer {
+	t.Helper()
+	require := require.New(t)
+	testConfig := EventerConfig{
+		AuditEnabled:        false,
+		ObservationsEnabled: false,
+		SysEventsEnabled:    false,
+	}
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex:  testLock,
+		Output: ioutil.Discard,
+	})
+	testEventer, err := NewEventer(testLogger, testLock, "TestWithoutEventing", testConfig, withNoDefaultSink(t))
+	require.NoError(err)
+
+	require.NoError(InitSysEventer(testLogger, testLock, "TestWithoutEventing", WithEventer(testEventer)))
+	return testEventer
+}
 
 // TestGetEventerConfig is a test accessor for the eventer's config
 func TestGetEventerConfig(t testing.TB, e *Eventer) EventerConfig {
@@ -228,6 +253,14 @@ func TestWithSysSink(t testing.TB) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withSysSink = true
+	}
+}
+
+// withNoDefaultSink is an unexported test option
+func withNoDefaultSink(t testing.TB) Option {
+	t.Helper()
+	return func(o *options) {
+		o.withNoDefaultSink = true
 	}
 }
 

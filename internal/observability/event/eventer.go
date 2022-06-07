@@ -170,7 +170,8 @@ func NewAuditEncryptFilter(opt ...Option) (*encrypt.Filter, error) {
 }
 
 // NewEventer creates a new Eventer using the config.  Supports options:
-// WithNow, WithSerializationLock, WithBroker, WithAuditWrapper
+// WithNow, WithSerializationLock, WithBroker, WithAuditWrapper,
+// WithNoDefaultSink
 func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName string, c EventerConfig, opt ...Option) (*Eventer, error) {
 	const op = "event.NewEventer"
 	if log == nil {
@@ -183,9 +184,11 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		return nil, fmt.Errorf("%s: missing server name: %w", op, ErrInvalidParameter)
 	}
 
+	opts := getOpts(opt...)
+
 	// if there are no sinks in config, then we'll default to just one stderr
 	// sink.
-	if len(c.Sinks) == 0 {
+	if len(c.Sinks) == 0 && !opts.withNoDefaultSink {
 		c.Sinks = append(c.Sinks, DefaultSink())
 	}
 
@@ -195,7 +198,6 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 
 	var auditPipelines, observationPipelines, errPipelines, sysPipelines []pipeline
 
-	opts := getOpts(opt...)
 	var b broker
 	switch {
 	case opts.withBroker != nil:
