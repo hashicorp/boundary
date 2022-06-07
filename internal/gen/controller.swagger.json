@@ -5580,6 +5580,12 @@
           "description": "Output only. The set of information the worker daemon has reported about\nitself.",
           "readOnly": true
         },
+        "active_session_count": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Output only. The number of sessions that this worker is currently handling.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

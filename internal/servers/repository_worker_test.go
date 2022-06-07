@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
@@ -162,10 +163,26 @@ func TestLookupWorker(t *testing.T) {
 		servers.WithPublicId(w.GetPublicId()))
 	require.NoError(t, err)
 
+	{
+		sessRepo, err := session.NewRepository(rw, rw, kms)
+		require.NoError(t, err)
+		connRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms, session.WithWorkerStateDelay(0))
+		require.NoError(t, err)
+
+		sess := session.TestDefaultSession(t, conn, wrapper, iam.TestRepo(t, conn, wrapper),
+			session.WithDbOpts(db.WithSkipVetForWrite(true)))
+		sess, _, err = sessRepo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
+		require.NoError(t, err)
+		c, _, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), w.GetPublicId())
+		require.NoError(t, err)
+		require.NotNil(t, c)
+	}
+
 	t.Run("success", func(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, w.GetPublicId())
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
+		assert.Equal(t, uint32(1), got.ActiveSessionCount())
 		assert.Equal(t, map[string][]string{"key": {"val"}}, got.GetApiTags())
 		assert.Equal(t, map[string][]string{"config": {"test"}}, got.GetConfigTags())
 		assert.Equal(t, map[string][]string{

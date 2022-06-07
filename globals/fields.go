@@ -79,4 +79,5 @@ const (
 	TagsField                            = "tags"
 	CanonicalTagsField                   = "canonical_tags"
 	ConfigurationField                   = "configuration"
+	ActiveSessionCountField              = "active_session_count"
 )

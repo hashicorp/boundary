@@ -90,6 +90,9 @@ message Worker {
   // itself.
   WorkerConfig worker_config = 140 [json_name = "worker_config"];
 
+  // Output only. The number of sessions that this worker is currently handling.
+  uint32 active_session_count = 150 [json_name = "active_session_count"]; // @gotags: `class:"public"`
+
   // TODO: Add worker auth related fields.
 
   // Output only. The available actions on this resource for the requester.
