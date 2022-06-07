@@ -97,7 +97,7 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 	},
 	"workers": {
 		Values: []*structpb.Value{
-			structpb.NewStringValue("create:worker-request"),
+			structpb.NewStringValue("create:worker-led"),
 			structpb.NewStringValue("list"),
 		},
 	},

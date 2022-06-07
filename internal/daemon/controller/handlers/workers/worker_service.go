@@ -42,7 +42,7 @@ var (
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
 	CollectionActions = action.ActionSet{
-		action.CreateWorkerRequest,
+		action.CreateWorkerLed,
 		action.List,
 	}
 )
@@ -196,7 +196,7 @@ func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRe
 	if err := validateCreateRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.CreateWorkerRequest)
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.CreateWorkerLed)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -398,7 +398,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Worker), auth.WithAction(a)}
 	switch a {
-	case action.List, action.CreateWorkerRequest:
+	case action.List, action.CreateWorkerLed:
 		parentId = id
 	default:
 		w, err := repo.LookupWorker(ctx, id)

@@ -53,7 +53,7 @@ const (
 	AddHostSources            Type = 42
 	SetHostSources            Type = 43
 	RemoveHostSources         Type = 44
-	CreateWorkerRequest       Type = 45
+	CreateWorkerLed           Type = 45
 )
 
 var Map = map[string]Type{
@@ -101,7 +101,7 @@ var Map = map[string]Type{
 	AddHostSources.String():            AddHostSources,
 	SetHostSources.String():            SetHostSources,
 	RemoveHostSources.String():         RemoveHostSources,
-	CreateWorkerRequest.String():       CreateWorkerRequest,
+	CreateWorkerLed.String():           CreateWorkerLed,
 }
 
 func (a Type) String() string {
@@ -151,7 +151,7 @@ func (a Type) String() string {
 		"add-host-sources",
 		"set-host-sources",
 		"remove-host-sources",
-		"create:worker-request",
+		"create:worker-led",
 	}[a]
 }
 
