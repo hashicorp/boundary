@@ -221,7 +221,7 @@ func Test_ACLOutputFields(t *testing.T) {
 				grants = append(grants, grant)
 			}
 			acl := NewACL(grants...)
-			results := acl.Allowed(test.resource, test.action)
+			results := acl.Allowed(test.resource, test.action, false)
 			assert.ElementsMatch(t, results.OutputFields.Fields(), test.fields)
 			assert.True(t, test.authorized == results.Authorized)
 		})

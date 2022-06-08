@@ -329,8 +329,8 @@ func Test_ACLAllowed(t *testing.T) {
 			}
 			acl := NewACL(grants...)
 			for _, aa := range test.actionsAuthorized {
-				result := acl.Allowed(test.resource, aa.action)
-				assert.True(t, result.Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, acl.Allowed(test.resource, aa.action).Authorized, aa.authorized)
+				result := acl.Allowed(test.resource, aa.action, false)
+				assert.True(t, result.Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, acl.Allowed(test.resource, aa.action, false).Authorized, aa.authorized)
 				assert.ElementsMatch(t, result.OutputFields.Fields(), aa.outputFields)
 			}
 		})

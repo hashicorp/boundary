@@ -36,12 +36,17 @@ type ACLResults struct {
 	Authorized             bool
 	OutputFields           OutputFieldsMap
 
+	// This indicates whether the anonymous user was being checked and there
+	// were grants present that are not valid for the anonymous user. This is
+	// mostly useful for debugging/testing.
+	InvalidAnonymousUserGrantsFound bool
+
 	// This is included but unexported for testing/debugging
 	scopeMap map[string][]Grant
 }
 
 // Resource defines something within boundary that requires authorization
-// capabilities.  Resources must have a ScopeId.
+// capabilities. Resources must have a ScopeId.
 type Resource struct {
 	// ScopeId is the scope that contains the Resource.
 	ScopeId string `json:"scope_id,omitempty"`
@@ -71,7 +76,7 @@ func NewACL(grants ...Grant) ACL {
 }
 
 // Allowed determines if the grants for an ACL allow an action for a resource.
-func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
+func (a ACL) Allowed(r Resource, aType action.Type, isAnonUser bool) (results ACLResults) {
 	// First, get the grants within the specified scope
 	grants := a.scopeMap[r.ScopeId]
 	results.scopeMap = a.scopeMap
@@ -116,6 +121,31 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 		// up the output fields patterns.
 		var found bool
 		switch {
+		// Case 1:
+		// We only allow specific actions on specific types for the anonymous
+		// user. ID doesn't matter in this case, it must be an explicit type and
+		// action(s); adding this as an explicit case here prevents duplicating
+		// logic in two of the other more general-purpose cases below (3 and 4).
+		case isAnonUser:
+			switch {
+			// Allow the anonymous user to list scopes, for discovering auth
+			// methods
+			case grant.typ == r.Type &&
+				grant.typ == resource.Scope &&
+				(aType == action.List || aType == action.NoOp):
+				found = true
+
+			// Allow discovery of and authenticating to auth methods
+			case grant.typ == r.Type &&
+				grant.typ == resource.AuthMethod &&
+				(aType == action.List || aType == action.NoOp || aType == action.Authenticate):
+				found = true
+
+			default:
+				results.InvalidAnonymousUserGrantsFound = true
+			}
+
+		// Case 2:
 		// id=<resource.id>;actions=<action> where ID cannot be a wildcard; or
 		// id=<resource.id>;output_fields=<fields> where fields cannot be a
 		// wildcard.
@@ -128,10 +158,21 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 
 			found = true
 
-		// type=<resource.type>;actions=<action> when action is list or create.
-		// Must be a top level collection, otherwise must be one of the two
-		// formats specified below. Or,
-		// type=resource.type;output_fields=<fields> and no action.
+		// Case 3: type=<resource.type>;actions=<action> when action is list or
+		// create. Must be a top level collection, otherwise must be one of the
+		// two formats specified in cases 4 or 5. Or,
+		// type=resource.type;output_fields=<fields> and no action. This is more
+		// of a semantic difference compared to 4 more than a security
+		// difference; this type is for clarity as it ties more closely to the
+		// concept of create and list as actions on a collection, operating on a
+		// collection directly. The format in case 4 will still work for
+		// create/list on collections but that's more of a shortcut to allow
+		// things like id=*;type=*;actions=* for admin flows so that you don't
+		// need to separate out explicit collection actions into separate typed
+		// grants for each collection within a role. This does mean there are
+		// "two ways of doing things" but it's a reasonable UX tradeoff given
+		// that "all IDs" can reasonably be construed to include "and the one
+		// I'm making" and "all of them for listing".
 		case grant.id == "" &&
 			r.Id == "" &&
 			grant.typ == r.Type &&
@@ -142,6 +183,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 
 			found = true
 
+		// Case 4:
 		// id=*;type=<resource.type>;actions=<action> where type cannot be
 		// unknown but can be a wildcard to allow any resource at all; or
 		// id=*;type=<resource.type>;output_fields=<fields> with no action.
@@ -152,6 +194,7 @@ func (a ACL) Allowed(r Resource, aType action.Type) (results ACLResults) {
 
 			found = true
 
+		// Case 5:
 		// id=<pin>;type=<resource.type>;actions=<action> where type can be a
 		// wildcard and this this is operating on a non-top-level type. Same for
 		// output fields only.
