@@ -11,13 +11,14 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/target/targettest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRepository_SetTargetCredentialSources(t *testing.T) {
-	target.Register(targettest.Subtype, targettest.New, targettest.Alloc, targettest.Vet, targettest.VetCredentialLibraries, targettest.TargetPrefix)
+	target.Register(targettest.Subtype, targettest.New, targettest.Alloc, targettest.Vet, targettest.VetCredentialSources, targettest.TargetPrefix)
 
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -38,11 +39,13 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	setupFn := func(tar target.Target) ([]target.CredentialSource, []*target.CredentialLibrary) {
 		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 10)
 		cls := make([]*target.CredentialLibrary, 0, len(credLibs))
+		var ids target.CredentialSources
 		for _, cl := range credLibs {
 			cls = append(cls, target.TestNewCredentialLibrary(tar.GetPublicId(), cl.PublicId, credential.ApplicationPurpose))
+			ids.ApplicationCredentialIds = append(ids.ApplicationCredentialIds, cl.GetPublicId())
 		}
 
-		_, _, created, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, cls)
+		_, _, created, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, ids)
 		require.NoError(t, err)
 		require.Equal(t, 10, len(created))
 		return created, cls
@@ -118,7 +121,11 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 					target.TestNewCredentialLibrary(tar.GetPublicId(), lib2.PublicId, credential.ApplicationPurpose),
 				}
 
-				_, _, created, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, cls)
+				_, _, created, err := repo.AddTargetCredentialSources(
+					context.Background(),
+					tar.GetPublicId(),
+					1,
+					target.CredentialSources{ApplicationCredentialIds: []string{lib1.GetPublicId(), lib2.GetPublicId()}})
 				require.NoError(t, err)
 				require.Equal(t, 2, len(created))
 				return created, cls
@@ -193,15 +200,25 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			wantCredSources := make(map[string]target.CredentialSource)
 			for _, cl := range tt.args.cls {
 				cl.TargetId = tar.GetPublicId()
-				wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = &target.TargetLibrary{
-					CredentialLibrary: cl.CredentialLibrary,
+				wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = &target.TargetCredentialSource{
+					CredentialSource: &store.CredentialSource{
+						TargetId:           cl.TargetId,
+						CredentialSourceId: cl.CredentialLibraryId,
+						CredentialPurpose:  cl.CredentialPurpose,
+						CreateTime:         cl.CreateTime,
+					},
 				}
 			}
 			if tt.args.addToOrigLibs {
 				tt.args.cls = append(tt.args.cls, origCredLibraries...)
 				for _, cl := range origCredLibraries {
-					wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = &target.TargetLibrary{
-						CredentialLibrary: cl.CredentialLibrary,
+					wantCredSources[cl.CredentialLibraryId+"_"+cl.CredentialPurpose] = &target.TargetCredentialSource{
+						CredentialSource: &store.CredentialSource{
+							TargetId:           cl.TargetId,
+							CredentialSourceId: cl.CredentialLibraryId,
+							CredentialPurpose:  cl.CredentialPurpose,
+							CreateTime:         cl.CreateTime,
+						},
 					}
 				}
 			}

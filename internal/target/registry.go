@@ -21,16 +21,16 @@ type AllocFunc func() Target
 // be used by the Repository.
 type VetFunc func(context.Context, Target) error
 
-// VetCredentialLibrariesFunc is a function that checks the given CredentialLibraries
-// to ensure that they are valid for a Target subtype.
-type VetCredentialLibrariesFunc func(context.Context, []*CredentialLibrary) error
+// VetCredentialSourcesFunc is a function that checks the given CredentialSources, both
+// library and static to ensure that they are valid for a Target subtype.
+type VetCredentialSourcesFunc func(context.Context, []*CredentialLibrary, []*StaticCredential) error
 
 type registryEntry struct {
-	newFunc                NewFunc
-	alloc                  AllocFunc
-	vet                    VetFunc
-	vetCredentialLibraries VetCredentialLibrariesFunc
-	prefix                 string
+	newFunc                  NewFunc
+	alloc                    AllocFunc
+	vet                      VetFunc
+	vetCredentialSourcesFunc VetCredentialSourcesFunc
+	prefix                   string
 }
 
 type registry struct {
@@ -90,12 +90,12 @@ func (r *registry) vetFunc(s subtypes.Subtype) (VetFunc, bool) {
 	return entry.vet, ok
 }
 
-func (r *registry) vetCredentialLibrariesFunc(s subtypes.Subtype) (VetCredentialLibrariesFunc, bool) {
+func (r *registry) vetCredentialSourcesFunc(s subtypes.Subtype) (VetCredentialSourcesFunc, bool) {
 	entry, ok := r.get(s)
 	if !ok {
 		return nil, ok
 	}
-	return entry.vetCredentialLibraries, ok
+	return entry.vetCredentialSourcesFunc, ok
 }
 
 func (r *registry) idPrefix(s subtypes.Subtype) (string, bool) {
@@ -140,12 +140,12 @@ func New(ctx context.Context, subtype subtypes.Subtype, scopeId string, opt ...O
 // Register registers repository hooks and the prefixes for a provided Subtype. Register
 // panics if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
-func Register(s subtypes.Subtype, nf NewFunc, af AllocFunc, vf VetFunc, vclf VetCredentialLibrariesFunc, prefix string) {
+func Register(s subtypes.Subtype, nf NewFunc, af AllocFunc, vf VetFunc, vcsf VetCredentialSourcesFunc, prefix string) {
 	subtypeRegistry.set(s, &registryEntry{
-		newFunc:                nf,
-		alloc:                  af,
-		vet:                    vf,
-		vetCredentialLibraries: vclf,
-		prefix:                 prefix,
+		newFunc:                  nf,
+		alloc:                    af,
+		vet:                      vf,
+		vetCredentialSourcesFunc: vcsf,
+		prefix:                   prefix,
 	})
 }

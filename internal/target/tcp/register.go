@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	target.Register(Subtype, newTarget, allocTarget, vet, vetCredentialLibraries, TargetPrefix)
+	target.Register(Subtype, newTarget, allocTarget, vet, vetCredentialSources, TargetPrefix)
 }
 
 const (
@@ -38,13 +38,18 @@ func vet(ctx context.Context, t target.Target) error {
 	return nil
 }
 
-// vetCredentialLibraries checks that all of the provided credential libriaries have a CredentialPurpose
+// vetCredentialSources checks that all the provided credential sources have a CredentialPurpose
 // of ApplicationPurpose. Any other CredentialPurpose will result in an error.
-func vetCredentialLibraries(ctx context.Context, cls []*target.CredentialLibrary) error {
+func vetCredentialSources(ctx context.Context, libs []*target.CredentialLibrary, creds []*target.StaticCredential) error {
 	const op = "tcp.vetCredentialLibraries"
 
-	for _, cl := range cls {
-		if cl.CredentialPurpose != string(credential.ApplicationPurpose) {
+	for _, c := range libs {
+		if c.GetCredentialPurpose() != string(credential.ApplicationPurpose) {
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("tcp.Target only supports credential purpose: %q", credential.ApplicationPurpose))
+		}
+	}
+	for _, c := range creds {
+		if c.GetCredentialPurpose() != string(credential.ApplicationPurpose) {
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("tcp.Target only supports credential purpose: %q", credential.ApplicationPurpose))
 		}
 	}

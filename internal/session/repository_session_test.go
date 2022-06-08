@@ -1441,12 +1441,11 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 
 	stores := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)
 	libIds := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
-	libs := []*target.CredentialLibrary{
-		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[0].GetPublicId(), cred.ApplicationPurpose),
-		target.TestNewCredentialLibrary(tar.GetPublicId(), libIds[1].GetPublicId(), cred.ApplicationPurpose),
-	}
 
-	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), libs)
+	ids := target.CredentialSources{
+		ApplicationCredentialIds: []string{libIds[0].GetPublicId(), libIds[1].GetPublicId()},
+	}
+	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), ids)
 	require.NoError(err)
 	creds := []*DynamicCredential{
 		NewDynamicCredential(libIds[0].GetPublicId(), cred.ApplicationPurpose),
