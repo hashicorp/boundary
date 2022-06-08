@@ -31,7 +31,7 @@ disable_mlock = true
 worker {
 	name = "w_1234567890"
 	description = "A default worker created in dev mode"
-	controllers = ["%s"]
+	initial_upstreams = ["%s"]
 }
 
 kms "aead" {

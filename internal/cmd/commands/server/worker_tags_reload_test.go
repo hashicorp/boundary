@@ -46,7 +46,7 @@ const tag1Config = `
 worker {
 	name = "test"
 	description = "A default worker created in dev mode"
-	controllers = ["%s"]
+	initial_upstreams = ["%s"]
 	tags {
 		type = ["dev", "local"]
 	}
@@ -57,7 +57,7 @@ const tag2Config = `
 worker {
 	name = "test"
 	description = "A default worker created in dev mode"
-	controllers = ["%s"]
+	initial_upstreams = ["%s"]
 	tags {
 		foo = ["bar", "baz"]
 	}

@@ -234,7 +234,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	}
 
 	if len(opts.InitialUpstreams) > 0 {
-		opts.Config.Worker.InitialUpstreams = opts.InitialUpstreams
+		opts.Config.Worker.Upstreams = opts.InitialUpstreams
 	}
 
 	// Start a logger

@@ -1086,10 +1086,10 @@ func TestWorkerUpstreams(t *testing.T) {
 			in: `
 			worker {
 				name = "test"
-				initial_upstreams = "env://BOUNDARY_WORKER_CONTROLLERS"
+				initial_upstreams = "env://BOUNDARY_WORKER_UPSTREAMS"
 			}
 			`,
-			stateFn:            func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_CONTROLLERS", `["127.0.0.1", "127.0.0.2", "127.0.0.3"]`) },
+			stateFn:            func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_UPSTREAMS", `["127.0.0.1", "127.0.0.2", "127.0.0.3"]`) },
 			expWorkerUpstreams: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
 			expErr:             false,
 		},
@@ -1098,7 +1098,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			in: `
 			worker {
 				name = "test"
-				initial_upstreams = "env://BOUNDARY_WORKER_CONTROLLERS"
+				initial_upstreams = "env://BOUNDARY_WORKER_UPSTREAMS"
 			}
 			`,
 			stateFn: func(t *testing.T) {
@@ -1107,7 +1107,7 @@ func TestWorkerUpstreams(t *testing.T) {
 					initial_upstreams = ["127.0.0.1"]
 				}
 				`
-				t.Setenv("BOUNDARY_WORKER_CONTROLLERS", upstreams)
+				t.Setenv("BOUNDARY_WORKER_UPSTREAMS", upstreams)
 			},
 			expWorkerUpstreams: nil,
 			expErr:             true,
@@ -1118,10 +1118,10 @@ func TestWorkerUpstreams(t *testing.T) {
 			in: `
 			worker {
 				name = "test"
-				initial_upstreams = "env://BOUNDARY_WORKER_CONTROLLERS"
+				initial_upstreams = "env://BOUNDARY_WORKER_UPSTREAMS"
 			}
 			`,
-			stateFn:            func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_CONTROLLERS", `initial_upstreams = ["127.0.0.1"]`) },
+			stateFn:            func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_UPSTREAMS", `initial_upstreams = ["127.0.0.1"]`) },
 			expWorkerUpstreams: nil,
 			expErr:             true,
 			expErrStr:          "Failed to parse worker upstreams: failed to unmarshal env/file contents: invalid character 'i' looking for beginning of value",
@@ -1174,7 +1174,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, c)
 			require.NotNil(t, c.Worker)
-			require.EqualValues(t, tt.expWorkerUpstreams, c.Worker.InitialUpstreams)
+			require.EqualValues(t, tt.expWorkerUpstreams, c.Worker.Upstreams)
 		})
 	}
 }
