@@ -136,6 +136,10 @@ jobs:
         name: Initialize Test Database
     - run:
         command: |
+          make tools
+        name: Install tools
+    - run:
+        command: |
           make test-ci
         name: Run Acceptance Tests
         no_output_timeout: 15m
@@ -349,17 +353,6 @@ workflows:
 #         resource_class: medium
 #         working_directory: ~/boundary
 # jobs:
-#     algolia-index:
-#         docker:
-#             - image: docker.mirror.hashicorp.services/node:12
-#         steps:
-#             - checkout
-#             - run:
-#                 command: |-
-#                     cd website/
-#                     npm install
-#                     node scripts/index_search_content.js
-#                 name: Push content to Algolia Index
 #     build:
 #         executor: go-machine
 #         steps:
@@ -371,6 +364,10 @@ workflows:
 #                     make DOCKER_ARGS='-d' PG_OPTS='-c shared_buffers=256MB -c max_connections=200000' -C testing/dbtest/docker database-up
 #                     until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit -1; sleep 1; done
 #                 name: Initialize Test Database
+#             - run:
+#                 command: |
+#                     make tools
+#                 name: Install tools
 #             - run:
 #                 command: |
 #                     make test-ci
@@ -455,11 +452,6 @@ workflows:
 #                             - 11-alpine
 #                             - 12-alpine
 #                             - 13-alpine
-#             - algolia-index:
-#                 filters:
-#                     branches:
-#                         only:
-#                             - stable-website
 #             - make-gen-deltas
 #     trigger-merge-to-ent:
 #         jobs:
