@@ -2668,8 +2668,10 @@ func TestAuthorizeSession(t *testing.T) {
 	connectionRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
 	}
+	staticRepo, err := static.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
 	staticHostRepoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return staticRepo, nil
 	}
 	credentialRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
@@ -2724,13 +2726,18 @@ func TestAuthorizeSession(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, credentialRepoFn)
-	require.NoError(t, err)
-
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	shs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	_ = static.TestSetMembers(t, conn, shs.GetPublicId(), []*static.Host{h})
+
+	hcWithPort := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	hWithPort := static.TestHosts(t, conn, hcWithPort.GetPublicId(), 1)[0]
+	shsWithPort := static.TestSets(t, conn, hcWithPort.GetPublicId(), 1)[0]
+	_ = static.TestSetMembers(t, conn, shsWithPort.GetPublicId(), []*static.Host{hWithPort})
+	hWithPort.Address = fmt.Sprintf("%s:54321", hWithPort.GetAddress())
+	hWithPort, _, err = staticRepo.UpdateHost(ctx, hcWithPort.GetScopeId(), hWithPort, hWithPort.GetVersion(), []string{"address"})
+	require.NoError(t, err)
 
 	phc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	phs := plugin.TestSet(t, conn, kms, sche, phc, plgm, plugin.WithPreferredEndpoints([]string{"cidr:10.0.0.0/24"}))
@@ -2765,6 +2772,7 @@ func TestAuthorizeSession(t *testing.T) {
 	}})
 	require.NoError(t, err)
 
+	const defaultPort = 2
 	cases := []struct {
 		name           string
 		hostSourceId   string
@@ -2777,20 +2785,29 @@ func TestAuthorizeSession(t *testing.T) {
 			hostSourceId:   shs.GetPublicId(),
 			credSourceId:   clsResp.GetItem().GetId(),
 			wantedHostId:   h.GetPublicId(),
-			wantedEndpoint: h.GetAddress(),
+			wantedEndpoint: fmt.Sprintf("%s:%d", h.GetAddress(), defaultPort),
+		},
+		{
+			name:           "static host with port defined",
+			hostSourceId:   shsWithPort.GetPublicId(),
+			credSourceId:   clsResp.GetItem().GetId(),
+			wantedHostId:   hWithPort.GetPublicId(),
+			wantedEndpoint: hWithPort.GetAddress(),
 		},
 		{
 			name:           "plugin host",
 			hostSourceId:   phs.GetPublicId(),
 			credSourceId:   clsResp.GetItem().GetId(),
 			wantedHostId:   "?",
-			wantedEndpoint: "10.0.0.1",
+			wantedEndpoint: fmt.Sprintf("10.0.0.1:%d", defaultPort),
 		},
 	}
 
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, credentialRepoFn)
+	require.NoError(t, err)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), tc.name)
+			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), tc.name, target.WithDefaultPort(defaultPort))
 			apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
 				Id:         tar.GetPublicId(),
 				Version:    tar.GetVersion(),
@@ -3078,7 +3095,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), tc.name)
+			const defaultPort = 2
+			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), tc.name, target.WithDefaultPort(defaultPort))
 			apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
 				Id:         tar.GetPublicId(),
 				Version:    tar.GetVersion(),
@@ -3121,7 +3139,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 				HostSetId: tc.hostSourceId,
 				HostId:    tc.wantedHostId,
 				Type:      "tcp",
-				Endpoint:  fmt.Sprintf("tcp://%s", tc.wantedEndpoint),
+				Endpoint:  fmt.Sprintf("tcp://%s:%d", tc.wantedEndpoint, defaultPort),
 				Credentials: []*pb.SessionCredential{
 					{
 						CredentialLibrary: &pb.CredentialLibrary{
@@ -3260,6 +3278,25 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			HostSetIds: []string{hs.GetPublicId()},
 		})
 		require.NoError(t, err)
+		h.Address = fmt.Sprintf("%s:54321", h.GetAddress())
+		repo, err := staticHostRepoFn()
+		require.NoError(t, err)
+		h, _, err = repo.UpdateHost(ctx, hc.GetScopeId(), h, h.GetVersion(), []string{"address"})
+		require.NoError(t, err)
+		return apiTar.GetItem().GetVersion()
+	}
+
+	hostWithoutPort := func(tar target.Target) (version uint32) {
+		hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+		_ = static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+		apiTar, err := s.AddTargetHostSets(ctx, &pbs.AddTargetHostSetsRequest{
+			Id:         tar.GetPublicId(),
+			Version:    tar.GetVersion(),
+			HostSetIds: []string{hs.GetPublicId()},
+		})
+		require.NoError(t, err)
 		return apiTar.GetItem().GetVersion()
 	}
 
@@ -3325,6 +3362,11 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		{
 			name:  "success",
 			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+		},
+		{
+			name:  "no port",
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
+			err:   true,
 		},
 		{
 			name:  "no hosts",
