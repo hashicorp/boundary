@@ -50,7 +50,7 @@ func (t *StaticCredential) TableName() string {
 	if t.tableName != "" {
 		return t.tableName
 	}
-	return "target_credential_static"
+	return "target_static_credential"
 }
 
 // SetTableName sets the table name.

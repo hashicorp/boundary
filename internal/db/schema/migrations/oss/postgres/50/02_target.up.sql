@@ -1,7 +1,7 @@
 begin;
 
-  -- target_credential_static is referenced as target.StaticCredential in the Boundary domain model
-  create table target_credential_static (
+  -- target_static_credential does not follow the normal table naming convention of target_credential_static
+  create table target_static_credential (
     target_id wt_public_id not null
       constraint target_fkey
         references target (public_id)
@@ -20,20 +20,20 @@ begin;
     create_time wt_timestamp,
     primary key(target_id, credential_static_id, credential_purpose)
   );
-  comment on table target_credential_static is
-    'target_credential_static is a join table between the target, credential_static, and credential_purpose_enm tables. '
-    'A row in the target_credential_static table represents the assignment of a static credential to a target for the specified purpose.';
+  comment on table target_static_credential is
+    'target_static_credential is a join table between the target, credential_static, and credential_purpose_enm tables. '
+    'A row in the target_static_credential table represents the assignment of a static credential to a target for the specified purpose.';
 
-  create trigger default_create_time_column before insert on target_credential_static
+  create trigger default_create_time_column before insert on target_static_credential
     for each row execute procedure default_create_time();
 
-  create trigger immutable_columns before update on target_credential_static
+  create trigger immutable_columns before update on target_static_credential
     for each row execute procedure immutable_columns('target_id', 'credential_static_id', 'credential_purpose', 'create_time');
 
   -- replaces view from 10/05_target.up.sql
   drop view target_library;
   -- target_credential_source provides the store id along with the other data stored in
-  -- target_credential_library and target_credential_static
+  -- target_credential_library and target_static_credential
   create view target_credential_source
   as
     select
@@ -53,7 +53,7 @@ begin;
       tcs.credential_purpose,
       cst.store_id
     from
-      target_credential_static tcs,
+      target_static_credential tcs,
       credential_static cst
     where
       cst.public_id = tcs.credential_static_id;
