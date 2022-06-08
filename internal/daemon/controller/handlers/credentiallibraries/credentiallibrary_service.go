@@ -579,7 +579,7 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 
 	credentialType := credential.Type(in.GetCredentialType())
 	switch credentialType {
-	case credential.UserPasswordType:
+	case credential.UsernamePasswordType:
 		opts = append(opts, vault.WithCredentialType(credentialType))
 		overrides := in.CredentialMappingOverrides.AsMap()
 		var mapOpts []vault.Option
@@ -694,7 +694,7 @@ func validateMapping(badFields map[string]string, credentialType credential.Type
 			badFields[globals.CredentialMappingOverridesField] = fmt.Sprintf("This field can only be set if %q is set", globals.CredentialTypeField)
 		}
 		return
-	case credential.UserPasswordType:
+	case credential.UsernamePasswordType:
 		validFields[usernameAttribute] = true
 		validFields[passwordAttribute] = true
 	default:
@@ -734,7 +734,7 @@ func getMappingUpdates(credentialType credential.Type, current vault.MappingOver
 	}
 
 	switch credentialType {
-	case credential.UserPasswordType:
+	case credential.UsernamePasswordType:
 		var currentUser, currentPass interface{}
 		if overrides, ok := current.(*vault.UserPasswordOverride); ok {
 			currentUser = overrides.UsernameAttribute

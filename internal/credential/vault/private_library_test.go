@@ -115,7 +115,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.UserPasswordType),
+					WithCredentialType(credential.UsernamePasswordType),
 				}
 				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
 				assert.NoError(err)
@@ -129,7 +129,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.UserPasswordType),
+					WithCredentialType(credential.UsernamePasswordType),
 					WithMappingOverride(NewUserPasswordOverride(
 						WithOverrideUsernameAttribute("test-username"),
 					)),
@@ -146,7 +146,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.UserPasswordType),
+					WithCredentialType(credential.UsernamePasswordType),
 					WithMappingOverride(NewUserPasswordOverride(
 						WithOverridePasswordAttribute("test-password"),
 					)),
@@ -163,7 +163,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			{
 				opts := []Option{
-					WithCredentialType(credential.UserPasswordType),
+					WithCredentialType(credential.UsernamePasswordType),
 					WithMappingOverride(NewUserPasswordOverride(
 						WithOverrideUsernameAttribute("test-username"),
 						WithOverridePasswordAttribute("test-password"),
@@ -336,7 +336,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-no-username-default-password-attribute",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"password": "my-password",
@@ -348,7 +348,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-no-password-default-username-attribute",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"username": "my-username",
@@ -360,7 +360,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-default-attributes",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"username": "my-username",
@@ -376,7 +376,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-override-attributes",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType:          string(credential.UserPasswordType),
+					CredType:          string(credential.UsernamePasswordType),
 					UsernameAttribute: "test-username",
 					PasswordAttribute: "test-password",
 				},
@@ -396,7 +396,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-default-username-override-password",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType:          string(credential.UserPasswordType),
+					CredType:          string(credential.UsernamePasswordType),
 					PasswordAttribute: "test-password",
 				},
 				secretData: map[string]interface{}{
@@ -415,7 +415,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-override-username-default-password",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType:          string(credential.UserPasswordType),
+					CredType:          string(credential.UsernamePasswordType),
 					UsernameAttribute: "test-username",
 				},
 				secretData: map[string]interface{}{
@@ -434,7 +434,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-username-override",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType:          string(credential.UserPasswordType),
+					CredType:          string(credential.UsernamePasswordType),
 					UsernameAttribute: "missing-username",
 				},
 				secretData: map[string]interface{}{
@@ -450,7 +450,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-password-override",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType:          string(credential.UserPasswordType),
+					CredType:          string(credential.UsernamePasswordType),
 					UsernameAttribute: "missing-password",
 				},
 				secretData: map[string]interface{}{
@@ -466,7 +466,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-no-metadata-field",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"data": map[string]interface{}{
@@ -481,7 +481,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-no-data-field",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"metadata": map[string]interface{}{},
@@ -493,7 +493,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-no-username-default-password-attribute",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"metadata": map[string]interface{}{},
@@ -508,7 +508,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-no-passsword-default-username-attribute",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"metadata": map[string]interface{}{},
@@ -523,7 +523,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-invalid-metadata-type",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"metadata": "hello",
@@ -539,7 +539,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-invalid-metadata-type",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"metadata": map[string]interface{}{},
@@ -552,7 +552,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-kv2-additional-field",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"bad-field": "hello",
@@ -569,7 +569,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-kv2-default-attributes",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType: string(credential.UserPasswordType),
+					CredType: string(credential.UsernamePasswordType),
 				},
 				secretData: map[string]interface{}{
 					"metadata": map[string]interface{}{},
@@ -588,7 +588,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-kv2-override-attributes",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType:          string(credential.UserPasswordType),
+					CredType:          string(credential.UsernamePasswordType),
 					UsernameAttribute: "test-username",
 					PasswordAttribute: "test-password",
 				},
@@ -611,7 +611,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-kv2-default-username-override-password",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType:          string(credential.UserPasswordType),
+					CredType:          string(credential.UsernamePasswordType),
 					PasswordAttribute: "test-password",
 				},
 				secretData: map[string]interface{}{
@@ -633,7 +633,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-kv2-override-username-default-password",
 			given: &baseCred{
 				lib: &privateLibrary{
-					CredType:          string(credential.UserPasswordType),
+					CredType:          string(credential.UsernamePasswordType),
 					UsernameAttribute: "test-username",
 				},
 				secretData: map[string]interface{}{

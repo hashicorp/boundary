@@ -2966,7 +2966,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 				HttpMethod: wrapperspb.String("GET"),
 			},
 		},
-		CredentialType: "user_password",
+		CredentialType: "username_password",
 	}})
 	require.NoError(t, err)
 
@@ -2997,7 +2997,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 				HttpMethod: wrapperspb.String("GET"),
 			},
 		},
-		CredentialType: "user_password",
+		CredentialType: "username_password",
 		CredentialMappingOverrides: &structpb.Struct{Fields: map[string]*structpb.Value{
 			"username_attribute": structpb.NewStringValue("non-default-user"),
 			"password_attribute": structpb.NewStringValue("non-default-pass"),
@@ -3036,7 +3036,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 				require.NoError(t, err)
 				return st
 			}(),
-			wantedCredType: string(credential.UserPasswordType),
+			wantedCredType: string(credential.UsernamePasswordType),
 		},
 		{
 			name:           "userpassword-with-mapping",
@@ -3053,7 +3053,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 				require.NoError(t, err)
 				return st
 			}(),
-			wantedCredType: string(credential.UserPasswordType),
+			wantedCredType: string(credential.UsernamePasswordType),
 		},
 	}
 

@@ -346,11 +346,11 @@ begin;
     values
       ('vs_______wvs', 'vl______wvl1', 'widget vault library',  'None',      '/secrets',           'GET',       'unspecified'),
       ('vs_______wvs', 'vl______wvl2', 'widget vault ssh',      'None',      '/secrets/ssh/admin', 'GET',       'unspecified'),
-      ('vs_______wvs', 'vl______wvl3', 'widget vault kv one',   'None',      '/secrets/kv/one',    'GET',       'user_password'),
-      ('vs_______wvs', 'vl______wvl4', 'widget vault kv two',   'None',      '/secrets/kv/two',    'GET',       'user_password'),
-      ('vs_______wvs', 'vl______wvl5', 'widget vault kv three', 'None',      '/secrets/kv/three',  'GET',       'user_password'),
-      ('vs_______wvs', 'vl______wvl6', 'widget vault kv four',  'None',      '/secrets/kv/four',   'GET',       'user_password'),
-      ('vs_______wvs', 'vl______wvl7', 'widget vault kv five',  'None',      '/secrets/kv/five',   'GET',       'user_password');
+      ('vs_______wvs', 'vl______wvl3', 'widget vault kv one',   'None',      '/secrets/kv/one',    'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl4', 'widget vault kv two',   'None',      '/secrets/kv/two',    'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl5', 'widget vault kv three', 'None',      '/secrets/kv/three',  'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl6', 'widget vault kv four',  'None',      '/secrets/kv/four',   'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl7', 'widget vault kv five',  'None',      '/secrets/kv/five',   'GET',       'username_password');
 
     insert into credential_vault_library_user_password_mapping_override
       (library_id)

@@ -26,11 +26,11 @@ begin;
       'select_private_libraries',
       $$VALUES
       ('vl______wvl2', 'unspecified',   null,          null),
-      ('vl______wvl3', 'user_password', null,          null),
-      ('vl______wvl4', 'user_password', null,          null),
-      ('vl______wvl5', 'user_password', 'my_username', null),
-      ('vl______wvl6', 'user_password', null,          'my_password'),
-      ('vl______wvl7', 'user_password', 'my_username', 'my_password')$$
+      ('vl______wvl3', 'username_password', null,          null),
+      ('vl______wvl4', 'username_password', null,          null),
+      ('vl______wvl5', 'username_password', 'my_username', null),
+      ('vl______wvl6', 'username_password', null,          'my_password'),
+      ('vl______wvl7', 'username_password', 'my_username', 'my_password')$$
   );
 
   -- validate the insert triggers

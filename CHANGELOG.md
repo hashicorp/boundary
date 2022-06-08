@@ -14,6 +14,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* Credential Libraries: The `user_password` credential type has been renamed to
+  `username_password` to remove any inconsistency over what the credential type is.
+  All existing `user_password` typed credential libraries will be migrated to
+  `username_password` ([PR](https://github.com/hashicorp/boundary/pull/2154)).
 * controller: Change the default behavior of the session list endpoint
   to no longer include sessions in a terminated state and introduces
   a new query parameter/cli flag to include the terminated sessions.
@@ -27,8 +31,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   expanded. See [the
   documentation](https://www.boundaryproject.io/docs/concepts/security/permissions/assignable-permissions)
   for more details.
-
-### Bug Fixes
 
 ## 0.8.1 (2022/05/13)
 
