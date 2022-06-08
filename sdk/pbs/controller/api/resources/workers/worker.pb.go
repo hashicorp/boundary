@@ -99,36 +99,36 @@ type Worker struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the User.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The ID of the Scope this resource is in.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty"` // @gotags: `class:"public"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
-	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"` // @gotags: `class:"sensitive"`
+	Name *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// Optional user-set description for identification purposes.
-	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"` // @gotags: `class:"sensitive"`
+	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty"` // @gotags: `class:"public"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty"` // @gotags: `class:"public"`
+	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The address that this worker is reachable at.
-	Address *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=address,proto3" json:"address,omitempty"` // @gotags: `class:"public"`
+	Address *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only.  This is the address used by authorized session.  The value
 	// is the same as the address field if set. Otherwise it uses the address the
 	// worker reports.
-	CanonicalAddress string `protobuf:"bytes,100,opt,name=canonical_address,json=canonicalAddress,proto3" json:"canonical_address,omitempty"` // @gotags: `class:"public"`
+	CanonicalAddress string `protobuf:"bytes,100,opt,name=canonical_address,json=canonicalAddress,proto3" json:"canonical_address,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The tags attached to this worker.
-	Tags map[string]*structpb.ListValue `protobuf:"bytes,110,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // @gotags: `class:"public"`
+	Tags map[string]*structpb.ListValue `protobuf:"bytes,110,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3" class:"public"` // @gotags: `class:"public"`
 	// Output only. The deduplicated union of the tags reported by the worker and
 	// the tags added through the user facing api.  This is used when applying
 	// worker filters.
-	CanonicalTags map[string]*structpb.ListValue `protobuf:"bytes,120,rep,name=canonical_tags,json=canonicalTags,proto3" json:"canonical_tags,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // @gotags: `class:"public"`
+	CanonicalTags map[string]*structpb.ListValue `protobuf:"bytes,120,rep,name=canonical_tags,json=canonicalTags,proto3" json:"canonical_tags,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this worker daemon last reported its status.
-	LastStatusTime *timestamppb.Timestamp `protobuf:"bytes,130,opt,name=last_status_time,proto3" json:"last_status_time,omitempty"` // @gotags: `class:"public"`
+	LastStatusTime *timestamppb.Timestamp `protobuf:"bytes,130,opt,name=last_status_time,proto3" json:"last_status_time,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The set of information the worker daemon has reported about
 	// itself.
 	WorkerConfig *WorkerConfig `protobuf:"bytes,140,opt,name=worker_config,proto3" json:"worker_config,omitempty"`
@@ -136,11 +136,11 @@ type Worker struct {
 	// enrollment flow where this credentials token is produced by a worker. This
 	// token is a base58 encoded types.FetchNodeCredentialsRequest from
 	// https://github.com/hashicorp/nodeenrollment
-	WorkerAuthToken *wrapperspb.StringValue `protobuf:"bytes,150,opt,name=worker_auth_token,proto3" json:"worker_auth_token,omitempty"` // @gotags: `class:"public"`
+	WorkerAuthToken *wrapperspb.StringValue `protobuf:"bytes,150,opt,name=worker_auth_token,proto3" json:"worker_auth_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The number of connections that this worker is currently handling.
-	ActiveConnectionCount uint32 `protobuf:"varint,160,opt,name=active_connection_count,proto3" json:"active_connection_count,omitempty"` // @gotags: `class:"public"`
+	ActiveConnectionCount uint32 `protobuf:"varint,160,opt,name=active_connection_count,proto3" json:"active_connection_count,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The available actions on this resource for the requester.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty"` // @gotags: `class:"public"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *Worker) Reset() {
