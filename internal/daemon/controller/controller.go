@@ -280,7 +280,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return vault.NewRepository(dbase, dbase, c.kms, c.scheduler)
 	}
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(dbase, dbase, c.kms)
+		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)

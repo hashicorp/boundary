@@ -256,7 +256,7 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:         resource.Credential.String(),
 			Pkg:                  "credentials",
 			StdActions:           []string{"create", "update"},
-			SubActionPrefix:      "userpassword",
+			SubActionPrefix:      "username_password",
 			HasExtraCommandVars:  true,
 			SkipNormalHelp:       true,
 			HasExtraHelpFunc:     true,

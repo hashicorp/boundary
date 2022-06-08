@@ -32,7 +32,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Create a credential:",
 			"",
-			`      $ boundary credentials create user-password -credential-store-id cs_1234567890 -username user -password pass`,
+			`      $ boundary credentials create username-password -credential-store-id cs_1234567890 -username user -password pass`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})
@@ -44,7 +44,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Update a user password credential:",
 			"",
-			`      $ boundary credentials update user-password -id cred_1234567890 -name devops -description "For DevOps usage"`,
+			`      $ boundary credentials update username-password -id cred_1234567890 -name devops -description "For DevOps usage"`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
 		})

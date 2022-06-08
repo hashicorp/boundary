@@ -13,25 +13,25 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A UserPasswordCredential contains the credential with a username and password.
+// A UsernamePasswordCredential contains the credential with a username and password.
 // It is owned by a credential store.
-type UserPasswordCredential struct {
-	*store.UserPasswordCredential
+type UsernamePasswordCredential struct {
+	*store.UsernamePasswordCredential
 	tableName string `gorm:"-"`
 }
 
-// NewUserPasswordCredential creates a new in memory static Credential containing a
+// NewUsernamePasswordCredential creates a new in memory static Credential containing a
 // username and password that is assigned to storeId. Name and description are the only
 // valid options. All other options are ignored.
-func NewUserPasswordCredential(
+func NewUsernamePasswordCredential(
 	storeId string,
 	username string,
 	password credential.Password,
 	opt ...Option,
-) (*UserPasswordCredential, error) {
+) (*UsernamePasswordCredential, error) {
 	opts := getOpts(opt...)
-	l := &UserPasswordCredential{
-		UserPasswordCredential: &store.UserPasswordCredential{
+	l := &UsernamePasswordCredential{
+		UsernamePasswordCredential: &store.UsernamePasswordCredential{
 			StoreId:     storeId,
 			Name:        opts.withName,
 			Description: opts.withDescription,
@@ -42,21 +42,21 @@ func NewUserPasswordCredential(
 	return l, nil
 }
 
-func allocUserPasswordCredential() *UserPasswordCredential {
-	return &UserPasswordCredential{
-		UserPasswordCredential: &store.UserPasswordCredential{},
+func allocUsernamePasswordCredential() *UsernamePasswordCredential {
+	return &UsernamePasswordCredential{
+		UsernamePasswordCredential: &store.UsernamePasswordCredential{},
 	}
 }
 
-func (c *UserPasswordCredential) clone() *UserPasswordCredential {
-	cp := proto.Clone(c.UserPasswordCredential)
-	return &UserPasswordCredential{
-		UserPasswordCredential: cp.(*store.UserPasswordCredential),
+func (c *UsernamePasswordCredential) clone() *UsernamePasswordCredential {
+	cp := proto.Clone(c.UsernamePasswordCredential)
+	return &UsernamePasswordCredential{
+		UsernamePasswordCredential: cp.(*store.UsernamePasswordCredential),
 	}
 }
 
 // TableName returns the table name.
-func (c *UserPasswordCredential) TableName() string {
+func (c *UsernamePasswordCredential) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
@@ -64,11 +64,11 @@ func (c *UserPasswordCredential) TableName() string {
 }
 
 // SetTableName sets the table name.
-func (c *UserPasswordCredential) SetTableName(n string) {
+func (c *UsernamePasswordCredential) SetTableName(n string) {
 	c.tableName = n
 }
 
-func (c *UserPasswordCredential) oplog(op oplog.OpType) oplog.Metadata {
+func (c *UsernamePasswordCredential) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{c.PublicId},
 		"resource-type":      []string{"credential-static-username-password"},
@@ -80,12 +80,12 @@ func (c *UserPasswordCredential) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
-func (c *UserPasswordCredential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "static.(UserPasswordCredential).encrypt"
+func (c *UsernamePasswordCredential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "static.(UsernamePasswordCredential).encrypt"
 	if len(c.Password) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "no password defined")
 	}
-	if err := structwrapping.WrapStruct(ctx, cipher, c.UserPasswordCredential, nil); err != nil {
+	if err := structwrapping.WrapStruct(ctx, cipher, c.UsernamePasswordCredential, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	keyId, err := cipher.KeyId(ctx)
@@ -99,16 +99,16 @@ func (c *UserPasswordCredential) encrypt(ctx context.Context, cipher wrapping.Wr
 	return nil
 }
 
-func (c *UserPasswordCredential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "static.(UserPasswordCredential).decrypt"
-	if err := structwrapping.UnwrapStruct(ctx, cipher, c.UserPasswordCredential, nil); err != nil {
+func (c *UsernamePasswordCredential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "static.(UsernamePasswordCredential).decrypt"
+	if err := structwrapping.UnwrapStruct(ctx, cipher, c.UsernamePasswordCredential, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
 
-func (c *UserPasswordCredential) hmacPassword(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "static.(UserPasswordCredential).hmacPassword"
+func (c *UsernamePasswordCredential) hmacPassword(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "static.(UsernamePasswordCredential).hmacPassword"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}

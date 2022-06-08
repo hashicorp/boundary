@@ -42,7 +42,7 @@ func Test_TestCredentialStores(t *testing.T) {
 	assert.Len(css, count)
 }
 
-func Test_TestUserPasswordCredential(t *testing.T) {
+func Test_TestUsernamePasswordCredential(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -54,7 +54,7 @@ func Test_TestUserPasswordCredential(t *testing.T) {
 
 	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
-	cred := TestUserPasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), WithName("my-name"), WithDescription("my-description"))
+	cred := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), WithName("my-name"), WithDescription("my-description"))
 	require.NotNil(cred)
 	assert.NotEmpty(cred.GetPublicId())
 	assert.Equal(cred.Name, "my-name")
@@ -69,7 +69,7 @@ func Test_TestUserPasswordCredential(t *testing.T) {
 	assert.Equal([]byte(hm), cred.PasswordHmac)
 }
 
-func Test_TestUserPasswordCredentials(t *testing.T) {
+func Test_TestUsernamePasswordCredentials(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -81,6 +81,6 @@ func Test_TestUserPasswordCredentials(t *testing.T) {
 	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
 	count := 4
-	creds := TestUserPasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), count)
+	creds := TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), count)
 	assert.Len(creds, count)
 }

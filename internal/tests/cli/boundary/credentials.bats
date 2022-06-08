@@ -22,14 +22,14 @@ export NEW_CREDENTIAL='test'
 
 @test "boundary/credentials: can create $NEW_CREDENTIAL credential in $NEW_STORE store" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  run create_user_password_credential $NEW_CREDENTIAL $csid 'username' 'password'
+  run create_username_password_credential $NEW_CREDENTIAL $csid 'username' 'password'
   echo "$output"
   [ "$status" -eq 0 ]
 }
 
 @test "boundary/credentials: can not create already created $NEW_CREDENTIAL credential" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
-  run create_user_password_credential $NEW_CREDENTIAL $csid 'username' 'password'
+  run create_username_password_credential $NEW_CREDENTIAL $csid 'username' 'password'
   echo "$output"
   [ "$status" -eq 1 ]
 }

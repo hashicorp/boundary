@@ -32,7 +32,7 @@ func TestCredentialClassification(t *testing.T) {
 		want *eventlogger.Event
 	}{
 		{
-			"Userpassword",
+			"Usernamepassword",
 			&eventlogger.Event{
 				Type:      "test",
 				CreatedAt: now,
@@ -55,9 +55,9 @@ func TestCredentialClassification(t *testing.T) {
 					CreatedTime: pbNow,
 					UpdatedTime: pbNow,
 					Version:     1,
-					Type:        "userpassword",
-					Attrs: &pb.Credential_UserPasswordAttributes{
-						UserPasswordAttributes: &pb.UserPasswordAttributes{
+					Type:        "username_password",
+					Attrs: &pb.Credential_UsernamePasswordAttributes{
+						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 							Username:     &wrapperspb.StringValue{Value: "username"},
 							Password:     &wrapperspb.StringValue{Value: "password"},
 							PasswordHmac: "password-hmac",
@@ -91,9 +91,9 @@ func TestCredentialClassification(t *testing.T) {
 					CreatedTime: pbNow,
 					UpdatedTime: pbNow,
 					Version:     1,
-					Type:        "userpassword",
-					Attrs: &pb.Credential_UserPasswordAttributes{
-						UserPasswordAttributes: &pb.UserPasswordAttributes{
+					Type:        "username_password",
+					Attrs: &pb.Credential_UsernamePasswordAttributes{
+						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 							Username:     &wrapperspb.StringValue{Value: "username"},
 							Password:     &wrapperspb.StringValue{Value: "[REDACTED]"},
 							PasswordHmac: "password-hmac",
@@ -130,7 +130,7 @@ func TestCredentialClassification(t *testing.T) {
 					CreatedTime: pbNow,
 					UpdatedTime: pbNow,
 					Version:     1,
-					Type:        "userpassword",
+					Type:        "username_password",
 					Attrs: &pb.Credential_Attributes{
 						Attributes: &structpb.Struct{
 							Fields: map[string]*structpb.Value{
@@ -167,7 +167,7 @@ func TestCredentialClassification(t *testing.T) {
 					CreatedTime: pbNow,
 					UpdatedTime: pbNow,
 					Version:     1,
-					Type:        "userpassword",
+					Type:        "username_password",
 					Attrs: &pb.Credential_Attributes{
 						Attributes: &structpb.Struct{
 							Fields: map[string]*structpb.Value{

@@ -45,7 +45,7 @@ func TestList(t *testing.T) {
 		return iamRepo, nil
 	}
 	staticRepoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kkms)
+		return static.NewRepository(context.Background(), rw, rw, kkms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -56,7 +56,7 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		user := fmt.Sprintf("user-%d", i)
 		pass := fmt.Sprintf("pass-%d", i)
-		c := static.TestUserPasswordCredential(t, conn, wrapper, user, pass, store.GetPublicId(), prj.GetPublicId())
+		c := static.TestUsernamePasswordCredential(t, conn, wrapper, user, pass, store.GetPublicId(), prj.GetPublicId())
 
 		databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
 		require.NoError(t, err)
@@ -70,10 +70,10 @@ func TestList(t *testing.T) {
 			CreatedTime:       c.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       c.GetUpdateTime().GetTimestamp(),
 			Version:           c.GetVersion(),
-			Type:              static.UserPasswordSubtype.String(),
+			Type:              static.UsernamePasswordSubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.Credential_UserPasswordAttributes{
-				UserPasswordAttributes: &pb.UserPasswordAttributes{
+			Attrs: &pb.Credential_UsernamePasswordAttributes{
+				UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 					Username:     wrapperspb.String(c.GetUsername()),
 					PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
 				},
@@ -108,7 +108,7 @@ func TestList(t *testing.T) {
 		},
 		{
 			name:    "Filter on Attribute",
-			req:     &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/username"==%q`, wantCreds[2].GetUserPasswordAttributes().GetUsername().Value)},
+			req:     &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/username"==%q`, wantCreds[2].GetUsernamePasswordAttributes().GetUsername().Value)},
 			res:     &pbs.ListCredentialsResponse{Items: wantCreds[2:3]},
 			anonRes: &pbs.ListCredentialsResponse{}, // anonymous user does not have access to attributes
 		},
@@ -165,13 +165,13 @@ func TestGet(t *testing.T) {
 		return iamRepo, nil
 	}
 	staticRepoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kkms)
+		return static.NewRepository(context.Background(), rw, rw, kkms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	cred := static.TestUserPasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
+	cred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	s, err := NewService(staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
@@ -195,13 +195,13 @@ func TestGet(t *testing.T) {
 					Id:                cred.GetPublicId(),
 					CredentialStoreId: cred.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              static.UserPasswordSubtype.String(),
+					Type:              static.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       cred.CreateTime.GetTimestamp(),
 					UpdatedTime:       cred.UpdateTime.GetTimestamp(),
 					Version:           1,
-					Attrs: &pb.Credential_UserPasswordAttributes{
-						UserPasswordAttributes: &pb.UserPasswordAttributes{
+					Attrs: &pb.Credential_UsernamePasswordAttributes{
+						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 							Username:     wrapperspb.String("user"),
 							PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
 						},
@@ -257,13 +257,13 @@ func TestDelete(t *testing.T) {
 		return iamRepo, nil
 	}
 	staticRepoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kms)
+		return static.NewRepository(context.Background(), rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	cred := static.TestUserPasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
+	cred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	s, err := NewService(staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
@@ -316,7 +316,7 @@ func TestCreate(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kkms)
+		return static.NewRepository(context.Background(), rw, rw, kkms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -335,9 +335,9 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
 				Id:                static.CredentialPrefix + "_notallowed",
-				Type:              static.UserPasswordSubtype.String(),
-				Attrs: &pb.Credential_UserPasswordAttributes{
-					UserPasswordAttributes: &pb.UserPasswordAttributes{
+				Type:              static.UsernamePasswordSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordAttributes{
+					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
 						Password: wrapperspb.String("password"),
 					},
@@ -351,9 +351,9 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
 				CreatedTime:       timestamppb.Now(),
-				Type:              static.UserPasswordSubtype.String(),
-				Attrs: &pb.Credential_UserPasswordAttributes{
-					UserPasswordAttributes: &pb.UserPasswordAttributes{
+				Type:              static.UsernamePasswordSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordAttributes{
+					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
 					},
 				},
@@ -366,9 +366,9 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
 				UpdatedTime:       timestamppb.Now(),
-				Type:              static.UserPasswordSubtype.String(),
-				Attrs: &pb.Credential_UserPasswordAttributes{
-					UserPasswordAttributes: &pb.UserPasswordAttributes{
+				Type:              static.UsernamePasswordSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordAttributes{
+					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
 						Password: wrapperspb.String("password"),
 					},
@@ -381,8 +381,8 @@ func TestCreate(t *testing.T) {
 			name: "Must provide type",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Attrs: &pb.Credential_UserPasswordAttributes{
-					UserPasswordAttributes: &pb.UserPasswordAttributes{
+				Attrs: &pb.Credential_UsernamePasswordAttributes{
+					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
 						Password: wrapperspb.String("password"),
 					},
@@ -395,9 +395,9 @@ func TestCreate(t *testing.T) {
 			name: "Must provide username",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              static.UserPasswordSubtype.String(),
-				Attrs: &pb.Credential_UserPasswordAttributes{
-					UserPasswordAttributes: &pb.UserPasswordAttributes{
+				Type:              static.UsernamePasswordSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordAttributes{
+					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Password: wrapperspb.String("password"),
 					},
 				},
@@ -409,9 +409,9 @@ func TestCreate(t *testing.T) {
 			name: "Must provide password]",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              static.UserPasswordSubtype.String(),
-				Attrs: &pb.Credential_UserPasswordAttributes{
-					UserPasswordAttributes: &pb.UserPasswordAttributes{
+				Type:              static.UsernamePasswordSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordAttributes{
+					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
 					},
 				},
@@ -423,9 +423,9 @@ func TestCreate(t *testing.T) {
 			name: "valid",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              static.UserPasswordSubtype.String(),
-				Attrs: &pb.Credential_UserPasswordAttributes{
-					UserPasswordAttributes: &pb.UserPasswordAttributes{
+				Type:              static.UsernamePasswordSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordAttributes{
+					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
 						Password: wrapperspb.String("password"),
 					},
@@ -441,7 +441,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              static.UserPasswordSubtype.String(),
+					Type:              static.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -478,15 +478,15 @@ func TestCreate(t *testing.T) {
 
 				// Calculate hmac
 				databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
-				password := tc.req.GetItem().GetUserPasswordAttributes().GetPassword().GetValue()
+				password := tc.req.GetItem().GetUsernamePasswordAttributes().GetPassword().GetValue()
 				hm, err := crypto.HmacSha256(context.Background(), []byte(password), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 				require.NoError(err)
 
 				// Validate attributes equal
-				assert.Equal(tc.req.GetItem().GetUserPasswordAttributes().GetUsername().GetValue(),
-					got.GetItem().GetUserPasswordAttributes().GetUsername().GetValue())
-				assert.Equal(base64.RawURLEncoding.EncodeToString([]byte(hm)), got.GetItem().GetUserPasswordAttributes().GetPasswordHmac())
-				assert.Empty(got.GetItem().GetUserPasswordAttributes().GetPassword())
+				assert.Equal(tc.req.GetItem().GetUsernamePasswordAttributes().GetUsername().GetValue(),
+					got.GetItem().GetUsernamePasswordAttributes().GetUsername().GetValue())
+				assert.Equal(base64.RawURLEncoding.EncodeToString([]byte(hm)), got.GetItem().GetUsernamePasswordAttributes().GetPasswordHmac())
+				assert.Empty(got.GetItem().GetUsernamePasswordAttributes().GetPassword())
 
 				// Clear attributes for compare below
 				got.Item.Attrs = nil
@@ -512,7 +512,7 @@ func TestUpdate(t *testing.T) {
 		return iamRepo, nil
 	}
 	staticRepoFn := func() (*static.Repository, error) {
-		return static.NewRepository(rw, rw, kkms)
+		return static.NewRepository(context.Background(), rw, rw, kkms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -527,9 +527,9 @@ func TestUpdate(t *testing.T) {
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
-	freshCred := func(user, pass string) (*static.UserPasswordCredential, func()) {
+	freshCred := func(user, pass string) (*static.UsernamePasswordCredential, func()) {
 		t.Helper()
-		cred := static.TestUserPasswordCredential(t, conn, wrapper, user, pass, store.GetPublicId(), prj.GetPublicId())
+		cred := static.TestUsernamePasswordCredential(t, conn, wrapper, user, pass, store.GetPublicId(), prj.GetPublicId())
 		clean := func() {
 			_, err := s.DeleteCredential(ctx, &pbs.DeleteCredentialRequest{Id: cred.GetPublicId()})
 			require.NoError(t, err)
@@ -594,8 +594,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateCredentialRequest{
 				UpdateMask: fieldmask("attributes.username"),
 				Item: &pb.Credential{
-					Attrs: &pb.Credential_UserPasswordAttributes{
-						UserPasswordAttributes: &pb.UserPasswordAttributes{
+					Attrs: &pb.Credential_UsernamePasswordAttributes{
+						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 							Username: wrapperspb.String("new-user-name"),
 						},
 					},
@@ -603,7 +603,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.Credential) *pb.Credential {
 				out := proto.Clone(in).(*pb.Credential)
-				out.GetUserPasswordAttributes().Username = wrapperspb.String("new-user-name")
+				out.GetUsernamePasswordAttributes().Username = wrapperspb.String("new-user-name")
 				return out
 			},
 		},
@@ -612,8 +612,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateCredentialRequest{
 				UpdateMask: fieldmask("attributes.password"),
 				Item: &pb.Credential{
-					Attrs: &pb.Credential_UserPasswordAttributes{
-						UserPasswordAttributes: &pb.UserPasswordAttributes{
+					Attrs: &pb.Credential_UsernamePasswordAttributes{
+						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 							Password: wrapperspb.String("new-password"),
 						},
 					},
@@ -623,7 +623,7 @@ func TestUpdate(t *testing.T) {
 				out := proto.Clone(in).(*pb.Credential)
 				hm, err := crypto.HmacSha256(context.Background(), []byte("new-password"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 				require.NoError(t, err)
-				out.GetUserPasswordAttributes().PasswordHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+				out.GetUsernamePasswordAttributes().PasswordHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
 				return out
 			},
 		},
@@ -632,8 +632,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateCredentialRequest{
 				UpdateMask: fieldmask("attributes.username", "attributes.password"),
 				Item: &pb.Credential{
-					Attrs: &pb.Credential_UserPasswordAttributes{
-						UserPasswordAttributes: &pb.UserPasswordAttributes{
+					Attrs: &pb.Credential_UsernamePasswordAttributes{
+						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 							Username: wrapperspb.String("new-username"),
 							Password: wrapperspb.String("new-password"),
 						},
@@ -643,11 +643,11 @@ func TestUpdate(t *testing.T) {
 			res: func(in *pb.Credential) *pb.Credential {
 				out := proto.Clone(in).(*pb.Credential)
 
-				out.GetUserPasswordAttributes().Username = wrapperspb.String("new-username")
+				out.GetUsernamePasswordAttributes().Username = wrapperspb.String("new-username")
 
 				hm, err := crypto.HmacSha256(context.Background(), []byte("new-password"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 				require.NoError(t, err)
-				out.GetUserPasswordAttributes().PasswordHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+				out.GetUsernamePasswordAttributes().PasswordHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
 				return out
 			},
 		},

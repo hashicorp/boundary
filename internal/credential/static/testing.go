@@ -28,7 +28,7 @@ func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, sc
 	cs, err := NewCredentialStore(scopeId, opts...)
 	assert.NoError(t, err)
 	require.NotNil(t, cs)
-	id, err := newCredentialStoreId()
+	id, err := newCredentialStoreId(ctx)
 	assert.NoError(t, err)
 	require.NotEmpty(t, id)
 	cs.PublicId = id
@@ -64,16 +64,16 @@ func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, s
 	return css
 }
 
-// TestUserPasswordCredential creates a user password credential in the provided DB with
+// TestUsernamePasswordCredential creates a user password credential in the provided DB with
 // the provided scope and any values passed in through.
 // If any errors are encountered during the creation of the store, the test will fail.
-func TestUserPasswordCredential(
+func TestUsernamePasswordCredential(
 	t testing.TB,
 	conn *db.DB,
 	wrapper wrapping.Wrapper,
 	username, password, storeId, scopeId string,
 	opts ...Option,
-) *UserPasswordCredential {
+) *UsernamePasswordCredential {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -83,11 +83,11 @@ func TestUserPasswordCredential(
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
-	cred, err := NewUserPasswordCredential(storeId, username, credential.Password(password), opts...)
+	cred, err := NewUsernamePasswordCredential(storeId, username, credential.Password(password), opts...)
 	require.NoError(t, err)
 	require.NotNil(t, cred)
 
-	id, err := newCredentialId()
+	id, err := newCredentialId(ctx)
 	require.NoError(t, err)
 	cred.PublicId = id
 
@@ -105,16 +105,16 @@ func TestUserPasswordCredential(
 	return cred
 }
 
-// TestUserPasswordCredentials creates count number of user password credentials in
+// TestUsernamePasswordCredentials creates count number of user password credentials in
 // the provided DB with the provided scope id. If any errors are
 // encountered during the creation of the credentials, the test will fail.
-func TestUserPasswordCredentials(
+func TestUsernamePasswordCredentials(
 	t testing.TB,
 	conn *db.DB,
 	wrapper wrapping.Wrapper,
 	username, password, storeId, scopeId string,
 	count int,
-) []*UserPasswordCredential {
+) []*UsernamePasswordCredential {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -123,9 +123,9 @@ func TestUserPasswordCredentials(
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
-	creds := make([]*UserPasswordCredential, 0, count)
+	creds := make([]*UsernamePasswordCredential, 0, count)
 	for i := 0; i < count; i++ {
-		creds = append(creds, TestUserPasswordCredential(t, conn, wrapper, username, password, storeId, scopeId))
+		creds = append(creds, TestUsernamePasswordCredential(t, conn, wrapper, username, password, storeId, scopeId))
 	}
 	return creds
 }

@@ -93,7 +93,7 @@ func TestCredentialStore_New(t *testing.T) {
 			assert.Equal(tt.want, got)
 			assert.Empty(cmp.Diff(tt.want, got.clone(), protocmp.Transform()))
 
-			id, err := newCredentialStoreId()
+			id, err := newCredentialStoreId(context.Background())
 			assert.NoError(err)
 
 			tt.want.PublicId = id

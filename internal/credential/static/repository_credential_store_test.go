@@ -101,7 +101,7 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
 
@@ -125,7 +125,7 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -193,7 +193,7 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -477,7 +477,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -530,7 +530,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 		require.NoError(err)
@@ -560,7 +560,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -600,7 +600,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -631,7 +631,7 @@ func TestRepository_ListCredentialStores(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -731,7 +731,7 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(context.Background(), rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteCredentialStore(context.Background(), tt.in)

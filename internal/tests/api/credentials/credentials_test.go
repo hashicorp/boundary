@@ -35,11 +35,11 @@ func TestList(t *testing.T) {
 	require.NoError(err)
 	assert.Empty(ul.Items)
 
-	cred, err := credClient.Create(tc.Context(), static.UserPasswordSubtype.String(), cs.Item.Id,
+	cred, err := credClient.Create(tc.Context(), static.UsernamePasswordSubtype.String(), cs.Item.Id,
 		credentials.WithName("0"),
 		credentials.WithDescription("description"),
-		credentials.WithUserPasswordCredentialUsername("user"),
-		credentials.WithUserPasswordCredentialPassword("pass"))
+		credentials.WithUsernamePasswordCredentialUsername("user"),
+		credentials.WithUsernamePasswordCredentialPassword("pass"))
 	require.NoError(err)
 
 	expected := make([]*credentials.Credential, 10)
@@ -50,11 +50,11 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		cred, err := credClient.Create(tc.Context(), static.UserPasswordSubtype.String(), cs.Item.Id,
+		cred, err := credClient.Create(tc.Context(), static.UsernamePasswordSubtype.String(), cs.Item.Id,
 			credentials.WithName(fmt.Sprintf("%d", i)),
 			credentials.WithDescription("description"),
-			credentials.WithUserPasswordCredentialUsername("user"),
-			credentials.WithUserPasswordCredentialPassword("pass"))
+			credentials.WithUsernamePasswordCredentialUsername("user"),
+			credentials.WithUsernamePasswordCredentialPassword("pass"))
 		require.NoError(err)
 		expected[i] = cred.Item
 	}
@@ -110,8 +110,8 @@ func TestCrud(t *testing.T) {
 	}
 	credClient := credentials.NewClient(client)
 
-	cred, err := credClient.Create(tc.Context(), static.UserPasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
-		credentials.WithUserPasswordCredentialUsername("user"), credentials.WithUserPasswordCredentialPassword("pass"))
+	cred, err := credClient.Create(tc.Context(), static.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
+		credentials.WithUsernamePasswordCredentialUsername("user"), credentials.WithUsernamePasswordCredentialPassword("pass"))
 	require.NoError(err)
 	require.NotNil(cs)
 	checkResource("create", cred.Item, "foo", "user", 1)
@@ -126,7 +126,7 @@ func TestCrud(t *testing.T) {
 	require.NotNil(cs)
 	checkResource("update", cred.Item, "bar", "user", 2)
 
-	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.WithUserPasswordCredentialUsername("newuser"))
+	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.WithUsernamePasswordCredentialUsername("newuser"))
 	require.NoError(err)
 	require.NotNil(cs)
 	checkResource("update", cred.Item, "bar", "newuser", 3)
@@ -137,7 +137,7 @@ func TestCrud(t *testing.T) {
 	checkResource("update", cred.Item, "", "newuser", 4)
 
 	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version,
-		credentials.WithName("newuser"), credentials.WithUserPasswordCredentialUsername("neweruser"))
+		credentials.WithName("newuser"), credentials.WithUsernamePasswordCredentialUsername("neweruser"))
 	require.NoError(err)
 	require.NotNil(cs)
 	checkResource("update", cred.Item, "newuser", "neweruser", 5)
@@ -167,8 +167,8 @@ func TestErrors(t *testing.T) {
 
 	c := credentials.NewClient(client)
 
-	cred, err := c.Create(tc.Context(), static.UserPasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
-		credentials.WithUserPasswordCredentialUsername("user"), credentials.WithUserPasswordCredentialPassword("pass"))
+	cred, err := c.Create(tc.Context(), static.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
+		credentials.WithUsernamePasswordCredentialUsername("user"), credentials.WithUsernamePasswordCredentialPassword("pass"))
 	require.NoError(err)
 	require.NotNil(cred)
 
@@ -189,7 +189,7 @@ func TestErrors(t *testing.T) {
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	// Same name
-	_, err = c.Create(tc.Context(), static.UserPasswordSubtype.String(), proj.GetPublicId(), credentials.WithName("foo"))
+	_, err = c.Create(tc.Context(), static.UsernamePasswordSubtype.String(), proj.GetPublicId(), credentials.WithName("foo"))
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

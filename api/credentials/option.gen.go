@@ -110,7 +110,7 @@ func DefaultName() Option {
 	}
 }
 
-func WithUserPasswordCredentialPassword(inPassword string) Option {
+func WithUsernamePasswordCredentialPassword(inPassword string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -122,19 +122,7 @@ func WithUserPasswordCredentialPassword(inPassword string) Option {
 	}
 }
 
-func WithUserPasswordCredentialPasswordHmac(inPasswordHmac string) Option {
-	return func(o *options) {
-		raw, ok := o.postMap["attributes"]
-		if !ok {
-			raw = interface{}(map[string]interface{}{})
-		}
-		val := raw.(map[string]interface{})
-		val["password_hmac"] = inPasswordHmac
-		o.postMap["attributes"] = val
-	}
-}
-
-func WithUserPasswordCredentialUsername(inUsername string) Option {
+func WithUsernamePasswordCredentialUsername(inUsername string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {

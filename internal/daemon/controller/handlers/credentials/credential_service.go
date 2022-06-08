@@ -53,8 +53,8 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.UserPasswordCredential{}},
-		handlers.MaskSource{&pb.Credential{}, &pb.UserPasswordAttributes{}}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.UsernamePasswordCredential{}},
+		handlers.MaskSource{&pb.Credential{}, &pb.UsernamePasswordAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -319,8 +319,8 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Static,
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Credential) (credential.Static, error) {
 	const op = "credentials.(Service).createInRepo"
 	switch item.GetType() {
-	case static.UserPasswordSubtype.String():
-		cred, err := toUserPasswordStorageCredential(item.GetCredentialStoreId(), item)
+	case static.UsernamePasswordSubtype.String():
+		cred, err := toUsernamePasswordStorageCredential(item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -328,7 +328,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		out, err := repo.CreateUserPasswordCredential(ctx, scopeId, cred)
+		out, err := repo.CreateUsernamePasswordCredential(ctx, scopeId, cred)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential"))
 		}
@@ -358,14 +358,14 @@ func (s Service) updateInRepo(
 	}
 
 	switch subtypes.SubtypeFromId(domain, id) {
-	case static.UserPasswordSubtype:
-		cred, err := toUserPasswordStorageCredential(storeId, in)
+	case static.UsernamePasswordSubtype:
+		cred, err := toUsernamePasswordStorageCredential(storeId, in)
 		cred.PublicId = id
 		repo, err := s.repoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		out, rowsUpdated, err := repo.UpdateUserPasswordCredential(ctx, scopeId, cred, item.GetVersion(), dbMasks)
+		out, rowsUpdated, err := repo.UpdateUsernamePasswordCredential(ctx, scopeId, cred, item.GetVersion(), dbMasks)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential"))
 		}
@@ -461,8 +461,8 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 	}
 	if outputFields.Has(globals.TypeField) {
 		switch in.(type) {
-		case *static.UserPasswordCredential:
-			out.Type = static.UserPasswordSubtype.String()
+		case *static.UsernamePasswordCredential:
+			out.Type = static.UsernamePasswordSubtype.String()
 		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -488,10 +488,10 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 	}
 
 	switch cred := in.(type) {
-	case *static.UserPasswordCredential:
+	case *static.UsernamePasswordCredential:
 		if outputFields.Has(globals.AttributesField) {
-			out.Attrs = &pb.Credential_UserPasswordAttributes{
-				UserPasswordAttributes: &pb.UserPasswordAttributes{
+			out.Attrs = &pb.Credential_UsernamePasswordAttributes{
+				UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 					Username:     wrapperspb.String(cred.GetUsername()),
 					PasswordHmac: base64.RawURLEncoding.EncodeToString(cred.GetPasswordHmac()),
 				},
@@ -501,7 +501,7 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 	return &out, nil
 }
 
-func toUserPasswordStorageCredential(storeId string, in *pb.Credential) (out *static.UserPasswordCredential, err error) {
+func toUsernamePasswordStorageCredential(storeId string, in *pb.Credential) (out *static.UsernamePasswordCredential, err error) {
 	const op = "credentials.toStorageCredential"
 	var opts []static.Option
 	if in.GetName() != nil {
@@ -511,8 +511,8 @@ func toUserPasswordStorageCredential(storeId string, in *pb.Credential) (out *st
 		opts = append(opts, static.WithDescription(in.GetDescription().GetValue()))
 	}
 
-	attrs := in.GetUserPasswordAttributes()
-	cs, err := static.NewUserPasswordCredential(
+	attrs := in.GetUsernamePasswordAttributes()
+	cs, err := static.NewUsernamePasswordCredential(
 		storeId,
 		attrs.GetUsername().GetValue(),
 		credential.Password(attrs.GetPassword().GetValue()),
@@ -536,18 +536,18 @@ func validateGetRequest(req *pbs.GetCredentialRequest) error {
 func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.Item.GetType() != static.UserPasswordSubtype.String() {
+		if req.Item.GetType() != static.UsernamePasswordSubtype.String() {
 			badFields[globals.TypeField] = fmt.Sprintf("Unsupported credential type %q", req.Item.GetType())
 		}
 		if req.Item.GetCredentialStoreId() == "" {
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 		}
 
-		if req.Item.GetUserPasswordAttributes().GetUsername().GetValue() == "" {
-			badFields[usernameField] = "Field required for creating a user-password credential."
+		if req.Item.GetUsernamePasswordAttributes().GetUsername().GetValue() == "" {
+			badFields[usernameField] = "Field required for creating a username-password credential."
 		}
-		if req.Item.GetUserPasswordAttributes().GetPassword().GetValue() == "" {
-			badFields[passwordField] = "Field required for creating a user-password credential."
+		if req.Item.GetUsernamePasswordAttributes().GetPassword().GetValue() == "" {
+			badFields[passwordField] = "Field required for creating a username-password credential."
 		}
 
 		return badFields
@@ -557,11 +557,11 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.UserPasswordSubtype.String() {
+		if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.UsernamePasswordSubtype.String() {
 			badFields[globals.TypeField] = "Cannot modify resource type."
 		}
 
-		attrs := req.GetItem().GetUserPasswordAttributes()
+		attrs := req.GetItem().GetUsernamePasswordAttributes()
 		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
 			badFields[usernameField] = "This is a required field and cannot be set to empty."
 		}

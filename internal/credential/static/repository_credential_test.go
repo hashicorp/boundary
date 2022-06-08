@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRepository_CreateUserPasswordCredential(t *testing.T) {
+func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -29,7 +29,7 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 	tests := []struct {
 		name        string
 		scopeId     string
-		cred        *UserPasswordCredential
+		cred        *UsernamePasswordCredential
 		wantErr     bool
 		wantErrCode errors.Code
 	}{
@@ -40,14 +40,14 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name:        "missing-embedded-cred",
-			cred:        &UserPasswordCredential{},
+			cred:        &UsernamePasswordCredential{},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
 			name: "missing-scope-id",
-			cred: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			cred: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "my-user",
 					Password: []byte("secret"),
 					StoreId:  cs.PublicId,
@@ -59,8 +59,8 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 		{
 			name:    "missing-username",
 			scopeId: prj.PublicId,
-			cred: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			cred: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Password: []byte("secret"),
 					StoreId:  cs.PublicId,
 				},
@@ -71,8 +71,8 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 		{
 			name:    "missing-password",
 			scopeId: prj.PublicId,
-			cred: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			cred: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "my-user",
 					StoreId:  cs.PublicId,
 				},
@@ -83,8 +83,8 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 		{
 			name:    "missing-store-id",
 			scopeId: prj.PublicId,
-			cred: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			cred: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "my-user",
 					Password: []byte("secret"),
 				},
@@ -95,8 +95,8 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 		{
 			name:    "valid",
 			scopeId: prj.PublicId,
-			cred: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			cred: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "my-user",
 					Password: []byte("secret"),
 					StoreId:  cs.PublicId,
@@ -110,11 +110,11 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kkms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kkms)
+			repo, err := NewRepository(ctx, rw, rw, kkms)
 			require.NoError(err)
 			require.NotNil(repo)
 
-			got, err := repo.CreateUserPasswordCredential(ctx, tt.scopeId, tt.cred)
+			got, err := repo.CreateUsernamePasswordCredential(ctx, tt.scopeId, tt.cred)
 			if tt.wantErr {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)
@@ -127,7 +127,7 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 			assert.Nil(got.CtPassword)
 
 			// Validate password
-			lookupCred := allocUserPasswordCredential()
+			lookupCred := allocUsernamePasswordCredential()
 			lookupCred.PublicId = got.PublicId
 			require.NoError(rw.LookupById(ctx, lookupCred))
 
@@ -154,7 +154,7 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -163,22 +163,22 @@ func TestRepository_CreateUserPasswordCredential(t *testing.T) {
 		prjCs := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 		orgCs := TestCredentialStore(t, conn, wrapper, org.GetPublicId())
 
-		in, err := NewUserPasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("original"))
+		in, err := NewUsernamePasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("original"))
 		assert.NoError(err)
 
-		got, err := repo.CreateUserPasswordCredential(ctx, prj.PublicId, in)
+		got, err := repo.CreateUsernamePasswordCredential(ctx, prj.PublicId, in)
 		require.NoError(err)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 
-		in2, err := NewUserPasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
-		got2, err := repo.CreateUserPasswordCredential(ctx, prj.GetPublicId(), in2)
+		in2, err := NewUsernamePasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		got2, err := repo.CreateUsernamePasswordCredential(ctx, prj.GetPublicId(), in2)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 
 		// Creating credential in different scope should not conflict
-		in3, err := NewUserPasswordCredential(orgCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
-		got3, err := repo.CreateUserPasswordCredential(ctx, org.GetPublicId(), in3)
+		in3, err := NewUsernamePasswordCredential(orgCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		got3, err := repo.CreateUsernamePasswordCredential(ctx, org.GetPublicId(), in3)
 		require.NoError(err)
 		assert.Equal(in3.Name, got3.Name)
 		assert.Equal(in3.Description, got3.Description)
@@ -195,12 +195,12 @@ func TestRepository_LookupCredential(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	store := TestCredentialStore(t, conn, wrapper, prj.PublicId)
-	cred := TestUserPasswordCredential(t, conn, wrapper, "username", "password", store.PublicId, prj.PublicId)
+	cred := TestUsernamePasswordCredential(t, conn, wrapper, "username", "password", store.PublicId, prj.PublicId)
 
 	tests := []struct {
 		name    string
 		id      string
-		want    *UserPasswordCredential
+		want    *UsernamePasswordCredential
 		wantErr errors.Code
 	}{
 		{
@@ -225,7 +225,7 @@ func TestRepository_LookupCredential(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -258,14 +258,14 @@ func TestRepository_ListCredentials(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
 	assert.NoError(err)
 	require.NotNil(repo)
 
 	total := 10
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	TestUserPasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), total)
+	TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), total)
 
 	type args struct {
 		storeId string
@@ -331,7 +331,7 @@ func TestRepository_DeleteCredential(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	store := TestCredentialStore(t, conn, wrapper, prj.PublicId)
-	cred := TestUserPasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
+	cred := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 
 	tests := []struct {
 		name        string
@@ -361,7 +361,7 @@ func TestRepository_DeleteCredential(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(context.Background(), rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteCredential(context.Background(), prj.GetPublicId(), tt.in)
@@ -375,82 +375,82 @@ func TestRepository_DeleteCredential(t *testing.T) {
 	}
 }
 
-func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
+func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	changeName := func(n string) func(credential *UserPasswordCredential) *UserPasswordCredential {
-		return func(c *UserPasswordCredential) *UserPasswordCredential {
+	changeName := func(n string) func(credential *UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			c.Name = n
 			return c
 		}
 	}
 
-	changeDescription := func(d string) func(*UserPasswordCredential) *UserPasswordCredential {
-		return func(c *UserPasswordCredential) *UserPasswordCredential {
+	changeDescription := func(d string) func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			c.Description = d
 			return c
 		}
 	}
 
-	makeNil := func() func(*UserPasswordCredential) *UserPasswordCredential {
-		return func(_ *UserPasswordCredential) *UserPasswordCredential {
+	makeNil := func() func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(_ *UsernamePasswordCredential) *UsernamePasswordCredential {
 			return nil
 		}
 	}
 
-	makeEmbeddedNil := func() func(*UserPasswordCredential) *UserPasswordCredential {
-		return func(_ *UserPasswordCredential) *UserPasswordCredential {
-			return &UserPasswordCredential{}
+	makeEmbeddedNil := func() func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(_ *UsernamePasswordCredential) *UsernamePasswordCredential {
+			return &UsernamePasswordCredential{}
 		}
 	}
 
-	deletePublicId := func() func(*UserPasswordCredential) *UserPasswordCredential {
-		return func(c *UserPasswordCredential) *UserPasswordCredential {
+	deletePublicId := func() func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			c.PublicId = ""
 			return c
 		}
 	}
 
-	deleteStoreId := func() func(*UserPasswordCredential) *UserPasswordCredential {
-		return func(c *UserPasswordCredential) *UserPasswordCredential {
+	deleteStoreId := func() func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			c.StoreId = ""
 			return c
 		}
 	}
 
-	deleteVersion := func() func(*UserPasswordCredential) *UserPasswordCredential {
-		return func(c *UserPasswordCredential) *UserPasswordCredential {
+	deleteVersion := func() func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			c.Version = 0
 			return c
 		}
 	}
 
-	nonExistentPublicId := func() func(*UserPasswordCredential) *UserPasswordCredential {
-		return func(c *UserPasswordCredential) *UserPasswordCredential {
+	nonExistentPublicId := func() func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			c.PublicId = "abcd_OOOOOOOOOO"
 			return c
 		}
 	}
 
-	changeUser := func(n string) func(credential *UserPasswordCredential) *UserPasswordCredential {
-		return func(c *UserPasswordCredential) *UserPasswordCredential {
+	changeUser := func(n string) func(credential *UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			c.Username = n
 			return c
 		}
 	}
 
-	changePassword := func(d string) func(*UserPasswordCredential) *UserPasswordCredential {
-		return func(c *UserPasswordCredential) *UserPasswordCredential {
+	changePassword := func(d string) func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			c.Password = []byte(d)
 			return c
 		}
 	}
 
-	combine := func(fns ...func(cs *UserPasswordCredential) *UserPasswordCredential) func(*UserPasswordCredential) *UserPasswordCredential {
-		return func(c *UserPasswordCredential) *UserPasswordCredential {
+	combine := func(fns ...func(cs *UsernamePasswordCredential) *UsernamePasswordCredential) func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			for _, fn := range fns {
 				c = fn(c)
 			}
@@ -460,17 +460,17 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		orig      *UserPasswordCredential
-		chgFn     func(*UserPasswordCredential) *UserPasswordCredential
+		orig      *UsernamePasswordCredential
+		chgFn     func(*UsernamePasswordCredential) *UsernamePasswordCredential
 		masks     []string
-		want      *UserPasswordCredential
+		want      *UsernamePasswordCredential
 		wantCount int
 		wantErr   errors.Code
 	}{
 		{
 			name: "nil-credential",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
@@ -481,8 +481,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "nil-embedded-credential",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
@@ -493,8 +493,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "no-public-id",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
@@ -505,8 +505,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "no-store-id",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
@@ -517,8 +517,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "no-version",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
@@ -529,8 +529,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "updating-non-existent-credential",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:     "test-name-repo",
 					Username: "user",
 					Password: []byte("pass"),
@@ -542,8 +542,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "empty-field-mask",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:     "test-name-repo",
 					Username: "user",
 					Password: []byte("pass"),
@@ -554,8 +554,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "read-only-fields-in-field-mask",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:     "test-name-repo",
 					Username: "user",
 					Password: []byte("pass"),
@@ -567,8 +567,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "unknown-field-in-field-mask",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:     "test-name-repo",
 					Username: "user",
 					Password: []byte("pass"),
@@ -580,8 +580,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "change-name",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:     "test-name-repo",
 					Username: "user",
 					Password: []byte("pass"),
@@ -589,8 +589,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			},
 			chgFn: changeName("test-update-name-repo"),
 			masks: []string{"Name"},
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:     "test-update-name-repo",
 					Username: "user",
 					Password: []byte("pass"),
@@ -600,8 +600,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "change-description",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Description: "test-description-repo",
 					Username:    "user",
 					Password:    []byte("pass"),
@@ -609,8 +609,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			},
 			chgFn: changeDescription("test-update-description-repo"),
 			masks: []string{"Description"},
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Description: "test-update-description-repo",
 					Username:    "user",
 					Password:    []byte("pass"),
@@ -620,8 +620,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "change-name-and-description",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
 					Username:    "user",
@@ -630,8 +630,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
 			masks: []string{"Name", "Description"},
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:        "test-update-name-repo",
 					Description: "test-update-description-repo",
 					Username:    "user",
@@ -642,16 +642,16 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "change-username",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
 			},
 			chgFn: changeUser("test-update-user"),
 			masks: []string{"Username"},
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "test-update-user",
 					Password: []byte("pass"),
 				},
@@ -660,16 +660,16 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "change-password",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
 			},
 			chgFn: changePassword("test-update-pass"),
 			masks: []string{"Password"},
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("test-update-pass"),
 				},
@@ -678,16 +678,16 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "change-username-and-password",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
 			},
 			chgFn: combine(changeUser("test-update-user"), changePassword("test-update-pass")),
 			masks: []string{"Username", "Password"},
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "test-update-user",
 					Password: []byte("test-update-pass"),
 				},
@@ -696,16 +696,16 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "do-not-delete-password",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
 			},
 			masks: []string{"Username"},
 			chgFn: combine(changeUser("test-new-user"), changePassword("")),
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "test-new-user",
 					Password: []byte("pass"),
 				},
@@ -714,16 +714,16 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "do-not-delete-username",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("pass"),
 				},
 			},
 			masks: []string{"Password"},
 			chgFn: combine(changeUser(""), changePassword("test-new-password")),
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "user",
 					Password: []byte("test-new-password"),
 				},
@@ -732,8 +732,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "delete-name",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
 					Username:    "user",
@@ -742,8 +742,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			},
 			masks: []string{"Name"},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Description: "test-description-repo",
 					Username:    "user",
 					Password:    []byte("pass"),
@@ -753,8 +753,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "delete-description",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
 					Username:    "user",
@@ -763,8 +763,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			},
 			masks: []string{"Description"},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:     "test-name-repo",
 					Username: "user",
 					Password: []byte("pass"),
@@ -774,8 +774,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "do-not-delete-name",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
 					Username:    "user",
@@ -784,8 +784,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			},
 			masks: []string{"Description"},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:        "test-name-repo",
 					Description: "test-update-description-repo",
 					Username:    "user",
@@ -796,8 +796,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 		},
 		{
 			name: "do-not-delete-description",
-			orig: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			orig: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:        "test-name-repo",
 					Description: "test-description-repo",
 					Username:    "user",
@@ -806,8 +806,8 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			},
 			masks: []string{"Name"},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Name:        "test-update-name-repo",
 					Description: "test-description-repo",
 					Username:    "user",
@@ -824,7 +824,7 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kkms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kkms)
+			repo, err := NewRepository(ctx, rw, rw, kkms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -832,7 +832,7 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 			tt.orig.StoreId = store.PublicId
 
-			orig, err := repo.CreateUserPasswordCredential(ctx, prj.GetPublicId(), tt.orig)
+			orig, err := repo.CreateUsernamePasswordCredential(ctx, prj.GetPublicId(), tt.orig)
 			assert.NoError(err)
 			require.NotNil(orig)
 
@@ -843,7 +843,7 @@ func TestRepository_UpdateUserPasswordCredential(t *testing.T) {
 			if orig != nil {
 				version = orig.GetVersion()
 			}
-			got, gotCount, err := repo.UpdateUserPasswordCredential(ctx, prj.GetPublicId(), orig, version, tt.masks)
+			got, gotCount, err := repo.UpdateUsernamePasswordCredential(ctx, prj.GetPublicId(), orig, version, tt.masks)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")

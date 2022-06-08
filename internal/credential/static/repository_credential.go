@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
-// CreateUserPasswordCredential inserts c into the repository and returns a new
-// CreateUserPasswordCredential containing the credential's PublicId. c is not
+// CreateUsernamePasswordCredential inserts c into the repository and returns a new
+// UsernamePasswordCredential containing the credential's PublicId. c is not
 // changed. c must not contain a PublicId. The PublicId is generated and
 // assigned by this method. c must contain a valid StoreId.
 //
@@ -23,17 +23,17 @@ import (
 // Both c.Name and c.Description are optional. If c.Name is set, it must
 // be unique within c.ScopeId. Both c.CreateTime and c.UpdateTime are
 // ignored.
-func (r *Repository) CreateUserPasswordCredential(
+func (r *Repository) CreateUsernamePasswordCredential(
 	ctx context.Context,
 	scopeId string,
-	c *UserPasswordCredential,
+	c *UsernamePasswordCredential,
 	_ ...Option,
-) (*UserPasswordCredential, error) {
-	const op = "static.(Repository).CreateUserPasswordCredential"
+) (*UsernamePasswordCredential, error) {
+	const op = "static.(Repository).CreateUsernamePasswordCredential"
 	if c == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential")
 	}
-	if c.UserPasswordCredential == nil {
+	if c.UsernamePasswordCredential == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing embedded credential")
 	}
 	if scopeId == "" {
@@ -53,7 +53,7 @@ func (r *Repository) CreateUserPasswordCredential(
 	}
 
 	c = c.clone()
-	id, err := newCredentialId()
+	id, err := newCredentialId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -72,7 +72,7 @@ func (r *Repository) CreateUserPasswordCredential(
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	var newCred *UserPasswordCredential
+	var newCred *UsernamePasswordCredential
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			newCred = c.clone()
@@ -101,12 +101,12 @@ func (r *Repository) CreateUserPasswordCredential(
 // LookupCredential returns the Credential for the publicId. Returns
 // nil, nil if no Credential is found for the publicId.
 // TODO: This should hit a view and return the interface type...
-func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ...Option) (*UserPasswordCredential, error) {
+func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ...Option) (*UsernamePasswordCredential, error) {
 	const op = "static.(Repository).LookupCredential"
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	cred := allocUserPasswordCredential()
+	cred := allocUsernamePasswordCredential()
 	cred.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, cred); err != nil {
 		if errors.IsNotFoundError(err) {
@@ -122,9 +122,9 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 	return cred, nil
 }
 
-// UpdateUserPasswordCredential updates the repository entry for c.PublicId with
+// UpdateUsernamePasswordCredential updates the repository entry for c.PublicId with
 // the values in c for the fields listed in fieldMaskPaths. It returns a
-// new UserPasswordCredential containing the updated values and a count of the
+// new UsernamePasswordCredential containing the updated values and a count of the
 // number of records updated. c is not changed.
 //
 // c must contain a valid PublicId. Only Name, Description, Username and Password can be
@@ -132,18 +132,18 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 //
 // An attribute of c will be set to NULL in the database if the attribute
 // in c is the zero value and it is included in fieldMaskPaths.
-func (r *Repository) UpdateUserPasswordCredential(ctx context.Context,
+func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 	scopeId string,
-	c *UserPasswordCredential,
+	c *UsernamePasswordCredential,
 	version uint32,
 	fieldMaskPaths []string,
 	_ ...Option,
-) (*UserPasswordCredential, int, error) {
-	const op = "static.(Repository).UpdateUserPasswordCredential"
+) (*UsernamePasswordCredential, int, error) {
+	const op = "static.(Repository).UpdateUsernamePasswordCredential"
 	if c == nil {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing Credential")
 	}
-	if c.UserPasswordCredential == nil {
+	if c.UsernamePasswordCredential == nil {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing embedded Credential")
 	}
 	if c.PublicId == "" {
@@ -207,7 +207,7 @@ func (r *Repository) UpdateUserPasswordCredential(ctx context.Context,
 	}
 
 	var rowsUpdated int
-	var returnedCredential *UserPasswordCredential
+	var returnedCredential *UsernamePasswordCredential
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			returnedCredential = c.clone()
@@ -236,10 +236,10 @@ func (r *Repository) UpdateUserPasswordCredential(ctx context.Context,
 	return returnedCredential, rowsUpdated, nil
 }
 
-// ListCredentials returns a slice of UserPasswordCredentials for the
+// ListCredentials returns a slice of UsernamePasswordCredentials for the
 // scopeIds. WithLimit is the only option supported.
 // TODO: This should hit a view and return the interface type...
-func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ...Option) ([]*UserPasswordCredential, error) {
+func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ...Option) ([]*UsernamePasswordCredential, error) {
 	const op = "static.(Repository).ListCredentials"
 	if storeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
@@ -250,7 +250,7 @@ func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ..
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var creds []*UserPasswordCredential
+	var creds []*UsernamePasswordCredential
 	err := r.reader.SearchWhere(ctx, &creds, "store_id = ?", []interface{}{storeId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -277,7 +277,7 @@ func (r *Repository) DeleteCredential(ctx context.Context, scopeId, id string, _
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
 
-	c := allocUserPasswordCredential()
+	c := allocUsernamePasswordCredential()
 	c.PublicId = id
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)

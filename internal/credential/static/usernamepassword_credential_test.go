@@ -36,7 +36,7 @@ func TestCredential_New(t *testing.T) {
 	tests := []struct {
 		name           string
 		args           args
-		want           *UserPasswordCredential
+		want           *UsernamePasswordCredential
 		wantCreateErr  bool
 		wantEncryptErr bool
 	}{
@@ -46,7 +46,7 @@ func TestCredential_New(t *testing.T) {
 				username: "test-user",
 				storeId:  cs.PublicId,
 			},
-			want:           allocUserPasswordCredential(),
+			want:           allocUsernamePasswordCredential(),
 			wantEncryptErr: true,
 		},
 		{
@@ -55,7 +55,7 @@ func TestCredential_New(t *testing.T) {
 				password: "test-pass",
 				storeId:  cs.PublicId,
 			},
-			want:          allocUserPasswordCredential(),
+			want:          allocUsernamePasswordCredential(),
 			wantCreateErr: true,
 		},
 		{
@@ -64,7 +64,7 @@ func TestCredential_New(t *testing.T) {
 				username: "test-user",
 				password: "test-pass",
 			},
-			want:          allocUserPasswordCredential(),
+			want:          allocUsernamePasswordCredential(),
 			wantCreateErr: true,
 		},
 		{
@@ -74,8 +74,8 @@ func TestCredential_New(t *testing.T) {
 				password: "test-pass",
 				storeId:  cs.PublicId,
 			},
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "test-user",
 					Password: []byte("test-pass"),
 					StoreId:  cs.PublicId,
@@ -90,8 +90,8 @@ func TestCredential_New(t *testing.T) {
 				storeId:  cs.PublicId,
 				options:  []Option{WithName("my-credential")},
 			},
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "test-user",
 					Password: []byte("test-pass"),
 					StoreId:  cs.PublicId,
@@ -107,8 +107,8 @@ func TestCredential_New(t *testing.T) {
 				storeId:  cs.PublicId,
 				options:  []Option{WithDescription("my-credential-description")},
 			},
-			want: &UserPasswordCredential{
-				UserPasswordCredential: &store.UserPasswordCredential{
+			want: &UsernamePasswordCredential{
+				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username:    "test-user",
 					Password:    []byte("test-pass"),
 					StoreId:     cs.PublicId,
@@ -123,12 +123,12 @@ func TestCredential_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
-			got, err := NewUserPasswordCredential(tt.args.storeId, tt.args.username, tt.args.password, tt.args.options...)
+			got, err := NewUsernamePasswordCredential(tt.args.storeId, tt.args.username, tt.args.password, tt.args.options...)
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Emptyf(got.PublicId, "PublicId set")
 
-			id, err := newCredentialId()
+			id, err := newCredentialId(ctx)
 			require.NoError(err)
 
 			tt.want.PublicId = id
@@ -150,7 +150,7 @@ func TestCredential_New(t *testing.T) {
 			}
 			assert.NoError(err)
 
-			got2 := allocUserPasswordCredential()
+			got2 := allocUsernamePasswordCredential()
 			got2.PublicId = id
 			assert.Equal(id, got2.GetPublicId())
 			require.NoError(rw.LookupById(ctx, got2))

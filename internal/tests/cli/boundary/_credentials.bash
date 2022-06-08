@@ -1,14 +1,14 @@
 load _authorized_actions
 
-function create_user_password_credential() {
+function create_username_password_credential() {
   local name=$1
   local sid=$2
   local user=$3
   local pass=$4
   
-  boundary credentials create user-password \
+  boundary credentials create username-password \
     -name $name \
-    -description 'test user password credential' \
+    -description 'test username password credential' \
     -credential-store-id $sid \
     -username $user \
     -password $pass

@@ -73,7 +73,7 @@ func TestList(t *testing.T) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(rw, rw, kms)
+		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
 
 	_, prjNoStores := iam.TestScopes(t, iamRepo)
@@ -213,7 +213,7 @@ func TestCreateVault(t *testing.T) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(rw, rw, kms)
+		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -567,7 +567,7 @@ func TestCreateStatic(t *testing.T) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(rw, rw, kms)
+		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -732,7 +732,7 @@ func TestGet(t *testing.T) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(rw, rw, kms)
+		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -846,7 +846,7 @@ func TestDelete(t *testing.T) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(rw, rw, kms)
+		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -920,7 +920,7 @@ func TestUpdateVault(t *testing.T) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(rw, rw, kms)
+		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -1252,7 +1252,7 @@ func TestUpdateStatic(t *testing.T) {
 		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(rw, rw, kms)
+		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)

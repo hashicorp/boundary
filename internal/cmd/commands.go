@@ -465,8 +465,8 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
-		"credentials create user-password": func() (cli.Command, error) {
-			return &credentialscmd.UserpasswordCommand{
+		"credentials create username-password": func() (cli.Command, error) {
+			return &credentialscmd.UsernamePasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}, nil
@@ -477,8 +477,8 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "update",
 			}, nil
 		},
-		"credentials update user-password": func() (cli.Command, error) {
-			return &credentialscmd.UserpasswordCommand{
+		"credentials update username-password": func() (cli.Command, error) {
+			return &credentialscmd.UsernamePasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

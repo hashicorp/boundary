@@ -14,54 +14,54 @@ import (
 	"github.com/posener/complete"
 )
 
-func initUserpasswordFlags() {
+func initUsernamePasswordFlags() {
 	flagsOnce.Do(func() {
-		extraFlags := extraUserpasswordActionsFlagsMapFunc()
+		extraFlags := extraUsernamePasswordActionsFlagsMapFunc()
 		for k, v := range extraFlags {
-			flagsUserpasswordMap[k] = append(flagsUserpasswordMap[k], v...)
+			flagsUsernamePasswordMap[k] = append(flagsUsernamePasswordMap[k], v...)
 		}
 	})
 }
 
 var (
-	_ cli.Command             = (*UserpasswordCommand)(nil)
-	_ cli.CommandAutocomplete = (*UserpasswordCommand)(nil)
+	_ cli.Command             = (*UsernamePasswordCommand)(nil)
+	_ cli.CommandAutocomplete = (*UsernamePasswordCommand)(nil)
 )
 
-type UserpasswordCommand struct {
+type UsernamePasswordCommand struct {
 	*base.Command
 
 	Func string
 
 	plural string
 
-	extraUserpasswordCmdVars
+	extraUsernamePasswordCmdVars
 }
 
-func (c *UserpasswordCommand) AutocompleteArgs() complete.Predictor {
-	initUserpasswordFlags()
+func (c *UsernamePasswordCommand) AutocompleteArgs() complete.Predictor {
+	initUsernamePasswordFlags()
 	return complete.PredictAnything
 }
 
-func (c *UserpasswordCommand) AutocompleteFlags() complete.Flags {
-	initUserpasswordFlags()
+func (c *UsernamePasswordCommand) AutocompleteFlags() complete.Flags {
+	initUsernamePasswordFlags()
 	return c.Flags().Completions()
 }
 
-func (c *UserpasswordCommand) Synopsis() string {
-	if extra := extraUserpasswordSynopsisFunc(c); extra != "" {
+func (c *UsernamePasswordCommand) Synopsis() string {
+	if extra := extraUsernamePasswordSynopsisFunc(c); extra != "" {
 		return extra
 	}
 
 	synopsisStr := "credential"
 
-	synopsisStr = fmt.Sprintf("%s %s", "userpassword-type", synopsisStr)
+	synopsisStr = fmt.Sprintf("%s %s", "username_password-type", synopsisStr)
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
-func (c *UserpasswordCommand) Help() string {
-	initUserpasswordFlags()
+func (c *UsernamePasswordCommand) Help() string {
+	initUsernamePasswordFlags()
 
 	var helpStr string
 	helpMap := common.HelpMap("credential")
@@ -70,7 +70,7 @@ func (c *UserpasswordCommand) Help() string {
 
 	default:
 
-		helpStr = c.extraUserpasswordHelpFunc(helpMap)
+		helpStr = c.extraUsernamePasswordHelpFunc(helpMap)
 
 	}
 
@@ -79,29 +79,29 @@ func (c *UserpasswordCommand) Help() string {
 	return helpStr
 }
 
-var flagsUserpasswordMap = map[string][]string{
+var flagsUsernamePasswordMap = map[string][]string{
 
 	"create": {"credential-store-id", "name", "description"},
 
 	"update": {"id", "name", "description", "version"},
 }
 
-func (c *UserpasswordCommand) Flags() *base.FlagSets {
-	if len(flagsUserpasswordMap[c.Func]) == 0 {
+func (c *UsernamePasswordCommand) Flags() *base.FlagSets {
+	if len(flagsUsernamePasswordMap[c.Func]) == 0 {
 		return c.FlagSet(base.FlagSetNone)
 	}
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "userpassword-type credential", flagsUserpasswordMap, c.Func)
+	common.PopulateCommonFlags(c.Command, f, "username_password-type credential", flagsUsernamePasswordMap, c.Func)
 
-	extraUserpasswordFlagsFunc(c, set, f)
+	extraUsernamePasswordFlagsFunc(c, set, f)
 
 	return set
 }
 
-func (c *UserpasswordCommand) Run(args []string) int {
-	initUserpasswordFlags()
+func (c *UsernamePasswordCommand) Run(args []string) int {
+	initUsernamePasswordFlags()
 
 	switch c.Func {
 	case "":
@@ -109,10 +109,10 @@ func (c *UserpasswordCommand) Run(args []string) int {
 
 	}
 
-	c.plural = "userpassword-type credential"
+	c.plural = "username_password-type credential"
 	switch c.Func {
 	case "list":
-		c.plural = "userpassword-type credentials"
+		c.plural = "username_password-type credentials"
 	}
 
 	f := c.Flags()
@@ -122,14 +122,14 @@ func (c *UserpasswordCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if strutil.StrListContains(flagsUserpasswordMap[c.Func], "id") && c.FlagId == "" {
+	if strutil.StrListContains(flagsUsernamePasswordMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
 		return base.CommandUserError
 	}
 
 	var opts []credentials.Option
 
-	if strutil.StrListContains(flagsUserpasswordMap[c.Func], "credential-store-id") {
+	if strutil.StrListContains(flagsUsernamePasswordMap[c.Func], "credential-store-id") {
 		switch c.Func {
 
 		case "create":
@@ -189,7 +189,7 @@ func (c *UserpasswordCommand) Run(args []string) int {
 
 	}
 
-	if ok := extraUserpasswordFlagsHandlingFunc(c, f, &opts); !ok {
+	if ok := extraUsernamePasswordFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -198,20 +198,20 @@ func (c *UserpasswordCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		result, err = credentialsClient.Create(c.Context, "userpassword", c.FlagCredentialStoreId, opts...)
+		result, err = credentialsClient.Create(c.Context, "username_password", c.FlagCredentialStoreId, opts...)
 
 	case "update":
 		result, err = credentialsClient.Update(c.Context, c.FlagId, version, opts...)
 
 	}
 
-	result, err = executeExtraUserpasswordActions(c, result, err, credentialsClient, version, opts)
+	result, err = executeExtraUsernamePasswordActions(c, result, err, credentialsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			var opts []base.Option
 
-			opts = append(opts, base.WithAttributeFieldPrefix("userpassword"))
+			opts = append(opts, base.WithAttributeFieldPrefix("username_password"))
 
 			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
 			return base.CommandApiError
@@ -220,7 +220,7 @@ func (c *UserpasswordCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	output, err := printCustomUserpasswordActionOutput(c)
+	output, err := printCustomUsernamePasswordActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
@@ -247,12 +247,12 @@ func (c *UserpasswordCommand) Run(args []string) int {
 }
 
 var (
-	extraUserpasswordActionsFlagsMapFunc = func() map[string][]string { return nil }
-	extraUserpasswordSynopsisFunc        = func(*UserpasswordCommand) string { return "" }
-	extraUserpasswordFlagsFunc           = func(*UserpasswordCommand, *base.FlagSets, *base.FlagSet) {}
-	extraUserpasswordFlagsHandlingFunc   = func(*UserpasswordCommand, *base.FlagSets, *[]credentials.Option) bool { return true }
-	executeExtraUserpasswordActions      = func(_ *UserpasswordCommand, inResult api.GenericResult, inErr error, _ *credentials.Client, _ uint32, _ []credentials.Option) (api.GenericResult, error) {
+	extraUsernamePasswordActionsFlagsMapFunc = func() map[string][]string { return nil }
+	extraUsernamePasswordSynopsisFunc        = func(*UsernamePasswordCommand) string { return "" }
+	extraUsernamePasswordFlagsFunc           = func(*UsernamePasswordCommand, *base.FlagSets, *base.FlagSet) {}
+	extraUsernamePasswordFlagsHandlingFunc   = func(*UsernamePasswordCommand, *base.FlagSets, *[]credentials.Option) bool { return true }
+	executeExtraUsernamePasswordActions      = func(_ *UsernamePasswordCommand, inResult api.GenericResult, inErr error, _ *credentials.Client, _ uint32, _ []credentials.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}
-	printCustomUserpasswordActionOutput = func(*UserpasswordCommand) (bool, error) { return false, nil }
+	printCustomUsernamePasswordActionOutput = func(*UsernamePasswordCommand) (bool, error) { return false, nil }
 )

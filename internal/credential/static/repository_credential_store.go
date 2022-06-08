@@ -36,7 +36,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	}
 
 	cs = cs.clone()
-	id, err := newCredentialStoreId()
+	id, err := newCredentialStoreId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

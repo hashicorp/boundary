@@ -437,9 +437,9 @@ var inputStructs = []*structInfo{
 		createResponseTypes: true,
 	},
 	{
-		inProto:     &credentials.UserPasswordAttributes{},
-		outFile:     "credentials/user_password_attributes.gen.go",
-		subtypeName: "UserPasswordCredential",
+		inProto:     &credentials.UsernamePasswordAttributes{},
+		outFile:     "credentials/username_password_attributes.gen.go",
+		subtypeName: "UsernamePasswordCredential",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Username",
@@ -447,10 +447,6 @@ var inputStructs = []*structInfo{
 			},
 			{
 				Name:        "Password",
-				SkipDefault: true,
-			},
-			{
-				Name:        "PasswordHmac",
 				SkipDefault: true,
 			},
 		},
