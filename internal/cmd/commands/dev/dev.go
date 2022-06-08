@@ -483,7 +483,7 @@ func (c *Command) Run(args []string) int {
 			if c.flagControllerClusterListenAddr != "" {
 				l.Address = c.flagControllerClusterListenAddr
 				if !c.flagControllerOnly {
-					c.Config.Worker.Controllers = []string{l.Address}
+					c.Config.Worker.Upstreams = []string{l.Address}
 				}
 			} else {
 				l.Address = "127.0.0.1:9201"

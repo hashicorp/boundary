@@ -96,7 +96,7 @@ listener "tcp" {
 worker {
 	name = "w_1234567890"
 	description = "A default worker created in dev mode"
-	controllers = ["127.0.0.1"]
+	initial_upstreams = ["127.0.0.1"]
 	tags {
 		type = ["dev", "local"]
 	}
@@ -178,9 +178,9 @@ type Worker struct {
 
 	// We use a raw interface here so that we can take in a string
 	// value pointing to an env var or file. We then resolve that
-	// and get the actual controller addresses.
-	Controllers    []string    `hcl:"-"`
-	ControllersRaw interface{} `hcl:"controllers"`
+	// and get the actual upstream controller or worker addresses.
+	Upstreams        []string    `hcl:"-"`
+	InitialUpstreams interface{} `hcl:"initial_upstreams"`
 
 	// We use a raw interface for parsing so that people can use JSON-like
 	// syntax that maps directly to the filter input or possibly more familiar
@@ -522,9 +522,9 @@ func Parse(d string) (*Config, error) {
 			}
 		}
 
-		result.Worker.Controllers, err = parseWorkerControllers(result)
+		result.Worker.Upstreams, err = parseWorkerUpstreams(result)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse worker controllers: %w", err)
+			return nil, fmt.Errorf("Failed to parse worker upstreams: %w", err)
 		}
 	}
 
@@ -584,31 +584,31 @@ func Parse(d string) (*Config, error) {
 	return result, nil
 }
 
-func parseWorkerControllers(c *Config) ([]string, error) {
+func parseWorkerUpstreams(c *Config) ([]string, error) {
 	if c == nil || c.Worker == nil {
 		return nil, fmt.Errorf("config or worker field is nil")
 	}
-	if c.Worker.ControllersRaw == nil {
+	if c.Worker.InitialUpstreams == nil {
 		return nil, nil
 	}
 
-	switch t := c.Worker.ControllersRaw.(type) {
+	switch t := c.Worker.InitialUpstreams.(type) {
 	case []interface{}: // An array was configured directly in Boundary's HCL Config file.
-		var controllers []string
-		err := mapstructure.WeakDecode(c.Worker.ControllersRaw, &controllers)
+		var upstreams []string
+		err := mapstructure.WeakDecode(c.Worker.InitialUpstreams, &upstreams)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode worker controllers block into config field: %w", err)
+			return nil, fmt.Errorf("failed to decode worker initial_upstreams block into config field: %w", err)
 		}
-		return controllers, nil
+		return upstreams, nil
 
 	case string:
-		controllersStr, err := parseutil.ParsePath(t)
+		upstreamsStr, err := parseutil.ParsePath(t)
 		if err != nil {
 			return nil, fmt.Errorf("bad env var or file pointer: %w", err)
 		}
 
 		var addrs []string
-		err = json.Unmarshal([]byte(controllersStr), &addrs)
+		err = json.Unmarshal([]byte(upstreamsStr), &addrs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal env/file contents: %w", err)
 		}

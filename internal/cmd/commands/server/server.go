@@ -272,25 +272,25 @@ func (c *Command) Run(args []string) int {
 		c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
 
 		if c.Config.Controller != nil {
-			switch len(c.Config.Worker.Controllers) {
+			switch len(c.Config.Worker.Upstreams) {
 			case 0:
 				if c.Config.Controller.PublicClusterAddr != "" {
 					clusterAddr = c.Config.Controller.PublicClusterAddr
 				}
-				c.Config.Worker.Controllers = []string{clusterAddr}
+				c.Config.Worker.Upstreams = []string{clusterAddr}
 			case 1:
-				if c.Config.Worker.Controllers[0] == clusterAddr {
+				if c.Config.Worker.Upstreams[0] == clusterAddr {
 					break
 				}
 				if c.Config.Controller.PublicClusterAddr != "" &&
-					c.Config.Worker.Controllers[0] == c.Config.Controller.PublicClusterAddr {
+					c.Config.Worker.Upstreams[0] == c.Config.Controller.PublicClusterAddr {
 					break
 				}
 				// Best effort see if it's a domain name and if not assume it must match
-				host, _, err := net.SplitHostPort(c.Config.Worker.Controllers[0])
+				host, _, err := net.SplitHostPort(c.Config.Worker.Upstreams[0])
 				if err != nil && strings.Contains(err.Error(), "missing port in address") {
 					err = nil
-					host = c.Config.Worker.Controllers[0]
+					host = c.Config.Worker.Upstreams[0]
 				}
 				if err == nil {
 					ip := net.ParseIP(host)
@@ -301,17 +301,17 @@ func (c *Command) Run(args []string) int {
 				}
 				fallthrough
 			default:
-				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "controllers" key in the worker block with any value other than the controller cluster address/port when using IPs rather than DNS names`)
+				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "initial_upstreams" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`)
 				return base.CommandUserError
 			}
 		}
-		for _, controller := range c.Config.Worker.Controllers {
-			host, _, err := net.SplitHostPort(controller)
+		for _, upstream := range c.Config.Worker.Upstreams {
+			host, _, err := net.SplitHostPort(upstream)
 			if err != nil {
 				if strings.Contains(err.Error(), "missing port in address") {
-					host = controller
+					host = upstream
 				} else {
-					c.UI.Error(fmt.Errorf("Invalid controller address %q: %w", controller, err).Error())
+					c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
 					return base.CommandUserError
 				}
 			}
@@ -325,7 +325,7 @@ func (c *Command) Run(args []string) int {
 					errMsg = "a multicast"
 				}
 				if errMsg != "" {
-					c.UI.Error(fmt.Sprintf("Controller address %q is invalid: cannot be %s address", controller, errMsg))
+					c.UI.Error(fmt.Sprintf("Worker upstream address %q is invalid: cannot be %s address", upstream, errMsg))
 					return base.CommandUserError
 				}
 			}
