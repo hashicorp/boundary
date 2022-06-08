@@ -29,6 +29,7 @@ begin;
   create trigger immutable_columns before update on target_credential_library
     for each row execute procedure immutable_columns('target_id', 'credential_library_id', 'credential_purpose', 'create_time');
 
+  -- replaced in 50/02_target.up.sql
   -- target_library provides the store id along with the other data stored in
   -- target_credential_library
   create view target_library

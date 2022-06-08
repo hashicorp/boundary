@@ -25,9 +25,9 @@ type VetFunc func(context.Context, Target) error
 // paths are valid and be used to update a target in the Repository.
 type VetForUpdateFunc func(context.Context, Target, []string) error
 
-// VetCredentialLibrariesFunc is a function that checks the given CredentialLibraries
-// to ensure that they are valid for a Target subtype.
-type VetCredentialLibrariesFunc func(context.Context, []*CredentialLibrary) error
+// VetCredentialSourcesFunc is a function that checks the given CredentialLibraries
+// and StaticCredentials to ensure that they are valid for a Target subtype.
+type VetCredentialSourcesFunc func(context.Context, []*CredentialLibrary, []*StaticCredential) error
 
 // targetHooks defines the interface containing all the hooks needed for
 // managing target suptypes.
@@ -43,9 +43,9 @@ type targetHooks interface {
 	// and values for updating the database for this type of target given the
 	// field mask paths.
 	VetForUpdate(ctx context.Context, t Target, paths []string) error
-	// VetCredentialLibraries checks that the provided credential
-	// libriaries are properly built for association with a target of this type.
-	VetCredentialLibraries(ctx context.Context, cls []*CredentialLibrary) error
+	// VetCredentialSources checks that the provided credential libriaries and
+	// static credentials are properly built for association with a target of this type.
+	VetCredentialSources(ctx context.Context, cls []*CredentialLibrary, creds []*StaticCredential) error
 }
 
 type registryEntry struct {
@@ -118,12 +118,13 @@ func (r *registry) vetForUpdateFunc(s subtypes.Subtype) (VetForUpdateFunc, bool)
 	return entry.targetHooks.VetForUpdate, ok
 }
 
-func (r *registry) vetCredentialLibrariesFunc(s subtypes.Subtype) (VetCredentialLibrariesFunc, bool) {
+func (r *registry) vetCredentialSourcesFunc(s subtypes.Subtype) (VetCredentialSourcesFunc, bool) {
 	entry, ok := r.get(s)
 	if !ok {
 		return nil, ok
 	}
-	return entry.targetHooks.VetCredentialLibraries, ok
+
+	return entry.targetHooks.VetCredentialSources, ok
 }
 
 func (r *registry) idPrefix(s subtypes.Subtype) (string, bool) {
