@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -61,6 +62,9 @@ const (
 	// TODO: This value is temporary, it will be removed once we have a better
 	// story/direction on attributes and system defaults.
 	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
+
+	// File name to use for storing workerAuth requests
+	WorkerAuthReqFile = "auth_request_token"
 )
 
 func init() {
@@ -340,6 +344,29 @@ func (b *Server) RemovePidFile(pidPath string) error {
 		return nil
 	}
 	return os.Remove(pidPath)
+}
+
+func (b *Server) StoreWorkerAuthReq(authReq, workerAuthReqPath string) error {
+	// Quit fast if no workerAuthReqFile
+	if workerAuthReqPath == "" {
+		return nil
+	}
+	workerAuthReqFilePath := filepath.Join(workerAuthReqPath, WorkerAuthReqFile)
+
+	// Open the workerAuthReq file
+	workerAuthReqFile, err := os.OpenFile(workerAuthReqFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o640)
+	if err != nil {
+		return fmt.Errorf("could not open file for worker auth request: %w", err)
+	}
+	defer workerAuthReqFile.Close()
+
+	// Write out the workerAuthRequest
+	_, err = workerAuthReqFile.WriteString(authReq)
+	if err != nil {
+		return fmt.Errorf("could not write to file for worker auth request: %w", err)
+	}
+
+	return nil
 }
 
 func (b *Server) PrintInfo(ui cli.Ui) {

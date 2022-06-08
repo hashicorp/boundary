@@ -14,6 +14,8 @@ import (
 	"math/big"
 	mathrand "math/rand"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -77,6 +79,15 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 			conn, err = w.v1KmsAuthDialFn(ctx, addr)
 		default:
 			conn, err = protocol.Dial(ctx, w.WorkerAuthStorage, addr, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+			// No error and a valid connection means the WorkerAuthRegistrationRequest was populated
+			// We can remove the stored workerAuthRequest file
+			if err == nil && conn != nil {
+				if w.WorkerAuthStorage.BaseDir() != "" {
+					workerAuthReqFilePath := filepath.Join(w.WorkerAuthStorage.BaseDir(), base.WorkerAuthReqFile)
+					// Intentionally ignoring any error removing this file
+					_ = os.Remove(workerAuthReqFilePath)
+				}
+			}
 		}
 
 		if !w.everAuthenticated.Load() && err == nil && conn != nil {
