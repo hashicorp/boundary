@@ -124,6 +124,9 @@ type Config struct {
 
 	// Plugin-related options
 	Plugins Plugins `hcl:"plugins"`
+
+	// Internal field for use with HCP deployments. Used if controllers/ initial_upstreams is not set
+	HCPBClusterId string `hcl:"hcp_boundary_cluster_id"`
 }
 
 type Controller struct {
@@ -198,9 +201,6 @@ type Worker struct {
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
-
-	// Internal field for use with HCP deployments. Will be used if controllers/ initial_upstreams is not set
-	HCPBClusterId string `hcl:"hcp_boundary_cluster_id"`
 }
 
 func (w *Worker) InitNameIfEmpty() (string, error) {

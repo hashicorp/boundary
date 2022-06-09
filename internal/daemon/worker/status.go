@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"math/rand"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
@@ -20,7 +19,7 @@ import (
 type LastStatusInformation struct {
 	*pbs.StatusResponse
 	StatusTime              time.Time
-	LastCalculatedUpstreams []resolver.Address
+	LastCalculatedUpstreams []string
 }
 
 func (w *Worker) startStatusTicking(cancelCtx context.Context) {
@@ -195,28 +194,25 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		w.updateTags.Store(false)
 		// This may be nil if we are in a multiple hop scenario
 		var addrs []resolver.Address
+		var newUpstreams []string
 		if len(result.CalculatedUpstreams) > 0 {
 			addrs = make([]resolver.Address, 0, len(result.CalculatedUpstreams))
 			for _, v := range result.CalculatedUpstreams {
 				addrs = append(addrs, resolver.Address{Addr: v.Address})
+				newUpstreams = append(newUpstreams, v.Address)
 			}
 			lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
 			// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
-			if lastStatus != nil && upstreamsHasChanged(lastStatus.LastCalculatedUpstreams, addrs) {
-				var oldUpstreams []string
-				for _, v := range lastStatus.LastCalculatedUpstreams {
-					oldUpstreams = append(oldUpstreams, v.Addr)
-				}
-				var newUpstreams []string
-				for _, v := range addrs {
-					newUpstreams = append(newUpstreams, v.Addr)
-				}
-				upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", oldUpstreams, newUpstreams)
+			if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, newUpstreams) {
+				upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, newUpstreams)
 				event.WriteSysEvent(context.TODO(), op, upstreamsMessage)
 				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+			} else if lastStatus == nil {
+				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+				event.WriteSysEvent(context.TODO(), op, fmt.Sprintf("Upstreams after first status set to: %s", newUpstreams))
 			}
 		}
-		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: addrs})
+		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: newUpstreams})
 
 		for _, request := range result.GetJobsRequests() {
 			switch request.GetRequestType() {
@@ -255,28 +251,6 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	// Standard cleanup: Run through current jobs. Cancel connections
 	// for any canceling session or any session that is expired.
 	w.cleanupConnections(cancelCtx, false)
-}
-
-func upstreamsHasChanged(oldUpstreams, newUpstreams []resolver.Address) bool {
-	if len(oldUpstreams) != len(newUpstreams) {
-		return true
-	}
-
-	// Sort both upstreams
-	sort.Slice(oldUpstreams, func(i, j int) bool {
-		return strings.Compare(oldUpstreams[i].Addr, oldUpstreams[j].Addr) < 0
-	})
-	sort.Slice(newUpstreams, func(i, j int) bool {
-		return strings.Compare(newUpstreams[i].Addr, newUpstreams[j].Addr) < 0
-	})
-
-	// Compare and return true if change detected
-	for i, _ := range oldUpstreams {
-		if oldUpstreams[i].Addr != newUpstreams[i].Addr {
-			return true
-		}
-	}
-	return false
 }
 
 // cleanupConnections walks all sessions and shuts down connections.

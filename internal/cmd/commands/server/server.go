@@ -4,7 +4,6 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
-	"github.com/hashicorp/go-uuid"
 	"net"
 	"os"
 	"os/signal"
@@ -33,6 +32,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -332,10 +332,10 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 
-		if c.Config.Worker.HCPBClusterId != "" {
-			_, err := uuid.ParseUUID(c.Config.Worker.HCPBClusterId)
+		if c.Config.HCPBClusterId != "" {
+			_, err := uuid.ParseUUID(c.Config.HCPBClusterId)
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Invalid HCPB cluster id %q: %w", c.Config.Worker.HCPBClusterId, err).Error())
+				c.UI.Error(fmt.Errorf("Invalid HCPB cluster id %q: %w", c.Config.HCPBClusterId, err).Error())
 				return base.CommandUserError
 			}
 		}

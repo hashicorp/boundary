@@ -35,7 +35,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const hcpb_url_suffix = ".proxy.boundary.hashicorp.cloud"
+const hcpbUrlSuffix = ".proxy.boundary.hashicorp.cloud"
 
 // StartControllerConnections starts up the resolver and initiates controller
 // connection client creation
@@ -59,8 +59,8 @@ func (w *Worker) StartControllerConnections() error {
 	}
 
 	if len(initialAddrs) == 0 {
-		if w.conf.RawConfig.Worker.HCPBClusterId != "" {
-			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.Worker.HCPBClusterId, hcpb_url_suffix)
+		if w.conf.RawConfig.HCPBClusterId != "" {
+			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HCPBClusterId, hcpbUrlSuffix)
 			initialAddrs = append(initialAddrs, resolver.Address{Addr: clusterAddress})
 			event.WriteSysEvent(context.TODO(), op, fmt.Sprintf("Setting HCPB Cluster address %s as upstream address", clusterAddress))
 		} else {
