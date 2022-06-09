@@ -718,6 +718,19 @@ func (c *Command) Run(args []string) int {
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId
 			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
 			c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
+			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
+				// Shutdown on failure
+				retErr := fmt.Errorf("Error storing worker auth request: %w", err)
+				if err := c.worker.Shutdown(); err != nil {
+					c.UI.Error(retErr.Error())
+					retErr = fmt.Errorf("Error shutting down worker: %w", err)
+				}
+				c.UI.Error(retErr.Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
 			go func() {
 				for {
 					select {

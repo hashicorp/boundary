@@ -469,6 +469,21 @@ func (c *Command) Run(args []string) int {
 			c.Info["worker auth registration request"] = c.worker.WorkerAuthRegistrationRequest
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId
+
+			// Write the WorkerAuth request to a file
+			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
+				// Shutdown on failure
+				retErr := fmt.Errorf("Error storing worker auth request: %w", err)
+				if err := c.worker.Shutdown(); err != nil {
+					c.UI.Error(retErr.Error())
+					retErr = fmt.Errorf("Error shutting down worker: %w", err)
+				}
+				c.UI.Error(retErr.Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
 		}
 	}
 
