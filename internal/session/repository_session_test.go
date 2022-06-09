@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	authtokenStore "github.com/hashicorp/boundary/internal/authtoken/store"
 	cred "github.com/hashicorp/boundary/internal/credential"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -406,6 +407,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				ExpirationTime:     tt.args.composedOf.ExpirationTime,
 				ConnectionLimit:    tt.args.composedOf.ConnectionLimit,
 				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
+				StaticCredentials:  tt.args.composedOf.StaticCredentials,
 			}
 			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
 			if tt.wantErr {
@@ -425,6 +427,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(keyId, ses.KeyId)
 			assert.Len(ses.DynamicCredentials, len(s.DynamicCredentials))
+			assert.Len(ses.StaticCredentials, len(s.StaticCredentials))
 			foundSession, _, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
 			assert.Equal(keyId, foundSession.KeyId)
@@ -445,6 +448,13 @@ func TestRepository_CreateSession(t *testing.T) {
 				assert.Empty(cred.CredentialId)
 				assert.NotEmpty(cred.SessionId)
 				assert.NotEmpty(cred.LibraryId)
+				assert.NotEmpty(cred.CredentialPurpose)
+			}
+
+			assert.Equal(s.StaticCredentials, foundSession.StaticCredentials)
+			for _, cred := range foundSession.StaticCredentials {
+				assert.NotEmpty(cred.CredentialStaticId)
+				assert.NotEmpty(cred.SessionId)
 				assert.NotEmpty(cred.CredentialPurpose)
 			}
 		})
@@ -1440,19 +1450,28 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	require.NoError(err)
 	require.NotNil(tar)
 
-	stores := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)
-	libIds := vault.TestCredentialLibraries(t, conn, wrapper, stores[0].GetPublicId(), 2)
+	vaultStore := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)[0]
+	libIds := vault.TestCredentialLibraries(t, conn, wrapper, vaultStore.GetPublicId(), 2)
+
+	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, params.ScopeId)
+	upCreds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", staticStore.GetPublicId(), params.ScopeId, 2)
 
 	ids := target.CredentialSources{
-		ApplicationCredentialIds: []string{libIds[0].GetPublicId(), libIds[1].GetPublicId()},
+		ApplicationCredentialIds: []string{libIds[0].GetPublicId(), libIds[1].GetPublicId(), upCreds[0].GetPublicId(), upCreds[1].GetPublicId()},
 	}
 	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), ids)
 	require.NoError(err)
-	creds := []*DynamicCredential{
+	dynamicCreds := []*DynamicCredential{
 		NewDynamicCredential(libIds[0].GetPublicId(), cred.ApplicationPurpose),
 		NewDynamicCredential(libIds[1].GetPublicId(), cred.ApplicationPurpose),
 	}
-	params.DynamicCredentials = creds
+	params.DynamicCredentials = dynamicCreds
+
+	staticCreds := []*StaticCredential{
+		NewStaticCredential(upCreds[0].GetPublicId(), cred.ApplicationPurpose),
+		NewStaticCredential(upCreds[1].GetPublicId(), cred.ApplicationPurpose),
+	}
+	params.StaticCredentials = staticCreds
 	return params
 }
 
