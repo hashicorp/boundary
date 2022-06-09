@@ -198,6 +198,9 @@ type Worker struct {
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
+
+	// Internal field for use with HCP deployments. Will be used if controllers/ initial_upstreams is not set
+	HCPBClusterId string `hcl:"hcp_boundary_cluster_id"`
 }
 
 func (w *Worker) InitNameIfEmpty() (string, error) {

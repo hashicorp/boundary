@@ -35,6 +35,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const hcpb_url_suffix = ".proxy.boundary.hashicorp.cloud"
+
 // StartControllerConnections starts up the resolver and initiates controller
 // connection client creation
 func (w *Worker) StartControllerConnections() error {
@@ -57,7 +59,13 @@ func (w *Worker) StartControllerConnections() error {
 	}
 
 	if len(initialAddrs) == 0 {
-		return errors.New("no initial controller addresses found")
+		if w.conf.RawConfig.Worker.HCPBClusterId != "" {
+			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.Worker.HCPBClusterId, hcpb_url_suffix)
+			initialAddrs = append(initialAddrs, resolver.Address{Addr: clusterAddress})
+			event.WriteSysEvent(context.TODO(), op, fmt.Sprintf("Setting HCPB Cluster address %s as upstream address", clusterAddress))
+		} else {
+			return errors.New("no initial controller addresses found")
+		}
 	}
 
 	w.Resolver().InitialState(resolver.State{
@@ -101,8 +109,10 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 			event.WriteError(ctx, op, err)
 		}
 
-		if !w.everAuthenticated.Load() && err == nil && conn != nil {
-			w.everAuthenticated.Store(true)
+		if err == nil && conn != nil {
+			if !w.everAuthenticated.Load() {
+				w.everAuthenticated.Store(true)
+			}
 			event.WriteSysEvent(ctx, op, "worker has successfully authenticated")
 		}
 

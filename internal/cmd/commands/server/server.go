@@ -4,6 +4,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"github.com/hashicorp/go-uuid"
 	"net"
 	"os"
 	"os/signal"
@@ -328,6 +329,14 @@ func (c *Command) Run(args []string) int {
 					c.UI.Error(fmt.Sprintf("Controller address %q is invalid: cannot be %s address", controller, errMsg))
 					return base.CommandUserError
 				}
+			}
+		}
+
+		if c.Config.Worker.HCPBClusterId != "" {
+			_, err := uuid.ParseUUID(c.Config.Worker.HCPBClusterId)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Invalid HCPB cluster id %q: %w", c.Config.Worker.HCPBClusterId, err).Error())
+				return base.CommandUserError
 			}
 		}
 	}
