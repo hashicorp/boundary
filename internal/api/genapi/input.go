@@ -772,6 +772,6 @@ var inputStructs = []*structInfo{
 	},
 	{
 		inProto: &workers.WorkerProvidedConfiguration{},
-		outFile: "workers/worker_config.gen.go",
+		outFile: "workers/worker_provided_configuration.gen.go",
 	},
 }

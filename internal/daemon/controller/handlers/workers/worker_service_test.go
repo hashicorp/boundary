@@ -598,7 +598,7 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateWorkerRequest{
 				Id: wkr.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"worker_config.name"},
+					Paths: []string{"worker_provided_configuration.name"},
 				},
 				Item: &pb.Worker{
 					WorkerProvidedConfiguration: &pb.WorkerProvidedConfiguration{
@@ -614,7 +614,7 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateWorkerRequest{
 				Id: wkr.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"worker_config.address"},
+					Paths: []string{"worker_provided_configuration.address"},
 				},
 				Item: &pb.Worker{
 					WorkerProvidedConfiguration: &pb.WorkerProvidedConfiguration{
