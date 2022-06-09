@@ -27,7 +27,8 @@ events {
     event_types = ["observation"]
     format = "cloudevents-json"
     file {
-      file_name = "file-name"
+      path = "/var/log/boundary"
+      file_name = "events.ndjson"
     }
   }
 }
