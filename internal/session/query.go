@@ -118,10 +118,19 @@ select expiration_time, connection_limit, current_connection_count
 from
 	session_connection_limit, session_connection_count;
 `
+	nonTerminatedSessionPublicIdList = `
+select public_id, scope_id, user_id from session
+where
+	session.termination_reason is null
+and
+	scope_id = any(@scope_ids)
+;
+`
 
 	sessionPublicIdList = `
 select public_id, scope_id, user_id from session
-%s
+where
+	scope_id = any(@scope_ids)
 ;
 `
 
@@ -387,6 +396,17 @@ where
 	(ss.state = 'canceling' or ss.state = 'terminated')
 	and ss.end_time is null
 	%s
+;
+`
+	deleteTerminated = `
+delete from session
+using session_state
+where
+	session.public_id = session_state.session_id
+and
+	session_state.state = 'terminated'
+and
+	session_state.start_time < wt_sub_seconds_from_now(@threshold_seconds)
 ;
 `
 )

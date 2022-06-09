@@ -10,15 +10,46 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+const (
+	flagIncludeTerminated = "include-terminated"
+)
+
 func init() {
 	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
 	executeExtraActions = executeExtraActionsImpl
 }
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
 		"cancel": {"id"},
+		"list":   {flagIncludeTerminated},
 	}
+}
+
+type extraCmdVars struct {
+	flagIncludeTerminated bool
+}
+
+func extraFlagsFuncImpl(c *Command, set *base.FlagSets, f *base.FlagSet) {
+	for _, name := range flagsMap[c.Func] {
+		switch name {
+		case flagIncludeTerminated:
+			f.BoolVar(&base.BoolVar{
+				Name:   flagIncludeTerminated,
+				Target: &c.flagIncludeTerminated,
+				Usage:  "If set, terminated sessions will be included in the results.",
+			})
+		}
+	}
+}
+
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]sessions.Option) bool {
+	if c.flagIncludeTerminated {
+		*opts = append(*opts, sessions.WithIncludeTerminated(c.flagIncludeTerminated))
+	}
+	return true
 }
 
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {

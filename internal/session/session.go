@@ -472,16 +472,6 @@ type sessionListView struct {
 	PreviousEndTime *timestamp.Timestamp `json:"previous_end_time,omitempty" gorm:"default:current_timestamp"`
 	StartTime       *timestamp.Timestamp `json:"start_time,omitempty" gorm:"default:current_timestamp;primary_key"`
 	EndTime         *timestamp.Timestamp `json:"end_time,omitempty" gorm:"default:current_timestamp"`
-
-	// Connection fields
-	ConnectionId       string `json:"connection_id,omitempty" gorm:"default:null"`
-	ClientTcpAddress   string `json:"client_tcp_address,omitempty" gorm:"default:null"`
-	ClientTcpPort      uint32 `json:"client_tcp_port,omitempty" gorm:"default:null"`
-	EndpointTcpAddress string `json:"endpoint_tcp_address,omitempty" gorm:"default:null"`
-	EndpointTcpPort    uint32 `json:"endpoint_tcp_port,omitempty" gorm:"default:null"`
-	BytesUp            uint64 `json:"bytes_up,omitempty" gorm:"default:null"`
-	BytesDown          uint64 `json:"bytes_down,omitempty" gorm:"default:null"`
-	ClosedReason       string `json:"closed_reason,omitempty" gorm:"default:null"`
 }
 
 // TableName returns the tablename to override the default gorm table name

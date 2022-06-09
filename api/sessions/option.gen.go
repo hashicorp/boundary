@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -84,5 +85,17 @@ func WithFilter(filter string) Option {
 func WithRecursive(recurse bool) Option {
 	return func(o *options) {
 		o.withRecursive = true
+	}
+}
+
+func WithIncludeTerminated(inIncludeTerminated bool) Option {
+	return func(o *options) {
+		o.queryMap["include_terminated"] = fmt.Sprintf("%v", inIncludeTerminated)
+	}
+}
+
+func DefaultIncludeTerminated() Option {
+	return func(o *options) {
+		o.postMap["include_terminated"] = nil
 	}
 }

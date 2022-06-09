@@ -4,8 +4,21 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* controller: Improve response time for listing sessions.
+  This also creates a new periodic job that will delete terminated
+  sessions after 1 hour.
+  See Deprecations/Changes for some additional details.
+  [PR](https://github.com/hashicorp/boundary/pull/2160).
+
 ### Deprecations/Changes
 
+* controller: Change the default behavior of the session list endpoint
+  to no longer include sessions in a terminated state and introduces
+  a new query parameter/cli flag to include the terminated sessions.
+  This also removes the connection information from the list response.
+  [PR](https://github.com/hashicorp/boundary/pull/2160).
 * Anonymous user permissions: In order to reduce the risk of accidental and
   unintended granting of permissions to anonymous users, the permissions system
   now only allows certain actions on certain resources to be assigned to the
