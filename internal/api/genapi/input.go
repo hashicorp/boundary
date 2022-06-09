@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -149,7 +150,7 @@ var inputStructs = []*structInfo{
 		outFile: "scopes/scope.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -185,7 +186,7 @@ var inputStructs = []*structInfo{
 		outFile: "users/user.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -213,7 +214,7 @@ var inputStructs = []*structInfo{
 		outFile: "groups/group.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -251,7 +252,7 @@ var inputStructs = []*structInfo{
 		outFile: "roles/role.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -293,7 +294,7 @@ var inputStructs = []*structInfo{
 		outFile: "authmethods/authmethods.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -321,7 +322,7 @@ var inputStructs = []*structInfo{
 		outFile: "accounts/account.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -349,7 +350,7 @@ var inputStructs = []*structInfo{
 		outFile: "managedgroups/managedgroups.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -385,7 +386,7 @@ var inputStructs = []*structInfo{
 		outFile: "credentialstores/credential_store.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -424,7 +425,7 @@ var inputStructs = []*structInfo{
 		outFile: "credentiallibraries/credential_library.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -446,7 +447,7 @@ var inputStructs = []*structInfo{
 		outFile: "credentialstores/credential_store.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -485,7 +486,7 @@ var inputStructs = []*structInfo{
 		outFile: "credentiallibraries/credential_library.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -502,7 +503,7 @@ var inputStructs = []*structInfo{
 		outFile: "hostcatalogs/host_catalog.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -534,7 +535,7 @@ var inputStructs = []*structInfo{
 		outFile: "hosts/host.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -555,7 +556,7 @@ var inputStructs = []*structInfo{
 		outFile: "hostsets/host_set.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -622,7 +623,7 @@ var inputStructs = []*structInfo{
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -701,5 +702,34 @@ var inputStructs = []*structInfo{
 		createResponseTypes: true,
 		fieldFilter:         []string{"private_key"},
 		recursiveListing:    true,
+	},
+	{
+		inProto: &workers.Worker{},
+		outFile: "workers/worker.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "CreateWorkerLed"
+					},
+					"apiAction": func() string {
+						return ":create:worker-led"
+					},
+				},
+			).Parse(createTemplateStr)),
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "workers",
+		createResponseTypes: true,
+		recursiveListing:    true,
+	},
+	{
+		inProto: &workers.WorkerConfig{},
+		outFile: "workers/worker_config.gen.go",
 	},
 }
