@@ -182,6 +182,9 @@ type Worker struct {
 	Upstreams        []string    `hcl:"-"`
 	InitialUpstreams interface{} `hcl:"initial_upstreams"`
 
+	// Maintain backwards compatability for the old controllers value
+	ControllersRaw interface{} `hcl:"controllers"`
+
 	// We use a raw interface for parsing so that people can use JSON-like
 	// syntax that maps directly to the filter input or possibly more familiar
 	// key=value syntax, as well as accepting a string denoting an env or file
@@ -584,12 +587,62 @@ func Parse(d string) (*Config, error) {
 	return result, nil
 }
 
+// supportControllersRawConfig converts the deprecated ControllersRaw field to InitialUpstreams if only the former is populated and not the latter.
+// Decodes and returns the ControllersRaw interface if both it and InitialUpstreams are populated so we can compare with InitialUpstreams once decoded
+func (w *Worker) supportControllersRawConfig() ([]string, error) {
+	switch {
+	case w.InitialUpstreams == nil && w.ControllersRaw == nil:
+		return nil, fmt.Errorf("both initial_upstreams and controllers fields are empty")
+	case w.InitialUpstreams == nil && w.ControllersRaw != nil:
+		w.InitialUpstreams = w.ControllersRaw
+	case w.InitialUpstreams != nil && w.ControllersRaw != nil:
+		// Decode and return ControllersRaw interface so we can compare with InitialUpstreams
+		switch t := w.ControllersRaw.(type) {
+		case []interface{}:
+			var addrs []string
+			err := mapstructure.WeakDecode(w.ControllersRaw, &addrs)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode worker \"controllers\" block into config field: %w", err)
+			}
+			return addrs, nil
+		case string:
+			controllersStr, err := parseutil.ParsePath(t)
+			if err != nil {
+				return nil, fmt.Errorf("bad env var or file pointer: %w", err)
+			}
+			var addrs []string
+			err = json.Unmarshal([]byte(controllersStr), &addrs)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal env/file contents: %w", err)
+			}
+			return addrs, nil
+		default:
+			typ := reflect.TypeOf(t)
+			return nil, fmt.Errorf("unexpected type %q", typ.String())
+		}
+	}
+	return nil, nil
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, addr := range a {
+		if addr != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func parseWorkerUpstreams(c *Config) ([]string, error) {
 	if c == nil || c.Worker == nil {
 		return nil, fmt.Errorf("config or worker field is nil")
 	}
-	if c.Worker.InitialUpstreams == nil {
-		return nil, nil
+	controller_addrs, err := c.Worker.supportControllersRawConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	switch t := c.Worker.InitialUpstreams.(type) {
@@ -599,6 +652,9 @@ func parseWorkerUpstreams(c *Config) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode worker initial_upstreams block into config field: %w", err)
 		}
+		if controller_addrs != nil && !stringSlicesEqual(controller_addrs, upstreams) {
+			return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated, but values are different")
+		}
 		return upstreams, nil
 
 	case string:
@@ -607,12 +663,15 @@ func parseWorkerUpstreams(c *Config) ([]string, error) {
 			return nil, fmt.Errorf("bad env var or file pointer: %w", err)
 		}
 
-		var addrs []string
-		err = json.Unmarshal([]byte(upstreamsStr), &addrs)
+		var upstreams []string
+		err = json.Unmarshal([]byte(upstreamsStr), &upstreams)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal env/file contents: %w", err)
 		}
-		return addrs, nil
+		if controller_addrs != nil && !stringSlicesEqual(controller_addrs, upstreams) {
+			return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated, but values are different")
+		}
+		return upstreams, nil
 
 	default:
 		typ := reflect.TypeOf(t)
