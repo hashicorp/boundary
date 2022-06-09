@@ -4,6 +4,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* Anonymous user permissions: In order to reduce the risk of accidental and
+  unintended granting of permissions to anonymous users, the permissions system
+  now only allows certain actions on certain resources to be assigned to the
+  anonymous user; currently these are the same permissions as assigned in
+  Boundary's default role permissions. If other use-cases arise this list can be
+  expanded. See [the
+  documentation](https://www.boundaryproject.io/docs/concepts/security/permissions/assignable-permissions)
+  for more details.
+
 ### Bug Fixes
 
 ## 0.8.1 (2022/05/13)
@@ -13,7 +24,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller: Do not shut down cluster listener when it receives an invalid
   packet ([Issue](https://github.com/hashicorp/boundary/issues/2072),
   [PR](https://github.com/hashicorp/boundary/pull/2073))
-* session: update cancel_session() function to check for terminated state ([Issue](https://github.com/hashicorp/boundary/issues/2064),
+* session: update cancel_session() function to check for terminated state
+  ([Issue](https://github.com/hashicorp/boundary/issues/2064),
   [PR](https://github.com/hashicorp/boundary/pull/2065))
 
 ## 0.8.0 (2022/05/03)
@@ -29,23 +41,26 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* worker: create new error to prevent `event.newError: missing error: invalid parameter` and handle session cancel 
-  with no TOFU token ([Issue](https://github.com/hashicorp/boundary/issues/1902),
+* worker: create new error to prevent `event.newError: missing error: invalid
+  parameter` and handle session cancel with no TOFU token
+  ([Issue](https://github.com/hashicorp/boundary/issues/1902),
   [PR](https://github.com/hashicorp/boundary/pull/1929))
-* controller: Reconcile DEKs with existing scopes ([Issue](https://github.com/hashicorp/boundary/issues/1856),
+* controller: Reconcile DEKs with existing scopes
+  ([Issue](https://github.com/hashicorp/boundary/issues/1856),
   [PR](https://github.com/hashicorp/boundary/pull/1976))
-* controller: Fix for retrieving sessions that could result in incomplete results when
-  there is a large number (10k+) of sessions.
+* controller: Fix for retrieving sessions that could result in incomplete
+  results when there is a large number (10k+) of sessions.
   [PR](https://github.com/hashicorp/boundary/pull/2049)
-* session: update session state trigger to prevent transitions to invalid states ([Issue](https://github.com/hashicorp/boundary/issues/2040),
+* session: update session state trigger to prevent transitions to invalid states
+  ([Issue](https://github.com/hashicorp/boundary/issues/2040),
   [PR](https://github.com/hashicorp/boundary/pull/2046))
 
 ## 0.7.6 (2022/03/15)
 
 ### Bug Fixes
 
-* sessions: Sessions and session connections have been refactored 
-to better isolate transactions and prevent resource contention that caused deadlocks.
+* sessions: Sessions and session connections have been refactored to better
+isolate transactions and prevent resource contention that caused deadlocks.
 ([Issue](https://github.com/hashicorp/boundary/issues/1812),
   [PR](https://github.com/hashicorp/boundary/pull/1919))
 * scheduler: Fix bug that causes erroneous logs when racing controllers
