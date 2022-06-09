@@ -330,7 +330,7 @@ func Test_ACLAllowed(t *testing.T) {
 			}
 			acl := NewACL(grants...)
 			for _, aa := range test.actionsAuthorized {
-				result := acl.Allowed(test.resource, aa.action, test.userId == AnonymousUserId)
+				result := acl.Allowed(test.resource, aa.action, test.userId)
 				assert.True(t, result.Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, result.Authorized, aa.authorized)
 				assert.ElementsMatch(t, result.OutputFields.Fields(), aa.outputFields)
 			}
@@ -410,7 +410,7 @@ func Test_AnonRestrictions(t *testing.T) {
 					require.NoError(err)
 
 					acl := NewACL(parsedGrant)
-					results := acl.Allowed(res, action.Type(j), true)
+					results := acl.Allowed(res, action.Type(j), AnonymousUserId)
 
 					switch test.shouldHaveSuccess {
 					case true:

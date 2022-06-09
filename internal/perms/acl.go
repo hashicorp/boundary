@@ -71,7 +71,9 @@ func NewACL(grants ...Grant) ACL {
 }
 
 // Allowed determines if the grants for an ACL allow an action for a resource.
-func (a ACL) Allowed(r Resource, aType action.Type, isAnonUser bool) (results ACLResults) {
+func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option) (results ACLResults) {
+	opts := getOpts(opt...)
+
 	// First, get the grants within the specified scope
 	grants := a.scopeMap[r.ScopeId]
 	results.scopeMap = a.scopeMap
@@ -122,7 +124,8 @@ func (a ACL) Allowed(r Resource, aType action.Type, isAnonUser bool) (results AC
 		// case here prevents duplicating logic in two of the other more
 		// general-purpose cases below (3 and 4). See notes there about ID being
 		// present or not.
-		case isAnonUser:
+		case !opts.withSkipAnonymousUserRestrictions &&
+			(userId == AnonymousUserId || userId == ""):
 			switch {
 			// Allow discovery of scopes, so that auth methods within can be
 			// discovered

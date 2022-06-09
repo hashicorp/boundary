@@ -14,9 +14,10 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withUserId              string
-	withAccountId           string
-	withSkipFinalValidation bool
+	withUserId                        string
+	withAccountId                     string
+	withSkipFinalValidation           bool
+	withSkipAnonymousUserRestrictions bool
 }
 
 func getDefaultOptions() options {
@@ -43,5 +44,14 @@ func WithAccountId(accountId string) Option {
 func WithSkipFinalValidation(skipFinalValidation bool) Option {
 	return func(o *options) {
 		o.withSkipFinalValidation = skipFinalValidation
+	}
+}
+
+// WithSkipAnonymousUserRestrictions allows skipping the restrictions on
+// anonymous users, useful when e.g. validating parsed grants where we may not
+// have a user ID yet.
+func WithSkipAnonymousUserRestrictions(with bool) Option {
+	return func(o *options) {
+		o.withSkipAnonymousUserRestrictions = with
 	}
 }
