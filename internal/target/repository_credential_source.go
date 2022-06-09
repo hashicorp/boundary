@@ -478,8 +478,8 @@ func (r *Repository) changes(ctx context.Context, targetId string, ids []string,
 		if err := r.reader.ScanRows(ctx, rows, &chg); err != nil {
 			return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
-		switch chg.Type {
-		case "library":
+		switch CredentialSourceType(chg.Type) {
+		case LibraryCredentialSourceType:
 			lib, err := NewCredentialLibrary(targetId, chg.SourceId, purpose)
 			if err != nil {
 				return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
@@ -490,7 +490,7 @@ func (r *Repository) changes(ctx context.Context, targetId string, ids []string,
 			default:
 				addCredLib = append(addCredLib, lib)
 			}
-		case "static":
+		case StaticCredentialSourceType:
 			cred, err := NewStaticCredential(targetId, chg.SourceId, purpose)
 			if err != nil {
 				return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
@@ -547,9 +547,9 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 
 	// Create a map between credential source ID and it's type (library or static).
 	// This will allow for a quick lookup when calling the corresponding New below
-	credTypeById := make(map[string]string, len(ids))
+	credTypeById := make(map[string]CredentialSourceType, len(ids))
 	for _, cv := range credView {
-		credTypeById[cv.GetPublicId()] = cv.GetType()
+		credTypeById[cv.GetPublicId()] = CredentialSourceType(cv.GetType())
 	}
 
 	credLibs := make([]*CredentialLibrary, 0, totalCreds)
@@ -561,13 +561,13 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 	for purpose, ids := range byPurpose {
 		for _, id := range ids {
 			switch credTypeById[id] {
-			case "library":
+			case LibraryCredentialSourceType:
 				lib, err := NewCredentialLibrary(tId, id, purpose)
 				if err != nil {
 					return nil, nil, errors.Wrap(ctx, err, op)
 				}
 				credLibs = append(credLibs, lib)
-			case "static":
+			case StaticCredentialSourceType:
 				cred, err := NewStaticCredential(tId, id, purpose)
 				if err != nil {
 					return nil, nil, errors.Wrap(ctx, err, op)
