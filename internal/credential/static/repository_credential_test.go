@@ -122,8 +122,8 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 			}
 			require.NoError(err)
 			assertPublicId(t, CredentialPrefix, got.PublicId)
-			assert.Equal(tt.cred.Username, got.Username)
-			assert.Nil(got.Password)
+			assert.Equal(tt.cred.Username(), got.Username())
+			assert.Nil(got.GetPassword())
 			assert.Nil(got.CtPassword)
 
 			// Validate password
@@ -134,14 +134,14 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 			databaseWrapper, err := kkms.GetWrapper(context.Background(), tt.scopeId, kms.KeyPurposeDatabase)
 			require.NoError(err)
 			require.NoError(lookupCred.decrypt(ctx, databaseWrapper))
-			assert.Equal(tt.cred.Password, lookupCred.Password)
+			assert.Equal(tt.cred.GetPassword(), lookupCred.GetPassword())
 
-			assert.Empty(got.Password)
+			assert.Empty(got.GetPassword())
 			assert.Empty(got.CtPassword)
 			assert.NotEmpty(got.PasswordHmac)
 
 			// Validate hmac
-			hm, err := crypto.HmacSha256(ctx, tt.cred.Password, databaseWrapper, []byte(tt.cred.StoreId), nil, crypto.WithEd25519())
+			hm, err := crypto.HmacSha256(ctx, tt.cred.GetPassword(), databaseWrapper, []byte(tt.cred.StoreId), nil, crypto.WithEd25519())
 			require.NoError(err)
 			assert.Equal([]byte(hm), got.PasswordHmac)
 
@@ -243,7 +243,7 @@ func TestRepository_LookupCredential(t *testing.T) {
 			}
 
 			assert.NotNil(got)
-			assert.Empty(got.Password)
+			assert.Empty(got.GetPassword())
 			assert.Empty(got.CtPassword)
 			assert.NotEmpty(got.PasswordHmac)
 		})
@@ -314,7 +314,7 @@ func TestRepository_ListCredentials(t *testing.T) {
 
 		// Validate only passwordHmac is returned
 		for _, c := range got {
-			assert.Empty(c.Password)
+			assert.Empty(c.GetPassword())
 			assert.Empty(c.CtPassword)
 			assert.NotEmpty(c.PasswordHmac)
 		}
@@ -437,14 +437,14 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 
 	changeUser := func(n string) func(credential *UsernamePasswordCredential) *UsernamePasswordCredential {
 		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
-			c.Username = n
+			c.UsernamePasswordCredential.Username = n
 			return c
 		}
 	}
 
 	changePassword := func(d string) func(*UsernamePasswordCredential) *UsernamePasswordCredential {
 		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
-			c.Password = []byte(d)
+			c.UsernamePasswordCredential.Password = []byte(d)
 			return c
 		}
 	}
@@ -874,17 +874,17 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 				assert.Equal(tt.want.Description, got.Description)
 			}
 
-			assert.Equal(tt.want.Username, got.Username)
+			assert.Equal(tt.want.Username(), got.Username())
 
 			// Validate only passwordHmac is returned
-			assert.Empty(got.Password)
+			assert.Empty(got.GetPassword())
 			assert.Empty(got.CtPassword)
 			assert.NotEmpty(got.PasswordHmac)
 
 			// Validate hmac
 			databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
 			require.NoError(err)
-			hm, err := crypto.HmacSha256(ctx, tt.want.Password, databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
+			hm, err := crypto.HmacSha256(ctx, tt.want.GetPassword(), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 			require.NoError(err)
 			assert.Equal([]byte(hm), got.PasswordHmac)
 

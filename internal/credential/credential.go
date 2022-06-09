@@ -88,6 +88,7 @@ type Dynamic interface {
 
 // Static is a static credential that is stored directly in a credential store.
 type Static interface {
+	Credential
 	boundary.Resource
 	GetStoreId() string
 }

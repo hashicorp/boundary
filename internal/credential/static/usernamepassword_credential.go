@@ -13,6 +13,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var (
+	_ credential.Static       = (*UsernamePasswordCredential)(nil)
+	_ credential.UserPassword = (*UsernamePasswordCredential)(nil)
+)
+
 // A UsernamePasswordCredential contains the credential with a username and password.
 // It is owned by a credential store.
 type UsernamePasswordCredential struct {
@@ -82,7 +87,7 @@ func (c *UsernamePasswordCredential) oplog(op oplog.OpType) oplog.Metadata {
 
 func (c *UsernamePasswordCredential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "static.(UsernamePasswordCredential).encrypt"
-	if len(c.Password) == 0 {
+	if len(c.GetPassword()) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "no password defined")
 	}
 	if err := structwrapping.WrapStruct(ctx, cipher, c.UsernamePasswordCredential, nil); err != nil {
@@ -112,10 +117,32 @@ func (c *UsernamePasswordCredential) hmacPassword(ctx context.Context, cipher wr
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
-	hm, err := crypto.HmacSha256(ctx, c.Password, cipher, []byte(c.StoreId), nil, crypto.WithEd25519())
+	hm, err := crypto.HmacSha256(ctx, c.GetPassword(), cipher, []byte(c.StoreId), nil, crypto.WithEd25519())
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	c.PasswordHmac = []byte(hm)
 	return nil
+}
+
+// Username returns the username associated with the credential.
+func (c *UsernamePasswordCredential) Username() string {
+	return c.GetUsername()
+}
+
+// Password returns the password associated with the credential.
+// Please note the Password field is not returned except when being requested through the
+// Retrieve path. Other returns from the repo will only return the PasswordHmac.
+func (c *UsernamePasswordCredential) Password() credential.Password {
+	return credential.Password(c.GetPassword())
+}
+
+// Secret returns credential.SecretData of the credential formatted as a map[string]interface{}.
+// Please note the Password field is not returned except when being requested through the
+// Retrieve path. Other returns from the repo will only return the PasswordHmac.
+func (c *UsernamePasswordCredential) Secret() credential.SecretData {
+	return map[string]interface{}{
+		"username": c.GetUsername(),
+		"password": string(c.GetPassword()),
+	}
 }

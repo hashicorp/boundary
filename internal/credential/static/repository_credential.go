@@ -39,10 +39,10 @@ func (r *Repository) CreateUsernamePasswordCredential(
 	if scopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	if c.Username == "" {
+	if c.GetUsername() == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing username")
 	}
-	if c.Password == nil {
+	if c.GetPassword() == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing password")
 	}
 	if c.StoreId == "" {
@@ -93,7 +93,7 @@ func (r *Repository) CreateUsernamePasswordCredential(
 
 	// Clear password fields, only passwordHmac should be returned
 	newCred.CtPassword = nil
-	newCred.Password = nil
+	newCred.UsernamePasswordCredential.Password = nil
 
 	return newCred, nil
 }
@@ -117,7 +117,7 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 
 	// Clear password fields, only passwordHmac should be returned
 	cred.CtPassword = nil
-	cred.Password = nil
+	cred.UsernamePasswordCredential.Password = nil
 
 	return cred, nil
 }
@@ -174,8 +174,8 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 		map[string]interface{}{
 			nameField:        c.Name,
 			descriptionField: c.Description,
-			usernameField:    c.Username,
-			passwordField:    c.Password,
+			usernameField:    c.Username(),
+			passwordField:    c.GetPassword(),
 		},
 		fieldMaskPaths,
 		nil,
@@ -231,7 +231,7 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 
 	// Clear password fields, only passwordHmac should be returned
 	returnedCredential.CtPassword = nil
-	returnedCredential.Password = nil
+	returnedCredential.UsernamePasswordCredential.Password = nil
 
 	return returnedCredential, rowsUpdated, nil
 }
@@ -259,7 +259,7 @@ func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ..
 	for _, c := range creds {
 		// Clear password fields, only passwordHmac should be returned
 		c.CtPassword = nil
-		c.Password = nil
+		c.UsernamePasswordCredential.Password = nil
 	}
 
 	return creds, nil
