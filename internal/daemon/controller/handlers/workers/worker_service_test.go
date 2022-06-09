@@ -67,7 +67,7 @@ func TestGet(t *testing.T) {
 		servers.WithName("test worker names"),
 		servers.WithDescription("test worker description"),
 		servers.WithAddress("test worker address"),
-		servers.WithWorkerTags(&servers.Tag{"key", "val"}))
+		servers.WithWorkerTags(&servers.Tag{Key: "key", Value: "val"}))
 	// Add config tags to the created worker
 	worker, err = repo.UpsertWorkerStatus(context.Background(),
 		servers.NewWorkerForStatus(worker.GetScopeId(),
@@ -124,7 +124,7 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetWorkerResponse{Item: wantWorker},
 		},
 		{
-			name: "Get a non existant Worker",
+			name: "Get a non-existent Worker",
 			req:  &pbs.GetWorkerRequest{Id: servers.WorkerPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
@@ -136,7 +136,7 @@ func TestGet(t *testing.T) {
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "space in id",
+			name: "Space in id",
 			req:  &pbs.GetWorkerRequest{Id: servers.WorkerPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
