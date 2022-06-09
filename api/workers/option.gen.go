@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/api"
@@ -21,6 +22,7 @@ type options struct {
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
 	withFilter              string
+	withRecursive           bool
 }
 
 func getDefaultOptions() options {
@@ -43,6 +45,9 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	}
 	if opts.withFilter != "" {
 		opts.queryMap["filter"] = opts.withFilter
+	}
+	if opts.withRecursive {
+		opts.queryMap["recursive"] = strconv.FormatBool(opts.withRecursive)
 	}
 	return opts, apiOpts
 }
@@ -71,6 +76,14 @@ func WithSkipCurlOutput(skip bool) Option {
 func WithFilter(filter string) Option {
 	return func(o *options) {
 		o.withFilter = strings.TrimSpace(filter)
+	}
+}
+
+// WithRecursive tells the API to use recursion for listing operations on this
+// resource
+func WithRecursive(recurse bool) Option {
+	return func(o *options) {
+		o.withRecursive = true
 	}
 }
 
