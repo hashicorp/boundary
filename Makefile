@@ -230,7 +230,7 @@ generate-database-dumps:
 test-ci: export CI_BUILD=1
 test-ci:
 	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
-	~/.go/bin/go test ./... -v $(TESTARGS) -json -timeout 120m | tparse -all
+	~/.go/bin/go test ./... -v $(TESTARGS) -json -cover -timeout 120m | tparse
 
 .PHONY: test-sql
 test-sql:
@@ -238,7 +238,7 @@ test-sql:
 
 .PHONY: test
 test:
-	go test ./... -timeout 30m
+	go test ./... -timeout 30m -json -cover | tparse -follow
 
 .PHONY: test-sdk
 test-sdk:
