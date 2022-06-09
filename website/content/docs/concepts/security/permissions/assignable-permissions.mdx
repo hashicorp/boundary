@@ -24,33 +24,51 @@ know.
 
 #### Subactions
 
-Starting in Boundary 0.1.6, some subactions are supported. These actions have a
-format `top_level_action:subaction`, such as `read:self`. Being granted the top
-level action infers being granted all subactions. Thus, if a grant conveys
-`read`, it also matches the API actions `read` and `read:self`. However, if a
-grant conveys `read:self`, it will match the API action `read:self` but will not
-match `read`.
+Some subactions are supported. These actions have a format
+`top_level_action:subaction`, such as `read:self`. Being granted the top level
+action infers being granted all subactions. Thus, if a grant conveys `read`, it
+also matches the API actions `read` and `read:self`. However, if a grant conveys
+`read:self`, it will match the API action `read:self` but will not match `read`.
 
-#### The `no-op` Action
+#### The `no-op` Action and Listing Visibility
 
-Starting in Boundary 0.2.1 there is an action that can be granted called
-`no-op`. As might be apparent, `no-op` is not used for any real action in
-Boundary; the purpose of this action is for listing visibility. Boundary only
-shows resources in the output of a `list` action for which a user has at least
-one granted action. Thus, without `no-op`, in order for a resource to be visible
-in a `list` action, a different action such as `read` would have to be granted
-to a user. This could result in exposing more information than desired,
-especially in the case of listing scopes and authentication methods so that
-users can perform initial authentication to Boundary (that is, granting access
-to `u_anon`).
+There is an action that can be granted called `no-op`. As might be apparent,
+`no-op` is not used for any real action in Boundary; the purpose of this action
+is for listing visibility. Boundary only shows resources in the output of a
+`list` action for which a user has at least one granted action. Thus, without
+`no-op`, in order for a resource to be visible in a `list` action, a different
+action such as `read` would have to be granted to a user. This could result in
+exposing more information than desired, especially in the case of listing scopes
+and authentication methods so that users can perform initial authentication to
+Boundary (that is, granting access to `u_anon`).
 
 By granting the `no-op` action to users, they can see the resources in the
 output of a list command without needing other capability grants as well.
 
+### Anonymous User Restrictions
+
+Starting in Boundary 0.9.0, there are severe limits placed on the actions
+allowed to be assigned to the anonymous user `u_anon`. This is meant to avoid
+situations where an operator accidentally or mistakenly adds the anonymous user
+to a role that provides more privileges than might be intended for
+unauthanticated users.
+
+The set of actions is currently restricted to listing scopes and auth methods
+and authentication to auth methods (plus `no-op` actions for listing
+visibility). If further use-cases arise from user feedback this list can be
+expanded.
+
+Note: there is no special error message returned when access is denied due to it
+being disallowed to the anonymous user. It is still possible to assign grants to
+a role on which the anonymous user is a principal that can never match the
+anonymous user. In the future this may change, but trying to limit this
+introduces other restrictions on reasonable administrative workflows so an
+acceptable set of tradeoffs would need to be figured out.
+
 ### Output Fields
 
-Starting in Boundary 0.2.1, grant strings can contain an `output_fields` field.
-This allows fine-grained control over visibility of data returned to users.
+Grant strings can contain an `output_fields` field. This allows fine-grained
+control over visibility of data returned to users.
 
 In many cases, `output_fields` will not need to be set directly. However, an
 example in the form of some history helps provide some context as to when this
@@ -117,19 +135,3 @@ grants start specifying output fields, it is composed from an empty set and thus
 nothing is contained unless explicitly specified. (An actual empty set is not
 currently supported, as we don't perform validation on the values given.
 However, this means setting `output_fields=none` is functionally equivalent!)
-
-#### Output Fields and Monitoring
-
-As another example, it's possible to get creative and use `output_fields` to
-allow services to keep tabs on various aspects of the system for monitoring
-purposes without needing to provision Boundary tokens to those services. For
-instance, by allowing access to list users to `u_anon` but restrict the set of
-fields to `id` only, a monitoring system could watch and alert if more users
-than expected are showing up in the system, while the IDs themselves are not
-really meaningful to any other caller that accesses the same endpoint.
-
-This will be especially useful once we introduce the ability to have CIDR
-restrictions against roles and/or grants, which are planned but not currently
-scheduled, as you can only have these grants apply to specific internal
-services, along with restricting the data that is returned for those services
-that do match.

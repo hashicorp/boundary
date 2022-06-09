@@ -36,11 +36,6 @@ type ACLResults struct {
 	Authorized             bool
 	OutputFields           OutputFieldsMap
 
-	// This indicates whether the anonymous user was being checked and there
-	// were grants present that are not valid for the anonymous user. This is
-	// mostly useful for debugging/testing.
-	InvalidAnonymousUserGrantsFound bool
-
 	// This is included but unexported for testing/debugging
 	scopeMap map[string][]Grant
 }
@@ -129,8 +124,8 @@ func (a ACL) Allowed(r Resource, aType action.Type, isAnonUser bool) (results AC
 		// present or not.
 		case isAnonUser:
 			switch {
-			// Allow the anonymous user to list scopes, for discovering auth
-			// methods
+			// Allow discovery of scopes, so that auth methods within can be
+			// discovered
 			case grant.typ == r.Type &&
 				grant.typ == resource.Scope &&
 				(aType == action.List || aType == action.NoOp):
@@ -141,9 +136,6 @@ func (a ACL) Allowed(r Resource, aType action.Type, isAnonUser bool) (results AC
 				grant.typ == resource.AuthMethod &&
 				(aType == action.List || aType == action.NoOp || aType == action.Authenticate):
 				found = true
-
-			default:
-				results.InvalidAnonymousUserGrantsFound = true
 			}
 
 		// Case 2:
