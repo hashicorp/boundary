@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"math/rand"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/resolver"
 )
 
