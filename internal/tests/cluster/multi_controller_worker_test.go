@@ -35,9 +35,9 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	expectWorkers(t, c2)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:      c1.Config().WorkerAuthKms,
-		InitialControllers: c1.ClusterAddrs(),
-		Logger:             logger.Named("w1"),
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: c1.ClusterAddrs(),
+		Logger:           logger.Named("w1"),
 	})
 	defer w1.Shutdown()
 
@@ -60,9 +60,9 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	expectWorkers(t, c2, w2)
 
 	w1 = worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:      c1.Config().WorkerAuthKms,
-		InitialControllers: c1.ClusterAddrs(),
-		Logger:             logger.Named("w1"),
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: c1.ClusterAddrs(),
+		Logger:           logger.Named("w1"),
 	})
 	defer w1.Shutdown()
 
