@@ -5577,14 +5577,14 @@
           "description": "Output only. The time this worker daemon last reported its status.",
           "readOnly": true
         },
-        "worker_config": {
-          "$ref": "#/definitions/controller.api.resources.workers.v1.WorkerConfig",
+        "worker_provided_configuration": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.WorkerProvidedConfiguration",
           "description": "Output only. The set of information the worker daemon has reported about\nitself.",
           "readOnly": true
         },
-        "worker_auth_token": {
+        "worker_generated_auth_token": {
           "type": "string",
-          "title": "worker_auth_token is input only. Supports the worker led node\nenrollment flow where this credentials token is produced by a worker. This\ntoken is a base58 encoded types.FetchNodeCredentialsRequest from\nhttps://github.com/hashicorp/nodeenrollment"
+          "title": "worker_generated_auth_token is input only. Supports the worker led node\nenrollment flow where this credentials token is produced by a worker. This\ntoken is a base58 encoded types.FetchNodeCredentialsRequest from\nhttps://github.com/hashicorp/nodeenrollment"
         },
         "active_connection_count": {
           "type": "integer",
@@ -5603,7 +5603,7 @@
       },
       "title": "Worker contains all fields related to a Worker resource"
     },
-    "controller.api.resources.workers.v1.WorkerConfig": {
+    "controller.api.resources.workers.v1.WorkerProvidedConfiguration": {
       "type": "object",
       "properties": {
         "address": {
@@ -5628,7 +5628,7 @@
           "readOnly": true
         }
       },
-      "description": "WorkerConfig contains configuration values reported by the worker daemon."
+      "description": "WorkerProvidedConfiguration contains configuration values reported by the worker daemon."
     },
     "controller.api.services.v1.AddGroupMembersResponse": {
       "type": "object",

@@ -184,10 +184,10 @@ type workerAggregate struct {
 	ApiTags               string
 	ActiveConnectionCount uint32
 	// Config Fields
-	WorkerReportedName    string
-	WorkerReportedAddress string
-	LastStatusTime        *timestamp.Timestamp
-	WorkerConfigTags      string
+	WorkerReportedName              string
+	WorkerReportedAddress           string
+	LastStatusTime                  *timestamp.Timestamp
+	WorkerProvidedConfigurationTags string
 }
 
 func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
@@ -214,7 +214,7 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	}
 	worker.apiTags = tags
 
-	tags, err = tagsFromAggregatedTagString(ctx, a.WorkerConfigTags)
+	tags, err = tagsFromAggregatedTagString(ctx, a.WorkerProvidedConfigurationTags)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing config tag string"))
 	}

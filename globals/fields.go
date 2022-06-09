@@ -79,7 +79,7 @@ const (
 	TagsField                            = "tags"
 	CanonicalTagsField                   = "canonical_tags"
 	ConfigurationField                   = "configuration"
-	WorkerAuthTokenField                 = "worker_auth_token"
-	WorkerConfigField                    = "worker_config"
+	WorkerGeneratedAuthTokenField        = "worker_generated_auth_token"
+	WorkerProvidedConfigurationField     = "worker_provided_configuration"
 	ActiveConnectionCountField           = "active_session_count"
 )

@@ -405,13 +405,13 @@ func TestDevCombined(t *testing.T) {
 func TestDevWorkerCredentialStorageDir(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name            string
-		devWorkerConfig string
-		storagePath     string
+		name                           string
+		devWorkerProvidedConfiguration string
+		storagePath                    string
 	}{
 		{
 			name: "Relative Storage Directory",
-			devWorkerConfig: `
+			devWorkerProvidedConfiguration: `
 			listener "tcp" {
 				purpose = "proxy"
 			}
@@ -430,7 +430,7 @@ func TestDevWorkerCredentialStorageDir(t *testing.T) {
 		},
 		{
 			name: "Nonexistent Storage Directory",
-			devWorkerConfig: `
+			devWorkerProvidedConfiguration: `
 			listener "tcp" {
 				purpose = "proxy"
 			}
@@ -450,7 +450,7 @@ func TestDevWorkerCredentialStorageDir(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parsed, err := Parse(devConfig + tt.devWorkerConfig)
+			parsed, err := Parse(devConfig + tt.devWorkerProvidedConfiguration)
 			require.NoError(t, err)
 			require.Equal(t, tt.storagePath, parsed.Worker.AuthStoragePath)
 		})
