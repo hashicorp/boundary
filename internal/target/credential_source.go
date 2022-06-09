@@ -14,10 +14,11 @@ type CredentialSource interface {
 	Id() string
 	CredentialPurpose() credential.Purpose
 	TargetId() string
+	Type() string
 }
 
 // CredentialSources contains slices of credential publicIds
-// per purpose to be attacehd to the target.
+// per purpose to be attached to the target.
 type CredentialSources struct {
 	ApplicationCredentialIds []string
 	EgressCredentialIds      []string
@@ -56,6 +57,11 @@ func (ts *TargetCredentialSource) CredentialPurpose() credential.Purpose {
 // TargetId returns the target linked to this credential source
 func (ts *TargetCredentialSource) TargetId() string {
 	return ts.GetTargetId()
+}
+
+// Type returns the type of the credential source (library or static)
+func (ts *TargetCredentialSource) Type() string {
+	return ts.GetType()
 }
 
 // credentialSourceView provides a common way to return credential sources regardless of their

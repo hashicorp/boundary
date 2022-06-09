@@ -2,8 +2,6 @@ package targets
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	stderrors "errors"
 	"fmt"
 	"math/rand"
@@ -21,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -42,7 +39,6 @@ import (
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -94,6 +90,7 @@ type Service struct {
 	pluginHostRepoFn common.PluginHostRepoFactory
 	staticHostRepoFn common.StaticRepoFactory
 	vaultCredRepoFn  common.VaultCredentialRepoFactory
+	staticCredRepoFn common.StaticCredentialRepoFactory
 	kmsCache         *kms.Kms
 }
 
@@ -108,6 +105,7 @@ func NewService(
 	pluginHostRepoFn common.PluginHostRepoFactory,
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
+	staticCredRepoFn common.StaticCredentialRepoFactory,
 ) (Service, error) {
 	const op = "targets.NewService"
 	if repoFn == nil {
@@ -131,6 +129,9 @@ func NewService(
 	if vaultCredRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential repository")
 	}
+	if staticCredRepoFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
+	}
 	return Service{
 		repoFn:           repoFn,
 		iamRepoFn:        iamRepoFn,
@@ -139,6 +140,7 @@ func NewService(
 		pluginHostRepoFn: pluginHostRepoFn,
 		staticHostRepoFn: staticHostRepoFn,
 		vaultCredRepoFn:  vaultCredRepoFn,
+		staticCredRepoFn: staticCredRepoFn,
 		kmsCache:         kmsCache,
 	}, nil
 }
@@ -870,7 +872,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, hostSources, libs, err := repo.LookupTarget(ctx, t.GetPublicId())
+	t, hostSources, credSources, err := repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
@@ -1040,14 +1042,22 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		endpointUrl.Host = chosenEndpoint.Address
 	}
 
-	var reqs []credential.Request
+	var vaultReqs []credential.Request
+	var staticIds []string
 	var dynCreds []*session.DynamicCredential
-	for _, l := range libs {
-		reqs = append(reqs, credential.Request{
-			SourceId: l.Id(),
-			Purpose:  l.CredentialPurpose(),
-		})
-		dynCreds = append(dynCreds, session.NewDynamicCredential(l.Id(), l.CredentialPurpose()))
+	var staticCreds []*session.StaticCredential
+	for _, cs := range credSources {
+		switch cs.Type() {
+		case "library":
+			vaultReqs = append(vaultReqs, credential.Request{
+				SourceId: cs.Id(),
+				Purpose:  cs.CredentialPurpose(),
+			})
+			dynCreds = append(dynCreds, session.NewDynamicCredential(cs.Id(), cs.CredentialPurpose()))
+		case "static":
+			staticIds = append(staticIds, cs.Id())
+			staticCreds = append(staticCreds, session.NewStaticCredential(cs.Id(), cs.CredentialPurpose()))
+		}
 	}
 
 	expTime := timestamppb.Now()
@@ -1064,6 +1074,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		ConnectionLimit:    t.GetSessionConnectionLimit(),
 		WorkerFilter:       t.GetWorkerFilter(),
 		DynamicCredentials: dynCreds,
+		StaticCredentials:  staticCreds,
 	}
 
 	sess, err := session.New(sessionComposition)
@@ -1079,108 +1090,79 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
-	var cs []credential.Dynamic
-	if len(reqs) > 0 {
+	var dynamic []credential.Dynamic
+	var staticCredsById map[string]credential.Static
+	if len(vaultReqs) > 0 {
 		credRepo, err := s.vaultCredRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		cs, err = credRepo.Issue(ctx, sess.GetPublicId(), reqs)
+		dynamic, err = credRepo.Issue(ctx, sess.GetPublicId(), vaultReqs)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
+	if len(staticIds) > 0 {
+		credRepo, err := s.staticCredRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		// Remove duplicate requests
+		staticIds = strutil.RemoveDuplicates(staticIds, false)
+		creds, err := credRepo.Retrieve(ctx, t.GetScopeId(), staticIds)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		staticCredsById = make(map[string]credential.Static)
+		for _, c := range creds {
+			staticCredsById[c.GetPublicId()] = c
+		}
+	}
+
 	var creds []*pb.SessionCredential
 	var workerCreds []session.Credential
-	for _, cred := range cs {
+	for _, cred := range dynamic {
 		switch cred.Purpose() {
 		case credential.EgressPurpose:
-			m, err := credentialToProto(ctx, cred)
+			c, err := dynamicToWorkerCredential(ctx, cred)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
-			data, err := proto.Marshal(m)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling secret to proto"))
-			}
-			workerCreds = append(workerCreds, data)
+			workerCreds = append(workerCreds, c)
 
 		case credential.ApplicationPurpose:
-			l := cred.Library()
-			secret := cred.Secret()
-			// TODO: Access the json directly from the vault response instead of re-marshalling it.
-			jSecret, err := json.Marshal(secret)
+			c, err := dynamicToSessionCredential(ctx, cred)
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling secret to json"))
+				return nil, errors.Wrap(ctx, err, op)
 			}
-			var sSecret *structpb.Struct
-			switch secret.(type) {
-			case map[string]interface{}:
-				// In this case we actually have to re-decode it. The proto wrappers
-				// choke on json.Number and at the time I'm writing this I don't
-				// have time to write a walk function to dig through with reflect
-				// and find all json.Numbers and replace them. So we eat the
-				// inefficiency. So note that we are specifically _not_ using a
-				// decoder with UseNumber here.
-				var dSecret map[string]interface{}
-				if err := json.Unmarshal(jSecret, &dSecret); err != nil {
-					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("decoding json for proto marshaling"))
-				}
-				sSecret, err = structpb.NewStruct(dSecret)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for secret"))
-				}
-			}
-
-			var credType string
-			var credData *structpb.Struct
-			if l.CredentialType() != credential.UnspecifiedType {
-				credType = string(l.CredentialType())
-
-				switch c := cred.(type) {
-				case credential.UserPassword:
-					credData, err = handlers.ProtoToStruct(
-						&pb.UserPasswordCredential{
-							Username: c.Username(),
-							Password: string(c.Password()),
-						},
-					)
-					if err != nil {
-						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
-					}
-
-				default:
-					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unsupported credential type"))
-				}
-
-			}
-
-			creds = append(creds, &pb.SessionCredential{
-				CredentialLibrary: &pb.CredentialLibrary{
-					Id:                l.GetPublicId(),
-					Name:              l.GetName(),
-					Description:       l.GetDescription(),
-					CredentialStoreId: l.GetStoreId(),
-					Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
-				},
-				CredentialSource: &pb.CredentialSource{
-					Id:                l.GetPublicId(),
-					Name:              l.GetName(),
-					Description:       l.GetDescription(),
-					CredentialStoreId: l.GetStoreId(),
-					Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
-					CredentialType:    credType,
-				},
-				Secret: &pb.SessionSecret{
-					Raw:     base64.StdEncoding.EncodeToString(jSecret),
-					Decoded: sSecret,
-				},
-				Credential: credData,
-			})
+			creds = append(creds, c)
 
 		default:
 			return nil, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unsupported credential purpose %s", cred.Purpose()))
+		}
+	}
+
+	for _, sc := range staticCreds {
+		switch sc.CredentialPurpose {
+		case string(credential.EgressPurpose):
+			c, err := staticToWorkerCredential(ctx, staticCredsById[sc.CredentialStaticId])
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+			workerCreds = append(workerCreds, c)
+
+		case string(credential.ApplicationPurpose):
+			c, err := staticToSessionCredential(ctx, staticCredsById[sc.CredentialStaticId])
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+			creds = append(creds, c)
+
+		default:
+			return nil, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unsupported credential purpose %s", sc.CredentialPurpose))
 		}
 	}
 
@@ -1217,7 +1199,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		Scope:              authResults.Scope,
 		CreatedTime:        sess.CreateTime.GetTimestamp(),
 		Type:               t.GetType().String(),
-		AuthorizationToken: string(encodedMarshaledSad),
+		AuthorizationToken: encodedMarshaledSad,
 		UserId:             authResults.UserId,
 		HostId:             chosenEndpoint.HostId,
 		HostSetId:          chosenEndpoint.SetId,
@@ -1318,7 +1300,9 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for update: %v.", err)
 	}
-	u.SetPublicId(ctx, id)
+	if err := u.SetPublicId(ctx, id); err != nil {
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set target id: %v.", err)
+	}
 
 	maskManager, err := subtypeRegistry.maskManager(subtype)
 	if err != nil {
@@ -1654,7 +1638,7 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 	}
 	if outputFields.Has(globals.ApplicationCredentialLibrariesField) {
 		for _, cs := range credSources {
-			switch credential.Purpose(cs.CredentialPurpose()) {
+			switch cs.CredentialPurpose() {
 			case credential.ApplicationPurpose:
 				out.ApplicationCredentialLibraries = append(out.ApplicationCredentialLibraries, &pb.CredentialLibrary{
 					Id:                cs.Id(),
@@ -1669,7 +1653,7 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 	}
 	if outputFields.Has(globals.ApplicationCredentialSourcesField) {
 		for _, cs := range credSources {
-			switch credential.Purpose(cs.CredentialPurpose()) {
+			switch cs.CredentialPurpose() {
 			case credential.ApplicationPurpose:
 				out.ApplicationCredentialSources = append(out.ApplicationCredentialSources, &pb.CredentialSource{
 					Id:                cs.Id(),
@@ -2142,23 +2126,4 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
-}
-
-// credentialToProto converts the strongly typed credential.Credential into a known proto.Message.
-func credentialToProto(ctx context.Context, cred credential.Credential) (*serverpb.Credential, error) {
-	const op = "targets.credentialToProto"
-	switch c := cred.(type) {
-	case credential.UserPassword:
-		return &serverpb.Credential{
-			Credential: &serverpb.Credential_UserPassword{
-				UserPassword: &serverpb.UserPassword{
-					Username: c.Username(),
-					Password: string(c.Password()),
-				},
-			},
-		}, nil
-
-	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
-	}
 }
