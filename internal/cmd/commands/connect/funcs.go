@@ -78,7 +78,7 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 	prefixStr := strings.Repeat(" ", indent)
 	origSecret := []string{fmt.Sprintf("%s    %s", prefixStr, sc.Secret.Raw)}
 	switch sc.CredentialSource.Type {
-	case "vault":
+	case "vault", "static":
 		if sc.Credential != nil {
 			maxLength := 0
 			for k := range sc.Credential {

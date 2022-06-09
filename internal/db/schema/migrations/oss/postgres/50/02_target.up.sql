@@ -40,7 +40,8 @@ begin;
       tcl.target_id,
       tcl.credential_library_id as credential_source_id,
       tcl.credential_purpose,
-      cl.store_id
+      cl.store_id,
+      'library' as type
     from
       target_credential_library tcl,
       credential_library cl
@@ -51,7 +52,8 @@ begin;
       tcs.target_id,
       tcs.credential_static_id as credential_source_id,
       tcs.credential_purpose,
-      cst.store_id
+      cst.store_id,
+      'static' as type
     from
       target_static_credential tcs,
       credential_static cst

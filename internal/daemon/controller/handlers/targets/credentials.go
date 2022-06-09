@@ -1,0 +1,171 @@
+package targets
+
+import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+
+	"github.com/hashicorp/boundary/internal/credential"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/errors"
+	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
+)
+
+// credentialToWorkerCredential converts the strongly typed credential.Credential into
+// a session.Credential suitable for passing to a Boundary worker.
+func credentialToWorkerCredential(ctx context.Context, cred credential.Credential) (session.Credential, error) {
+	const op = "targets.credentialToWorkerCredential"
+	var workerCred *serverpb.Credential
+	switch c := cred.(type) {
+	case credential.UserPassword:
+		workerCred = &serverpb.Credential{
+			Credential: &serverpb.Credential_UserPassword{
+				UserPassword: &serverpb.UserPassword{
+					Username: c.Username(),
+					Password: string(c.Password()),
+				},
+			},
+		}
+
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
+	}
+
+	data, err := proto.Marshal(workerCred)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling dynamic secret to proto"))
+	}
+	return data, nil
+}
+
+func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*pb.SessionCredential, error) {
+	const op = "targets.dynamicToSessionCredential"
+	l := cred.Library()
+	secret := cred.Secret()
+	// TODO: Access the json directly from the vault response instead of re-marshalling it.
+	jSecret, err := json.Marshal(secret)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling secret to json"))
+	}
+	var sSecret *structpb.Struct
+	switch secret.(type) {
+	case map[string]interface{}:
+		// In this case we actually have to re-decode it. The proto wrappers
+		// choke on json.Number and at the time I'm writing this I don't
+		// have time to write a walk function to dig through with reflect
+		// and find all json.Numbers and replace them. So we eat the
+		// inefficiency. So note that we are specifically _not_ using a
+		// decoder with UseNumber here.
+		var dSecret map[string]interface{}
+		if err := json.Unmarshal(jSecret, &dSecret); err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("decoding json for proto marshaling"))
+		}
+		sSecret, err = structpb.NewStruct(dSecret)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for secret"))
+		}
+	}
+
+	var credType string
+	var credData *structpb.Struct
+	if l.CredentialType() != credential.UnspecifiedType {
+		credType = string(l.CredentialType())
+
+		switch c := cred.(type) {
+		case credential.UserPassword:
+			credData, err = handlers.ProtoToStruct(
+				&pb.UserPasswordCredential{
+					Username: c.Username(),
+					Password: string(c.Password()),
+				},
+			)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
+			}
+
+		default:
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
+		}
+	}
+
+	return &pb.SessionCredential{
+		CredentialLibrary: &pb.CredentialLibrary{
+			Id:                l.GetPublicId(),
+			Name:              l.GetName(),
+			Description:       l.GetDescription(),
+			CredentialStoreId: l.GetStoreId(),
+			Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
+		},
+		CredentialSource: &pb.CredentialSource{
+			Id:                l.GetPublicId(),
+			Name:              l.GetName(),
+			Description:       l.GetDescription(),
+			CredentialStoreId: l.GetStoreId(),
+			Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
+			CredentialType:    credType,
+		},
+		Secret: &pb.SessionSecret{
+			Raw:     base64.StdEncoding.EncodeToString(jSecret),
+			Decoded: sSecret,
+		},
+		Credential: credData,
+	}, nil
+}
+
+func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb.SessionCredential, error) {
+	const op = "targets.staticToSessionCredential"
+
+	var credType string
+	var credData *structpb.Struct
+	switch c := cred.(type) {
+	case *credstatic.UsernamePasswordCredential:
+		var err error
+		credType = string(credential.UserPasswordType)
+		credData, err = handlers.ProtoToStruct(
+			&pb.UserPasswordCredential{
+				Username: c.GetUsername(),
+				Password: string(c.GetPassword()),
+			},
+		)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for static credential"))
+		}
+
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
+	}
+
+	secret := cred.Secret()
+	dSecret, ok := secret.(map[string]interface{})
+	if !ok {
+		return nil, errors.New(ctx, errors.Unknown, op, "unsupported static secret format")
+	}
+	jSecret, err := json.Marshal(secret)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling static secret to json"))
+	}
+	sSecret, err := structpb.NewStruct(dSecret)
+
+	return &pb.SessionCredential{
+		CredentialSource: &pb.CredentialSource{
+			Id:                cred.GetPublicId(),
+			Name:              cred.GetName(),
+			Description:       cred.GetDescription(),
+			CredentialStoreId: cred.GetStoreId(),
+			Type:              credstatic.Subtype.String(),
+			CredentialType:    credType,
+		},
+		Secret: &pb.SessionSecret{
+			Raw:     base64.StdEncoding.EncodeToString(jSecret),
+			Decoded: sSecret,
+		},
+		Credential: credData,
+	}, nil
+}

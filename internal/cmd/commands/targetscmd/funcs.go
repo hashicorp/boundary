@@ -866,7 +866,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 
 					var secretStr []string
 					switch cred.CredentialSource.Type {
-					case "vault":
+					case "vault", "static":
 						switch {
 						case cred.Credential != nil:
 							maxLength := 0
