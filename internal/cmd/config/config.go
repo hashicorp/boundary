@@ -591,8 +591,6 @@ func Parse(d string) (*Config, error) {
 // Decodes and returns the ControllersRaw interface if both it and InitialUpstreams are populated so we can compare with InitialUpstreams once decoded
 func (w *Worker) supportControllersRawConfig() ([]string, error) {
 	switch {
-	case w.InitialUpstreams == nil && w.ControllersRaw == nil:
-		return nil, fmt.Errorf("both initial_upstreams and controllers fields are empty")
 	case w.InitialUpstreams == nil && w.ControllersRaw != nil:
 		w.InitialUpstreams = w.ControllersRaw
 	case w.InitialUpstreams != nil && w.ControllersRaw != nil:
@@ -640,7 +638,11 @@ func parseWorkerUpstreams(c *Config) ([]string, error) {
 	if c == nil || c.Worker == nil {
 		return nil, fmt.Errorf("config or worker field is nil")
 	}
-	controller_addrs, err := c.Worker.supportControllersRawConfig()
+	if c.Worker.InitialUpstreams == nil && c.Worker.ControllersRaw == nil {
+		// return nil here so that other address sources can be provided outside of config
+		return nil, nil
+	}
+	controllerAddrs, err := c.Worker.supportControllersRawConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -652,7 +654,7 @@ func parseWorkerUpstreams(c *Config) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode worker initial_upstreams block into config field: %w", err)
 		}
-		if controller_addrs != nil && !stringSlicesEqual(controller_addrs, upstreams) {
+		if controllerAddrs != nil && !stringSlicesEqual(controllerAddrs, upstreams) {
 			return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated, but values are different")
 		}
 		return upstreams, nil
@@ -668,7 +670,7 @@ func parseWorkerUpstreams(c *Config) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal env/file contents: %w", err)
 		}
-		if controller_addrs != nil && !stringSlicesEqual(controller_addrs, upstreams) {
+		if controllerAddrs != nil && !stringSlicesEqual(controllerAddrs, upstreams) {
 			return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated, but values are different")
 		}
 		return upstreams, nil
