@@ -73,7 +73,7 @@ message Worker {
   // Output only.  This is the address used by authorized session.  The value
   // is the same as the address field if set. Otherwise it uses the address the
   // worker reports.
-  string canonical_address = 100; // @gotags: `class:"public"`
+  string canonical_address = 100 [json_name = "canonical_address"]; // @gotags: `class:"public"`
 
   // Output only. The tags attached to this worker.
   map<string, google.protobuf.ListValue> tags = 110; // @gotags: `class:"public"`
@@ -81,7 +81,7 @@ message Worker {
   // Output only. The deduplicated union of the tags reported by the worker and
   // the tags added through the user facing api.  This is used when applying
   // worker filters.
-  map<string, google.protobuf.ListValue> canonical_tags = 120; // @gotags: `class:"public"`
+  map<string, google.protobuf.ListValue> canonical_tags = 120 [json_name = "canonical_tags"]; // @gotags: `class:"public"`
 
   // Output only. The time this worker daemon last reported its status.
   google.protobuf.Timestamp last_status_time = 130 [json_name = "last_status_time"]; // @gotags: `class:"public"`

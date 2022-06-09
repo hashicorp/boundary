@@ -35,6 +35,12 @@ type structureInfo struct {
 	fields []fieldInfo
 }
 
+type requiredParam struct {
+	Name     string
+	Typ      string
+	PostType string
+}
+
 type fieldInfo struct {
 	Name              string
 	ProtoName         string
@@ -88,9 +94,8 @@ type structInfo struct {
 	// useful to avoid collisions
 	nameOverride string
 
-	// typeOnCreate indicates that create will be creating a concrete
-	// implementation of an abstract type and thus a type field is necessary
-	typeOnCreate bool
+	// extraRequiredParams allows adding extra required parameters to templates
+	extraRequiredParams []requiredParam
 
 	// recursiveListing indicates that the collection supports recursion when
 	// listing
@@ -300,8 +305,14 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName:  "auth-methods",
-		typeOnCreate:        true,
+		pluralResourceName: "auth-methods",
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -392,9 +403,15 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName:  "credential-stores",
-		parentTypeName:      "scope",
-		typeOnCreate:        true,
+		pluralResourceName: "credential-stores",
+		parentTypeName:     "scope",
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -453,9 +470,15 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName:  "credential-stores",
-		parentTypeName:      "scope",
-		typeOnCreate:        true,
+		pluralResourceName: "credential-stores",
+		parentTypeName:     "scope",
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -524,8 +547,14 @@ var inputStructs = []*structInfo{
 				SkipDefault: true,
 			},
 		},
-		pluralResourceName:  "host-catalogs",
-		typeOnCreate:        true,
+		pluralResourceName: "host-catalogs",
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -677,8 +706,14 @@ var inputStructs = []*structInfo{
 				FieldType: "[]string",
 			},
 		},
-		versionEnabled:      true,
-		typeOnCreate:        true,
+		versionEnabled: true,
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		createResponseTypes: true,
 		recursiveListing:    true,
 	},
@@ -723,6 +758,13 @@ var inputStructs = []*structInfo{
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
+		},
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "workerAuthToken",
+				Typ:      "string",
+				PostType: "worker_auth_token",
+			},
 		},
 		pluralResourceName:  "workers",
 		createResponseTypes: true,

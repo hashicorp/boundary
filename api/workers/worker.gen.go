@@ -93,7 +93,7 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) CreateWorkerLed(ctx context.Context, scopeId string, opt ...Option) (*WorkerCreateResult, error) {
+func (c *Client) CreateWorkerLed(ctx context.Context, workerAuthToken string, scopeId string, opt ...Option) (*WorkerCreateResult, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("empty scopeId value passed into CreateWorkerLed request")
 	}
@@ -102,6 +102,11 @@ func (c *Client) CreateWorkerLed(ctx context.Context, scopeId string, opt ...Opt
 
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
+	}
+	if workerAuthToken == "" {
+		return nil, fmt.Errorf("empty workerAuthToken value passed into CreateWorkerLed request")
+	} else {
+		opts.postMap["worker_auth_token"] = workerAuthToken
 	}
 
 	opts.postMap["scope_id"] = scopeId
