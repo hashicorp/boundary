@@ -761,9 +761,9 @@ var inputStructs = []*structInfo{
 		},
 		extraRequiredParams: []requiredParam{
 			{
-				Name:     "workerAuthToken",
+				Name:     "workerGeneratedAuthToken",
 				Typ:      "string",
-				PostType: "worker_auth_token",
+				PostType: "worker_generated_auth_token",
 			},
 		},
 		pluralResourceName:  "workers",
@@ -771,7 +771,7 @@ var inputStructs = []*structInfo{
 		recursiveListing:    true,
 	},
 	{
-		inProto: &workers.WorkerConfig{},
-		outFile: "workers/worker_config.gen.go",
+		inProto: &workers.WorkerProvidedConfiguration{},
+		outFile: "workers/worker_provided_configuration.gen.go",
 	},
 }

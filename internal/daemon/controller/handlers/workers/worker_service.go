@@ -200,7 +200,7 @@ func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRe
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	reqBytes, err := base58.FastBase58Decoding(req.GetItem().WorkerAuthToken.GetValue())
+	reqBytes, err := base58.FastBase58Decoding(req.GetItem().WorkerGeneratedAuthToken.GetValue())
 	if err != nil {
 		return nil, fmt.Errorf("%s: error decoding node_credentials_token: %w", op, err)
 	}
@@ -483,18 +483,18 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 		if in.GetWorkerReportedAddress() != "" ||
 			in.GetWorkerReportedName() != "" ||
 			len(in.GetConfigTags()) > 0 {
-			out.WorkerConfig = &pb.WorkerConfig{}
+			out.WorkerProvidedConfiguration = &pb.WorkerProvidedConfiguration{}
 		}
 		if len(in.GetConfigTags()) > 0 {
 			var err error
-			out.GetWorkerConfig().Tags, err = tagsToMapProto(in.GetConfigTags())
+			out.GetWorkerProvidedConfiguration().Tags, err = tagsToMapProto(in.GetConfigTags())
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
 			}
 		}
-		if out.WorkerConfig != nil {
-			out.GetWorkerConfig().Address = in.GetWorkerReportedAddress()
-			out.GetWorkerConfig().Name = in.GetWorkerReportedName()
+		if out.WorkerProvidedConfiguration != nil {
+			out.GetWorkerProvidedConfiguration().Address = in.GetWorkerReportedAddress()
+			out.GetWorkerProvidedConfiguration().Name = in.GetWorkerReportedName()
 		}
 	}
 
@@ -551,7 +551,7 @@ func validateDeleteRequest(req *pbs.DeleteWorkerRequest) error {
 func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetWorkerConfig() != nil {
+		if req.GetItem().GetWorkerProvidedConfiguration() != nil {
 			badFields[globals.ConfigurationField] = "This is a read only field."
 		}
 		if req.GetItem().GetCanonicalAddress() != "" {
@@ -580,8 +580,8 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 		}
 		// FIXME: in the future, we won't require this token since we'll support
 		// the server led flow where a token is returned when a worker is created.
-		if req.GetItem().WorkerAuthToken == nil {
-			badFields[globals.WorkerAuthTokenField] = cannotBeEmptyMsg
+		if req.GetItem().WorkerGeneratedAuthToken == nil {
+			badFields[globals.WorkerGeneratedAuthTokenField] = cannotBeEmptyMsg
 		}
 		if req.GetItem().CanonicalAddress != "" {
 			badFields[globals.CanonicalAddressField] = readOnlyFieldMsg
@@ -595,8 +595,8 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 		if req.GetItem().LastStatusTime != nil {
 			badFields[globals.LastStatusTimeField] = readOnlyFieldMsg
 		}
-		if req.GetItem().WorkerConfig != nil {
-			badFields[globals.WorkerConfigField] = readOnlyFieldMsg
+		if req.GetItem().WorkerProvidedConfiguration != nil {
+			badFields[globals.WorkerProvidedConfigurationField] = readOnlyFieldMsg
 		}
 		if req.GetItem().AuthorizedActions != nil {
 			badFields[globals.AuthorizedActionsField] = readOnlyFieldMsg
