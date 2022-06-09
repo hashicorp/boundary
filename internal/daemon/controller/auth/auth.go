@@ -675,7 +675,7 @@ func GetTokenFromRequest(ctx context.Context, kmsCache *kms.Kms, req *http.Reque
 	if receivedTokenType == AuthTokenTypeUnknown || fullToken == "" {
 		// We didn't find auth info or a client screwed up and put in a blank
 		// header instead of nothing at all, so return blank which will indicate
-		// the anonymouse user
+		// the anonymous user
 		return "", "", uint32(AuthTokenTypeUnknown)
 	}
 
