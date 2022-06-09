@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -329,8 +330,8 @@ func Test_ACLAllowed(t *testing.T) {
 			}
 			acl := NewACL(grants...)
 			for _, aa := range test.actionsAuthorized {
-				result := acl.Allowed(test.resource, aa.action, false)
-				assert.True(t, result.Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, acl.Allowed(test.resource, aa.action, false).Authorized, aa.authorized)
+				result := acl.Allowed(test.resource, aa.action, test.userId == AnonymousUserId)
+				assert.True(t, result.Authorized == aa.authorized, "action: %s, acl authorized: %t, test action authorized: %t", aa.action, result.Authorized, aa.authorized)
 				assert.ElementsMatch(t, result.OutputFields.Fields(), aa.outputFields)
 			}
 		})
@@ -348,4 +349,86 @@ func TestJsonMarshal(t *testing.T) {
 	out, err := json.Marshal(res)
 	require.NoError(t, err)
 	assert.Equal(t, `{"scope_id":"scope","id":"id","type":"controller"}`, string(out))
+}
+
+// Test_AnonRestrictions loops through every resource and action and ensures
+// that it always fails for the anonymous user, regardless of what is granted,
+// except for the specific things allowed.
+func Test_AnonRestrictions(t *testing.T) {
+	t.Parallel()
+
+	type input struct {
+		name              string
+		grant             string
+		templatedType     bool
+		shouldHaveSuccess bool
+	}
+	tests := []input{
+		{
+			name:  "id-specific",
+			grant: "id=foobar;actions=%s",
+		},
+		{
+			name:              "wildcard-id",
+			grant:             "id=*;type=%s;actions=%s",
+			templatedType:     true,
+			shouldHaveSuccess: true,
+		},
+		{
+			name:  "wildcard-id-and-type",
+			grant: "id=*;type=*;actions=%s",
+		},
+		{
+			name:              "no-id",
+			grant:             "type=%s;actions=%s",
+			templatedType:     true,
+			shouldHaveSuccess: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
+			for i := resource.Type(1); i <= resource.CredentialLibrary; i++ {
+				if i == resource.Controller || i == resource.Worker {
+					continue
+				}
+				for j := action.Type(1); j <= action.RemoveHostSources; j++ {
+					res := Resource{
+						ScopeId: scope.Global.String(),
+						Id:      "foobar",
+						Type:    resource.Type(i),
+					}
+					grant := test.grant
+					if test.templatedType {
+						grant = fmt.Sprintf(grant, resource.Type(i).String(), action.Type(j).String())
+					} else {
+						grant = fmt.Sprintf(grant, action.Type(j).String())
+					}
+
+					parsedGrant, err := Parse(scope.Global.String(), grant, WithSkipFinalValidation(true))
+					require.NoError(err)
+
+					acl := NewACL(parsedGrant)
+					results := acl.Allowed(res, action.Type(j), true)
+
+					switch test.shouldHaveSuccess {
+					case true:
+						// Ensure it's one of the specific cases and fail otherwise
+						switch {
+						case i == resource.Scope && (j == action.List || j == action.NoOp):
+							assert.True(results.Authorized, fmt.Sprintf("i: %v, j: %v", i, j))
+						case i == resource.AuthMethod && (j == action.List || j == action.NoOp || j == action.Authenticate):
+							assert.True(results.Authorized, fmt.Sprintf("i: %v, j: %v", i, j))
+						default:
+							assert.False(results.Authorized, fmt.Sprintf("i: %v, j: %v", i, j))
+						}
+					default:
+						// Should always fail
+						assert.False(results.Authorized)
+					}
+				}
+			}
+		})
+	}
 }

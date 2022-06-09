@@ -121,11 +121,12 @@ func (a ACL) Allowed(r Resource, aType action.Type, isAnonUser bool) (results AC
 		// up the output fields patterns.
 		var found bool
 		switch {
-		// Case 1:
-		// We only allow specific actions on specific types for the anonymous
-		// user. ID doesn't matter in this case, it must be an explicit type and
-		// action(s); adding this as an explicit case here prevents duplicating
-		// logic in two of the other more general-purpose cases below (3 and 4).
+		// Case 1: We only allow specific actions on specific types for the
+		// anonymous user. ID being supplied or not doesn't matter in this case,
+		// it must be an explicit type and action(s); adding this as an explicit
+		// case here prevents duplicating logic in two of the other more
+		// general-purpose cases below (3 and 4). See notes there about ID being
+		// present or not.
 		case isAnonUser:
 			switch {
 			// Allow the anonymous user to list scopes, for discovering auth
