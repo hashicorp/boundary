@@ -95,6 +95,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	// any session information anyways and this will produce a ton of noise in
 	// observability, so suppress it
 	if !w.everAuthenticated.Load() {
+		event.WriteSysEvent(cancelCtx, op, "worker is not authenticated to an upstream, not sending status")
 		return
 	}
 

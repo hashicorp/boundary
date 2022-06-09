@@ -71,6 +71,7 @@ func (w *Worker) StartControllerConnections() error {
 }
 
 func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
+	const op = "worker.(Worker).controllerDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		var conn net.Conn
 		var err error
@@ -89,9 +90,20 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 				}
 			}
 		}
+		switch err {
+		case nil:
+		case nodeenrollment.ErrNotAuthorized:
+			// We don't event in this case, because the function retries often
+			// and will spam the logs. The status function will event indicating
+			// that it can't send status because it's not authorized, so that
+			// will be a fine hint to the user as to the issue.
+		default:
+			event.WriteError(ctx, op, err)
+		}
 
 		if !w.everAuthenticated.Load() && err == nil && conn != nil {
 			w.everAuthenticated.Store(true)
+			event.WriteSysEvent(ctx, op, "worker has successfully authenticated")
 		}
 
 		return conn, err
