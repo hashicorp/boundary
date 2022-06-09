@@ -13,6 +13,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var _ credential.Static = (*UsernamePasswordCredential)(nil)
+
 // A UsernamePasswordCredential contains the credential with a username and password.
 // It is owned by a credential store.
 type UsernamePasswordCredential struct {
