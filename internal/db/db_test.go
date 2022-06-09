@@ -22,7 +22,7 @@ func TestOpen(t *testing.T) {
 	type args struct {
 		dbType        DbType
 		connectionUrl string
-        opt []Option
+		opt           []Option
 	}
 	tests := []struct {
 		name    string
@@ -50,7 +50,7 @@ func TestOpen(t *testing.T) {
 			args: args{
 				dbType:        Postgres,
 				connectionUrl: "",
-                opt: []Option{WithMaxOpenConnections(3)},
+				opt:           []Option{WithMaxOpenConnections(3)},
 			},
 			wantErr: true,
 		},
