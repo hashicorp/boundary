@@ -1057,8 +1057,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			}
 			`,
 			expWorkerUpstreams: nil,
-			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are empty",
+			expErr:             false,
 		},
 		{
 			name: "One Upstream",
