@@ -548,13 +548,17 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		return base.CommandUserError
 	}
 	if c.Config.Worker != nil {
-		if c.Config.Worker.Name == "" {
-			c.UI.Error("Worker has no name set. It must be the unique name of this instance.")
-			return base.CommandUserError
-		}
-		if c.Config.Worker.AuthStoragePath == "" {
-			c.UI.Error("No worker auth KMS specified and no worker auth storage path specified.")
-			return base.CommandUserError
+		switch c.WorkerAuthKms {
+		case nil:
+			if c.Config.Worker.AuthStoragePath == "" {
+				c.UI.Error("No worker auth KMS specified and no worker auth storage path specified.")
+				return base.CommandUserError
+			}
+		default:
+			if c.Config.Worker.Name == "" {
+				c.UI.Error("Worker is using KMS auth but has no name set. It must be the unique name of this instance.")
+				return base.CommandUserError
+			}
 		}
 	}
 
