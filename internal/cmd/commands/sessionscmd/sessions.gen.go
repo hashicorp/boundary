@@ -35,6 +35,8 @@ type Command struct {
 	Func string
 
 	plural string
+
+	extraCmdVars
 }
 
 func (c *Command) AutocompleteArgs() complete.Predictor {

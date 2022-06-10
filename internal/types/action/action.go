@@ -53,6 +53,10 @@ const (
 	AddHostSources            Type = 42
 	SetHostSources            Type = 43
 	RemoveHostSources         Type = 44
+
+	// When adding new actions, be sure to update:
+	//
+	// * The Test_AnonRestrictions test
 )
 
 var Map = map[string]Type{

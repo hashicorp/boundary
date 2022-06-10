@@ -63,6 +63,9 @@ message ListSessionsRequest {
   string scope_id = 1; // @gotags: `class:"public"`
   bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
+  // Experimental. By default only non-terminated (i.e. pending, active, canceling) are returned.
+  // Set this option to include terminated sessions as well.
+  bool include_terminated = 40 [json_name = "include_terminated"]; // @gotags: `class:"public"`
 }
 
 message ListSessionsResponse {
