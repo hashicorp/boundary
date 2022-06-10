@@ -468,7 +468,7 @@ func (c *Command) Run(args []string) int {
 			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
 			c.Info["worker auth registration request"] = c.worker.WorkerAuthRegistrationRequest
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
-			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId
+			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 
 			// Write the WorkerAuth request to a file
 			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {

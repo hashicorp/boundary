@@ -67,17 +67,42 @@ func (r *Repository) LookupWorkerByWorkerReportedName(ctx context.Context, name 
 	case name == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "name is empty")
 	}
-	// we derive the id instead of doing a query to be consistant with the
-	// UpsertWorkerStatus flow which uses this function to upsert a worker.
-	id, err := newWorkerIdFromName(ctx, name)
+
+	wAgg := &workerAggregate{}
+	err := r.reader.LookupWhere(ctx, &wAgg, "worker_reported_name = ?", []interface{}{name})
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error while calculating the worker's id"))
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	w, err := lookupWorker(ctx, r.reader, id)
+	w, err := wAgg.toWorker(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return w, nil
+}
+
+func (r *Repository) LookupWorkerIdByWorkerReportedKeyId(ctx context.Context, keyId string) (string, error) {
+	const op = "servers.(Repository).LookupWorkerIdByWorkerReportedKeyId"
+	switch {
+	case keyId == "":
+		return "", errors.New(ctx, errors.InvalidParameter, op, "keyId is empty")
+	}
+
+	// We're searching for a workerAuth record based on worker id
+	worker := allocWorkerAuth()
+	worker.WorkerKeyIdentifier = keyId
+
+	err := r.reader.LookupById(ctx, worker)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return "", nil
+		}
+		return "", errors.Wrap(ctx, err, op)
+	}
+
+	return worker.WorkerId, nil
 }
 
 // LookupWorker returns the worker for the provided publicId.  This returns
@@ -192,8 +217,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
 	case worker.PublicId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
-	case worker.GetWorkerReportedName() == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported name is empty")
+	case worker.GetWorkerReportedName() == "" && worker.WorkerReportedKeyId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; at least one is required")
 	case len(worker.apiTags) > 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "api tags is not empty")
 	}
@@ -202,7 +227,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	worker = NewWorkerForStatus(worker.GetScopeId(),
 		WithName(worker.GetWorkerReportedName()),
 		WithAddress(worker.GetWorkerReportedAddress()),
-		WithWorkerTags(worker.configTags...))
+		WithWorkerTags(worker.configTags...),
+		WithKeyId(worker.WorkerReportedKeyId))
 
 	opts := getOpts(opt...)
 
@@ -210,10 +236,26 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	switch {
 	case opts.withPublicId != "":
 		worker.PublicId = opts.withPublicId
+	case worker.WorkerReportedKeyId != "":
+		workerId, err := r.LookupWorkerIdByWorkerReportedKeyId(ctx, worker.WorkerReportedKeyId)
+		if err != nil || workerId == "" {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by keyId"))
+		}
+		worker.PublicId = workerId
 	default:
-		worker.PublicId, err = newWorkerIdFromName(ctx, worker.GetWorkerReportedName())
+		// Attempt to find workerId by name. If not found, generate an id
+		w, err := r.LookupWorkerByWorkerReportedName(ctx, worker.GetWorkerReportedName())
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by name"))
+		}
+		if w != nil {
+			worker.PublicId = w.PublicId
+		} else {
+			workerId, err := newWorkerId(ctx)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error error generating worker id"))
+			}
+			worker.PublicId = workerId
 		}
 	}
 

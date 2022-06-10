@@ -145,12 +145,20 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	statusCtx, statusCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
 	defer statusCancel()
 
+	keyId := w.WorkerAuthCurrentKeyId.Load()
+
+	if w.conf.RawConfig.Worker.Name == "" && keyId == "" {
+		event.WriteError(statusCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
+			event.WithInfoMsg("error making status request to controller"))
+	}
+
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		WorkerStatus: &servers.ServerWorkerStatus{
 			Name:    w.conf.RawConfig.Worker.Name,
 			Address: w.conf.RawConfig.Worker.PublicAddr,
 			Tags:    tags,
+			KeyId:   keyId,
 		},
 		UpdateTags: w.updateTags.Load(),
 	})

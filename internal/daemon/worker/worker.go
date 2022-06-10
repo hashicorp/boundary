@@ -80,7 +80,7 @@ type Worker struct {
 
 	// The storage for node enrollment
 	WorkerAuthStorage             *nodeefile.Storage
-	WorkerAuthCurrentKeyId        string
+	WorkerAuthCurrentKeyId        *ua.String
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
 
@@ -110,6 +110,7 @@ func New(conf *Config) (*Worker, error) {
 		tags:                   new(atomic.Value),
 		updateTags:             ua.NewBool(false),
 		nonceFn:                base62.Random,
+		WorkerAuthCurrentKeyId: new(ua.String),
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
@@ -189,10 +190,6 @@ func (w *Worker) Start() error {
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.controllerResolver.Store(controllerResolver)
-
-	if err := w.startListeners(); err != nil {
-		return fmt.Errorf("error starting worker listeners: %w", err)
-	}
 
 	if w.conf.WorkerAuthKms == nil {
 		// In this section, we look for existing worker credentials. The two
@@ -286,13 +283,23 @@ func (w *Worker) Start() error {
 			if err != nil {
 				return fmt.Errorf("error encoding worker auth registration request: %w", err)
 			}
-			w.WorkerAuthCurrentKeyId, err = nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+			currentKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
 			if err != nil {
 				return fmt.Errorf("error deriving worker auth key id: %w", err)
 			}
+			w.WorkerAuthCurrentKeyId.Store(currentKeyId)
 		}
+		// Regardless, we want to load the currentKeyId
+		currentKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+		if err != nil {
+			return fmt.Errorf("error deriving worker auth key id: %w", err)
+		}
+		w.WorkerAuthCurrentKeyId.Store(currentKeyId)
 	}
 
+	if err := w.startListeners(); err != nil {
+		return fmt.Errorf("error starting worker listeners: %w", err)
+	}
 	if err := w.StartControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
@@ -499,8 +506,9 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	defer cancel()
 
 	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
-		ServerId:  w.conf.RawConfig.Worker.Name,
-		SessionId: sessionId,
+		ServerId:    w.conf.RawConfig.Worker.Name,
+		SessionId:   sessionId,
+		WorkerKeyId: w.WorkerAuthCurrentKeyId.Load(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error validating session: %w", err)

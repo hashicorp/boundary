@@ -2,6 +2,7 @@ package servers_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"strings"
 	"testing"
@@ -20,6 +21,8 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
+	"github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -135,6 +138,63 @@ func TestLookupWorkerByWorkerReportedName(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 		assert.Truef(t, errors.Match(errors.T(errors.Op("servers.(Repository).LookupWorkerByWorkerReportedName")), err), "got error %v", err)
 		assert.Nil(t, got)
+	})
+}
+
+func TestLookupWorkerByWorkerReportedKeyId(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	repo, err := servers.NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+	ctx := context.Background()
+	// Ensures the global scope contains a valid root key
+	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+	require.NoError(t, err)
+
+	w := servers.TestWorker(t, conn, wrapper)
+
+	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
+	require.NoError(t, err)
+	// Create struct to pass in with workerId that will be passed along to storage
+	state, err := servers.AttachWorkerIdToState(ctx, w.PublicId)
+	require.NoError(t, err)
+
+	// This happens on the worker
+	fileStorage, err := file.New(ctx)
+	require.NoError(t, err)
+	nodeCreds, err := types.NewNodeCredentials(ctx, fileStorage)
+	require.NoError(t, err)
+	// Create request using worker id
+	fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(t, err)
+
+	// The AuthorizeNode request will result in a WorkerAuth record being stored
+	registeredNode, err := registration.AuthorizeNode(ctx, rootStorage, fetchReq, nodeenrollment.WithState(state))
+	require.NoError(t, err)
+	t.Run("success", func(t *testing.T) {
+		got, err := repo.LookupWorkerIdByWorkerReportedKeyId(ctx, registeredNode.Id)
+		require.NoError(t, err)
+		assert.Equal(t, w.PublicId, got)
+	})
+	t.Run("not found", func(t *testing.T) {
+		got, err := repo.LookupWorkerIdByWorkerReportedKeyId(ctx, "unknown_key")
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+	t.Run("db error", func(t *testing.T) {
+		conn, mock := db.TestSetupWithMock(t)
+		rw := db.New(conn)
+		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
+		r, err := servers.NewRepository(rw, rw, kmsCache)
+		require.NoError(t, err)
+		got, err := r.LookupWorkerIdByWorkerReportedKeyId(ctx, w.GetWorkerReportedName())
+		assert.NoError(t, mock.ExpectationsWereMet())
+		assert.Truef(t, errors.Match(errors.T(errors.Op("servers.(Repository).LookupWorkerIdByWorkerReportedKeyId")), err), "got error %v", err)
+		assert.Empty(t, got)
 	})
 }
 
