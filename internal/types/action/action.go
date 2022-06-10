@@ -54,6 +54,10 @@ const (
 	SetHostSources            Type = 43
 	RemoveHostSources         Type = 44
 	CreateWorkerLed           Type = 45
+
+	// When adding new actions, be sure to update:
+	//
+	// * The Test_AnonRestrictions test
 )
 
 var Map = map[string]Type{

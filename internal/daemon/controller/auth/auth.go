@@ -569,7 +569,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	}
 
 	retAcl = perms.NewACL(parsedGrants...)
-	aclResults = retAcl.Allowed(*v.res, v.act)
+	aclResults = retAcl.Allowed(*v.res, v.act, userId)
 	// We don't set authenticated above because setting this but not authorized
 	// is used for further permissions checks, such as during recursive listing.
 	// So we want to make sure any code relying on that has the full set of
@@ -619,7 +619,7 @@ func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActi
 
 	ret := make(action.ActionSet, 0, len(availableActions))
 	for _, act := range availableActions {
-		if r.v.acl.Allowed(*res, act).Authorized {
+		if r.v.acl.Allowed(*res, act, r.UserId).Authorized {
 			ret = append(ret, act)
 		}
 	}
@@ -637,7 +637,7 @@ func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) p
 		return nil
 	}
 
-	return r.v.acl.Allowed(res, act).OutputFields
+	return r.v.acl.Allowed(res, act, r.UserId).OutputFields
 }
 
 // GetTokenFromRequest pulls the token from either the Authorization header or
@@ -675,7 +675,7 @@ func GetTokenFromRequest(ctx context.Context, kmsCache *kms.Kms, req *http.Reque
 	if receivedTokenType == AuthTokenTypeUnknown || fullToken == "" {
 		// We didn't find auth info or a client screwed up and put in a blank
 		// header instead of nothing at all, so return blank which will indicate
-		// the anonymouse user
+		// the anonymous user
 		return "", "", uint32(AuthTokenTypeUnknown)
 	}
 

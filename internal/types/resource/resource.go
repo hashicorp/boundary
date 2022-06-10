@@ -30,6 +30,7 @@ const (
 	// * The Grant.validateType function and test
 	// * The perms.topLevelType function
 	// * The scopes service collection actions for appropriate scopes
+	// * The Test_AnonRestrictions test
 )
 
 func (r Type) MarshalJSON() ([]byte, error) {

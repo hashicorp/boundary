@@ -400,13 +400,14 @@ var inputStructs = map[string][]*cmdInfo{
 	},
 	"sessions": {
 		{
-			ResourceType:     resource.Session.String(),
-			Pkg:              "sessions",
-			StdActions:       []string{"read", "list"},
-			Container:        "Scope",
-			HasExtraHelpFunc: true,
-			HasId:            true,
-			VersionedActions: []string{"cancel"},
+			ResourceType:        resource.Session.String(),
+			Pkg:                 "sessions",
+			StdActions:          []string{"read", "list"},
+			Container:           "Scope",
+			HasExtraCommandVars: true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			VersionedActions:    []string{"cancel"},
 		},
 	},
 	"targets": {

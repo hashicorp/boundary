@@ -83,8 +83,6 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 		return nil, nil
 	}
 	sessions := []*Session{}
-	// deduplication map of connections by connection_id
-	connections := map[string]*Connection{}
 	// deduplication map of states by end_time
 	states := map[*timestamp.Timestamp]*State{}
 	var prevSessionId string
@@ -92,10 +90,6 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 	for _, sv := range sessionList {
 		if sv.PublicId != prevSessionId {
 			if prevSessionId != "" {
-				for _, c := range connections {
-					workingSession.Connections = append(workingSession.Connections, c)
-				}
-				connections = map[string]*Connection{}
 				for _, s := range states {
 					workingSession.States = append(workingSession.States, s)
 				}
@@ -155,22 +149,6 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 			}
 		}
 
-		if sv.ConnectionId != "" {
-			if _, ok := connections[sv.ConnectionId]; !ok {
-				connections[sv.ConnectionId] = &Connection{
-					PublicId:           sv.ConnectionId,
-					SessionId:          sv.PublicId,
-					ClientTcpAddress:   sv.ClientTcpAddress,
-					ClientTcpPort:      sv.ClientTcpPort,
-					EndpointTcpAddress: sv.EndpointTcpAddress,
-					EndpointTcpPort:    sv.EndpointTcpPort,
-					BytesUp:            sv.BytesUp,
-					BytesDown:          sv.BytesDown,
-					ClosedReason:       sv.ClosedReason,
-				}
-			}
-		}
-
 	}
 	for _, s := range states {
 		workingSession.States = append(workingSession.States, s)
@@ -178,9 +156,6 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 	sort.Slice(workingSession.States, func(i, j int) bool {
 		return workingSession.States[i].StartTime.GetTimestamp().AsTime().After(workingSession.States[j].StartTime.GetTimestamp().AsTime())
 	})
-	for _, c := range connections {
-		workingSession.Connections = append(workingSession.Connections, c)
-	}
 	sessions = append(sessions, workingSession)
 	return sessions, nil
 }

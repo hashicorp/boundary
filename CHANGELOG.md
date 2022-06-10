@@ -4,6 +4,30 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* controller: Improve response time for listing sessions.
+  This also creates a new periodic job that will delete terminated
+  sessions after 1 hour.
+  See Deprecations/Changes for some additional details.
+  [PR](https://github.com/hashicorp/boundary/pull/2160).
+
+### Deprecations/Changes
+
+* controller: Change the default behavior of the session list endpoint
+  to no longer include sessions in a terminated state and introduces
+  a new query parameter/cli flag to include the terminated sessions.
+  This also removes the connection information from the list response.
+  [PR](https://github.com/hashicorp/boundary/pull/2160).
+* Anonymous user permissions: In order to reduce the risk of accidental and
+  unintended granting of permissions to anonymous users, the permissions system
+  now only allows certain actions on certain resources to be assigned to the
+  anonymous user; currently these are the same permissions as assigned in
+  Boundary's default role permissions. If other use-cases arise this list can be
+  expanded. See [the
+  documentation](https://www.boundaryproject.io/docs/concepts/security/permissions/assignable-permissions)
+  for more details.
+
 ### Bug Fixes
 
 ## 0.8.1 (2022/05/13)
@@ -13,7 +37,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * controller: Do not shut down cluster listener when it receives an invalid
   packet ([Issue](https://github.com/hashicorp/boundary/issues/2072),
   [PR](https://github.com/hashicorp/boundary/pull/2073))
-* session: update cancel_session() function to check for terminated state ([Issue](https://github.com/hashicorp/boundary/issues/2064),
+* session: update cancel_session() function to check for terminated state
+  ([Issue](https://github.com/hashicorp/boundary/issues/2064),
   [PR](https://github.com/hashicorp/boundary/pull/2065))
 
 ## 0.8.0 (2022/05/03)
@@ -25,26 +50,30 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR](https://github.com/hashicorp/boundary/pull/2049)
 * ui: Add support for worker filters in targets
 * ui: Add manual refresh button in sessions list
+* Audit events are no longer a WIP ([PR](https://github.com/hashicorp/boundary/pull/2031).
 
 ### Bug Fixes
 
-* worker: create new error to prevent `event.newError: missing error: invalid parameter` and handle session cancel 
-  with no TOFU token ([Issue](https://github.com/hashicorp/boundary/issues/1902),
+* worker: create new error to prevent `event.newError: missing error: invalid
+  parameter` and handle session cancel with no TOFU token
+  ([Issue](https://github.com/hashicorp/boundary/issues/1902),
   [PR](https://github.com/hashicorp/boundary/pull/1929))
-* controller: Reconcile DEKs with existing scopes ([Issue](https://github.com/hashicorp/boundary/issues/1856),
+* controller: Reconcile DEKs with existing scopes
+  ([Issue](https://github.com/hashicorp/boundary/issues/1856),
   [PR](https://github.com/hashicorp/boundary/pull/1976))
-* controller: Fix for retrieving sessions that could result in incomplete results when
-  there is a large number (10k+) of sessions.
+* controller: Fix for retrieving sessions that could result in incomplete
+  results when there is a large number (10k+) of sessions.
   [PR](https://github.com/hashicorp/boundary/pull/2049)
-* session: update session state trigger to prevent transitions to invalid states ([Issue](https://github.com/hashicorp/boundary/issues/2040),
+* session: update session state trigger to prevent transitions to invalid states
+  ([Issue](https://github.com/hashicorp/boundary/issues/2040),
   [PR](https://github.com/hashicorp/boundary/pull/2046))
 
 ## 0.7.6 (2022/03/15)
 
 ### Bug Fixes
 
-* sessions: Sessions and session connections have been refactored 
-to better isolate transactions and prevent resource contention that caused deadlocks.
+* sessions: Sessions and session connections have been refactored to better
+isolate transactions and prevent resource contention that caused deadlocks.
 ([Issue](https://github.com/hashicorp/boundary/issues/1812),
   [PR](https://github.com/hashicorp/boundary/pull/1919))
 * scheduler: Fix bug that causes erroneous logs when racing controllers

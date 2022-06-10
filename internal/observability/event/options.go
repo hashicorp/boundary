@@ -54,6 +54,7 @@ type options struct {
 	withObservationSink bool       // test only option
 	withSysSink         bool       // test only option
 	withSinkFormat      SinkFormat // test only option
+	withNoDefaultSink   bool       // test only option
 }
 
 func getDefaultOptions() options {
