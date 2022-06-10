@@ -1045,7 +1045,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// Generate the endpoint URL
 	endpointUrl := &url.URL{
 		Scheme: t.GetType().String(),
-		Host:   fmt.Sprintf("%s:%s", h, p),
+		Host:   net.JoinHostPort(h, p),
 	}
 
 	var reqs []credential.Request
