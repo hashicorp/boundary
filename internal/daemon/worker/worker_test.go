@@ -200,7 +200,6 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 		name                   string
 		in                     func(t *testing.T, w *Worker)
 		expKeyId               string // If set, the existing key ID to expect
-		expCreation            bool   // Whether we should expect a new key ID
 		expRegistrationRequest bool   // Whether we should have seen a registration request generated
 		expError               string // Some other error
 	}{
@@ -209,7 +208,6 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 			in: func(t *testing.T, w *Worker) {
 				// Do nothing; in this case it will have already been cleared
 			},
-			expCreation:            true,
 			expRegistrationRequest: true,
 		},
 		{
@@ -218,6 +216,7 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 				// Store the authorized creds
 				require.NoError(t, initNodeCreds.Store(ctx, w.WorkerAuthStorage))
 			},
+			expKeyId: initKeyId,
 		},
 		{
 			name: "existing but not validated",
@@ -238,7 +237,6 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 				creds.CertificateBundles[0].CertificateNotAfter = timestamppb.New(time.Time{})
 				require.NoError(t, creds.Store(ctx, w.WorkerAuthStorage))
 			},
-			expCreation:            true,
 			expRegistrationRequest: true,
 		},
 	}
@@ -260,15 +258,11 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 			// Start up to run logic
 			require.NoError(t, tw.Worker().Start())
 
-			// Validate state
+			// Validate existing key was loaded or new key was created and loaded
 			if tt.expKeyId != "" {
-				assert.Equal(t, tt.expKeyId, tw.Worker().WorkerAuthCurrentKeyId)
+				assert.Equal(t, tt.expKeyId, tw.Worker().WorkerAuthCurrentKeyId.Load())
 			} else {
-				if tt.expCreation {
-					assert.NotEmpty(t, tw.Worker().WorkerAuthCurrentKeyId)
-				} else {
-					assert.Empty(t, tw.Worker().WorkerAuthCurrentKeyId)
-				}
+				assert.NotEmpty(t, tw.Worker().WorkerAuthCurrentKeyId.Load())
 			}
 			if tt.expRegistrationRequest {
 				assert.NotEmpty(t, tw.Worker().WorkerAuthRegistrationRequest)

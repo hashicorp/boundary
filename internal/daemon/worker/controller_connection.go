@@ -14,6 +14,8 @@ import (
 	"math/big"
 	mathrand "math/rand"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -32,6 +34,8 @@ import (
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"
 )
+
+const hcpbUrlSuffix = ".proxy.boundary.hashicorp.cloud"
 
 // StartControllerConnections starts up the resolver and initiates controller
 // connection client creation
@@ -55,7 +59,13 @@ func (w *Worker) StartControllerConnections() error {
 	}
 
 	if len(initialAddrs) == 0 {
-		return errors.New("no initial upstream addresses found")
+		if w.conf.RawConfig.HCPBClusterId != "" {
+			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HCPBClusterId, hcpbUrlSuffix)
+			initialAddrs = append(initialAddrs, resolver.Address{Addr: clusterAddress})
+			event.WriteSysEvent(context.TODO(), op, fmt.Sprintf("Setting HCPB Cluster address %s as upstream address", clusterAddress))
+		} else {
+			return errors.New("no initial upstream addresses found")
+		}
 	}
 
 	w.Resolver().InitialState(resolver.State{
@@ -69,6 +79,7 @@ func (w *Worker) StartControllerConnections() error {
 }
 
 func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
+	const op = "worker.(Worker).controllerDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		var conn net.Conn
 		var err error
@@ -77,10 +88,32 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 			conn, err = w.v1KmsAuthDialFn(ctx, addr)
 		default:
 			conn, err = protocol.Dial(ctx, w.WorkerAuthStorage, addr, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+			// No error and a valid connection means the WorkerAuthRegistrationRequest was populated
+			// We can remove the stored workerAuthRequest file
+			if err == nil && conn != nil {
+				if w.WorkerAuthStorage.BaseDir() != "" {
+					workerAuthReqFilePath := filepath.Join(w.WorkerAuthStorage.BaseDir(), base.WorkerAuthReqFile)
+					// Intentionally ignoring any error removing this file
+					_ = os.Remove(workerAuthReqFilePath)
+				}
+			}
+		}
+		switch err {
+		case nil:
+		case nodeenrollment.ErrNotAuthorized:
+			// We don't event in this case, because the function retries often
+			// and will spam the logs. The status function will event indicating
+			// that it can't send status because it's not authorized, so that
+			// will be a fine hint to the user as to the issue.
+		default:
+			event.WriteError(ctx, op, err)
 		}
 
-		if !w.everAuthenticated.Load() && err == nil && conn != nil {
-			w.everAuthenticated.Store(true)
+		if err == nil && conn != nil {
+			if !w.everAuthenticated.Load() {
+				w.everAuthenticated.Store(true)
+			}
+			event.WriteSysEvent(ctx, op, "worker has successfully authenticated")
 		}
 
 		return conn, err

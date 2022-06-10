@@ -159,7 +159,12 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 	return func() {
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(w.workerAuthSplitListener.OtherListener())
-		go ln.GrpcServer.Serve(w.workerAuthSplitListener.NodeEnrollmentListener())
+		go ln.GrpcServer.Serve(
+			&eventingListener{
+				ctx:    cancelCtx,
+				baseLn: w.workerAuthSplitListener.NodeEnrollmentListener(),
+			},
+		)
 	}, nil
 }
 
@@ -269,4 +274,37 @@ func listenerCloseErrorCheck(lnType string, err error) error {
 	}
 
 	return err
+}
+
+type eventingListener struct {
+	ctx    context.Context
+	baseLn net.Listener
+}
+
+func (e *eventingListener) Accept() (net.Conn, error) {
+	const op = "worker.(eventingListener).Accept"
+	conn, err := e.baseLn.Accept()
+	if err != nil || conn == nil {
+		return conn, err
+	}
+
+	// This is all best-effort; anything going wrong here shouldn't disrupt the
+	// connection, so on error simply stop trying to get to an event
+	tlsConn, ok := conn.(*tls.Conn)
+	if ok && len(tlsConn.ConnectionState().PeerCertificates) > 0 {
+		keyId, err := nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId)
+		if err == nil {
+			event.WriteSysEvent(e.ctx, op, "worker successfully authenticated", "key_id", keyId)
+		}
+	}
+
+	return conn, err
+}
+
+func (e *eventingListener) Close() error {
+	return e.baseLn.Close()
+}
+
+func (e *eventingListener) Addr() net.Addr {
+	return e.baseLn.Addr()
 }

@@ -14,6 +14,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -50,6 +52,7 @@ worker {
 	tags {
 		type = ["dev", "local"]
 	}
+	auth_storage_path = "%s"
 }
 `
 
@@ -61,6 +64,7 @@ worker {
 	tags {
 		foo = ["bar", "baz"]
 	}
+	auth_storage_path = "%s"
 }
 `
 
@@ -74,10 +78,14 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
 	defer testController.Shutdown()
 
+	authStoragePath, err := os.MkdirTemp("", "")
+	require.NoError(err)
+	t.Cleanup(func() { os.RemoveAll(authStoragePath) })
+
 	wg := &sync.WaitGroup{}
 
 	cmd := testServerCommand(t, testServerCommandOpts{})
-	cmd.presetConfig = atomic.NewString(fmt.Sprintf(workerBaseConfig+tag1Config, key, testController.ClusterAddrs()[0]))
+	cmd.presetConfig = atomic.NewString(fmt.Sprintf(workerBaseConfig+tag1Config, key, testController.ClusterAddrs()[0], filepath.Join(authStoragePath, "tag1")))
 
 	wg.Add(1)
 	go func() {
@@ -110,7 +118,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	fetchWorkerTags("test", "type", []string{"dev", "local"})
 
-	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, key, testController.ClusterAddrs()[0]))
+	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, key, testController.ClusterAddrs()[0], filepath.Join(authStoragePath, "tag2")))
 
 	cmd.SighupCh <- struct{}{}
 	select {

@@ -2,6 +2,7 @@ package servers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -293,6 +294,32 @@ func TestWorker_Update(t *testing.T) {
 			},
 		},
 		{
+			name: "base update with worker reported address and keyId",
+			initial: Worker{
+				Worker: &store.Worker{
+					ScopeId:     scope.Global.String(),
+					PublicId:    newId(),
+					Description: "base update with status",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					WorkerReportedKeyId:   "base update with worker reported address and keyId",
+					WorkerReportedAddress: "base update with worker reported address and keyId",
+				},
+			},
+			mask: []string{"WorkerReportedAddress", "WorkerReportedKeyId"},
+			assert: func(t *testing.T, init, up *Worker) {
+				t.Helper()
+				assert.Equal(t, "base update with worker reported address and keyId", up.WorkerReportedAddress)
+				assert.Equal(t, "base update with worker reported address and keyId", up.WorkerReportedKeyId)
+				assert.Equal(t, uint32(1), up.Version)
+				assert.NotNil(t, up.GetLastStatusTime())
+				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
+				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
+			},
+		},
+		{
 			name: "base update with worker reported address",
 			initial: Worker{
 				Worker: &store.Worker{
@@ -326,6 +353,25 @@ func TestWorker_Update(t *testing.T) {
 				},
 			},
 			mask:            []string{"WorkerReportedName"},
+			wantUpdateError: true,
+		},
+		{
+			// If any status fields are set then worker reported address must
+			// be set.
+			name: "base update with worker reported keyId",
+			initial: Worker{
+				Worker: &store.Worker{
+					ScopeId:     scope.Global.String(),
+					PublicId:    newId(),
+					Description: "base update with status",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					WorkerReportedKeyId: "base update with worker reported keyId",
+				},
+			},
+			mask:            []string{"WorkerReportedKeyId"},
 			wantUpdateError: true,
 		},
 		{
@@ -464,6 +510,7 @@ func TestWorker_Update(t *testing.T) {
 			up.PublicId = init.PublicId
 			_, err := rw.Update(ctx, up, tc.mask, tc.nullMask)
 			if tc.wantUpdateError {
+				fmt.Println(err)
 				assert.Error(t, err)
 				return
 			} else {

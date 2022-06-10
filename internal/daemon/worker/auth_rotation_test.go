@@ -102,6 +102,9 @@ func TestRotationTicking(t *testing.T) {
 		require.NoError(err)
 		assert.NotEqual(currKey, currNodeCreds.CertificatePublicKeyPkix)
 		currKey = currNodeCreds.CertificatePublicKeyPkix
+		currKeyId, err := nodeenrollment.KeyIdFromPkix(currNodeCreds.CertificatePublicKeyPkix)
+		require.NoError(err)
+		assert.Equal(currKeyId, w.Worker().WorkerAuthCurrentKeyId.Load())
 
 		// Stop and start the client connections to ensure the new credentials
 		// are valid; if not, we won't establish a new connection and rotation

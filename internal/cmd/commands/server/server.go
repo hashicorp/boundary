@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -330,6 +331,14 @@ func (c *Command) Run(args []string) int {
 				}
 			}
 		}
+
+		if c.Config.HCPBClusterId != "" {
+			_, err := uuid.ParseUUID(c.Config.HCPBClusterId)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Invalid HCPB cluster id %q: %w", c.Config.HCPBClusterId, err).Error())
+				return base.CommandUserError
+			}
+		}
 	}
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {
 		c.UI.Error(err.Error())
@@ -468,7 +477,22 @@ func (c *Command) Run(args []string) int {
 			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
 			c.Info["worker auth registration request"] = c.worker.WorkerAuthRegistrationRequest
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
-			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId
+			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
+
+			// Write the WorkerAuth request to a file
+			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
+				// Shutdown on failure
+				retErr := fmt.Errorf("Error storing worker auth request: %w", err)
+				if err := c.worker.Shutdown(); err != nil {
+					c.UI.Error(retErr.Error())
+					retErr = fmt.Errorf("Error shutting down worker: %w", err)
+				}
+				c.UI.Error(retErr.Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
 		}
 	}
 
@@ -523,9 +547,15 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
 		return base.CommandUserError
 	}
-	if c.Config.Worker != nil && c.Config.Worker.Name == "" {
-		c.UI.Error("Worker has no name set. It must be the unique name of this instance.")
-		return base.CommandUserError
+	if c.Config.Worker != nil {
+		if c.Config.Worker.Name == "" {
+			c.UI.Error("Worker has no name set. It must be the unique name of this instance.")
+			return base.CommandUserError
+		}
+		if c.Config.Worker.AuthStoragePath == "" {
+			c.UI.Error("No worker auth KMS specified and no worker auth storage path specified.")
+			return base.CommandUserError
+		}
 	}
 
 	return base.CommandSuccess

@@ -60,9 +60,12 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	// terminate all sessions since we can't know if they were canceled?
 
 	wStat := req.GetWorkerStatus()
+	if wStat == nil {
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Worker sent nil status.")
+	}
 	switch {
-	case wStat.GetName() == "":
-		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name is not set in the request but is required.")
+	case wStat.GetName() == "" && wStat.GetKeyId() == "":
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; at least one is required.")
 	case wStat.GetAddress() == "":
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Address is not set but is required.")
 	}
@@ -85,10 +88,13 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		})
 	}
 
+	wKeyId := wStat.GetKeyId()
+
 	wConf := servers.NewWorkerForStatus(scope.Global.String(),
 		servers.WithName(wStat.GetName()),
 		servers.WithAddress(wStat.GetAddress()),
-		servers.WithWorkerTags(workerTags...))
+		servers.WithWorkerTags(workerTags...),
+		servers.WithKeyId(wKeyId))
 	opts := []servers.Option{servers.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
 		opts = append(opts, servers.WithPublicId(wStat.GetPublicId()))
@@ -221,10 +227,24 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 		}
-		w, err := serversRepo.LookupWorkerByWorkerReportedName(ctx, req.GetServerId())
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by name", "name", req.ServerId))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
+		var w *servers.Worker
+		if req.WorkerKeyId != "" {
+			workerId, err := serversRepo.LookupWorkerIdByWorkerReportedKeyId(ctx, req.WorkerKeyId)
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by keyId", "keyId", req.WorkerKeyId))
+				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
+			}
+			w, err = serversRepo.LookupWorker(ctx, workerId)
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by workerId", "workerId", workerId))
+				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
+			}
+		} else {
+			w, err = serversRepo.LookupWorkerByWorkerReportedName(ctx, req.GetServerId())
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by name", "name", req.ServerId))
+				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
+			}
 		}
 		// Build the map for filtering.
 		tagMap := w.CanonicalTags()

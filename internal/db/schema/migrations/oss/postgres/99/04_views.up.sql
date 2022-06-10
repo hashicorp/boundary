@@ -42,7 +42,7 @@ from server_worker w
   left join worker_config_tags ct on
       w.public_id = ct.worker_id and ct.source = 'configuration'
   left join connection_count as cc on
-    w.public_id = cc.worker_id;
+      w.public_id = cc.worker_id;
 comment on view server_worker_aggregate is
   'server_worker_aggregate contains the worker resource with its worker provided config values and its configuration and api provided tags.';
 

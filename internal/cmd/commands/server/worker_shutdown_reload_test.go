@@ -25,7 +25,7 @@ import (
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
-const shutdownReloadWorkerConfig = `
+const shutdownReloadWorkerProvidedConfiguration = `
 disable_mlock = true
 
 worker {
@@ -58,7 +58,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 
 	// Start the worker
 	workerCmd := testServerCommand(t, testServerCommandOpts{})
-	workerCmd.presetConfig = atomic.NewString(fmt.Sprintf(shutdownReloadWorkerConfig, testController.ClusterAddrs()[0], key))
+	workerCmd.presetConfig = atomic.NewString(fmt.Sprintf(shutdownReloadWorkerProvidedConfiguration, testController.ClusterAddrs()[0], key))
 
 	workerCodeChan := make(chan int)
 	go func() {

@@ -23,4 +23,7 @@ message ServerWorkerStatus {
 
   // Tags for workers
   repeated TagPair tags = 40;
+
+  // The key id for this worker, if applicable (optional)
+  string key_id = 50;
 }

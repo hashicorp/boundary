@@ -86,7 +86,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 			}
 			return nil, newTempError(fmt.Errorf("error deriving key id from newly-authenticated node: %w", err))
 		}
-		event.WriteSysEvent(ctx, op, "worker successfully authed", "key_id", keyId)
+		event.WriteSysEvent(ctx, op, "worker successfully authenticated", "key_id", keyId)
 		return conn, nil
 
 	case strings.HasPrefix(tlsConn.ConnectionState().NegotiatedProtocol, "v1workerauth"):

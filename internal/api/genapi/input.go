@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -32,6 +33,12 @@ type structureInfo struct {
 	pkg    string
 	name   string
 	fields []fieldInfo
+}
+
+type requiredParam struct {
+	Name     string
+	Typ      string
+	PostType string
 }
 
 type fieldInfo struct {
@@ -87,9 +94,8 @@ type structInfo struct {
 	// useful to avoid collisions
 	nameOverride string
 
-	// typeOnCreate indicates that create will be creating a concrete
-	// implementation of an abstract type and thus a type field is necessary
-	typeOnCreate bool
+	// extraRequiredParams allows adding extra required parameters to templates
+	extraRequiredParams []requiredParam
 
 	// recursiveListing indicates that the collection supports recursion when
 	// listing
@@ -149,7 +155,7 @@ var inputStructs = []*structInfo{
 		outFile: "scopes/scope.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -185,7 +191,7 @@ var inputStructs = []*structInfo{
 		outFile: "users/user.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -213,7 +219,7 @@ var inputStructs = []*structInfo{
 		outFile: "groups/group.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -251,7 +257,7 @@ var inputStructs = []*structInfo{
 		outFile: "roles/role.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -293,14 +299,20 @@ var inputStructs = []*structInfo{
 		outFile: "authmethods/authmethods.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName:  "auth-methods",
-		typeOnCreate:        true,
+		pluralResourceName: "auth-methods",
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -321,7 +333,7 @@ var inputStructs = []*structInfo{
 		outFile: "accounts/account.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -349,7 +361,7 @@ var inputStructs = []*structInfo{
 		outFile: "managedgroups/managedgroups.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -385,15 +397,21 @@ var inputStructs = []*structInfo{
 		outFile: "credentialstores/credential_store.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName:  "credential-stores",
-		parentTypeName:      "scope",
-		typeOnCreate:        true,
+		pluralResourceName: "credential-stores",
+		parentTypeName:     "scope",
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -424,7 +442,7 @@ var inputStructs = []*structInfo{
 		outFile: "credentiallibraries/credential_library.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -446,15 +464,21 @@ var inputStructs = []*structInfo{
 		outFile: "credentialstores/credential_store.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName:  "credential-stores",
-		parentTypeName:      "scope",
-		typeOnCreate:        true,
+		pluralResourceName: "credential-stores",
+		parentTypeName:     "scope",
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -485,7 +509,7 @@ var inputStructs = []*structInfo{
 		outFile: "credentiallibraries/credential_library.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -502,7 +526,7 @@ var inputStructs = []*structInfo{
 		outFile: "hostcatalogs/host_catalog.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -523,8 +547,14 @@ var inputStructs = []*structInfo{
 				SkipDefault: true,
 			},
 		},
-		pluralResourceName:  "host-catalogs",
-		typeOnCreate:        true,
+		pluralResourceName: "host-catalogs",
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -534,7 +564,7 @@ var inputStructs = []*structInfo{
 		outFile: "hosts/host.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -555,7 +585,7 @@ var inputStructs = []*structInfo{
 		outFile: "hostsets/host_set.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -622,7 +652,7 @@ var inputStructs = []*structInfo{
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			createTemplate,
+			commonCreateTemplate,
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -676,8 +706,14 @@ var inputStructs = []*structInfo{
 				FieldType: "[]string",
 			},
 		},
-		versionEnabled:      true,
-		typeOnCreate:        true,
+		versionEnabled: true,
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "resourceType",
+				Typ:      "string",
+				PostType: "type",
+			},
+		},
 		createResponseTypes: true,
 		recursiveListing:    true,
 	},
@@ -701,5 +737,42 @@ var inputStructs = []*structInfo{
 		createResponseTypes: true,
 		fieldFilter:         []string{"private_key"},
 		recursiveListing:    true,
+	},
+	{
+		inProto: &workers.WorkerProvidedConfiguration{},
+		outFile: "workers/worker_provided_configuration.gen.go",
+	},
+	{
+		inProto: &workers.Worker{},
+		outFile: "workers/worker.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "CreateWorkerLed"
+					},
+					"apiAction": func() string {
+						return ":create:worker-led"
+					},
+				},
+			).Parse(createTemplateStr)),
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		extraRequiredParams: []requiredParam{
+			{
+				Name:     "workerGeneratedAuthToken",
+				Typ:      "string",
+				PostType: "worker_generated_auth_token",
+			},
+		},
+		pluralResourceName:  "workers",
+		createResponseTypes: true,
+		recursiveListing:    true,
+		versionEnabled:      true,
 	},
 }

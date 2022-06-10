@@ -10,8 +10,8 @@ import "google/protobuf/wrappers.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers;workers";
 
-// WorkerConfig contains configuration values reported by the worker daemon.
-message WorkerConfig {
+// WorkerProvidedConfiguration contains configuration values reported by the worker daemon.
+message WorkerProvidedConfiguration {
   // Output only.  The address the worker daemon reports itself as reachable at.
   string address = 10;
 
@@ -73,7 +73,7 @@ message Worker {
   // Output only.  This is the address used by authorized session.  The value
   // is the same as the address field if set. Otherwise it uses the address the
   // worker reports.
-  string canonical_address = 100; // @gotags: `class:"public"`
+  string canonical_address = 100 [json_name = "canonical_address"]; // @gotags: `class:"public"`
 
   // Output only. The tags attached to this worker.
   map<string, google.protobuf.ListValue> tags = 110; // @gotags: `class:"public"`
@@ -81,20 +81,20 @@ message Worker {
   // Output only. The deduplicated union of the tags reported by the worker and
   // the tags added through the user facing api.  This is used when applying
   // worker filters.
-  map<string, google.protobuf.ListValue> canonical_tags = 120; // @gotags: `class:"public"`
+  map<string, google.protobuf.ListValue> canonical_tags = 120 [json_name = "canonical_tags"]; // @gotags: `class:"public"`
 
   // Output only. The time this worker daemon last reported its status.
   google.protobuf.Timestamp last_status_time = 130 [json_name = "last_status_time"]; // @gotags: `class:"public"`
 
   // Output only. The set of information the worker daemon has reported about
   // itself.
-  WorkerConfig worker_config = 140 [json_name = "worker_config"];
+  WorkerProvidedConfiguration worker_provided_configuration = 140 [json_name = "worker_provided_configuration"];
 
-  // worker_auth_token is input only. Supports the worker led node
+  // worker_generated_auth_token is input only. Supports the worker led node
   // enrollment flow where this credentials token is produced by a worker. This
   // token is a base58 encoded types.FetchNodeCredentialsRequest from
   // https://github.com/hashicorp/nodeenrollment
-  google.protobuf.StringValue worker_auth_token = 150 [json_name = "worker_auth_token"]; // @gotags: `class:"public"`
+  google.protobuf.StringValue worker_generated_auth_token = 150 [json_name = "worker_generated_auth_token"]; // @gotags: `class:"public"`
 
   // Output only. The number of connections that this worker is currently handling.
   uint32 active_connection_count = 160 [json_name = "active_connection_count"]; // @gotags: `class:"public"`

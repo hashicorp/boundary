@@ -3,21 +3,23 @@ package worker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
-
-	"github.com/hashicorp/boundary/internal/servers"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/resolver"
 )
 
 type LastStatusInformation struct {
 	*pbs.StatusResponse
-	StatusTime time.Time
+	StatusTime              time.Time
+	LastCalculatedUpstreams []string
 }
 
 func (w *Worker) startStatusTicking(cancelCtx context.Context) {
@@ -95,6 +97,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	// any session information anyways and this will produce a ton of noise in
 	// observability, so suppress it
 	if !w.everAuthenticated.Load() {
+		event.WriteSysEvent(cancelCtx, op, "worker is not authenticated to an upstream, not sending status")
 		return
 	}
 
@@ -144,12 +147,20 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	statusCtx, statusCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
 	defer statusCancel()
 
+	keyId := w.WorkerAuthCurrentKeyId.Load()
+
+	if w.conf.RawConfig.Worker.Name == "" && keyId == "" {
+		event.WriteError(statusCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
+			event.WithInfoMsg("error making status request to controller"))
+	}
+
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		WorkerStatus: &servers.ServerWorkerStatus{
 			Name:    w.conf.RawConfig.Worker.Name,
 			Address: w.conf.RawConfig.Worker.PublicAddr,
 			Tags:    tags,
+			KeyId:   keyId,
 		},
 		UpdateTags: w.updateTags.Load(),
 	})
@@ -190,14 +201,26 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	} else {
 		w.updateTags.Store(false)
 		// This may be nil if we are in a multiple hop scenario
+		var addrs []resolver.Address
+		var newUpstreams []string
 		if len(result.CalculatedUpstreams) > 0 {
-			addrs := make([]resolver.Address, 0, len(result.CalculatedUpstreams))
+			addrs = make([]resolver.Address, 0, len(result.CalculatedUpstreams))
 			for _, v := range result.CalculatedUpstreams {
 				addrs = append(addrs, resolver.Address{Addr: v.Address})
+				newUpstreams = append(newUpstreams, v.Address)
 			}
-			w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+			lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
+			// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
+			if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, newUpstreams) {
+				upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, newUpstreams)
+				event.WriteSysEvent(context.TODO(), op, upstreamsMessage)
+				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+			} else if lastStatus == nil {
+				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+				event.WriteSysEvent(context.TODO(), op, fmt.Sprintf("Upstreams after first status set to: %s", newUpstreams))
+			}
 		}
-		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
+		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: newUpstreams})
 
 		for _, request := range result.GetJobsRequests() {
 			switch request.GetRequestType() {
