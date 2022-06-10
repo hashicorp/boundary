@@ -106,8 +106,9 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 
 	// Store CA with old version, expect error
 	badVersion := &rootCertificatesVersion{Version: uint32(1)}
-	badStateOpt := structs.Map(badVersion)
-	badState, err := structpb.NewStruct(badStateOpt)
+	s := structs.New(badVersion)
+	s.TagName = "mapstructure"
+	badState, err := structpb.NewStruct(s.Map())
 	require.NoError(err)
 	newRoots2 := &types.RootCertificates{
 		Id:      ca_id,
@@ -121,8 +122,9 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 	// Remove CA, expect updated version
 	cAuthRemove := &types.RootCertificates{Id: ca_id}
 	removeVersion := &rootCertificatesVersion{Version: uint32(2)}
-	removeOpt := structs.Map(removeVersion)
-	removeState, err := structpb.NewStruct(removeOpt)
+	s = structs.New(removeVersion)
+	s.TagName = "mapstructure"
+	removeState, err := structpb.NewStruct(s.Map())
 	require.NoError(err)
 	cAuthRemove.State = removeState
 	err = workerAuthRepo.Remove(ctx, cAuthRemove)

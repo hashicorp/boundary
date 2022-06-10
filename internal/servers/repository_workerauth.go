@@ -31,7 +31,7 @@ var (
 )
 
 type rootCertificatesVersion struct {
-	Version uint32 `mapstructure:"version" structs:"version"`
+	Version uint32 `mapstructure:"version"`
 }
 
 // WorkerAuthRepositoryStorage is the Worker Auth database repository
@@ -398,8 +398,9 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	}
 
 	workerIdInfo := workerAuthWorkerId{WorkerId: authorizedWorker.GetWorkerId()}
-	workerIdMap := structs.Map(workerIdInfo)
-	state, err := structpb.NewStruct(workerIdMap)
+	s := structs.New(workerIdInfo)
+	s.TagName = "mapstructure"
+	state, err := structpb.NewStruct(s.Map())
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
