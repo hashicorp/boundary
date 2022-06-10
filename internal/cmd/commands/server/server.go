@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -328,6 +329,14 @@ func (c *Command) Run(args []string) int {
 					c.UI.Error(fmt.Sprintf("Controller address %q is invalid: cannot be %s address", controller, errMsg))
 					return base.CommandUserError
 				}
+			}
+		}
+
+		if c.Config.HCPBClusterId != "" {
+			_, err := uuid.ParseUUID(c.Config.HCPBClusterId)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Invalid HCPB cluster id %q: %w", c.Config.HCPBClusterId, err).Error())
+				return base.CommandUserError
 			}
 		}
 	}
