@@ -2255,12 +2255,14 @@ func TestAddTargetCredentialSources(t *testing.T) {
 		tar             target.Target
 		addSources      []string
 		resultSourceIds []string
+		resultLibIds    []string
 	}{
 		{
 			name:            "Add library on empty target",
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty for lib sources"),
 			addSources:      []string{cls[1].GetPublicId()},
 			resultSourceIds: []string{cls[1].GetPublicId()},
+			resultLibIds:    []string{cls[1].GetPublicId()},
 		},
 		{
 			name:            "Add static cred on empty target",
@@ -2273,18 +2275,21 @@ func TestAddTargetCredentialSources(t *testing.T) {
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{cls[1].GetPublicId()},
 			resultSourceIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
+			resultLibIds:    []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 		{
 			name:            "Add library on static cred populated target",
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for lib-static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{cls[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), cls[1].GetPublicId()},
+			resultLibIds:    []string{cls[1].GetPublicId()},
 		},
 		{
 			name:            "Add static cred on library populated target",
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated for static-lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{creds[1].GetPublicId()},
 			resultSourceIds: []string{cls[0].GetPublicId(), creds[1].GetPublicId()},
+			resultLibIds:    []string{cls[0].GetPublicId()},
 		},
 		{
 			name:            "Add static cred on static cred populated target",
@@ -2297,12 +2302,14 @@ func TestAddTargetCredentialSources(t *testing.T) {
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for lib sources", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId(), creds[1].GetPublicId()},
 			resultSourceIds: []string{cls[0].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId()},
+			resultLibIds:    []string{cls[0].GetPublicId(), cls[1].GetPublicId()},
 		},
 		{
 			name:            "Add duplicated sources on static cred populated target",
 			tar:             tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicated for static sources", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
 			addSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId(), creds[1].GetPublicId()},
 			resultSourceIds: []string{creds[0].GetPublicId(), cls[1].GetPublicId(), creds[1].GetPublicId()},
+			resultLibIds:    []string{cls[1].GetPublicId()},
 		},
 	}
 
@@ -2318,8 +2325,10 @@ func TestAddTargetCredentialSources(t *testing.T) {
 			require.NoError(t, err, "Got error: %v", s)
 
 			assert.ElementsMatch(t, tc.resultSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
-
 			assert.Equal(t, len(tc.resultSourceIds), len(got.GetItem().GetApplicationCredentialSources()))
+
+			assert.ElementsMatch(t, tc.resultLibIds, got.GetItem().GetApplicationCredentialLibraryIds())
+			assert.Equal(t, len(tc.resultLibIds), len(got.GetItem().GetApplicationCredentialLibraries()))
 		})
 	}
 
@@ -2409,6 +2418,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 		tar                       target.Target
 		setCredentialSources      []string
 		resultCredentialSourceIds []string
+		resultCredentialLibIds    []string
 		resultCredentialSources   []*pb.CredentialLibrary
 	}{
 		{
@@ -2416,6 +2426,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "empty library"),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
+			resultCredentialLibIds:    []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set static on empty target",
@@ -2428,6 +2439,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
+			resultCredentialLibIds:    []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set static on library populated target",
@@ -2440,6 +2452,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "populated library-static", target.WithStaticCredentials([]*target.StaticCredential{target.TestNewStaticCredential("", creds[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
+			resultCredentialLibIds:    []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set static on static populated target",
@@ -2452,6 +2465,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 			tar:                       tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "duplicate library", target.WithCredentialLibraries([]*target.CredentialLibrary{target.TestNewCredentialLibrary("", cls[0].GetPublicId(), credential.ApplicationPurpose)})),
 			setCredentialSources:      []string{cls[1].GetPublicId(), cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[1].GetPublicId()},
+			resultCredentialLibIds:    []string{cls[1].GetPublicId()},
 		},
 		{
 			name:                      "Set duplicate static on populated target",
@@ -2490,6 +2504,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 				assert.Empty(t, cmp.Diff(tc.resultCredentialSources, got.GetItem().GetApplicationCredentialSourceIds(), protocmp.Transform()))
 			} else {
 				assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetApplicationCredentialSourceIds()))
+				assert.Equal(t, len(tc.resultCredentialLibIds), len(got.GetItem().GetApplicationCredentialLibraryIds()))
 			}
 		})
 	}
@@ -2568,6 +2583,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 		tar                       target.Target
 		removeCredentialSources   []string
 		resultCredentialSourceIds []string
+		resultCredentialLibIds    []string
 		wantErr                   bool
 	}{
 		{
@@ -2591,6 +2607,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				})),
 			removeCredentialSources:   []string{cls[1].GetPublicId()},
 			resultCredentialSourceIds: []string{cls[0].GetPublicId()},
+			resultCredentialLibIds:    []string{cls[0].GetPublicId()},
 		},
 		{
 			name: "Remove 1 of 2 static credentials",
@@ -2613,6 +2630,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				cls[1].GetPublicId(), cls[1].GetPublicId(),
 			},
 			resultCredentialSourceIds: []string{cls[0].GetPublicId()},
+			resultCredentialLibIds:    []string{cls[0].GetPublicId()},
 		},
 		{
 			name: "Remove 1 duplicate set of 2 static credentials",
@@ -2643,6 +2661,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 			resultCredentialSourceIds: []string{
 				cls[0].GetPublicId(), creds[1].GetPublicId(),
 			},
+			resultCredentialLibIds: []string{cls[0].GetPublicId()},
 		},
 		{
 			name: "Remove all sources from target",

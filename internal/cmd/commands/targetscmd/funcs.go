@@ -702,23 +702,6 @@ func printItemTable(result api.GenericResult) string {
 	}
 
 	var credentialSourceMaps map[credential.Purpose][]map[string]interface{}
-	if len(item.ApplicationCredentialSources) > 0 {
-		if credentialSourceMaps == nil {
-			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
-		}
-		var applicationCredentialSourceMaps []map[string]interface{}
-		for _, lib := range item.ApplicationCredentialSources {
-			m := map[string]interface{}{
-				"ID":                  lib.Id,
-				"Credential Store ID": lib.CredentialStoreId,
-			}
-			applicationCredentialSourceMaps = append(applicationCredentialSourceMaps, m)
-		}
-		credentialSourceMaps[credential.ApplicationPurpose] = applicationCredentialSourceMaps
-		if l := len("Credential Store ID"); l > maxLength {
-			maxLength = l
-		}
-	}
 	if len(item.ApplicationCredentialLibraries) > 0 {
 		if credentialSourceMaps == nil {
 			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
@@ -732,6 +715,40 @@ func printItemTable(result api.GenericResult) string {
 			applicationCredentialSourceMaps = append(applicationCredentialSourceMaps, m)
 		}
 		credentialSourceMaps[credential.ApplicationPurpose] = applicationCredentialSourceMaps
+		if l := len("Credential Store ID"); l > maxLength {
+			maxLength = l
+		}
+	}
+	if len(item.ApplicationCredentialSources) > 0 {
+		if credentialSourceMaps == nil {
+			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
+		}
+		var applicationCredentialSourceMaps []map[string]interface{}
+		for _, source := range item.ApplicationCredentialSources {
+			m := map[string]interface{}{
+				"ID":                  source.Id,
+				"Credential Store ID": source.CredentialStoreId,
+			}
+			applicationCredentialSourceMaps = append(applicationCredentialSourceMaps, m)
+		}
+		credentialSourceMaps[credential.ApplicationPurpose] = applicationCredentialSourceMaps
+		if l := len("Credential Store ID"); l > maxLength {
+			maxLength = l
+		}
+	}
+	if len(item.EgressCredentialSources) > 0 {
+		if credentialSourceMaps == nil {
+			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
+		}
+		var egressCredentialSourceMaps []map[string]interface{}
+		for _, source := range item.EgressCredentialSources {
+			m := map[string]interface{}{
+				"ID":                  source.Id,
+				"Credential Store ID": source.CredentialStoreId,
+			}
+			egressCredentialSourceMaps = append(egressCredentialSourceMaps, m)
+		}
+		credentialSourceMaps[credential.EgressPurpose] = egressCredentialSourceMaps
 		if l := len("Credential Store ID"); l > maxLength {
 			maxLength = l
 		}
@@ -775,17 +792,22 @@ func printItemTable(result api.GenericResult) string {
 		}
 	}
 
-	if len(credentialSourceMaps) > 0 {
-		if appMap := credentialSourceMaps[credential.ApplicationPurpose]; len(appMap) > 0 {
+	for purpose, sources := range credentialSourceMaps {
+		switch purpose {
+		case credential.ApplicationPurpose:
 			ret = append(ret,
 				"  Application Credential Sources:",
 			)
-			for _, m := range appMap {
-				ret = append(ret,
-					base.WrapMap(4, maxLength, m),
-					"",
-				)
-			}
+		case credential.EgressPurpose:
+			ret = append(ret,
+				"  Egress Credential Sources:",
+			)
+		}
+		for _, m := range sources {
+			ret = append(ret,
+				base.WrapMap(4, maxLength, m),
+				"",
+			)
 		}
 	}
 
@@ -951,8 +973,8 @@ func exampleOutput() string {
 				HostCatalogId: "hcst_1234567890",
 			},
 		},
-		ApplicationCredentialLibraryIds: []string{"clvlt_1234567890", "clvlt_0987654321"},
-		ApplicationCredentialLibraries: []*targets.CredentialLibrary{
+		ApplicationCredentialSourceIds: []string{"clvlt_1234567890", "clvlt_0987654321"},
+		ApplicationCredentialSources: []*targets.CredentialSource{
 			{
 				Id:                "clvlt_1234567890",
 				CredentialStoreId: "csvlt_1234567890",

@@ -1626,45 +1626,60 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 			})
 		}
 	}
-	if outputFields.Has(globals.ApplicationCredentialLibraryIdsField) {
-		for _, cs := range credSources {
-			out.ApplicationCredentialLibraryIds = append(out.ApplicationCredentialLibraryIds, cs.Id())
+
+	var appCredSources, egressCredSources []*pb.CredentialSource
+	var appCredSourceIds, egressCredSourceIds []string
+	var appCredLibraries []*pb.CredentialLibrary
+	var appCredLibIds []string
+
+	for _, cs := range credSources {
+		switch cs.CredentialPurpose() {
+		case credential.ApplicationPurpose:
+			appCredSources = append(appCredSources, &pb.CredentialSource{
+				Id:                cs.Id(),
+				CredentialStoreId: cs.CredentialStoreId(),
+			})
+			appCredSourceIds = append(appCredSourceIds, cs.Id())
+
+			// ApplicationCredentialLibrariesField is deprecated and should only be populated
+			// for library type sources
+			if cs.Type() == "library" {
+				appCredLibraries = append(appCredLibraries, &pb.CredentialLibrary{
+					Id:                cs.Id(),
+					CredentialStoreId: cs.CredentialStoreId(),
+				})
+				appCredLibIds = append(appCredLibIds, cs.Id())
+			}
+
+		case credential.EgressPurpose:
+			egressCredSources = append(egressCredSources, &pb.CredentialSource{
+				Id:                cs.Id(),
+				CredentialStoreId: cs.CredentialStoreId(),
+			})
+			egressCredSourceIds = append(egressCredSourceIds, cs.Id())
+
+		default:
+			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential source on target", cs.CredentialPurpose()))
 		}
+	}
+
+	if outputFields.Has(globals.ApplicationCredentialLibraryIdsField) {
+		out.ApplicationCredentialLibraryIds = appCredLibIds
 	}
 	if outputFields.Has(globals.ApplicationCredentialSourceIdsField) {
-		for _, cs := range credSources {
-			out.ApplicationCredentialSourceIds = append(out.ApplicationCredentialSourceIds, cs.Id())
-		}
+		out.ApplicationCredentialSourceIds = appCredSourceIds
 	}
 	if outputFields.Has(globals.ApplicationCredentialLibrariesField) {
-		for _, cs := range credSources {
-			switch cs.CredentialPurpose() {
-			case credential.ApplicationPurpose:
-				out.ApplicationCredentialLibraries = append(out.ApplicationCredentialLibraries, &pb.CredentialLibrary{
-					Id:                cs.Id(),
-					CredentialStoreId: cs.CredentialStoreId(),
-				})
-			case credential.IngressPurpose, credential.EgressPurpose:
-				// TODO: When we support other purposes add them to different fields here.
-			default:
-				return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential source on target", cs.CredentialPurpose()))
-			}
-		}
+		out.ApplicationCredentialLibraries = appCredLibraries
 	}
 	if outputFields.Has(globals.ApplicationCredentialSourcesField) {
-		for _, cs := range credSources {
-			switch cs.CredentialPurpose() {
-			case credential.ApplicationPurpose:
-				out.ApplicationCredentialSources = append(out.ApplicationCredentialSources, &pb.CredentialSource{
-					Id:                cs.Id(),
-					CredentialStoreId: cs.CredentialStoreId(),
-				})
-			case credential.IngressPurpose, credential.EgressPurpose:
-				// TODO: When we support other purposes add them to different fields here.
-			default:
-				return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential source on target", cs.CredentialPurpose()))
-			}
-		}
+		out.ApplicationCredentialSources = appCredSources
+	}
+	if outputFields.Has(globals.EgressCredentialSourceIdsField) {
+		out.EgressCredentialSourceIds = egressCredSourceIds
+	}
+	if outputFields.Has(globals.EgressCredentialSourcesField) {
+		out.EgressCredentialSources = egressCredSources
 	}
 	if outputFields.Has(globals.AttributesField) {
 		if err := subtypeRegistry.setAttributes(in.GetType(), in, &out); err != nil {
