@@ -251,7 +251,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	// TODO: the RunJobsLimit is temporary until a better fix gets in. This
 	// currently caps the scheduler at running 10 jobs per interval.
-	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(10)}
+	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(20)}
 	if c.conf.RawConfig.Controller.SchedulerRunJobInterval > 0 {
 		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.SchedulerRunJobInterval))
 	}
@@ -361,12 +361,9 @@ func (c *Controller) registerJobs() error {
 	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
-	// FIXME: This needs to get fixed before merge
-	/*
-		if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.StatusGracePeriodDuration); err != nil {
-			return err
-		}
-	*/
+	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.StatusGracePeriodDuration); err != nil {
+		return err
+	}
 	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
 		return err
 	}
