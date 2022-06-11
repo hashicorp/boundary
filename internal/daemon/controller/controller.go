@@ -247,9 +247,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)
 	}
-	// TODO: the RunJobsLimit is temporary until a better fix gets in. This
-	// currently caps the scheduler at running 10 jobs per interval.
-	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(10)}
+	// TODO: Allow setting run jobs limit from config
+	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
 	if c.conf.RawConfig.Controller.SchedulerRunJobInterval > 0 {
 		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.SchedulerRunJobInterval))
 	}
