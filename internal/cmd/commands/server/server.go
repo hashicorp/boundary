@@ -546,19 +546,19 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		c.UI.Error("Neither worker nor controller specified in configuration file.")
 		return base.CommandUserError
 	}
-	//if c.Config.Controller != nil && c.Config.Controller.Name == "" {
-	//	c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
-	//	return base.CommandUserError
-	//}
+	if c.Config.Controller != nil && c.Config.Controller.Name == "" {
+		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
+		return base.CommandUserError
+	}
 	if c.Config.Worker != nil {
 		if c.Config.Worker.Name == "" {
 			c.UI.Error("Worker has no name set. It must be the unique name of this instance.")
 			return base.CommandUserError
 		}
-		if c.Config.Worker.AuthStoragePath == "" {
-			c.UI.Error("No worker auth KMS specified and no worker auth storage path specified.")
-			return base.CommandUserError
-		}
+		//if c.Config.Worker.AuthStoragePath == "" {
+		//	c.UI.Error("No worker auth KMS specified and no worker auth storage path specified.")
+		//	return base.CommandUserError
+		//}
 	}
 
 	return base.CommandSuccess
