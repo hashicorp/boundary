@@ -166,7 +166,7 @@ type TestWorkerOpts struct {
 	Config *config.Config
 
 	// Sets initial upstream addresses
-	InitialUpstreams []string
+	InitialUpstreamsRaw []string
 
 	// If true, the worker will not be started
 	DisableAutoStart bool
@@ -233,8 +233,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		opts.Config.Worker.Name = opts.Name
 	}
 
-	if len(opts.InitialUpstreams) > 0 {
-		opts.Config.Worker.Upstreams = opts.InitialUpstreams
+	if len(opts.InitialUpstreamsRaw) > 0 {
+		opts.Config.Worker.InitialUpstreams = opts.InitialUpstreamsRaw
 	}
 
 	// Start a logger
@@ -325,7 +325,7 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		WorkerAuthKms:             tw.w.conf.WorkerAuthKms,
 		WorkerAuthStorageKms:      tw.w.conf.WorkerAuthStorageKms,
 		Name:                      opts.Name,
-		InitialUpstreams:          tw.UpstreamAddrs(),
+		InitialUpstreamsRaw:       tw.UpstreamAddrs(),
 		Logger:                    tw.w.conf.Logger,
 		StatusGracePeriodDuration: opts.StatusGracePeriodDuration,
 	}

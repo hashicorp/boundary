@@ -37,9 +37,9 @@ func TestWorkerReplay(t *testing.T) {
 	conf.Eventing = &ec.EventerConfig
 	require.NoError(t, err)
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:           conf,
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
+		Config:              conf,
+		WorkerAuthKms:       c1.Config().WorkerAuthKms,
+		InitialUpstreamsRaw: c1.ClusterAddrs(),
 		NonceFn: func(length int) (string, error) {
 			return "test_noncetest_nonce", nil
 		},
@@ -63,9 +63,9 @@ func TestWorkerReplay(t *testing.T) {
 
 	// Now, start up again with the same nonce
 	w1 = worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:           conf,
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
+		Config:              conf,
+		WorkerAuthKms:       c1.Config().WorkerAuthKms,
+		InitialUpstreamsRaw: c1.ClusterAddrs(),
 		NonceFn: func(length int) (string, error) {
 			return "test_noncetest_nonce", nil
 		},

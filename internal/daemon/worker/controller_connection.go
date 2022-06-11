@@ -41,8 +41,8 @@ const hcpbUrlSuffix = ".proxy.boundary.hashicorp.cloud"
 // connection client creation
 func (w *Worker) StartControllerConnections() error {
 	const op = "worker.(Worker).StartControllerConnections"
-	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.Upstreams))
-	for _, addr := range w.conf.RawConfig.Worker.Upstreams {
+	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.InitialUpstreams))
+	for _, addr := range w.conf.RawConfig.Worker.InitialUpstreams {
 		switch {
 		case strings.HasPrefix(addr, "/"):
 			initialAddrs = append(initialAddrs, resolver.Address{Addr: addr})

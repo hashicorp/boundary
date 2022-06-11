@@ -190,10 +190,10 @@ func TestDevWorker(t *testing.T) {
 			},
 		},
 		Worker: &Worker{
-			Name:             "w_1234567890",
-			Description:      "A default worker created in dev mode",
-			Upstreams:        []string{"127.0.0.1"},
-			InitialUpstreams: []interface{}{"127.0.0.1"},
+			Name:                "w_1234567890",
+			Description:         "A default worker created in dev mode",
+			InitialUpstreams:    []string{"127.0.0.1"},
+			InitialUpstreamsRaw: []interface{}{"127.0.0.1"},
 			Tags: map[string][]string{
 				"type": {"dev", "local"},
 			},
@@ -376,10 +376,10 @@ func TestDevCombined(t *testing.T) {
 		},
 		DevController: true,
 		Worker: &Worker{
-			Name:             "w_1234567890",
-			Description:      "A default worker created in dev mode",
-			Upstreams:        []string{"127.0.0.1"},
-			InitialUpstreams: []interface{}{"127.0.0.1"},
+			Name:                "w_1234567890",
+			Description:         "A default worker created in dev mode",
+			InitialUpstreams:    []string{"127.0.0.1"},
+			InitialUpstreamsRaw: []interface{}{"127.0.0.1"},
 			Tags: map[string][]string{
 				"type": {"dev", "local"},
 			},
@@ -1183,7 +1183,8 @@ func TestWorkerUpstreams(t *testing.T) {
 				initial_upstreams = ["127.0.0.1"]
 			}`,
 			expWorkerUpstreams: []string{"127.0.0.1"},
-			expErr:             false,
+			expErr:             true,
+			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated, but values are different",
 		},
 	}
 
@@ -1207,7 +1208,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, c)
 			require.NotNil(t, c.Worker)
-			require.EqualValues(t, tt.expWorkerUpstreams, c.Worker.Upstreams)
+			require.EqualValues(t, tt.expWorkerUpstreams, c.Worker.InitialUpstreams)
 		})
 	}
 }

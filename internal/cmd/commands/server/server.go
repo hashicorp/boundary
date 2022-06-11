@@ -264,6 +264,9 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
 			return base.CommandUserError
 		}
+		if c.Config.Worker.ControllersRaw != nil {
+			c.UI.Warn("The \"controllers\" field for worker config is deprecated. Please migrate to \"initial_upstreams\".")
+		}
 
 		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
 			c.UI.Error(err.Error())
@@ -273,25 +276,25 @@ func (c *Command) Run(args []string) int {
 		c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
 
 		if c.Config.Controller != nil {
-			switch len(c.Config.Worker.Upstreams) {
+			switch len(c.Config.Worker.InitialUpstreams) {
 			case 0:
 				if c.Config.Controller.PublicClusterAddr != "" {
 					clusterAddr = c.Config.Controller.PublicClusterAddr
 				}
-				c.Config.Worker.Upstreams = []string{clusterAddr}
+				c.Config.Worker.InitialUpstreams = []string{clusterAddr}
 			case 1:
-				if c.Config.Worker.Upstreams[0] == clusterAddr {
+				if c.Config.Worker.InitialUpstreams[0] == clusterAddr {
 					break
 				}
 				if c.Config.Controller.PublicClusterAddr != "" &&
-					c.Config.Worker.Upstreams[0] == c.Config.Controller.PublicClusterAddr {
+					c.Config.Worker.InitialUpstreams[0] == c.Config.Controller.PublicClusterAddr {
 					break
 				}
 				// Best effort see if it's a domain name and if not assume it must match
-				host, _, err := net.SplitHostPort(c.Config.Worker.Upstreams[0])
+				host, _, err := net.SplitHostPort(c.Config.Worker.InitialUpstreams[0])
 				if err != nil && strings.Contains(err.Error(), "missing port in address") {
 					err = nil
-					host = c.Config.Worker.Upstreams[0]
+					host = c.Config.Worker.InitialUpstreams[0]
 				}
 				if err == nil {
 					ip := net.ParseIP(host)
@@ -306,7 +309,7 @@ func (c *Command) Run(args []string) int {
 				return base.CommandUserError
 			}
 		}
-		for _, upstream := range c.Config.Worker.Upstreams {
+		for _, upstream := range c.Config.Worker.InitialUpstreams {
 			host, _, err := net.SplitHostPort(upstream)
 			if err != nil {
 				if strings.Contains(err.Error(), "missing port in address") {
@@ -543,10 +546,10 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 		c.UI.Error("Neither worker nor controller specified in configuration file.")
 		return base.CommandUserError
 	}
-	if c.Config.Controller != nil && c.Config.Controller.Name == "" {
-		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
-		return base.CommandUserError
-	}
+	//if c.Config.Controller != nil && c.Config.Controller.Name == "" {
+	//	c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
+	//	return base.CommandUserError
+	//}
 	if c.Config.Worker != nil {
 		if c.Config.Worker.Name == "" {
 			c.UI.Error("Worker has no name set. It must be the unique name of this instance.")

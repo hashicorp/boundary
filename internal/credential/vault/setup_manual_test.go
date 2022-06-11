@@ -91,10 +91,10 @@ func TestSetupSleepyDevEnvironment(t *testing.T) {
 		"foo":    {"bar"},
 	}
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:           conf,
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
-		Logger:           logger.Named("w1"),
+		Config:              conf,
+		WorkerAuthKms:       c1.Config().WorkerAuthKms,
+		InitialUpstreamsRaw: c1.ClusterAddrs(),
+		Logger:              logger.Named("w1"),
 	})
 	defer w1.Shutdown()
 	addr := c1.ApiAddrs()[0]

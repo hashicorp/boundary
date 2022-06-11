@@ -520,9 +520,6 @@ func (c *InitCommand) ParseFlagsAndConfig(args []string) int {
 		c.UI.Error("Error parsing config: " + err.Error())
 		return base.CommandUserError
 	}
-	if c.Config.Worker.ControllersRaw != nil {
-		c.UI.Warn("The \"controllers\" field for worker config is deprecated. Please migrate to \"initial_upstreams\".")
-	}
 
 	return base.CommandSuccess
 }

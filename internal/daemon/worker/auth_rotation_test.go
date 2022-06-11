@@ -42,9 +42,9 @@ func TestRotationTicking(t *testing.T) {
 	const rotationPeriod = 20 * time.Second
 
 	w := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		InitialUpstreams:   c.ClusterAddrs(),
-		Logger:             logger.Named("worker"),
-		AuthRotationPeriod: rotationPeriod,
+		InitialUpstreamsRaw: c.ClusterAddrs(),
+		Logger:              logger.Named("worker"),
+		AuthRotationPeriod:  rotationPeriod,
 	})
 	t.Cleanup(w.Shutdown)
 
