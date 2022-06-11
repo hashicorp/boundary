@@ -29,7 +29,7 @@ type Scheduler struct {
 	runningJobs    *sync.Map
 	started        ua.Bool
 
-	runJobsLimit       uint
+	runJobsLimit       int
 	runJobsInterval    time.Duration
 	monitorInterval    time.Duration
 	interruptThreshold time.Duration

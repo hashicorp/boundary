@@ -112,7 +112,7 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	iam.TestRepo(t, conn, wrapper)
 
-	numJobs := 10
+	numJobs := 20
 	server := testController(t, conn, wrapper)
 
 	tests := []struct {
@@ -122,7 +122,7 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 	}{
 		{
 			name:    "with-more-than-available",
-			opts:    []Option{WithRunJobsLimit(uint(numJobs * 2))},
+			opts:    []Option{WithRunJobsLimit(numJobs * 2)},
 			wantLen: numJobs,
 		},
 		{
@@ -138,6 +138,11 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 			name:    "with-zero-limit",
 			opts:    []Option{WithRunJobsLimit(0)},
 			wantLen: defaultRunJobsLimit,
+		},
+		{
+			name:    "unlimited",
+			opts:    []Option{WithRunJobsLimit(-1)},
+			wantLen: numJobs,
 		},
 	}
 
@@ -156,6 +161,11 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 			got, err := repo.RunJobs(context.Background(), server.PrivateId, tt.opts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
+
+			// Clean up jobs for next run
+			rows, err := rw.Query(context.Background(), "delete from job", nil)
+			require.NoError(err)
+			_ = rows.Close()
 		})
 	}
 }
