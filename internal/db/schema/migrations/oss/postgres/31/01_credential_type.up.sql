@@ -10,6 +10,7 @@ begin;
   where name = 'user_password';
 
   -- Add new constraint that only allows unspecified and new username_password
+  -- This replaces the constraint defined in 2/02_credential_type.up.sql
   alter table credential_type_enm
     add constraint only_predefined_credential_types_allowed
       check (
