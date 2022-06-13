@@ -54,10 +54,27 @@ create table server_worker (
         ),
   -- This is the name that the worker reports in it's status updates.
   worker_reported_name wt_name
+    constraint worker_reported_name_must_be_set_by_status
+      check (
+          (last_status_time is null and worker_reported_name is null)
+          or
+          (last_status_time is not null and worker_reported_name is not null)
+          or
+          (last_status_time is not null and key_id is not null)
+        )
     constraint worker_reported_name_must_be_lowercase
       check (lower(trim(worker_reported_name)) = worker_reported_name)
     constraint worker_reported_name_only_has_printable_characters
       check (worker_reported_name !~ '[^[:print:]]'),
+  key_id text
+    constraint worker_reported_key_id_must_be_set_by_status
+    check (
+      (last_status_time is null and key_id is null)
+      or
+      (last_status_time is not null and worker_reported_name is not null)
+      or
+      (last_status_time is not null and key_id is not null)
+    ),
   constraint server_worker_scope_id_name_uq
     unique(scope_id, name),
   constraint server_worker_scope_id_worker_reported_name_uq
@@ -65,6 +82,27 @@ create table server_worker (
 );
 comment on table server_worker  is
   'server_worker is a table where each row represents a Boundary worker.';
+
+create or replace function
+  validate_key_id_on_insert()
+  returns trigger
+as $$
+begin
+    if new.key_id is not null then
+      perform from
+        worker_auth_authorized
+      where
+        worker_key_identifier= new.key_id;
+    if not found then
+      raise 'key_id %s does not match a worker auth record', new.key_id;
+    end if;
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger validate_key_id_on_insert before insert on server_worker
+  for each row execute procedure validate_key_id_on_insert();
 
 create trigger immutable_columns before update on server_worker
   for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');

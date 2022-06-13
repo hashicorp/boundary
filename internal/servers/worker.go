@@ -39,7 +39,6 @@ type Worker struct {
 	activeConnectionCount uint32 `gorm:"-"`
 	apiTags               []*Tag `gorm:"-"`
 	configTags            []*Tag `gorm:"-"`
-	keyId                 string `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
@@ -53,9 +52,9 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 			Name:        opts.withName,
 			Description: opts.withDescription,
 			Address:     opts.withAddress,
+			KeyId:       opts.withKeyId,
 		},
 		apiTags: opts.withWorkerTags,
-		keyId:   opts.withKeyId,
 	}
 }
 
@@ -70,9 +69,9 @@ func NewWorkerForStatus(scopeId string, opt ...Option) *Worker {
 			ScopeId:               scopeId,
 			WorkerReportedName:    opts.withName,
 			WorkerReportedAddress: opts.withAddress,
+			KeyId:                 opts.withKeyId,
 		},
 		configTags: opts.withWorkerTags,
-		keyId:      opts.withKeyId,
 	}
 }
 
@@ -100,9 +99,6 @@ func (w *Worker) clone() *Worker {
 		for _, t := range w.configTags {
 			cWorker.configTags = append(cWorker.configTags, &Tag{Key: t.Key, Value: t.Value})
 		}
-	}
-	if w.keyId != "" {
-		cWorker.keyId = w.keyId
 	}
 	return cWorker
 }

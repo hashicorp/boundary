@@ -303,20 +303,37 @@ func TestWorker_Update(t *testing.T) {
 			},
 			update: Worker{
 				Worker: &store.Worker{
+					KeyId:                 "base update with worker reported address and keyId",
 					WorkerReportedAddress: "base update with worker reported address and keyId",
 				},
-				keyId: "base update with worker reported address and keyId",
 			},
-			mask: []string{"WorkerReportedAddress"},
+			mask: []string{"WorkerReportedAddress", "KeyId"},
 			assert: func(t *testing.T, init, up *Worker) {
 				t.Helper()
 				assert.Equal(t, "base update with worker reported address and keyId", up.WorkerReportedAddress)
-				assert.Equal(t, "base update with worker reported address and keyId", up.keyId)
+				assert.Equal(t, "base update with worker reported address and keyId", up.KeyId)
 				assert.Equal(t, uint32(1), up.Version)
 				assert.NotNil(t, up.GetLastStatusTime())
 				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
 				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
 			},
+		},
+		{
+			name: "base update with worker reported address",
+			initial: Worker{
+				Worker: &store.Worker{
+					ScopeId:     scope.Global.String(),
+					PublicId:    newId(),
+					Description: "base update with status",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					WorkerReportedAddress: "base update with worker reported address",
+				},
+			},
+			mask:            []string{"WorkerReportedAddress"},
+			wantUpdateError: true,
 		},
 		{
 			// If any status fields are set then worker reported address must
@@ -349,8 +366,9 @@ func TestWorker_Update(t *testing.T) {
 				},
 			},
 			update: Worker{
-				Worker: &store.Worker{},
-				keyId:  "base update with worker reported keyId",
+				Worker: &store.Worker{
+					KeyId: "base update with worker reported keyId",
+				},
 			},
 			mask:            []string{"WorkerReportedKeyId"},
 			wantUpdateError: true,
@@ -465,6 +483,22 @@ func TestWorker_Update(t *testing.T) {
 				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
 				assert.Equal(t, uint32(1), up.Version)
 			},
+		},
+		{
+			name: "worker reported clearing worker reported name",
+			initial: Worker{
+				Worker: &store.Worker{
+					ScopeId:               scope.Global.String(),
+					PublicId:              newId(),
+					WorkerReportedAddress: "worker reported clearing worker reported name",
+					WorkerReportedName:    "worker reported clearing worker reported name",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{},
+			},
+			nullMask:        []string{"WorkerReportedName"},
+			wantUpdateError: true,
 		},
 	}
 	for _, tc := range cases {
