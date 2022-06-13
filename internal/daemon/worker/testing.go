@@ -53,7 +53,7 @@ func (tw *TestWorker) Name() string {
 	return tw.name
 }
 
-func (tw *TestWorker) ControllerAddrs() []string {
+func (tw *TestWorker) UpstreamAddrs() []string {
 	var addrs []string
 	lastStatus := tw.w.LastStatusSuccess()
 	for _, v := range lastStatus.GetCalculatedUpstreams() {
@@ -165,8 +165,8 @@ type TestWorkerOpts struct {
 	// Config; if not provided a dev one will be created
 	Config *config.Config
 
-	// Sets initial controller addresses
-	InitialControllers []string
+	// Sets initial upstream addresses
+	InitialUpstreams []string
 
 	// If true, the worker will not be started
 	DisableAutoStart bool
@@ -233,8 +233,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		opts.Config.Worker.Name = opts.Name
 	}
 
-	if len(opts.InitialControllers) > 0 {
-		opts.Config.Worker.Controllers = opts.InitialControllers
+	if len(opts.InitialUpstreams) > 0 {
+		opts.Config.Worker.InitialUpstreams = opts.InitialUpstreams
 	}
 
 	// Start a logger
@@ -325,7 +325,7 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		WorkerAuthKms:             tw.w.conf.WorkerAuthKms,
 		WorkerAuthStorageKms:      tw.w.conf.WorkerAuthStorageKms,
 		Name:                      opts.Name,
-		InitialControllers:        tw.ControllerAddrs(),
+		InitialUpstreams:          tw.UpstreamAddrs(),
 		Logger:                    tw.w.conf.Logger,
 		StatusGracePeriodDuration: opts.StatusGracePeriodDuration,
 	}

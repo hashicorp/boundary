@@ -41,8 +41,8 @@ const hcpbUrlSuffix = ".proxy.boundary.hashicorp.cloud"
 // connection client creation
 func (w *Worker) StartControllerConnections() error {
 	const op = "worker.(Worker).StartControllerConnections"
-	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.Controllers))
-	for _, addr := range w.conf.RawConfig.Worker.Controllers {
+	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.InitialUpstreams))
+	for _, addr := range w.conf.RawConfig.Worker.InitialUpstreams {
 		switch {
 		case strings.HasPrefix(addr, "/"):
 			initialAddrs = append(initialAddrs, resolver.Address{Addr: addr})
@@ -52,7 +52,7 @@ func (w *Worker) StartControllerConnections() error {
 				host, port, err = net.SplitHostPort(net.JoinHostPort(addr, "9201"))
 			}
 			if err != nil {
-				return fmt.Errorf("error parsing controller address: %w", err)
+				return fmt.Errorf("error parsing upstream address: %w", err)
 			}
 			initialAddrs = append(initialAddrs, resolver.Address{Addr: net.JoinHostPort(host, port)})
 		}
@@ -64,7 +64,7 @@ func (w *Worker) StartControllerConnections() error {
 			initialAddrs = append(initialAddrs, resolver.Address{Addr: clusterAddress})
 			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCPB Cluster address %s as upstream address", clusterAddress))
 		} else {
-			return errors.New("no initial controller addresses found")
+			return errors.New("no initial upstream addresses found")
 		}
 	}
 
@@ -72,7 +72,7 @@ func (w *Worker) StartControllerConnections() error {
 		Addresses: initialAddrs,
 	})
 	if err := w.createClientConn(initialAddrs[0].Addr); err != nil {
-		return fmt.Errorf("error making client connection to controller: %w", err)
+		return fmt.Errorf("error making client connection to upstream address: %w", err)
 	}
 
 	return nil
@@ -135,7 +135,7 @@ func (w *Worker) v1KmsAuthDialFn(ctx context.Context, addr string) (net.Conn, er
 		nonTlsConn, err = dialer.DialContext(ctx, "tcp", addr)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("unable to dial to controller: %w", err)
+		return nil, fmt.Errorf("unable to dial to upstream: %w", err)
 	}
 	tlsConn := tls.Client(nonTlsConn, tlsConf)
 	written, err := tlsConn.Write([]byte(authInfo.ConnectionNonce))
