@@ -2,8 +2,7 @@ package subtypes
 
 import (
 	"context"
-	"fmt"
-	"strings"
+	"errors"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
@@ -250,19 +249,6 @@ func transformResponse(msg proto.Message) error {
 	return transformResponseAttributes(msg)
 }
 
-func parseErrorDetails(err error) string {
-	if err == nil {
-		return "unknown error"
-	}
-
-	v := strings.Split(err.Error(), ": ")
-	if len(v) != 2 {
-		return err.Error()
-	}
-
-	return v[1]
-}
-
 // AttributeTransformerInterceptor is a grpc server interceptor that will
 // transform subtype attributes for requests and responses. This will only
 // modify requests and responses that adhere to a specific structure and is done
@@ -312,8 +298,16 @@ func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerIntercep
 	return func(interceptorCtx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if reqMsg, ok := req.(proto.Message); ok {
 			if err := transformRequest(reqMsg); err != nil {
-				return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-					map[string]string{"attributes": fmt.Sprintf("Attribute fields do not match the expected format: %s.", parseErrorDetails(err))})
+				fieldErrs := map[string]string{
+					"attributes": "Attribute fields do not match the expected format.",
+				}
+
+				var invalidArgumentErr *InvalidArgumentError
+				if errors.As(err, &invalidArgumentErr) {
+					fieldErrs[invalidArgumentErr.FieldName] = invalidArgumentErr.Msg
+				}
+
+				return nil, handlers.InvalidArgumentErrorf("Error in provided request.", fieldErrs)
 			}
 		}
 

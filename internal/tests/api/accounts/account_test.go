@@ -401,7 +401,7 @@ func TestErrorsOidc(t *testing.T) {
 	require.JSONEq(err.Error(), `{
 		"details": {
 			"request_fields": [{
-				"description": "Attribute fields do not match the expected format: unknown field \"login_name\".",
+				"description": "Attribute fields do not match the expected format.",
 				"name": "attributes"
 			}]
 		},
