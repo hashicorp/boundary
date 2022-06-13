@@ -30,7 +30,7 @@ func TestScheduler_New(t *testing.T) {
 	type args struct {
 		serverId    string
 		jobRepo     jobRepoFactory
-		runLimit    uint
+		runLimit    int
 		runInterval time.Duration
 	}
 	tests := []struct {
@@ -82,6 +82,21 @@ func TestScheduler_New(t *testing.T) {
 				serverId:    "test-server",
 				runLimit:    1,
 				runInterval: time.Hour,
+			},
+		},
+		{
+			name: "valid-with-unlimited",
+			args: args{
+				serverId: "test-server",
+				jobRepo:  jobRepoFn,
+			},
+			opts: []Option{
+				WithRunJobsLimit(-1),
+			},
+			want: args{
+				serverId:    "test-server",
+				runLimit:    -1,
+				runInterval: time.Minute,
 			},
 		},
 		{

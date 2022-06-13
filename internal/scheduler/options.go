@@ -24,7 +24,7 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withNextRunIn          time.Duration
-	withRunJobsLimit       uint
+	withRunJobsLimit       int
 	withRunJobInterval     time.Duration
 	withMonitorInterval    time.Duration
 	withInterruptThreshold time.Duration
@@ -43,7 +43,8 @@ func getDefaultOptions() options {
 // WithRunJobsLimit provides an option to provide the number of jobs that will be requested
 // by the scheduler when querying for jobs to run.
 // If WithRunJobsLimit == 0, then default run jobs limit is used.
-func WithRunJobsLimit(l uint) Option {
+// If WithRunJobsLimit < 0, then no limit is used.
+func WithRunJobsLimit(l int) Option {
 	return func(o *options) {
 		o.withRunJobsLimit = l
 		if o.withRunJobsLimit == 0 {
