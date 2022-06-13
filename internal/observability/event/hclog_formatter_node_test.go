@@ -61,7 +61,6 @@ func TestHclogFormatter_Process(t *testing.T) {
 			want: []string{
 				"[INFO]  system event:",
 				"data:msg=hello",
-				"id=1",
 				"version=v0.1",
 				"op=text",
 			},
@@ -194,7 +193,6 @@ func TestHclogFormatter_Process(t *testing.T) {
 			want: []string{
 				"[INFO]  system event:",
 				"data:msg=hello",
-				"id=1",
 				"version=v0.1",
 				"op=match-filter",
 			},
