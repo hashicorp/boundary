@@ -603,6 +603,19 @@ func TestWorker_Create(t *testing.T) {
 			},
 		},
 		{
+			name: "with worker reported address",
+			in: Worker{
+				Worker: &store.Worker{
+					ScopeId:               scope.Global.String(),
+					PublicId:              newId(),
+					WorkerReportedAddress: "with worker reported address",
+				},
+			},
+			want: wanted{
+				createError: true,
+			},
+		},
+		{
 			// The worker reported address is a required field if any of the
 			// worker reported fields are set.
 			name: "with worker reported name",
@@ -646,6 +659,38 @@ func TestWorker_Create(t *testing.T) {
 					Description:        "non status fields with worker reported name",
 					Address:            "address",
 					WorkerReportedName: "non status fields with worker reported name",
+				},
+			},
+			want: wanted{
+				createError: true,
+			},
+		},
+		{
+			name: "non status fields with worker reported address",
+			in: Worker{
+				Worker: &store.Worker{
+					ScopeId:               scope.Global.String(),
+					PublicId:              newId(),
+					Name:                  "non status fields with worker reported address",
+					Description:           "non status fields with worker reported address",
+					Address:               "address",
+					WorkerReportedAddress: "non status fields with worker reported address",
+				},
+			},
+			want: wanted{
+				createError: true,
+			},
+		},
+		{
+			name: "non status fields with worker reported keyid",
+			in: Worker{
+				Worker: &store.Worker{
+					ScopeId:     scope.Global.String(),
+					PublicId:    newId(),
+					Name:        "non status fields with worker reported keyid",
+					Description: "non status fields with worker reported keyid",
+					Address:     "address",
+					KeyId:       "non status fields with worker reported keyid",
 				},
 			},
 			want: wanted{
