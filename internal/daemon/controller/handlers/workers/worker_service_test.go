@@ -335,7 +335,7 @@ func TestUpdate(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	kmsCache := kms.TestKms(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
 	ctx := context.Background()
 	rw := db.New(conn)
 
@@ -343,7 +343,7 @@ func TestUpdate(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repo, err := servers.NewRepository(rw, rw, kmsCache)
+	repo, err := servers.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	repoFn := func() (*servers.Repository, error) {
 		return repo, nil
