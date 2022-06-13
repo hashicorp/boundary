@@ -213,11 +213,11 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 			// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
 			if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, newUpstreams) {
 				upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, newUpstreams)
-				event.WriteSysEvent(context.TODO(), op, upstreamsMessage)
+				event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
 				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
 			} else if lastStatus == nil {
 				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
-				event.WriteSysEvent(context.TODO(), op, fmt.Sprintf("Upstreams after first status set to: %s", newUpstreams))
+				event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", newUpstreams))
 			}
 		}
 		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: newUpstreams})

@@ -62,7 +62,7 @@ func (w *Worker) StartControllerConnections() error {
 		if w.conf.RawConfig.HCPBClusterId != "" {
 			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HCPBClusterId, hcpbUrlSuffix)
 			initialAddrs = append(initialAddrs, resolver.Address{Addr: clusterAddress})
-			event.WriteSysEvent(context.TODO(), op, fmt.Sprintf("Setting HCPB Cluster address %s as upstream address", clusterAddress))
+			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCPB Cluster address %s as upstream address", clusterAddress))
 		} else {
 			return errors.New("no initial controller addresses found")
 		}
