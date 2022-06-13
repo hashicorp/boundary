@@ -182,10 +182,11 @@ type Worker struct {
 	// We use a raw interface here so that we can take in a string
 	// value pointing to an env var or file. We then resolve that
 	// and get the actual upstream controller or worker addresses.
-	InitialUpstreams    []string    `hcl:"-"`
-	InitialUpstreamsRaw interface{} `hcl:"initial_upstreams"`
+	InitialUpstreams    []string `hcl:"-"`
+	InitialUpstreamsRaw any      `hcl:"initial_upstreams"`
 
-	// Maintain backwards compatability for the old controllers value
+	// The ControllersRaw field is deprecated and users should use InitialUpstreamsRaw instead.
+	// TODO: remove this field when support is discontinued.
 	ControllersRaw interface{} `hcl:"controllers"`
 
 	// We use a raw interface for parsing so that people can use JSON-like
@@ -590,13 +591,14 @@ func Parse(d string) (*Config, error) {
 	return result, nil
 }
 
-// supportControllersRawConfig returns either initialUpstreamsRaw or controllersRaw depending on which is populated, or
+// supportControllersRawConfig returns either initialUpstreamsRaw or controllersRaw depending on which is populated. Errors when both fields are populated.
+//
 func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, error) {
 	switch {
 	case initialUpstreamsRaw == nil && controllersRaw != nil:
 		return controllersRaw, nil
 	case initialUpstreamsRaw != nil && controllersRaw != nil:
-		return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated, but values are different")
+		return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated")
 	}
 	return initialUpstreamsRaw, nil
 }

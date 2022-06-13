@@ -1172,7 +1172,7 @@ func TestWorkerUpstreams(t *testing.T) {
 			}`,
 			expWorkerUpstreams: nil,
 			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated, but values are different",
+			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
 		},
 		{
 			name: "Identical values in controllers and initial_upstreams field",
@@ -1182,9 +1182,9 @@ func TestWorkerUpstreams(t *testing.T) {
 				controllers = ["127.0.0.1"]
 				initial_upstreams = ["127.0.0.1"]
 			}`,
-			expWorkerUpstreams: []string{"127.0.0.1"},
+			expWorkerUpstreams: nil,
 			expErr:             true,
-			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated, but values are different",
+			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
 		},
 	}
 

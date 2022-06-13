@@ -49,9 +49,9 @@ func TestCustomX509Verification_Client(t *testing.T) {
 	conf.Eventing = &ec.EventerConfig
 	req.NoError(err)
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:       c1.Config().WorkerAuthKms,
-		InitialUpstreamsRaw: c1.ClusterAddrs(),
-		Logger:              logger.Named("w1"),
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: c1.ClusterAddrs(),
+		Logger:           logger.Named("w1"),
 	})
 	t.Cleanup(w1.Shutdown)
 
@@ -188,8 +188,8 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		conf.Eventing = &ec.EventerConfig
 		req.NoError(err)
 		w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-			WorkerAuthKms:       c1.Config().WorkerAuthKms,
-			InitialUpstreamsRaw: c1.ClusterAddrs(),
+			WorkerAuthKms:    c1.Config().WorkerAuthKms,
+			InitialUpstreams: c1.ClusterAddrs(),
 		})
 		w1.Worker().TestOverrideX509VerifyCertPool = certPool
 		w1.Worker().TestOverrideX509VerifyDnsName = dnsName

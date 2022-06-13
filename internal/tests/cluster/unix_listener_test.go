@@ -58,10 +58,10 @@ func TestUnixListener(t *testing.T) {
 	require.NoError(err)
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:              wconf,
-		WorkerAuthKms:       c1.Config().WorkerAuthKms,
-		InitialUpstreamsRaw: c1.ClusterAddrs(),
-		Logger:              logger.Named("w1"),
+		Config:           wconf,
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: c1.ClusterAddrs(),
+		Logger:           logger.Named("w1"),
 	})
 	defer w1.Shutdown()
 

@@ -53,10 +53,10 @@ func TestWorkerTagging(t *testing.T) {
 		"foo":    {"bar"},
 	}
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:              conf,
-		WorkerAuthKms:       c1.Config().WorkerAuthKms,
-		InitialUpstreamsRaw: c1.ClusterAddrs(),
-		Logger:              logger.Named("w1"),
+		Config:           conf,
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: c1.ClusterAddrs(),
+		Logger:           logger.Named("w1"),
 	})
 	defer w1.Shutdown()
 	w1Addr := w1.ProxyAddrs()[0]
@@ -70,10 +70,10 @@ func TestWorkerTagging(t *testing.T) {
 		"az":     {"one", "two", "three"},
 	}
 	w2 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:              conf,
-		WorkerAuthKms:       c1.Config().WorkerAuthKms,
-		InitialUpstreamsRaw: c1.ClusterAddrs(),
-		Logger:              logger.Named("w2"),
+		Config:           conf,
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: c1.ClusterAddrs(),
+		Logger:           logger.Named("w2"),
 	})
 	defer w2.Shutdown()
 	w2Addr := w2.ProxyAddrs()[0]
@@ -87,10 +87,10 @@ func TestWorkerTagging(t *testing.T) {
 		"az":     {"one", "three"},
 	}
 	w3 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:              conf,
-		WorkerAuthKms:       c1.Config().WorkerAuthKms,
-		InitialUpstreamsRaw: c1.ClusterAddrs(),
-		Logger:              logger.Named("w3"),
+		Config:           conf,
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: c1.ClusterAddrs(),
+		Logger:           logger.Named("w3"),
 	})
 	defer w3.Shutdown()
 	w3Addr := w3.ProxyAddrs()[0]

@@ -281,7 +281,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 		if c.Config.Worker.ControllersRaw != nil {
-			c.UI.Warn("The \"controllers\" field for worker config is deprecated. Please migrate to \"initial_upstreams\".")
+			c.UI.Warn("The \"controllers\" field for worker config is deprecated. Please use \"initial_upstreams\" instead.")
 		}
 
 		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
@@ -321,7 +321,7 @@ func (c *Command) Run(args []string) int {
 				}
 				fallthrough
 			default:
-				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "initial_upstreams" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`)
+				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`)
 				return base.CommandUserError
 			}
 		}
