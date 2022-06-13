@@ -26,8 +26,8 @@ type Type string
 
 // Credential type values.
 const (
-	UnspecifiedType  Type = "unspecified"
-	UserPasswordType Type = "user_password"
+	UnspecifiedType      Type = "unspecified"
+	UsernamePasswordType Type = "username_password"
 )
 
 // A Library is a resource that provides credentials that are of the same

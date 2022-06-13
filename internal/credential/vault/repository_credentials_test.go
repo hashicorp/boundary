@@ -128,7 +128,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("database", "creds", "opened")
 		opts := []vault.Option{
-			vault.WithCredentialType(credential.UserPasswordType),
+			vault.WithCredentialType(credential.UsernamePasswordType),
 		}
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
 		assert.NoError(t, err)
@@ -141,7 +141,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("database", "creds", "opened")
 		opts := []vault.Option{
-			vault.WithCredentialType(credential.UserPasswordType),
+			vault.WithCredentialType(credential.UsernamePasswordType),
 			vault.WithMappingOverride(vault.NewUserPasswordOverride(
 				vault.WithOverrideUsernameAttribute("test-username"),
 				vault.WithOverridePasswordAttribute("test-password"),
@@ -158,7 +158,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("secret", "data", "my-secret")
 		opts := []vault.Option{
-			vault.WithCredentialType(credential.UserPasswordType),
+			vault.WithCredentialType(credential.UsernamePasswordType),
 		}
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
 		assert.NoError(t, err)
@@ -326,7 +326,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			assert.NotZero(len(got))
 			for _, dc := range got {
 				switch dc.Library().CredentialType() {
-				case credential.UserPasswordType:
+				case credential.UsernamePasswordType:
 					if upc, ok := dc.(credential.UserPassword); ok {
 						assert.NotEmpty(upc.Username())
 						assert.NotEmpty(upc.Password())

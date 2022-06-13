@@ -214,7 +214,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				vaultPath: "vault/path",
 				opts: []Option{
 					WithMethod(MethodGet),
-					WithCredentialType(credential.UserPasswordType),
+					WithCredentialType(credential.UsernamePasswordType),
 				},
 			},
 			want: &CredentialLibrary{
@@ -222,7 +222,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 					StoreId:        cs.PublicId,
 					VaultPath:      "vault/path",
 					HttpMethod:     string(MethodGet),
-					CredentialType: string(credential.UserPasswordType),
+					CredentialType: string(credential.UsernamePasswordType),
 				},
 			},
 		},
@@ -233,7 +233,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				vaultPath: "vault/path",
 				opts: []Option{
 					WithMethod(MethodGet),
-					WithCredentialType(credential.UserPasswordType),
+					WithCredentialType(credential.UsernamePasswordType),
 					WithMappingOverride(NewUserPasswordOverride(WithOverrideUsernameAttribute("test"))),
 				},
 			},
@@ -243,7 +243,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 					StoreId:        cs.PublicId,
 					VaultPath:      "vault/path",
 					HttpMethod:     string(MethodGet),
-					CredentialType: string(credential.UserPasswordType),
+					CredentialType: string(credential.UsernamePasswordType),
 				},
 			},
 		},
@@ -262,8 +262,8 @@ func TestCredentialLibrary_New(t *testing.T) {
 			assert.Equal(tt.want, got)
 
 			switch ct := tt.want.GetCredentialType(); ct {
-			case string(credential.UserPasswordType):
-				assert.Equal(credential.UserPasswordType, got.CredentialType())
+			case string(credential.UsernamePasswordType):
+				assert.Equal(credential.UsernamePasswordType, got.CredentialType())
 			case string(credential.UnspecifiedType), "":
 				assert.Equal(credential.UnspecifiedType, got.CredentialType())
 			default:

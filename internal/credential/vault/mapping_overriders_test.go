@@ -34,7 +34,7 @@ func TestValidMappingOverrides(t *testing.T) {
 		},
 		{
 			m:    nil,
-			ct:   credential.UserPasswordType,
+			ct:   credential.UsernamePasswordType,
 			want: true,
 		},
 		{
@@ -44,7 +44,7 @@ func TestValidMappingOverrides(t *testing.T) {
 		},
 		{
 			m:    unknownMapper(1),
-			ct:   credential.UserPasswordType,
+			ct:   credential.UsernamePasswordType,
 			want: false,
 		},
 		{
@@ -54,7 +54,7 @@ func TestValidMappingOverrides(t *testing.T) {
 		},
 		{
 			m:    allocUserPasswordOverride(),
-			ct:   credential.UserPasswordType,
+			ct:   credential.UsernamePasswordType,
 			want: true,
 		},
 	}

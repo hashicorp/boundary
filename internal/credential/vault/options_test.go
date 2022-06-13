@@ -85,9 +85,9 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithCredentialType", func(t *testing.T) {
-		opts := getOpts(WithCredentialType(credential.UserPasswordType))
+		opts := getOpts(WithCredentialType(credential.UsernamePasswordType))
 		testOpts := getDefaultOptions()
-		testOpts.withCredentialType = credential.UserPasswordType
+		testOpts.withCredentialType = credential.UsernamePasswordType
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithOverrideUsernameAttribute", func(t *testing.T) {
