@@ -2,7 +2,7 @@ begin;
 
   create table credential_type_enm (
     name text primary key
-      -- This constraint is replaced in 31/01_credential_type.up.sql
+      -- This constraint is replaced in 32/01_credential_type.up.sql
       constraint only_predefined_credential_types_allowed
       check (
         name in (

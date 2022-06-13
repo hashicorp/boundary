@@ -16,8 +16,8 @@ import (
 
 func TestMigrations_user_password_Migration(t *testing.T) {
 	const (
-		priorMigration   = 30004
-		currentMigration = 31001
+		priorMigration   = 31002
+		currentMigration = 32001
 	)
 
 	t.Parallel()
