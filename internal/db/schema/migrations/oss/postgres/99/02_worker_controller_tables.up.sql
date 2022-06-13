@@ -199,9 +199,13 @@ alter table session_connection
 -- Finally, neither jobs nor servers are exposed out of boundary so the risk of
 -- losing data that would be useful later on is diminished.
 alter table job_run
-  add column controller_id wt_private_id,
+  add column controller_id text,
   drop column server_id;
 alter table job_run
+  add constraint controller_id_must_be_at_least_10_characters
+    check(
+      length(trim(controller_id)) > 10
+    ),
   add constraint server_controller_fkey
     foreign key (controller_id)
       references server_controller (private_id)
