@@ -362,4 +362,24 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+
+	// Passing in a invalid authentication method sub-type should return an  error
+	_, err = amClient.Authenticate(tc.Context(), "ampwd_1234567890", "login", map[string]interface{}{
+		"login_name": "admin",
+		"password":   "password",
+	})
+	require.Error(err)
+	apiErr = api.AsServerError(err)
+	require.NotNil(apiErr)
+	assert.Len(apiErr.Details.RequestFields, 2)
+	assert.EqualValues(apiErr.Details.RequestFields, []*api.FieldError{
+		{
+			Name:        "attributes",
+			Description: "Attribute fields do not match the expected format.",
+		},
+		{
+			Name:        "auth-method-id",
+			Description: "unknown subtype in ID \"ampwd_1234567890\".",
+		},
+	})
 }
