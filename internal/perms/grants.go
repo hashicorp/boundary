@@ -422,7 +422,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 			}
 			var allowed bool
 			for k := range grant.actions {
-				results := acl.Allowed(r, k)
+				results := acl.Allowed(r, k, AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
 				if results.Authorized {
 					allowed = true
 					break

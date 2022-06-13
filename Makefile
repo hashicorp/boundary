@@ -22,6 +22,7 @@ cli:
 tools:
 	go generate -tags tools tools/tools.go
 	go install github.com/bufbuild/buf/cmd/buf@v1.3.1
+	go install github.com/mfridman/tparse@v0.10.3
 
 .PHONY: cleangen
 cleangen:
@@ -141,10 +142,10 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/auth/store/account.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/password/store/password.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/password/store/argon2.pb.go
-	@protoc-go-inject-tag -input=./internal/kms/store/root_key.pb.go	
-	@protoc-go-inject-tag -input=./internal/kms/store/database_key.pb.go	
-	@protoc-go-inject-tag -input=./internal/kms/store/oplog_key.pb.go	
-	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go	
+	@protoc-go-inject-tag -input=./internal/kms/store/root_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/database_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/oplog_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
 	@protoc-go-inject-tag -input=./internal/servers/store/controller.pb.go
@@ -235,7 +236,7 @@ generate-database-dumps:
 test-ci: export CI_BUILD=1
 test-ci:
 	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
-	~/.go/bin/go test ./... -v $(TESTARGS) -timeout 120m
+	~/.go/bin/go test ./... -v $(TESTARGS) -json -cover -timeout 120m | tparse
 
 .PHONY: test-sql
 test-sql:
@@ -243,7 +244,7 @@ test-sql:
 
 .PHONY: test
 test:
-	go test ./... -timeout 30m
+	go test ./... -timeout 30m -json -cover | tparse -follow
 
 .PHONY: test-sdk
 test-sdk:

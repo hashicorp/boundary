@@ -20,7 +20,7 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18.1"
+          go-version: "1.18.3"
       - name: get product version
         id: get-product-version
         run: |
@@ -70,7 +70,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18.1"
+          go-version: "1.18.3"
       - name: Get product edition
         id: get-product-edition
         run: |
@@ -88,7 +88,7 @@ jobs:
       matrix:
         goos: [ freebsd, windows, netbsd, openbsd, solaris ]
         goarch: [ "386", "amd64", "arm" ]
-        go: [ "1.18.1" ]
+        go: [ "1.18.3" ]
         exclude:
           - goos: solaris
             goarch: 386
@@ -149,7 +149,7 @@ jobs:
       matrix:
         goos: [linux]
         goarch: ["arm", "arm64", "386", "amd64"]
-        go: [ "1.18.1" ]
+        go: [ "1.18.3" ]
       fail-fast: true
 
     name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
@@ -235,7 +235,7 @@ jobs:
       matrix:
         goos: [ darwin ]
         goarch: [ "amd64", "arm64" ]
-        go: [ "1.18.1" ]
+        go: [ "1.18.3" ]
       fail-fast: true
     name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
 

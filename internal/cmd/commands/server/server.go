@@ -178,6 +178,8 @@ func (c *Command) Run(args []string) int {
 
 	base.StartMemProfiler(c.Context)
 
+	// Note: the checks directly after this must remain where they are because
+	// they rely on the state of configured KMSes.
 	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
@@ -186,6 +188,20 @@ func (c *Command) Run(args []string) int {
 		if c.RootKms == nil {
 			c.UI.Error("Root KMS not found after parsing KMS blocks")
 			return base.CommandUserError
+		}
+	}
+	if c.Config.Worker != nil {
+		switch c.WorkerAuthKms {
+		case nil:
+			if c.Config.Worker.AuthStoragePath == "" {
+				c.UI.Error("No worker auth KMS specified and no worker auth storage path specified.")
+				return base.CommandUserError
+			}
+		default:
+			if c.Config.Worker.Name == "" {
+				c.UI.Error("Worker is using KMS auth but has no name set. It must be the unique name of this instance.")
+				return base.CommandUserError
+			}
 		}
 	}
 
@@ -549,16 +565,6 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	if c.Config.Controller != nil && c.Config.Controller.Name == "" {
 		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
 		return base.CommandUserError
-	}
-	if c.Config.Worker != nil {
-		if c.Config.Worker.Name == "" {
-			c.UI.Error("Worker has no name set. It must be the unique name of this instance.")
-			return base.CommandUserError
-		}
-		//if c.Config.Worker.AuthStoragePath == "" {
-		//	c.UI.Error("No worker auth KMS specified and no worker auth storage path specified.")
-		//	return base.CommandUserError
-		//}
 	}
 
 	return base.CommandSuccess
