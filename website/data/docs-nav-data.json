@@ -418,7 +418,8 @@
   },
   {
     "title": "Roadmap",
-    "path": "roadmap"
+    "path": "roadmap",
+    "hidden": true
   },
   {
     "title": "Release Notes",
