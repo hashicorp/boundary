@@ -7,7 +7,9 @@ import (
 	stderrors "errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -47,8 +49,9 @@ import (
 )
 
 const (
-	credentialDomain = "credential"
-	hostDomain       = "host"
+	credentialDomain  = "credential"
+	hostDomain        = "host"
+	missingPortErrStr = "missing port in address"
 )
 
 var (
@@ -1028,15 +1031,21 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		chosenEndpoint = endpoints[rand.Intn(len(endpoints))]
 	}
 
+	h, p, err := net.SplitHostPort(chosenEndpoint.Address)
+	switch {
+	case err != nil && strings.Contains(err.Error(), missingPortErrStr):
+		if t.GetDefaultPort() == 0 {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("neither the selected host %q nor the target provides a port to use", chosenEndpoint.HostId))
+		}
+		h = chosenEndpoint.Address
+		p = strconv.FormatUint(uint64(t.GetDefaultPort()), 10)
+	case err != nil:
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoints host address"))
+	}
 	// Generate the endpoint URL
 	endpointUrl := &url.URL{
 		Scheme: t.GetType().String(),
-	}
-	defaultPort := t.GetDefaultPort()
-	if defaultPort != 0 {
-		endpointUrl.Host = fmt.Sprintf("%s:%d", chosenEndpoint.Address, defaultPort)
-	} else {
-		endpointUrl.Host = chosenEndpoint.Address
+		Host:   net.JoinHostPort(h, p),
 	}
 
 	var reqs []credential.Request
@@ -1752,7 +1761,8 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), globals.NameField) && req.GetItem().GetName().GetValue() == "" {
+		paths := req.GetUpdateMask().GetPaths()
+		if handlers.MaskContains(paths, globals.NameField) && req.GetItem().GetName().GetValue() == "" {
 			badFields[globals.NameField] = "This field cannot be set to empty."
 		}
 		if req.GetItem().GetSessionConnectionLimit() != nil {
@@ -1785,7 +1795,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			if err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			} else {
-				for k, v := range a.Vet() {
+				for k, v := range a.VetForUpdate(paths) {
 					badFields[k] = v
 				}
 			}

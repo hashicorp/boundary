@@ -16,8 +16,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type hooks struct{}
+
+func (h hooks) NewTarget(scopeId string, opt ...target.Option) (target.Target, error) {
+	return targettest.New(scopeId, opt...)
+}
+
+func (h hooks) AllocTarget() target.Target {
+	return targettest.Alloc()
+}
+
+func (h hooks) Vet(ctx context.Context, t target.Target) error {
+	return targettest.Vet(ctx, t)
+}
+
+func (h hooks) VetForUpdate(ctx context.Context, t target.Target, paths []string) error {
+	return targettest.VetForUpdate(ctx, t, paths)
+}
+
+func (h hooks) VetCredentialLibraries(ctx context.Context, cls []*target.CredentialLibrary) error {
+	return targettest.VetCredentialLibraries(ctx, cls)
+}
+
 func TestRepository_SetTargetCredentialSources(t *testing.T) {
-	target.Register(targettest.Subtype, targettest.New, targettest.Alloc, targettest.Vet, targettest.VetCredentialLibraries, targettest.TargetPrefix)
+	target.Register(targettest.Subtype, hooks{}, targettest.TargetPrefix)
 
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")

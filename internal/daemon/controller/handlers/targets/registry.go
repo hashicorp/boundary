@@ -17,9 +17,15 @@ type Attributes interface {
 
 	// Options create target.Options to be used to create a target.Target.
 	Options() []target.Option
+
 	// Vet validates the Attributes and returns a map of fields to error messages
 	// if any fields are invalid.
 	Vet() map[string]string
+
+	// VetForUpdate validates the Attributes for an updated resource with the
+	// provided mask paths and returns a map of fields to error messages if any
+	// fields are invalid.
+	VetForUpdate([]string) map[string]string
 }
 
 type attributeFunc func(interface{}) Attributes

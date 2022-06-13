@@ -13,7 +13,7 @@ var (
 // performed by NewTarget, allowing tests to create Targets with
 // nil scopeIds for more robust testing.
 func NewTestTarget(scopeId string, opt ...target.Option) target.Target {
-	t, _ := newTarget("testScope", opt...)
+	t, _ := targetHooks{}.NewTarget("testScope", opt...)
 	t.SetScopeId(scopeId)
 	return t
 }
