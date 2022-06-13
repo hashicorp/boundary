@@ -15,7 +15,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	f, e := newFilter(`Op == "match-filter"`)
+	f, e := newFilter(`op == "match-filter"`)
 	require.NoError(t, e)
 
 	testPredicate := newPredicate([]*filter{f}, nil)
