@@ -35,35 +35,6 @@
     ]
   },
   {
-    "title": "Installing",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "installing"
-      },
-      {
-        "title": "Non-Dev Environments",
-        "path": "installing/no-gen-resources"
-      },
-      {
-        "title": "Systemd Install",
-        "path": "installing/systemd"
-      },
-      {
-        "title": "Postgres Install",
-        "path": "installing/postgres"
-      },
-      {
-        "title": "High Availability Install",
-        "path": "installing/high-availability"
-      },
-      {
-        "title": "Reference Architectures",
-        "path": "installing/reference-architectures"
-      }
-    ]
-  },
-  {
     "title": "API/Clients",
     "routes": [
       {
@@ -243,139 +214,6 @@
     ]
   },
   {
-    "title": "Developing Boundary",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "developing"
-      },
-      {
-        "title": "Building",
-        "path": "developing/building"
-      },
-      {
-        "title": "Developing the UI",
-        "path": "developing/ui"
-      }
-    ]
-  },
-  {
-    "divider": true
-  },
-  {
-    "title": "Configuration",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "configuration"
-      },
-      {
-        "title": "listener",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/listener"
-          },
-          {
-            "title": "TCP",
-            "path": "configuration/listener/tcp"
-          },
-          {
-            "title": "Unix",
-            "path": "configuration/listener/unix"
-          }
-        ]
-      },
-      {
-        "title": "KMS",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/kms"
-          },
-          {
-            "title": "AEAD",
-            "path": "configuration/kms/aead"
-          },
-          {
-            "title": "AWS KMS",
-            "path": "configuration/kms/awskms"
-          },
-          {
-            "title": "AliCloud KMS",
-            "path": "configuration/kms/alicloudkms"
-          },
-          {
-            "title": "Azure Key Vault",
-            "path": "configuration/kms/azurekeyvault"
-          },
-          {
-            "title": "GCP Cloud KMS",
-            "path": "configuration/kms/gcpckms"
-          },
-          {
-            "title": "OCI KMS",
-            "path": "configuration/kms/ocikms"
-          },
-          {
-            "title": "Vault Transit",
-            "path": "configuration/kms/transit"
-          }
-        ]
-      },
-      {
-        "title": "controller",
-        "path": "configuration/controller"
-      },
-      {
-        "title": "worker",
-        "path": "configuration/worker"
-      },
-      {
-        "title": "events",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/events/overview"
-          },
-          {
-            "title": "Common Sink Parameters",
-            "path": "configuration/events/common"
-          },
-          {
-            "title": "File Sink",
-            "path": "configuration/events/file"
-          },
-          {
-            "title": "Stderr Sink",
-            "path": "configuration/events/stderr"
-          }
-        ]
-      },
-      {
-        "title": "plugins",
-        "path": "configuration/plugins"
-      }
-    ]
-  },
-  {
-    "title": "Operations",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "operations"
-      },
-      {
-        "title": "Metrics",
-        "path": "operations/metrics"
-      },
-      {
-        "title": "Health Endpoint",
-        "path": "operations/health"
-      }
-    ]
-  },
-  {
     "title": "Common Workflows",
     "href": "https://learn.hashicorp.com/collections/boundary/basic-administration"
   },
@@ -410,6 +248,177 @@
       {
         "title": "Workflow SSH Proxy",
         "path": "common-workflows/workflow-ssh-proxycommand"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "title": "OSS Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "oss"
+      },
+      {
+        "title": "Installation",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "oss/installing"
+          },
+          {
+            "title": "Non-Dev Environments",
+            "path": "oss/installing/no-gen-resources"
+          },
+          {
+            "title": "Systemd Install",
+            "path": "oss/installing/systemd"
+          },
+          {
+            "title": "Postgres Install",
+            "path": "oss/installing/postgres"
+          },
+          {
+            "title": "High Availability Install",
+            "path": "oss/installing/high-availability"
+          },
+          {
+            "title": "Reference Architectures",
+            "path": "oss/installing/reference-architectures"
+          }
+        ]
+      },
+      {
+        "title": "Configuration",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "oss/configuration"
+          },
+          {
+            "title": "listener",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "oss/configuration/listener"
+              },
+              {
+                "title": "TCP",
+                "path": "oss/configuration/listener/tcp"
+              },
+              {
+                "title": "Unix",
+                "path": "oss/configuration/listener/unix"
+              }
+            ]
+          },
+          {
+            "title": "KMS",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "oss/configuration/kms"
+              },
+              {
+                "title": "AEAD",
+                "path": "oss/configuration/kms/aead"
+              },
+              {
+                "title": "AWS KMS",
+                "path": "oss/configuration/kms/awskms"
+              },
+              {
+                "title": "AliCloud KMS",
+                "path": "oss/configuration/kms/alicloudkms"
+              },
+              {
+                "title": "Azure Key Vault",
+                "path": "oss/configuration/kms/azurekeyvault"
+              },
+              {
+                "title": "GCP Cloud KMS",
+                "path": "oss/configuration/kms/gcpckms"
+              },
+              {
+                "title": "OCI KMS",
+                "path": "oss/configuration/kms/ocikms"
+              },
+              {
+                "title": "Vault Transit",
+                "path": "oss/configuration/kms/transit"
+              }
+            ]
+          },
+          {
+            "title": "controller",
+            "path": "oss/configuration/controller"
+          },
+          {
+            "title": "worker",
+            "path": "oss/configuration/worker"
+          },
+          {
+            "title": "events",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "oss/configuration/events/overview"
+              },
+              {
+                "title": "Common Sink Parameters",
+                "path": "oss/configuration/events/common"
+              },
+              {
+                "title": "File Sink",
+                "path": "oss/configuration/events/file"
+              },
+              {
+                "title": "Stderr Sink",
+                "path": "oss/configuration/events/stderr"
+              }
+            ]
+          },
+          {
+            "title": "plugins",
+            "path": "oss/configuration/plugins"
+          }
+        ]
+      },
+      {
+        "title": "Operations",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "oss/operations"
+          },
+          {
+            "title": "Metrics",
+            "path": "oss/operations/metrics"
+          },
+          {
+            "title": "Health Endpoint",
+            "path": "oss/operations/health"
+          }
+        ]
+      },
+      {
+        "title": "Developing Boundary",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "oss/developing"
+          },
+          {
+            "title": "Building",
+            "path": "oss/developing/building"
+          },
+          {
+            "title": "Developing the UI",
+            "path": "oss/developing/ui"
+          }
+        ]
       }
     ]
   },
