@@ -11,6 +11,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   sessions after 1 hour.
   See Deprecations/Changes for some additional details.
   [PR](https://github.com/hashicorp/boundary/pull/2160).
+* event filtering: Change event filters to use lowercase and snake case for data
+  elements like the rest of Boundary filters do. 
 
 ### Deprecations/Changes
 

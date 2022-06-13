@@ -517,25 +517,25 @@ func Test_Filtering(t *testing.T) {
 	}{
 		{
 			name:  "allowed",
-			allow: []string{`"/Data/list" contains "1"`},
+			allow: []string{`"/data/list" contains "1"`},
 			hdr:   []interface{}{"list", []string{"1", "2"}},
 			found: true,
 		},
 		{
 			name:  "not-allowed",
-			allow: []string{`"/Data/list" contains "22"`},
+			allow: []string{`"/data/list" contains "22"`},
 			hdr:   []interface{}{"list", []string{"1", "2"}},
 			found: false,
 		},
 		{
 			name:  "deny",
-			deny:  []string{`"/Data/list" contains "1"`},
+			deny:  []string{`"/data/list" contains "1"`},
 			hdr:   []interface{}{"list", []string{"1", "2"}},
 			found: false,
 		},
 		{
 			name:  "not-deny",
-			deny:  []string{`"/Data/list" contains "22"`},
+			deny:  []string{`"/data/list" contains "22"`},
 			hdr:   []interface{}{"list", []string{"1", "2"}},
 			found: true,
 		},

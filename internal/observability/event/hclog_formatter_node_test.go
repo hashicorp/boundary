@@ -15,7 +15,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	f, e := newFilter(`Op == "match-filter"`)
+	f, e := newFilter(`op == "match-filter"`)
 	require.NoError(t, e)
 
 	testPredicate := newPredicate([]*filter{f}, nil)
@@ -60,10 +60,9 @@ func TestHclogFormatter_Process(t *testing.T) {
 			},
 			want: []string{
 				"[INFO]  system event:",
-				"Data:msg=hello",
-				"Id=1",
-				"Version=v0.1",
-				"Op=text",
+				"data:msg=hello",
+				"version=v0.1",
+				"op=text",
 			},
 		},
 		{
@@ -122,10 +121,10 @@ func TestHclogFormatter_Process(t *testing.T) {
 			},
 			want: []string{
 				"[ERROR] error event:",
-				"Error=\"invalid parameter\"",
-				"Id=1",
-				"Version=v0.1",
-				"Op=text",
+				"error=\"invalid parameter\"",
+				"id=1",
+				"version=v0.1",
+				"op=text",
 			},
 		},
 		{
@@ -144,10 +143,10 @@ func TestHclogFormatter_Process(t *testing.T) {
 			},
 			want: []string{
 				"{\"@level\":\"error\",\"@message\":\"error event\"",
-				"\"Error\":\"invalid parameter\"",
-				"\"Id\":\"1\"",
-				"\"Version\":\"v0.1\"",
-				"\"Op\":\"text\"",
+				"\"error\":\"invalid parameter\"",
+				"\"id\":\"1\"",
+				"\"version\":\"v0.1\"",
+				"\"op\":\"text\"",
 			},
 		},
 		{
@@ -167,11 +166,11 @@ func TestHclogFormatter_Process(t *testing.T) {
 			},
 			want: []string{
 				"[ERROR] error event:",
-				"Error=\"invalid parameter\"",
-				"Id=1",
-				"Version=v0.1",
-				"Info:name=alice",
-				"Op=text",
+				"error=\"invalid parameter\"",
+				"id=1",
+				"version=v0.1",
+				"info:name=alice",
+				"op=text",
 			},
 		},
 		{
@@ -193,10 +192,9 @@ func TestHclogFormatter_Process(t *testing.T) {
 			},
 			want: []string{
 				"[INFO]  system event:",
-				"Data:msg=hello",
-				"Id=1",
-				"Version=v0.1",
-				"Op=match-filter",
+				"data:msg=hello",
+				"version=v0.1",
+				"op=match-filter",
 			},
 		},
 		{

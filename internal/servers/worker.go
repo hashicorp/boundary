@@ -13,7 +13,7 @@ import (
 )
 
 type workerAuthWorkerId struct {
-	WorkerId string `mapstructure:"worker_id" structs:"worker_id"`
+	WorkerId string `mapstructure:"worker_id"`
 }
 
 // AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib
@@ -26,8 +26,9 @@ func AttachWorkerIdToState(ctx context.Context, workerId string) (*structpb.Stru
 	}
 
 	workerMap := &workerAuthWorkerId{WorkerId: workerId}
-	stateOpt := structs.Map(workerMap)
-	return structpb.NewStruct(stateOpt)
+	s := structs.New(workerMap)
+	s.TagName = "mapstructure"
+	return structpb.NewStruct(s.Map())
 }
 
 // A Worker is a server that provides an address which can be used to proxy
