@@ -302,9 +302,9 @@ func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerIntercep
 					"attributes": "Attribute fields do not match the expected format.",
 				}
 
-				var invalidArgumentErr *InvalidArgumentError
-				if errors.As(err, &invalidArgumentErr) {
-					fieldErrs[invalidArgumentErr.FieldName] = invalidArgumentErr.Msg
+				var unknownSubTypeIDErr *UnknownSubtypeIDError
+				if errors.As(err, &unknownSubTypeIDErr) {
+					fieldErrs["attributes"] = unknownSubTypeIDErr.Error()
 				}
 
 				return nil, handlers.InvalidArgumentErrorf("Error in provided request.", fieldErrs)

@@ -371,15 +371,11 @@ func TestErrors(t *testing.T) {
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
-	assert.Len(apiErr.Details.RequestFields, 2)
+	assert.Len(apiErr.Details.RequestFields, 1)
 	assert.EqualValues(apiErr.Details.RequestFields, []*api.FieldError{
 		{
 			Name:        "attributes",
-			Description: "Attribute fields do not match the expected format.",
-		},
-		{
-			Name:        "auth-method-id",
-			Description: "unknown subtype in ID \"ampwd_1234567890\".",
+			Description: "unknown subtype in ID: ampwd_1234567890",
 		},
 	})
 }
