@@ -141,7 +141,7 @@ func TestLookupWorkerByWorkerReportedName(t *testing.T) {
 	})
 }
 
-func TestLookupWorkerByWorkerReportedKeyId(t *testing.T) {
+func TestLookupWorkerIdByWorkerReportedKeyId(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -316,10 +316,20 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		errAssert func(*testing.T, error)
 	}{
 		{
-			name: "no address",
+			name: "valid name no address",
 			repo: repo,
 			status: servers.NewWorkerForStatus(scope.Global.String(),
 				servers.WithName("worker_with_no_address")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name: "valid keyId no address",
+			repo: repo,
+			status: servers.NewWorkerForStatus(scope.Global.String(),
+				servers.WithKeyId("worker_with_no_address")),
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
@@ -341,7 +351,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "no name",
+			name: "no name and no keyId",
 			repo: repo,
 			status: servers.NewWorkerForStatus(scope.Global.String(),
 				servers.WithAddress("no_name_address")),
@@ -360,7 +370,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "empty scope",
+			name: "empty scope valid name",
 			repo: repo,
 			status: servers.NewWorkerForStatus("",
 				servers.WithAddress("address"),
@@ -371,13 +381,39 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "providing api tags",
+			name: "empty scope valid keyid",
+			repo: repo,
+			status: servers.NewWorkerForStatus("",
+				servers.WithAddress("address"),
+				servers.WithKeyId("config_key1")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name: "providing api tags valid name",
 			repo: repo,
 			status: func() *servers.Worker {
 				w := servers.NewWorker(scope.Global.String(),
 					servers.WithWorkerTags(&servers.Tag{Key: "test", Value: "test"}))
 				w.WorkerReportedAddress = "some_address"
 				w.WorkerReportedName = "providing api tags"
+				return w
+			}(),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name: "providing api tags valid keyid",
+			repo: repo,
+			status: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String(),
+					servers.WithWorkerTags(&servers.Tag{Key: "test", Value: "test"}),
+					servers.WithKeyId("some_key_id"))
+				w.WorkerReportedAddress = "some_address"
 				return w
 			}(),
 			errAssert: func(t *testing.T, err error) {

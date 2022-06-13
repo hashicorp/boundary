@@ -60,10 +60,10 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	// terminate all sessions since we can't know if they were canceled?
 
 	wStat := req.GetWorkerStatus()
-	if wStat == nil {
-		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Worker sent nil status.")
-	}
+
 	switch {
+	case wStat == nil:
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Worker sent nil status.")
 	case wStat.GetName() == "" && wStat.GetKeyId() == "":
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; at least one is required.")
 	case wStat.GetAddress() == "":

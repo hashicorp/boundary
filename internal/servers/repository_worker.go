@@ -217,7 +217,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
 	case worker.PublicId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
-	case worker.GetWorkerReportedName() == "" && worker.WorkerReportedKeyId == "":
+	case worker.GetWorkerReportedName() == "" && worker.keyId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; at least one is required")
 	case len(worker.apiTags) > 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "api tags is not empty")
@@ -228,7 +228,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		WithName(worker.GetWorkerReportedName()),
 		WithAddress(worker.GetWorkerReportedAddress()),
 		WithWorkerTags(worker.configTags...),
-		WithKeyId(worker.WorkerReportedKeyId))
+		WithKeyId(worker.keyId))
 
 	opts := getOpts(opt...)
 
@@ -236,8 +236,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	switch {
 	case opts.withPublicId != "":
 		worker.PublicId = opts.withPublicId
-	case worker.WorkerReportedKeyId != "":
-		workerId, err := r.LookupWorkerIdByWorkerReportedKeyId(ctx, worker.WorkerReportedKeyId)
+	case worker.keyId != "":
+		workerId, err := r.LookupWorkerIdByWorkerReportedKeyId(ctx, worker.keyId)
 		if err != nil || workerId == "" {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by keyId"))
 		}

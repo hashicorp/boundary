@@ -2,7 +2,6 @@ package servers
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -304,37 +303,20 @@ func TestWorker_Update(t *testing.T) {
 			},
 			update: Worker{
 				Worker: &store.Worker{
-					WorkerReportedKeyId:   "base update with worker reported address and keyId",
 					WorkerReportedAddress: "base update with worker reported address and keyId",
 				},
+				keyId: "base update with worker reported address and keyId",
 			},
-			mask: []string{"WorkerReportedAddress", "WorkerReportedKeyId"},
+			mask: []string{"WorkerReportedAddress"},
 			assert: func(t *testing.T, init, up *Worker) {
 				t.Helper()
 				assert.Equal(t, "base update with worker reported address and keyId", up.WorkerReportedAddress)
-				assert.Equal(t, "base update with worker reported address and keyId", up.WorkerReportedKeyId)
+				assert.Equal(t, "base update with worker reported address and keyId", up.keyId)
 				assert.Equal(t, uint32(1), up.Version)
 				assert.NotNil(t, up.GetLastStatusTime())
 				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
 				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
 			},
-		},
-		{
-			name: "base update with worker reported address",
-			initial: Worker{
-				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Description: "base update with status",
-				},
-			},
-			update: Worker{
-				Worker: &store.Worker{
-					WorkerReportedAddress: "base update with worker reported address",
-				},
-			},
-			mask:            []string{"WorkerReportedAddress"},
-			wantUpdateError: true,
 		},
 		{
 			// If any status fields are set then worker reported address must
@@ -367,9 +349,8 @@ func TestWorker_Update(t *testing.T) {
 				},
 			},
 			update: Worker{
-				Worker: &store.Worker{
-					WorkerReportedKeyId: "base update with worker reported keyId",
-				},
+				Worker: &store.Worker{},
+				keyId:  "base update with worker reported keyId",
 			},
 			mask:            []string{"WorkerReportedKeyId"},
 			wantUpdateError: true,
@@ -485,22 +466,6 @@ func TestWorker_Update(t *testing.T) {
 				assert.Equal(t, uint32(1), up.Version)
 			},
 		},
-		{
-			name: "worker reported clearing worker reported name",
-			initial: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedAddress: "worker reported clearing worker reported name",
-					WorkerReportedName:    "worker reported clearing worker reported name",
-				},
-			},
-			update: Worker{
-				Worker: &store.Worker{},
-			},
-			nullMask:        []string{"WorkerReportedName"},
-			wantUpdateError: true,
-		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -510,7 +475,6 @@ func TestWorker_Update(t *testing.T) {
 			up.PublicId = init.PublicId
 			_, err := rw.Update(ctx, up, tc.mask, tc.nullMask)
 			if tc.wantUpdateError {
-				fmt.Println(err)
 				assert.Error(t, err)
 				return
 			} else {
@@ -605,19 +569,6 @@ func TestWorker_Create(t *testing.T) {
 			},
 		},
 		{
-			name: "with worker reported address",
-			in: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedAddress: "with worker reported address",
-				},
-			},
-			want: wanted{
-				createError: true,
-			},
-		},
-		{
 			// The worker reported address is a required field if any of the
 			// worker reported fields are set.
 			name: "with worker reported name",
@@ -661,22 +612,6 @@ func TestWorker_Create(t *testing.T) {
 					Description:        "non status fields with worker reported name",
 					Address:            "address",
 					WorkerReportedName: "non status fields with worker reported name",
-				},
-			},
-			want: wanted{
-				createError: true,
-			},
-		},
-		{
-			name: "non status fields with worker reported address",
-			in: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					Name:                  "non status fields with worker reported address",
-					Description:           "non status fields with worker reported address",
-					Address:               "address",
-					WorkerReportedAddress: "non status fields with worker reported address",
 				},
 			},
 			want: wanted{

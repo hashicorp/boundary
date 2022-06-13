@@ -39,6 +39,7 @@ type Worker struct {
 	activeConnectionCount uint32 `gorm:"-"`
 	apiTags               []*Tag `gorm:"-"`
 	configTags            []*Tag `gorm:"-"`
+	keyId                 string `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
@@ -54,6 +55,7 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 			Address:     opts.withAddress,
 		},
 		apiTags: opts.withWorkerTags,
+		keyId:   opts.withKeyId,
 	}
 }
 
@@ -68,9 +70,9 @@ func NewWorkerForStatus(scopeId string, opt ...Option) *Worker {
 			ScopeId:               scopeId,
 			WorkerReportedName:    opts.withName,
 			WorkerReportedAddress: opts.withAddress,
-			WorkerReportedKeyId:   opts.withKeyId,
 		},
 		configTags: opts.withWorkerTags,
+		keyId:      opts.withKeyId,
 	}
 }
 
@@ -98,6 +100,9 @@ func (w *Worker) clone() *Worker {
 		for _, t := range w.configTags {
 			cWorker.configTags = append(cWorker.configTags, &Tag{Key: t.Key, Value: t.Value})
 		}
+	}
+	if w.keyId != "" {
+		cWorker.keyId = w.keyId
 	}
 	return cWorker
 }
@@ -188,7 +193,6 @@ type workerAggregate struct {
 	WorkerReportedName    string
 	WorkerReportedAddress string
 	LastStatusTime        *timestamp.Timestamp
-	WorkerReportedKeyId   string
 	WorkerConfigTags      string
 }
 
@@ -207,7 +211,6 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 			WorkerReportedAddress: a.WorkerReportedAddress,
 			WorkerReportedName:    a.WorkerReportedName,
 			LastStatusTime:        a.LastStatusTime,
-			WorkerReportedKeyId:   a.WorkerReportedKeyId,
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 	}

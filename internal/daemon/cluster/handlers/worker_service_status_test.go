@@ -73,6 +73,29 @@ func TestStatus(t *testing.T) {
 
 	worker1 := servers.TestWorker(t, conn, wrapper)
 
+	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
+	require.NoError(t, err)
+
+	// Create struct to pass in with workerId that will be passed along to storage
+	state, err := servers.AttachWorkerIdToState(ctx, worker1.PublicId)
+	require.NoError(t, err)
+
+	// This happens on the worker
+	fileStorage, err := file.New(ctx)
+	require.NoError(t, err)
+	nodeCreds, err := types.NewNodeCredentials(ctx, fileStorage)
+	require.NoError(t, err)
+	// Create request using worker id
+	fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(t, err)
+
+	// The AuthorizeNode request will result in a WorkerAuth record being stored under the workerId
+	nodeInfo, err := registration.AuthorizeNode(ctx, rootStorage, fetchReq, nodeenrollment.WithState(state))
+	require.NoError(t, err)
+
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
 		HostId:          h.GetPublicId(),
@@ -129,6 +152,64 @@ func TestStatus(t *testing.T) {
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetWorkerReportedName(),
 					Address:  worker1.CanonicalAddress(),
+				},
+				Jobs: []*pbs.JobStatus{
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+							JobInfo: &pbs.Job_SessionInfo{
+								SessionInfo: &pbs.SessionJobInfo{
+									SessionId: sess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+									Connections: []*pbs.Connection{
+										{
+											ConnectionId: connection.PublicId,
+											Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &pbs.StatusResponse{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
+					{
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
+					},
+				},
+				WorkerId: worker1.PublicId,
+			},
+		},
+		{
+			name:    "Valid keyId",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &servers.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Address:  worker1.CanonicalAddress(),
+					KeyId:    nodeInfo.Id,
+				},
+			},
+			want: &pbs.StatusResponse{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
+					{
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
+					},
+				},
+				WorkerId: worker1.PublicId,
+			},
+		},
+		{
+			name:    "Active keyId Worker",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &servers.ServerWorkerStatus{
+					KeyId:   nodeInfo.Id,
+					Address: worker1.CanonicalAddress(),
 				},
 				Jobs: []*pbs.JobStatus{
 					{
@@ -535,191 +616,4 @@ func TestStatusDeadConnection(t *testing.T) {
 	assert.Equal(t, 2, len(states))
 	assert.Nil(t, states[0].EndTime)
 	assert.Equal(t, session.StatusClosed, states[0].Status)
-}
-
-func TestStatusWorkerWithKeyId(t *testing.T) {
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-
-	serverRepo, _ := servers.NewRepository(rw, rw, kms)
-	serverRepo.UpsertController(ctx, &store.Controller{
-		PrivateId: "test_controller1",
-		Address:   "127.0.0.1",
-	})
-	serversRepoFn := func() (*servers.Repository, error) {
-		return serverRepo, nil
-	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
-	}
-	connRepoFn := func() (*session.ConnectionRepository, error) {
-		return session.NewConnectionRepository(ctx, rw, rw, kms)
-	}
-
-	repo, err := sessionRepoFn()
-	require.NoError(t, err)
-	connRepo, err := connRepoFn()
-	require.NoError(t, err)
-
-	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	uId := at.GetIamUserId()
-	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
-	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
-	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
-	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(
-		ctx,
-		t, conn, prj.GetPublicId(), "test",
-		target.WithHostSources([]string{hs.GetPublicId()}),
-		target.WithSessionConnectionLimit(-1),
-	)
-
-	worker1 := servers.TestWorker(t, conn, wrapper)
-
-	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kms)
-	require.NoError(t, err)
-
-	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
-	require.NoError(t, err)
-
-	// Create struct to pass in with workerId that will be passed along to storage
-	state, err := servers.AttachWorkerIdToState(ctx, worker1.PublicId)
-	require.NoError(t, err)
-
-	// This happens on the worker
-	fileStorage, err := file.New(ctx)
-	require.NoError(t, err)
-	nodeCreds, err := types.NewNodeCredentials(ctx, fileStorage)
-	require.NoError(t, err)
-	// Create request using worker id
-	fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(ctx)
-	require.NoError(t, err)
-
-	// The AuthorizeNode request will result in a WorkerAuth record being stored under the workerId
-	nodeInfo, err := registration.AuthorizeNode(ctx, rootStorage, fetchReq, nodeenrollment.WithState(state))
-	require.NoError(t, err)
-
-	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
-		UserId:          uId,
-		HostId:          h.GetPublicId(),
-		TargetId:        tar.GetPublicId(),
-		HostSetId:       hs.GetPublicId(),
-		AuthTokenId:     at.GetPublicId(),
-		ScopeId:         prj.GetPublicId(),
-		Endpoint:        "tcp://127.0.0.1:22",
-		ConnectionLimit: 10,
-	})
-	tofu := session.TestTofu(t)
-	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
-	require.NoError(t, err)
-	require.NoError(t, err)
-
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
-	require.NotNil(t, s)
-
-	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
-	require.NoError(t, err)
-
-	cases := []struct {
-		name       string
-		wantErr    bool
-		wantErrMsg string
-		req        *pbs.StatusRequest
-		want       *pbs.StatusResponse
-	}{
-		{
-			name:    "Identify workerID based on keyId in status",
-			wantErr: false,
-			req: &pbs.StatusRequest{
-				WorkerStatus: &servers.ServerWorkerStatus{
-					Name:    worker1.GetWorkerReportedName(),
-					Address: worker1.CanonicalAddress(),
-					KeyId:   nodeInfo.Id,
-				},
-			},
-			want: &pbs.StatusResponse{
-				CalculatedUpstreams: []*pbs.UpstreamServer{
-					{
-						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
-						Address: "127.0.0.1",
-					},
-				},
-				WorkerId: worker1.PublicId,
-			},
-		},
-		{
-			name:    "Active keyId Worker",
-			wantErr: false,
-			req: &pbs.StatusRequest{
-				WorkerStatus: &servers.ServerWorkerStatus{
-					KeyId:   nodeInfo.Id,
-					Name:    worker1.GetWorkerReportedName(),
-					Address: worker1.CanonicalAddress(),
-				},
-				Jobs: []*pbs.JobStatus{
-					{
-						Job: &pbs.Job{
-							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
-							JobInfo: &pbs.Job_SessionInfo{
-								SessionInfo: &pbs.SessionJobInfo{
-									SessionId: sess.PublicId,
-									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
-									Connections: []*pbs.Connection{
-										{
-											ConnectionId: connection.PublicId,
-											Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			want: &pbs.StatusResponse{
-				CalculatedUpstreams: []*pbs.UpstreamServer{
-					{
-						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
-						Address: "127.0.0.1",
-					},
-				},
-				WorkerId: worker1.PublicId,
-			},
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-
-			got, err := s.Status(ctx, tc.req)
-			if tc.wantErr {
-				require.Error(err)
-				assert.Equal(got, &pbs.StatusResponse{})
-				assert.Equal(tc.wantErrMsg, err.Error())
-				return
-			}
-			assert.Empty(
-				cmp.Diff(
-					tc.want,
-					got,
-					cmpopts.IgnoreUnexported(
-						pbs.StatusResponse{},
-						servers.ServerWorkerStatus{},
-						pbs.UpstreamServer{},
-						pbs.JobChangeRequest{},
-						pbs.Job{},
-						pbs.Job_SessionInfo{},
-						pbs.SessionJobInfo{},
-						pbs.Connection{},
-					),
-					cmpopts.IgnoreFields(servers.ServerWorkerStatus{}, "Tags"),
-				),
-			)
-		})
-	}
 }
