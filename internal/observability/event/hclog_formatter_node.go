@@ -36,7 +36,7 @@ type hclogFormatterFilter struct {
 }
 
 func newHclogFormatterFilter(jsonFormat bool, opt ...Option) (*hclogFormatterFilter, error) {
-	const op = "event.NewHclogFormatter"
+	const op = "event.newHclogFormatterFilter"
 	opts := getOpts(opt...)
 	var s signer
 	n := hclogFormatterFilter{
