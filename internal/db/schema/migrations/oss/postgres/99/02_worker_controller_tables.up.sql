@@ -67,7 +67,7 @@ create table server_worker (
   address wt_network_address
     constraint address_must_be_set_by_status
     check (
-        last_status_time is not null and address is not null and type != 'kms')
+        last_status_time is not null and address is not null and type != 'kms'
       ),
   create_time wt_timestamp,
   update_time wt_timestamp,
