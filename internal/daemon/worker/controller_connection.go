@@ -208,8 +208,9 @@ func (w *Worker) createClientConn(addr string) error {
 func (w *Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
 	var err error
 	info := &base.WorkerAuthInfo{
-		Name:        w.conf.RawConfig.Worker.Name,
-		Description: w.conf.RawConfig.Worker.Description,
+		Name:         w.conf.RawConfig.Worker.Name,
+		Description:  w.conf.RawConfig.Worker.Description,
+		ProxyAddress: w.conf.RawConfig.Worker.PublicAddr,
 	}
 
 	info.ConnectionNonce, err = w.nonceFn(20)
