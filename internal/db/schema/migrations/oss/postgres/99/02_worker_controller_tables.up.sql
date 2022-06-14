@@ -67,7 +67,7 @@ create table server_worker (
   address wt_network_address
     constraint address_must_be_set_by_status
     check (
-        last_status_time is not null and address is not null
+        last_status_time is not null and address is not null and type != 'kms')
       ),
   create_time wt_timestamp,
   update_time wt_timestamp,
@@ -100,7 +100,7 @@ create trigger worker_update_time_column before update on server_worker
 
 -- fixme: we should only update the version column when type = 'pki', but that
 -- can be deferred
-create trigger update_version_column after update of version, description, name, address on server_worker
+create trigger update_version_column after update of version, description, name on server_worker
   for each row execute procedure update_version_column();
 
 create function update_server_worker_update_last_status_time_column()
