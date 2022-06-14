@@ -19,16 +19,20 @@ The following fields are supported for all worker types.
 
 ```hcl
 worker {
-  name = "example-worker"
   description = "An example worker"
   public_addr = "5.1.23.198"
+
+  initial_upstreams = [
+    "10.0.0.1",
+    "10.0.0.2",
+  ]
+
+  tags {
+    type   = ["prod", "webservers"]
+    region = ["us-east-1"]
+  }
 }
 ```
-
-- `name` - Specifies a unique name of this worker within the Boundary
-  cluster. This value can be a direct name string, can refer to a file on disk
-  (file://) from which an name will be read; or an env var (env://) from which
-  the name will be read.
 
 - `description` - Specifies a friendly description of this worker.
   This value can be a direct description string, can refer to a file on disk

@@ -8,7 +8,19 @@ description: |-
 
 ## KMS Worker Configuration
 
-KMS Workers require a KMS block designated for `worker-auth`. This is the KMS configuration for
+KMS Workers require a `name` field. This specifies a unique name of this worker within the Boundary cluster. This value
+can be a direct name string, can refer to a file on disk (file://) from which an name will be read; or an env
+var (env://) from which the name will be read.
+
+```hcl
+worker {
+  name = "example-worker"
+  description = "An example worker"
+  public_addr = "5.1.23.198"
+}
+```
+
+KMS Workers also require a KMS block designated for `worker-auth`. This is the KMS configuration for
 authentication between the workers and controllers and must be present. Example (not safe for production!):
 
 ```hcl
