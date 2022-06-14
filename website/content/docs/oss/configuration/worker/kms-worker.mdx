@@ -8,9 +8,11 @@ description: |-
 
 ## KMS Worker Configuration
 
-KMS Workers require a `name` field. This specifies a unique name of this worker within the Boundary cluster. This value
-can be a direct name string, can refer to a file on disk (file://) from which an name will be read; or an env
-var (env://) from which the name will be read.
+KMS Workers require a `name` field. This specifies a unique name of this worker within the Boundary cluster.
+The `name` value can be:
+- a direct name string
+- a reference to a file on disk (`file://`) from which the name is read
+- an env var (`env://`) from which the name is read.
 
 ```hcl
 worker {
