@@ -219,20 +219,24 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
 	case worker.GetWorkerReportedName() == "" && worker.KeyId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; at least one is required")
+	case worker.GetWorkerReportedName() != "" && worker.KeyId != "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both set; only one can be set")
 	case len(worker.apiTags) > 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "api tags is not empty")
 	}
 
 	// Only retain the worker reported fields.
-	worker = NewWorkerForStatus(worker.GetScopeId(),
+	worker, err := NewWorkerForStatus(ctx, worker.GetScopeId(),
 		WithName(worker.GetWorkerReportedName()),
 		WithAddress(worker.GetWorkerReportedAddress()),
 		WithWorkerTags(worker.configTags...),
 		WithKeyId(worker.KeyId))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating worker for status"))
+	}
 
 	opts := getOpts(opt...)
 
-	var err error
 	switch {
 	case opts.withPublicId != "":
 		worker.PublicId = opts.withPublicId
@@ -253,7 +257,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		} else {
 			workerId, err := newWorkerId(ctx)
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error error generating worker id"))
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id"))
 			}
 			worker.PublicId = workerId
 		}

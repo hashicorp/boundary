@@ -1,6 +1,7 @@
 package targets
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -32,6 +33,7 @@ func TestWorkerList_Addresses(t *testing.T) {
 }
 
 func TestWorkerList_Filter(t *testing.T) {
+	ctx := context.Background()
 	var workers []*servers.Worker
 	for i := 0; i < 5; i++ {
 		switch {
@@ -43,12 +45,14 @@ func TestWorkerList_Filter(t *testing.T) {
 					Value: fmt.Sprintf("value%d", i),
 				})))
 		default:
-			workers = append(workers, servers.NewWorkerForStatus(scope.Global.String(),
+			wrk, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
 				servers.WithName(fmt.Sprintf("test_worker_%d", i)),
 				servers.WithWorkerTags(&servers.Tag{
 					Key:   "key",
 					Value: "configvalue",
-				})))
+				}))
+			require.NoError(t, err)
+			workers = append(workers, wrk)
 		}
 	}
 

@@ -212,14 +212,16 @@ func TestLookupWorker(t *testing.T) {
 		servers.WithDescription("description"),
 		servers.WithAddress("address"),
 		servers.WithWorkerTags(&servers.Tag{"key", "val"}))
+	wStat, err := servers.NewWorkerForStatus(ctx, w.GetScopeId(),
+		servers.WithName(w.GetWorkerReportedName()),
+		servers.WithAddress(w.GetWorkerReportedAddress()),
+		servers.WithWorkerTags(&servers.Tag{
+			Key:   "config",
+			Value: "test",
+		}))
+	require.NoError(t, err)
 	w, err = repo.UpsertWorkerStatus(context.Background(),
-		servers.NewWorkerForStatus(w.GetScopeId(),
-			servers.WithName(w.GetWorkerReportedName()),
-			servers.WithAddress(w.GetWorkerReportedAddress()),
-			servers.WithWorkerTags(&servers.Tag{
-				Key:   "config",
-				Value: "test",
-			})),
+		wStat,
 		servers.WithUpdateTags(true),
 		servers.WithPublicId(w.GetPublicId()))
 	require.NoError(t, err)
@@ -295,8 +297,9 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	wStatus1 := servers.NewWorkerForStatus(scope.Global.String(),
+	wStatus1, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
 		servers.WithAddress("address"), servers.WithName("config_name1"))
+	require.NoError(t, err)
 	worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
 	require.NoError(t, err)
 	{
@@ -318,8 +321,12 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		{
 			name: "valid name no address",
 			repo: repo,
-			status: servers.NewWorkerForStatus(scope.Global.String(),
-				servers.WithName("worker_with_no_address")),
+			status: func() *servers.Worker {
+				w, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
+					servers.WithName("worker_with_no_address"))
+				require.NoError(t, err)
+				return w
+			}(),
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
@@ -328,8 +335,12 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		{
 			name: "valid keyId no address",
 			repo: repo,
-			status: servers.NewWorkerForStatus(scope.Global.String(),
-				servers.WithKeyId("worker_with_no_address")),
+			status: func() *servers.Worker {
+				w, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
+					servers.WithKeyId("worker_with_no_address"))
+				require.NoError(t, err)
+				return w
+			}(),
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
@@ -339,9 +350,10 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			name: "cant specifying public id",
 			repo: repo,
 			status: func() *servers.Worker {
-				w := servers.NewWorkerForStatus(scope.Global.String(),
+				w, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
 					servers.WithName("worker_with_no_address"),
 					servers.WithAddress("workeraddress"))
+				require.NoError(t, err)
 				w.PublicId = "w_specified"
 				return w
 			}(),
@@ -353,8 +365,12 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		{
 			name: "no name and no keyId",
 			repo: repo,
-			status: servers.NewWorkerForStatus(scope.Global.String(),
-				servers.WithAddress("no_name_address")),
+			status: func() *servers.Worker {
+				w, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
+					servers.WithAddress("workeraddress"))
+				require.NoError(t, err)
+				return w
+			}(),
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
@@ -372,9 +388,13 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		{
 			name: "empty scope valid name",
 			repo: repo,
-			status: servers.NewWorkerForStatus("",
-				servers.WithAddress("address"),
-				servers.WithName("config_name1")),
+			status: func() *servers.Worker {
+				w, err := servers.NewWorkerForStatus(ctx, "",
+					servers.WithName("config_name1"),
+					servers.WithAddress("address"))
+				require.NoError(t, err)
+				return w
+			}(),
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
@@ -383,9 +403,13 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		{
 			name: "empty scope valid keyid",
 			repo: repo,
-			status: servers.NewWorkerForStatus("",
-				servers.WithAddress("address"),
-				servers.WithKeyId("config_key1")),
+			status: func() *servers.Worker {
+				w, err := servers.NewWorkerForStatus(ctx, "",
+					servers.WithKeyId("config_key1"),
+					servers.WithAddress("address"))
+				require.NoError(t, err)
+				return w
+			}(),
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
@@ -433,9 +457,13 @@ func TestUpsertWorkerStatus(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			}(),
-			status: servers.NewWorkerForStatus(scope.Global.String(),
-				servers.WithName("database failure"),
-				servers.WithAddress("address")),
+			status: func() *servers.Worker {
+				w, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
+					servers.WithName("database failure"),
+					servers.WithAddress("address"))
+				require.NoError(t, err)
+				return w
+			}(),
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
 				assert.Error(t, err)
@@ -456,9 +484,10 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	}
 
 	{
-		anotherStatus := servers.NewWorkerForStatus(scope.Global.String(),
+		anotherStatus, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
 			servers.WithName("another_test_worker"),
 			servers.WithAddress("address"))
+		require.NoError(t, err)
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 		{
@@ -480,7 +509,7 @@ func TestTagUpdatingListing(t *testing.T) {
 	ctx := context.Background()
 
 	worker1 := servers.TestWorker(t, conn, wrapper)
-	wStatus := servers.NewWorkerForStatus(scope.Global.String(),
+	wStatus, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
 		servers.WithName(worker1.GetWorkerReportedName()),
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
@@ -492,6 +521,7 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag1",
 				Value: "value2",
 			}))
+	require.NoError(err)
 
 	worker1, err = repo.UpsertWorkerStatus(ctx, wStatus,
 		servers.WithUpdateTags(true))
@@ -500,7 +530,7 @@ func TestTagUpdatingListing(t *testing.T) {
 	assert.ElementsMatch(t, []string{"value1", "value2"}, worker1.CanonicalTags()["tag1"])
 
 	// Update without saying to update tags
-	wStatus = servers.NewWorkerForStatus(scope.Global.String(),
+	wStatus, err = servers.NewWorkerForStatus(ctx, scope.Global.String(),
 		servers.WithName(worker1.GetWorkerReportedName()),
 		servers.WithAddress(worker1.GetWorkerReportedAddress()),
 		servers.WithWorkerTags(
@@ -512,6 +542,7 @@ func TestTagUpdatingListing(t *testing.T) {
 				Key:   "tag22",
 				Value: "value22",
 			}))
+	require.NoError(err)
 	worker1, err = repo.UpsertWorkerStatus(ctx, wStatus)
 	require.NoError(err)
 	assert.Len(t, worker1.CanonicalTags(), 1)
@@ -614,9 +645,11 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
+	wrk, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
 		servers.WithName(worker1.GetWorkerReportedName()),
-		servers.WithAddress(worker1.GetWorkerReportedAddress())))
+		servers.WithAddress(worker1.GetWorkerReportedAddress()))
+	require.NoError(err)
+	_, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(err)
 
 	requireIds := func(expected []string, actual []*servers.Worker) {
@@ -641,9 +674,11 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 	requireIds([]string{worker1.GetPublicId()}, result)
 
 	// Upsert second server.
-	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
+	wrk2, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
 		servers.WithName(worker2.GetWorkerReportedName()),
-		servers.WithAddress(worker1.GetWorkerReportedAddress())))
+		servers.WithAddress(worker1.GetWorkerReportedAddress()))
+	require.NoError(err)
+	_, err = serversRepo.UpsertWorkerStatus(ctx, wrk2)
 	require.NoError(err)
 
 	// Static liveness. Should get two, so long as this did not take

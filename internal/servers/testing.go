@@ -98,9 +98,10 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	name := "test-worker-" + strings.ToLower(namePart)
 	id, err := newWorkerId(ctx)
 	require.NoError(t, err)
-	wrk := NewWorkerForStatus(scope.Global.String(),
+	wrk, err := NewWorkerForStatus(ctx, scope.Global.String(),
 		WithName(name),
 		WithAddress("127.0.0.1"))
+	require.NoError(t, err)
 	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk, WithPublicId(id))
 	require.NoError(t, err)
 	require.NotNil(t, wrk)

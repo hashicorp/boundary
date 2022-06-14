@@ -250,7 +250,20 @@ func TestStatus(t *testing.T) {
 					Address:  worker1.CanonicalAddress(),
 				},
 			},
-			wantErrMsg: status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; at least one is required.").Error(),
+			wantErrMsg: status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; one is required.").Error(),
+		},
+		{
+			name:    "Name and keyId set- invalid",
+			wantErr: true,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &servers.ServerWorkerStatus{
+					Name:     worker1.GetWorkerReportedName(),
+					PublicId: worker1.GetPublicId(),
+					Address:  worker1.CanonicalAddress(),
+					KeyId:    nodeInfo.Id,
+				},
+			},
+			wantErrMsg: status.Error(codes.InvalidArgument, "Name and keyId are both set in the request; only one can be set.").Error(),
 		},
 		{
 			name:    "No Address",

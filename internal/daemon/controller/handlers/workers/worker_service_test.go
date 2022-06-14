@@ -49,6 +49,7 @@ func structListValue(t *testing.T, ss ...string) *structpb.ListValue {
 }
 
 func TestGet(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -69,14 +70,15 @@ func TestGet(t *testing.T) {
 		servers.WithAddress("test worker address"),
 		servers.WithWorkerTags(&servers.Tag{Key: "key", Value: "val"}))
 	// Add config tags to the created worker
-	worker, err = repo.UpsertWorkerStatus(context.Background(),
-		servers.NewWorkerForStatus(worker.GetScopeId(),
-			servers.WithName(worker.GetWorkerReportedName()),
-			servers.WithAddress(worker.GetWorkerReportedAddress()),
-			servers.WithWorkerTags(&servers.Tag{
-				Key:   "config",
-				Value: "test",
-			})),
+	wrk, err := servers.NewWorkerForStatus(ctx, worker.GetScopeId(),
+		servers.WithName(worker.GetWorkerReportedName()),
+		servers.WithAddress(worker.GetWorkerReportedAddress()),
+		servers.WithWorkerTags(&servers.Tag{
+			Key:   "config",
+			Value: "test",
+		}))
+	require.NoError(t, err)
+	worker, err = repo.UpsertWorkerStatus(context.Background(), wrk,
 		servers.WithUpdateTags(true),
 		servers.WithPublicId(worker.GetPublicId()))
 	require.NoError(t, err)

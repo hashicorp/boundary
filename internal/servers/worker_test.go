@@ -16,7 +16,9 @@ import (
 )
 
 func TestWorkerCanonicalAddress(t *testing.T) {
-	worker := NewWorkerForStatus(scope.Global.String(), WithAddress("status"))
+	ctx := context.Background()
+	worker, err := NewWorkerForStatus(ctx, scope.Global.String(), WithAddress("status"))
+	assert.NoError(t, err)
 	assert.Equal(t, "status", worker.CanonicalAddress())
 	worker.Address = "worker"
 	assert.Equal(t, "worker", worker.CanonicalAddress())
@@ -80,9 +82,10 @@ func TestWorkerAggregate(t *testing.T) {
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		w := NewWorkerForStatus(scope.Global.String(),
+		w, err := NewWorkerForStatus(ctx, scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
+		require.NoError(t, err)
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
@@ -98,9 +101,10 @@ func TestWorkerAggregate(t *testing.T) {
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(),
+		ws, err := NewWorkerForStatus(ctx, scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
+		require.NoError(t, err)
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx,
@@ -123,9 +127,10 @@ func TestWorkerAggregate(t *testing.T) {
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(),
+		ws, err := NewWorkerForStatus(ctx, scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
+		require.NoError(t, err)
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
@@ -161,9 +166,10 @@ func TestWorkerAggregate(t *testing.T) {
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(),
+		ws, err := NewWorkerForStatus(ctx, scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
+		require.NoError(t, err)
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx,
@@ -186,9 +192,10 @@ func TestWorkerAggregate(t *testing.T) {
 	{
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(),
+		ws, err := NewWorkerForStatus(ctx, scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
+		require.NoError(t, err)
 		ws.PublicId = id
 		require.NoError(t, rw.Create(ctx, ws))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
@@ -691,6 +698,21 @@ func TestWorker_Create(t *testing.T) {
 					Description: "non status fields with worker reported keyid",
 					Address:     "address",
 					KeyId:       "non status fields with worker reported keyid",
+				},
+			},
+			want: wanted{
+				createError: true,
+			},
+		},
+		{
+			name: "invalid- worker reporting name and key id",
+			in: Worker{
+				Worker: &store.Worker{
+					ScopeId:            scope.Global.String(),
+					PublicId:           newId(),
+					Address:            "address",
+					KeyId:              "non status fields with worker reported keyid",
+					WorkerReportedName: "non status fields with worker reported name",
 				},
 			},
 			want: wanted{

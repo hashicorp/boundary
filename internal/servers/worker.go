@@ -42,7 +42,7 @@ type Worker struct {
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
-// WithAddress, and WithWorkerTags. All other options are ignored.  This does
+// WithAddress, WithKeyId, and WithWorkerTags. All other options are ignored.  This does
 // not set any of the worker reported values.
 func NewWorker(scopeId string, opt ...Option) *Worker {
 	opts := getOpts(opt...)
@@ -59,11 +59,17 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 }
 
 // NewWorkerForStatus returns a new Worker usable for status updates.
-// Valid options are WithName, WithAddress, and WithWorkerTags, all of which
+// Valid options are WithName, WithAddress, WithKeyId, and WithWorkerTags, all of which
 // are assigned to the worker reported variations of these fields.
+// A worker can only be created with either a keyId or name, but not both
 // All other options are ignored.
-func NewWorkerForStatus(scopeId string, opt ...Option) *Worker {
+func NewWorkerForStatus(ctx context.Context, scopeId string, opt ...Option) (*Worker, error) {
+	const op = "servers.(Worker).AttachWorkerIdToState"
 	opts := getOpts(opt...)
+
+	if opts.withName != "" && opts.withKeyId != "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "cannot create a worker with both name and keyId.")
+	}
 	return &Worker{
 		Worker: &store.Worker{
 			ScopeId:               scopeId,
@@ -72,7 +78,7 @@ func NewWorkerForStatus(scopeId string, opt ...Option) *Worker {
 			KeyId:                 opts.withKeyId,
 		},
 		configTags: opts.withWorkerTags,
-	}
+	}, nil
 }
 
 // allocWorker will allocate a Worker

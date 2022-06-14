@@ -132,8 +132,10 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			require.NoError(err)
 			serversRepo, err := servers.NewRepository(rw, rw, kms)
 			require.NoError(err)
-			_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
-				servers.WithAddress("127.0.0.1")))
+			wrk, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
+				servers.WithAddress("127.0.0.1"))
+			require.NoError(err)
+			_, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 			require.NoError(err)
 
 			usersStart := time.Now()

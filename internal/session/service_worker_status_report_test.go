@@ -32,8 +32,10 @@ func TestWorkerStatusReport(t *testing.T) {
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serverRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithAddress("127.0.0.1")))
+	wrk, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
+		servers.WithAddress("127.0.0.1"))
+	require.NoError(t, err)
+	serverRepo.UpsertWorkerStatus(ctx, wrk)
 
 	repo, err := session.NewRepository(rw, rw, kms)
 	require.NoError(t, err)

@@ -109,9 +109,11 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
+	wrk, err := servers.NewWorkerForStatus(ctx, scope.Global.String(),
 		servers.WithName(worker1.GetWorkerReportedName()),
-		servers.WithAddress(worker1.GetWorkerReportedAddress())))
+		servers.WithAddress(worker1.GetWorkerReportedAddress()))
+	require.NoError(err)
+	_, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(err)
 
 	// Run the job.
