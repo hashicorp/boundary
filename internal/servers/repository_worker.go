@@ -267,7 +267,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 					// TODO: The intent of this WithWhere option is to operate with the OnConflict such that the action
 					//  taken by the OnConflict only applies if the conflict is on a row that is returned by this where
 					//  statement, otherwise it should error out.
-					db.WithWhere("public_id not in (select worker_id from worker_auth_authorized")); err != nil {
+					db.WithWhere("type = 'kms'")); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
 				}
 			case opts.withKeyId != "":
