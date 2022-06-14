@@ -1,13 +1,21 @@
 ---
 layout: docs
-page_title: Worker - Configuration
+page_title: Worker - Overview
 description: |-
   The worker stanza configures worker-specific parameters.
 ---
 
 # `worker` Stanza
 
-The `worker` stanza configures Boundary worker-specific parameters.
+The `worker` stanza configures Boundary worker-specific parameters. Boundary supports two different types of workers,
+differentiated by their means of authentication to Boundary.
+- [KMS Workers][] use a shared KMS to authenticate with controllers.
+- [Self-Managed Workers][] use certificates issued by Boundary to authenticate with controllers
+
+Different worker types have different configuration requirements, but share the common worker parameters listed below.
+
+## Common Worker Parameters
+The following fields are supported for all worker types.
 
 ```hcl
 worker {
@@ -36,8 +44,8 @@ worker {
   an env var (env://) from which the address will be read;
   or a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template).
 
-- `controllers` - A list of hosts/IP addresses and optionally ports for reaching
-  controllers. The port will default to :9201 if not specified. This value can be
+- `initial_upstreams` - A list of hosts/IP addresses and optionally ports for reaching
+  controllers or workers. The port will default to :9201 if not specified. This value can be
   a direct access string array with the addresses, or it can refer to a file on
   disk (file://) from which the addresses will be read, or an env var (env://) from
   which the addresses will be read. When using env or file, their contents
@@ -49,72 +57,5 @@ worker {
   tags set here will be re-parsed and new values used. It can also be a string
   referring to a file on disk (file://) or an env var (env://).
 
-## KMS Configuration
-
-Workers require a KMS block designated for `worker-auth`. This is the KMS configuration for
-authentication between the workers and controllers and must be present. Example (not safe for production!):
-
-```hcl
-  kms "aead" {
-	purpose = "worker-auth"
-	aead_type = "aes-gcm"
-	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
-	key_id = "global_worker-auth"
-}
-```
-
-This configuration must be the same for the worker-auth configuration for the controller if you're
-running the controller and worker as separate servers.
-
-And optionally, a KMS stanza for configuration encryption purpose:
-
-```hcl
-# Configuration encryption block: decrypts sensitive values in the
-# configuration file. See `boundary config [encrypt|decrypt] -h`.
-kms "aead" {
-  purpose   = "config"`
-  aead_type = "aes-gcm"
-  key       = "7xtkEoS5EXPbgynwd+dDLHopaCqK8cq0Rpep4eooaTs="
-}
-```
-
-Boundary supports many kinds of KMS integrations. For a complete guide to all available
-KMS types, see our [KMS documentation](/docs/configuration/kms).
-
-# Complete Configuration Example
-
-```hcl
-listener "tcp" {
-	purpose = "proxy"
-	tls_disable = true
-	address = "127.0.0.1"
-}
-
-worker {
-  # Name attr must be unique across workers
-  name = "demo-worker-1"
-  description = "A default worker created demonstration"
-
-  # Workers must be able to reach controllers on :9201
-  controllers = [
-    "10.0.0.1",
-    "10.0.0.2",
-    "10.0.0.3",
-  ]
-
-  public_addr = "myhost.mycompany.com"
-
-  tags {
-    type   = ["prod", "webservers"]
-    region = ["us-east-1"]
-  }
-}
-
-# must be same key as used on controller config
-kms "aead" {
-	purpose = "worker-auth"
-	aead_type = "aes-gcm"
-	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
-	key_id = "global_worker-auth"
-}
-```
+[kms workers]: /docs/oss/configuration/worker/kms-worker
+[self-managed workers]: /docs/oss/configuration/worker/self-managed-worker
