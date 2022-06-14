@@ -546,17 +546,16 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 		if req.GetItem().GetConfigTags() != nil {
 			badFields[globals.TagsField] = "This is a read only field."
 		}
-
 		nameString := req.GetItem().GetName().String()
 		if !strutil.Printable(nameString) {
 			badFields["name"] = "Worker name contains non-printable characters"
 		}
 		if strings.ToLower(nameString) != nameString {
-			badFields["name"] = "Worker name must be all lowercase"
+			badFields["name"] = "Worker name must be all lowercase."
 		}
 		descriptionString := req.GetItem().GetDescription().String()
 		if !strutil.Printable(descriptionString) {
-			badFields["description"] = "Worker description contains non-printable characters"
+			badFields["description"] = "Worker description contains non-printable characters."
 		}
 		return badFields
 	}, servers.WorkerPrefix)
@@ -589,6 +588,17 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 		}
 		if req.GetItem().AuthorizedActions != nil {
 			badFields[globals.AuthorizedActionsField] = readOnlyFieldMsg
+		}
+		nameString := req.GetItem().GetName().String()
+		if !strutil.Printable(nameString) {
+			badFields["name"] = "Worker name contains non-printable characters."
+		}
+		if strings.ToLower(nameString) != nameString {
+			badFields["name"] = "Worker name must be all lowercase"
+		}
+		descriptionString := req.GetItem().GetDescription().String()
+		if !strutil.Printable(descriptionString) {
+			badFields["description"] = "Worker description contains non-printable characters."
 		}
 		return badFields
 	})
