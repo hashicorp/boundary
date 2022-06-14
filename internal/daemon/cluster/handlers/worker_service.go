@@ -99,7 +99,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		opts = append(opts, servers.WithPublicId(wStat.GetPublicId()))
 	}
 	if wStat.GetKeyId() != "" {
-		opts = append(opts, servers.WithWorkerKeyIdentifier(wStat.GetKeyId()))
+		opts = append(opts, servers.WithKeyId(wStat.GetKeyId()))
 	}
 	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
@@ -257,12 +257,8 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "server_id", req.ServerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 		}
-		name := w.GetName()
-		if name == "" {
-			name = w.GetWorkerReportedName()
-		}
 		filterInput := map[string]interface{}{
-			"name": name,
+			"name": w.GetName(),
 			"tags": tagMap,
 		}
 		ok, err := eval.Evaluate(filterInput)

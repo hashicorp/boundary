@@ -50,9 +50,14 @@ message Worker {
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 80;
 
-  // type is the type of worker used. This can be either "kms" or "pki".
-  // @inject_tag: `gorm:"not_null"`
-  string type = 90;
+  // Name of the resource (optional)
+  // @inject_tag: `gorm:"default:null"`
+  string worker_reported_name = 90;
+
+  // Address for the worker. This must be set when the worker has received
+  // at least 1 status update fromt he worker daemon.
+  // @inject_tag: `gorm:"default:null"`
+  string worker_reported_address = 100;
 
   // The last_status_time is the last time a worker daemon sent a status update.
   // @inject_tag: `gorm:"default:null"`

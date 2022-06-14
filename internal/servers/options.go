@@ -106,7 +106,6 @@ func WithWorkerTags(tags ...*Tag) Option {
 	}
 }
 
-// WithWorkerKeyIdentifier provides an optional worker key identifier.
 func WithWorkerKeyIdentifier(workerKeyIdentifier string) Option {
 	return func(o *options) {
 		o.withWorkerKeyIdentifier = workerKeyIdentifier
@@ -122,6 +121,12 @@ func WithWorkerKeys(workerKeys WorkerKeys) Option {
 func WithControllerEncryptionPrivateKey(controllerKey []byte) Option {
 	return func(o *options) {
 		o.withControllerEncryptionPrivateKey = controllerKey
+	}
+}
+
+func WithKeyId(keyId string) Option {
+	return func(o *options) {
+		o.withKeyId = keyId
 	}
 }
 
