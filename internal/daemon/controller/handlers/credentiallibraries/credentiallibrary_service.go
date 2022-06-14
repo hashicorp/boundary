@@ -524,7 +524,7 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 			if outputFields.Has(globals.CredentialMappingOverridesField) && vaultIn.MappingOverride != nil {
 				m := make(map[string]interface{})
 				switch mapping := vaultIn.MappingOverride.(type) {
-				case *vault.UserPasswordOverride:
+				case *vault.UsernamePasswordOverride:
 					if mapping.UsernameAttribute != "" {
 						m[usernameAttribute] = mapping.UsernameAttribute
 					}
@@ -590,7 +590,7 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 			mapOpts = append(mapOpts, vault.WithOverridePasswordAttribute(password.(string)))
 		}
 		if len(mapOpts) > 0 {
-			opts = append(opts, vault.WithMappingOverride(vault.NewUserPasswordOverride(mapOpts...)))
+			opts = append(opts, vault.WithMappingOverride(vault.NewUsernamePasswordOverride(mapOpts...)))
 		}
 	}
 
@@ -736,7 +736,7 @@ func getMappingUpdates(credentialType credential.Type, current vault.MappingOver
 	switch credentialType {
 	case credential.UsernamePasswordType:
 		var currentUser, currentPass interface{}
-		if overrides, ok := current.(*vault.UserPasswordOverride); ok {
+		if overrides, ok := current.(*vault.UsernamePasswordOverride); ok {
 			currentUser = overrides.UsernameAttribute
 			currentPass = overrides.PasswordAttribute
 		}

@@ -118,8 +118,8 @@ type Password string
 // PrivateKey represents a secret private key.
 type PrivateKey []byte
 
-// UserPassword is a credential containing a username and a password.
-type UserPassword interface {
+// UsernamePassword is a credential containing a username and a password.
+type UsernamePassword interface {
 	Credential
 	Username() string
 	Password() Password

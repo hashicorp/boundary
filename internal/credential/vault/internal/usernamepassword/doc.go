@@ -1,3 +1,3 @@
-// Package userpassword provides access to the username and password
+// Package usernamepassword provides access to the username and password
 // stored in a Vault secret.
-package userpassword
+package usernamepassword

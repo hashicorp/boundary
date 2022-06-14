@@ -1147,9 +1147,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 				credType = string(l.CredentialType())
 
 				switch c := cred.(type) {
-				case credential.UserPassword:
+				case credential.UsernamePassword:
 					credData, err = handlers.ProtoToStruct(
-						&pb.UserPasswordCredential{
+						&pb.UsernamePasswordCredential{
 							Username: c.Username(),
 							Password: string(c.Password()),
 						},
@@ -2178,10 +2178,10 @@ func createCredLibs(targetId string, applicationIds, ingressIds, egressIds []str
 func credentialToProto(ctx context.Context, cred credential.Credential) (*serverpb.Credential, error) {
 	const op = "targets.credentialToProto"
 	switch c := cred.(type) {
-	case credential.UserPassword:
+	case credential.UsernamePassword:
 		return &serverpb.Credential{
-			Credential: &serverpb.Credential_UserPassword{
-				UserPassword: &serverpb.UserPassword{
+			Credential: &serverpb.Credential_UsernamePassword{
+				UsernamePassword: &serverpb.UsernamePassword{
 					Username: c.Username(),
 					Password: string(c.Password()),
 				},
