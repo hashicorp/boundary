@@ -2,6 +2,7 @@ package subtypes
 
 import (
 	"context"
+	"errors"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
@@ -297,8 +298,16 @@ func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerIntercep
 	return func(interceptorCtx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		if reqMsg, ok := req.(proto.Message); ok {
 			if err := transformRequest(reqMsg); err != nil {
-				return nil, handlers.InvalidArgumentErrorf("Error in provided request.",
-					map[string]string{"attributes": "Attribute fields do not match the expected format."})
+				fieldErrs := map[string]string{
+					"attributes": "Attribute fields do not match the expected format.",
+				}
+
+				var unknownSubTypeIDErr *UnknownSubtypeIDError
+				if errors.As(err, &unknownSubTypeIDErr) {
+					fieldErrs["attributes"] = unknownSubTypeIDErr.Error()
+				}
+
+				return nil, handlers.InvalidArgumentErrorf("Error in provided request.", fieldErrs)
 			}
 		}
 
