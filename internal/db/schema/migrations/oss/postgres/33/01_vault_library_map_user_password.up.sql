@@ -1,0 +1,6 @@
+begin;
+
+alter table credential_vault_library_user_password_mapping_override
+  rename to credential_vault_library_username_password_mapping_override; 
+
+commit;

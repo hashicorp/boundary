@@ -89,7 +89,7 @@ func (o *UserPasswordOverride) TableName() string {
 	if o.tableName != "" {
 		return o.tableName
 	}
-	return "credential_vault_library_user_password_mapping_override"
+	return "credential_vault_library_username_password_mapping_override"
 }
 
 // SetTableName sets the table name.
