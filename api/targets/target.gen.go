@@ -13,30 +13,28 @@ import (
 )
 
 type Target struct {
-	Id                              string                 `json:"id,omitempty"`
-	ScopeId                         string                 `json:"scope_id,omitempty"`
-	Scope                           *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name                            string                 `json:"name,omitempty"`
-	Description                     string                 `json:"description,omitempty"`
-	CreatedTime                     time.Time              `json:"created_time,omitempty"`
-	UpdatedTime                     time.Time              `json:"updated_time,omitempty"`
-	Version                         uint32                 `json:"version,omitempty"`
-	Type                            string                 `json:"type,omitempty"`
-	HostSetIds                      []string               `json:"host_set_ids,omitempty"`
-	HostSets                        []*HostSet             `json:"host_sets,omitempty"`
-	HostSourceIds                   []string               `json:"host_source_ids,omitempty"`
-	HostSources                     []*HostSource          `json:"host_sources,omitempty"`
-	SessionMaxSeconds               uint32                 `json:"session_max_seconds,omitempty"`
-	SessionConnectionLimit          int32                  `json:"session_connection_limit,omitempty"`
-	WorkerFilter                    string                 `json:"worker_filter,omitempty"`
-	ApplicationCredentialLibraryIds []string               `json:"application_credential_library_ids,omitempty"`
-	ApplicationCredentialLibraries  []*CredentialLibrary   `json:"application_credential_libraries,omitempty"`
-	ApplicationCredentialSourceIds  []string               `json:"application_credential_source_ids,omitempty"`
-	ApplicationCredentialSources    []*CredentialSource    `json:"application_credential_sources,omitempty"`
-	EgressCredentialSourceIds       []string               `json:"egress_credential_source_ids,omitempty"`
-	EgressCredentialSources         []*CredentialSource    `json:"egress_credential_sources,omitempty"`
-	Attributes                      map[string]interface{} `json:"attributes,omitempty"`
-	AuthorizedActions               []string               `json:"authorized_actions,omitempty"`
+	Id                             string                 `json:"id,omitempty"`
+	ScopeId                        string                 `json:"scope_id,omitempty"`
+	Scope                          *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name                           string                 `json:"name,omitempty"`
+	Description                    string                 `json:"description,omitempty"`
+	CreatedTime                    time.Time              `json:"created_time,omitempty"`
+	UpdatedTime                    time.Time              `json:"updated_time,omitempty"`
+	Version                        uint32                 `json:"version,omitempty"`
+	Type                           string                 `json:"type,omitempty"`
+	HostSetIds                     []string               `json:"host_set_ids,omitempty"`
+	HostSets                       []*HostSet             `json:"host_sets,omitempty"`
+	HostSourceIds                  []string               `json:"host_source_ids,omitempty"`
+	HostSources                    []*HostSource          `json:"host_sources,omitempty"`
+	SessionMaxSeconds              uint32                 `json:"session_max_seconds,omitempty"`
+	SessionConnectionLimit         int32                  `json:"session_connection_limit,omitempty"`
+	WorkerFilter                   string                 `json:"worker_filter,omitempty"`
+	ApplicationCredentialSourceIds []string               `json:"application_credential_source_ids,omitempty"`
+	ApplicationCredentialSources   []*CredentialSource    `json:"application_credential_sources,omitempty"`
+	EgressCredentialSourceIds      []string               `json:"egress_credential_source_ids,omitempty"`
+	EgressCredentialSources        []*CredentialSource    `json:"egress_credential_sources,omitempty"`
+	Attributes                     map[string]interface{} `json:"attributes,omitempty"`
+	AuthorizedActions              []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }
@@ -337,70 +335,6 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Targ
 	return target, nil
 }
 
-func (c *Client) AddCredentialLibraries(ctx context.Context, id string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
-	if id == "" {
-		return nil, fmt.Errorf("empty id value passed into AddCredentialLibraries request")
-	}
-
-	if c.client == nil {
-		return nil, errors.New("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, errors.New("zero version number passed into AddCredentialLibraries request")
-		}
-		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
-		if existingErr != nil {
-			if api.AsServerError(existingErr) != nil {
-				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
-			}
-			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingTarget == nil {
-			return nil, errors.New("nil resource response found when performing initial check-and-set read")
-		}
-		if existingTarget.Item == nil {
-			return nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Item.Version
-	}
-
-	opts.postMap["version"] = version
-
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-credential-libraries", url.PathEscape(id)), opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating AddCredentialLibraries request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error performing client request during AddCredentialLibraries call: %w", err)
-	}
-
-	target := new(TargetUpdateResult)
-	target.Item = new(Target)
-	apiErr, err := resp.Decode(target.Item)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding AddCredentialLibraries response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr
-	}
-	target.response = resp
-	return target, nil
-}
-
 func (c *Client) AddCredentialSources(ctx context.Context, id string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddCredentialSources request")
@@ -605,70 +539,6 @@ func (c *Client) AddHostSources(ctx context.Context, id string, version uint32, 
 	return target, nil
 }
 
-func (c *Client) SetCredentialLibraries(ctx context.Context, id string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
-	if id == "" {
-		return nil, fmt.Errorf("empty id value passed into SetCredentialLibraries request")
-	}
-
-	if c.client == nil {
-		return nil, errors.New("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, errors.New("zero version number passed into SetCredentialLibraries request")
-		}
-		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
-		if existingErr != nil {
-			if api.AsServerError(existingErr) != nil {
-				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
-			}
-			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingTarget == nil {
-			return nil, errors.New("nil resource response found when performing initial check-and-set read")
-		}
-		if existingTarget.Item == nil {
-			return nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Item.Version
-	}
-
-	opts.postMap["version"] = version
-
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-credential-libraries", url.PathEscape(id)), opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating SetCredentialLibraries request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error performing client request during SetCredentialLibraries call: %w", err)
-	}
-
-	target := new(TargetUpdateResult)
-	target.Item = new(Target)
-	apiErr, err := resp.Decode(target.Item)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding SetCredentialLibraries response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr
-	}
-	target.response = resp
-	return target, nil
-}
-
 func (c *Client) SetCredentialSources(ctx context.Context, id string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into SetCredentialSources request")
@@ -857,70 +727,6 @@ func (c *Client) SetHostSources(ctx context.Context, id string, version uint32, 
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding SetHostSources response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr
-	}
-	target.response = resp
-	return target, nil
-}
-
-func (c *Client) RemoveCredentialLibraries(ctx context.Context, id string, version uint32, opt ...Option) (*TargetUpdateResult, error) {
-	if id == "" {
-		return nil, fmt.Errorf("empty id value passed into RemoveCredentialLibraries request")
-	}
-
-	if c.client == nil {
-		return nil, errors.New("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, errors.New("zero version number passed into RemoveCredentialLibraries request")
-		}
-		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
-		if existingErr != nil {
-			if api.AsServerError(existingErr) != nil {
-				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
-			}
-			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingTarget == nil {
-			return nil, errors.New("nil resource response found when performing initial check-and-set read")
-		}
-		if existingTarget.Item == nil {
-			return nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Item.Version
-	}
-
-	opts.postMap["version"] = version
-
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-credential-libraries", url.PathEscape(id)), opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating RemoveCredentialLibraries request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error performing client request during RemoveCredentialLibraries call: %w", err)
-	}
-
-	target := new(TargetUpdateResult)
-	target.Item = new(Target)
-	apiErr, err := resp.Decode(target.Item)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding RemoveCredentialLibraries response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr

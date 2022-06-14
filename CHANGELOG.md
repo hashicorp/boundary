@@ -21,6 +21,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* Targets: Removes support for `credential libraries` with respect to Target resources. 
+  The `library` `fields` and `actions` were deprecated in [Boundary 0.5.0](#050-20210802), 
+  please use `credential sources` instead. See changelog referenced above for 
+  more details ([PR](https://github.com/hashicorp/boundary/pull/1533)).
 * Credential Libraries: The `user_password` credential type has been renamed to
   `username_password` to remove any inconsistency over what the credential type is.
   All existing `user_password` typed credential libraries will be migrated to

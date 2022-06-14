@@ -64,8 +64,7 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs
 			if cred.Secret == nil || cred.Secret.Decoded == nil {
 				continue
 			}
-			// TODO: Could allow switching on library ID or name
-			switch cred.CredentialLibrary.Type {
+			switch cred.CredentialSource.Type {
 			case "vault":
 				// Attempt unmarshaling into creds
 				if err := mapstructure.Decode(cred.Secret.Decoded, &creds); err != nil {

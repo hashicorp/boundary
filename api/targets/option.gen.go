@@ -87,18 +87,6 @@ func WithRecursive(recurse bool) Option {
 	}
 }
 
-func WithApplicationCredentialLibraryIds(inApplicationCredentialLibraryIds []string) Option {
-	return func(o *options) {
-		o.postMap["application_credential_library_ids"] = inApplicationCredentialLibraryIds
-	}
-}
-
-func DefaultApplicationCredentialLibraryIds() Option {
-	return func(o *options) {
-		o.postMap["application_credential_library_ids"] = nil
-	}
-}
-
 func WithApplicationCredentialSourceIds(inApplicationCredentialSourceIds []string) Option {
 	return func(o *options) {
 		o.postMap["application_credential_source_ids"] = inApplicationCredentialSourceIds

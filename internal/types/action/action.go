@@ -144,9 +144,9 @@ func (a Type) String() string {
 		"change-state",
 		"delete:self",
 		"no-op",
-		"add-credential-libraries",
-		"set-credential-libraries",
-		"remove-credential-libraries",
+		"add-credential-libraries",    // DEPRECATED
+		"set-credential-libraries",    // DEPRECATED
+		"remove-credential-libraries", // DEPRECATED
 		"add-credential-sources",
 		"set-credential-sources",
 		"remove-credential-sources",
