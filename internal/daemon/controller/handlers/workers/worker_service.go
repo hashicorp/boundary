@@ -19,12 +19,18 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+)
+
+const (
+	PkiWorkerType = "pki"
+	KmsWorkerType = "kms"
 )
 
 var (
@@ -330,7 +336,6 @@ func (s Service) createInRepo(ctx context.Context, worker *pb.Worker, creds *typ
 		worker.GetScopeId(),
 		servers.WithName(worker.GetName().GetValue()),
 		servers.WithDescription(worker.GetDescription().GetValue()),
-		servers.WithAddress(worker.GetAddress().GetValue()),
 	)
 	retWorker, err := repo.CreateWorker(ctx, newWorker, servers.WithFetchNodeCredentialsRequest(creds))
 	if err != nil {
@@ -363,9 +368,6 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	if name := item.GetName(); name != nil {
 		opts = append(opts, servers.WithName(name.GetValue()))
-	}
-	if addr := item.GetAddress(); addr != nil {
-		opts = append(opts, servers.WithAddress(addr.GetValue()))
 	}
 	w := servers.NewWorker(scopeId, opts...)
 	w.PublicId = id
@@ -452,12 +454,13 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
+		if in.Type == KmsWorkerType {
+			// KMS workers cannot be updated through the API
+			out.AuthorizedActions = strutil.StrListDelete(action.Update.String())
+		}
 	}
 	if outputFields.Has(globals.AddressField) && in.GetAddress() != "" {
-		out.Address = wrapperspb.String(in.GetAddress())
-	}
-	if outputFields.Has(globals.CanonicalAddressField) {
-		out.CanonicalAddress = in.CanonicalAddress()
+		out.Address = in.GetAddress()
 	}
 	if outputFields.Has(globals.LastStatusTimeField) {
 		out.LastStatusTime = in.GetLastStatusTime().GetTimestamp()
@@ -465,36 +468,18 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 	if outputFields.Has(globals.ActiveConnectionCountField) {
 		out.ActiveConnectionCount = in.ActiveConnectionCount()
 	}
+	if outputFields.Has(globals.ConfigTagsField) && len(in.GetConfigTags()) > 0 {
+		var err error
+		out.ConfigTags, err = tagsToMapProto(in.GetConfigTags())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
+		}
+	}
 	if outputFields.Has(globals.CanonicalTagsField) && len(in.CanonicalTags()) > 0 {
 		var err error
 		out.CanonicalTags, err = tagsToMapProto(in.CanonicalTags())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing canonical tags proto"))
-		}
-	}
-	if outputFields.Has(globals.TagsField) && len(in.GetApiTags()) > 0 {
-		var err error
-		out.Tags, err = tagsToMapProto(in.GetApiTags())
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing api tags proto"))
-		}
-	}
-	if outputFields.Has(globals.ConfigurationField) {
-		if in.GetWorkerReportedAddress() != "" ||
-			in.GetWorkerReportedName() != "" ||
-			len(in.GetConfigTags()) > 0 {
-			out.WorkerProvidedConfiguration = &pb.WorkerProvidedConfiguration{}
-		}
-		if len(in.GetConfigTags()) > 0 {
-			var err error
-			out.GetWorkerProvidedConfiguration().Tags, err = tagsToMapProto(in.GetConfigTags())
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
-			}
-		}
-		if out.WorkerProvidedConfiguration != nil {
-			out.GetWorkerProvidedConfiguration().Address = in.GetWorkerReportedAddress()
-			out.GetWorkerProvidedConfiguration().Name = in.GetWorkerReportedName()
 		}
 	}
 
@@ -551,17 +536,14 @@ func validateDeleteRequest(req *pbs.DeleteWorkerRequest) error {
 func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetWorkerProvidedConfiguration() != nil {
-			badFields[globals.ConfigurationField] = "This is a read only field."
-		}
-		if req.GetItem().GetCanonicalAddress() != "" {
-			badFields[globals.CanonicalAddressField] = "This is a read only field."
+		if req.GetItem().GetAddress() != "" {
+			badFields[globals.AddressField] = "This is a read only field."
 		}
 		if req.GetItem().GetCanonicalTags() != nil {
 			badFields[globals.CanonicalAddressField] = "This is a read only field."
 		}
-		if req.GetItem().GetTags() != nil {
-			badFields[globals.TagsField] = "These values cannot be updated in this type of request."
+		if req.GetItem().GetConfigTags() != nil {
+			badFields[globals.TagsField] = "This is a read only field."
 		}
 		return badFields
 	}, servers.WorkerPrefix)
@@ -583,20 +565,14 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 		if req.GetItem().WorkerGeneratedAuthToken == nil {
 			badFields[globals.WorkerGeneratedAuthTokenField] = cannotBeEmptyMsg
 		}
-		if req.GetItem().CanonicalAddress != "" {
+		if req.GetItem().Address != "" {
 			badFields[globals.CanonicalAddressField] = readOnlyFieldMsg
-		}
-		if req.GetItem().Tags != nil {
-			badFields[globals.TagsField] = readOnlyFieldMsg
 		}
 		if req.GetItem().CanonicalTags != nil {
 			badFields[globals.CanonicalTagsField] = readOnlyFieldMsg
 		}
 		if req.GetItem().LastStatusTime != nil {
 			badFields[globals.LastStatusTimeField] = readOnlyFieldMsg
-		}
-		if req.GetItem().WorkerProvidedConfiguration != nil {
-			badFields[globals.WorkerProvidedConfigurationField] = readOnlyFieldMsg
 		}
 		if req.GetItem().AuthorizedActions != nil {
 			badFields[globals.AuthorizedActionsField] = readOnlyFieldMsg
