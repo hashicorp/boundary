@@ -66,7 +66,7 @@ create table server_worker (
   address wt_network_address
     constraint address_must_be_set_by_status
     check (
-        -- this can be null only if a non kms worker has not received a status update yet.
+        -- address can be null only if a non kms worker has not received a status update yet.
         (type != 'kms')
         or
         (last_status_time is not null and address is not null)
@@ -105,7 +105,7 @@ create trigger worker_update_time_column before update on server_worker
 create trigger update_version_column after update of version, description, name on server_worker
   for each row execute procedure update_version_column();
 
-create function update_server_worker_update_last_status_time_column()
+create function update_kms_server_worker_update_last_status_time_column()
   returns trigger
 as $$
 begin
@@ -115,13 +115,29 @@ begin
   end if;
 end;
 $$ language plpgsql;
-comment on function update_server_worker_update_last_status_time_column is
+comment on function update_kms_server_worker_update_last_status_time_column is
   'function used to update the last_status_time column in server_worker with type kms to now';
 
-create trigger update_server_worker_last_status_time_column before update of address, name on server_worker 
-  for each row execute procedure update_server_worker_update_last_status_time_column();
+create trigger update_kms_server_worker_last_status_time_column before update of address, name, description on server_worker
+  for each row execute procedure update_kms_server_worker_update_last_status_time_column();
 
-create function insert_server_worker_update_last_status_time_column()
+create function update_pki_server_worker_update_last_status_time_column()
+  returns trigger
+as $$
+begin
+  if new.type = 'pki' then
+    new.last_status_time = now();
+    return new;
+  end if;
+end;
+$$ language plpgsql;
+comment on function update_pki_server_worker_update_last_status_time_column is
+  'function used to update the last_status_time column in server_worker with type pki to now';
+
+create trigger update_pki_server_worker_last_status_time_column before update of address on server_worker
+  for each row execute procedure update_pki_server_worker_update_last_status_time_column();
+
+create function insert_kms_server_worker_update_last_status_time_column()
   returns trigger
 as $$
 begin
@@ -131,11 +147,11 @@ begin
   end if;
 end;
 $$ language plpgsql;
-comment on function insert_server_worker_update_last_status_time_column is
-  'function used to update the last_status_time column in server_worker to now';
+comment on function insert_kms_server_worker_update_last_status_time_column is
+  'function used to update the last_status_time column in server_worker with type kms to now';
 
 create trigger insert_server_worker_last_update_time_column before insert on server_worker
-  for each row execute procedure insert_server_worker_update_last_status_time_column();
+  for each row execute procedure insert_kms_server_worker_update_last_status_time_column();
 
 create function insert_server_worker_type_column()
   returns trigger
