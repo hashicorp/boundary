@@ -465,7 +465,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			for _, cl := range credSources {
 				afterUpdateIds = append(afterUpdateIds, cl.Id())
 			}
-			assert.Equal(testClIds, afterUpdateIds)
+			assert.ElementsMatch(testClIds, afterUpdateIds)
 
 			switch tt.name {
 			case "valid-no-op":

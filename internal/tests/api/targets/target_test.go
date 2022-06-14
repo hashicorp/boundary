@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/credentiallibraries"
+	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hostsets"
@@ -66,11 +67,7 @@ func TestHostSetASD(t *testing.T) {
 	assert.Empty(tar.Item.HostSetIds)
 }
 
-func defaultCredLibrary(r *credentiallibraries.CredentialLibrary) *targets.CredentialLibrary {
-	return &targets.CredentialLibrary{Id: r.Id, CredentialStoreId: r.CredentialStoreId}
-}
-
-func TestCredentialLibraryASD(t *testing.T) {
+func TestCredentialSourcesASD(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
 	defer tc.Shutdown()
@@ -82,44 +79,85 @@ func TestCredentialLibraryASD(t *testing.T) {
 	client := tc.Client().Clone()
 	client.SetToken(token.Token)
 
-	cs, err := credentialstores.NewClient(client).Create(tc.Context(), "vault", proj.GetPublicId(),
+	csVault, err := credentialstores.NewClient(client).Create(tc.Context(), "vault", proj.GetPublicId(),
 		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreToken(vaultTok))
 	require.NoError(err)
-	require.NotNil(cs)
+	require.NotNil(csVault)
 
 	lClient := credentiallibraries.NewClient(client)
-	r1, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithVaultCredentialLibraryPath("something1"))
+	lib1, err := lClient.Create(tc.Context(), csVault.Item.Id, credentiallibraries.WithVaultCredentialLibraryPath("something1"))
 	require.NoError(err)
-	require.NotNil(r1)
+	require.NotNil(lib1)
 
-	r2, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithVaultCredentialLibraryPath("something2"))
+	lib2, err := lClient.Create(tc.Context(), csVault.Item.Id, credentiallibraries.WithVaultCredentialLibraryPath("something2"))
 	require.NoError(err)
-	require.NotNil(r1)
+	require.NotNil(lib2)
+
+	csStatic, err := credentialstores.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
+	require.NoError(err)
+	require.NotNil(csStatic)
+
+	cClient := credentials.NewClient(client)
+	cOpts := []credentials.Option{credentials.WithUsernamePasswordCredentialUsername("user"), credentials.WithUsernamePasswordCredentialPassword("pass")}
+	cred, err := cClient.Create(tc.Context(), "username_password", csStatic.Item.Id, cOpts...)
+	require.NoError(err)
+	require.NotNil(cred)
 
 	tarClient := targets.NewClient(client)
 	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2))
 	require.NoError(err)
 	require.NotNil(tar)
-	assert.Empty(tar.Item.ApplicationCredentialLibraryIds)
+	assert.Empty(tar.Item.ApplicationCredentialSourceIds)
 
-	tar, err = tarClient.AddCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version, targets.WithApplicationCredentialLibraryIds([]string{r1.Item.Id}))
+	// Add first Vault library
+	tar, err = tarClient.AddCredentialSources(tc.Context(), tar.Item.Id, tar.Item.Version,
+		targets.WithApplicationCredentialSourceIds([]string{lib1.Item.Id}))
 	require.NoError(err)
 	require.NotNil(tar)
-	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraryIds, []string{r1.Item.Id})
-	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraries, []*targets.CredentialLibrary{defaultCredLibrary(r1.Item)})
+	assert.ElementsMatch(tar.Item.ApplicationCredentialSourceIds, []string{lib1.Item.Id})
+	assert.ElementsMatch(tar.Item.ApplicationCredentialSources, []*targets.CredentialSource{
+		{
+			Id:                lib1.Item.Id,
+			CredentialStoreId: csVault.Item.Id,
+		},
+	})
 
-	tar, err = tarClient.SetCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version,
-		targets.WithApplicationCredentialLibraryIds([]string{r2.Item.Id}))
+	// Set second Vault library and a static credential
+	tar, err = tarClient.SetCredentialSources(tc.Context(), tar.Item.Id, tar.Item.Version,
+		targets.WithApplicationCredentialSourceIds([]string{lib2.Item.Id, cred.Item.Id}))
 	require.NoError(err)
 	require.NotNil(tar)
-	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraryIds, []string{r2.Item.Id})
-	assert.ElementsMatch(tar.Item.ApplicationCredentialLibraries, []*targets.CredentialLibrary{defaultCredLibrary(r2.Item)})
+	assert.ElementsMatch(tar.Item.ApplicationCredentialSourceIds, []string{lib2.Item.Id, cred.Item.Id})
+	assert.ElementsMatch(tar.Item.ApplicationCredentialSources, []*targets.CredentialSource{
+		{
+			Id:                lib2.Item.Id,
+			CredentialStoreId: csVault.Item.Id,
+		},
+		{
+			Id:                cred.Item.Id,
+			CredentialStoreId: csStatic.Item.Id,
+		},
+	})
 
-	tar, err = tarClient.RemoveCredentialLibraries(tc.Context(), tar.Item.Id, tar.Item.Version,
-		targets.WithApplicationCredentialLibraryIds([]string{r2.Item.Id}))
+	// Remove second Vault library
+	tar, err = tarClient.RemoveCredentialSources(tc.Context(), tar.Item.Id, tar.Item.Version,
+		targets.WithApplicationCredentialSourceIds([]string{lib2.Item.Id}))
 	require.NoError(err)
 	require.NotNil(tar)
-	assert.Empty(tar.Item.ApplicationCredentialLibraryIds)
+	assert.ElementsMatch(tar.Item.ApplicationCredentialSourceIds, []string{cred.Item.Id})
+	assert.ElementsMatch(tar.Item.ApplicationCredentialSources, []*targets.CredentialSource{
+		{
+			Id:                cred.Item.Id,
+			CredentialStoreId: csStatic.Item.Id,
+		},
+	})
+
+	// Set empty credential sources
+	tar, err = tarClient.SetCredentialSources(tc.Context(), tar.Item.Id, tar.Item.Version,
+		targets.WithApplicationCredentialSourceIds([]string{}))
+	require.NoError(err)
+	require.NotNil(tar)
+	assert.Empty(tar.Item.ApplicationCredentialSourceIds)
 }
 
 func TestList(t *testing.T) {
