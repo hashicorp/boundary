@@ -277,7 +277,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				}
 				switch n {
 				case 0:
-					return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("failed to find worker with key id %q", worker.GetWorkerReportedKeyId()))
+					return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("failed to find worker with key id %q", opts.withKeyId))
 				case 1:
 					break
 				default:
