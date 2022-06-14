@@ -125,8 +125,10 @@ create function insert_server_worker_update_last_status_time_column()
   returns trigger
 as $$
 begin
-  new.last_status_time = now();
-  return new;
+  if new.type = 'kms' then
+    new.last_status_time = now();
+    return new;
+  end if;
 end;
 $$ language plpgsql;
 comment on function insert_server_worker_update_last_status_time_column is
