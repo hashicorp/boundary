@@ -59,10 +59,10 @@ create table server_worker (
       check (
           type != 'kms' or name is not null
         )
-    constraint kms_name_must_be_lowercase
-      check (lower(trim(name)) = name and type = 'kms')
-    constraint kms_name_only_has_printable_characters
-      check (name !~ '[^[:print:]]' and type = 'kms'),
+    constraint name_must_be_lowercase
+      check (name is null or lower(trim(name)) = name)
+    constraint name_only_has_printable_characters
+      check (name is null or name !~ '[^[:print:]]'),
   address wt_network_address
     constraint address_must_be_set_by_status
       check (

@@ -735,19 +735,6 @@ func TestUpdate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Invalid description- uppercase",
-			req: &pbs.UpdateWorkerRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description", "address"},
-				},
-				Item: &pb.Worker{
-					Description: wrapperspb.String("BADDESCRIPTION"),
-				},
-			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
 			name: "Invalid description- nonprintable",
 			req: &pbs.UpdateWorkerRequest{
 				UpdateMask: &field_mask.FieldMask{
