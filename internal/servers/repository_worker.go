@@ -200,62 +200,51 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 	return workers, nil
 }
 
-// UpsertWorkerStatus creates a new worker if one with the provided public id
-// doesn't already exist. If it does, UpsertWorkerStatus updates the worker
-// status.  This returns the Worker object with the updated WorkerStatus applied.
-// The WithPublicId and WithUpdateTags options are the only ones used. All others are ignored.
+// UpsertWorkerStatus will update the address and last status time for a worker.
+// If the worker is a kms worker that hasn't been seen yet, it'll attempt to
+// create a new one, but will return an error if another worker (kms or other)
+// has the same name.  This returns the Worker object with the changes applied.
+// The WithPublicId, WithWorkerKeyIdentifier, and WithUpdateTags options are
+// the only ones used. All others are ignored.
 // Workers are intentionally not oplogged.
 func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "servers.UpsertWorkerStatus"
 
+	opts := getOpts(opt...)
 	switch {
 	case worker == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
-	case worker.GetWorkerReportedAddress() == "":
+	case worker.GetAddress() == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported address is empty")
 	case worker.ScopeId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
 	case worker.PublicId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
-	case worker.GetWorkerReportedName() == "" && worker.WorkerReportedKeyId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; at least one is required")
+	case worker.GetName() == "" && opts.withWorkerKeyIdentifier == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
+	case worker.GetName() != "" && opts.withWorkerKeyIdentifier != "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both set; no more than one is allowed")
 	case len(worker.apiTags) > 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "api tags is not empty")
 	}
 
-	// Only retain the worker reported fields.
-	worker = NewWorkerForStatus(worker.GetScopeId(),
-		WithName(worker.GetWorkerReportedName()),
-		WithAddress(worker.GetWorkerReportedAddress()),
-		WithWorkerTags(worker.configTags...),
-		WithKeyId(worker.WorkerReportedKeyId))
-
-	opts := getOpts(opt...)
-
+	var workerId string
 	var err error
 	switch {
 	case opts.withPublicId != "":
-		worker.PublicId = opts.withPublicId
-	case worker.WorkerReportedKeyId != "":
-		workerId, err := r.LookupWorkerIdByWorkerReportedKeyId(ctx, worker.WorkerReportedKeyId)
+		workerId = opts.withPublicId
+	case opts.withWorkerKeyIdentifier != "":
+		workerId, err = r.LookupWorkerIdByWorkerReportedKeyId(ctx, opts.withWorkerKeyIdentifier)
 		if err != nil || workerId == "" {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by keyId"))
 		}
-		worker.PublicId = workerId
 	default:
-		// Attempt to find workerId by name. If not found, generate an id
-		w, err := r.LookupWorkerByWorkerReportedName(ctx, worker.GetWorkerReportedName())
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by name"))
-		}
-		if w != nil {
-			worker.PublicId = w.PublicId
-		} else {
-			workerId, err := newWorkerId(ctx)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error error generating worker id"))
-			}
-			worker.PublicId = workerId
+		// We can just generate a new worker id every time since we resolve
+		// conflicts by name for kms workers on create so this id will only
+		// be used if there is no existing worker with the provided name yet.
+		workerId, err = newWorkerId(ctx)
+		if err != nil || workerId == "" {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker id"))
 		}
 	}
 
@@ -266,13 +255,34 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			worker := worker.clone()
-			workerCreateConflict := &db.OnConflict{
-				Target: db.Columns{"public_id"},
-				Action: append(db.SetColumns([]string{"worker_reported_name", "worker_reported_address"}),
-					db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
-			}
-			if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict)); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
+			worker.PublicId = workerId
+			switch {
+			case worker.GetName() != "":
+				workerCreateConflict := &db.OnConflict{
+					Target: db.Columns{"name", "scope"},
+					Action: append(db.SetColumns([]string{"address"}),
+						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
+				}
+				if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict),
+					// TODO: The intent of this WithWhere option is to operate with the OnConflict such that the action
+					//  taken by the OnConflict only applies if the conflict is on a row that is returned by this where
+					//  statement, otherwise it should error out.
+					db.WithWhere("public_id not in (select worker_id from worker_auth_authorized")); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
+				}
+			case worker.GetWorkerReportedKeyId() != "":
+				n, err := w.Update(ctx, worker, []string{"address"}, nil)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update status of pki worker"))
+				}
+				switch n {
+				case 0:
+					return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("failed to find worker with key id %q", worker.GetWorkerReportedKeyId()))
+				case 1:
+					break
+				default:
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("multiple records found when updating worker with id %q", worker.GetPublicId()))
+				}
 			}
 
 			// If we've been told to update tags, we need to clean out old
@@ -280,7 +290,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				setWorkerTags(ctx, w, worker.GetPublicId(), ConfigurationTagSource, worker.configTags)
+				setWorkerTags(ctx, w, worker.GetPublicId(), ConfigurationTagSource, worker.inputTags)
 			}
 
 			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
@@ -355,9 +365,8 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 // the path then an error is returned.
 func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version uint32, fieldMaskPaths []string, opt ...Option) (*Worker, int, error) {
 	const (
-		nameField    = "name"
-		descField    = "description"
-		addressField = "address"
+		nameField = "name"
+		descField = "description"
 	)
 	const op = "servers.(Repository).UpdateWorker"
 	switch {
@@ -373,7 +382,6 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 		switch {
 		case strings.EqualFold(nameField, f):
 		case strings.EqualFold(descField, f):
-		case strings.EqualFold(addressField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -382,9 +390,8 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			nameField:    worker.Name,
-			descField:    worker.Description,
-			addressField: worker.Address,
+			nameField: worker.Name,
+			descField: worker.Description,
 		},
 		fieldMaskPaths,
 		nil,
@@ -448,9 +455,9 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	case worker.ScopeId != scope.Global.String():
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("scope id must be %q", scope.Global.String()))
-	case worker.WorkerReportedAddress != "":
+	case worker.Address != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported address is not empty")
-	case worker.WorkerReportedName != "":
+	case worker.Name != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker reported name is not empty")
 	case worker.LastStatusTime != nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "last status time is not nil")

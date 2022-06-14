@@ -16,6 +16,22 @@ type workerAuthWorkerId struct {
 	WorkerId string `mapstructure:"worker_id"`
 }
 
+type WorkerType string
+
+const (
+	UnknownWorkerType WorkerType = "unknown"
+	KMSWorkerType     WorkerType = "kms"
+	PKIWorkerType     WorkerType = "pki"
+)
+
+func (t WorkerType) Valid() bool {
+	switch t {
+	case KMSWorkerType, PKIWorkerType:
+		return true
+	}
+	return false
+}
+
 // AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib
 // This is intended for use in worker authorization; AuthorizeNode in the lib accepts the option WithState
 // so that the workerId is passed through to storage and associated with a WorkerAuth record
@@ -40,6 +56,13 @@ type Worker struct {
 	activeConnectionCount uint32 `gorm:"-"`
 	apiTags               []*Tag `gorm:"-"`
 	configTags            []*Tag `gorm:"-"`
+
+	// inputTags is not specified to be api or config tags and is not intended
+	// to be read by clients.  Since config tags and api tags are applied in
+	// mutually exclusive contexts, inputTags is interpreted to be one or the
+	// other based on the context in which the worker is passed.  As such
+	// inputTags should only be read when performing mutations on the database.
+	inputTags []*Tag `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
@@ -54,7 +77,7 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 			Description: opts.withDescription,
 			Address:     opts.withAddress,
 		},
-		apiTags: opts.withWorkerTags,
+		inputTags: opts.withWorkerTags,
 	}
 }
 
@@ -63,16 +86,7 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 // are assigned to the worker reported variations of these fields.
 // All other options are ignored.
 func NewWorkerForStatus(scopeId string, opt ...Option) *Worker {
-	opts := getOpts(opt...)
-	return &Worker{
-		Worker: &store.Worker{
-			ScopeId:               scopeId,
-			WorkerReportedName:    opts.withName,
-			WorkerReportedAddress: opts.withAddress,
-			WorkerReportedKeyId:   opts.withKeyId,
-		},
-		configTags: opts.withWorkerTags,
-	}
+	return NewWorker(scopeId, opt...)
 }
 
 // allocWorker will allocate a Worker
@@ -100,6 +114,12 @@ func (w *Worker) clone() *Worker {
 			cWorker.configTags = append(cWorker.configTags, &Tag{Key: t.Key, Value: t.Value})
 		}
 	}
+	if w.inputTags != nil {
+		cWorker.inputTags = make([]*Tag, 0, len(w.inputTags))
+		for _, t := range w.inputTags {
+			cWorker.inputTags = append(cWorker.inputTags, &Tag{Key: t.Key, Value: t.Value})
+		}
+	}
 	return cWorker
 }
 
@@ -109,10 +129,15 @@ func (w *Worker) clone() *Worker {
 // in its connection status updates.  If neither is available, an empty string
 // is returned.
 func (w *Worker) CanonicalAddress() string {
-	if w.GetAddress() != "" {
-		return w.GetAddress()
+	return w.GetAddress()
+}
+
+func (w *Worker) Type() WorkerType {
+	wt := WorkerType(w.Worker.GetType())
+	if wt.Valid() {
+		return wt
 	}
-	return w.GetWorkerReportedAddress()
+	return UnknownWorkerType
 }
 
 // ActiveConnectionCount is the current number of sessions this worker is handling
@@ -189,7 +214,6 @@ type workerAggregate struct {
 	WorkerReportedName    string
 	WorkerReportedAddress string
 	LastStatusTime        *timestamp.Timestamp
-	WorkerReportedKeyId   string
 	WorkerConfigTags      string
 }
 
@@ -197,18 +221,15 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	const op = "servers.(workerAggregate).toWorker"
 	worker := &Worker{
 		Worker: &store.Worker{
-			PublicId:              a.PublicId,
-			Name:                  a.Name,
-			Description:           a.Description,
-			Address:               a.Address,
-			CreateTime:            a.CreateTime,
-			UpdateTime:            a.UpdateTime,
-			ScopeId:               a.ScopeId,
-			Version:               a.Version,
-			WorkerReportedAddress: a.WorkerReportedAddress,
-			WorkerReportedName:    a.WorkerReportedName,
-			LastStatusTime:        a.LastStatusTime,
-			WorkerReportedKeyId:   a.WorkerReportedKeyId,
+			PublicId:       a.PublicId,
+			Name:           a.Name,
+			Description:    a.Description,
+			Address:        a.Address,
+			CreateTime:     a.CreateTime,
+			UpdateTime:     a.UpdateTime,
+			ScopeId:        a.ScopeId,
+			Version:        a.Version,
+			LastStatusTime: a.LastStatusTime,
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 	}

@@ -65,7 +65,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 	switch {
 	case wStat.GetName() == "" && wStat.GetKeyId() == "":
-		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; at least one is required.")
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; one is required.")
+	case wStat.GetName() != "" && wStat.GetKeyId() != "":
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are both set in the request; only one is allowed.")
 	case wStat.GetAddress() == "":
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Address is not set but is required.")
 	}
@@ -88,16 +90,16 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		})
 	}
 
-	wKeyId := wStat.GetKeyId()
-
-	wConf := servers.NewWorkerForStatus(scope.Global.String(),
+	wConf := servers.NewWorker(scope.Global.String(),
 		servers.WithName(wStat.GetName()),
 		servers.WithAddress(wStat.GetAddress()),
-		servers.WithWorkerTags(workerTags...),
-		servers.WithKeyId(wKeyId))
+		servers.WithWorkerTags(workerTags...))
 	opts := []servers.Option{servers.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
 		opts = append(opts, servers.WithPublicId(wStat.GetPublicId()))
+	}
+	if wStat.GetKeyId() != "" {
+		opts = append(opts, servers.WithWorkerKeyIdentifier(wStat.GetKeyId()))
 	}
 	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
