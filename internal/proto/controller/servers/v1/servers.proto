@@ -6,24 +6,24 @@ option go_package = "github.com/hashicorp/boundary/internal/servers;servers";
 
 // TagPair matches a key to a value.
 message TagPair {
-  string key = 1;
-  string value = 2;
+  string key = 1; // @gotags: `class:"public"`
+  string value = 2; // @gotags: `class:"public"`
 }
 
 // ServerWorkerStatus is the new message used in place of Server to relay status request info.
 message ServerWorkerStatus {
   // Id of the worker.
-  string public_id = 10;
+  string public_id = 10; // @gotags: `class:"public"`
 
   // Name of the resource (optional)
-  string name = 20;
+  string name = 20; // @gotags: `class:"public"`
 
   // Address for the worker. This must be set.
-  string address = 30;
+  string address = 30; // @gotags: `class:"public"`
 
   // Tags for workers
   repeated TagPair tags = 40;
 
   // The key id for this worker, if applicable (optional)
-  string key_id = 50;
+  string key_id = 50; // @gotags: `class:"public"`
 }

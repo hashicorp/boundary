@@ -26,8 +26,8 @@ type TagPair struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty" class:"public"`     // @gotags: `class:"public"`
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *TagPair) Reset() {
@@ -83,15 +83,15 @@ type ServerWorkerStatus struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Id of the worker.
-	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Name of the resource (optional)
-	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Address for the worker. This must be set.
-	Address string `protobuf:"bytes,30,opt,name=address,proto3" json:"address,omitempty"`
+	Address string `protobuf:"bytes,30,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Tags for workers
 	Tags []*TagPair `protobuf:"bytes,40,rep,name=tags,proto3" json:"tags,omitempty"`
 	// The key id for this worker, if applicable (optional)
-	KeyId string `protobuf:"bytes,50,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	KeyId string `protobuf:"bytes,50,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *ServerWorkerStatus) Reset() {
