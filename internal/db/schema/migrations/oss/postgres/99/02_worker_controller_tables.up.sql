@@ -54,14 +54,10 @@ create table server_worker (
       on delete cascade
       on update cascade,
   description wt_description,
-  name wt_name unique
-    constraint worker_name_or_key_id_must_be_set_by_status
+  name wt_name -- server_worker_scope_id_name_uq defines an appropriate uniqueness constraint for name
+    constraint worker_name_must_be_set_by_status
     check (
-        (last_status_time is null and name is null and type = 'kms')
-        or
-        (last_status_time is not null and name is not null and key_id is null)
-        or
-        (last_status_time is not null and key_id is not null and name is null)
+        type != 'kms' or name is not null
       )
   constraint kms_name_must_be_lowercase
     check (lower(trim(name)) = name and type = 'kms')
@@ -71,9 +67,7 @@ create table server_worker (
   address wt_network_address
     constraint address_must_be_set_by_status
     check (
-        (last_status_time is null and address is null and type = 'kms')
-        or
-        (last_status_time is not null and address is not null)
+        last_status_time is not null and address is not null
       ),
   create_time wt_timestamp,
   update_time wt_timestamp,
@@ -86,15 +80,6 @@ create table server_worker (
   last_status_time timestamp with time zone,
   constraint last_status_time_not_before_create_time
     check (last_status_time >= create_time),
-  key_id text
-    constraint key_id_must_be_set_by_status
-      check (
-          (last_status_time is null and key_id is null and type = 'kms')
-          or
-          (last_status_time is not null and name is not null and type = 'kms')
-          or
-          (last_status_time is not null and key_id is not null and type = 'pki')
-        ),
   constraint server_worker_scope_id_name_uq
     unique(scope_id, name)
 );
@@ -113,6 +98,8 @@ create trigger worker_insert_time_column before insert on server_worker
 create trigger worker_update_time_column before update on server_worker
   for each row execute procedure update_time_column();
 
+-- fixme: we should only update the version column when type = 'pki', but that
+-- can be deferred
 create trigger update_version_column after update of version, description, name, address on server_worker
   for each row execute procedure update_version_column();
 
@@ -136,9 +123,7 @@ create function insert_server_worker_update_last_status_time_column()
   returns trigger
 as $$
 begin
-  if new.address is not null or new.name is not null then
-    new.last_status_time = now();
-  end if;
+  new.last_status_time = now();
   return new;
 end;
 $$ language plpgsql;
