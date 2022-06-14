@@ -21,7 +21,7 @@ enum CONNECTIONSTATUS {
 }
 
 message Connection {
-  string connection_id = 1;
+  string connection_id = 1; // @gotags: `class:"public"`
   CONNECTIONSTATUS status = 2;
 }
 
@@ -34,7 +34,7 @@ enum SESSIONSTATUS {
 }
 
 message SessionJobInfo {
-  string session_id = 1;
+  string session_id = 1; // @gotags: `class:"public"`
   SESSIONSTATUS status = 2;
   repeated Connection connections = 3;
 }
@@ -69,7 +69,7 @@ message UpstreamServer {
   TYPE type = 10;
 
   // Address of the daemon
-  string address = 20;
+  string address = 20; // @gotags: `class:"public"`
 }
 
 message StatusRequest {
@@ -120,5 +120,5 @@ message StatusResponse {
 
   // The ID of the worker which made the request. The worker can send this value in subsequent requests so the
   // controller does not need to do a database lookup for the id using the name field.
-  string worker_id = 40;
+  string worker_id = 40; // @gotags: `class:"public"`
 }

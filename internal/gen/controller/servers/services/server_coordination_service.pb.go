@@ -276,7 +276,7 @@ type Connection struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ConnectionId string           `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	ConnectionId string           `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	Status       CONNECTIONSTATUS `protobuf:"varint,2,opt,name=status,proto3,enum=controller.servers.services.v1.CONNECTIONSTATUS" json:"status,omitempty"`
 }
 
@@ -331,7 +331,7 @@ type SessionJobInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SessionId   string        `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	SessionId   string        `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	Status      SESSIONSTATUS `protobuf:"varint,2,opt,name=status,proto3,enum=controller.servers.services.v1.SESSIONSTATUS" json:"status,omitempty"`
 	Connections []*Connection `protobuf:"bytes,3,rep,name=connections,proto3" json:"connections,omitempty"`
 }
@@ -521,7 +521,7 @@ type UpstreamServer struct {
 	// type specifies between controller or worker.
 	Type UpstreamServer_TYPE `protobuf:"varint,10,opt,name=type,proto3,enum=controller.servers.services.v1.UpstreamServer_TYPE" json:"type,omitempty"`
 	// Address of the daemon
-	Address string `protobuf:"bytes,20,opt,name=address,proto3" json:"address,omitempty"`
+	Address string `protobuf:"bytes,20,opt,name=address,proto3" json:"address,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *UpstreamServer) Reset() {
@@ -712,7 +712,7 @@ type StatusResponse struct {
 	CalculatedUpstreams []*UpstreamServer `protobuf:"bytes,30,rep,name=calculated_upstreams,json=calculatedUpstreams,proto3" json:"calculated_upstreams,omitempty"`
 	// The ID of the worker which made the request. The worker can send this value in subsequent requests so the
 	// controller does not need to do a database lookup for the id using the name field.
-	WorkerId string `protobuf:"bytes,40,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	WorkerId string `protobuf:"bytes,40,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *StatusResponse) Reset() {
