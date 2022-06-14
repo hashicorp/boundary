@@ -37,7 +37,7 @@ begin;
   select is(count(*), 0::bigint) from credential_vault_library_username_password_mapping_override where library_id = 'vl______wvl3';
   select is(count(*), 0::bigint) from credential_vault_library_mapping_override               where library_id = 'vl______wvl3';
 
-  prepare credential_vault_library_username_password_mapping_override as
+  prepare insert_credential_vault_library_username_password_mapping_override as
     insert into credential_vault_library_username_password_mapping_override
       (library_id,     username_attribute, password_attribute)
     values
