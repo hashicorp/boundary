@@ -36,6 +36,7 @@ type WorkerAuthInfo struct {
 	Name            string `json:"name"`
 	Description     string `json:"description"`
 	ConnectionNonce string `json:"connection_nonce"`
+	ProxyAddress    string `json:"proxy_address"`
 }
 
 // Factory is the factory function to create a listener.
