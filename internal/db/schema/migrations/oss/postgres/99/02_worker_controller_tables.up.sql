@@ -107,6 +107,25 @@ create trigger worker_update_time_column before update on server_worker
 create trigger update_version_column after update of version, description, name on server_worker
   for each row execute procedure update_version_column();
 
+create function immutable_kms_name()
+  returns trigger
+as $$
+begin
+  if old.type = 'kms' and new.name is distinct from old.name then
+    raise exception 'immutable column for kms worker: server_worker.name' using
+      errcode = '23601',
+      schema = tg_table_schema,
+      table = tg_table_name,
+      column = 'name';
+  end if;
+end;
+$$ language plpgsql;
+comment on function immutable_kms_name is
+  'function used in before update triggers to make name column immutable for kms workers';
+
+create trigger immutable_kms_name before update on server_worker
+  for each row execute procedure immutable_kms_name();
+
 create function update_kms_server_worker_update_last_status_time_column()
   returns trigger
 as $$
