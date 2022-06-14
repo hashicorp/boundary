@@ -255,7 +255,7 @@
     "divider": true
   },
   {
-    "title": "OSS Boundary",
+    "title": "Boundary OSS",
     "routes": [
       {
         "title": "Overview",
