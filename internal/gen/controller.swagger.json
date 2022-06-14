@@ -5524,11 +5524,11 @@
         },
         "name": {
           "type": "string",
-          "description": "Optional name for identification purposes."
+          "description": "Optional name for identification purposes. Can only be set through the API\nfor `pki`-type workers; read-only for `kms`-type workers."
         },
         "description": {
           "type": "string",
-          "description": "Optional user-set description for identification purposes."
+          "description": "Optional user-set description for identification purposes. Can only be set\nthrough the API for `pki`-type workers; read-only for `kms`-type workers."
         },
         "created_time": {
           "type": "string",
@@ -5549,22 +5549,7 @@
         },
         "address": {
           "type": "string",
-          "description": "The address that this worker is reachable at."
-        },
-        "canonical_address": {
-          "type": "string",
-          "description": "Output only.  This is the address used by authorized session.  The value\nis the same as the address field if set. Otherwise it uses the address the\nworker reports.",
-          "readOnly": true
-        },
-        "tags": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "object"
-            }
-          },
-          "description": "Output only. The tags attached to this worker.",
+          "description": "Output only. The address that this worker is reachable at, as sourced from\nthe worker's configuration file.",
           "readOnly": true
         },
         "canonical_tags": {
@@ -5575,18 +5560,24 @@
               "type": "object"
             }
           },
-          "description": "Output only. The deduplicated union of the tags reported by the worker and\nthe tags added through the user facing api.  This is used when applying\nworker filters.",
+          "description": "Output only. The deduplicated union of the tags reported by the worker from\nits configuration and any tags added through other means.  This is used\nwhen applying worker filters.",
+          "readOnly": true
+        },
+        "config_tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The tags set in the worker's configuration file.",
           "readOnly": true
         },
         "last_status_time": {
           "type": "string",
           "format": "date-time",
           "description": "Output only. The time this worker daemon last reported its status.",
-          "readOnly": true
-        },
-        "worker_provided_configuration": {
-          "$ref": "#/definitions/controller.api.resources.workers.v1.WorkerProvidedConfiguration",
-          "description": "Output only. The set of information the worker daemon has reported about\nitself.",
           "readOnly": true
         },
         "worker_generated_auth_token": {
@@ -5599,6 +5590,11 @@
           "description": "Output only. The number of connections that this worker is currently handling.",
           "readOnly": true
         },
+        "type": {
+          "type": "string",
+          "description": "Output only. The type of the worker, denoted by how it authenticates: `pki`\nor `kms`.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
@@ -5609,33 +5605,6 @@
         }
       },
       "title": "Worker contains all fields related to a Worker resource"
-    },
-    "controller.api.resources.workers.v1.WorkerProvidedConfiguration": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string",
-          "description": "Output only.  The address the worker daemon reports itself as reachable at.",
-          "readOnly": true
-        },
-        "name": {
-          "type": "string",
-          "description": "Output only.  The name the worker daemon reports itself having.",
-          "readOnly": true
-        },
-        "tags": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "object"
-            }
-          },
-          "description": "Output only. The tags reporteed by the worker daemon.",
-          "readOnly": true
-        }
-      },
-      "description": "WorkerProvidedConfiguration contains configuration values reported by the worker daemon."
     },
     "controller.api.services.v1.AddGroupMembersResponse": {
       "type": "object",

@@ -13,23 +13,22 @@ import (
 )
 
 type Worker struct {
-	Id                          string                       `json:"id,omitempty"`
-	ScopeId                     string                       `json:"scope_id,omitempty"`
-	Scope                       *scopes.ScopeInfo            `json:"scope,omitempty"`
-	Name                        string                       `json:"name,omitempty"`
-	Description                 string                       `json:"description,omitempty"`
-	CreatedTime                 time.Time                    `json:"created_time,omitempty"`
-	UpdatedTime                 time.Time                    `json:"updated_time,omitempty"`
-	Version                     uint32                       `json:"version,omitempty"`
-	Address                     string                       `json:"address,omitempty"`
-	CanonicalAddress            string                       `json:"canonical_address,omitempty"`
-	Tags                        map[string][]string          `json:"tags,omitempty"`
-	CanonicalTags               map[string][]string          `json:"canonical_tags,omitempty"`
-	LastStatusTime              time.Time                    `json:"last_status_time,omitempty"`
-	WorkerProvidedConfiguration *WorkerProvidedConfiguration `json:"worker_provided_configuration,omitempty"`
-	WorkerGeneratedAuthToken    string                       `json:"worker_generated_auth_token,omitempty"`
-	ActiveConnectionCount       uint32                       `json:"active_connection_count,omitempty"`
-	AuthorizedActions           []string                     `json:"authorized_actions,omitempty"`
+	Id                       string              `json:"id,omitempty"`
+	ScopeId                  string              `json:"scope_id,omitempty"`
+	Scope                    *scopes.ScopeInfo   `json:"scope,omitempty"`
+	Name                     string              `json:"name,omitempty"`
+	Description              string              `json:"description,omitempty"`
+	CreatedTime              time.Time           `json:"created_time,omitempty"`
+	UpdatedTime              time.Time           `json:"updated_time,omitempty"`
+	Version                  uint32              `json:"version,omitempty"`
+	Address                  string              `json:"address,omitempty"`
+	CanonicalTags            map[string][]string `json:"canonical_tags,omitempty"`
+	ConfigTags               map[string][]string `json:"config_tags,omitempty"`
+	LastStatusTime           time.Time           `json:"last_status_time,omitempty"`
+	WorkerGeneratedAuthToken string              `json:"worker_generated_auth_token,omitempty"`
+	ActiveConnectionCount    uint32              `json:"active_connection_count,omitempty"`
+	Type                     string              `json:"type,omitempty"`
+	AuthorizedActions        []string            `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }
