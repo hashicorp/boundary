@@ -304,7 +304,7 @@ message SessionAuthorization {
 }
 
 // The layout of the struct for "credential" field in SessionCredential for a user_password credential type.
-message UserPasswordCredential {
+message UsernamePasswordCredential {
   // Username of the credential
   string username = 1; // @gotags: `class:"sensitive"`
 
