@@ -63,11 +63,13 @@ create table server_worker (
     check (lower(trim(name)) = name and type = 'kms')
   constraint kms_name_only_has_printable_characters
     check (name !~ '[^[:print:]]' and type = 'kms'),
-  -- The address can be null since it is an optional value from the API.
   address wt_network_address
     constraint address_must_be_set_by_status
     check (
-        last_status_time is not null and address is not null and type != 'kms'
+        -- this can be null only if a non kms worker has not received a status update yet.
+        (type != 'kms')
+        or
+        (last_status_time is not null and address is not null)
       ),
   create_time wt_timestamp,
   update_time wt_timestamp,
