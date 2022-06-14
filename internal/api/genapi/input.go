@@ -747,10 +747,6 @@ var inputStructs = []*structInfo{
 		recursiveListing:    true,
 	},
 	{
-		inProto: &workers.WorkerProvidedConfiguration{},
-		outFile: "workers/worker_provided_configuration.gen.go",
-	},
-	{
 		inProto: &workers.Worker{},
 		outFile: "workers/worker.gen.go",
 		templates: []*template.Template{
