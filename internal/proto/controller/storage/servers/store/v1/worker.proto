@@ -51,10 +51,6 @@ message Worker {
   // @inject_tag: `gorm:"default:null"`
   timestamp.v1.Timestamp last_status_time = 110;
 
-  // keyId reported by a PKI worker (optional)
-  // @inject_tag: `gorm:"default:null"`
-  string worker_reported_key_id = 120;
-
   // The type of the worker, denoted by how it authenticates: pki or kms.
   // @inject_tag: `gorm:"not_null"`
   string type = 130;

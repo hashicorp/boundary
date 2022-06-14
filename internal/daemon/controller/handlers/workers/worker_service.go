@@ -28,6 +28,11 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+const (
+	PkiWorkerType = "pki"
+	KmsWorkerType = "kms"
+)
+
 var (
 	maskManager handlers.MaskManager
 
@@ -449,7 +454,7 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
-		if in.Type == globals.KmsWorkerType {
+		if in.Type == KmsWorkerType {
 			// KMS workers cannot be updated through the API
 			out.AuthorizedActions = strutil.StrListDelete(action.Update.String())
 		}

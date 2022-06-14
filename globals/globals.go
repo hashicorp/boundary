@@ -6,8 +6,6 @@ const (
 	TcpProxyV1     = "boundary-tcp-proxy-v1"
 	ServiceTokenV1 = "s1"
 	SessionPrefix  = "s_"
-	PkiWorkerType  = "pki"
-	KmsWorkerType  = "kms"
 )
 
 type (
