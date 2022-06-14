@@ -3,7 +3,6 @@ package workers
 import (
 	"context"
 	"fmt"
-
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -26,6 +25,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"strings"
 )
 
 const (
@@ -544,6 +544,21 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 		}
 		if req.GetItem().GetConfigTags() != nil {
 			badFields[globals.TagsField] = "This is a read only field."
+		}
+
+		nameString := req.GetItem().GetName().String()
+		if !strutil.Printable(nameString) {
+			badFields["name"] = "Worker name contains non-printable characters"
+		}
+		if strings.ToLower(nameString) != nameString {
+			badFields["name"] = "Worker name must be all lowercase"
+		}
+		descriptionString := req.GetItem().GetDescription().String()
+		if !strutil.Printable(descriptionString) {
+			badFields["description"] = "Worker description contains non-printable characters"
+		}
+		if strings.ToLower(descriptionString) != descriptionString {
+			badFields["name"] = "Worker description must be all lowercase"
 		}
 		return badFields
 	}, servers.WorkerPrefix)

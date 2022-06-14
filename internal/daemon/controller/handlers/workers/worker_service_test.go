@@ -708,6 +708,58 @@ func TestUpdate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Invalid name- uppercase",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description", "address"},
+				},
+				Item: &pb.Worker{
+					Name: wrapperspb.String("BADNAME"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid name- non-printable",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description", "address"},
+				},
+				Item: &pb.Worker{
+					Name: wrapperspb.String("\x00"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid description- uppercase",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description", "address"},
+				},
+				Item: &pb.Worker{
+					Description: wrapperspb.String("BADDESCRIPTION"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid description- nonprintable",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description", "address"},
+				},
+				Item: &pb.Worker{
+					Description: wrapperspb.String("\x00"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
