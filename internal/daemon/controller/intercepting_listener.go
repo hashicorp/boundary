@@ -113,7 +113,7 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		}
 		workerInfo := workerInfoRaw.(*workerAuthEntry)
 		workerInfo.conn = tlsConn
-		event.WriteSysEvent(ctx, op, "worker successfully authed", "name", workerInfo.Name)
+		event.WriteSysEvent(ctx, op, "worker successfully authed", "name", workerInfo.Name, "description", workerInfo.Description, "proxy_address", workerInfo.ProxyAddress)
 		return tlsConn, nil
 
 	default:
