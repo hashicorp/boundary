@@ -609,7 +609,7 @@ func TestGet(t *testing.T) {
 	lib, err := vault.NewCredentialLibrary(store.GetPublicId(), "vault/path",
 		vault.WithCredentialType("username_password"),
 		vault.WithMappingOverride(
-			vault.NewUserPasswordOverride(
+			vault.NewUsernamePasswordOverride(
 				vault.WithOverrideUsernameAttribute("user"),
 				vault.WithOverridePasswordAttribute("pass"),
 			)))
@@ -646,7 +646,7 @@ func TestGet(t *testing.T) {
 			},
 		},
 		{
-			name: "success-userpassword",
+			name: "success-UsernamePassword",
 			id:   userPassLib.GetPublicId(),
 			res: &pbs.GetCredentialLibraryResponse{
 				Item: &pb.CredentialLibrary{
@@ -905,7 +905,7 @@ func TestUpdate(t *testing.T) {
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUserPasswordOverride(
+					vault.NewUsernamePasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),
@@ -934,7 +934,7 @@ func TestUpdate(t *testing.T) {
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUserPasswordOverride(
+					vault.NewUsernamePasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),
@@ -963,7 +963,7 @@ func TestUpdate(t *testing.T) {
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUserPasswordOverride(
+					vault.NewUsernamePasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),
@@ -1025,7 +1025,7 @@ func TestUpdate(t *testing.T) {
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUserPasswordOverride(
+					vault.NewUsernamePasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),
@@ -1064,7 +1064,7 @@ func TestUpdate(t *testing.T) {
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUserPasswordOverride(
+					vault.NewUsernamePasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),

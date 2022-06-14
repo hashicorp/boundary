@@ -199,7 +199,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "invalid-mapping-override-type",
 			in: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
+				MappingOverride: NewUsernamePasswordOverride(WithOverrideUsernameAttribute("test")),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:    cs.GetPublicId(),
 					HttpMethod: "GET",
@@ -211,7 +211,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "valid-user-password-credential-type-with-username-override",
 			in: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("utest"),
 				),
 				CredentialLibrary: &store.CredentialLibrary{
@@ -222,7 +222,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				},
 			},
 			want: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("utest"),
 				),
 				CredentialLibrary: &store.CredentialLibrary{
@@ -236,7 +236,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "valid-user-password-credential-type-with-password-override",
 			in: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverridePasswordAttribute("ptest"),
 				),
 				CredentialLibrary: &store.CredentialLibrary{
@@ -247,7 +247,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				},
 			},
 			want: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverridePasswordAttribute("ptest"),
 				),
 				CredentialLibrary: &store.CredentialLibrary{
@@ -261,7 +261,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		{
 			name: "valid-user-password-credential-type-with-username-and-password-override",
 			in: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("utest"),
 					WithOverridePasswordAttribute("ptest"),
 				),
@@ -273,7 +273,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				},
 			},
 			want: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("utest"),
 					WithOverridePasswordAttribute("ptest"),
 				),
@@ -319,8 +319,8 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				require.NotNil(got.MappingOverride)
 				assert.IsType(tt.want.MappingOverride, got.MappingOverride)
 				switch w := tt.want.MappingOverride.(type) {
-				case *UserPasswordOverride:
-					g, ok := got.MappingOverride.(*UserPasswordOverride)
+				case *UsernamePasswordOverride:
+					g, ok := got.MappingOverride.(*UsernamePasswordOverride)
 					require.True(ok)
 					assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
 					assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
@@ -329,7 +329,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				}
 
 				// verify it was persisted in the database
-				override := allocUserPasswordOverride()
+				override := allocUsernamePasswordOverride()
 				assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []interface{}{got.GetPublicId()}))
 			}
 		})
@@ -757,7 +757,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		{
 			name: "change-vault-path",
 			orig: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("orig-username")),
+				MappingOverride: NewUsernamePasswordOverride(WithOverrideUsernameAttribute("orig-username")),
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:     "GET",
 					VaultPath:      "/old/path",
@@ -767,7 +767,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			chgFn: changeVaultPath("/new/path"),
 			masks: []string{vaultPathField},
 			want: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("orig-username")),
+				MappingOverride: NewUsernamePasswordOverride(WithOverrideUsernameAttribute("orig-username")),
 				CredentialLibrary: &store.CredentialLibrary{
 					HttpMethod:     "GET",
 					VaultPath:      "/new/path",
@@ -931,7 +931,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		{
 			name: "user-password-attributes-change-username-attribute",
 			orig: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("orig-username"),
 					WithOverridePasswordAttribute("orig-password"),
 				),
@@ -943,13 +943,13 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeMappingOverride(
-				NewUserPasswordOverride(
+				NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("changed-username"),
 				),
 			),
 			masks: []string{"MappingOverride"},
 			want: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("changed-username"),
 				),
 				CredentialLibrary: &store.CredentialLibrary{
@@ -964,7 +964,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		{
 			name: "user-password-attributes-change-password-attribute",
 			orig: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("orig-username"),
 					WithOverridePasswordAttribute("orig-password"),
 				),
@@ -976,13 +976,13 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeMappingOverride(
-				NewUserPasswordOverride(
+				NewUsernamePasswordOverride(
 					WithOverridePasswordAttribute("changed-password"),
 				),
 			),
 			masks: []string{"MappingOverride"},
 			want: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverridePasswordAttribute("changed-password"),
 				),
 				CredentialLibrary: &store.CredentialLibrary{
@@ -997,7 +997,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		{
 			name: "user-password-attributes-change-username-and-password-attributes",
 			orig: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("orig-username"),
 					WithOverridePasswordAttribute("orig-password"),
 				),
@@ -1009,14 +1009,14 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeMappingOverride(
-				NewUserPasswordOverride(
+				NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("changed-username"),
 					WithOverridePasswordAttribute("changed-password"),
 				),
 			),
 			masks: []string{"MappingOverride"},
 			want: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("changed-username"),
 					WithOverridePasswordAttribute("changed-password"),
 				),
@@ -1040,14 +1040,14 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeMappingOverride(
-				NewUserPasswordOverride(
+				NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("changed-username"),
 					WithOverridePasswordAttribute("changed-password"),
 				),
 			),
 			masks: []string{"MappingOverride"},
 			want: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("changed-username"),
 					WithOverridePasswordAttribute("changed-password"),
 				),
@@ -1063,7 +1063,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		{
 			name: "user-password-attributes-delete-mapping-override",
 			orig: &CredentialLibrary{
-				MappingOverride: NewUserPasswordOverride(
+				MappingOverride: NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("orig-username"),
 					WithOverridePasswordAttribute("orig-password"),
 				),
@@ -1096,7 +1096,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeMappingOverride(
-				NewUserPasswordOverride(
+				NewUsernamePasswordOverride(
 					WithOverrideUsernameAttribute("changed-username"),
 					WithOverridePasswordAttribute("changed-password"),
 				),
@@ -1167,8 +1167,8 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			switch w := tt.want.MappingOverride.(type) {
 			case nil:
 				assert.Nil(got.MappingOverride)
-			case *UserPasswordOverride:
-				g, ok := got.MappingOverride.(*UserPasswordOverride)
+			case *UsernamePasswordOverride:
+				g, ok := got.MappingOverride.(*UsernamePasswordOverride)
 				require.True(ok)
 				assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
 				assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
@@ -1331,7 +1331,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 			{
 				name: "valid-user-password-credential-type-with-username-override",
 				in: &CredentialLibrary{
-					MappingOverride: NewUserPasswordOverride(
+					MappingOverride: NewUsernamePasswordOverride(
 						WithOverrideUsernameAttribute("utest"),
 					),
 					CredentialLibrary: &store.CredentialLibrary{
@@ -1345,7 +1345,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 			{
 				name: "valid-user-password-credential-type-with-password-override",
 				in: &CredentialLibrary{
-					MappingOverride: NewUserPasswordOverride(
+					MappingOverride: NewUsernamePasswordOverride(
 						WithOverridePasswordAttribute("ptest"),
 					),
 					CredentialLibrary: &store.CredentialLibrary{
@@ -1359,7 +1359,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 			{
 				name: "valid-user-password-credential-type-with-username-and-password-override",
 				in: &CredentialLibrary{
-					MappingOverride: NewUserPasswordOverride(
+					MappingOverride: NewUsernamePasswordOverride(
 						WithOverrideUsernameAttribute("utest"),
 						WithOverridePasswordAttribute("ptest"),
 					),
@@ -1398,8 +1398,8 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 					require.NotNil(got.MappingOverride)
 					assert.IsType(orig.MappingOverride, got.MappingOverride)
 					switch w := orig.MappingOverride.(type) {
-					case *UserPasswordOverride:
-						g, ok := got.MappingOverride.(*UserPasswordOverride)
+					case *UsernamePasswordOverride:
+						g, ok := got.MappingOverride.(*UsernamePasswordOverride)
 						require.True(ok)
 						assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
 						assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
@@ -1519,7 +1519,7 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 		lib := &CredentialLibrary{
-			MappingOverride: NewUserPasswordOverride(
+			MappingOverride: NewUsernamePasswordOverride(
 				WithOverrideUsernameAttribute("orig-username"),
 				WithOverridePasswordAttribute("orig-password"),
 			),
@@ -1563,7 +1563,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)[0]
 		lib := &CredentialLibrary{
-			MappingOverride: NewUserPasswordOverride(
+			MappingOverride: NewUsernamePasswordOverride(
 				WithOverrideUsernameAttribute("orig-username"),
 				WithOverridePasswordAttribute("orig-password"),
 			),

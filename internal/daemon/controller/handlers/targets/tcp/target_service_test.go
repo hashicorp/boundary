@@ -2992,10 +2992,10 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	defaultUserPass := v.CreateKVSecret(t, "default-userpass", []byte(`{"data": {"username": "my-user", "password": "my-pass"}}`))
 	require.NotNil(t, defaultUserPass)
 
-	clsRespUserPassword, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
+	clsRespUsernamePassword, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
 		CredentialStoreId: store.GetPublicId(),
-		Name:              wrapperspb.String("Userpassword Library"),
-		Description:       wrapperspb.String("Userpassword Library Description"),
+		Name:              wrapperspb.String("UsernamePassword Library"),
+		Description:       wrapperspb.String("UsernamePassword Library Description"),
 		Attrs: &credpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "default-userpass")),
@@ -3023,10 +3023,10 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	nonDefaultUserPass := v.CreateKVSecret(t, "non-default-userpass", []byte(`{"data": {"non-default-user": "my-user", "non-default-pass": "my-pass"}}`))
 	require.NotNil(t, nonDefaultUserPass)
 
-	clsRespUserPasswordWithMapping, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
+	clsRespUsernamePasswordWithMapping, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credpb.CredentialLibrary{
 		CredentialStoreId: store.GetPublicId(),
-		Name:              wrapperspb.String("Userpassword Mapping Library"),
-		Description:       wrapperspb.String("Userpassword Mapping Library Description"),
+		Name:              wrapperspb.String("UsernamePassword Mapping Library"),
+		Description:       wrapperspb.String("UsernamePassword Mapping Library Description"),
 		Attrs: &credpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "non-default-userpass")),
@@ -3058,11 +3058,11 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			credLib:        clsRespUnspecified.GetItem(),
 		},
 		{
-			name:           "userpassword",
+			name:           "UsernamePassword",
 			hostSourceId:   shs.GetPublicId(),
 			wantedHostId:   h.GetPublicId(),
 			wantedEndpoint: h.GetAddress(),
-			credLib:        clsRespUserPassword.GetItem(),
+			credLib:        clsRespUsernamePassword.GetItem(),
 			wantedCred: func() *structpb.Struct {
 				data := map[string]interface{}{
 					"username": "my-user",
@@ -3075,11 +3075,11 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			wantedCredType: string(credential.UsernamePasswordType),
 		},
 		{
-			name:           "userpassword-with-mapping",
+			name:           "UsernamePassword-with-mapping",
 			hostSourceId:   shs.GetPublicId(),
 			wantedHostId:   h.GetPublicId(),
 			wantedEndpoint: h.GetAddress(),
-			credLib:        clsRespUserPasswordWithMapping.GetItem(),
+			credLib:        clsRespUsernamePasswordWithMapping.GetItem(),
 			wantedCred: func() *structpb.Struct {
 				data := map[string]interface{}{
 					"password": "my-pass",
