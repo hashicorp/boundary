@@ -6,6 +6,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* Credentials: This release introduces a new credential store type `static`,
+  which simply takes in a user-supplied credential and stores it (encrypted)
+  directly in Boundary. Currently, the `static` credential store can hold
+  credentials of type `username_password`. These credentials can act as
+  credential sources for targets, similar to credential libraries from the
+  `vault` credential store, and thus can be brokered to users at session
+  authorization time. [PR](https://github.com/hashicorp/boundary/pull/2174)
 * controller: Improve response time for listing sessions.
   This also creates a new periodic job that will delete terminated
   sessions after 1 hour.

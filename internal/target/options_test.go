@@ -141,4 +141,37 @@ func Test_GetOpts(t *testing.T) {
 		}
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithStaticCredentials", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithStaticCredentials([]*StaticCredential{
+			{
+				StaticCredential: &store.StaticCredential{
+					CredentialId:      "alice",
+					CredentialPurpose: string(credential.ApplicationPurpose),
+				},
+			},
+			{
+				StaticCredential: &store.StaticCredential{
+					CredentialId:      "bob",
+					CredentialPurpose: string(credential.EgressPurpose),
+				},
+			},
+		}))
+		testOpts := getDefaultOptions()
+		testOpts.WithStaticCredentials = []*StaticCredential{
+			{
+				StaticCredential: &store.StaticCredential{
+					CredentialId:      "alice",
+					CredentialPurpose: string(credential.ApplicationPurpose),
+				},
+			},
+			{
+				StaticCredential: &store.StaticCredential{
+					CredentialId:      "bob",
+					CredentialPurpose: string(credential.EgressPurpose),
+				},
+			},
+		}
+		assert.Equal(opts, testOpts)
+	})
 }

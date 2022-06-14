@@ -10,8 +10,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var _ CredentialSource = (*TargetLibrary)(nil)
-
 // A CredentialLibrary is a CredentialSource that represents the relationship
 // between a target and a credential library.
 type CredentialLibrary struct {
@@ -73,39 +71,4 @@ func (t *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 		"op-type":            []string{op.String()},
 	}
 	return metadata
-}
-
-// A TargetLibrary represents the relationship between a target and a
-// credential library and includes the id of the credential store that the
-// library is a part of and the library's name and description.
-//
-// It implements the target.CredentialSource interface.
-type TargetLibrary struct {
-	*store.CredentialLibrary
-	StoreId string
-}
-
-// TableName returns the tablename to override the default gorm table name
-func (ts *TargetLibrary) TableName() string {
-	return "target_library"
-}
-
-// Id returns the ID of the library
-func (ts *TargetLibrary) Id() string {
-	return ts.CredentialLibraryId
-}
-
-// CredentialStoreId returns the ID of the store containing the library
-func (ts *TargetLibrary) CredentialStoreId() string {
-	return ts.StoreId
-}
-
-// CredentialPurpose returns the purpose of the credential
-func (ts *TargetLibrary) CredentialPurpose() credential.Purpose {
-	return credential.Purpose(ts.GetCredentialPurpose())
-}
-
-// TargetId returns the target linked to this credential source
-func (ts *TargetLibrary) TargetId() string {
-	return ts.GetTargetId()
 }

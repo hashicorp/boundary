@@ -3,46 +3,51 @@ package target
 const (
 	setChangesQuery = `
 with
-set_libraries (library_id) as (
+set_sources (source_id, type) as (
   -- returns the SET list
-  select public_id
-    from credential_library
+  select public_id, type
+    from credential_source_all_types
    where public_id in (%s)
 ),
-current_libraries (library_id) as (
+current_sources (source_id, type) as (
   -- returns the current list
-  select credential_library_id
+  select credential_library_id, 'library'
     from target_credential_library
    where target_id          = @target_id
      and credential_purpose = @purpose
+  union
+  select credential_static_id, 'static'
+    from target_static_credential
+   where target_id          = @target_id
+     and credential_purpose = @purpose
 ),
-keep_libraries (library_id) as (
+keep_sources (source_id) as (
   -- returns the KEEP list
-  select library_id
-    from current_libraries
-   where library_id in (select * from set_libraries)
+  select source_id
+    from current_sources
+   where source_id in (select source_id from set_sources)
 ),
-delete_libraries (library_id) as (
+delete_sources (source_id, type) as (
   -- returns the DELETE list
-  select library_id
-    from current_libraries
-   where library_id not in (select * from set_libraries)
+  select source_id, type
+    from current_sources
+   where source_id not in (select source_id from set_sources)
 ),
-insert_libraries (library_id) as (
+insert_sources (source_id, type) as (
   -- returns the ADD list
-  select library_id
-    from set_libraries
-   where library_id not in (select * from keep_libraries)
+  select source_id, type
+    from set_sources
+   where source_id not in (select * from keep_sources)
 ),
-final (action, library_id) as (
-  select 'delete', library_id
-    from delete_libraries
+final (action, source_id, type) as (
+  select 'delete', source_id, type
+    from delete_sources
    union
-  select 'add', library_id
-    from insert_libraries
+  select 'add', source_id, type
+    from insert_sources
 )
 select * from final
-order by action, library_id;
+order by action, source_id;
 `
 
 	targetPublicIdList = `

@@ -71,13 +71,18 @@ func (h targetHooks) VetForUpdate(ctx context.Context, t target.Target, paths []
 	return nil
 }
 
-// VetCredentialLibraries checks that all of the provided credential libriaries have a CredentialPurpose
+// VetCredentialSources checks that all the provided credential sources have a CredentialPurpose
 // of ApplicationPurpose. Any other CredentialPurpose will result in an error.
-func (h targetHooks) VetCredentialLibraries(ctx context.Context, cls []*target.CredentialLibrary) error {
-	const op = "tcp.vetCredentialLibraries"
+func (h targetHooks) VetCredentialSources(ctx context.Context, libs []*target.CredentialLibrary, creds []*target.StaticCredential) error {
+	const op = "tcp.VetCredentialSources"
 
-	for _, cl := range cls {
-		if cl.CredentialPurpose != string(credential.ApplicationPurpose) {
+	for _, c := range libs {
+		if c.GetCredentialPurpose() != string(credential.ApplicationPurpose) {
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("tcp.Target only supports credential purpose: %q", credential.ApplicationPurpose))
+		}
+	}
+	for _, c := range creds {
+		if c.GetCredentialPurpose() != string(credential.ApplicationPurpose) {
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("tcp.Target only supports credential purpose: %q", credential.ApplicationPurpose))
 		}
 	}
