@@ -261,7 +261,7 @@ func newUser(t testing.TB, ctx context.Context, iamRepo *iam.Repository, authTok
 	am := password.TestAuthMethod(t, conn, o.GetPublicId())
 	acct, err := password.NewAccount(am.GetPublicId(), password.WithLoginName(name))
 	require.NoError(err)
-	acct, err = pwRepo.CreateAccount(ctx, o.PublicId, acct, password.WithPassword(dbtest.BoundaryBenchmarksUserPassword))
+	acct, err = pwRepo.CreateAccount(ctx, o.PublicId, acct, password.WithPassword(dbtest.BoundaryBenchmarksUsernamePassword))
 	require.NoError(err)
 	u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId), iam.WithName(name))
 	at, err := authTokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
