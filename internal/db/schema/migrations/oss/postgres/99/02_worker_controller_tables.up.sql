@@ -27,6 +27,26 @@ create trigger controller_update_time_column before update on server_controller
 -- Worker table takes the place of the server table.
 -- instead of the private_id we use a wt_public_id field named public_id since
 -- workers will now be exposed as resources in boundary.
+
+create table server_worker_type_enm (
+  name text primary key
+    constraint only_predefined_types_allowed
+    check (
+      name in (
+        'pki',
+        'kms'
+      )
+    )
+);
+comment on table server_worker_type_enm is
+  'server_worker_type_enm is an enumeration table for worker types. '
+  'It contains rows for representing the pki and kms types.';
+
+insert into server_worker_type_enm (name)
+values
+  ('pki'),
+  ('kms');
+
 create table server_worker (
   public_id wt_public_id primary key,
   scope_id wt_scope_id not null
@@ -34,57 +54,44 @@ create table server_worker (
       on delete cascade
       on update cascade,
   description wt_description,
-  name wt_name unique,
-  -- The address can be null since it is an optional value from the API.
-  address wt_network_address,
+  name wt_name -- server_worker_scope_id_name_uq defines an appropriate uniqueness constraint for name
+    constraint worker_name_must_be_set_by_status
+      check (
+          type != 'kms' or name is not null
+        )
+    constraint kms_name_must_be_lowercase
+      check (lower(trim(name)) = name and type = 'kms')
+    constraint kms_name_only_has_printable_characters
+      check (name !~ '[^[:print:]]' and type = 'kms'),
+  address wt_network_address
+    constraint address_must_be_set_by_status
+      check (
+          -- address can be null only no status update has been received yet.
+          (last_status_time is not null and address is not null)
+          or
+          (last_status_time is null and address is null)
+        ),
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
-  last_status_time timestamp with time zone,
-  constraint last_status_time_not_before_create_time
-    check (last_status_time >= create_time),
-  -- This is the calculated address that the worker reports it is reachable on.
-  -- This must be set if the worker has ever received a status update.
-  worker_reported_address wt_network_address
-    constraint worker_reported_address_must_be_set_by_status
-      check (
-          (last_status_time is null and worker_reported_address is null)
-          or
-          (last_status_time is not null and worker_reported_address is not null)
-        ),
-  -- This is the name that the worker reports in it's status updates.
-  worker_reported_name wt_name
-    constraint worker_reported_name_must_be_set_by_status
-      check (
-          (last_status_time is null and worker_reported_name is null)
-          or
-          (last_status_time is not null and worker_reported_name is not null)
-          or
-          (last_status_time is not null and worker_reported_key_id is not null)
-        )
-    constraint worker_reported_name_must_be_lowercase
-      check (lower(trim(worker_reported_name)) = worker_reported_name)
-    constraint worker_reported_name_only_has_printable_characters
-      check (worker_reported_name !~ '[^[:print:]]'),
-  worker_reported_key_id text
-    constraint worker_reported_key_id_must_be_set_by_status
-      check (
-          (last_status_time is null and worker_reported_key_id is null)
-          or
-          (last_status_time is not null and worker_reported_name is not null)
-          or
-          (last_status_time is not null and worker_reported_key_id is not null)
-        ),
+  type text not null
+    constraint server_worker_type_enm_fkey
+      references server_worker_type_enm (name)
+      on delete restrict
+      on update cascade,
+  last_status_time timestamp with time zone
+    constraint last_status_time_not_before_create_time
+      check (last_status_time >= create_time)
+    constraint last_status_time_always_set_for_kms
+      check (type != 'kms' or last_status_time is not null),
   constraint server_worker_scope_id_name_uq
-    unique(scope_id, name),
-  constraint server_worker_scope_id_worker_reported_name_uq
-    unique(scope_id, worker_reported_name)
+    unique(scope_id, name)
 );
 comment on table server_worker  is
   'server_worker is a table where each row represents a Boundary worker.';
 
 create trigger immutable_columns before update on server_worker
-  for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
+  for each row execute procedure immutable_columns('public_id', 'scope_id', 'type', 'create_time');
 
 create trigger default_create_time_column before insert on server_worker
   for each row execute procedure default_create_time();
@@ -95,38 +102,78 @@ create trigger worker_insert_time_column before insert on server_worker
 create trigger worker_update_time_column before update on server_worker
   for each row execute procedure update_time_column();
 
-create trigger update_version_column after update of version, description, name, address on server_worker
+-- fixme: we should only update the version column when type = 'pki', but that
+-- can be deferred
+create trigger update_version_column after update of version, description, name on server_worker
   for each row execute procedure update_version_column();
 
-create function update_server_worker_update_last_status_time_column()
+create function update_kms_server_worker_update_last_status_time_column()
   returns trigger
 as $$
 begin
-  new.last_status_time = now();
-  return new;
-end;
-$$ language plpgsql;
-comment on function update_server_worker_update_last_status_time_column is
-  'function used to update the last_status_time column in server_worker to now';
-
-create trigger update_server_worker_last_status_time_column before update of worker_reported_address, worker_reported_name on server_worker
-  for each row execute procedure update_server_worker_update_last_status_time_column();
-
-create function insert_server_worker_update_last_status_time_column()
-  returns trigger
-as $$
-begin
-  if new.worker_reported_address is not null or new.worker_reported_name is not null then
+  if new.type = 'kms' then 
     new.last_status_time = now();
+    return new;
   end if;
-  return new;
 end;
 $$ language plpgsql;
-comment on function insert_server_worker_update_last_status_time_column is
-  'function used to update the last_status_time column in server_worker to now';
+comment on function update_kms_server_worker_update_last_status_time_column is
+  'function used to update the last_status_time column in server_worker with type kms to now';
+
+create trigger update_kms_server_worker_last_status_time_column before update of address, name, description on server_worker
+  for each row execute procedure update_kms_server_worker_update_last_status_time_column();
+
+create function update_pki_server_worker_update_last_status_time_column()
+  returns trigger
+as $$
+begin
+  if new.type = 'pki' then
+    new.last_status_time = now();
+    return new;
+  end if;
+end;
+$$ language plpgsql;
+comment on function update_pki_server_worker_update_last_status_time_column is
+  'function used to update the last_status_time column in server_worker with type pki to now';
+
+create trigger update_pki_server_worker_last_status_time_column before update of address on server_worker
+  for each row execute procedure update_pki_server_worker_update_last_status_time_column();
+
+create function insert_kms_server_worker_update_last_status_time_column()
+  returns trigger
+as $$
+begin
+  if new.type = 'kms' then
+    new.last_status_time = now();
+    return new;
+  end if;
+end;
+$$ language plpgsql;
+comment on function insert_kms_server_worker_update_last_status_time_column is
+  'function used to update the last_status_time column in server_worker with type kms to now';
 
 create trigger insert_server_worker_last_update_time_column before insert on server_worker
-  for each row execute procedure insert_server_worker_update_last_status_time_column();
+  for each row execute procedure insert_kms_server_worker_update_last_status_time_column();
+
+create function insert_server_worker_type_column()
+  returns trigger
+as $$
+begin
+  perform from worker_auth_authorized where worker_id = new.public_id;
+  case 
+    when new.type = 'pki' and not found then
+        raise exception 'invalid type: pki worker is not authorized in worker_auth_authorized table';
+    when new.type = 'kms' and found then
+        raise exception 'invalid type: kms worker cannot authorized in worker_auth_authorized table';
+  end case;
+  return new;
+end;
+$$ language plpgsql;
+comment on function insert_server_worker_type_column is
+  'function used to constraint the type column in server_worker';
+
+create trigger insert_server_worker_type_column before insert on server_worker
+  for each row execute procedure insert_server_worker_type_column();
 
 -- Create table worker tag
 create table server_worker_tag_enm (

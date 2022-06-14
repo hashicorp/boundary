@@ -29,8 +29,6 @@ select
   w.create_time,
   w.update_time,
   w.version,
-  w.worker_reported_name,
-  w.worker_reported_address,
   w.last_status_time,
   cc.count as active_connection_count,
   -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
