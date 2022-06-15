@@ -25,6 +25,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   See Deprecations/Changes for some additional details.
   [PR](https://github.com/hashicorp/boundary/pull/2160).
 
+### Bug Fixes
+
+* The plugin execution_dir configuration parameter is now respected.
+  [PR](https://github.com/hashicorp/boundary/pull/2183).
+
 ### Deprecations/Changes
 
 * Targets: Removes support for `credential libraries` with respect to Target resources. 
