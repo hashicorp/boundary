@@ -1128,7 +1128,7 @@ func (x *SessionAuthorization) GetCredentials() []*SessionCredential {
 	return nil
 }
 
-// The layout of the struct for "credential" field in SessionCredential for a user_password credential type.
+// The layout of the struct for "credential" field in SessionCredential for a username_password credential type.
 type UsernamePasswordCredential struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
