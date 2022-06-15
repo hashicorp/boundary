@@ -455,13 +455,22 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
-		if in.Type == KmsWorkerType {
+		if in.Type == KmsWorkerType && out.AuthorizedActions != nil {
 			// KMS workers cannot be updated through the API
-			out.AuthorizedActions = strutil.StrListDelete(out.AuthorizedActions, action.Update.String())
+			allActions := out.AuthorizedActions
+			out.AuthorizedActions = make([]string, 0, len(allActions))
+			for _, act := range allActions {
+				if act != action.Update.String() {
+					out.AuthorizedActions = append(out.AuthorizedActions, act)
+				}
+			}
 		}
 	}
 	if outputFields.Has(globals.AddressField) && in.GetAddress() != "" {
 		out.Address = in.GetAddress()
+	}
+	if outputFields.Has(globals.TypeField) && in.GetType() != "" {
+		out.Type = in.GetType()
 	}
 	if outputFields.Has(globals.LastStatusTimeField) {
 		out.LastStatusTime = in.GetLastStatusTime().GetTimestamp()
@@ -583,6 +592,9 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 		if req.GetItem().CanonicalTags != nil {
 			badFields[globals.CanonicalTagsField] = readOnlyFieldMsg
 		}
+		if req.GetItem().ConfigTags != nil {
+			badFields[globals.ConfigTagsField] = readOnlyFieldMsg
+		}
 		if req.GetItem().LastStatusTime != nil {
 			badFields[globals.LastStatusTimeField] = readOnlyFieldMsg
 		}
@@ -591,14 +603,14 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 		}
 		nameString := req.GetItem().GetName().String()
 		if !strutil.Printable(nameString) {
-			badFields[globals.NameField] = "Contains non-printable characters."
+			badFields[globals.NameField] = "Name contains non-printable characters."
 		}
 		if strings.ToLower(nameString) != nameString {
-			badFields[globals.NameField] = "Must be all lowercase"
+			badFields[globals.NameField] = "Name must be all lowercase."
 		}
 		descriptionString := req.GetItem().GetDescription().String()
 		if !strutil.Printable(descriptionString) {
-			badFields[globals.DescriptionField] = "Contains non-printable characters."
+			badFields[globals.DescriptionField] = "Description contains non-printable characters."
 		}
 		return badFields
 	})
