@@ -59,6 +59,11 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 				fmt.Sprintf("    Scope ID:                %s", item.ScopeId),
 			)
 		}
+		if item.Type != "" {
+			output = append(output,
+				fmt.Sprintf("    Type:                    %s", item.Type),
+			)
+		}
 		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:                 %d", item.Version),
@@ -74,9 +79,9 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 				fmt.Sprintf("    Description:             %s", item.Description),
 			)
 		}
-		if item.CanonicalAddress != "" {
+		if item.Address != "" {
 			output = append(output,
-				fmt.Sprintf("    Canonical Address:       %s", item.CanonicalAddress),
+				fmt.Sprintf("    Address:                 %s", item.Address),
 			)
 		}
 		if !item.LastStatusTime.IsZero() {
@@ -117,6 +122,12 @@ func printItemTable(result api.GenericResult) string {
 	if item.Description != "" {
 		nonAttributeMap["Description"] = item.Description
 	}
+	if item.Type != "" {
+		nonAttributeMap["Type"] = item.Type
+	}
+	if item.Address != "" {
+		nonAttributeMap["Address"] = item.Address
+	}
 	if !item.LastStatusTime.IsZero() {
 		nonAttributeMap["Last Status Time"] = item.LastStatusTime
 	}
@@ -142,69 +153,14 @@ func printItemTable(result api.GenericResult) string {
 		)
 	}
 
-	var workerProvidedTags map[string][]string
-	var workerProvidedAddress string
-	if item.WorkerProvidedConfiguration != nil {
-		config := item.WorkerProvidedConfiguration
-		configMap := make(map[string]any)
-		if config.Address != "" {
-			configMap["Address"] = config.Address
-			workerProvidedAddress = config.Address
-		}
-		if config.Name != "" {
-			configMap["Name"] = config.Name
-		}
-		ret = append(ret,
-			"",
-			"  Worker-Provided Configuration:",
-			base.WrapMap(4, maxLength, configMap),
-		)
-		workerProvidedTags = config.Tags
-	}
-
-	if len(item.Address) > 0 || len(item.CanonicalAddress) > 0 || len(workerProvidedAddress) > 0 {
-		ret = append(ret,
-			"",
-			"  Address:",
-		)
-		if len(item.Address) > 0 {
-			ret = append(ret,
-				"    Item (via API):",
-				"      "+item.Address,
-			)
-		}
-		if len(workerProvidedAddress) > 0 {
-			ret = append(ret,
-				"    Worker Configuration:",
-				"      "+workerProvidedAddress,
-			)
-		}
-		if len(item.CanonicalAddress) > 0 {
-			ret = append(ret,
-				"    Canonical:",
-				"      "+item.CanonicalAddress,
-			)
-		}
-	}
-
-	if len(item.Tags) > 0 || len(item.CanonicalTags) > 0 || len(workerProvidedTags) > 0 {
+	if len(item.CanonicalTags) > 0 || len(item.ConfigTags) > 0 {
 		ret = append(ret,
 			"",
 			"  Tags:",
 		)
-		if len(item.Tags) > 0 {
-			tagMap := make(map[string]any, len(item.Tags))
-			for k, v := range item.Tags {
-				tagMap[k] = v
-			}
-			ret = append(ret,
-				"    Item (via API):",
-				base.WrapMap(6, 2, tagMap),
-			)
-		}
-		if len(workerProvidedTags) > 0 {
-			tagMap := make(map[string]any, len(workerProvidedTags))
-			for k, v := range workerProvidedTags {
+		if len(item.ConfigTags) > 0 {
+			tagMap := make(map[string]any, len(item.ConfigTags))
+			for k, v := range item.ConfigTags {
 				tagMap[k] = v
 			}
 			ret = append(ret,

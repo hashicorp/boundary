@@ -18,6 +18,9 @@ message ServerWorkerStatus {
   // Name of the resource (optional)
   string name = 20; // @gotags: `class:"public"`
 
+  // Description of the resource (optional)
+  string description = 25; // @gotags: `class:"public"`
+
   // Address for the worker. This must be set.
   string address = 30; // @gotags: `class:"public"`
 

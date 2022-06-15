@@ -2784,7 +2784,7 @@ func TestAuthorizeSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			servers.TestWorker(t, conn, wrapper)
+			servers.TestKmsWorker(t, conn, wrapper)
 
 			asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
@@ -3062,7 +3062,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			servers.TestWorker(t, conn, wrapper)
+			servers.TestKmsWorker(t, conn, wrapper)
 
 			asRes, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),

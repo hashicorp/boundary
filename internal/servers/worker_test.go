@@ -5,31 +5,27 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestWorkerCanonicalAddress(t *testing.T) {
-	worker := NewWorkerForStatus(scope.Global.String(), WithAddress("status"))
-	assert.Equal(t, "status", worker.CanonicalAddress())
-	worker.Address = "worker"
-	assert.Equal(t, "worker", worker.CanonicalAddress())
-}
-
 func TestWorkerCanonicalTags(t *testing.T) {
-	w := NewWorker(scope.Global.String(),
-		WithWorkerTags(
-			&Tag{Key: "key", Value: "apis unique"},
-			&Tag{Key: "key", Value: "shared"},
-			&Tag{Key: "key2", Value: "apis key2 unique"},
-		))
+	w := NewWorker(scope.Global.String())
+	w.apiTags = []*Tag{
+		{Key: "key", Value: "apis unique"},
+		{Key: "key", Value: "shared"},
+		{Key: "key2", Value: "apis key2 unique"},
+	}
 	w.configTags = []*Tag{
 		{Key: "key", Value: "configs unique"},
 		{Key: "key", Value: "shared"},
@@ -57,33 +53,36 @@ func TestWorkerAggregate(t *testing.T) {
 		return got
 	}
 
-	// Worker without a status
-	{
+	t.Run("kms worker", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
+		id = strings.ToLower(id)
 		w := NewWorker(scope.Global.String(),
 			WithName(id),
 			WithAddress("address"))
+		w.Type = KmsWorkerType.String()
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
 		got := getAggWorker(id)
+		assert.Equal(t, KmsWorkerType.String(), got.GetType())
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, scope.Global.String(), got.GetScopeId())
 		assert.Equal(t, id, got.GetName())
 		assert.Equal(t, "address", got.GetAddress())
 		assert.Equal(t, uint32(1), got.GetVersion())
-		assert.Nil(t, got.GetLastStatusTime())
+		assert.NotNil(t, got.GetLastStatusTime())
 		assert.Empty(t, got.CanonicalTags())
-	}
+	})
 
 	// Worker with status
-	{
+	t.Run("Worker with status", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		w := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
+		w.Type = KmsWorkerType.String()
 		w.PublicId = id
 		require.NoError(t, rw.Create(ctx, w))
 
@@ -91,19 +90,19 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
-		assert.Equal(t, strings.ToLower(id), got.GetWorkerReportedName())
-		assert.Equal(t, "address", got.GetWorkerReportedAddress())
-	}
+		assert.Equal(t, strings.ToLower(id), got.GetName())
+		assert.Equal(t, "address", got.GetAddress())
+	})
 
-	// Worker with a config tag
-	{
+	t.Run("Worker with a config tag", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
-		ws.PublicId = id
-		require.NoError(t, rw.Create(ctx, ws))
+		w.Type = KmsWorkerType.String()
+		w.PublicId = id
+		require.NoError(t, rw.Create(ctx, w))
 		require.NoError(t, rw.Create(ctx,
 			&store.WorkerTag{
 				WorkerId: id,
@@ -118,17 +117,17 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.NotNil(t, got.GetLastStatusTime())
 		assert.Empty(t, got.apiTags)
 		assert.Equal(t, got.configTags, []*Tag{{Key: "key", Value: "val"}})
-	}
+	})
 
-	// Worker with many config tag
-	{
+	t.Run("Worker with many config tag", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
-		ws.PublicId = id
-		require.NoError(t, rw.Create(ctx, ws))
+		w.Type = KmsWorkerType.String()
+		w.PublicId = id
+		require.NoError(t, rw.Create(ctx, w))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
 			WorkerId: id,
 			Key:      "key",
@@ -156,17 +155,17 @@ func TestWorkerAggregate(t *testing.T) {
 			{Key: "key", Value: "val2"},
 			{Key: "key2", Value: "val2"},
 		})
-	}
+	})
 
-	// Worker with an api tag
-	{
+	t.Run("Worker with an api tag", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
-		ws.PublicId = id
-		require.NoError(t, rw.Create(ctx, ws))
+		w.Type = KmsWorkerType.String()
+		w.PublicId = id
+		require.NoError(t, rw.Create(ctx, w))
 		require.NoError(t, rw.Create(ctx,
 			&store.WorkerTag{
 				WorkerId: id,
@@ -181,17 +180,18 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.NotNil(t, got.GetLastStatusTime())
 		assert.Empty(t, got.GetConfigTags())
 		assert.Equal(t, got.apiTags, []*Tag{{Key: "key", Value: "val"}})
-	}
+	})
 
 	// Worker with mix of tag sources
-	{
+	t.Run("Worker with mix of tag sources", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		ws := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
-		ws.PublicId = id
-		require.NoError(t, rw.Create(ctx, ws))
+		w.Type = KmsWorkerType.String()
+		w.PublicId = id
+		require.NoError(t, rw.Create(ctx, w))
 		require.NoError(t, rw.Create(ctx, &store.WorkerTag{
 			WorkerId: id,
 			Key:      "key",
@@ -220,7 +220,7 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.ElementsMatch(t, got.configTags, []*Tag{
 			{Key: "key", Value: "val"},
 		})
-	}
+	})
 }
 
 func TestWorker_Update(t *testing.T) {
@@ -245,260 +245,213 @@ func TestWorker_Update(t *testing.T) {
 		wantUpdateError bool
 	}{
 		{
-			name: "base update with base",
+			name: "kms update address",
 			initial: Worker{
 				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Description: "base update with base",
+					Type:     KmsWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "kms update address",
+					Address:  "kms update address",
 				},
 			},
 			update: Worker{
 				Worker: &store.Worker{
-					Description: "base update with base updated",
+					Address: "updated kms update address",
 				},
 			},
-			mask: []string{"Description"},
+			mask: []string{"Address"},
 			assert: func(t *testing.T, init, up *Worker) {
 				t.Helper()
-				assert.Equal(t, "base update with base updated", up.Description)
+				assert.Equal(t, "kms update address", up.Name)
+				assert.Equal(t, "updated kms update address", up.Address)
 				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
-				assert.Equal(t, uint32(2), up.Version)
+				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
+			},
+		},
+		{
+			name: "kms update name",
+			initial: Worker{
+				Worker: &store.Worker{
+					Type:     KmsWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "kms update name",
+					Address:  "kms update name",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					Name: "updated kms update name",
+				},
+			},
+			mask:            []string{"Name"},
+			wantUpdateError: true,
+		},
+		{
+			name: "kms clear name",
+			initial: Worker{
+				Worker: &store.Worker{
+					Type:     KmsWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "kms clear name",
+					Address:  "kms clear name",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{},
+			},
+			nullMask:        []string{"Name"},
+			wantUpdateError: true,
+		},
+		{
+			name: "pki update address",
+			initial: Worker{
+				Worker: &store.Worker{
+					Type:     PkiWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "pki update address",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					Address: "updated pki update address",
+				},
+			},
+			mask: []string{"Address"},
+			assert: func(t *testing.T, init, up *Worker) {
+				t.Helper()
+				assert.Equal(t, "pki update address", up.Name)
+				assert.Equal(t, "updated pki update address", up.Address)
+				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
+				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
+			},
+		},
+		{
+			name: "pki update name",
+			initial: Worker{
+				Worker: &store.Worker{
+					Type:     PkiWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "pki update name",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					Name: "updated pki update name",
+				},
+			},
+			mask: []string{"Name"},
+			assert: func(t *testing.T, init, up *Worker) {
+				t.Helper()
+				assert.Equal(t, "updated pki update name", up.Name)
+				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
 				assert.Nil(t, up.GetLastStatusTime())
 			},
 		},
 		{
-			name: "base update with worker reported address and name",
+			name: "pki update description",
 			initial: Worker{
 				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Description: "base update with status",
+					Type:     PkiWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "pki update description",
 				},
 			},
 			update: Worker{
 				Worker: &store.Worker{
-					WorkerReportedName:    "base update with worker reported address and name",
-					WorkerReportedAddress: "base update with worker reported address and name",
-				},
-			},
-			mask: []string{"WorkerReportedAddress", "WorkerReportedName"},
-			assert: func(t *testing.T, init, up *Worker) {
-				t.Helper()
-				assert.Equal(t, "base update with worker reported address and name", up.WorkerReportedAddress)
-				assert.Equal(t, "base update with worker reported address and name", up.WorkerReportedName)
-				assert.Equal(t, uint32(1), up.Version)
-				assert.NotNil(t, up.GetLastStatusTime())
-				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
-				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
-			},
-		},
-		{
-			name: "base update with worker reported address and keyId",
-			initial: Worker{
-				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Description: "base update with status",
-				},
-			},
-			update: Worker{
-				Worker: &store.Worker{
-					WorkerReportedKeyId:   "base update with worker reported address and keyId",
-					WorkerReportedAddress: "base update with worker reported address and keyId",
-				},
-			},
-			mask: []string{"WorkerReportedAddress", "WorkerReportedKeyId"},
-			assert: func(t *testing.T, init, up *Worker) {
-				t.Helper()
-				assert.Equal(t, "base update with worker reported address and keyId", up.WorkerReportedAddress)
-				assert.Equal(t, "base update with worker reported address and keyId", up.WorkerReportedKeyId)
-				assert.Equal(t, uint32(1), up.Version)
-				assert.NotNil(t, up.GetLastStatusTime())
-				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
-				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
-			},
-		},
-		{
-			name: "base update with worker reported address",
-			initial: Worker{
-				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Description: "base update with status",
-				},
-			},
-			update: Worker{
-				Worker: &store.Worker{
-					WorkerReportedAddress: "base update with worker reported address",
-				},
-			},
-			mask:            []string{"WorkerReportedAddress"},
-			wantUpdateError: true,
-		},
-		{
-			// If any status fields are set then worker reported address must
-			// be set.
-			name: "base update with worker reported name",
-			initial: Worker{
-				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Description: "base update with status",
-				},
-			},
-			update: Worker{
-				Worker: &store.Worker{
-					WorkerReportedName: "base update with worker reported name",
-				},
-			},
-			mask:            []string{"WorkerReportedName"},
-			wantUpdateError: true,
-		},
-		{
-			// If any status fields are set then worker reported address must
-			// be set.
-			name: "base update with worker reported keyId",
-			initial: Worker{
-				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Description: "base update with status",
-				},
-			},
-			update: Worker{
-				Worker: &store.Worker{
-					WorkerReportedKeyId: "base update with worker reported keyId",
-				},
-			},
-			mask:            []string{"WorkerReportedKeyId"},
-			wantUpdateError: true,
-		},
-		{
-			name: "base update with worker reported fields",
-			initial: Worker{
-				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Description: "base update with status",
-				},
-			},
-			update: Worker{
-				Worker: &store.Worker{
-					WorkerReportedName:    "base update with worker reported fields",
-					WorkerReportedAddress: "base update with worker reported fields",
-				},
-			},
-			mask: []string{"WorkerReportedName", "WorkerReportedAddress"},
-			assert: func(t *testing.T, init, up *Worker) {
-				t.Helper()
-				assert.Equal(t, "base update with worker reported fields", up.WorkerReportedAddress)
-				assert.Equal(t, "base update with worker reported fields", up.WorkerReportedName)
-				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
-				assert.Equal(t, uint32(1), up.Version)
-				assert.NotNil(t, up.GetLastStatusTime())
-				assert.Equal(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
-			},
-		},
-		{
-			name: "worker reported update with base",
-			initial: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedAddress: "worker reported update with base",
-					WorkerReportedName:    "worker reported update with base",
-				},
-			},
-			update: Worker{
-				Worker: &store.Worker{
-					Description: "worker reported update with base",
+					Description: "updated pki update description",
 				},
 			},
 			mask: []string{"Description"},
 			assert: func(t *testing.T, init, up *Worker) {
 				t.Helper()
-				assert.Equal(t, "worker reported update with base", up.Description)
+				assert.Equal(t, "pki update description", up.Name)
+				assert.Equal(t, "updated pki update description", up.Description)
 				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
-				assert.Equal(t, uint32(2), up.Version)
-				assert.NotNil(t, up.GetLastStatusTime())
-				assert.Equal(t, init.GetLastStatusTime(), up.GetLastStatusTime())
+				assert.Nil(t, up.GetLastStatusTime())
 			},
 		},
 		{
-			name: "worker reported update name to unprintable",
+			name: "pki clear address",
 			initial: Worker{
 				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedAddress: "worker reported update name to unprintable",
-					WorkerReportedName:    "worker reported update name to unprintable",
-				},
-			},
-			update: Worker{
-				Worker: &store.Worker{
-					WorkerReportedName: "unprintable \u0008 name",
-				},
-			},
-			mask:            []string{"WorkerReportedName"},
-			wantUpdateError: true,
-		},
-		{
-			name: "worker reported clearing address",
-			initial: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedAddress: "worker reported clearing address",
-					WorkerReportedName:    "worker reported clearing address",
+					Type:           PkiWorkerType.String(),
+					ScopeId:        scope.Global.String(),
+					PublicId:       newId(),
+					Name:           "pki clear address",
+					Address:        "pki clear address",
+					LastStatusTime: &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
 				},
 			},
 			update: Worker{
 				Worker: &store.Worker{},
 			},
-			nullMask:        []string{"WorkerReportedAddress"},
+			nullMask:        []string{"Address"},
 			wantUpdateError: true,
 		},
 		{
-			name: "worker reported updating worker reported",
+			name: "pki clear name",
 			initial: Worker{
 				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedAddress: "start",
-					WorkerReportedName:    "start",
+					Type:           PkiWorkerType.String(),
+					ScopeId:        scope.Global.String(),
+					PublicId:       newId(),
+					Name:           "pki clear name",
+					Address:        "pki clear name",
+					LastStatusTime: &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
 				},
 			},
 			update: Worker{
-				Worker: &store.Worker{
-					WorkerReportedAddress: "worker reported updating worker reported",
-				},
+				Worker: &store.Worker{},
 			},
-			mask: []string{"WorkerReportedAddress"},
+			nullMask: []string{"Name"},
 			assert: func(t *testing.T, init, up *Worker) {
 				t.Helper()
-				assert.Equal(t, "worker reported updating worker reported", up.GetWorkerReportedAddress())
-				assert.NotNil(t, up.GetLastStatusTime())
-				assert.Greater(t, up.GetLastStatusTime().AsTime(), init.GetLastStatusTime().AsTime())
-				// We don't modify the worker version while operating only on the worker fields
+				assert.Empty(t, up.Name)
 				assert.Greater(t, up.GetUpdateTime().AsTime(), up.GetCreateTime().AsTime())
-				assert.Equal(t, uint32(1), up.Version)
+				assert.Greater(t, up.GetLastStatusTime().AsTime(), up.GetUpdateTime().AsTime())
+				assert.Less(t, up.GetLastStatusTime().AsTime(), time.Now().Add(time.Hour))
 			},
 		},
 		{
-			name: "worker reported clearing worker reported name",
+			name: "pki update name to capital",
 			initial: Worker{
 				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedAddress: "worker reported clearing worker reported name",
-					WorkerReportedName:    "worker reported clearing worker reported name",
+					Type:     PkiWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "pki update name to capital",
 				},
 			},
 			update: Worker{
-				Worker: &store.Worker{},
+				Worker: &store.Worker{
+					Name: "PKI Update Name To Capital",
+				},
 			},
-			nullMask:        []string{"WorkerReportedName"},
+			mask:            []string{"Name"},
+			wantUpdateError: true,
+		},
+		{
+			name: "pki update name to unprintable",
+			initial: Worker{
+				Worker: &store.Worker{
+					Type:     PkiWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "worker reported update name to unprintable",
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					Name: "unprintable \u0008 name",
+				},
+			},
+			mask:            []string{"Name"},
 			wantUpdateError: true,
 		},
 	}
@@ -544,9 +497,88 @@ func TestWorker_Create(t *testing.T) {
 		want wanted
 	}{
 		{
-			name: "base",
+			name: "kms base",
 			in: Worker{
 				Worker: &store.Worker{
+					Type:        KmsWorkerType.String(),
+					ScopeId:     scope.Global.String(),
+					PublicId:    newId(),
+					Address:     "address",
+					Name:        "kms base",
+					Description: "kms base",
+				},
+			},
+			want: wanted{lastStatusUpdated: true},
+		},
+		{
+			name: "kms with no name field",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:     KmsWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Address:  "address",
+				},
+			},
+			want: wanted{createError: true},
+		},
+		{
+			name: "kms with no address field",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:     KmsWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "kms with no address field",
+				},
+			},
+			want: wanted{createError: true},
+		},
+		{
+			name: "kms with upper case name",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:     KmsWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "With Upper Case Worker Reported Name",
+					Address:  "address",
+				},
+			},
+			want: wanted{createError: true},
+		},
+		{
+			name: "kms with unprintable worker reported name",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:     KmsWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "unprintable \u0008 worker reported name",
+					Address:  "address",
+				},
+			},
+			want: wanted{createError: true},
+		},
+		// PKI workers are not created in a way that should set the address
+		// or the last_status_time.
+		{
+			name: "pki base",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:     PkiWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "pki base",
+				},
+			},
+			want: wanted{},
+		},
+		{
+			name: "pki with no name field",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:     PkiWorkerType.String(),
 					ScopeId:  scope.Global.String(),
 					PublicId: newId(),
 				},
@@ -554,134 +586,42 @@ func TestWorker_Create(t *testing.T) {
 			want: wanted{},
 		},
 		{
-			name: "with non status fields",
+			name: "pki with address field",
 			in: Worker{
 				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Name:        "with non status fields",
-					Description: "with non status fields",
-					Address:     "address",
-				},
-			},
-			want: wanted{},
-		},
-		{
-			name: "with upper case worker reported name",
-			in: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedName:    "With Upper Case Worker Reported Name",
-					WorkerReportedAddress: "address",
+					Type:     PkiWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Address:  "address",
 				},
 			},
 			want: wanted{createError: true},
 		},
 		{
-			name: "with unprintable worker reported name",
+			name: "pki with upper case name",
 			in: Worker{
 				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedName:    "unprintable \u0008 worker reported name",
-					WorkerReportedAddress: "address",
+					Type:     PkiWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "PKI With Upper Case Worker Reported Name",
+					Address:  "address",
 				},
 			},
 			want: wanted{createError: true},
 		},
 		{
-			name: "with status fields",
+			name: "pki with unprintable worker reported name",
 			in: Worker{
 				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedName:    "with non status fields",
-					WorkerReportedAddress: "with non status fields",
+					Type:     PkiWorkerType.String(),
+					ScopeId:  scope.Global.String(),
+					PublicId: newId(),
+					Name:     "unprintable \u0008 worker reported name",
+					Address:  "address",
 				},
 			},
-			want: wanted{
-				lastStatusUpdated: true,
-			},
-		},
-		{
-			name: "with worker reported address",
-			in: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					WorkerReportedAddress: "with worker reported address",
-				},
-			},
-			want: wanted{
-				createError: true,
-			},
-		},
-		{
-			// The worker reported address is a required field if any of the
-			// worker reported fields are set.
-			name: "with worker reported name",
-			in: Worker{
-				Worker: &store.Worker{
-					ScopeId:            scope.Global.String(),
-					PublicId:           newId(),
-					WorkerReportedName: "with worker reported name",
-				},
-			},
-			want: wanted{
-				createError: true,
-			},
-		},
-		{
-			name: "non status fields with worker reported fields",
-			in: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					Name:                  "non status fields with worker reported fields",
-					Description:           "non status fields with worker reported fields",
-					Address:               "address",
-					WorkerReportedAddress: "non status fields with worker reported fields",
-					WorkerReportedName:    "non status fields with worker reported fields",
-				},
-			},
-			want: wanted{
-				lastStatusUpdated: true,
-			},
-		},
-		{
-			// The worker reported address is a required field if any of the
-			// worker reported fields are set.
-			name: "non status fields with worker reported name",
-			in: Worker{
-				Worker: &store.Worker{
-					ScopeId:            scope.Global.String(),
-					PublicId:           newId(),
-					Name:               "non status fields with worker reported name",
-					Description:        "non status fields with worker reported name",
-					Address:            "address",
-					WorkerReportedName: "non status fields with worker reported name",
-				},
-			},
-			want: wanted{
-				createError: true,
-			},
-		},
-		{
-			name: "non status fields with worker reported address",
-			in: Worker{
-				Worker: &store.Worker{
-					ScopeId:               scope.Global.String(),
-					PublicId:              newId(),
-					Name:                  "non status fields with worker reported address",
-					Description:           "non status fields with worker reported address",
-					Address:               "address",
-					WorkerReportedAddress: "non status fields with worker reported address",
-				},
-			},
-			want: wanted{
-				createError: true,
-			},
+			want: wanted{createError: true},
 		},
 	}
 	for _, tc := range cases {
@@ -711,7 +651,6 @@ func TestWorker_New(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	rw := db.New(conn)
 
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
@@ -721,10 +660,9 @@ func TestWorker_New(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		args          args
-		want          *Worker
-		wantCreateErr bool
+		name string
+		args args
+		want *Worker
 	}{
 		{
 			name: "missing-scope-id",
@@ -732,7 +670,6 @@ func TestWorker_New(t *testing.T) {
 			want: &Worker{
 				Worker: &store.Worker{},
 			},
-			wantCreateErr: true,
 		},
 		{
 			name: "global-scope-id",
@@ -755,7 +692,6 @@ func TestWorker_New(t *testing.T) {
 					ScopeId: org.GetPublicId(),
 				},
 			},
-			wantCreateErr: true,
 		},
 		{
 			name: "project-scope-id",
@@ -767,7 +703,6 @@ func TestWorker_New(t *testing.T) {
 					ScopeId: prj.GetPublicId(),
 				},
 			},
-			wantCreateErr: true,
 		},
 		{
 			name: "with name",
@@ -829,7 +764,7 @@ func TestWorker_New(t *testing.T) {
 				Worker: &store.Worker{
 					ScopeId: scope.Global.String(),
 				},
-				apiTags: []*Tag{
+				inputTags: []*Tag{
 					{
 						Key:   "key",
 						Value: "val",
@@ -845,20 +780,6 @@ func TestWorker_New(t *testing.T) {
 			assert := assert.New(t)
 			got := NewWorker(tt.args.scopeId, tt.args.opts...)
 			assert.Empty(cmp.Diff(tt.want, got.clone(), protocmp.Transform()))
-
-			id, err := newWorkerId(context.Background())
-			assert.NoError(err)
-
-			tt.want.PublicId = id
-			got.PublicId = id
-
-			err2 := rw.Create(context.Background(), got)
-			if tt.wantCreateErr {
-				assert.Error(err2)
-			} else {
-				assert.NoError(err2)
-				assert.Equal(uint32(1), got.Version)
-			}
 		})
 	}
 }

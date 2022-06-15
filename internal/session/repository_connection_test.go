@@ -359,8 +359,8 @@ func TestRepository_orphanedConnections(t *testing.T) {
 
 	// Create two "workers". One will remain untouched while the other "goes
 	// away and comes back" (worker 2).
-	worker1 := servers.TestWorker(t, conn, wrapper)
-	worker2 := servers.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
+	worker2 := servers.TestKmsWorker(t, conn, wrapper)
 
 	// Create a few sessions on each, activate, and authorize a connection
 	var connIds []string

@@ -87,18 +87,6 @@ func WithRecursive(recurse bool) Option {
 	}
 }
 
-func WithAddress(inAddress string) Option {
-	return func(o *options) {
-		o.postMap["address"] = inAddress
-	}
-}
-
-func DefaultAddress() Option {
-	return func(o *options) {
-		o.postMap["address"] = nil
-	}
-}
-
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription

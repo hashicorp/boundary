@@ -45,8 +45,8 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Create two "workers". One will remain untouched while the other "goes
 	// away and comes back" (worker 2).
-	worker1 := servers.TestWorker(t, conn, wrapper)
-	worker2 := servers.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
+	worker2 := servers.TestKmsWorker(t, conn, wrapper)
 
 	// Create a few sessions on each, activate, and authorize a connection
 	var connIds []string
@@ -109,9 +109,10 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithName(worker1.GetWorkerReportedName()),
-		servers.WithAddress(worker1.GetWorkerReportedAddress())))
+	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorker(scope.Global.String(),
+		servers.WithName(worker1.GetName()),
+		servers.WithAddress(worker1.GetAddress())),
+		servers.WithPublicId(worker1.GetPublicId()))
 	require.NoError(err)
 
 	// Run the job.
@@ -198,10 +199,10 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// firstly, the last worker will have no connections at all, and we will be
 	// closing the others in stages to test multiple servers being closed at
 	// once.
-	worker1 := servers.TestWorker(t, conn, wrapper)
-	worker2 := servers.TestWorker(t, conn, wrapper)
-	worker3 := servers.TestWorker(t, conn, wrapper)
-	worker4 := servers.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
+	worker2 := servers.TestKmsWorker(t, conn, wrapper)
+	worker3 := servers.TestKmsWorker(t, conn, wrapper)
+	worker4 := servers.TestKmsWorker(t, conn, wrapper)
 
 	// Create sessions on the first three, activate, and authorize connections
 	var worker1ConnIds, worker2ConnIds, worker3ConnIds []string
@@ -292,11 +293,9 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// the most up-to-date fields.
 	updateServer := func(t *testing.T, w *servers.Worker) *servers.Worker {
 		t.Helper()
-		// The worker provided name will derive the WorkerId every time
-		// UpsertWorkerStatus is called. Setting the Worker Id on the caller
-		// side is an error.
+		pubId := w.GetPublicId()
 		w.PublicId = ""
-		wkr, err := serversRepo.UpsertWorkerStatus(ctx, w)
+		wkr, err := serversRepo.UpsertWorkerStatus(ctx, w, servers.WithPublicId(pubId))
 		require.NoError(err)
 		return wkr
 	}
@@ -465,7 +464,7 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	}
 
 	// Setup deleted worker connections
-	deletedWorker := servers.TestWorker(t, conn, wrapper)
+	deletedWorker := servers.TestKmsWorker(t, conn, wrapper)
 	dActiveConn := createConnection(deletedWorker.GetPublicId())
 	dClosedConn := createConnection(deletedWorker.GetPublicId())
 	connRepo.closeConnections(ctx, []CloseWith{{
@@ -478,7 +477,7 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	require.NoError(err)
 
 	// Non deleted worker case
-	activeWorker := servers.TestWorker(t, conn, wrapper)
+	activeWorker := servers.TestKmsWorker(t, conn, wrapper)
 	activeConn := createConnection(activeWorker.GetPublicId())
 	closedConn := createConnection(activeWorker.GetPublicId())
 	connRepo.closeConnections(ctx, []CloseWith{{

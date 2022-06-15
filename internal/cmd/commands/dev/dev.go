@@ -587,6 +587,8 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 			return base.CommandUserError
 		}
+		c.Config.Worker.Name = ""
+		c.Config.Worker.Description = ""
 		c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
 		c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 	}

@@ -29,10 +29,7 @@ message Worker {
 
   // Address for the worker. This is optional.
   // @inject_tag: `gorm:"default:null"`
-  string address = 40 [(custom_options.v1.mask_mapping) = {
-    this: "address"
-    that: "address"
-  }];
+  string address = 40;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -50,22 +47,13 @@ message Worker {
   // @inject_tag: `gorm:"default:null"`
   uint32 version = 80;
 
-  // Name of the resource (optional)
-  // @inject_tag: `gorm:"default:null"`
-  string worker_reported_name = 90;
-
-  // Address for the worker. This must be set when the worker has received
-  // at least 1 status update fromt he worker daemon.
-  // @inject_tag: `gorm:"default:null"`
-  string worker_reported_address = 100;
-
   // The last_status_time is the last time a worker daemon sent a status update.
   // @inject_tag: `gorm:"default:null"`
   timestamp.v1.Timestamp last_status_time = 110;
 
-  // keyId reported by a PKI worker (optional)
-  // @inject_tag: `gorm:"default:null"`
-  string worker_reported_key_id = 120;
+  // The type of the worker, denoted by how it authenticates: pki or kms.
+  // @inject_tag: `gorm:"not_null"`
+  string type = 130;
 }
 
 // WorkerTag is a tag for a worker.  The primary key is comprised of the

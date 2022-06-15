@@ -36,6 +36,8 @@ type options struct {
 	withNonce                          []byte
 	withNewIdFunc                      func(context.Context) (string, error)
 	withFetchNodeCredentialsRequest    *types.FetchNodeCredentialsRequest
+	withTestPkiWorkerAuthorized        bool
+	withTestPkiWorkerKeyId             *string
 }
 
 func getDefaultOptions() options {
@@ -149,5 +151,15 @@ func WithNewIdFunc(fn func(context.Context) (string, error)) Option {
 func WithFetchNodeCredentialsRequest(req *types.FetchNodeCredentialsRequest) Option {
 	return func(o *options) {
 		o.withFetchNodeCredentialsRequest = req
+	}
+}
+
+// WithTestPkiWorkerAuthorizedKeyId should only be used in tests.
+// It specifies that the test worker should be authorized when returned and
+// assigns the key id for that worker to the string pointer in this option.
+func WithTestPkiWorkerAuthorizedKeyId(id *string) Option {
+	return func(o *options) {
+		o.withTestPkiWorkerAuthorized = true
+		o.withTestPkiWorkerKeyId = id
 	}
 }

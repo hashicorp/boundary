@@ -65,7 +65,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 	switch {
 	case wStat.GetName() == "" && wStat.GetKeyId() == "":
-		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; at least one is required.")
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; one is required.")
+	case wStat.GetName() != "" && wStat.GetKeyId() != "":
+		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are both set in the request; only one is allowed.")
 	case wStat.GetAddress() == "":
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Address is not set but is required.")
 	}
@@ -88,16 +90,17 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		})
 	}
 
-	wKeyId := wStat.GetKeyId()
-
-	wConf := servers.NewWorkerForStatus(scope.Global.String(),
+	wConf := servers.NewWorker(scope.Global.String(),
 		servers.WithName(wStat.GetName()),
+		servers.WithDescription(wStat.GetDescription()),
 		servers.WithAddress(wStat.GetAddress()),
-		servers.WithWorkerTags(workerTags...),
-		servers.WithKeyId(wKeyId))
+		servers.WithWorkerTags(workerTags...))
 	opts := []servers.Option{servers.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
 		opts = append(opts, servers.WithPublicId(wStat.GetPublicId()))
+	}
+	if wStat.GetKeyId() != "" {
+		opts = append(opts, servers.WithKeyId(wStat.GetKeyId()))
 	}
 	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
@@ -229,7 +232,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		}
 		var w *servers.Worker
 		if req.WorkerKeyId != "" {
-			workerId, err := serversRepo.LookupWorkerIdByWorkerReportedKeyId(ctx, req.WorkerKeyId)
+			workerId, err := serversRepo.LookupWorkerIdByKeyId(ctx, req.WorkerKeyId)
 			if err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by keyId", "keyId", req.WorkerKeyId))
 				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
@@ -240,7 +243,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
 			}
 		} else {
-			w, err = serversRepo.LookupWorkerByWorkerReportedName(ctx, req.GetServerId())
+			w, err = serversRepo.LookupWorkerByName(ctx, req.GetServerId())
 			if err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by name", "name", req.ServerId))
 				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
@@ -255,12 +258,8 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "server_id", req.ServerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 		}
-		name := w.GetName()
-		if name == "" {
-			name = w.GetWorkerReportedName()
-		}
 		filterInput := map[string]interface{}{
-			"name": name,
+			"name": w.GetName(),
 			"tags": tagMap,
 		}
 		ok, err := eval.Evaluate(filterInput)
@@ -391,7 +390,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting servers repo: %v", err)
 	}
-	w, err := serversRepo.LookupWorkerByWorkerReportedName(ctx, req.GetWorkerId())
+	w, err := serversRepo.LookupWorkerByName(ctx, req.GetWorkerId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error looking up worker: %v", err)
 	}

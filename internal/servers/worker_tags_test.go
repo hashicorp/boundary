@@ -15,7 +15,7 @@ func TestWorkerTags_Create(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
 
-	worker := TestWorker(t, conn, wrapper)
+	worker := TestKmsWorker(t, conn, wrapper)
 
 	tests := []struct {
 		name          string
