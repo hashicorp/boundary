@@ -95,20 +95,22 @@ func TestGet(t *testing.T) {
 		Type: KmsWorkerType,
 	}
 
+	var pkiWorkerKeyId string
 	pkiWorker := servers.TestPkiWorker(t, conn, wrap,
 		servers.WithName("test pki worker names"),
-		servers.WithDescription("test pki worker description"))
+		servers.WithDescription("test pki worker description"),
+		servers.WithTestPkiWorkerAuthorizedKeyId(&pkiWorkerKeyId))
 	// Add config tags to the created worker
 	pkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
 		servers.NewWorker(pkiWorker.GetScopeId(),
-			servers.WithName(pkiWorker.GetName()),
 			servers.WithAddress("test kms worker address"),
 			servers.WithWorkerTags(&servers.Tag{
 				Key:   "config",
 				Value: "test",
 			})),
 		servers.WithUpdateTags(true),
-		servers.WithPublicId(pkiWorker.GetPublicId()))
+		servers.WithPublicId(pkiWorker.GetPublicId()),
+		servers.WithKeyId(pkiWorkerKeyId))
 	require.NoError(t, err)
 
 	wantPkiWorker := &pb.Worker{
@@ -407,7 +409,7 @@ func TestUpdate(t *testing.T) {
 
 	resetWorker := func() {
 		version++
-		_, _, err = repo.UpdateWorker(context.Background(), wkr, version, []string{"Name", "Description", "Address"})
+		_, _, err = repo.UpdateWorker(context.Background(), wkr, version, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset worker.")
 		version++
 	}
@@ -430,12 +432,11 @@ func TestUpdate(t *testing.T) {
 			name: "Update an Existing Worker",
 			req: &pbs.UpdateWorkerRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"name", "description", "address"},
+					Paths: []string{"name", "description"},
 				},
 				Item: &pb.Worker{
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Address:     "address",
 				},
 			},
 			res: &pbs.UpdateWorkerResponse{
@@ -445,7 +446,7 @@ func TestUpdate(t *testing.T) {
 					Scope:             expectedScope,
 					Name:              wrapperspb.String("name"),
 					Description:       wrapperspb.String("desc"),
-					Address:           "address",
+					Address:           "default",
 					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
 					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
 					AuthorizedActions: testAuthorizedActions,
@@ -1156,6 +1157,7 @@ func TestCreateWorkerLed(t *testing.T) {
 					Name:        &wrapperspb.StringValue{Value: "success"},
 					Description: &wrapperspb.StringValue{Value: "success-description"},
 					Version:     1,
+					Type:        PkiWorkerType,
 				},
 			},
 		},
