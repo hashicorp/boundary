@@ -145,4 +145,17 @@ func Test_GetOpts(t *testing.T) {
 			runtime.FuncForPC(reflect.ValueOf(testOpts.withNewIdFunc).Pointer()).Name(),
 		)
 	})
+	t.Run("WithTestPkiWorkerAuthorizedKeyId", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+
+		var keyId string
+		opts := getOpts(WithTestPkiWorkerAuthorizedKeyId(&keyId))
+		testOpts = getDefaultOptions()
+		testOpts.withTestPkiWorkerAuthorized = true
+		testOpts.withTestPkiWorkerKeyId = &keyId
+		testOpts.withNewIdFunc = nil
+		opts.withNewIdFunc = nil
+		assert.Equal(opts, testOpts)
+	})
 }
