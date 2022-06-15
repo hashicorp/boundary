@@ -21,8 +21,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
-	"github.com/hashicorp/nodeenrollment"
-	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -153,30 +151,10 @@ func TestLookupWorkerIdByKeyId(t *testing.T) {
 	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
 	require.NoError(t, err)
 
-	w := servers.TestPkiWorker(t, conn, wrapper)
-
-	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kmsCache)
-	require.NoError(t, err)
-	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
-	require.NoError(t, err)
-	// Create struct to pass in with workerId that will be passed along to storage
-	state, err := servers.AttachWorkerIdToState(ctx, w.PublicId)
-	require.NoError(t, err)
-
-	// This happens on the worker
-	fileStorage, err := file.New(ctx)
-	require.NoError(t, err)
-	nodeCreds, err := types.NewNodeCredentials(ctx, fileStorage)
-	require.NoError(t, err)
-	// Create request using worker id
-	fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(ctx)
-	require.NoError(t, err)
-
-	// The AuthorizeNode request will result in a WorkerAuth record being stored
-	registeredNode, err := registration.AuthorizeNode(ctx, rootStorage, fetchReq, nodeenrollment.WithState(state))
-	require.NoError(t, err)
+	var workerKeyId string
+	w := servers.TestPkiWorker(t, conn, wrapper, servers.WithTestPkiWorkerAuthorizedKeyId(&workerKeyId))
 	t.Run("success", func(t *testing.T) {
-		got, err := repo.LookupWorkerIdByKeyId(ctx, registeredNode.Id)
+		got, err := repo.LookupWorkerIdByKeyId(ctx, workerKeyId)
 		require.NoError(t, err)
 		assert.Equal(t, w.PublicId, got)
 	})
@@ -308,27 +286,8 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	})
 
 	// Setup and use a pki worker
-	pkiWorker := servers.TestPkiWorker(t, conn, wrapper, servers.WithName("pki"))
-	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kmsCache)
-	require.NoError(t, err)
-	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
-	require.NoError(t, err)
-	// Create struct to pass in with workerId that will be passed along to storage
-	state, err := servers.AttachWorkerIdToState(ctx, pkiWorker.GetPublicId())
-	require.NoError(t, err)
-
-	// This happens on the worker
-	fileStorage, err := file.New(ctx)
-	require.NoError(t, err)
-	nodeCreds, err := types.NewNodeCredentials(ctx, fileStorage)
-	require.NoError(t, err)
-	// Create request using worker id
-	fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(ctx)
-	require.NoError(t, err)
-
-	registeredNode, err := registration.AuthorizeNode(ctx, rootStorage, fetchReq, nodeenrollment.WithState(state))
-	require.NoError(t, err)
-	pkiWorkerKeyId := registeredNode.GetId()
+	var pkiWorkerKeyId string
+	pkiWorker := servers.TestPkiWorker(t, conn, wrapper, servers.WithName("pki"), servers.WithTestPkiWorkerAuthorizedKeyId(&pkiWorkerKeyId))
 
 	t.Run("update status for pki worker", func(t *testing.T) {
 		wStatus1 := servers.NewWorker(scope.Global.String(),
