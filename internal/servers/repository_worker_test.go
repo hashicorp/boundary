@@ -1084,8 +1084,8 @@ func TestRepository_UpdateWorker(t *testing.T) {
 				w.Name = "some change"
 				return w
 			}(), path: []string{"name"},
-			version:   1,
-			wantErr:   errors.T(errors.NotSpecificIntegrity),
+			version: 1,
+			wantErr: errors.T(errors.NotSpecificIntegrity),
 		},
 		{
 			name: "clearing kms name",
@@ -1094,8 +1094,8 @@ func TestRepository_UpdateWorker(t *testing.T) {
 				w.Name = ""
 				return w
 			}(), path: []string{"name"},
-			version:   1,
-			wantErr:   errors.T(errors.NotSpecificIntegrity),
+			version: 1,
+			wantErr: errors.T(errors.NotSpecificIntegrity),
 		},
 		{
 			name: "no public id",
