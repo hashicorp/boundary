@@ -92,6 +92,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	wConf := servers.NewWorker(scope.Global.String(),
 		servers.WithName(wStat.GetName()),
+		servers.WithDescription(wStat.GetDescription()),
 		servers.WithAddress(wStat.GetAddress()),
 		servers.WithWorkerTags(workerTags...))
 	opts := []servers.Option{servers.WithUpdateTags(req.GetUpdateTags())}

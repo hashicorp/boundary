@@ -197,6 +197,10 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error("No worker auth KMS specified and no worker auth storage path specified.")
 				return base.CommandUserError
 			}
+			if c.Config.Worker.Name != "" || c.Config.Worker.Description != "" {
+				c.UI.Error("Worker config cannot contain name or description when using PKI-based worker authentication; it must be set via the API.")
+				return base.CommandUserError
+			}
 		default:
 			if c.Config.Worker.Name == "" {
 				c.UI.Error("Worker is using KMS auth but has no name set. It must be the unique name of this instance.")
