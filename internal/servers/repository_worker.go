@@ -277,8 +277,17 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 					Action: append(db.SetColumns([]string{"address"}),
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
-				if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict)); err != nil {
+				var withRowsAffected int64
+				err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict), db.WithReturnRowsAffected(&withRowsAffected),
+					// The intent of this WithWhere option is to operate with the OnConflict such that the action
+					// taken by the OnConflict only applies if the conflict is on a row that is returned by this where
+					// statement, otherwise it should error out.
+					db.WithWhere("server_worker.type = 'kms'"))
+				switch {
+				case err != nil:
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
+				case withRowsAffected == 0:
+					return errors.New(ctx, errors.NotUnique, op, "error updating worker")
 				}
 			case opts.withKeyId != "":
 				n, err := w.Update(ctx, worker, []string{"address"}, nil)
