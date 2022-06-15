@@ -367,7 +367,7 @@
                 "path": "oss/configuration/worker/kms-worker"
               },
               {
-                "title": "Self-Managed Workers",
+                "title": "PKI Workers",
                 "path": "oss/configuration/worker/pki-worker"
               }
             ]
