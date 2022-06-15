@@ -12,6 +12,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   See Deprecations/Changes for some additional details.
   [PR](https://github.com/hashicorp/boundary/pull/2160).
 
+### Bug Fixes
+
+* The plugin execution_dir configuration parameter is now respected.
+  [PR](https://github.com/hashicorp/boundary/pull/2183).
+
 ### Deprecations/Changes
 
 * Credential Libraries: The `user_password` credential type has been renamed to
