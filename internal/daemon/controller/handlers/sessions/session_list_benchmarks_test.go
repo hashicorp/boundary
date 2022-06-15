@@ -126,7 +126,7 @@ func BenchmarkSessionList(b *testing.B) {
 				account, err := pwRepo.LookupAccount(ctx, accountIds[0])
 				require.NoError(b, err)
 				require.NotNil(b, account)
-				acct, err := pwRepo.Authenticate(ctx, u.ScopeId, account.AuthMethodId, u.Name, dbtest.BoundaryBenchmarksUsernamePassword)
+				acct, err := pwRepo.Authenticate(ctx, u.ScopeId, account.AuthMethodId, u.Name, dbtest.BoundaryBenchmarksUserPassword)
 				require.NoError(b, err)
 				require.NotNil(b, acct)
 				tok, err := authTokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())

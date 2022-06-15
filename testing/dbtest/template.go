@@ -35,9 +35,9 @@ const (
 	Postgres = "postgres"
 )
 
-// BoundaryBenchmarksUsernamePassword is the password used for all users
+// BoundaryBenchmarksUserPassword is the password used for all users
 // created by the boundary benchmarks dump generator.
-const BoundaryBenchmarksUsernamePassword = "testpassword"
+const BoundaryBenchmarksUserPassword = "testpassword"
 
 // Template Database Names
 const (
