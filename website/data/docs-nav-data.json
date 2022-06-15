@@ -357,7 +357,20 @@
           },
           {
             "title": "worker",
-            "path": "oss/configuration/worker"
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "oss/configuration/worker/overview"
+              },
+              {
+                "title": "KMS Workers",
+                "path": "oss/configuration/worker/kms-worker"
+              },
+              {
+                "title": "PKI Workers",
+                "path": "oss/configuration/worker/pki-worker"
+              }
+            ]
           },
           {
             "title": "events",
