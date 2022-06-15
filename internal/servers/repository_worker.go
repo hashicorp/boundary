@@ -57,19 +57,17 @@ func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Opt
 	return rowsDeleted, nil
 }
 
-// LookupWorkerByWorkerReportedName returns the worker which has had a status update
-// where the worker has reported this name.  This is different from the name
-// on the resource itself which is set over the API.  In the event that no
-// worker is found that matches then nil, nil will be returned.
-func (r *Repository) LookupWorkerByWorkerReportedName(ctx context.Context, name string) (*Worker, error) {
-	const op = "servers.(Repository).LookupWorkerByWorkerReportedName"
+// LookupWorkerByName returns the worker with the provided name. In the event
+// that no worker is found that matches then nil, nil will be returned.
+func (r *Repository) LookupWorkerByName(ctx context.Context, name string) (*Worker, error) {
+	const op = "servers.(Repository).LookupWorkerByName"
 	switch {
 	case name == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "name is empty")
 	}
 
 	wAgg := &workerAggregate{}
-	err := r.reader.LookupWhere(ctx, &wAgg, "worker_reported_name = ?", []interface{}{name})
+	err := r.reader.LookupWhere(ctx, &wAgg, "name = ?", []interface{}{name})
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
@@ -83,8 +81,8 @@ func (r *Repository) LookupWorkerByWorkerReportedName(ctx context.Context, name 
 	return w, nil
 }
 
-func (r *Repository) LookupWorkerIdByWorkerReportedKeyId(ctx context.Context, keyId string) (string, error) {
-	const op = "servers.(Repository).LookupWorkerIdByWorkerReportedKeyId"
+func (r *Repository) LookupWorkerIdByKeyId(ctx context.Context, keyId string) (string, error) {
+	const op = "servers.(Repository).LookupWorkerIdByKeyId"
 	switch {
 	case keyId == "":
 		return "", errors.New(ctx, errors.InvalidParameter, op, "keyId is empty")
@@ -234,7 +232,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	case opts.withPublicId != "":
 		workerId = opts.withPublicId
 	case opts.withKeyId != "":
-		workerId, err = r.LookupWorkerIdByWorkerReportedKeyId(ctx, opts.withKeyId)
+		workerId, err = r.LookupWorkerIdByKeyId(ctx, opts.withKeyId)
 		if err != nil || workerId == "" {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by keyId"))
 		}
@@ -258,8 +256,9 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			worker.PublicId = workerId
 			switch {
 			case worker.GetName() != "":
+				worker.Type = KmsWorkerType.String()
 				workerCreateConflict := &db.OnConflict{
-					Target: db.Columns{"name", "scope"},
+					Target: db.Columns{"name", "scope_id"},
 					Action: append(db.SetColumns([]string{"address"}),
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
@@ -267,9 +266,12 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 					// TODO: The intent of this WithWhere option is to operate with the OnConflict such that the action
 					//  taken by the OnConflict only applies if the conflict is on a row that is returned by this where
 					//  statement, otherwise it should error out.
-					db.WithWhere("type = 'kms'")); err != nil {
+					db.WithWhere("server_worker.type = 'kms'")); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
 				}
+				// TODO: Do we need to do a lookup again for worker or will worker get updated with the OnConflict's
+				//  new worker id?
+				// This is causing TestTagUpdatingListing to fail.
 			case opts.withKeyId != "":
 				n, err := w.Update(ctx, worker, []string{"address"}, nil)
 				if err != nil {
@@ -481,7 +483,6 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-
 	}
 
 	var returnedWorker *Worker

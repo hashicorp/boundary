@@ -30,6 +30,7 @@ select
   w.update_time,
   w.version,
   w.last_status_time,
+  w.type,
   cc.count as active_connection_count,
   -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
   wt.tags as api_tags,
@@ -43,7 +44,6 @@ from server_worker w
       w.public_id = cc.worker_id;
 comment on view server_worker_aggregate is
   'server_worker_aggregate contains the worker resource with its worker provided config values and its configuration and api provided tags.';
-
 
 -- Replaces the view created in 9/01.
 -- Remove the worker id from this view.  In actuality this is almost a no-op

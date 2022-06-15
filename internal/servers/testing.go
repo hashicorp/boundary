@@ -82,8 +82,8 @@ func TestWorkerAuth(ctx context.Context, t *testing.T, conn *db.DB, worker *Work
 }
 
 // TestWorker inserts a worker into the db to satisfy foreign key constraints.
-// The worker provided fields are auto generated. WithName, WithDescription,
-// and WithAddress are applied to the resource name, description and address if
+// The worker provided fields are auto generated. WithName and WithDescription,
+// are applied to the resource name, description and address if
 // present.
 func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
@@ -92,19 +92,22 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 	serversRepo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	ctx := context.Background()
+	opts := getOpts(opt...)
 
 	namePart, err := newWorkerId(ctx)
 	require.NoError(t, err)
 	name := "test-worker-" + strings.ToLower(namePart)
+	if opts.withName != "" {
+		name = opts.withName
+	}
 	id, err := newWorkerId(ctx)
 	require.NoError(t, err)
-	wrk := NewWorkerForStatus(scope.Global.String(),
+	wrk := NewWorker(scope.Global.String(),
 		WithName(name),
 		WithAddress("127.0.0.1"))
 	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk, WithPublicId(id))
 	require.NoError(t, err)
 	require.NotNil(t, wrk)
-	opts := getOpts(opt...)
 
 	if len(opts.withWorkerTags) > 0 {
 		var tags []interface{}
@@ -119,17 +122,9 @@ func TestWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Opti
 		require.NoError(t, rw.CreateItems(ctx, tags))
 	}
 	var mask []string
-	if opts.withName != "" {
-		wrk.Name = opts.withName
-		mask = append(mask, "name")
-	}
 	if opts.withDescription != "" {
 		wrk.Description = opts.withDescription
 		mask = append(mask, "description")
-	}
-	if opts.withAddress != "" {
-		wrk.Address = opts.withAddress
-		mask = append(mask, "address")
 	}
 	if len(mask) > 0 {
 		var n int

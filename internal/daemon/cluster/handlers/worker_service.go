@@ -231,7 +231,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		}
 		var w *servers.Worker
 		if req.WorkerKeyId != "" {
-			workerId, err := serversRepo.LookupWorkerIdByWorkerReportedKeyId(ctx, req.WorkerKeyId)
+			workerId, err := serversRepo.LookupWorkerIdByKeyId(ctx, req.WorkerKeyId)
 			if err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by keyId", "keyId", req.WorkerKeyId))
 				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
@@ -242,7 +242,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
 			}
 		} else {
-			w, err = serversRepo.LookupWorkerByWorkerReportedName(ctx, req.GetServerId())
+			w, err = serversRepo.LookupWorkerByName(ctx, req.GetServerId())
 			if err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by name", "name", req.ServerId))
 				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
@@ -389,7 +389,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting servers repo: %v", err)
 	}
-	w, err := serversRepo.LookupWorkerByWorkerReportedName(ctx, req.GetWorkerId())
+	w, err := serversRepo.LookupWorkerByName(ctx, req.GetWorkerId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error looking up worker: %v", err)
 	}

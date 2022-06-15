@@ -60,9 +60,9 @@ create table server_worker (
           type != 'kms' or name is not null
         )
     constraint kms_name_must_be_lowercase
-      check (lower(trim(name)) = name and type = 'kms')
+      check (lower(trim(name)) = name)
     constraint kms_name_only_has_printable_characters
-      check (name !~ '[^[:print:]]' and type = 'kms'),
+      check (name !~ '[^[:print:]]'),
   address wt_network_address
     constraint address_must_be_set_by_status
       check (
@@ -118,6 +118,7 @@ begin
       table = tg_table_name,
       column = 'name';
   end if;
+  return new;
 end;
 $$ language plpgsql;
 comment on function immutable_kms_name is
@@ -132,8 +133,8 @@ as $$
 begin
   if new.type = 'kms' then 
     new.last_status_time = now();
-    return new;
   end if;
+  return new;
 end;
 $$ language plpgsql;
 comment on function update_kms_server_worker_update_last_status_time_column is
@@ -148,8 +149,8 @@ as $$
 begin
   if new.type = 'pki' then
     new.last_status_time = now();
-    return new;
   end if;
+  return new;
 end;
 $$ language plpgsql;
 comment on function update_pki_server_worker_update_last_status_time_column is
@@ -164,8 +165,8 @@ as $$
 begin
   if new.type = 'kms' then
     new.last_status_time = now();
-    return new;
   end if;
+  return new;
 end;
 $$ language plpgsql;
 comment on function insert_kms_server_worker_update_last_status_time_column is
@@ -173,26 +174,6 @@ comment on function insert_kms_server_worker_update_last_status_time_column is
 
 create trigger insert_server_worker_last_update_time_column before insert on server_worker
   for each row execute procedure insert_kms_server_worker_update_last_status_time_column();
-
-create function insert_server_worker_type_column()
-  returns trigger
-as $$
-begin
-  perform from worker_auth_authorized where worker_id = new.public_id;
-  case 
-    when new.type = 'pki' and not found then
-        raise exception 'invalid type: pki worker is not authorized in worker_auth_authorized table';
-    when new.type = 'kms' and found then
-        raise exception 'invalid type: kms worker cannot authorized in worker_auth_authorized table';
-  end case;
-  return new;
-end;
-$$ language plpgsql;
-comment on function insert_server_worker_type_column is
-  'function used to constraint the type column in server_worker';
-
-create trigger insert_server_worker_type_column before insert on server_worker
-  for each row execute procedure insert_server_worker_type_column();
 
 -- Create table worker tag
 create table server_worker_tag_enm (

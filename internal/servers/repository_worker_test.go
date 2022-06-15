@@ -108,7 +108,7 @@ func TestDeleteWorker(t *testing.T) {
 	}
 }
 
-func TestLookupWorkerByWorkerReportedName(t *testing.T) {
+func TestLookupWorkerByName(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -119,12 +119,12 @@ func TestLookupWorkerByWorkerReportedName(t *testing.T) {
 
 	w := servers.TestWorker(t, conn, wrapper)
 	t.Run("success", func(t *testing.T) {
-		got, err := repo.LookupWorkerByWorkerReportedName(ctx, w.GetWorkerReportedName())
+		got, err := repo.LookupWorkerByName(ctx, w.GetName())
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w.Worker, got.Worker, protocmp.Transform()))
 	})
 	t.Run("not found", func(t *testing.T) {
-		got, err := repo.LookupWorkerByWorkerReportedName(ctx, "unknown_name")
+		got, err := repo.LookupWorkerByName(ctx, "unknown_name")
 		require.NoError(t, err)
 		assert.Nil(t, got)
 	})
@@ -134,14 +134,14 @@ func TestLookupWorkerByWorkerReportedName(t *testing.T) {
 		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
 		r, err := servers.NewRepository(rw, rw, kms)
 		require.NoError(t, err)
-		got, err := r.LookupWorkerByWorkerReportedName(ctx, w.GetWorkerReportedName())
+		got, err := r.LookupWorkerByName(ctx, w.GetName())
 		assert.NoError(t, mock.ExpectationsWereMet())
-		assert.Truef(t, errors.Match(errors.T(errors.Op("servers.(Repository).LookupWorkerByWorkerReportedName")), err), "got error %v", err)
+		assert.Truef(t, errors.Match(errors.T(errors.Op("servers.(Repository).LookupWorkerByName")), err), "got error %v", err)
 		assert.Nil(t, got)
 	})
 }
 
-func TestLookupWorkerByWorkerReportedKeyId(t *testing.T) {
+func TestLookupWorkerIdByKeyId(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -153,6 +153,7 @@ func TestLookupWorkerByWorkerReportedKeyId(t *testing.T) {
 	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
 	require.NoError(t, err)
 
+	// TODO: create a TestPkiWorker so we can test this properly...
 	w := servers.TestWorker(t, conn, wrapper)
 
 	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kmsCache)
@@ -176,12 +177,12 @@ func TestLookupWorkerByWorkerReportedKeyId(t *testing.T) {
 	registeredNode, err := registration.AuthorizeNode(ctx, rootStorage, fetchReq, nodeenrollment.WithState(state))
 	require.NoError(t, err)
 	t.Run("success", func(t *testing.T) {
-		got, err := repo.LookupWorkerIdByWorkerReportedKeyId(ctx, registeredNode.Id)
+		got, err := repo.LookupWorkerIdByKeyId(ctx, registeredNode.Id)
 		require.NoError(t, err)
 		assert.Equal(t, w.PublicId, got)
 	})
 	t.Run("not found", func(t *testing.T) {
-		got, err := repo.LookupWorkerIdByWorkerReportedKeyId(ctx, "unknown_key")
+		got, err := repo.LookupWorkerIdByKeyId(ctx, "unknown_key")
 		require.NoError(t, err)
 		assert.Empty(t, got)
 	})
@@ -191,9 +192,9 @@ func TestLookupWorkerByWorkerReportedKeyId(t *testing.T) {
 		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
 		r, err := servers.NewRepository(rw, rw, kmsCache)
 		require.NoError(t, err)
-		got, err := r.LookupWorkerIdByWorkerReportedKeyId(ctx, w.GetWorkerReportedName())
+		got, err := r.LookupWorkerIdByKeyId(ctx, w.GetName())
 		assert.NoError(t, mock.ExpectationsWereMet())
-		assert.Truef(t, errors.Match(errors.T(errors.Op("servers.(Repository).LookupWorkerIdByWorkerReportedKeyId")), err), "got error %v", err)
+		assert.Truef(t, errors.Match(errors.T(errors.Op("servers.(Repository).LookupWorkerIdByKeyId")), err), "got error %v", err)
 		assert.Empty(t, got)
 	})
 }
@@ -214,8 +215,8 @@ func TestLookupWorker(t *testing.T) {
 		servers.WithWorkerTags(&servers.Tag{"key", "val"}))
 	w, err = repo.UpsertWorkerStatus(context.Background(),
 		servers.NewWorkerForStatus(w.GetScopeId(),
-			servers.WithName(w.GetWorkerReportedName()),
-			servers.WithAddress(w.GetWorkerReportedAddress()),
+			servers.WithName(w.GetName()),
+			servers.WithAddress(w.GetAddress()),
 			servers.WithWorkerTags(&servers.Tag{
 				Key:   "config",
 				Value: "test",
@@ -301,11 +302,11 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	require.NoError(t, err)
 	{
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
-		assert.Equal(t, wStatus1.GetWorkerReportedAddress(), worker.CanonicalAddress())
-		assert.Empty(t, worker.Name)
+		assert.Equal(t, wStatus1.GetAddress(), worker.CanonicalAddress())
+		assert.Equal(t, "config_name1", worker.Name)
 		assert.Equal(t, worker.GetLastStatusTime(), worker.UpdateTime)
 		assert.Equal(t, uint32(1), worker.Version)
-		assert.Empty(t, worker.Address)
+		assert.Equal(t, "address", worker.Address)
 		assert.Empty(t, worker.Description)
 	}
 
@@ -371,21 +372,6 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "providing api tags",
-			repo: repo,
-			status: func() *servers.Worker {
-				w := servers.NewWorker(scope.Global.String(),
-					servers.WithWorkerTags(&servers.Tag{Key: "test", Value: "test"}))
-				w.WorkerReportedAddress = "some_address"
-				w.WorkerReportedName = "providing api tags"
-				return w
-			}(),
-			errAssert: func(t *testing.T, err error) {
-				t.Helper()
-				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
-			},
-		},
-		{
 			name: "database failure",
 			repo: func() *servers.Repository {
 				conn, mock := db.TestSetupWithMock(t)
@@ -445,7 +431,7 @@ func TestTagUpdatingListing(t *testing.T) {
 
 	worker1 := servers.TestWorker(t, conn, wrapper)
 	wStatus := servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithName(worker1.GetWorkerReportedName()),
+		servers.WithName(worker1.GetName()),
 		servers.WithAddress("127.0.0.1"),
 		servers.WithWorkerTags(
 			&servers.Tag{
@@ -465,8 +451,8 @@ func TestTagUpdatingListing(t *testing.T) {
 
 	// Update without saying to update tags
 	wStatus = servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithName(worker1.GetWorkerReportedName()),
-		servers.WithAddress(worker1.GetWorkerReportedAddress()),
+		servers.WithName(worker1.GetName()),
+		servers.WithAddress(worker1.GetAddress()),
 		servers.WithWorkerTags(
 			&servers.Tag{
 				Key:   "tag22",
@@ -579,8 +565,8 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 	// Push an upsert to the first worker so that its status has been
 	// updated.
 	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithName(worker1.GetWorkerReportedName()),
-		servers.WithAddress(worker1.GetWorkerReportedAddress())))
+		servers.WithName(worker1.GetName()),
+		servers.WithAddress(worker1.GetAddress())))
 	require.NoError(err)
 
 	requireIds := func(expected []string, actual []*servers.Worker) {
@@ -606,8 +592,8 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 
 	// Upsert second server.
 	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithName(worker2.GetWorkerReportedName()),
-		servers.WithAddress(worker1.GetWorkerReportedAddress())))
+		servers.WithName(worker2.GetName()),
+		servers.WithAddress(worker1.GetAddress())))
 	require.NoError(err)
 
 	// Static liveness. Should get two, so long as this did not take
@@ -739,7 +725,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			name: "no worker reported address",
 			setup: func() *servers.Worker {
 				w := servers.NewWorker(scope.Global.String())
-				w.WorkerReportedAddress = "foo"
+				w.Address = "foo"
 				return w
 			},
 			repo:            testRepo,
@@ -751,7 +737,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			name: "no worker reported name",
 			setup: func() *servers.Worker {
 				w := servers.NewWorker(scope.Global.String())
-				w.WorkerReportedName = "foo"
+				w.Name = "foo"
 				return w
 			},
 			repo:            testRepo,
@@ -949,7 +935,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 			name: "update worker reported name",
 			modifyWorker: func(t *testing.T, w *servers.Worker) {
 				t.Helper()
-				w.WorkerReportedName = "foo"
+				w.Name = "foo"
 			},
 			path:    []string{"WorkerReportedName"},
 			wantErr: true,
@@ -958,7 +944,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 			name: "update worker reported name and name",
 			modifyWorker: func(t *testing.T, w *servers.Worker) {
 				t.Helper()
-				w.WorkerReportedName = "foo"
+				w.Name = "foo"
 				w.Name = "another"
 			},
 			path:    []string{"WorkerReportedName", "Name"},
