@@ -136,11 +136,12 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 		require.Equal(t, 1, n)
 		require.NotNil(t, wrk)
 	}
-
+	wrk, err = serversRepo.LookupWorker(ctx, wrk.GetPublicId())
+	require.NoError(t, err)
 	return wrk
 }
 
-// TestKmsWorker inserts a worker into the db to satisfy foreign key constraints.
+// TestPkiWorker inserts a worker into the db to satisfy foreign key constraints.
 // The worker provided fields are auto generated. WithName and WithDescription,
 // are applied to the resource name, description and address if
 // present.
@@ -172,5 +173,7 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))
 	}
+	wrk, err = serversRepo.LookupWorker(ctx, wrk.GetPublicId())
+	require.NoError(t, err)
 	return wrk
 }
