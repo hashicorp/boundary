@@ -10,7 +10,7 @@ description: |-
 The `worker` stanza configures Boundary worker-specific parameters. Boundary supports two different types of workers,
 differentiated by their means of authentication to Boundary.
 - [KMS Workers][] use a shared KMS to authenticate with controllers.
-- [Self-Managed Workers][] use certificates issued by Boundary to authenticate with controllers
+- [PKI Workers][] use certificates issued by Boundary to authenticate with controllers
 
 Different worker types have different configuration requirements, but share the common worker parameters listed below.
 
@@ -56,4 +56,4 @@ worker {
   referring to a file on disk (file://) or an env var (env://).
 
 [kms workers]: /docs/oss/configuration/worker/kms-worker
-[self-managed workers]: /docs/oss/configuration/worker/self-managed-worker
+[pki workers]: /docs/oss/configuration/worker/pki-worker

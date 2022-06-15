@@ -1,16 +1,16 @@
 ---
 layout: docs
-page_title: Self-Managed Worker Configuration
+page_title: PKI Worker Configuration
 description: |-
-  Self-Managed worker-specific parameters.
+  PKI worker-specific parameters.
 ---
 
 
-## Self-Managed Worker Configuration
-Self-Managed Workers authenticate to Boundary using a new certificate-based method, allowing for worker deployment
+## PKI Worker Configuration
+PKI Workers authenticate to Boundary using a new certificate-based method, allowing for worker deployment
 without using a shared KMS.
 
-Self-Managed Workers require an accessible directory, defined by `auth_storage_path`, for credential storage.
+PKI Workers require an accessible directory, defined by `auth_storage_path`, for credential storage.
 Example (not safe for production!):
 
 ```hcl
@@ -20,8 +20,8 @@ worker {
 }
 ```
 
-__Note__: `name` and `description` fields are not valid config fields for Self-Managed workers. These fields are only valid for
-[KMS Workers][]. `name` and `description` can only be set for Self-Managed workers through the API.
+__Note__: `name` and `description` fields are not valid config fields for PKI workers. These fields are only valid for
+[KMS Workers][]. `name` and `description` can only be set for PKI workers through the API.
 
 # Complete Configuration Example
 

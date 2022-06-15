@@ -368,7 +368,7 @@
               },
               {
                 "title": "Self-Managed Workers",
-                "path": "oss/configuration/worker/self-managed-worker"
+                "path": "oss/configuration/worker/pki-worker"
               }
             ]
           },
