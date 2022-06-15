@@ -15,11 +15,13 @@ Example (not safe for production!):
 
 ```hcl
 worker {
-  description = "A default worker created for demonstration"
   auth_storage_path="/tmp/boundary/demo-worker-1"
   initial_upstreams = ["10.0.0.1"]
 }
 ```
+
+__Note__: `name` and `description` fields are not valid for Self-Managed workers. These fields are only valid for
+[KMS Workers][]
 
 # Complete Configuration Example
 
@@ -31,8 +33,6 @@ listener "tcp" {
 }
 
 worker {
-  description = "A default worker created for demonstration"
-
   # Path for worker storage. Must be unique across workers
   auth_storage_path="/tmp/boundary/demo-worker-1"
 
@@ -53,3 +53,4 @@ worker {
 
 
 ```
+[kms workers]: /docs/oss/configuration/worker/kms-worker

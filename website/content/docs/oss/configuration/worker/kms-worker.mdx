@@ -10,6 +10,11 @@ description: |-
 
 KMS Workers require a `name` field. This specifies a unique name of this worker within the Boundary cluster.
 The `name` value can be:
+- a direct name string (must be all lowercase)
+- a reference to a file on disk (`file://`) from which the name is read
+- an env var (`env://`) from which the name is read.
+
+KMS Workers accept an optional `description` field. The `description` value can be:
 - a direct name string
 - a reference to a file on disk (`file://`) from which the name is read
 - an env var (`env://`) from which the name is read.
