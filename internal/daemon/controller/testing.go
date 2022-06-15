@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -542,10 +543,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts.Config.Controller = new(config.Controller)
 	}
 	if opts.Config.Controller.Name == "" {
-		opts.Config.Controller.Name, err = opts.Config.Controller.InitNameIfEmpty()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, opts.Config.Controller.InitNameIfEmpty())
 	}
 	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
 
@@ -572,7 +570,13 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		tc.b.Eventer = e
 		event.TestWithoutEventing(t) // this ensures the sys eventer will also stop eventing
 	default:
-		if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+
+		serverName, err := os.Hostname()
+		if err != nil {
+			t.Fatal(err)
+		}
+		serverName = fmt.Sprintf("%s/controller", serverName)
+		if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -530,17 +530,20 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var serverName string
-	switch {
-	case c.Config.Controller == nil:
-		serverName = "boundary-dev"
-	default:
-		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandCliError
-		}
-		serverName = c.Config.Controller.Name + "/boundary-dev"
+	serverName, err := os.Hostname()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Unable to determine hostname: %w", err).Error())
+		return base.CommandCliError
 	}
+	var serverTypes []string
+	if c.Config.Controller != nil {
+		serverTypes = append(serverTypes, "controller")
+	}
+	if c.Config.Worker != nil {
+		serverTypes = append(serverTypes, "worker")
+	}
+	serverName = fmt.Sprintf("%s/%s", serverName, strings.Join(serverTypes, "+"))
+
 	eventFlags, err := base.NewEventFlags(event.TextSinkFormat, base.ComposedOfEventArgs{
 		Format:       c.flagEventFormat,
 		Audit:        c.flagAudit,
@@ -587,10 +590,12 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 			return base.CommandUserError
 		}
-		c.Config.Worker.Name = ""
-		c.Config.Worker.Description = ""
 		c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
 		c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
+	} else {
+		// These must be unset for PKI
+		c.Config.Worker.Name = ""
+		c.Config.Worker.Description = ""
 	}
 	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
 	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
