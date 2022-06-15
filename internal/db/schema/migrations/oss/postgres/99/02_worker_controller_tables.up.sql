@@ -53,16 +53,18 @@ create table server_worker (
     references iam_scope_global(scope_id)
       on delete cascade
       on update cascade,
-  description wt_description,
+  description wt_description
+    constraint description_only_has_printable_characters
+      check (description is null or description !~ '[^[:print:]]'),
   name wt_name -- server_worker_scope_id_name_uq defines an appropriate uniqueness constraint for name
     constraint worker_name_must_be_set_by_status
       check (
           type != 'kms' or name is not null
         )
-    constraint kms_name_must_be_lowercase
-      check (lower(trim(name)) = name and type = 'kms')
-    constraint kms_name_only_has_printable_characters
-      check (name !~ '[^[:print:]]' and type = 'kms'),
+    constraint name_must_be_lowercase
+      check (name is null or lower(trim(name)) = name)
+    constraint name_only_has_printable_characters
+      check (name is null or name !~ '[^[:print:]]'),
   address wt_network_address
     constraint address_must_be_set_by_status
       check (
