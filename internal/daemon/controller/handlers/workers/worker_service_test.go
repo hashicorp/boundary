@@ -400,10 +400,9 @@ func TestUpdate(t *testing.T) {
 		return repo, nil
 	}
 
-	wkr := servers.TestKmsWorker(t, conn, wrapper,
+	wkr := servers.TestPkiWorker(t, conn, wrapper,
 		servers.WithName("default"),
-		servers.WithDescription("default"),
-		servers.WithAddress("default"))
+		servers.WithDescription("default"))
 
 	version := wkr.GetVersion()
 
@@ -446,10 +445,10 @@ func TestUpdate(t *testing.T) {
 					Scope:             expectedScope,
 					Name:              wrapperspb.String("name"),
 					Description:       wrapperspb.String("desc"),
-					Address:           "default",
 					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
 					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
 					AuthorizedActions: testAuthorizedActions,
+					Type:              PkiWorkerType,
 				},
 			},
 		},
@@ -471,12 +470,24 @@ func TestUpdate(t *testing.T) {
 					Scope:             expectedScope,
 					Name:              wrapperspb.String("name"),
 					Description:       wrapperspb.String("desc"),
-					Address:           "default",
 					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
 					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
 					AuthorizedActions: testAuthorizedActions,
+					Type:              PkiWorkerType,
 				},
 			},
+		},
+		{
+			name: "cant update address",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"address"},
+				},
+				Item: &pb.Worker{
+					Address: "updated",
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "No Update Mask",
@@ -496,14 +507,6 @@ func TestUpdate(t *testing.T) {
 					Name:        wrapperspb.String("updated name"),
 					Description: wrapperspb.String("updated desc"),
 				},
-			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Update port to 0",
-			req: &pbs.UpdateWorkerRequest{
-				UpdateMask: &field_mask.FieldMask{Paths: []string{"default_port"}},
-				Item:       &pb.Worker{},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -534,10 +537,10 @@ func TestUpdate(t *testing.T) {
 					ScopeId:           wkr.GetScopeId(),
 					Scope:             expectedScope,
 					Description:       wrapperspb.String("default"),
-					Address:           "default",
 					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
 					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
 					AuthorizedActions: testAuthorizedActions,
+					Type:              PkiWorkerType,
 				},
 			},
 		},
@@ -557,10 +560,10 @@ func TestUpdate(t *testing.T) {
 					ScopeId:           wkr.GetScopeId(),
 					Scope:             expectedScope,
 					Name:              wrapperspb.String("default"),
-					Address:           "default",
 					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
 					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
 					AuthorizedActions: testAuthorizedActions,
+					Type:              PkiWorkerType,
 				},
 			},
 		},
@@ -582,10 +585,10 @@ func TestUpdate(t *testing.T) {
 					Scope:             expectedScope,
 					Name:              wrapperspb.String("updated"),
 					Description:       wrapperspb.String("default"),
-					Address:           "default",
 					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
 					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
 					AuthorizedActions: testAuthorizedActions,
+					Type:              PkiWorkerType,
 				},
 			},
 		},
@@ -607,10 +610,10 @@ func TestUpdate(t *testing.T) {
 					Scope:             expectedScope,
 					Name:              wrapperspb.String("default"),
 					Description:       wrapperspb.String("notignored"),
-					Address:           "default",
 					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
 					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
 					AuthorizedActions: testAuthorizedActions,
+					Type:              PkiWorkerType,
 				},
 			},
 		},
@@ -780,6 +783,85 @@ func TestUpdate(t *testing.T) {
 				tc.res.Item.Version = version + 1
 			}
 			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateWorker(%q) got response %q, wanted %q", req, got, tc.res)
+		})
+	}
+}
+
+func TestUpdate_KMS(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	repo, err := servers.NewRepository(rw, rw, kms)
+	require.NoError(t, err)
+	repoFn := func() (*servers.Repository, error) {
+		return repo, nil
+	}
+
+	wkr := servers.TestKmsWorker(t, conn, wrapper,
+		servers.WithName("default"),
+		servers.WithDescription("default"))
+
+	toMerge := &pbs.UpdateWorkerRequest{
+		Id: wkr.GetPublicId(),
+	}
+	workerService, err := NewService(ctx, repoFn, iamRepoFn)
+	require.NoError(t, err)
+
+	cases := []struct {
+		name string
+		req  *pbs.UpdateWorkerRequest
+		res  *pbs.UpdateWorkerResponse
+		err  error
+	}{
+		{
+			name: "Cant set name",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name"},
+				},
+				Item: &pb.Worker{
+					Name: wrapperspb.String("name"),
+				},
+			},
+		},
+		{
+			name: "Cant set description",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"description"},
+				},
+				Item: &pb.Worker{
+					Description: wrapperspb.String("description"),
+				},
+			},
+		},
+		{
+			name: "Cant set address",
+			req: &pbs.UpdateWorkerRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"address"},
+				},
+				Item: &pb.Worker{
+					Address: "address",
+				},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := proto.Clone(toMerge).(*pbs.UpdateWorkerRequest)
+			proto.Merge(req, tc.req)
+			got, gErr := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, scope.Global.String()), req)
+			assert.Error(t, gErr)
+			assert.Nil(t, got)
 		})
 	}
 }
