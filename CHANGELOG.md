@@ -26,11 +26,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR](https://github.com/hashicorp/boundary/pull/2160).
 * event filtering: Change event filters to use lowercase and snake case for data
   elements like the rest of Boundary filters do. 
+* ui: Use include_terminated flag for listing sessions.
+  [PR](https://github.com/hashicorp/boundary-ui/pull/1126).
+* ui: Add Quick Setup onboarding guide.
+  [PR](https://github.com/hashicorp/boundary-ui/pull/1140).
 
 ### Bug Fixes
 
 * The plugin execution_dir configuration parameter is now respected.
   [PR](https://github.com/hashicorp/boundary/pull/2183).
+* ui: Fix Users page not updating fields correctly.
+  [PR](https://github.com/hashicorp/boundary-ui/pull/1105).
 
 ### Deprecations/Changes
 
