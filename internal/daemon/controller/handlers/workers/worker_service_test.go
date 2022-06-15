@@ -16,10 +16,12 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -63,51 +65,84 @@ func TestGet(t *testing.T) {
 		return repo, nil
 	}
 
-	worker := servers.TestKmsWorker(t, conn, wrap,
-		servers.WithName("test worker names"),
-		servers.WithDescription("test worker description"),
-		servers.WithAddress("test worker address"),
+	kmsWorker := servers.TestKmsWorker(t, conn, wrap,
+		servers.WithName("test kms worker names"),
+		servers.WithDescription("test kms worker description"),
+		servers.WithAddress("test kms worker address"),
 		servers.WithWorkerTags(&servers.Tag{Key: "key", Value: "val"}))
 	// Add config tags to the created worker
-	worker, err = repo.UpsertWorkerStatus(context.Background(),
-		servers.NewWorkerForStatus(worker.GetScopeId(),
-			servers.WithName(worker.GetWorkerReportedName()),
-			servers.WithAddress(worker.GetWorkerReportedAddress()),
+	kmsWorker, err = repo.UpsertWorkerStatus(context.Background(),
+		servers.NewWorkerForStatus(kmsWorker.GetScopeId(),
+			servers.WithName(kmsWorker.GetName()),
+			servers.WithAddress(kmsWorker.GetAddress()),
 			servers.WithWorkerTags(&servers.Tag{
 				Key:   "config",
 				Value: "test",
 			})),
 		servers.WithUpdateTags(true),
-		servers.WithPublicId(worker.GetPublicId()))
+		servers.WithPublicId(kmsWorker.GetPublicId()))
 	require.NoError(t, err)
 
-	wantWorker := &pb.Worker{
-		Id:                worker.GetPublicId(),
-		ScopeId:           worker.GetScopeId(),
-		Scope:             &scopes.ScopeInfo{Id: worker.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
-		CreatedTime:       worker.CreateTime.GetTimestamp(),
-		UpdatedTime:       worker.UpdateTime.GetTimestamp(),
-		Version:           worker.GetVersion(),
-		Name:              wrapperspb.String(worker.GetName()),
-		Description:       wrapperspb.String(worker.GetDescription()),
-		Address:           wrapperspb.String(worker.GetAddress()),
-		AuthorizedActions: testAuthorizedActions,
-		CanonicalAddress:  worker.CanonicalAddress(),
-		LastStatusTime:    worker.GetLastStatusTime().GetTimestamp(),
+	kmsAuthzActions := make([]string, len(testAuthorizedActions))
+	copy(kmsAuthzActions, testAuthorizedActions)
+
+	wantKmsWorker := &pb.Worker{
+		Id:                kmsWorker.GetPublicId(),
+		ScopeId:           kmsWorker.GetScopeId(),
+		Scope:             &scopes.ScopeInfo{Id: kmsWorker.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+		CreatedTime:       kmsWorker.CreateTime.GetTimestamp(),
+		UpdatedTime:       kmsWorker.UpdateTime.GetTimestamp(),
+		Version:           kmsWorker.GetVersion(),
+		Name:              wrapperspb.String(kmsWorker.GetName()),
+		Description:       wrapperspb.String(kmsWorker.GetDescription()),
+		Address:           kmsWorker.GetAddress(),
+		AuthorizedActions: strutil.StrListDelete(kmsAuthzActions, action.Update.String()),
+		LastStatusTime:    kmsWorker.GetLastStatusTime().GetTimestamp(),
 		CanonicalTags: map[string]*structpb.ListValue{
 			"key":    structListValue(t, "val"),
 			"config": structListValue(t, "test"),
 		},
-		Tags: map[string]*structpb.ListValue{
-			"key": structListValue(t, "val"),
+		ConfigTags: map[string]*structpb.ListValue{
+			"config": structListValue(t, "test"),
 		},
-		WorkerProvidedConfiguration: &pb.WorkerProvidedConfiguration{
-			Address: worker.GetWorkerReportedAddress(),
-			Name:    worker.GetWorkerReportedName(),
-			Tags: map[string]*structpb.ListValue{
-				"config": structListValue(t, "test"),
-			},
+		Type: KmsWorkerType,
+	}
+
+	pkiWorker := servers.TestPkiWorker(t, conn, wrap,
+		servers.WithName("test pki worker names"),
+		servers.WithDescription("test pki worker description"))
+	// Add config tags to the created worker
+	pkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
+		servers.NewWorkerForStatus(pkiWorker.GetScopeId(),
+			servers.WithName(pkiWorker.GetName()),
+			servers.WithAddress("test kms worker address"),
+			servers.WithWorkerTags(&servers.Tag{
+				Key:   "config",
+				Value: "test",
+			})),
+		servers.WithUpdateTags(true),
+		servers.WithPublicId(pkiWorker.GetPublicId()))
+	require.NoError(t, err)
+
+	wantPkiWorker := &pb.Worker{
+		Id:                pkiWorker.GetPublicId(),
+		ScopeId:           pkiWorker.GetScopeId(),
+		Scope:             &scopes.ScopeInfo{Id: pkiWorker.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+		CreatedTime:       pkiWorker.CreateTime.GetTimestamp(),
+		UpdatedTime:       pkiWorker.UpdateTime.GetTimestamp(),
+		Version:           pkiWorker.GetVersion(),
+		Name:              wrapperspb.String(pkiWorker.GetName()),
+		Description:       wrapperspb.String(pkiWorker.GetDescription()),
+		Address:           pkiWorker.GetAddress(),
+		AuthorizedActions: testAuthorizedActions,
+		LastStatusTime:    pkiWorker.GetLastStatusTime().GetTimestamp(),
+		CanonicalTags: map[string]*structpb.ListValue{
+			"config": structListValue(t, "test"),
 		},
+		ConfigTags: map[string]*structpb.ListValue{
+			"config": structListValue(t, "test"),
+		},
+		Type: PkiWorkerType,
 	}
 
 	cases := []struct {
@@ -118,10 +153,16 @@ func TestGet(t *testing.T) {
 		err     error
 	}{
 		{
-			name:    "Get an Existing Worker",
-			scopeId: worker.GetScopeId(),
-			req:     &pbs.GetWorkerRequest{Id: worker.GetPublicId()},
-			res:     &pbs.GetWorkerResponse{Item: wantWorker},
+			name:    "Get an Existing KMS Worker",
+			scopeId: kmsWorker.GetScopeId(),
+			req:     &pbs.GetWorkerRequest{Id: kmsWorker.GetPublicId()},
+			res:     &pbs.GetWorkerResponse{Item: wantKmsWorker},
+		},
+		{
+			name:    "Get an Existing PKI Worker",
+			scopeId: pkiWorker.GetScopeId(),
+			req:     &pbs.GetWorkerRequest{Id: pkiWorker.GetPublicId()},
+			res:     &pbs.GetWorkerResponse{Item: wantPkiWorker},
 		},
 		{
 			name: "Get a non-existent Worker",
@@ -172,10 +213,30 @@ func TestList(t *testing.T) {
 		return servers.NewRepository(rw, rw, kms)
 	}
 
-	var wantWorkers []*pb.Worker
+	var wantKmsWorkers []*pb.Worker
 	for i := 0; i < 10; i++ {
-		w := servers.TestKmsWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("worker%d", i)))
-		wantWorkers = append(wantWorkers, &pb.Worker{
+		w := servers.TestKmsWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("kms-worker%d", i)))
+		kmsAuthzActions := make([]string, len(testAuthorizedActions))
+		copy(kmsAuthzActions, testAuthorizedActions)
+		wantKmsWorkers = append(wantKmsWorkers, &pb.Worker{
+			Id:                w.GetPublicId(),
+			ScopeId:           w.GetScopeId(),
+			Scope:             &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+			CreatedTime:       w.CreateTime.GetTimestamp(),
+			UpdatedTime:       w.UpdateTime.GetTimestamp(),
+			Version:           w.GetVersion(),
+			Name:              wrapperspb.String(w.GetName()),
+			AuthorizedActions: strutil.StrListDelete(kmsAuthzActions, action.Update.String()),
+			Address:           w.GetAddress(),
+			Type:              KmsWorkerType,
+			LastStatusTime:    w.GetLastStatusTime().GetTimestamp(),
+		})
+	}
+
+	var wantPkiWorkers []*pb.Worker
+	for i := 0; i < 10; i++ {
+		w := servers.TestPkiWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("pki-worker%d", i)))
+		wantPkiWorkers = append(wantPkiWorkers, &pb.Worker{
 			Id:                w.GetPublicId(),
 			ScopeId:           w.GetScopeId(),
 			Scope:             &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
@@ -184,12 +245,9 @@ func TestList(t *testing.T) {
 			Version:           w.GetVersion(),
 			Name:              wrapperspb.String(w.GetName()),
 			AuthorizedActions: testAuthorizedActions,
-			CanonicalAddress:  w.CanonicalAddress(),
+			Address:           w.GetAddress(),
+			Type:              PkiWorkerType,
 			LastStatusTime:    w.GetLastStatusTime().GetTimestamp(),
-			WorkerProvidedConfiguration: &pb.WorkerProvidedConfiguration{
-				Address: w.GetWorkerReportedAddress(),
-				Name:    w.GetWorkerReportedName(),
-			},
 		})
 	}
 
@@ -202,27 +260,27 @@ func TestList(t *testing.T) {
 		{
 			name: "List All Workers",
 			req:  &pbs.ListWorkersRequest{ScopeId: scope.Global.String()},
-			res:  &pbs.ListWorkersResponse{Items: wantWorkers},
+			res:  &pbs.ListWorkersResponse{Items: append(wantKmsWorkers, wantPkiWorkers...)},
 		},
 		{
 			name: "List global workers recursively",
 			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true},
 			res: &pbs.ListWorkersResponse{
-				Items: wantWorkers,
+				Items: append(wantKmsWorkers, wantPkiWorkers...),
 			},
 		},
 		{
-			name: "Filter to a single workers",
-			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/name"=="worker2"`},
+			name: "Filter to a single worker of each type",
+			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/name"=="kms-worker2" or "/item/name"=="pki-worker2"`},
 			res: &pbs.ListWorkersResponse{
-				Items: wantWorkers[2:3],
+				Items: []*pb.Worker{wantKmsWorkers[2], wantPkiWorkers[2]},
 			},
 		},
 		{
-			name: "Filter to 2 workers",
-			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/name" matches "worker[23]"`},
+			name: "Filter to 2 workers of each type",
+			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/name" matches "kms-worker[23]" or "/item/name" matches "pki-worker[23]"`},
 			res: &pbs.ListWorkersResponse{
-				Items: wantWorkers[2:4],
+				Items: []*pb.Worker{wantKmsWorkers[2], wantKmsWorkers[3], wantPkiWorkers[2], wantPkiWorkers[3]},
 			},
 		},
 		{
@@ -252,6 +310,10 @@ func TestList(t *testing.T) {
 			require.NoError(gErr)
 			sort.Slice(got.Items, func(i, j int) bool {
 				return got.Items[i].GetName().GetValue() < got.Items[j].GetName().GetValue()
+			})
+			require.NoError(gErr)
+			sort.Slice(tc.res.Items, func(i, j int) bool {
+				return tc.res.Items[i].GetName().GetValue() < tc.res.Items[j].GetName().GetValue()
 			})
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListWorkers(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
@@ -370,10 +432,6 @@ func TestUpdate(t *testing.T) {
 	workerService, err := NewService(ctx, repoFn, iamRepoFn)
 	require.NoError(t, err)
 	expectedScope := &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
-	expectedConfig := &pb.WorkerProvidedConfiguration{
-		Address: wkr.GetWorkerReportedAddress(),
-		Name:    wkr.GetWorkerReportedName(),
-	}
 
 	cases := []struct {
 		name string
@@ -390,22 +448,20 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Worker{
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
-					Address:     wrapperspb.String("address"),
+					Address:     "address",
 				},
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                          wkr.GetPublicId(),
-					ScopeId:                     wkr.GetScopeId(),
-					Scope:                       expectedScope,
-					Name:                        wrapperspb.String("name"),
-					Description:                 wrapperspb.String("desc"),
-					Address:                     wrapperspb.String("address"),
-					CanonicalAddress:            "address",
-					CreatedTime:                 wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:              wkr.GetLastStatusTime().GetTimestamp(),
-					WorkerProvidedConfiguration: expectedConfig,
-					AuthorizedActions:           testAuthorizedActions,
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("name"),
+					Description:       wrapperspb.String("desc"),
+					Address:           "address",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -422,17 +478,15 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                          wkr.GetPublicId(),
-					ScopeId:                     wkr.GetScopeId(),
-					Scope:                       expectedScope,
-					Name:                        wrapperspb.String("name"),
-					Description:                 wrapperspb.String("desc"),
-					Address:                     wrapperspb.String("default"),
-					CanonicalAddress:            "default",
-					CreatedTime:                 wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:              wkr.GetLastStatusTime().GetTimestamp(),
-					WorkerProvidedConfiguration: expectedConfig,
-					AuthorizedActions:           testAuthorizedActions,
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("name"),
+					Description:       wrapperspb.String("desc"),
+					Address:           "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -488,16 +542,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                          wkr.GetPublicId(),
-					ScopeId:                     wkr.GetScopeId(),
-					Scope:                       expectedScope,
-					Description:                 wrapperspb.String("default"),
-					Address:                     wrapperspb.String("default"),
-					CanonicalAddress:            "default",
-					CreatedTime:                 wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:              wkr.GetLastStatusTime().GetTimestamp(),
-					WorkerProvidedConfiguration: expectedConfig,
-					AuthorizedActions:           testAuthorizedActions,
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Description:       wrapperspb.String("default"),
+					Address:           "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -513,16 +565,14 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                          wkr.GetPublicId(),
-					ScopeId:                     wkr.GetScopeId(),
-					Scope:                       expectedScope,
-					Name:                        wrapperspb.String("default"),
-					Address:                     wrapperspb.String("default"),
-					CanonicalAddress:            "default",
-					CreatedTime:                 wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:              wkr.GetLastStatusTime().GetTimestamp(),
-					WorkerProvidedConfiguration: expectedConfig,
-					AuthorizedActions:           testAuthorizedActions,
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("default"),
+					Address:           "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -539,17 +589,15 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                          wkr.GetPublicId(),
-					ScopeId:                     wkr.GetScopeId(),
-					Scope:                       expectedScope,
-					Name:                        wrapperspb.String("updated"),
-					Description:                 wrapperspb.String("default"),
-					Address:                     wrapperspb.String("default"),
-					CanonicalAddress:            "default",
-					CreatedTime:                 wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:              wkr.GetLastStatusTime().GetTimestamp(),
-					WorkerProvidedConfiguration: expectedConfig,
-					AuthorizedActions:           testAuthorizedActions,
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("updated"),
+					Description:       wrapperspb.String("default"),
+					Address:           "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -566,17 +614,15 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                          wkr.GetPublicId(),
-					ScopeId:                     wkr.GetScopeId(),
-					Scope:                       expectedScope,
-					Name:                        wrapperspb.String("default"),
-					Description:                 wrapperspb.String("notignored"),
-					Address:                     wrapperspb.String("default"),
-					CanonicalAddress:            "default",
-					CreatedTime:                 wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:              wkr.GetLastStatusTime().GetTimestamp(),
-					WorkerProvidedConfiguration: expectedConfig,
-					AuthorizedActions:           testAuthorizedActions,
+					Id:                wkr.GetPublicId(),
+					ScopeId:           wkr.GetScopeId(),
+					Scope:             expectedScope,
+					Name:              wrapperspb.String("default"),
+					Description:       wrapperspb.String("notignored"),
+					Address:           "default",
+					CreatedTime:       wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:    wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions: testAuthorizedActions,
 				},
 			},
 		},
@@ -592,38 +638,6 @@ func TestUpdate(t *testing.T) {
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
-		},
-		{
-			name: "Cant change Worker Defined Name",
-			req: &pbs.UpdateWorkerRequest{
-				Id: wkr.GetPublicId(),
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"worker_provided_configuration.name"},
-				},
-				Item: &pb.Worker{
-					WorkerProvidedConfiguration: &pb.WorkerProvidedConfiguration{
-						Name: "name",
-					},
-				},
-			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
-		},
-		{
-			name: "Cant change Worker Defined Address",
-			req: &pbs.UpdateWorkerRequest{
-				Id: wkr.GetPublicId(),
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"worker_provided_configuration.address"},
-				},
-				Item: &pb.Worker{
-					WorkerProvidedConfiguration: &pb.WorkerProvidedConfiguration{
-						Address: "address",
-					},
-				},
-			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Cant change Id",
@@ -672,7 +686,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"tags"},
 				},
 				Item: &pb.Worker{
-					Tags: map[string]*structpb.ListValue{
+					ConfigTags: map[string]*structpb.ListValue{
 						"foo": structListValue(t, "bar"),
 					},
 				},
@@ -696,13 +710,13 @@ func TestUpdate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name: "Cant specify canonical address",
+			name: "Cant specify address",
 			req: &pbs.UpdateWorkerRequest{
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"canonical_address"},
+					Paths: []string{globals.AddressField},
 				},
 				Item: &pb.Worker{
-					CanonicalAddress: "should_fail",
+					Address: "should_fail",
 				},
 			},
 			res: nil,
@@ -916,29 +930,29 @@ func TestCreateWorkerLed(t *testing.T) {
 			wantErrContains: globals.IdField,
 		},
 		{
-			name:    "invalid-canonical-address",
+			name:    "invalid-address",
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					CanonicalAddress:         "invalid-canonical-address",
+					Address:                  "invalid-address",
 				},
 			},
 			wantErr:         true,
 			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
-			wantErrContains: globals.CanonicalAddressField,
+			wantErrContains: globals.AddressField,
 		},
 		{
-			name:    "invalid-tags",
+			name:    "invalid-config-tags",
 			service: testSrv,
 			scopeId: scope.Global.String(),
 			req: &pbs.CreateWorkerLedRequest{
 				Item: &workers.Worker{
 					ScopeId:                  scope.Global.String(),
 					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
-					Tags: map[string]*structpb.ListValue{
+					ConfigTags: map[string]*structpb.ListValue{
 						"invalid": {Values: []*structpb.Value{
 							structpb.NewStringValue("invalid-tags"),
 						}},
@@ -947,7 +961,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			},
 			wantErr:         true,
 			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
-			wantErrContains: globals.TagsField,
+			wantErrContains: globals.ConfigTagsField,
 		},
 		{
 			name:    "invalid-canonical-tags",
@@ -982,21 +996,6 @@ func TestCreateWorkerLed(t *testing.T) {
 			wantErr:         true,
 			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
 			wantErrContains: globals.LastStatusTimeField,
-		},
-		{
-			name:    "invalid-worker-config",
-			service: testSrv,
-			scopeId: scope.Global.String(),
-			req: &pbs.CreateWorkerLedRequest{
-				Item: &workers.Worker{
-					ScopeId:                     scope.Global.String(),
-					WorkerGeneratedAuthToken:    &wrapperspb.StringValue{Value: fetchReqFn()},
-					WorkerProvidedConfiguration: &pb.WorkerProvidedConfiguration{},
-				},
-			},
-			wantErr:         true,
-			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
-			wantErrContains: globals.WorkerProvidedConfigurationField,
 		},
 		{
 			name:    "invalid-authorized-actions",
