@@ -112,6 +112,8 @@ create table worker_auth_authorized(
       on update cascade,
   nonce bytea -- encrypted value
 );
+comment on table worker_auth_authorized is
+  'worker_auth_authorized is a table where each row represents key and cert data associated with an authorized worker.';
 
 create trigger
   immutable_columns
@@ -120,8 +122,22 @@ create trigger
   for each row execute procedure immutable_columns('worker_key_identifier', 'worker_id', 'worker_signing_pub_key',
     'worker_encryption_pub_key', 'controller_encryption_priv_key', 'key_id', 'nonce');
 
-comment on table worker_auth_authorized is
-  'worker_auth_authorized is a table where each row represents key and cert data associated with an authorized worker.';
+create function insert_worker_auth_authorized_type_check()
+  returns trigger
+as $$
+begin
+  perform from server_worker where type = 'pki' and public_id = new.worker_id;
+  if not found then
+    raise exception 'invalid type: non pki worker cannot be authorized in worker_auth_authorized table';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+comment on function insert_worker_auth_authorized_type_check is
+  'function used to only allow workers of type pki to be authorized';
+
+create trigger insert_worker_auth_authorized_type_check before insert on worker_auth_authorized
+  for each row execute procedure insert_worker_auth_authorized_type_check();
 
 create table worker_auth_certificate_bundle(
  root_certificate_public_key bytea not null

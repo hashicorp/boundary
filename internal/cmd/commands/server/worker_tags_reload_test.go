@@ -106,7 +106,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		t.Helper()
 		serversRepo, err := testController.Controller().ServersRepoFn()
 		require.NoError(err)
-		w, err := serversRepo.LookupWorkerByWorkerReportedName(testController.Context(), name)
+		w, err := serversRepo.LookupWorkerByName(testController.Context(), name)
 		require.NoError(err)
 		require.NotNil(w)
 		v, ok := w.CanonicalTags()[key]

@@ -457,7 +457,7 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 		out.AuthorizedActions = opts.WithAuthorizedActions
 		if in.Type == KmsWorkerType {
 			// KMS workers cannot be updated through the API
-			out.AuthorizedActions = strutil.StrListDelete(action.Update.String())
+			out.AuthorizedActions = strutil.StrListDelete(out.AuthorizedActions, action.Update.String())
 		}
 	}
 	if outputFields.Has(globals.AddressField) && in.GetAddress() != "" {

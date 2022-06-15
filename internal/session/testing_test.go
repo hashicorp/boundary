@@ -74,7 +74,7 @@ func Test_TestWorker(t *testing.T) {
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	w := servers.TestWorker(t, conn, wrapper)
+	w := servers.TestKmsWorker(t, conn, wrapper)
 	require.NotNil(w)
 }
 

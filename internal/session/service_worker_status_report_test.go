@@ -66,7 +66,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "No Sessions",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestWorker(t, conn, wrapper)
+				worker := servers.TestKmsWorker(t, conn, wrapper)
 				return testCase{
 					worker: worker,
 					req:    []session.StateReport{},
@@ -77,7 +77,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "No Sessions already canceled",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestWorker(t, conn, wrapper)
+				worker := servers.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -109,7 +109,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "Still Active",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestWorker(t, conn, wrapper)
+				worker := servers.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -143,7 +143,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "SessionClosed",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestWorker(t, conn, wrapper)
+				worker := servers.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -183,7 +183,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "MultipleSessionsClosed",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestWorker(t, conn, wrapper)
+				worker := servers.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -250,7 +250,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "OrphanedConnection",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestWorker(t, conn, wrapper)
+				worker := servers.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -301,7 +301,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "MultipleSessionsAndOrphanedConnections",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestWorker(t, conn, wrapper)
+				worker := servers.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),

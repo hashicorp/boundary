@@ -2159,15 +2159,8 @@ func (w workerList) workerInfos() []*pb.WorkerInfo {
 func (w workerList) filtered(eval *bexpr.Evaluator) (workerList, error) {
 	var ret []*servers.Worker
 	for _, worker := range w {
-
-		// TODO: Decide how we are actually going to filter by name now that
-		//   we are separating reported status name and the resource name.
-		name := worker.GetName()
-		if name == "" {
-			name = worker.GetWorkerReportedName()
-		}
 		filterInput := map[string]interface{}{
-			"name": name,
+			"name": worker.GetName(),
 			"tags": worker.CanonicalTags(),
 		}
 		ok, err := eval.Evaluate(filterInput)

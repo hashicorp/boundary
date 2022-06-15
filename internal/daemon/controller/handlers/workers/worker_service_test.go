@@ -63,7 +63,7 @@ func TestGet(t *testing.T) {
 		return repo, nil
 	}
 
-	worker := servers.TestWorker(t, conn, wrap,
+	worker := servers.TestKmsWorker(t, conn, wrap,
 		servers.WithName("test worker names"),
 		servers.WithDescription("test worker description"),
 		servers.WithAddress("test worker address"),
@@ -174,7 +174,7 @@ func TestList(t *testing.T) {
 
 	var wantWorkers []*pb.Worker
 	for i := 0; i < 10; i++ {
-		w := servers.TestWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("worker%d", i)))
+		w := servers.TestKmsWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("worker%d", i)))
 		wantWorkers = append(wantWorkers, &pb.Worker{
 			Id:                w.GetPublicId(),
 			ScopeId:           w.GetScopeId(),
@@ -285,7 +285,7 @@ func TestDelete(t *testing.T) {
 	s, err := NewService(ctx, repoFn, iamRepoFn)
 	require.NoError(t, err, "Error when getting new worker service.")
 
-	w := servers.TestWorker(t, conn, wrap)
+	w := servers.TestKmsWorker(t, conn, wrap)
 
 	cases := []struct {
 		name    string
@@ -349,7 +349,7 @@ func TestUpdate(t *testing.T) {
 		return repo, nil
 	}
 
-	wkr := servers.TestWorker(t, conn, wrapper,
+	wkr := servers.TestKmsWorker(t, conn, wrapper,
 		servers.WithName("default"),
 		servers.WithDescription("default"),
 		servers.WithAddress("default"))
@@ -806,7 +806,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	workerService, err := NewService(ctx, repoFn, iamRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
-	wkr := servers.TestWorker(t, conn, wrapper)
+	wkr := servers.TestKmsWorker(t, conn, wrapper)
 
 	upTar, err := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), &pbs.UpdateWorkerRequest{
 		Id: wkr.GetPublicId(),

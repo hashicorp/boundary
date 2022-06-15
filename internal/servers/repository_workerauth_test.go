@@ -146,7 +146,7 @@ func TestStoreWorkerAuth(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(wrapper)
 
-	worker := TestWorker(t, conn, wrapper)
+	worker := TestPkiWorker(t, conn, wrapper)
 
 	rw := db.New(conn)
 	rootStorage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
@@ -266,7 +266,7 @@ func TestStoreNodeInformationTx(t *testing.T) {
 
 	// Create struct to pass in with workerId that will be passed along to
 	// storage
-	testWorker := TestWorker(t, conn, testWrapper)
+	testWorker := TestPkiWorker(t, conn, testWrapper)
 
 	testState, err := AttachWorkerIdToState(testCtx, testWorker.PublicId)
 	require.NoError(t, err)

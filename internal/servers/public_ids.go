@@ -19,3 +19,15 @@ func newWorkerId(ctx context.Context) (string, error) {
 	}
 	return id, nil
 }
+
+// newWorkerIdFromScopeAndName generates a predictable public id based on the
+// scope and the worker name.  This should only be used on kms workers at
+// upsert time.
+func newWorkerIdFromScopeAndName(ctx context.Context, scope, name string) (string, error) {
+	const op = "servers.newWorkerIdFromScopeAndName"
+	id, err := db.NewPublicId(WorkerPrefix, db.WithPrngValues([]string{scope, name}))
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "servers.newWorkerId")
+	}
+	return id, nil
+}
