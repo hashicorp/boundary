@@ -404,6 +404,18 @@ begin;
       ('t_________wb', 'vl______wvl2',        'brokered'),
       ('t_________wb', 'vl______wvl3',        'brokered'),
       ('t_________wb', 'vl______wvl3',        'injected_application');
+
+    insert into credential_static_store
+      (scope_id,       public_id,      name,                  description)
+    values
+      ('p____bwidget', 'cs______wup1', 'widget static store', 'None'),
+      ('p____swidget', 'cs______wup2', 'widget static store', 'None');
+
+    insert into credential_static_username_password_credential
+      (store_id,       public_id,      name,                                         description, username, password_encrypted,   password_hmac, key_id)
+    values
+      ('cs______wup1', 'cred____wup1', 'widget static username password credential', 'None',      'b_user', 'encrypted_password', 'hmac-value', 'kdkv___widget'),
+      ('cs______wup2', 'cred____wup2', 'widget static username password credential', 'None',      's_user', 'encrypted_password', 'hmac-value', 'kdkv___widget');
   end;
   $$ language plpgsql;
 
