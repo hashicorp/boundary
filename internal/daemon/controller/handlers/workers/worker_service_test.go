@@ -70,18 +70,6 @@ func TestGet(t *testing.T) {
 		servers.WithDescription("test kms worker description"),
 		servers.WithAddress("test kms worker address"),
 		servers.WithWorkerTags(&servers.Tag{Key: "key", Value: "val"}))
-	// Add config tags to the created worker
-	kmsWorker, err = repo.UpsertWorkerStatus(context.Background(),
-		servers.NewWorkerForStatus(kmsWorker.GetScopeId(),
-			servers.WithName(kmsWorker.GetName()),
-			servers.WithAddress(kmsWorker.GetAddress()),
-			servers.WithWorkerTags(&servers.Tag{
-				Key:   "config",
-				Value: "test",
-			})),
-		servers.WithUpdateTags(true),
-		servers.WithPublicId(kmsWorker.GetPublicId()))
-	require.NoError(t, err)
 
 	kmsAuthzActions := make([]string, len(testAuthorizedActions))
 	copy(kmsAuthzActions, testAuthorizedActions)
@@ -99,11 +87,10 @@ func TestGet(t *testing.T) {
 		AuthorizedActions: strutil.StrListDelete(kmsAuthzActions, action.Update.String()),
 		LastStatusTime:    kmsWorker.GetLastStatusTime().GetTimestamp(),
 		CanonicalTags: map[string]*structpb.ListValue{
-			"key":    structListValue(t, "val"),
-			"config": structListValue(t, "test"),
+			"key": structListValue(t, "val"),
 		},
 		ConfigTags: map[string]*structpb.ListValue{
-			"config": structListValue(t, "test"),
+			"key": structListValue(t, "val"),
 		},
 		Type: KmsWorkerType,
 	}
@@ -113,7 +100,7 @@ func TestGet(t *testing.T) {
 		servers.WithDescription("test pki worker description"))
 	// Add config tags to the created worker
 	pkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
-		servers.NewWorkerForStatus(pkiWorker.GetScopeId(),
+		servers.NewWorker(pkiWorker.GetScopeId(),
 			servers.WithName(pkiWorker.GetName()),
 			servers.WithAddress("test kms worker address"),
 			servers.WithWorkerTags(&servers.Tag{

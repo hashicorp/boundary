@@ -85,14 +85,6 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 	}
 }
 
-// NewWorkerForStatus returns a new Worker usable for status updates.
-// Valid options are WithName, WithAddress, and WithWorkerTags, all of which
-// are assigned to the worker reported variations of these fields.
-// All other options are ignored.
-func NewWorkerForStatus(scopeId string, opt ...Option) *Worker {
-	return NewWorker(scopeId, opt...)
-}
-
 // allocWorker will allocate a Worker
 func allocWorker() Worker {
 	return Worker{Worker: &store.Worker{}}
@@ -127,15 +119,6 @@ func (w *Worker) clone() *Worker {
 	return cWorker
 }
 
-// CanonicalAddress returns the actual address boundary believes should be used
-// to communicate with this worker.  This will be the worker resource's address
-// unless it is not set in which case it will use address the worker provides
-// in its connection status updates.  If neither is available, an empty string
-// is returned.
-func (w *Worker) CanonicalAddress() string {
-	return w.GetAddress()
-}
-
 // ActiveConnectionCount is the current number of sessions this worker is handling
 // according to the controllers.
 func (w *Worker) ActiveConnectionCount() uint32 {
@@ -154,15 +137,6 @@ func (w *Worker) CanonicalTags() map[string][]string {
 	}
 	tags := make(map[string][]string)
 	for t := range dedupedTags {
-		tags[t.Key] = append(tags[t.Key], t.Value)
-	}
-	return tags
-}
-
-// GetApiTags returns the tags for this worker which has been set by the api.
-func (w *Worker) GetApiTags() map[string][]string {
-	tags := make(map[string][]string)
-	for _, t := range w.apiTags {
 		tags[t.Key] = append(tags[t.Key], t.Value)
 	}
 	return tags

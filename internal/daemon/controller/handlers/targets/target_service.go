@@ -2140,7 +2140,7 @@ type workerList []*servers.Worker
 func (w workerList) addresses() []string {
 	ret := make([]string, 0, len(w))
 	for _, worker := range w {
-		ret = append(ret, worker.CanonicalAddress())
+		ret = append(ret, worker.GetAddress())
 	}
 	return ret
 }
@@ -2149,7 +2149,7 @@ func (w workerList) addresses() []string {
 func (w workerList) workerInfos() []*pb.WorkerInfo {
 	ret := make([]*pb.WorkerInfo, 0, len(w))
 	for _, worker := range w {
-		ret = append(ret, &pb.WorkerInfo{Address: worker.CanonicalAddress()})
+		ret = append(ret, &pb.WorkerInfo{Address: worker.GetAddress()})
 	}
 	return ret
 }
