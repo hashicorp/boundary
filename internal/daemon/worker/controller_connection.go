@@ -35,7 +35,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const hcpbUrlSuffix = ".proxy.boundary.hashicorp.cloud"
+const hcpbUrlSuffix = ".proxy.boundary.hashicorp.cloud:9202"
 
 // StartControllerConnections starts up the resolver and initiates controller
 // connection client creation
