@@ -275,7 +275,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 					Action: append(db.SetColumns([]string{"address"}),
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
-				if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict), db.WithDebug(true),
+				var withRowsAffected int64
+				if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict), db.WithDebug(true), db.WithReturnRowsAffected(&withRowsAffected),
 					// TODO: The intent of this WithWhere option is to operate with the OnConflict such that the action
 					//  taken by the OnConflict only applies if the conflict is on a row that is returned by this where
 					//  statement, otherwise it should error out.
@@ -283,6 +284,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
 				}
+				fmt.Println("rows affected: ", withRowsAffected)
 				// TODO: Do we need to do a lookup again for worker or will worker get updated with the OnConflict's
 				//  new worker id?
 				// This is causing TestTagUpdatingListing to fail.
