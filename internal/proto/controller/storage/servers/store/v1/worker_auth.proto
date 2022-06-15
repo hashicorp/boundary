@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the pki package.
+package controller.storage.servers.store.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
+
+// WorkerAuth contains all fields related to an authorized Worker resource
+message WorkerAuth {
+  // The key id for this worker auth record, generated from the signing pub key
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_key_identifier = 10;
+
+  // The worker id this worker authentication record is for
+  // @inject_tag: `gorm:"not_null"`
+  string worker_id = 20;
+
+  // The worker's public signing key
+  // @inject_tag: `gorm:"not_null"`
+  bytes worker_signing_pub_key = 30;
+
+  // The worker's public encryption key
+  // @inject_tag: `gorm:"not_null"`
+  bytes worker_encryption_pub_key = 40;
+
+  // The private key associated with this certificate
+  // This is a ciphertext field
+  // @inject_tag: `gorm:"not_null"`
+  bytes controller_encryption_priv_key = 50;
+
+  // The id of the kms database key used for encrypting this entry.
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 60;
+
+  // Nonce used by a worker in authenticating
+  // @inject_tag: `gorm:"default:null"`
+  bytes nonce = 70;
+}
+
+// WorkerCertBundle contains all fields related to a WorkerCertBundle resource
+message WorkerCertBundle {
+  // The public key of the issuing root certificate
+  // @inject_tag: `gorm:"primary_key"`
+  bytes root_certificate_public_key = 10;
+
+  // The WorkerAuth worker_key_identifier this cert bundle record is for
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_key_identifier = 20;
+
+  // CertBundle is the marshaled protobuf certificate bundle for a WorkerAuth
+  // @inject_tag: `gorm:"not_null"`
+  bytes cert_bundle = 30;
+}

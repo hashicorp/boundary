@@ -16,12 +16,12 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
+	cluster "github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentials"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
@@ -2371,9 +2371,6 @@ func TestAuthorizeSession(t *testing.T) {
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
 	}
-	connectionRepoFn := func() (*session.ConnectionRepository, error) {
-		return session.NewConnectionRepository(ctx, rw, rw, kms)
-	}
 	staticRepo, err := static.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	staticHostRepoFn := func() (*static.Repository, error) {
@@ -2532,14 +2529,7 @@ func TestAuthorizeSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
-			_, err = workerService.Status(ctx, &spbs.StatusRequest{
-				Worker: &spb.Server{
-					PrivateId: "testworker",
-					Address:   "localhost:8457",
-				},
-			})
-			require.NoError(t, err)
+			servers.TestKmsWorker(t, conn, wrapper)
 
 			asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
@@ -2640,9 +2630,6 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
-	}
-	connectionRepoFn := func() (*session.ConnectionRepository, error) {
-		return session.NewConnectionRepository(ctx, rw, rw, kms)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -2887,14 +2874,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
-			_, err = workerService.Status(ctx, &spbs.StatusRequest{
-				Worker: &spb.Server{
-					PrivateId: "testworker",
-					Address:   "localhost:8457",
-				},
-			})
-			require.NoError(t, err)
+			servers.TestKmsWorker(t, conn, wrapper)
 
 			asRes, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
@@ -3002,11 +2982,12 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 
 	workerExists := func(tar target.Target) (version uint32) {
-		workerService := workers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
+		workerService := cluster.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
 		_, err := workerService.Status(context.Background(), &spbs.StatusRequest{
-			Worker: &spb.Server{
-				PrivateId: "testworker",
-				Address:   "localhost:123",
+			WorkerStatus: &spb.ServerWorkerStatus{
+				PublicId: "w_1234567890",
+				Name:     "w_1234567890",
+				Address:  "localhost:123",
 			},
 		})
 		require.NoError(t, err)

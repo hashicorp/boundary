@@ -62,6 +62,7 @@ kms "aead" {
 
 listener "tcp" {
 	purpose = "api"
+	address = "127.0.0.1:9500"
 	tls_cert_file = "%s/bundle.pem"
 	tls_key_file = "%s/bundle.pem"
 	cors_enabled = true
@@ -69,10 +70,12 @@ listener "tcp" {
 }
 
 listener "tcp" {
+	address = "127.0.0.1:9501"
 	purpose = "cluster"
 }
 
 listener "tcp" {
+	address = "127.0.0.1:9502"
 	purpose = "proxy"
 }
 `
@@ -91,7 +94,9 @@ func TestServer_ReloadListener(t *testing.T) {
 	}
 	defer os.RemoveAll(td)
 
-	controllerKey, workerAuthKey, recoveryKey := config.DevKeyGeneration()
+	controllerKey := config.DevKeyGeneration()
+	workerAuthKey := config.DevKeyGeneration()
+	recoveryKey := config.DevKeyGeneration()
 
 	cmd := testServerCommand(t, testServerCommandOpts{
 		CreateDevDatabase: true,
@@ -131,7 +136,7 @@ func TestServer_ReloadListener(t *testing.T) {
 	}()
 
 	testCertificateSerial := func(serial string) {
-		conn, err := tls.Dial("tcp", "127.0.0.1:9200", &tls.Config{
+		conn, err := tls.Dial("tcp", "127.0.0.1:9500", &tls.Config{
 			RootCAs: certPool,
 		})
 		require.NoError(err)

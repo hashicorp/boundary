@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -73,7 +74,7 @@ func Test_TestWorker(t *testing.T) {
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	w := TestWorker(t, conn, wrapper)
+	w := servers.TestKmsWorker(t, conn, wrapper)
 	require.NotNil(w)
 }
 

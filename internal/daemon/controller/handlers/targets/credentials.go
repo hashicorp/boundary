@@ -118,7 +118,7 @@ func staticToWorkerCredential(ctx context.Context, cred credential.Static) (sess
 	const op = "targets.staticToWorkerCredential"
 	var workerCred *serverpb.Credential
 	switch c := cred.(type) {
-	case credstatic.UsernamePasswordCredential:
+	case *credstatic.UsernamePasswordCredential:
 		workerCred = &serverpb.Credential{
 			Credential: &serverpb.Credential_UsernamePassword{
 				UsernamePassword: &serverpb.UsernamePassword{

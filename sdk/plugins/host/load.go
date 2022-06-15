@@ -60,7 +60,7 @@ func CreateHostPlugin(
 	}
 
 	// Create the plugin and cleanup func
-	plugClient, cleanup, err := pluginutil.CreatePlugin(pluginMap[pluginType])
+	plugClient, cleanup, err := pluginutil.CreatePlugin(pluginMap[pluginType], opts.withPluginOptions...)
 	if err != nil {
 		return nil, cleanup, err
 	}

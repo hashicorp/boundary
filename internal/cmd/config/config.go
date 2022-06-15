@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-secure-stdlib/base62"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -58,6 +58,13 @@ kms "aead" {
 }
 
 kms "aead" {
+    purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_worker-auth-storage"
+}
+
+kms "aead" {
 	purpose = "recovery"
 	aead_type = "aes-gcm"
 	key = "%s"
@@ -87,9 +94,9 @@ listener "tcp" {
 }
 
 worker {
-	name = "dev-worker"
+	name = "w_1234567890"
 	description = "A default worker created in dev mode"
-	controllers = ["127.0.0.1"]
+	initial_upstreams = ["127.0.0.1"]
 	tags {
 		type = ["dev", "local"]
 	}
@@ -105,17 +112,21 @@ type Config struct {
 	Controller *Controller `hcl:"controller"`
 
 	// Dev-related options
-	DevController       bool   `hcl:"-"`
-	DevUiPassthroughDir string `hcl:"-"`
-	DevControllerKey    string `hcl:"-"`
-	DevWorkerAuthKey    string `hcl:"-"`
-	DevRecoveryKey      string `hcl:"-"`
+	DevController           bool   `hcl:"-"`
+	DevUiPassthroughDir     string `hcl:"-"`
+	DevControllerKey        string `hcl:"-"`
+	DevWorkerAuthKey        string `hcl:"-"`
+	DevWorkerAuthStorageKey string `hcl:"-"`
+	DevRecoveryKey          string `hcl:"-"`
 
 	// Eventing configuration for the controller
 	Eventing *event.EventerConfig `hcl:"events"`
 
 	// Plugin-related options
 	Plugins Plugins `hcl:"plugins"`
+
+	// Internal field for use with HCP deployments. Used if controllers/ initial_upstreams is not set
+	HCPBClusterId string `hcl:"hcp_boundary_cluster_id"`
 }
 
 type Controller struct {
@@ -170,8 +181,12 @@ type Worker struct {
 
 	// We use a raw interface here so that we can take in a string
 	// value pointing to an env var or file. We then resolve that
-	// and get the actual controller addresses.
-	Controllers    []string    `hcl:"-"`
+	// and get the actual upstream controller or worker addresses.
+	InitialUpstreams    []string `hcl:"-"`
+	InitialUpstreamsRaw any      `hcl:"initial_upstreams"`
+
+	// The ControllersRaw field is deprecated and users should use InitialUpstreamsRaw instead.
+	// TODO: remove this field when support is discontinued.
 	ControllersRaw interface{} `hcl:"controllers"`
 
 	// We use a raw interface for parsing so that people can use JSON-like
@@ -187,6 +202,9 @@ type Worker struct {
 	//
 	// TODO: This field is currently internal.
 	StatusGracePeriodDuration time.Duration `hcl:"-"`
+
+	// AuthStoragePath represents the location a worker stores its node credentials, if set
+	AuthStoragePath string `hcl:"auth_storage_path"`
 }
 
 func (w *Worker) InitNameIfEmpty() (string, error) {
@@ -202,9 +220,10 @@ func (w *Worker) InitNameIfEmpty() (string, error) {
 func initNameIfEmpty(name *string) error {
 	if *name == "" {
 		var err error
-		if *name, err = base62.Random(10); err != nil {
+		if *name, err = db.NewPublicId("w"); err != nil {
 			return err
 		}
+		*name = strings.ToLower(*name)
 	}
 	return nil
 }
@@ -230,8 +249,8 @@ func DevWorker() (*Config, error) {
 	return parsed, nil
 }
 
-func DevKeyGeneration() (string, string, string) {
-	var numBytes int64 = 96
+func DevKeyGeneration() string {
+	var numBytes int64 = 32
 	randBuf := new(bytes.Buffer)
 	n, err := randBuf.ReadFrom(&io.LimitedReader{
 		R: rand.Reader,
@@ -241,21 +260,21 @@ func DevKeyGeneration() (string, string, string) {
 		panic(err)
 	}
 	if n != numBytes {
-		panic(fmt.Errorf("expected to read 64 bytes, read %d", n))
+		panic(fmt.Errorf("expected to read 32 bytes, read %d", n))
 	}
-	controllerKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[0:32])
-	workerAuthKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[32:64])
-	recoveryKey := base64.StdEncoding.EncodeToString(randBuf.Bytes()[64:numBytes])
-
-	return controllerKey, workerAuthKey, recoveryKey
+	devKey := base64.StdEncoding.EncodeToString(randBuf.Bytes())[:numBytes]
+	return devKey
 }
 
 // DevController is a Config that is used for dev mode of Boundary
 // controllers
 func DevController() (*Config, error) {
-	controllerKey, workerAuthKey, recoveryKey := DevKeyGeneration()
+	controllerKey := DevKeyGeneration()
+	workerAuthKey := DevKeyGeneration()
+	workerAuthStorageKey := DevKeyGeneration()
+	recoveryKey := DevKeyGeneration()
 
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, workerAuthStorageKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -263,13 +282,17 @@ func DevController() (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
+	parsed.DevWorkerAuthStorageKey = workerAuthStorageKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
 
 func DevCombined() (*Config, error) {
-	controllerKey, workerAuthKey, recoveryKey := DevKeyGeneration()
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
+	controllerKey := DevKeyGeneration()
+	workerAuthKey := DevKeyGeneration()
+	workerAuthStorageKey := DevKeyGeneration()
+	recoveryKey := DevKeyGeneration()
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, workerAuthStorageKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -277,6 +300,7 @@ func DevCombined() (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
+	parsed.DevWorkerAuthStorageKey = workerAuthStorageKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
@@ -505,9 +529,9 @@ func Parse(d string) (*Config, error) {
 			}
 		}
 
-		result.Worker.Controllers, err = parseWorkerControllers(result)
+		result.Worker.InitialUpstreams, err = parseWorkerUpstreams(result)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse worker controllers: %w", err)
+			return nil, fmt.Errorf("Failed to parse worker upstreams: %w", err)
 		}
 	}
 
@@ -567,35 +591,52 @@ func Parse(d string) (*Config, error) {
 	return result, nil
 }
 
-func parseWorkerControllers(c *Config) ([]string, error) {
+// supportControllersRawConfig returns either initialUpstreamsRaw or controllersRaw depending on which is populated. Errors when both fields are populated.
+//
+func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, error) {
+	switch {
+	case initialUpstreamsRaw == nil && controllersRaw != nil:
+		return controllersRaw, nil
+	case initialUpstreamsRaw != nil && controllersRaw != nil:
+		return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated")
+	}
+	return initialUpstreamsRaw, nil
+}
+
+func parseWorkerUpstreams(c *Config) ([]string, error) {
 	if c == nil || c.Worker == nil {
 		return nil, fmt.Errorf("config or worker field is nil")
 	}
-	if c.Worker.ControllersRaw == nil {
+	if c.Worker.InitialUpstreamsRaw == nil && c.Worker.ControllersRaw == nil {
+		// return nil here so that other address sources can be provided outside of config
 		return nil, nil
 	}
+	rawUpstreams, err := supportControllersRawConfig(c.Worker.InitialUpstreamsRaw, c.Worker.ControllersRaw)
+	if err != nil {
+		return nil, err
+	}
 
-	switch t := c.Worker.ControllersRaw.(type) {
+	switch t := rawUpstreams.(type) {
 	case []interface{}: // An array was configured directly in Boundary's HCL Config file.
-		var controllers []string
-		err := mapstructure.WeakDecode(c.Worker.ControllersRaw, &controllers)
+		var upstreams []string
+		err := mapstructure.WeakDecode(rawUpstreams, &upstreams)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode worker controllers block into config field: %w", err)
+			return nil, fmt.Errorf("failed to decode worker initial_upstreams block into config field: %w", err)
 		}
-		return controllers, nil
+		return upstreams, nil
 
 	case string:
-		controllersStr, err := parseutil.ParsePath(t)
+		upstreamsStr, err := parseutil.ParsePath(t)
 		if err != nil {
 			return nil, fmt.Errorf("bad env var or file pointer: %w", err)
 		}
 
-		var addrs []string
-		err = json.Unmarshal([]byte(controllersStr), &addrs)
+		var upstreams []string
+		err = json.Unmarshal([]byte(upstreamsStr), &upstreams)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal env/file contents: %w", err)
 		}
-		return addrs, nil
+		return upstreams, nil
 
 	default:
 		typ := reflect.TypeOf(t)

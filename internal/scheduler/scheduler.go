@@ -154,7 +154,7 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	}
 
 	// Interrupt all runs previously allocated to this server
-	_, err = repo.InterruptRuns(ctx, 0, job.WithServerId(s.serverId))
+	_, err = repo.InterruptRuns(ctx, 0, job.WithControllerId(s.serverId))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

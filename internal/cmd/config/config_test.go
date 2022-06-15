@@ -63,6 +63,14 @@ func TestDevController(t *testing.T) {
 				},
 				{
 					Type:    "aead",
+					Purpose: []string{"worker-auth-storage"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_worker-auth-storage",
+					},
+				},
+				{
+					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
@@ -84,9 +92,11 @@ func TestDevController(t *testing.T) {
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
+	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
+	exp.DevWorkerAuthStorageKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
 
 	assert.Equal(t, exp, actual)
 
@@ -180,10 +190,10 @@ func TestDevWorker(t *testing.T) {
 			},
 		},
 		Worker: &Worker{
-			Name:           "dev-worker",
-			Description:    "A default worker created in dev mode",
-			Controllers:    []string{"127.0.0.1"},
-			ControllersRaw: []interface{}{"127.0.0.1"},
+			Name:                "w_1234567890",
+			Description:         "A default worker created in dev mode",
+			InitialUpstreams:    []string{"127.0.0.1"},
+			InitialUpstreamsRaw: []interface{}{"127.0.0.1"},
 			Tags: map[string][]string{
 				"type": {"dev", "local"},
 			},
@@ -201,9 +211,9 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	worker {
-		name = "dev-worker"
+		name = "w_1234567890"
 		description = "A default worker created in dev mode"
-		controllers = ["127.0.0.1"]
+		initial_upstreams = ["127.0.0.1"]
 		tags = ["type=dev", "type=local"]
 	}
 	`
@@ -221,9 +231,9 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	worker {
-		name = "dev-worker"
+		name = "w_1234567890"
 		description = "A default worker created in dev mode"
-		controllers = ["127.0.0.1"]
+		initial_upstreams = ["127.0.0.1"]
 		tags {
 			type = "local"
 		}
@@ -246,9 +256,9 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	worker {
-		name = "dev-worker"
+		name = "w_1234567890"
 		description = "A default worker created in dev mode"
-		controllers = ["127.0.0.1"]
+		initial_upstreams = ["127.0.0.1"]
 		tags = ["tyPe=dev", "type=local"]
 	}
 	`
@@ -263,9 +273,9 @@ func TestDevWorker(t *testing.T) {
 		}
 
 		worker {
-			name = "dev-worker"
+			name = "w_1234567890"
 			description = "A default worker created in dev mode"
-			controllers = ["127.0.0.1"]
+			initial_upstreams = ["127.0.0.1"]
 			tags = ["type=dev", "type=loCal"]
 		}
 		`
@@ -282,13 +292,177 @@ func TestDevWorker(t *testing.T) {
 	worker {
 		name = "dev-work\u0000er"
 		description = "A default worker created in dev mode"
-		controllers = ["127.0.0.1"]
+		initial_upstreams = ["127.0.0.1"]
 		tags = ["type=dev", "type=local"]
 	}
 	`
 
 	_, err = Parse(devConfig + devWorkerKeyValueConfig)
 	assert.Error(t, err)
+}
+
+func TestDevCombined(t *testing.T) {
+	actual, err := DevCombined()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	truePointer := new(bool)
+	*truePointer = true
+	exp := &Config{
+		Eventing: event.DefaultEventerConfig(),
+		SharedConfig: &configutil.SharedConfig{
+			DisableMlock: true,
+			Listeners: []*listenerutil.ListenerConfig{
+				{
+					Type:               "tcp",
+					Purpose:            []string{"api"},
+					TLSDisable:         true,
+					CorsEnabled:        truePointer,
+					CorsAllowedOrigins: []string{"*"},
+				},
+				{
+					Type:    "tcp",
+					Purpose: []string{"cluster"},
+				},
+				{
+					Type:       "tcp",
+					Purpose:    []string{"ops"},
+					TLSDisable: true,
+				},
+				{
+					Type:    "tcp",
+					Purpose: []string{"proxy"},
+				},
+			},
+			Seals: []*configutil.KMS{
+				{
+					Type:    "aead",
+					Purpose: []string{"root"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_root",
+					},
+				},
+				{
+					Type:    "aead",
+					Purpose: []string{"worker-auth"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_worker-auth",
+					},
+				},
+				{
+					Type:    "aead",
+					Purpose: []string{"worker-auth-storage"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_worker-auth-storage",
+					},
+				},
+				{
+					Type:    "aead",
+					Purpose: []string{"recovery"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_recovery",
+					},
+				},
+			},
+		},
+		Controller: &Controller{
+			Name:        "dev-controller",
+			Description: "A default controller created in dev mode",
+		},
+		DevController: true,
+		Worker: &Worker{
+			Name:                "w_1234567890",
+			Description:         "A default worker created in dev mode",
+			InitialUpstreams:    []string{"127.0.0.1"},
+			InitialUpstreamsRaw: []interface{}{"127.0.0.1"},
+			Tags: map[string][]string{
+				"type": {"dev", "local"},
+			},
+		},
+	}
+
+	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
+	exp.Listeners[1].RawConfig = actual.Listeners[1].RawConfig
+	exp.Listeners[2].RawConfig = actual.Listeners[2].RawConfig
+	exp.Listeners[3].RawConfig = actual.Listeners[3].RawConfig
+	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
+	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
+	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
+	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
+	exp.DevControllerKey = actual.Seals[0].Config["key"]
+	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
+	exp.DevWorkerAuthStorageKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
+	exp.Worker.TagsRaw = actual.Worker.TagsRaw
+	assert.Equal(t, exp, actual)
+}
+
+func TestDevWorkerCredentialStorageDir(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                           string
+		devWorkerProvidedConfiguration string
+		storagePath                    string
+	}{
+		{
+			name: "Relative Storage Directory",
+			devWorkerProvidedConfiguration: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				auth_storage_path = ".."
+			}
+			`,
+			storagePath: "..",
+		},
+		{
+			name: "Nonexistent Storage Directory",
+			devWorkerProvidedConfiguration: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				auth_storage_path = "nonexistent_dir/here"
+			}
+			`,
+			storagePath: "nonexistent_dir/here",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := Parse(devConfig + tt.devWorkerProvidedConfiguration)
+			require.NoError(t, err)
+			require.Equal(t, tt.storagePath, parsed.Worker.AuthStoragePath)
+		})
+	}
+}
+
+func TestDevKeyGeneration(t *testing.T) {
+	t.Parallel()
+	dk := DevKeyGeneration()
+	numBytes := 32
+	require.Equal(t, numBytes, len(dk))
+	require.NotEqual(t, dk, DevKeyGeneration())
 }
 
 func TestParsingName(t *testing.T) {
@@ -315,18 +489,18 @@ func TestParsingName(t *testing.T) {
 		{
 			name:               "no env",
 			templateController: "foobar",
-			templateWorker:     "barfoo",
+			templateWorker:     "test_worker_barfoo",
 			expectedController: "foobar",
-			expectedWorker:     "barfoo",
+			expectedWorker:     "test_worker_barfoo",
 		},
 		{
 			name:               "env",
 			templateController: fmt.Sprintf("env://%s", controllerEnv),
 			templateWorker:     fmt.Sprintf("env://%s", workerEnv),
 			envController:      "foobar2",
-			envWorker:          "barfoo2",
+			envWorker:          "env_name_barfoo2",
 			expectedController: "foobar2",
-			expectedWorker:     "barfoo2",
+			expectedWorker:     "env_name_barfoo2",
 		},
 	}
 	for _, tt := range cases {
@@ -390,7 +564,7 @@ func TestWorkerTags(t *testing.T) {
 			name: "no tags",
 			in: `
 			worker {
-				name = "testworker"
+				name = "w_1234567890"
 			}
 			`,
 			expWorkerTags: nil,
@@ -400,7 +574,7 @@ func TestWorkerTags(t *testing.T) {
 			name: "empty tags",
 			in: `
 			worker {
-				name = "testworker"
+				name = "w_1234567890"
 				tags = {}
 			}
 			`,
@@ -411,7 +585,7 @@ func TestWorkerTags(t *testing.T) {
 			name: "empty tags 2",
 			in: `
 			worker {
-				name = "testworker"
+				name = "w_1234567890"
 				tags = []
 			}
 			`,
@@ -865,118 +1039,152 @@ func TestController_EventingConfig(t *testing.T) {
 	}
 }
 
-func TestWorkerControllers(t *testing.T) {
+func TestWorkerUpstreams(t *testing.T) {
 	tests := []struct {
-		name                 string
-		in                   string
-		stateFn              func(t *testing.T)
-		expWorkerControllers []string
-		expErr               bool
-		expErrIs             error
-		expErrStr            string
+		name               string
+		in                 string
+		stateFn            func(t *testing.T)
+		expWorkerUpstreams []string
+		expErr             bool
+		expErrIs           error
+		expErrStr          string
 	}{
 		{
-			name: "No Controllers",
+			name: "No Upstreams",
 			in: `
 			worker {
 				name = "test"
 			}
 			`,
-			expWorkerControllers: nil,
-			expErr:               false,
+			expWorkerUpstreams: nil,
+			expErr:             false,
 		},
 		{
-			name: "One Controller",
+			name: "One Upstream",
 			in: `
 			worker {
 				name = "test"
-				controllers = ["127.0.0.1"]
+				initial_upstreams = ["127.0.0.1"]
 			}
 			`,
-			expWorkerControllers: []string{"127.0.0.1"},
-			expErr:               false,
+			expWorkerUpstreams: []string{"127.0.0.1"},
+			expErr:             false,
 		},
 		{
-			name: "Multiple controllers",
+			name: "Multiple Upstreams",
 			in: `
 			worker {
 				name = "test"
-				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
+				initial_upstreams = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
 			}
 			`,
-			expWorkerControllers: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
-			expErr:               false,
+			expWorkerUpstreams: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
+			expErr:             false,
 		},
 		{
 			name: "Using env var",
 			in: `
 			worker {
 				name = "test"
-				controllers = "env://BOUNDARY_WORKER_CONTROLLERS"
+				initial_upstreams = "env://BOUNDARY_WORKER_UPSTREAMS"
 			}
 			`,
-			stateFn:              func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_CONTROLLERS", `["127.0.0.1", "127.0.0.2", "127.0.0.3"]`) },
-			expWorkerControllers: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
-			expErr:               false,
+			stateFn:            func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_UPSTREAMS", `["127.0.0.1", "127.0.0.2", "127.0.0.3"]`) },
+			expWorkerUpstreams: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
+			expErr:             false,
 		},
 		{
 			name: "Using env var - invalid input 1",
 			in: `
 			worker {
 				name = "test"
-				controllers = "env://BOUNDARY_WORKER_CONTROLLERS"
+				initial_upstreams = "env://BOUNDARY_WORKER_UPSTREAMS"
 			}
 			`,
 			stateFn: func(t *testing.T) {
-				controllers := `
+				upstreams := `
 				worker {
-					controllers = ["127.0.0.1"]
+					initial_upstreams = ["127.0.0.1"]
 				}
 				`
-				t.Setenv("BOUNDARY_WORKER_CONTROLLERS", controllers)
+				t.Setenv("BOUNDARY_WORKER_UPSTREAMS", upstreams)
 			},
-			expWorkerControllers: nil,
-			expErr:               true,
-			expErrStr:            "Failed to parse worker controllers: failed to unmarshal env/file contents: invalid character 'w' looking for beginning of value",
+			expWorkerUpstreams: nil,
+			expErr:             true,
+			expErrStr:          "Failed to parse worker upstreams: failed to unmarshal env/file contents: invalid character 'w' looking for beginning of value",
 		},
 		{
 			name: "Using env var - invalid input 2",
 			in: `
 			worker {
 				name = "test"
-				controllers = "env://BOUNDARY_WORKER_CONTROLLERS"
+				initial_upstreams = "env://BOUNDARY_WORKER_UPSTREAMS"
 			}
 			`,
-			stateFn:              func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_CONTROLLERS", `controllers = ["127.0.0.1"]`) },
-			expWorkerControllers: nil,
-			expErr:               true,
-			expErrStr:            "Failed to parse worker controllers: failed to unmarshal env/file contents: invalid character 'c' looking for beginning of value",
+			stateFn:            func(t *testing.T) { t.Setenv("BOUNDARY_WORKER_UPSTREAMS", `initial_upstreams = ["127.0.0.1"]`) },
+			expWorkerUpstreams: nil,
+			expErr:             true,
+			expErrStr:          "Failed to parse worker upstreams: failed to unmarshal env/file contents: invalid character 'i' looking for beginning of value",
 		},
 		{
 			name: "Unsupported object",
 			in: `
 			worker {
 				name = "test"
-				controllers = {
+				initial_upstreams = {
 					ip = "127.0.0.1"
 					ip = "127.0.0.2"
 				}
 			}
 			`,
-			expWorkerControllers: nil,
-			expErr:               true,
-			expErrStr:            "Failed to parse worker controllers: unexpected type \"[]map[string]interface {}\"",
+			expWorkerUpstreams: nil,
+			expErr:             true,
+			expErrStr:          "Failed to parse worker upstreams: unexpected type \"[]map[string]interface {}\"",
 		},
 		{
-			name: "worker controllers set to invalid url",
+			name: "Worker initial_upstreams set to invalid url",
 			in: `
 			worker {
 				name = "test"
-				controllers = "env://\x00"
+				initial_upstreams = "env://\x00"
 			}`,
-			expWorkerControllers: nil,
-			expErr:               true,
-			expErrIs:             parseutil.ErrNotAUrl,
+			expWorkerUpstreams: nil,
+			expErr:             true,
+			expErrIs:           parseutil.ErrNotAUrl,
+		},
+		{
+			name: "Worker using deprecated controllers field",
+			in: `
+			worker {
+				name = "test"
+				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
+			}`,
+			expWorkerUpstreams: []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
+			expErr:             false,
+		},
+		{
+			name: "Different values in controllers and initial_upstreams field",
+			in: `
+			worker {
+				name = "test"
+				controllers = ["127.0.0.1", "127.0.0.2", "127.0.0.3"]
+				initial_upstreams = ["127.0.0.1"]
+			}`,
+			expWorkerUpstreams: nil,
+			expErr:             true,
+			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
+		},
+		{
+			name: "Identical values in controllers and initial_upstreams field",
+			in: `
+			worker {
+				name = "test"
+				controllers = ["127.0.0.1"]
+				initial_upstreams = ["127.0.0.1"]
+			}`,
+			expWorkerUpstreams: nil,
+			expErr:             true,
+			expErrStr:          "Failed to parse worker upstreams: both initial_upstreams and controllers fields are populated",
 		},
 	}
 
@@ -1000,7 +1208,7 @@ func TestWorkerControllers(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, c)
 			require.NotNil(t, c.Worker)
-			require.EqualValues(t, tt.expWorkerControllers, c.Worker.Controllers)
+			require.EqualValues(t, tt.expWorkerUpstreams, c.Worker.InitialUpstreams)
 		})
 	}
 }

@@ -68,7 +68,7 @@ func Test_TestRun(t *testing.T) {
 	var got Run
 	err = rw.LookupWhere(context.Background(), &got, "private_id = ?", []interface{}{run.PrivateId})
 	require.NoError(err)
-	assert.Equal(server.PrivateId, got.ServerId)
+	assert.Equal(server.PrivateId, got.ControllerId)
 	assert.Equal(job.Name, got.JobName)
 	assert.Equal(job.PluginId, got.JobPluginId)
 	assert.NotEmpty(got.CreateTime)
