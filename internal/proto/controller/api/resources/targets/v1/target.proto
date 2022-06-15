@@ -47,23 +47,6 @@ message CredentialSource {
   string credential_type = 70; // @gotags: `class:"public"`
 }
 
-message CredentialLibrary {
-  // The ID of the Credential Library.
-  string id = 10; // @gotags: `class:"public"`
-
-  // Output only.  The name of the Credential Library.
-  string name = 20; // @gotags: `class:"public"`
-
-  // Output only. The description of the Credential Library.
-  string description = 30; // @gotags: `class:"public"`
-
-  // Output only. The Credential Store to which this Credential Library belongs.
-  string credential_store_id = 40 [json_name = "credential_store_id"]; // @gotags: `class:"public"`
-
-  // Output only. The type of the credential library.
-  string type = 60; // @gotags: `class:"public"`
-}
-
 // The actual secret for a session credential.
 message SessionSecret {
   // Output only. The base64-encoded value representing the raw bytes from the
@@ -79,15 +62,16 @@ message SessionCredential {
   // Output only. The credential source information.
   CredentialSource credential_source = 1;
 
-  // Output only. The library which generated this credential. Deprecated: use credential_source instead.
-  CredentialLibrary credential_library = 10 [deprecated = true];
-
   // Output only. The secret of this credential base64 encoded.
   SessionSecret secret = 20;
 
   // Output only. The fields of the strongly typed credential, empty if the credential type of the
   // credential source is unspecified.
   google.protobuf.Struct credential = 40;
+
+  // Deprecated fields
+  reserved "credential_library";
+  reserved 10;
 }
 
 // Target contains all fields related to a Target resource
@@ -174,17 +158,6 @@ message Target {
     }
   ]; // @gotags: `class:"public"`
 
-  // Output only. The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.
-  repeated string application_credential_library_ids = 150 [
-    json_name = "application_credential_library_ids",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
-  // Output only. The application credential libraries associated with this Target. Deprecated: use application_credential_sources instead.
-  repeated CredentialLibrary application_credential_libraries = 180 [
-    json_name = "application_credential_libraries",
-    deprecated = true
-  ];
-
   // Output only. The IDs of the application credential source ids associated with this Target.
   repeated string application_credential_source_ids = 400 [json_name = "application_credential_source_ids"]; // @gotags: `class:"public"`
   // Output only. The application credential sources associated with this Target.
@@ -210,6 +183,10 @@ message Target {
 
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+
+  // Deprecated fields
+  reserved "application_credential_library_ids", "application_credential_libraries";
+  reserved 150, 180;
 }
 
 // TcpTargetAttributes contains attributes relevant to Targets of type "tcp"

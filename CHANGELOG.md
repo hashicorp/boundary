@@ -13,6 +13,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   credential sources for targets, similar to credential libraries from the
   `vault` credential store, and thus can be brokered to users at session
   authorization time. [PR](https://github.com/hashicorp/boundary/pull/2174)
+* `boundary connect` Credential Brokering Integration: we have extended integration
+  into the `boundary connect` helpers. A new `sshpass` style has been added to the 
+  `ssh` helper, when used, if the credential contains a username/password and `sshpass` 
+  is installed, the command will automatically pass the credentials to the `ssh` process.
+  Additionally, the default `ssh` helper will now use the `username` of the brokered credential.
+  [PR](https://github.com/hashicorp/boundary/pull/2191).
 * controller: Improve response time for listing sessions.
   This also creates a new periodic job that will delete terminated
   sessions after 1 hour.
@@ -21,6 +27,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* Targets: Removes support for `credential libraries` with respect to Target resources. 
+  The `library` `fields` and `actions` were deprecated in [Boundary 0.5.0](#050-20210802), 
+  please use `credential sources` instead. See changelog referenced above for 
+  more details ([PR](https://github.com/hashicorp/boundary/pull/1533)).
 * Credential Libraries: The `user_password` credential type has been renamed to
   `username_password` to remove any inconsistency over what the credential type is.
   All existing `user_password` typed credential libraries will be migrated to

@@ -999,24 +999,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "set-host-sources",
 			}, nil
 		},
-		"targets add-credential-libraries": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "add-credential-libraries",
-			}, nil
-		},
-		"targets remove-credential-libraries": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "remove-credential-libraries",
-			}, nil
-		},
-		"targets set-credential-libraries": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "set-credential-libraries",
-			}, nil
-		},
 		"targets add-credential-sources": func() (cli.Command, error) {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui),

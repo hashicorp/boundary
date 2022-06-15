@@ -492,6 +492,15 @@ func (c *Command) Run(args []string) (retCode int) {
 		// Credentials are brokered when connecting to the postgres db.
 		// TODO: Figure out how to handle cases where we don't automatically know how to
 		// broker the credentials like unrecognized or multiple credentials.
+	case "ssh":
+		if c.flagExec == "sshpass" {
+			// If we can broker ssh credentials using sshpass, skip displaying creds on client side.
+			// TODO: Figure out how to handle multiple credentials
+			break
+		}
+
+		// We cannot broker credentials print to user
+		fallthrough
 	case "connect":
 		// "connect" indicates there is no subcommand to the connect function.
 		// The only way a user will be able to connect to the session is by
@@ -838,7 +847,13 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		args = append(args, c.rdpFlags.buildArgs(c, port, ip, addr)...)
 
 	case "ssh":
-		args = append(args, c.sshFlags.buildArgs(c, port, ip, addr)...)
+		sshArgs, sshEnvs, sshErr := c.sshFlags.buildArgs(c, port, ip, addr)
+		if sshErr != nil {
+			argsErr = sshErr
+			break
+		}
+		args = append(args, sshArgs...)
+		envs = append(envs, sshEnvs...)
 
 	case "kube":
 		kubeArgs, err := c.kubeFlags.buildArgs(c, port, ip, addr)

@@ -2,8 +2,7 @@
 package targets
 
 type SessionCredential struct {
-	CredentialSource  *CredentialSource      `json:"credential_source,omitempty"`
-	CredentialLibrary *CredentialLibrary     `json:"credential_library,omitempty"`
-	Secret            *SessionSecret         `json:"secret,omitempty"`
-	Credential        map[string]interface{} `json:"credential,omitempty"`
+	CredentialSource *CredentialSource      `json:"credential_source,omitempty"`
+	Secret           *SessionSecret         `json:"secret,omitempty"`
+	Credential       map[string]interface{} `json:"credential,omitempty"`
 }
