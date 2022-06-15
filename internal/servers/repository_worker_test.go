@@ -287,28 +287,37 @@ func TestUpsertWorkerStatus(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("create an initial kms worker", func(t *testing.T) {
+	t.Run("create an initial kms worker and update status", func(t *testing.T) {
 		wStatus1 := servers.NewWorker(scope.Global.String(),
-			servers.WithAddress("address"), servers.WithName("config_name1"))
+			servers.WithAddress("address"), servers.WithName("config_name1"),
+			servers.WithDescription("kms_description1"))
 		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
 		assert.Equal(t, wStatus1.GetAddress(), worker.GetAddress())
 		assert.Equal(t, "config_name1", worker.Name)
+		assert.Equal(t, "kms_description1", worker.Description)
 		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "address", worker.GetAddress())
-		assert.Empty(t, worker.Description)
 
 		// update again and see updated last status time
-		worker, err = repo.UpsertWorkerStatus(ctx, wStatus1)
+		wStatus2 := servers.NewWorker(scope.Global.String(),
+			servers.WithAddress("new_address"), servers.WithName("config_name1"),
+			servers.WithDescription("kms_description2"))
+		worker, err = repo.UpsertWorkerStatus(ctx, wStatus2)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
+		assert.Equal(t, "config_name1", worker.Name)
+		assert.Equal(t, "kms_description2", worker.Description)
+		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
+		assert.Equal(t, uint32(2), worker.Version)
+		assert.Equal(t, "new_address", worker.GetAddress())
 	})
 
 	// Setup and use a pki worker
-	pkiWorker := servers.TestPkiWorker(t, conn, wrapper, servers.WithName("pki"))
+	pkiWorker := servers.TestPkiWorker(t, conn, wrapper, servers.WithName("pki"), servers.WithDescription("pki_description1"))
 	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
@@ -332,18 +341,18 @@ func TestUpsertWorkerStatus(t *testing.T) {
 
 	t.Run("update status for pki worker", func(t *testing.T) {
 		wStatus1 := servers.NewWorker(scope.Global.String(),
-			servers.WithAddress("pki_address"))
+			servers.WithAddress("pki_address"), servers.WithDescription("pki_description2"))
 		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, servers.WithKeyId(pkiWorkerKeyId))
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
 		assert.Equal(t, wStatus1.GetAddress(), worker.GetAddress())
 		assert.Equal(t, "pki", worker.Name)
+		assert.Equal(t, "pki_description1", worker.Description) // PKI workers don't update description via status
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "pki_address", worker.GetAddress())
-		assert.Empty(t, worker.Description)
 	})
 
 	failureCases := []struct {
@@ -375,7 +384,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "cant specifying public id",
+			name: "cant specify public id",
 			repo: repo,
 			status: func() *servers.Worker {
 				w := servers.NewWorker(scope.Global.String(),

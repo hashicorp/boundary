@@ -270,11 +270,36 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			worker := worker.clone()
 			worker.PublicId = workerId
 			switch {
+			case opts.withKeyId != "":
+				// This case goes first in case we want to relax the restriction
+				// around both name and key ID being supplied to account for
+				// e.g. config processing bugs. In that case, a key ID being
+				// supplied should be a clear indicator that we are working with
+				// a PKI worker, and a lack of one a clear indication we are
+				// working with a KMS worker.
+				//
+				// Note: unlike in the below case, this purposefully leaves out
+				// "description" since we want description changes for PKI-based
+				// workers to come via API only. We can't really guard on this
+				// in the DB so we need to be sure to not include it here.
+				n, err := w.Update(ctx, worker, []string{"address"}, nil)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update status of pki worker"))
+				}
+				switch n {
+				case 0:
+					return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("failed to find worker with key id %q", opts.withKeyId))
+				case 1:
+					break
+				default:
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("multiple records found when updating worker with id %q", worker.GetPublicId()))
+				}
+
 			case worker.GetName() != "":
 				worker.Type = KmsWorkerType.String()
 				workerCreateConflict := &db.OnConflict{
 					Target: db.Columns{"public_id"},
-					Action: append(db.SetColumns([]string{"address"}),
+					Action: append(db.SetColumns([]string{"description", "address"}),
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
 				var withRowsAffected int64
@@ -289,19 +314,6 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				case withRowsAffected == 0:
 					return errors.New(ctx, errors.NotUnique, op, "error updating worker")
 				}
-			case opts.withKeyId != "":
-				n, err := w.Update(ctx, worker, []string{"address"}, nil)
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update status of pki worker"))
-				}
-				switch n {
-				case 0:
-					return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("failed to find worker with key id %q", opts.withKeyId))
-				case 1:
-					break
-				default:
-					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("multiple records found when updating worker with id %q", worker.GetPublicId()))
-				}
 			}
 
 			// If we've been told to update tags, we need to clean out old
@@ -309,7 +321,9 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				setWorkerTags(ctx, w, worker.GetPublicId(), ConfigurationTagSource, worker.inputTags)
+				if err := setWorkerTags(ctx, w, worker.GetPublicId(), ConfigurationTagSource, worker.inputTags); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error setting worker tags"))
+				}
 			}
 
 			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
