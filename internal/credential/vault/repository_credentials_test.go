@@ -45,7 +45,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 
 	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database", "pki", "secret"}))
 
-	// Create valid user password KV secret
+	// Create valid username password KV secret
 	v.CreateKVSecret(t, "my-secret", []byte(`{"data":{"username":"user","password":"pass"}}`))
 
 	var opts []vault.Option

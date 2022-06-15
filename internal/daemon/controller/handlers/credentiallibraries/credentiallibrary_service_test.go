@@ -901,7 +901,7 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "user-password-attributes-change-username-attribute",
+			name: "username-password-attributes-change-username-attribute",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
@@ -930,7 +930,7 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "user-password-attributes-change-password-attribute",
+			name: "username-password-attributes-change-password-attribute",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
@@ -959,7 +959,7 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "user-password-attributes-change-username-and-password-attributes",
+			name: "username-password-attributes-change-username-and-password-attributes",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
@@ -1021,7 +1021,7 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "user-password-attributes-delete-mapping-override",
+			name: "username-password-attributes-delete-mapping-override",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
@@ -1060,7 +1060,7 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "user-password-attributes-delete-mapping-override-field-specific",
+			name: "username-password-attributes-delete-mapping-override-field-specific",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
