@@ -250,10 +250,12 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by keyId"))
 		}
 	default:
-		// We can just generate a new worker id every time since we resolve
-		// conflicts by name for kms workers on create so this id will only
-		// be used if there is no existing worker with the provided name yet.
-		workerId, err = newWorkerId(ctx)
+		// generating the worker id based off of the scope and name ensures
+		// that if 2 kms workers are making requests with the same name they
+		// are treated as the same worker.  Allowing this only for kms workers
+		// also ensures that we maintain the unique name constraint between pki
+		// workers and kms workers.
+		workerId, err = newWorkerIdFromScopeAndName(ctx, worker.GetScopeId(), worker.GetName())
 		if err != nil || workerId == "" {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker id"))
 		}
@@ -271,25 +273,13 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			case worker.GetName() != "":
 				worker.Type = KmsWorkerType.String()
 				workerCreateConflict := &db.OnConflict{
-					Target: db.Constraint("server_worker_scope_id_name_uq"),
+					Target: db.Columns{"public_id"},
 					Action: append(db.SetColumns([]string{"address"}),
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
-				if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict), db.WithDebug(true),
-					// TODO: The intent of this WithWhere option is to operate with the OnConflict such that the action
-					//  taken by the OnConflict only applies if the conflict is on a row that is returned by this where
-					//  statement, otherwise it should error out.
-					db.WithWhere("server_worker.type = 'kms'")); err != nil {
-
+				if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict)); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
 				}
-				// TODO: Do we need to do a lookup again for worker or will worker get updated with the OnConflict's
-				//  new worker id?
-				// This is causing TestTagUpdatingListing to fail.
-				// worker, err = lookupWorkerByName(ctx, r.reader, worker.GetName())
-				// if err != nil {
-				// 	return errors.Wrap(ctx, err, op)
-				// }
 			case opts.withKeyId != "":
 				n, err := w.Update(ctx, worker, []string{"address"}, nil)
 				if err != nil {

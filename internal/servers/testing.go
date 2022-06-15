@@ -104,7 +104,7 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	if opts.withAddress != "" {
 		address = opts.withAddress
 	}
-	id, err := newWorkerId(ctx)
+	id, err := newWorkerIdFromScopeAndName(ctx, scope.Global.String(), name)
 	require.NoError(t, err)
 	wrk := NewWorker(scope.Global.String(),
 		WithName(name),
