@@ -1030,6 +1030,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
+		"workers": func() (cli.Command, error) {
+			return &workerscmd.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 		"workers create": func() (cli.Command, error) {
 			return &workerscmd.Command{
 				Command: base.NewCommand(ui),

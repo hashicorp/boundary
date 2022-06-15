@@ -458,6 +458,7 @@ var inputStructs = map[string][]*cmdInfo{
 			ResourceType:     resource.Worker.String(),
 			Pkg:              "workers",
 			StdActions:       []string{"read", "update", "delete", "list"},
+			HasExtraHelpFunc: true,
 			HasId:            true,
 			Container:        "Scope",
 			HasName:          true,
