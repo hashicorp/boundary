@@ -276,15 +276,17 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
 				var withRowsAffected int64
-				if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict), db.WithDebug(true), db.WithReturnRowsAffected(&withRowsAffected),
-					// TODO: The intent of this WithWhere option is to operate with the OnConflict such that the action
-					//  taken by the OnConflict only applies if the conflict is on a row that is returned by this where
-					//  statement, otherwise it should error out.
-					db.WithWhere("server_worker.type = 'kms'")); err != nil {
-
+				err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict), db.WithReturnRowsAffected(&withRowsAffected),
+					// The intent of this WithWhere option is to operate with the OnConflict such that the action
+					// taken by the OnConflict only applies if the conflict is on a row that is returned by this where
+					// statement, otherwise it should error out.
+					db.WithWhere("server_worker.type = 'kms'"))
+				switch {
+				case err != nil:
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
+				case withRowsAffected == 0:
+					return errors.New(ctx, errors.NotUnique, op, "on conflict updated no rows")
 				}
-				fmt.Println("rows affected: ", withRowsAffected)
 				// TODO: Do we need to do a lookup again for worker or will worker get updated with the OnConflict's
 				//  new worker id?
 				// This is causing TestTagUpdatingListing to fail.
@@ -312,12 +314,23 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				setWorkerTags(ctx, w, worker.GetPublicId(), ConfigurationTagSource, worker.inputTags)
+				if err := setWorkerTags(ctx, w, worker.GetPublicId(), ConfigurationTagSource, worker.inputTags); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
 			}
-
-			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
-			if err := reader.LookupById(ctx, wAgg); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("error looking up worker aggregate"))
+			var wAgg workerAggregate
+			switch worker.Type {
+			case "pki":
+				wAgg = workerAggregate{PublicId: worker.GetPublicId()}
+				if err := reader.LookupById(ctx, &wAgg); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error looking up worker aggregate"))
+				}
+			case "kms":
+				if err := reader.LookupWhere(ctx, &wAgg, "name = ? and type = ?", []interface{}{worker.GetName(), "kms"}); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error looking up worker aggregate"))
+				}
+			default:
+				return errors.New(ctx, errors.Internal, op, fmt.Sprintf("unsupported worker type: %q", worker.Type))
 			}
 			ret, err = wAgg.toWorker(ctx)
 			if err != nil {

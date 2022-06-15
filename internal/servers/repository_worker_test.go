@@ -295,7 +295,37 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	conn.Debug(true)
+	var pkiWorker *servers.Worker
+
+	{
+		// required for tests that attempt to upsert a KMS worker where there already
+		// exists a PKI worker with the same name.  It should just error with an
+		// easy to identify error.
+
+		// Ensures the global scope contains a valid root key
+		err = kms.CreateKeys(context.Background(), scope.Global.String())
+		require.NoError(t, err)
+
+		rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kms)
+		require.NoError(t, err)
+		_, err = rotation.RotateRootCertificates(ctx, rootStorage)
+		require.NoError(t, err)
+
+		pkiWorker = servers.NewWorker(scope.Global.String(), servers.WithName("pki-worker"))
+
+		fileStorage, err := file.New(ctx)
+		require.NoError(t, err)
+		defer fileStorage.Cleanup()
+
+		nodeCreds, err := types.NewNodeCredentials(ctx, fileStorage)
+		require.NoError(t, err)
+
+		fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(ctx)
+		require.NoError(t, err)
+		pkiWorker, err = repo.CreateWorker(ctx, pkiWorker, servers.WithFetchNodeCredentialsRequest(fetchReq))
+		require.NoError(t, err)
+	}
+
 	wStatus1 := servers.NewWorkerForStatus(scope.Global.String(),
 		servers.WithAddress("address"), servers.WithName("config_name1"))
 	worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
@@ -309,11 +339,6 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, "address", worker.Address)
 		assert.Empty(t, worker.Description)
 	}
-	fmt.Println("********* before any tests: ", worker)
-
-	// TODO: Add tests that attempt to upsert a KMS worker where there already
-	// exists a PKI worker with the same name.  It should just error with an
-	// easy to identify error.
 
 	failureCases := []struct {
 		name      string
@@ -322,12 +347,37 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		errAssert func(*testing.T, error)
 	}{
 		{
-			name: "same name",
+			name: "pki same name update",
 			repo: repo,
 			status: func() *servers.Worker {
 				w := servers.NewWorkerForStatus(scope.Global.String(),
-					servers.WithName(worker.Name),
+					servers.WithName(pkiWorker.Name),
+					servers.WithAddress("pki-worker-address"))
+				return w
+			}(),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.NotUnique), err))
+			},
+		},
+		{
+			name: "no address",
+			repo: repo,
+			status: servers.NewWorkerForStatus(scope.Global.String(),
+				servers.WithName("worker_with_no_address")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name: "cant specifying public id",
+			repo: repo,
+			status: func() *servers.Worker {
+				w := servers.NewWorkerForStatus(scope.Global.String(),
+					servers.WithName("worker_with_no_address"),
 					servers.WithAddress("workeraddress"))
+				w.PublicId = "w_specified"
 				return w
 			}(),
 			errAssert: func(t *testing.T, err error) {
@@ -335,110 +385,85 @@ func TestUpsertWorkerStatus(t *testing.T) {
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
 			},
 		},
-		// {
-		// 	name: "no address",
-		// 	repo: repo,
-		// 	status: servers.NewWorkerForStatus(scope.Global.String(),
-		// 		servers.WithName("worker_with_no_address")),
-		// 	errAssert: func(t *testing.T, err error) {
-		// 		t.Helper()
-		// 		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
-		// 	},
-		// },
-		// {
-		// 	name: "cant specifying public id",
-		// 	repo: repo,
-		// 	status: func() *servers.Worker {
-		// 		w := servers.NewWorkerForStatus(scope.Global.String(),
-		// 			servers.WithName("worker_with_no_address"),
-		// 			servers.WithAddress("workeraddress"))
-		// 		w.PublicId = "w_specified"
-		// 		return w
-		// 	}(),
-		// 	errAssert: func(t *testing.T, err error) {
-		// 		t.Helper()
-		// 		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
-		// 	},
-		// },
-		// {
-		// 	name: "no name",
-		// 	repo: repo,
-		// 	status: servers.NewWorkerForStatus(scope.Global.String(),
-		// 		servers.WithAddress("no_name_address")),
-		// 	errAssert: func(t *testing.T, err error) {
-		// 		t.Helper()
-		// 		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
-		// 	},
-		// },
-		// {
-		// 	name:   "no status",
-		// 	repo:   repo,
-		// 	status: nil,
-		// 	errAssert: func(t *testing.T, err error) {
-		// 		t.Helper()
-		// 		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
-		// 	},
-		// },
-		// {
-		// 	name: "empty scope",
-		// 	repo: repo,
-		// 	status: servers.NewWorkerForStatus("",
-		// 		servers.WithAddress("address"),
-		// 		servers.WithName("config_name1")),
-		// 	errAssert: func(t *testing.T, err error) {
-		// 		t.Helper()
-		// 		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
-		// 	},
-		// },
-		// {
-		// 	name: "database failure",
-		// 	repo: func() *servers.Repository {
-		// 		conn, mock := db.TestSetupWithMock(t)
-		// 		rw := db.New(conn)
-		// 		mock.ExpectBegin()
-		// 		mock.ExpectQuery(`INSERT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "create-error"))
-		// 		mock.ExpectRollback()
-		// 		r, err := servers.NewRepository(rw, rw, kms)
-		// 		require.NoError(t, err)
-		// 		return r
-		// 	}(),
-		// 	status: servers.NewWorkerForStatus(scope.Global.String(),
-		// 		servers.WithName("database failure"),
-		// 		servers.WithAddress("address")),
-		// 	errAssert: func(t *testing.T, err error) {
-		// 		t.Helper()
-		// 		assert.Error(t, err)
-		// 	},
-		// },
+		{
+			name: "no name",
+			repo: repo,
+			status: servers.NewWorkerForStatus(scope.Global.String(),
+				servers.WithAddress("no_name_address")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name:   "no status",
+			repo:   repo,
+			status: nil,
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name: "empty scope",
+			repo: repo,
+			status: servers.NewWorkerForStatus("",
+				servers.WithAddress("address"),
+				servers.WithName("config_name1")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+			},
+		},
+		{
+			name: "database failure",
+			repo: func() *servers.Repository {
+				conn, mock := db.TestSetupWithMock(t)
+				rw := db.New(conn)
+				mock.ExpectBegin()
+				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "create-error"))
+				mock.ExpectRollback()
+				r, err := servers.NewRepository(rw, rw, kms)
+				require.NoError(t, err)
+				return r
+			}(),
+			status: servers.NewWorkerForStatus(scope.Global.String(),
+				servers.WithName("database failure"),
+				servers.WithAddress("address")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.Error(t, err)
+			},
+		},
 	}
 	for _, tc := range failureCases {
 		t.Run(fmt.Sprintf("Failures %s", tc.name), func(t *testing.T) {
-			fmt.Println("tc before: ", tc.status)
 			_, err = tc.repo.UpsertWorkerStatus(ctx, tc.status)
-			fmt.Println("tc after: ", tc.status)
-			// assert.Error(t, err)
-			// tc.errAssert(t, err)
+			assert.Error(t, err)
+			tc.errAssert(t, err)
+
+			t.Log(err)
 
 			// Still only the original worker exists.
 			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 			require.NoError(t, err)
 			assert.Len(t, workers, 1)
-			fmt.Println("listed: ", workers[0])
+			t.Log("listed: ", workers[0])
 		})
 	}
 
-	// {
-	// 	anotherStatus := servers.NewWorkerForStatus(scope.Global.String(),
-	// 		servers.WithName("another_test_worker"),
-	// 		servers.WithAddress("address"))
-	// 	_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
-	// 	require.NoError(t, err)
-	// 	{
-	// 		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
-	// 		require.NoError(t, err)
-	// 		assert.Len(t, workers, 2)
-	// 	}
-	// }
+	{
+		anotherStatus := servers.NewWorkerForStatus(scope.Global.String(),
+			servers.WithName("another_test_worker"),
+			servers.WithAddress("address"))
+		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
+		require.NoError(t, err)
+		{
+			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+			require.NoError(t, err)
+			assert.Len(t, workers, 2)
+		}
+	}
 }
 
 func TestTagUpdatingListing(t *testing.T) {
