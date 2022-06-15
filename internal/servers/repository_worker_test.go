@@ -2,7 +2,6 @@ package servers_test
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"strings"
 	"testing"
@@ -147,10 +146,6 @@ func TestLookupWorkerIdByKeyId(t *testing.T) {
 	repo, err := servers.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 	ctx := context.Background()
-	// Ensures the global scope contains a valid root key
-	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
-	require.NoError(t, err)
-
 	var workerKeyId string
 	w := servers.TestPkiWorker(t, conn, wrapper, servers.WithTestPkiWorkerAuthorizedKeyId(&workerKeyId))
 	t.Run("success", func(t *testing.T) {
@@ -258,9 +253,6 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	repo, err := servers.NewRepository(rw, rw, kmsCache)
-	require.NoError(t, err)
-
-	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
 	require.NoError(t, err)
 
 	ctx := context.Background()

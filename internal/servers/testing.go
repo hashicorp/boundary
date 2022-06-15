@@ -2,13 +2,15 @@ package servers
 
 import (
 	"context"
-	"math/rand"
+	"crypto/rand"
+	mathRand "math/rand"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/servers/store"
@@ -56,7 +58,7 @@ func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey 
 		privateKey: populateBytes(defaultLength),
 	}
 
-	cert, err := newRootCertificate(ctx, rand.Uint64(), populateBytes(defaultLength), beforeTimestamp, afterTimestamp,
+	cert, err := newRootCertificate(ctx, mathRand.Uint64(), populateBytes(defaultLength), beforeTimestamp, afterTimestamp,
 		rootCertKeys, kmsKey, CurrentState)
 	err = rw.Create(ctx, cert)
 	require.NoError(t, err)
@@ -153,8 +155,8 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
 	rw := db.New(conn)
-	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := NewRepository(rw, rw, kms)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	serversRepo, err := NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 	ctx := context.Background()
 	opts := getOpts(opt...)
@@ -179,7 +181,10 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 		require.NoError(t, rw.CreateItems(ctx, tags))
 	}
 	if opts.withTestPkiWorkerAuthorized {
-		rootStorage, err := NewRepositoryStorage(ctx, rw, rw, kms)
+		err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+		// We always try to create root global scope keys, but if it already exists, just continue...
+		require.True(t, err == nil || errors.IsUniqueError(err), err)
+		rootStorage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
 		require.NoError(t, err)
 		_, err = rotation.RotateRootCertificates(ctx, rootStorage)
 		require.NoError(t, err)
