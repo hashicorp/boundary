@@ -476,7 +476,6 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 		require.NoError(t, err)
 		assert.Len(t, workers, 3)
-
 	})
 }
 
