@@ -36,7 +36,7 @@ func TestService_AuthorizeConnection(t *testing.T) {
 			composedOf.ExpirationTime = exp
 		}
 		s := TestSession(t, conn, wrapper, composedOf)
-		srv := servers.TestWorker(t, conn, wrapper)
+		srv := servers.TestKmsWorker(t, conn, wrapper)
 		testServer = srv.PublicId
 		tofu := TestTofu(t)
 		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)

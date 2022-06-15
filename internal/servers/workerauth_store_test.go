@@ -291,7 +291,7 @@ func TestWorkerAuthStore(t *testing.T) {
 	testKey, err := databaseWrapper.KeyId(ctx)
 	require.NoError(t, err)
 
-	worker := TestWorker(t, conn, wrapper)
+	worker := TestKmsWorker(t, conn, wrapper)
 
 	wSignPubKey := populateBytes(defaultLength)
 	wEncPubKey := populateBytes(defaultLength)
@@ -430,7 +430,7 @@ func TestWorkerCertBundle(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKey := TestKmsKey(ctx, t, conn, wrapper)
 
-	worker := TestWorker(t, conn, wrapper)
+	worker := TestKmsWorker(t, conn, wrapper)
 	workerAuth := TestWorkerAuth(ctx, t, conn, worker, testKey)
 	rootCA := TestRootCertificate(ctx, t, conn, testKey)
 	certBundle := populateBytes(defaultLength)

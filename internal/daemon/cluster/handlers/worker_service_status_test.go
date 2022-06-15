@@ -71,7 +71,7 @@ func TestStatus(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := servers.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -257,7 +257,7 @@ func TestStatusSessionClosed(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := servers.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -408,7 +408,7 @@ func TestStatusDeadConnection(t *testing.T) {
 		Address:   "127.0.0.1",
 	})
 
-	worker1 := servers.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
 
 	serversRepoFn := func() (*servers.Repository, error) {
 		return serverRepo, nil
@@ -578,7 +578,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := servers.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
 
 	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kms)
 	require.NoError(t, err)

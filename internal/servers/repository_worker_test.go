@@ -54,7 +54,7 @@ func TestDeleteWorker(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				worker: servers.TestWorker(t, conn, wrapper),
+				worker: servers.TestKmsWorker(t, conn, wrapper),
 			},
 			wantRowsDeleted: 1,
 			wantErr:         false,
@@ -117,7 +117,7 @@ func TestLookupWorkerByName(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	w := servers.TestWorker(t, conn, wrapper)
+	w := servers.TestKmsWorker(t, conn, wrapper)
 	t.Run("success", func(t *testing.T) {
 		got, err := repo.LookupWorkerByName(ctx, w.GetName())
 		require.NoError(t, err)
@@ -154,7 +154,7 @@ func TestLookupWorkerIdByKeyId(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO: create a TestPkiWorker so we can test this properly...
-	w := servers.TestWorker(t, conn, wrapper)
+	w := servers.TestKmsWorker(t, conn, wrapper)
 
 	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestLookupWorker(t *testing.T) {
 	require.NoError(t, err)
 	ctx := context.Background()
 
-	w := servers.TestWorker(t, conn, wrapper,
+	w := servers.TestKmsWorker(t, conn, wrapper,
 		servers.WithName("name"),
 		servers.WithDescription("description"),
 		servers.WithAddress("address"),
@@ -429,10 +429,10 @@ func TestTagUpdatingListing(t *testing.T) {
 	require.NoError(err)
 	ctx := context.Background()
 
-	worker1 := servers.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
 	wStatus := servers.NewWorkerForStatus(scope.Global.String(),
 		servers.WithName(worker1.GetName()),
-		servers.WithAddress("127.0.0.1"),
+		servers.WithAddress("somethingnew"),
 		servers.WithWorkerTags(
 			&servers.Tag{
 				Key:   "tag1",
@@ -528,7 +528,7 @@ func TestListWorkers(t *testing.T) {
 			w := servers.NewWorker(scope.Global.String())
 			db.TestDeleteWhere(t, conn, w, "true")
 			for i := 0; i < tt.createCnt; i++ {
-				servers.TestWorker(t, conn, wrapper)
+				servers.TestKmsWorker(t, conn, wrapper)
 			}
 			// the purpose of these tests isn't to check liveness, so disable
 			// liveness checking.
@@ -555,9 +555,9 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 	require.NoError(err)
 	ctx := context.Background()
 
-	worker1 := servers.TestWorker(t, conn, wrapper)
-	worker2 := servers.TestWorker(t, conn, wrapper)
-	worker3 := servers.TestWorker(t, conn, wrapper)
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
+	worker2 := servers.TestKmsWorker(t, conn, wrapper)
+	worker3 := servers.TestKmsWorker(t, conn, wrapper)
 
 	// Sleep the default liveness time (15sec currently) +1s
 	time.Sleep(time.Second * 16)
@@ -731,19 +731,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			repo:            testRepo,
 			wantErr:         true,
 			wantErrIs:       errors.InvalidParameter,
-			wantErrContains: "worker reported address is not empty",
-		},
-		{
-			name: "no worker reported name",
-			setup: func() *servers.Worker {
-				w := servers.NewWorker(scope.Global.String())
-				w.Name = "foo"
-				return w
-			},
-			repo:            testRepo,
-			wantErr:         true,
-			wantErrIs:       errors.InvalidParameter,
-			wantErrContains: "worker reported name is not empty",
+			wantErrContains: "address is not empty",
 		},
 		{
 			name: "no last status update",
@@ -805,6 +793,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			name: "success-with-fetch-node-req",
 			setup: func() *servers.Worker {
 				w := servers.NewWorker(scope.Global.String())
+				w.Name = "success-with-fetch-node-req"
 				return w
 			},
 			reader: rw,
@@ -879,28 +868,13 @@ func TestRepository_UpdateWorker(t *testing.T) {
 	repo, err := servers.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 
-	setCases := []struct {
+	pkiCases := []struct {
 		name         string
 		modifyWorker func(*testing.T, *servers.Worker)
 		path         []string
 		assertGot    func(*testing.T, *servers.Worker)
 		wantErr      bool
 	}{
-		{
-			name: "update address",
-			modifyWorker: func(t *testing.T, w *servers.Worker) {
-				t.Helper()
-				w.Address = "foo"
-			},
-			path: []string{"address"},
-			assertGot: func(t *testing.T, w *servers.Worker) {
-				t.Helper()
-				assert.Equal(t, "foo", w.GetAddress())
-				assert.Equal(t, uint32(2), w.GetVersion())
-				assert.Equal(t, w.GetLastStatusTime().AsTime(), w.GetCreateTime().AsTime())
-				assert.Greater(t, w.GetUpdateTime().AsTime(), w.GetCreateTime().AsTime())
-			},
-		},
 		{
 			name: "update name",
 			modifyWorker: func(t *testing.T, w *servers.Worker) {
@@ -912,7 +886,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "foo", w.GetName())
 				assert.Equal(t, uint32(2), w.GetVersion())
-				assert.Equal(t, w.GetLastStatusTime().AsTime(), w.GetCreateTime().AsTime())
+				assert.Nil(t, w.GetLastStatusTime())
 				assert.Greater(t, w.GetUpdateTime().AsTime(), w.GetCreateTime().AsTime())
 			},
 		},
@@ -927,39 +901,18 @@ func TestRepository_UpdateWorker(t *testing.T) {
 				t.Helper()
 				assert.Equal(t, "foo", w.GetDescription())
 				assert.Equal(t, uint32(2), w.GetVersion())
-				assert.Equal(t, w.GetLastStatusTime().AsTime(), w.GetCreateTime().AsTime())
+				assert.Nil(t, w.GetLastStatusTime())
 				assert.Greater(t, w.GetUpdateTime().AsTime(), w.GetCreateTime().AsTime())
 			},
 		},
-		{
-			name: "update worker reported name",
-			modifyWorker: func(t *testing.T, w *servers.Worker) {
-				t.Helper()
-				w.Name = "foo"
-			},
-			path:    []string{"WorkerReportedName"},
-			wantErr: true,
-		},
-		{
-			name: "update worker reported name and name",
-			modifyWorker: func(t *testing.T, w *servers.Worker) {
-				t.Helper()
-				w.Name = "foo"
-				w.Name = "another"
-			},
-			path:    []string{"WorkerReportedName", "Name"},
-			wantErr: true,
-		},
-		{
-			name:         "Clear worker reported name",
-			modifyWorker: func(t *testing.T, w *servers.Worker) {},
-			path:         []string{"WorkerReportedName"},
-			wantErr:      true,
-		},
 	}
-	for _, tt := range setCases {
+	for _, tt := range pkiCases {
 		t.Run(tt.name, func(t *testing.T) {
-			wkr := servers.TestWorker(t, conn, wrapper)
+			wkr := servers.TestPkiWorker(t, conn, wrapper)
+			defer func() {
+				_, err := repo.DeleteWorker(ctx, wkr.GetPublicId())
+				require.NoError(t, err)
+			}()
 			tt.modifyWorker(t, wkr)
 			got, _, err := repo.UpdateWorker(ctx, wkr, 1, tt.path)
 			if tt.wantErr {
@@ -981,20 +934,6 @@ func TestRepository_UpdateWorker(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name: "clear address",
-			modifyWorker: func(t *testing.T, w *servers.Worker) {
-				t.Helper()
-				w.Address = ""
-			},
-			path: []string{"address"},
-			assertGot: func(t *testing.T, w *servers.Worker) {
-				t.Helper()
-				assert.Empty(t, w.GetAddress())
-				assert.Equal(t, w.GetLastStatusTime().AsTime(), w.GetCreateTime().AsTime())
-				assert.Greater(t, w.GetUpdateTime().AsTime(), w.GetCreateTime().AsTime())
-			},
-		},
-		{
 			name: "clear name",
 			modifyWorker: func(t *testing.T, w *servers.Worker) {
 				t.Helper()
@@ -1004,7 +943,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 			assertGot: func(t *testing.T, w *servers.Worker) {
 				t.Helper()
 				assert.Empty(t, w.GetName())
-				assert.Equal(t, w.GetLastStatusTime().AsTime(), w.GetCreateTime().AsTime())
+				assert.Nil(t, w.GetLastStatusTime())
 				assert.Greater(t, w.GetUpdateTime().AsTime(), w.GetCreateTime().AsTime())
 			},
 		},
@@ -1018,18 +957,17 @@ func TestRepository_UpdateWorker(t *testing.T) {
 			assertGot: func(t *testing.T, w *servers.Worker) {
 				t.Helper()
 				assert.Empty(t, w.GetDescription())
-				assert.Equal(t, w.GetLastStatusTime().AsTime(), w.GetCreateTime().AsTime())
+				assert.Nil(t, w.GetLastStatusTime())
 				assert.Greater(t, w.GetUpdateTime().AsTime(), w.GetCreateTime().AsTime())
 			},
 		},
 	}
 	for _, tt := range clearCases {
 		t.Run(tt.name, func(t *testing.T) {
-			wkr := servers.TestWorker(t, conn, wrapper)
+			wkr := servers.TestPkiWorker(t, conn, wrapper)
 			wkr.Name = tt.name
 			wkr.Description = tt.name
-			wkr.Address = tt.name
-			wkr, _, err := repo.UpdateWorker(ctx, wkr, 1, []string{"name", "description", "address"})
+			wkr, _, err := repo.UpdateWorker(ctx, wkr, 1, []string{"name", "description"})
 			require.NoError(t, err)
 
 			tt.modifyWorker(t, wkr)
@@ -1045,9 +983,9 @@ func TestRepository_UpdateWorker(t *testing.T) {
 	}
 
 	t.Run("version is wrong", func(t *testing.T) {
-		wkr := servers.TestWorker(t, conn, wrapper)
-		wkr.Address = "version is wrong"
-		result, numUpdated, err := repo.UpdateWorker(ctx, wkr, 2, []string{"address"})
+		wkr := servers.TestPkiWorker(t, conn, wrapper)
+		wkr.Name = "version is wrong"
+		result, numUpdated, err := repo.UpdateWorker(ctx, wkr, 2, []string{"name"})
 		require.NoError(t, err)
 		assert.Zero(t, numUpdated)
 		assert.Equal(t, wkr.GetUpdateTime().AsTime(), result.GetUpdateTime().AsTime())
@@ -1068,21 +1006,41 @@ func TestRepository_UpdateWorker(t *testing.T) {
 		},
 		{
 			name:    "empty path",
-			input:   servers.TestWorker(t, conn, wrapper),
+			input:   servers.TestPkiWorker(t, conn, wrapper),
 			version: 1,
 			wantErr: errors.T(errors.EmptyFieldMask),
 		},
 		{
 			name:    "0 version",
-			input:   servers.TestWorker(t, conn, wrapper),
+			input:   servers.TestPkiWorker(t, conn, wrapper),
 			path:    []string{"name"},
 			version: 0,
 			wantErr: errors.T(errors.InvalidParameter),
 		},
 		{
+			name: "changing kms name",
+			input: func() *servers.Worker {
+				w := servers.TestKmsWorker(t, conn, wrapper)
+				w.Name = "some change"
+				return w
+			}(), path: []string{"name"},
+			version: 1,
+			wantErr: errors.T(errors.NotSpecificIntegrity),
+		},
+		{
+			name: "clearing kms name",
+			input: func() *servers.Worker {
+				w := servers.TestKmsWorker(t, conn, wrapper)
+				w.Name = ""
+				return w
+			}(), path: []string{"name"},
+			version: 1,
+			wantErr: errors.T(errors.NotSpecificIntegrity),
+		},
+		{
 			name: "no public id",
 			input: func() *servers.Worker {
-				w := servers.TestWorker(t, conn, wrapper)
+				w := servers.TestPkiWorker(t, conn, wrapper)
 				w.PublicId = ""
 				return w
 			}(),
@@ -1092,7 +1050,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 		},
 		{
 			name:    "unrecognized path",
-			input:   servers.TestWorker(t, conn, wrapper),
+			input:   servers.TestPkiWorker(t, conn, wrapper),
 			path:    []string{"UnrecognizedField"},
 			version: 1,
 			wantErr: errors.T(errors.InvalidFieldMask),
@@ -1100,7 +1058,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 		{
 			name: "not found worker",
 			input: func() *servers.Worker {
-				w := servers.TestWorker(t, conn, wrapper)
+				w := servers.TestPkiWorker(t, conn, wrapper)
 				w.PublicId = "w_notfoundworker"
 				return w
 			}(),
@@ -1111,11 +1069,11 @@ func TestRepository_UpdateWorker(t *testing.T) {
 		{
 			name: "duplicate name",
 			input: func() *servers.Worker {
-				w1 := servers.TestWorker(t, conn, wrapper)
+				w1 := servers.TestPkiWorker(t, conn, wrapper)
 				w1.Name = "somenamethatijustmadeup"
 				w1, _, err := repo.UpdateWorker(ctx, w1, w1.Version, []string{"name"}, nil)
 				require.NoError(t, err)
-				w2 := servers.TestWorker(t, conn, wrapper)
+				w2 := servers.TestPkiWorker(t, conn, wrapper)
 				w2.Name = w1.Name
 				return w2
 			}(),

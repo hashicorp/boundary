@@ -65,9 +65,24 @@ func (r *Repository) LookupWorkerByName(ctx context.Context, name string) (*Work
 	case name == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "name is empty")
 	}
+	w, err := lookupWorkerByName(ctx, r.reader, name)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return w, nil
+}
+
+func lookupWorkerByName(ctx context.Context, reader db.Reader, name string) (*Worker, error) {
+	const op = "servers.lookupWorkerByName"
+	switch {
+	case isNil(reader):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
+	case name == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "name is empty")
+	}
 
 	wAgg := &workerAggregate{}
-	err := r.reader.LookupWhere(ctx, &wAgg, "name = ?", []interface{}{name})
+	err := reader.LookupWhere(ctx, &wAgg, "name = ?", []interface{}{name})
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
@@ -222,8 +237,6 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
 	case worker.GetName() != "" && opts.withKeyId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both set; no more than one is allowed")
-	case len(worker.apiTags) > 0:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "api tags is not empty")
 	}
 
 	var workerId string
@@ -258,20 +271,25 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			case worker.GetName() != "":
 				worker.Type = KmsWorkerType.String()
 				workerCreateConflict := &db.OnConflict{
-					Target: db.Columns{"name", "scope_id"},
+					Target: db.Constraint("server_worker_scope_id_name_uq"),
 					Action: append(db.SetColumns([]string{"address"}),
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
-				if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict),
+				if err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict), db.WithDebug(true),
 					// TODO: The intent of this WithWhere option is to operate with the OnConflict such that the action
 					//  taken by the OnConflict only applies if the conflict is on a row that is returned by this where
 					//  statement, otherwise it should error out.
 					db.WithWhere("server_worker.type = 'kms'")); err != nil {
+
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
 				}
 				// TODO: Do we need to do a lookup again for worker or will worker get updated with the OnConflict's
 				//  new worker id?
 				// This is causing TestTagUpdatingListing to fail.
+				// worker, err = lookupWorkerByName(ctx, r.reader, worker.GetName())
+				// if err != nil {
+				// 	return errors.Wrap(ctx, err, op)
+				// }
 			case opts.withKeyId != "":
 				n, err := w.Update(ctx, worker, []string{"address"}, nil)
 				if err != nil {
@@ -492,6 +510,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
 			returnedWorker = worker.clone()
+			returnedWorker.Type = PkiWorkerType.String()
 			if err := w.Create(
 				ctx,
 				returnedWorker,
