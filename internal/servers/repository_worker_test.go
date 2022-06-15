@@ -153,8 +153,7 @@ func TestLookupWorkerIdByKeyId(t *testing.T) {
 	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
 	require.NoError(t, err)
 
-	// TODO: create a TestPkiWorker so we can test this properly...
-	w := servers.TestKmsWorker(t, conn, wrapper)
+	w := servers.TestPkiWorker(t, conn, wrapper)
 
 	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
@@ -192,7 +191,7 @@ func TestLookupWorkerIdByKeyId(t *testing.T) {
 		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
 		r, err := servers.NewRepository(rw, rw, kmsCache)
 		require.NoError(t, err)
-		got, err := r.LookupWorkerIdByKeyId(ctx, w.GetName())
+		got, err := r.LookupWorkerIdByKeyId(ctx, "somekey")
 		assert.NoError(t, mock.ExpectationsWereMet())
 		assert.Truef(t, errors.Match(errors.T(errors.Op("servers.(Repository).LookupWorkerIdByKeyId")), err), "got error %v", err)
 		assert.Empty(t, got)
@@ -309,6 +308,10 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, "address", worker.Address)
 		assert.Empty(t, worker.Description)
 	}
+
+	// TODO: Add tests that attempt to upsert a KMS worker where there already
+	// exists a PKI worker with the same name.  It should just error with an
+	// easy to identify error.
 
 	failureCases := []struct {
 		name      string
@@ -564,9 +567,11 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithName(worker1.GetName()),
-		servers.WithAddress(worker1.GetAddress())))
+	_, err = serversRepo.UpsertWorkerStatus(ctx,
+		servers.NewWorkerForStatus(scope.Global.String(),
+			servers.WithName(worker1.GetName()),
+			servers.WithAddress(worker1.GetAddress())),
+		servers.WithPublicId(worker1.GetPublicId()))
 	require.NoError(err)
 
 	requireIds := func(expected []string, actual []*servers.Worker) {
@@ -591,9 +596,11 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 	requireIds([]string{worker1.GetPublicId()}, result)
 
 	// Upsert second server.
-	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithName(worker2.GetName()),
-		servers.WithAddress(worker1.GetAddress())))
+	_, err = serversRepo.UpsertWorkerStatus(ctx,
+		servers.NewWorkerForStatus(scope.Global.String(),
+			servers.WithName(worker2.GetName()),
+			servers.WithAddress(worker2.GetAddress())),
+		servers.WithPublicId(worker2.GetPublicId()))
 	require.NoError(err)
 
 	// Static liveness. Should get two, so long as this did not take
