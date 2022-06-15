@@ -19,13 +19,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestWorkerCanonicalAddress(t *testing.T) {
-	worker := NewWorkerForStatus(scope.Global.String(), WithAddress("status"))
-	assert.Equal(t, "status", worker.CanonicalAddress())
-	worker.Address = "worker"
-	assert.Equal(t, "worker", worker.CanonicalAddress())
-}
-
 func TestWorkerCanonicalTags(t *testing.T) {
 	w := NewWorker(scope.Global.String())
 	w.apiTags = []*Tag{
@@ -86,7 +79,7 @@ func TestWorkerAggregate(t *testing.T) {
 	t.Run("Worker with status", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		w := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
 		w.Type = KmsWorkerType.String()
@@ -104,7 +97,7 @@ func TestWorkerAggregate(t *testing.T) {
 	t.Run("Worker with a config tag", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		w := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
 		w.Type = KmsWorkerType.String()
@@ -129,7 +122,7 @@ func TestWorkerAggregate(t *testing.T) {
 	t.Run("Worker with many config tag", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		w := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
 		w.Type = KmsWorkerType.String()
@@ -167,7 +160,7 @@ func TestWorkerAggregate(t *testing.T) {
 	t.Run("Worker with an api tag", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		w := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
 		w.Type = KmsWorkerType.String()
@@ -193,7 +186,7 @@ func TestWorkerAggregate(t *testing.T) {
 	t.Run("Worker with mix of tag sources", func(t *testing.T) {
 		id, err := newWorkerId(ctx)
 		require.NoError(t, err)
-		w := NewWorkerForStatus(scope.Global.String(),
+		w := NewWorker(scope.Global.String(),
 			WithAddress("address"),
 			WithName(strings.ToLower(id)))
 		w.Type = KmsWorkerType.String()

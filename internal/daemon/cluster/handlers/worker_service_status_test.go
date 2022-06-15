@@ -108,7 +108,7 @@ func TestStatus(t *testing.T) {
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
-					Address:  worker1.CanonicalAddress(),
+					Address:  worker1.GetAddress(),
 				},
 			},
 			want: &pbs.StatusResponse{
@@ -128,7 +128,7 @@ func TestStatus(t *testing.T) {
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
-					Address:  worker1.CanonicalAddress(),
+					Address:  worker1.GetAddress(),
 				},
 				Jobs: []*pbs.JobStatus{
 					{
@@ -166,7 +166,7 @@ func TestStatus(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
-					Address:  worker1.CanonicalAddress(),
+					Address:  worker1.GetAddress(),
 				},
 			},
 			wantErrMsg: status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; one is required.").Error(),
@@ -311,7 +311,7 @@ func TestStatusSessionClosed(t *testing.T) {
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
-					Address:  worker1.CanonicalAddress(),
+					Address:  worker1.GetAddress(),
 				},
 				Jobs: []*pbs.JobStatus{
 					{
@@ -478,7 +478,7 @@ func TestStatusDeadConnection(t *testing.T) {
 		WorkerStatus: &servers.ServerWorkerStatus{
 			PublicId: worker1.GetPublicId(),
 			Name:     worker1.GetName(),
-			Address:  worker1.CanonicalAddress(),
+			Address:  worker1.GetAddress(),
 		},
 		Jobs: []*pbs.JobStatus{
 			{
