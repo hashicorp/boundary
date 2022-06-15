@@ -29,7 +29,7 @@ const (
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
-	// * The perms.topLevelTypes function
+	// * The perms.topLevelType function
 	// * The scopes service collection actions for appropriate scopes
 	// * The Test_AnonRestrictions test
 )

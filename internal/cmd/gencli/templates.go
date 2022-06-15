@@ -229,8 +229,12 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	switch c.Func {
 	case "":
 		return cli.RunResultHelp
-	{{ if .IsAbstractType }}
-	case "create", "update":
+	{{ if (not (hasAction .StdActions "create" ) )}}
+	case "create":
+		return cli.RunResultHelp
+	{{ end }}
+	{{ if (not (hasAction .StdActions "update" ) )}}
+	case "update":
 		return cli.RunResultHelp
 	{{ end }}
 	}
@@ -403,8 +407,10 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	switch c.Func {
 	{{ range $i, $action := $input.StdActions }}
 	{{ if eq $action "create" }}
+	{{ if ( not ( hasAction $input.SkipClientCallActions "create") ) }}
 	case "create":
 		result, err = {{ $input.Pkg }}Client.Create(c.Context, {{ if (and $input.SubActionPrefix $input.NeedsSubtypeInCreate) }}"{{ $input.SubActionPrefix }}",{{ end }} c.Flag{{ $input.Container }}Id, opts...)
+	{{ end }}
 	{{ end }}
 	{{ if eq $action "read" }}
 	case "read":

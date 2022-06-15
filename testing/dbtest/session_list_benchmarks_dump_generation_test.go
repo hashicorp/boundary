@@ -129,15 +129,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			require.NoError(err)
 			connRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms)
 			require.NoError(err)
-			serversRepo, err := servers.NewRepository(rw, rw, kms)
-			require.NoError(err)
-			worker := &servers.Server{
-				PrivateId: "test1",
-				Type:      "worker",
-				Address:   "127.0.0.1",
-			}
-			_, _, err = serversRepo.UpsertServer(ctx, worker)
-			require.NoError(err)
+			_ = servers.TestKmsWorker(t, conn, wrap)
 
 			usersStart := time.Now()
 			t.Logf("Populating %d users", scenario.users)
@@ -196,7 +188,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 						ScopeId:     users[userIndex].scopeId,
 						Endpoint:    "tcp://127.0.0.1:22",
 					})
-					cycleSessionStates(t, ctx, sess, sessRepo, connRepo, conn, worker, scenario.connsPerSession)
+					cycleSessionStates(t, ctx, sess, sessRepo, connRepo, conn, scenario.connsPerSession)
 					return nil
 				})
 			}
@@ -220,8 +212,8 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 	}
 }
 
-func cycleSessionStates(t testing.TB, ctx context.Context, sess *session.Session, sessRepo *session.Repository, connRepo *session.ConnectionRepository, conn *db.DB, worker *servers.Server, numConns int) {
-	sess, _, err := sessRepo.ActivateSession(ctx, sess.PublicId, sess.Version, worker.PrivateId, worker.Type, []byte(`tofu`))
+func cycleSessionStates(t testing.TB, ctx context.Context, sess *session.Session, sessRepo *session.Repository, connRepo *session.ConnectionRepository, conn *db.DB, numConns int) {
+	sess, _, err := sessRepo.ActivateSession(ctx, sess.PublicId, sess.Version, []byte(`tofu`))
 	require.NoError(t, err)
 	var closeWiths []session.CloseWith
 	for i := 0; i < numConns; i++ {

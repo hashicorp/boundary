@@ -14,12 +14,10 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -88,8 +86,6 @@ func TestSession(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, c Composed
 	_, certBytes, err := newCert(ctx, wrapper, c.UserId, id, []string{"127.0.0.1", "localhost"}, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
-	s.ServerId = opts.withServerId
-
 	if len(s.TofuToken) != 0 {
 		err = s.encrypt(ctx, wrapper)
 	}
@@ -178,33 +174,6 @@ func TestTofu(t testing.TB) []byte {
 	tofu, err := base62.Random(20)
 	require.NoError(err)
 	return []byte(tofu)
-}
-
-// TestWorker inserts a worker into the db to satisfy foreign key constraints.
-// Supports the WithServerId option.
-func TestWorker(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *servers.Server {
-	t.Helper()
-	rw := db.New(conn)
-	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
-	require.NoError(t, err)
-
-	opts := getOpts(opt...)
-	id := opts.withServerId
-	if id == "" {
-		id, err = uuid.GenerateUUID()
-		require.NoError(t, err)
-		id = "test-session-worker-" + id
-	}
-	worker := &servers.Server{
-		PrivateId:   id,
-		Type:        servers.ServerTypeWorker.String(),
-		Description: "Test Session Worker",
-		Address:     "127.0.0.1",
-	}
-	_, _, err = serversRepo.UpsertServer(context.Background(), worker)
-	require.NoError(t, err)
-	return worker
 }
 
 // TestCert is a temporary test func that intentionally doesn't take testing.T

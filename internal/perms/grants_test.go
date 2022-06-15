@@ -110,7 +110,7 @@ func Test_ValidateType(t *testing.T) {
 	var g Grant
 	for i := resource.Unknown; i <= resource.Credential; i++ {
 		g.typ = i
-		if i == resource.Controller || i == resource.Worker {
+		if i == resource.Controller {
 			assert.Error(t, g.validateType())
 		} else {
 			assert.NoError(t, g.validateType())
@@ -702,6 +702,55 @@ func Test_Parse(t *testing.T) {
 				require.NoError(err)
 				assert.Equal(test.expected, grant)
 			}
+		})
+	}
+}
+
+func TestHasActionOrSubaction(t *testing.T) {
+	tests := []struct {
+		name string
+		base []action.Type
+		act  action.Type
+		want bool
+	}{
+		{
+			name: "no actions",
+			base: []action.Type{},
+			act:  action.Read,
+		},
+		{
+			name: "has direct action",
+			base: []action.Type{action.Cancel, action.Read},
+			act:  action.Read,
+			want: true,
+		},
+		{
+			name: "has parent action",
+			base: []action.Type{action.Cancel, action.ReadSelf},
+			act:  action.Read,
+			want: true,
+		},
+		{
+			name: "has direct sub action",
+			base: []action.Type{action.Cancel, action.ReadSelf},
+			act:  action.ReadSelf,
+			want: true,
+		},
+		{
+			name: "has sub action needs parent",
+			base: []action.Type{action.Cancel, action.Read},
+			act:  action.ReadSelf,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := Grant{
+				actions: make(map[action.Type]bool),
+			}
+			for _, act := range tt.base {
+				g.actions[act] = true
+			}
+			assert.Equal(t, tt.want, g.hasActionOrSubaction(tt.act))
 		})
 	}
 }

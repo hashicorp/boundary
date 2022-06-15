@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -147,9 +148,8 @@ func TestRepository_ConnectConnection(t *testing.T) {
 
 	setupFn := func() ConnectWith {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		srv := TestWorker(t, conn, wrapper)
 		tofu := TestTofu(t)
-		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)
 		require.NoError(t, err)
 		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 		return ConnectWith{
@@ -359,20 +359,20 @@ func TestRepository_orphanedConnections(t *testing.T) {
 
 	// Create two "workers". One will remain untouched while the other "goes
 	// away and comes back" (worker 2).
-	worker1 := TestWorker(t, conn, wrapper, WithServerId("worker1"))
-	worker2 := TestWorker(t, conn, wrapper, WithServerId("worker2"))
+	worker1 := servers.TestKmsWorker(t, conn, wrapper)
+	worker2 := servers.TestKmsWorker(t, conn, wrapper)
 
 	// Create a few sessions on each, activate, and authorize a connection
 	var connIds []string
 	var worker1ConnIds []string
 	var worker2ConnIds []string
 	for i := 0; i < numConns; i++ {
-		serverId := worker1.PrivateId
+		serverId := worker1.PublicId
 		if i%2 == 0 {
-			serverId = worker2.PrivateId
+			serverId = worker2.PublicId
 		}
-		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithServerId(serverId), WithDbOpts(db.WithSkipVetForWrite(true)))
-		sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, serverId, "worker", []byte("foo"))
+		sess := TestDefaultSession(t, conn, wrapper, iamRepo, WithDbOpts(db.WithSkipVetForWrite(true)))
+		sess, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte("foo"))
 		require.NoError(err)
 		c, cs, err := connRepo.AuthorizeConnection(ctx, sess.GetPublicId(), serverId)
 		require.NoError(err)
@@ -418,7 +418,7 @@ func TestRepository_orphanedConnections(t *testing.T) {
 	// all connection IDs for worker 1 should be showing as non-closed, and
 	// the ones for worker 2 not advertised should be closed.
 	shouldStayOpen := worker2ConnIds[0:2]
-	found, err := connRepo.closeOrphanedConnections(ctx, worker2.GetPrivateId(), shouldStayOpen)
+	found, err := connRepo.closeOrphanedConnections(ctx, worker2.GetPublicId(), shouldStayOpen)
 	require.NoError(err)
 	fmt.Printf("shouldstate: %v\nfound: %v\n", shouldStayOpen, found)
 	require.Equal(4, len(found))
@@ -432,7 +432,7 @@ func TestRepository_orphanedConnections(t *testing.T) {
 	// Now, advertise none of the connection IDs for worker 2. This is mainly to
 	// test that handling the case where we do not include IDs works properly as
 	// it changes the where clause.
-	found, err = connRepo.closeOrphanedConnections(ctx, worker1.GetPrivateId(), nil)
+	found, err = connRepo.closeOrphanedConnections(ctx, worker1.GetPublicId(), nil)
 	require.NoError(err)
 	assert.Equal(6, len(found))
 	assert.ElementsMatch(found, worker1ConnIds)
@@ -453,9 +453,8 @@ func TestRepository_CloseConnections(t *testing.T) {
 
 	setupFn := func(cnt int) []CloseWith {
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-		srv := TestWorker(t, conn, wrapper)
 		tofu := TestTofu(t)
-		s, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		s, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)
 		require.NoError(t, err)
 		cw := make([]CloseWith, 0, cnt)
 		for i := 0; i < cnt; i++ {

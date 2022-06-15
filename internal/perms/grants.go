@@ -74,6 +74,20 @@ func (g Grant) Actions() (typs []action.Type, strs []string) {
 	return
 }
 
+// hasActionOrSubaction checks whether a grant's action set contains the given
+// action or contains an action that is a subaction of the passed-in parameter.
+// This is used for validation checking of parsed grants. N.B.: this is the
+// opposite check of action.Type.IsActionOrParent, which is why the ordering is
+// reversed going into that call.
+func (g Grant) hasActionOrSubaction(act action.Type) bool {
+	for k := range g.actions {
+		if act.IsActionOrParent(k) {
+			return true
+		}
+	}
+	return false
+}
+
 func (g Grant) clone() *Grant {
 	ret := &Grant{
 		scope: g.scope,
@@ -376,12 +390,12 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no actions or output fields")
 					}
 				case 1:
-					if !grant.actions[action.Create] &&
-						!grant.actions[action.List] {
+					if !grant.hasActionOrSubaction(action.Create) &&
+						!grant.hasActionOrSubaction(action.List) {
 						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
 					}
 				case 2:
-					if !grant.actions[action.Create] || !grant.actions[action.List] {
+					if !grant.hasActionOrSubaction(action.Create) || !grant.hasActionOrSubaction(action.List) {
 						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
 					}
 				default:
@@ -411,6 +425,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				results := acl.Allowed(r, k, AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
 				if results.Authorized {
 					allowed = true
+					break
 				}
 			}
 			if !allowed {
@@ -429,7 +444,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 func (g Grant) validateType() error {
 	const op = "perms.(Grant).validateType"
 	switch g.typ {
-	case resource.Controller, resource.Worker:
+	case resource.Controller:
 		return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", g.typ))
 	}
 	return nil

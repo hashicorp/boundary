@@ -109,7 +109,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 
 		w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 			WorkerAuthKms:             c1.Config().WorkerAuthKms,
-			InitialControllers:        []string{proxy.ListenerAddr()},
+			InitialUpstreams:          []string{proxy.ListenerAddr()},
 			Logger:                    logger.Named("w1"),
 			StatusGracePeriodDuration: workerGracePeriod(burdenCase),
 		})
@@ -269,7 +269,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		// ************
 		w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 			WorkerAuthKms:             c1.Config().WorkerAuthKms,
-			InitialControllers:        []string{p1.ListenerAddr(), p2.ListenerAddr()},
+			InitialUpstreams:          []string{p1.ListenerAddr(), p2.ListenerAddr()},
 			Logger:                    logger.Named("w1"),
 			StatusGracePeriodDuration: workerGracePeriod(burdenCase),
 		})

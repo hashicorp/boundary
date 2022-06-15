@@ -148,6 +148,10 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/store/controller.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/store/worker.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/store/root_certificate.pb.go
+	@protoc-go-inject-tag -input=./internal/servers/store/worker_auth.pb.go
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/targettest/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/tcp/store/target.pb.go
@@ -193,6 +197,10 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/session_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/users/user.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/user_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/workers/worker.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/worker_service.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/server_coordination_service.pb.go
+
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go

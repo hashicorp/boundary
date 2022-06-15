@@ -66,12 +66,7 @@ func TestSessions(t *testing.T) {
 							EndTime:   pbNow,
 						},
 					},
-					Status: "status",
-					WorkerInfo: []*pb.WorkerInfo{
-						{
-							Address: "worker-address",
-						},
-					},
+					Status:            "status",
 					Certificate:       []byte("certificate"),
 					TerminationReason: "termination_reason",
 					AuthorizedActions: []string{"action-1"},
@@ -119,12 +114,7 @@ func TestSessions(t *testing.T) {
 							EndTime:   pbNow,
 						},
 					},
-					Status: "status",
-					WorkerInfo: []*pb.WorkerInfo{
-						{
-							Address: "worker-address",
-						},
-					},
+					Status:            "status",
 					Certificate:       []byte("certificate"),
 					TerminationReason: "termination_reason",
 					AuthorizedActions: []string{"action-1"},

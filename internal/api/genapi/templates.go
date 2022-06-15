@@ -46,7 +46,7 @@ type templateInput struct {
 	SliceSubtypes         map[string]sliceSubtypeInfo
 	ExtraFields           []fieldInfo
 	VersionEnabled        bool
-	TypeOnCreate          bool
+	ExtraRequiredParams   []requiredParam
 	CreateResponseTypes   bool
 	RecursiveListing      bool
 }
@@ -65,7 +65,7 @@ func fillTemplates() {
 			ParentTypeName:      in.parentTypeName,
 			ExtraFields:         in.extraFields,
 			VersionEnabled:      in.versionEnabled,
-			TypeOnCreate:        in.typeOnCreate,
+			ExtraRequiredParams: in.extraRequiredParams,
 			CreateResponseTypes: in.createResponseTypes,
 			RecursiveListing:    in.recursiveListing,
 		}
@@ -346,14 +346,10 @@ func (c *Client) Delete(ctx context.Context, id string, opt... Option) (*{{ .Nam
 }
 `))
 
-var createTemplate = template.Must(template.New("").Funcs(
-	template.FuncMap{
-		"snakeCase": snakeCase,
-	},
-).Parse(`
-func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceType string, {{ end }} {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}CreateResult, error) {
+const createTemplateStr = `
+func (c *Client) {{ funcName }} (ctx context.Context, {{ range .ExtraRequiredParams }} {{ .Name }} {{ .Typ }}, {{ end }} {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}CreateResult, error) {
 	if {{ .CollectionFunctionArg }} == "" {
-		return nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into Create request")
+		return nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into {{ funcName }} request")
 	}
 
 	opts, apiOpts := getOpts(opt...)
@@ -361,17 +357,17 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
 	}
-	{{ if .TypeOnCreate }} if resourceType == "" {
-		return nil, fmt.Errorf("empty resourceType value passed into Create request")
+	{{ range .ExtraRequiredParams }} if {{ .Name }} == "" {
+		return nil, fmt.Errorf("empty {{ .Name }} value passed into {{ funcName }} request")
 	} else {
-		opts.postMap["type"] = resourceType
+		opts.postMap["{{ .PostType }}"] = {{ .Name }}
 	}{{ end }}
 
 	opts.postMap["{{ snakeCase .CollectionFunctionArg }}"] = {{ .CollectionFunctionArg }}
 
-	req, err := c.client.NewRequest(ctx, "POST", "{{ .CollectionPath }}", opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "POST", "{{ .CollectionPath }}{{ apiAction }}", opts.postMap, apiOpts...)
 	if err != nil {
-		return nil, fmt.Errorf("error creating Create request: %w", err)
+		return nil, fmt.Errorf("error creating {{ funcName }} request: %w", err)
 	}
 	{{ if ( eq .CollectionPath "\"scopes\"" ) }}
 	opts.queryMap["scope_id"] = scopeId
@@ -386,14 +382,14 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error performing client request during Create call: %w", err)
+		return nil, fmt.Errorf("error performing client request during {{ funcName }} call: %w", err)
 	}
 
 	target := new({{ .Name }}CreateResult)
 	target.Item = new({{ .Name }})
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding Create response: %w", err)
+		return nil, fmt.Errorf("error decoding {{ funcName }} response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr
@@ -401,7 +397,19 @@ func (c *Client) Create (ctx context.Context, {{ if .TypeOnCreate }} resourceTyp
 	target.response = resp
 	return target, nil
 }
-`))
+`
+
+var commonCreateTemplate = template.Must(template.New("").Funcs(
+	template.FuncMap{
+		"snakeCase": snakeCase,
+		"funcName": func() string {
+			return "Create"
+		},
+		"apiAction": func() string {
+			return ""
+		},
+	},
+).Parse(createTemplateStr))
 
 var updateTemplate = template.Must(template.New("").Parse(`
 func (c *Client) Update(ctx context.Context, id string, version uint32, opt... Option) (*{{ .Name }}UpdateResult, error) {

@@ -265,7 +265,7 @@ func (r *Repository) FailRun(ctx context.Context, runId string, completed, total
 // Once a run has been persisted with a final run status (completed, failed
 // or interrupted), any future calls to InterruptRuns will return an error with Code
 // errors.InvalidJobRunState.
-// WithServerId is the only valid option
+// WithControllerId is the only valid option
 func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.Duration, opt ...Option) ([]*Run, error) {
 	const op = "job.(Repository).InterruptRuns"
 
@@ -273,12 +273,12 @@ func (r *Repository) InterruptRuns(ctx context.Context, interruptThreshold time.
 
 	// interruptThreshold is seconds in past so * -1
 	args := []interface{}{-1 * int(interruptThreshold.Round(time.Second).Seconds())}
-	var whereServerId string
-	if opts.withServerId != "" {
-		whereServerId = "and server_id = ?"
-		args = append(args, opts.withServerId)
+	var whereControllerId string
+	if opts.withControllerId != "" {
+		whereControllerId = "and controller_id = ?"
+		args = append(args, opts.withControllerId)
 	}
-	query := fmt.Sprintf(interruptRunsQuery, whereServerId)
+	query := fmt.Sprintf(interruptRunsQuery, whereControllerId)
 
 	var runs []*Run
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},

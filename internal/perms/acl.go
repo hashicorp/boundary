@@ -1,18 +1,5 @@
 package perms
 
-/*
-A really useful page to be aware of when looking at ACLs is
-https://hashicorp.atlassian.net/wiki/spaces/ICU/pages/866976600/API+Actions+and+Permissions
-speaking of which: TODO: put that chart in public docs.
-
-Anyways, from that page you can see that there are really only a few patterns of
-ACLs that are ever allowed; see the Allowed function for a description along
-with the code.
-
-This makes it actually quite simple to perform the ACL checking. Much of ACL
-construction is thus synthesizing something reasonable from a set of Grants.
-*/
-
 import (
 	"strings"
 
@@ -116,6 +103,13 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 		// If the action was not found above but we did find output fields in
 		// patterns that match, we do not authorize the request, but we do build
 		// up the output fields patterns.
+		//
+		// Note that when using IsActionOrParent it is merely to test whether it
+		// is an allowed format since some formats operate ony on collections
+		// (or don't operate at all on collections) and we want to ensure that
+		// it is/isn't a create or list command or subcommand to know whether
+		// that form is valid. The actual checking of whether the given action
+		// is granted to the user already happened above.
 		var found bool
 		switch {
 		// Case 1: We only allow specific actions on specific types for the
@@ -149,8 +143,8 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			grant.id != "" &&
 			grant.id != "*" &&
 			grant.typ == resource.Unknown &&
-			aType != action.List &&
-			aType != action.Create:
+			!action.List.IsActionOrParent(aType) &&
+			!action.Create.IsActionOrParent(aType):
 
 			found = true
 
@@ -174,8 +168,8 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			grant.typ == r.Type &&
 			grant.typ != resource.Unknown &&
 			topLevelType(r.Type) &&
-			(aType == action.List ||
-				aType == action.Create):
+			(action.List.IsActionOrParent(aType) ||
+				action.Create.IsActionOrParent(aType)):
 
 			found = true
 
@@ -226,7 +220,8 @@ func topLevelType(typ resource.Type) bool {
 		resource.Scope,
 		resource.Session,
 		resource.Target,
-		resource.User:
+		resource.User,
+		resource.Worker:
 		return true
 	}
 	return false

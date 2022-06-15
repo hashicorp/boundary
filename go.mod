@@ -6,6 +6,8 @@ replace github.com/hashicorp/boundary/api => ./api
 
 replace github.com/hashicorp/boundary/sdk => ./sdk
 
+//replace github.com/hashicorp/nodeenrollment => ../nodeenrollment
+
 require (
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/fatih/color v1.13.0
@@ -15,7 +17,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.5.2
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.8
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.0
 	github.com/hashicorp/boundary/api v0.0.24
@@ -40,7 +42,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.1
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.2
 	github.com/hashicorp/go-secure-stdlib/password v0.1.1
-	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0
+	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.1
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-sockaddr v1.0.2
@@ -65,11 +67,13 @@ require (
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
+	github.com/prometheus/client_golang v1.12.1
 	github.com/ryanuber/go-glob v1.0.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.2
 	github.com/zalando/go-keyring v0.2.1
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220330033206-e17cdc41300f
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	golang.org/x/tools v0.1.10
@@ -86,16 +90,15 @@ require (
 require github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f // this is a branch and should be updated before merging
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220515130442-cac0b5ac133b
-	github.com/prometheus/client_golang v1.12.1
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	github.com/hashicorp/nodeenrollment v0.1.0
 )
 
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/AlecAivazis/survey/v2 v2.2.9 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
-	github.com/DATA-DOG/go-sqlmock v1.5.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
@@ -170,6 +173,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
+	github.com/sethvargo/go-diceware v0.3.0 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
@@ -187,7 +191,7 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/sqlite v1.2.4 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )

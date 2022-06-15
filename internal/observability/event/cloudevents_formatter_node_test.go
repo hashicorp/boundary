@@ -154,7 +154,7 @@ func TestNode_Process(t *testing.T) {
 	testNode, err := newCloudEventsFormatterFilter(testUrl, cloudevents.FormatJSON, WithSchema(testUrl))
 	require.NoError(t, err)
 
-	f, err := newFilter(`Data == "match-filter"`)
+	f, err := newFilter(`data == "match-filter"`)
 	require.NoError(t, err)
 
 	tests := []struct {

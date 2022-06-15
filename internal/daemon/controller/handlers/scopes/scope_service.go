@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -63,6 +64,7 @@ var (
 			resource.Role:       roles.CollectionActions,
 			resource.Scope:      CollectionActions,
 			resource.User:       users.CollectionActions,
+			resource.Worker:     workers.CollectionActions,
 		},
 
 		scope.Org.String(): {

@@ -117,7 +117,10 @@ func (c *Command) Run(args []string) int {
 	case "":
 		return cli.RunResultHelp
 
-	case "create", "update":
+	case "create":
+		return cli.RunResultHelp
+
+	case "update":
 		return cli.RunResultHelp
 
 	}
