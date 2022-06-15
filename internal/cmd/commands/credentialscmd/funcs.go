@@ -42,7 +42,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"  This command allows update operations on Boundary credential resources. Example:",
 			"",
-			"    Update a user password credential:",
+			"    Update a username password credential:",
 			"",
 			`      $ boundary credentials update username-password -id cred_1234567890 -name devops -description "For DevOps usage"`,
 			"",
