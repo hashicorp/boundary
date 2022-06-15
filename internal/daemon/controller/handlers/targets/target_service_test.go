@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/servers"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
@@ -32,18 +33,20 @@ func TestWorkerList_Addresses(t *testing.T) {
 }
 
 func TestWorkerList_Filter(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
 	var workers []*servers.Worker
 	for i := 0; i < 5; i++ {
 		switch {
 		case i%2 == 0:
-			workers = append(workers, servers.NewWorker(scope.Global.String(),
+			workers = append(workers, servers.TestKmsWorker(t, conn, wrapper,
 				servers.WithName(fmt.Sprintf("test_worker_%d", i)),
 				servers.WithWorkerTags(&servers.Tag{
 					Key:   fmt.Sprintf("key%d", i),
 					Value: fmt.Sprintf("value%d", i),
 				})))
 		default:
-			workers = append(workers, servers.NewWorkerForStatus(scope.Global.String(),
+			workers = append(workers, servers.TestPkiWorker(t, conn, wrapper,
 				servers.WithName(fmt.Sprintf("test_worker_%d", i)),
 				servers.WithWorkerTags(&servers.Tag{
 					Key:   "key",

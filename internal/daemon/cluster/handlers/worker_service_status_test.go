@@ -107,7 +107,7 @@ func TestStatus(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
-					Name:     worker1.GetWorkerReportedName(),
+					Name:     worker1.GetName(),
 					Address:  worker1.CanonicalAddress(),
 				},
 			},
@@ -127,7 +127,7 @@ func TestStatus(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
-					Name:     worker1.GetWorkerReportedName(),
+					Name:     worker1.GetName(),
 					Address:  worker1.CanonicalAddress(),
 				},
 				Jobs: []*pbs.JobStatus{
@@ -169,7 +169,7 @@ func TestStatus(t *testing.T) {
 					Address:  worker1.CanonicalAddress(),
 				},
 			},
-			wantErrMsg: status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; at least one is required.").Error(),
+			wantErrMsg: status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; one is required.").Error(),
 		},
 		{
 			name:    "No Address",
@@ -177,7 +177,7 @@ func TestStatus(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
-					Name:     worker1.GetWorkerReportedName(),
+					Name:     worker1.GetName(),
 				},
 			},
 			wantErrMsg: status.Error(codes.InvalidArgument, "Address is not set but is required.").Error(),
@@ -310,7 +310,7 @@ func TestStatusSessionClosed(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
-					Name:     worker1.GetWorkerReportedName(),
+					Name:     worker1.GetName(),
 					Address:  worker1.CanonicalAddress(),
 				},
 				Jobs: []*pbs.JobStatus{
@@ -477,7 +477,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	req := &pbs.StatusRequest{
 		WorkerStatus: &servers.ServerWorkerStatus{
 			PublicId: worker1.GetPublicId(),
-			Name:     worker1.GetWorkerReportedName(),
+			Name:     worker1.GetName(),
 			Address:  worker1.CanonicalAddress(),
 		},
 		Jobs: []*pbs.JobStatus{
@@ -578,7 +578,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := servers.TestKmsWorker(t, conn, wrapper)
+	worker1 := servers.TestPkiWorker(t, conn, wrapper)
 
 	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kms)
 	require.NoError(t, err)
@@ -636,8 +636,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
-					Name:    worker1.GetWorkerReportedName(),
-					Address: worker1.CanonicalAddress(),
+					Address: "someaddress",
 					KeyId:   nodeInfo.Id,
 				},
 			},
@@ -657,8 +656,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					KeyId:   nodeInfo.Id,
-					Name:    worker1.GetWorkerReportedName(),
-					Address: worker1.CanonicalAddress(),
+					Address: "someaddress",
 				},
 				Jobs: []*pbs.JobStatus{
 					{
@@ -703,6 +701,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 				assert.Equal(tc.wantErrMsg, err.Error())
 				return
 			}
+			require.NoError(err)
 			assert.Empty(
 				cmp.Diff(
 					tc.want,

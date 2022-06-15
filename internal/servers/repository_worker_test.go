@@ -212,16 +212,6 @@ func TestLookupWorker(t *testing.T) {
 		servers.WithDescription("description"),
 		servers.WithAddress("address"),
 		servers.WithWorkerTags(&servers.Tag{"key", "val"}))
-	w, err = repo.UpsertWorkerStatus(context.Background(),
-		servers.NewWorkerForStatus(w.GetScopeId(),
-			servers.WithName(w.GetName()),
-			servers.WithAddress(w.GetAddress()),
-			servers.WithWorkerTags(&servers.Tag{
-				Key:   "config",
-				Value: "test",
-			})),
-		servers.WithUpdateTags(true),
-		servers.WithPublicId(w.GetPublicId()))
 	require.NoError(t, err)
 
 	sessRepo, err := session.NewRepository(rw, rw, kms)
@@ -261,12 +251,11 @@ func TestLookupWorker(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
 		assert.Equal(t, uint32(3), got.ActiveConnectionCount())
-		assert.Equal(t, map[string][]string{"key": {"val"}}, got.GetApiTags())
-		assert.Equal(t, map[string][]string{"config": {"test"}}, got.GetConfigTags())
+		assert.Empty(t, got.GetApiTags())
 		assert.Equal(t, map[string][]string{
-			"key":    {"val"},
-			"config": {"test"},
+			"key": {"val"},
 		}, got.CanonicalTags())
+		assert.Equal(t, got.CanonicalTags(), got.GetConfigTags())
 	})
 	t.Run("not found", func(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, "w_unknownid")
@@ -290,35 +279,92 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := servers.NewRepository(rw, rw, kms)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	repo, err := servers.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
+
+	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+	require.NoError(t, err)
+
 	ctx := context.Background()
 
-	wStatus1 := servers.NewWorkerForStatus(scope.Global.String(),
-		servers.WithAddress("address"), servers.WithName("config_name1"))
-	worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
-	require.NoError(t, err)
-	{
+	t.Run("create an initial kms worker", func(t *testing.T) {
+		wStatus1 := servers.NewWorkerForStatus(scope.Global.String(),
+			servers.WithAddress("address"), servers.WithName("config_name1"))
+		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
+		require.NoError(t, err)
+
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
 		assert.Equal(t, wStatus1.GetAddress(), worker.CanonicalAddress())
 		assert.Equal(t, "config_name1", worker.Name)
-		assert.Equal(t, worker.GetLastStatusTime(), worker.UpdateTime)
+		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
 		assert.Equal(t, uint32(1), worker.Version)
-		assert.Equal(t, "address", worker.Address)
+		assert.Equal(t, "address", worker.GetAddress())
 		assert.Empty(t, worker.Description)
-	}
 
-	// TODO: Add tests that attempt to upsert a KMS worker where there already
-	// exists a PKI worker with the same name.  It should just error with an
-	// easy to identify error.
+		// update again and see updated last status time
+		worker, err = repo.UpsertWorkerStatus(ctx, wStatus1)
+		require.NoError(t, err)
+		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
+	})
+
+	// Setup and use a pki worker
+	pkiWorker := servers.TestPkiWorker(t, conn, wrapper, servers.WithName("pki"))
+	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
+	require.NoError(t, err)
+	// Create struct to pass in with workerId that will be passed along to storage
+	state, err := servers.AttachWorkerIdToState(ctx, pkiWorker.GetPublicId())
+	require.NoError(t, err)
+
+	// This happens on the worker
+	fileStorage, err := file.New(ctx)
+	require.NoError(t, err)
+	nodeCreds, err := types.NewNodeCredentials(ctx, fileStorage)
+	require.NoError(t, err)
+	// Create request using worker id
+	fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(t, err)
+
+	registeredNode, err := registration.AuthorizeNode(ctx, rootStorage, fetchReq, nodeenrollment.WithState(state))
+	require.NoError(t, err)
+	pkiWorkerKeyId := registeredNode.GetId()
+
+	t.Run("update status for pki worker", func(t *testing.T) {
+		wStatus1 := servers.NewWorkerForStatus(scope.Global.String(),
+			servers.WithAddress("pki_address"))
+		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, servers.WithKeyId(pkiWorkerKeyId))
+		require.NoError(t, err)
+
+		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
+		assert.Equal(t, wStatus1.GetAddress(), worker.CanonicalAddress())
+		assert.Equal(t, "pki", worker.Name)
+		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
+		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
+		assert.Equal(t, uint32(1), worker.Version)
+		assert.Equal(t, "pki_address", worker.GetAddress())
+		assert.Empty(t, worker.Description)
+	})
 
 	failureCases := []struct {
 		name      string
 		repo      *servers.Repository
 		status    *servers.Worker
+		options   []servers.Option
 		errAssert func(*testing.T, error)
 	}{
+		{
+			name: "conflicting name with pki",
+			repo: repo,
+			status: servers.NewWorkerForStatus(scope.Global.String(),
+				servers.WithName(pkiWorker.GetName()),
+				servers.WithAddress("someaddress")),
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.NotUnique), err), err)
+			},
+		},
 		{
 			name: "no address",
 			repo: repo,
@@ -345,7 +391,19 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "no name",
+			name: "name and key id provided",
+			repo: repo,
+			status: servers.NewWorkerForStatus(scope.Global.String(),
+				servers.WithName("name and key id provided"),
+				servers.WithAddress("someaddress")),
+			options: []servers.Option{servers.WithKeyId(pkiWorkerKeyId)},
+			errAssert: func(t *testing.T, err error) {
+				t.Helper()
+				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err), err)
+			},
+		},
+		{
+			name: "no name or key id",
 			repo: repo,
 			status: servers.NewWorkerForStatus(scope.Global.String(),
 				servers.WithAddress("no_name_address")),
@@ -382,7 +440,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 				mock.ExpectBegin()
 				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "create-error"))
 				mock.ExpectRollback()
-				r, err := servers.NewRepository(rw, rw, kms)
+				r, err := servers.NewRepository(rw, rw, kmsCache)
 				require.NoError(t, err)
 				return r
 			}(),
@@ -397,29 +455,28 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	}
 	for _, tc := range failureCases {
 		t.Run(fmt.Sprintf("Failures %s", tc.name), func(t *testing.T) {
-			_, err = tc.repo.UpsertWorkerStatus(ctx, tc.status)
+			_, err = tc.repo.UpsertWorkerStatus(ctx, tc.status, tc.options...)
 			assert.Error(t, err)
 			tc.errAssert(t, err)
 
 			// Still only the original worker exists.
 			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 			require.NoError(t, err)
-			assert.Len(t, workers, 1)
+			assert.Len(t, workers, 2)
 		})
 	}
 
-	{
+	t.Run("add another status", func(t *testing.T) {
 		anotherStatus := servers.NewWorkerForStatus(scope.Global.String(),
 			servers.WithName("another_test_worker"),
 			servers.WithAddress("address"))
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
-		{
-			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
-			require.NoError(t, err)
-			assert.Len(t, workers, 2)
-		}
-	}
+
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+		require.NoError(t, err)
+		assert.Len(t, workers, 3)
+	})
 }
 
 func TestTagUpdatingListing(t *testing.T) {
@@ -634,6 +691,8 @@ func TestRepository_CreateWorker(t *testing.T) {
 		return "", errors.New(testCtx, errors.Internal, "test", "testNewIdFn-error")
 	}
 
+	kmsWorker := servers.TestKmsWorker(t, conn, wrapper)
+
 	rootStorage, err := servers.NewRepositoryStorage(testCtx, rw, rw, testKms)
 	require.NoError(t, err)
 	_, err = rotation.RotateRootCertificates(testCtx, rootStorage)
@@ -795,6 +854,41 @@ func TestRepository_CreateWorker(t *testing.T) {
 			repo:            testRepo,
 			wantErr:         true,
 			wantErrContains: "unable to authorize node",
+		},
+		{
+			name: "unique name violation with kms worker",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				w.Name = kmsWorker.GetName()
+				return w
+			},
+			reader:    rw,
+			repo:      testRepo,
+			wantErr:   true,
+			wantErrIs: errors.NotUnique,
+		},
+		{
+			name: "success",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				w.Name = "success"
+				return w
+			},
+			reader: rw,
+			repo:   testRepo,
+		},
+		// This case must follow the one above it.
+		{
+			name: "unique name violation with pki worker",
+			setup: func() *servers.Worker {
+				w := servers.NewWorker(scope.Global.String())
+				w.Name = "success"
+				return w
+			},
+			reader:    rw,
+			repo:      testRepo,
+			wantErr:   true,
+			wantErrIs: errors.NotUnique,
 		},
 		{
 			name: "success-with-fetch-node-req",
