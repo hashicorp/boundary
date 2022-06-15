@@ -627,7 +627,7 @@ func TestAuthenticate_Password(t *testing.T) {
 	}
 }
 
-func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
+func TestAuthenticate_AuthAccountConnectedToIamUsername_Password(t *testing.T) {
 	ctx := context.TODO()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")

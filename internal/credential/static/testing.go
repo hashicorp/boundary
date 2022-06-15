@@ -64,7 +64,7 @@ func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, s
 	return css
 }
 
-// TestUsernamePasswordCredential creates a user password credential in the provided DB with
+// TestUsernamePasswordCredential creates a username password credential in the provided DB with
 // the provided scope and any values passed in through.
 // If any errors are encountered during the creation of the store, the test will fail.
 func TestUsernamePasswordCredential(
@@ -105,7 +105,7 @@ func TestUsernamePasswordCredential(
 	return cred
 }
 
-// TestUsernamePasswordCredentials creates count number of user password credentials in
+// TestUsernamePasswordCredentials creates count number of username password credentials in
 // the provided DB with the provided scope id. If any errors are
 // encountered during the creation of the credentials, the test will fail.
 func TestUsernamePasswordCredentials(
