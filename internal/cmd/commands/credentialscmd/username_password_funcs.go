@@ -84,7 +84,7 @@ func (c *UsernamePasswordCommand) extraUsernamePasswordHelpFunc(_ map[string]fun
 
 	case "update":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary credentials update username password [options] [args]",
+			"Usage: boundary credentials update username-password [options] [args]",
 			"",
 			"  Update a username password credential given its ID. Example:",
 			"",
