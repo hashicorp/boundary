@@ -548,14 +548,14 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 		}
 		nameString := req.GetItem().GetName().String()
 		if !strutil.Printable(nameString) {
-			badFields["name"] = "Worker name contains non-printable characters"
+			badFields[globals.NameField] = "Contains non-printable characters"
 		}
 		if strings.ToLower(nameString) != nameString {
-			badFields["name"] = "Worker name must be all lowercase."
+			badFields[globals.NameField] = "Must be all lowercase."
 		}
 		descriptionString := req.GetItem().GetDescription().String()
 		if !strutil.Printable(descriptionString) {
-			badFields["description"] = "Worker description contains non-printable characters."
+			badFields[globals.DescriptionField] = "Contains non-printable characters."
 		}
 		return badFields
 	}, servers.WorkerPrefix)
@@ -591,14 +591,14 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 		}
 		nameString := req.GetItem().GetName().String()
 		if !strutil.Printable(nameString) {
-			badFields["name"] = "Worker name contains non-printable characters."
+			badFields[globals.NameField] = "Contains non-printable characters."
 		}
 		if strings.ToLower(nameString) != nameString {
-			badFields["name"] = "Worker name must be all lowercase"
+			badFields[globals.NameField] = "Must be all lowercase"
 		}
 		descriptionString := req.GetItem().GetDescription().String()
 		if !strutil.Printable(descriptionString) {
-			badFields["description"] = "Worker description contains non-printable characters."
+			badFields[globals.DescriptionField] = "Contains non-printable characters."
 		}
 		return badFields
 	})
