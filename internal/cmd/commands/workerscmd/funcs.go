@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/workers"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
@@ -83,11 +84,6 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 				fmt.Sprintf("    Last Status Time:        %s", item.LastStatusTime.Format(time.RFC1123)),
 			)
 		}
-		if true {
-			output = append(output,
-				fmt.Sprintf("    Active Connection Count: %d", item.ActiveConnectionCount),
-			)
-		}
 
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
@@ -124,7 +120,11 @@ func printItemTable(result api.GenericResult) string {
 	if !item.LastStatusTime.IsZero() {
 		nonAttributeMap["Last Status Time"] = item.LastStatusTime
 	}
-	nonAttributeMap["Active Connection Count"] = item.ActiveConnectionCount
+
+	resultMap := result.GetResponse().Map
+	if count, ok := resultMap[globals.ActiveConnectionCountField]; ok {
+		nonAttributeMap["Active Connection Count"] = count
+	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 

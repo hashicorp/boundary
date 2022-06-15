@@ -463,7 +463,7 @@ func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*
 		out.LastStatusTime = in.GetLastStatusTime().GetTimestamp()
 	}
 	if outputFields.Has(globals.ActiveConnectionCountField) {
-		out.ActiveConnectionCount = in.ActiveConnectionCount()
+		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.ActiveConnectionCount()}
 	}
 	if outputFields.Has(globals.CanonicalTagsField) && len(in.CanonicalTags()) > 0 {
 		var err error
