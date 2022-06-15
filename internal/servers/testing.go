@@ -14,6 +14,11 @@ import (
 	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/registration"
+	"github.com/hashicorp/nodeenrollment/rotation"
+	"github.com/hashicorp/nodeenrollment/storage/file"
+	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -83,9 +88,8 @@ func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *W
 }
 
 // TestKmsWorker inserts a worker into the db to satisfy foreign key constraints.
-// The worker provided fields are auto generated. WithName and WithDescription,
-// are applied to the resource name, description and address if
-// present.
+// The worker provided fields are auto generated. if WithName is not present a
+// random name will be generated and assigned to the worker.
 func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
 	rw := db.New(conn)
@@ -143,8 +147,9 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 
 // TestPkiWorker inserts a worker into the db to satisfy foreign key constraints.
 // The worker provided fields are auto generated. WithName and WithDescription,
-// are applied to the resource name, description and address if
-// present.
+// are applied to the resource name, description if present.  WithTestPkiWorkerAuthorizedKeyId
+// can be used to make the PkiWorker authorized in which case the string pointer
+// passed to WithTestPkiWorkerAuthorizedKeyId is set to the key id.
 func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
 	rw := db.New(conn)
@@ -172,6 +177,30 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 			})
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))
+	}
+	if opts.withTestPkiWorkerAuthorized {
+		rootStorage, err := NewRepositoryStorage(ctx, rw, rw, kms)
+		require.NoError(t, err)
+		_, err = rotation.RotateRootCertificates(ctx, rootStorage)
+		require.NoError(t, err)
+		// Create struct to pass in with workerId that will be passed along to storage
+		state, err := AttachWorkerIdToState(ctx, wrk.PublicId)
+		require.NoError(t, err)
+
+		// This happens on the worker
+		fileStorage, err := file.New(ctx)
+		require.NoError(t, err)
+		nodeCreds, err := types.NewNodeCredentials(ctx, fileStorage)
+		require.NoError(t, err)
+		// Create request using worker id
+		fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(ctx)
+		require.NoError(t, err)
+		registeredNode, err := registration.AuthorizeNode(ctx, rootStorage, fetchReq, nodeenrollment.WithState(state))
+		require.NoError(t, err)
+
+		if opts.withTestPkiWorkerKeyId != nil {
+			*opts.withTestPkiWorkerKeyId = registeredNode.Id
+		}
 	}
 	wrk, err = serversRepo.LookupWorker(ctx, wrk.GetPublicId())
 	require.NoError(t, err)

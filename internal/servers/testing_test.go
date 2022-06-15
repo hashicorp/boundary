@@ -55,4 +55,10 @@ func TestTestPkiWorker(t *testing.T) {
 	assert.Equal(t, name, lkpWorker.GetName())
 	assert.Equal(t, description, lkpWorker.GetDescription())
 	assert.Nil(t, lkpWorker.GetLastStatusTime())
+
+	var keyId string
+	authorizedWorker := TestPkiWorker(t, conn, wrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId))
+	assert.NotNil(t, authorizedWorker)
+	assert.True(t, strings.HasPrefix(authorizedWorker.GetPublicId(), WorkerPrefix))
+	assert.NotEmpty(t, keyId)
 }
