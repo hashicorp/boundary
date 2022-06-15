@@ -84,11 +84,6 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 				fmt.Sprintf("    Last Status Time:        %s", item.LastStatusTime.Format(time.RFC1123)),
 			)
 		}
-		if true {
-			output = append(output,
-				fmt.Sprintf("    Active Connection Count: %d", item.ActiveConnectionCount),
-			)
-		}
 
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
