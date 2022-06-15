@@ -58,8 +58,9 @@ func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey 
 	return cert
 }
 
-func TestWorkerAuth(ctx context.Context, t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *WorkerAuth {
+func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *WorkerAuth {
 	t.Helper()
+	ctx := context.Background()
 	rw := db.New(conn)
 	wSignPubKey := populateBytes(defaultLength)
 	wEncPubKey := populateBytes(defaultLength)
@@ -104,12 +105,10 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	if opts.withAddress != "" {
 		address = opts.withAddress
 	}
-	id, err := newWorkerIdFromScopeAndName(ctx, scope.Global.String(), name)
-	require.NoError(t, err)
 	wrk := NewWorker(scope.Global.String(),
 		WithName(name),
 		WithAddress(address))
-	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk, WithPublicId(id))
+	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)
 
@@ -120,7 +119,7 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 				WorkerId: wrk.GetPublicId(),
 				Key:      t.Key,
 				Value:    t.Value,
-				Source:   "api",
+				Source:   "configuration",
 			})
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))
@@ -168,7 +167,7 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 				WorkerId: wrk.GetPublicId(),
 				Key:      t.Key,
 				Value:    t.Value,
-				Source:   "config",
+				Source:   "configuration",
 			})
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))

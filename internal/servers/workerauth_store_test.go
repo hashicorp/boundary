@@ -431,7 +431,7 @@ func TestWorkerCertBundle(t *testing.T) {
 	testKey := TestKmsKey(ctx, t, conn, wrapper)
 
 	worker := TestPkiWorker(t, conn, wrapper)
-	workerAuth := TestWorkerAuth(ctx, t, conn, worker, testKey)
+	workerAuth := TestWorkerAuth(t, conn, worker, testKey)
 	rootCA := TestRootCertificate(ctx, t, conn, testKey)
 	certBundle := populateBytes(defaultLength)
 
