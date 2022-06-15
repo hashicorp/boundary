@@ -24,11 +24,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   sessions after 1 hour.
   See Deprecations/Changes for some additional details.
   [PR](https://github.com/hashicorp/boundary/pull/2160).
+* ui: Use include_terminated flag for listing sessions.
+  [PR](https://github.com/hashicorp/boundary-ui/pull/1126).
+* ui: Add Quick Setup onboarding guide.
+  [PR](https://github.com/hashicorp/boundary-ui/pull/1140).
 
 ### Bug Fixes
 
 * The plugin execution_dir configuration parameter is now respected.
   [PR](https://github.com/hashicorp/boundary/pull/2183).
+* ui: Fix Users page not updating fields correctly.
+  [PR](https://github.com/hashicorp/boundary-ui/pull/1105).
 
 ### Deprecations/Changes
 
