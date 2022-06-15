@@ -21,6 +21,9 @@
       "name": "controller.api.services.v1.CredentialLibraryService"
     },
     {
+      "name": "controller.api.services.v1.CredentialService"
+    },
+    {
       "name": "controller.api.services.v1.CredentialStoreService"
     },
     {
@@ -908,6 +911,147 @@
         ],
         "tags": [
           "controller.api.services.v1.CredentialStoreService"
+        ]
+      }
+    },
+    "/v1/credentials": {
+      "get": {
+        "summary": "Lists all Credentials.",
+        "operationId": "CredentialService_ListCredentials",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListCredentialsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "credential_store_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a single Credential.",
+        "operationId": "CredentialService_CreateCredential",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialService"
+        ]
+      }
+    },
+    "/v1/credentials/{id}": {
+      "get": {
+        "summary": "Gets a single Credential.",
+        "operationId": "CredentialService_GetCredential",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Credential",
+        "operationId": "CredentialService_DeleteCredential",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteCredentialResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Credential.",
+        "operationId": "CredentialService_UpdateCredential",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.CredentialService"
         ]
       }
     },
@@ -2751,52 +2895,6 @@
         ]
       }
     },
-    "/v1/targets/{id}:add-credential-libraries": {
-      "post": {
-        "summary": "Deprecated: use AddTargetCredentialSources instead.",
-        "operationId": "TargetService_AddTargetCredentialLibraries",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "application_credential_library_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      }
-    },
     "/v1/targets/{id}:add-credential-sources": {
       "post": {
         "summary": "Adds existing Credential Sources to a Target.",
@@ -2993,52 +3091,6 @@
         ]
       }
     },
-    "/v1/targets/{id}:remove-credential-libraries": {
-      "post": {
-        "summary": "Deprecated: use RemoveTargetCredentialSources instead.",
-        "operationId": "TargetService_RemoveTargetCredentialLibraries",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "application_credential_library_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      }
-    },
     "/v1/targets/{id}:remove-credential-sources": {
       "post": {
         "summary": "Removes Credential Sources from the Target.",
@@ -3175,53 +3227,6 @@
                   }
                 }
               }
-            }
-          }
-        ],
-        "tags": [
-          "controller.api.services.v1.TargetService"
-        ]
-      }
-    },
-    "/v1/targets/{id}:set-credential-libraries": {
-      "post": {
-        "summary": "Deprecated: use SetTargetCredentialSources instead.",
-        "operationId": "TargetService_SetTargetCredentialLibraries",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "version": {
-                  "type": "integer",
-                  "format": "int64",
-                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
-                },
-                "application_credential_library_ids": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "description": "Sets the values for application_credential_library_ids.  If any\ncredential_library_id field that is not set in the request will result in\nthose fields being cleared."
             }
           }
         ],
@@ -4097,6 +4102,67 @@
         }
       },
       "title": "CredentialLibrary contains all fields related to an Credential Library resource"
+    },
+    "controller.api.resources.credentials.v1.Credential": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the Credential.",
+          "readOnly": true
+        },
+        "credential_store_id": {
+          "type": "string",
+          "description": "The ID of the Credential Store of which this Credential is a part."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for this Credential.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set description for identification purposes."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "type": {
+          "type": "string",
+          "description": "The Credential type."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Credential type."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        }
+      },
+      "title": "Credential contains all fields related to an Credential resource"
     },
     "controller.api.resources.credentialstores.v1.CredentialStore": {
       "type": "object",
@@ -5046,35 +5112,6 @@
         }
       }
     },
-    "controller.api.resources.targets.v1.CredentialLibrary": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The ID of the Credential Library."
-        },
-        "name": {
-          "type": "string",
-          "description": "Output only.  The name of the Credential Library.",
-          "readOnly": true
-        },
-        "description": {
-          "type": "string",
-          "description": "Output only. The description of the Credential Library.",
-          "readOnly": true
-        },
-        "credential_store_id": {
-          "type": "string",
-          "description": "Output only. The Credential Store to which this Credential Library belongs.",
-          "readOnly": true
-        },
-        "type": {
-          "type": "string",
-          "description": "Output only. The type of the credential library.",
-          "readOnly": true
-        }
-      }
-    },
     "controller.api.resources.targets.v1.CredentialSource": {
       "type": "object",
       "properties": {
@@ -5212,11 +5249,6 @@
           "description": "Output only. The credential source information.",
           "readOnly": true
         },
-        "credential_library": {
-          "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialLibrary",
-          "description": "Output only. The library which generated this credential. Deprecated: use credential_source instead.",
-          "readOnly": true
-        },
         "secret": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.SessionSecret",
           "description": "Output only. The secret of this credential base64 encoded.",
@@ -5337,22 +5369,6 @@
         "worker_filter": {
           "type": "string",
           "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request."
-        },
-        "application_credential_library_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Output only. The IDs of the application credential library ids associated with this Target. Deprecated: use application_credential_source_ids instead.",
-          "readOnly": true
-        },
-        "application_credential_libraries": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialLibrary"
-          },
-          "description": "Output only. The application credential libraries associated with this Target. Deprecated: use application_credential_sources instead.",
-          "readOnly": true
         },
         "application_credential_source_ids": {
           "type": "array",
@@ -5638,14 +5654,6 @@
         }
       }
     },
-    "controller.api.services.v1.AddTargetCredentialLibrariesResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
     "controller.api.services.v1.AddTargetCredentialSourcesResponse": {
       "type": "object",
       "properties": {
@@ -5757,6 +5765,17 @@
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateCredentialResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
         }
       }
     },
@@ -5893,6 +5912,9 @@
     "controller.api.services.v1.DeleteCredentialLibraryResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.DeleteCredentialResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.DeleteCredentialStoreResponse": {
       "type": "object"
     },
@@ -5955,6 +5977,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
+        }
+      }
+    },
+    "controller.api.services.v1.GetCredentialResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
         }
       }
     },
@@ -6105,6 +6135,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListCredentialsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
           }
         }
       }
@@ -6262,14 +6303,6 @@
         }
       }
     },
-    "controller.api.services.v1.RemoveTargetCredentialLibrariesResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
     "controller.api.services.v1.RemoveTargetCredentialSourcesResponse": {
       "type": "object",
       "properties": {
@@ -6342,14 +6375,6 @@
         }
       }
     },
-    "controller.api.services.v1.SetTargetCredentialLibrariesResponse": {
-      "type": "object",
-      "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
-        }
-      }
-    },
     "controller.api.services.v1.SetTargetCredentialSourcesResponse": {
       "type": "object",
       "properties": {
@@ -6403,6 +6428,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateCredentialResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
         }
       }
     },

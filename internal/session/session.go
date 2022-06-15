@@ -54,6 +54,9 @@ type ComposedOf struct {
 	// DynamicCredentials are dynamic credentials that will be retrieved
 	// for the session. DynamicCredentials optional.
 	DynamicCredentials []*DynamicCredential
+	// StaticCredentials are static credentials that will be retrieved
+	// for the session. StaticCredentials optional.
+	StaticCredentials []*StaticCredential
 }
 
 // Session contains information about a user's session with a target
@@ -110,6 +113,9 @@ type Session struct {
 	// DynamicCredentials for the session.
 	DynamicCredentials []*DynamicCredential `gorm:"-"`
 
+	// StaticCredentials for the session.
+	StaticCredentials []*StaticCredential `gorm:"-"`
+
 	// Connections for the session are for read only and are ignored during write operations
 	Connections []*Connection `gorm:"-"`
 
@@ -149,6 +155,7 @@ func New(c ComposedOf, _ ...Option) (*Session, error) {
 		ConnectionLimit:    c.ConnectionLimit,
 		WorkerFilter:       c.WorkerFilter,
 		DynamicCredentials: c.DynamicCredentials,
+		StaticCredentials:  c.StaticCredentials,
 	}
 	if err := s.validateNewSession(); err != nil {
 		return nil, errors.WrapDeprecated(err, op)
@@ -190,6 +197,13 @@ func (s *Session) Clone() interface{} {
 		for _, sc := range s.DynamicCredentials {
 			cp := sc.clone()
 			clone.DynamicCredentials = append(clone.DynamicCredentials, cp)
+		}
+	}
+	if len(s.StaticCredentials) > 0 {
+		clone.StaticCredentials = make([]*StaticCredential, 0, len(s.StaticCredentials))
+		for _, sc := range s.StaticCredentials {
+			cp := sc.clone()
+			clone.StaticCredentials = append(clone.StaticCredentials, cp)
 		}
 	}
 	if s.TofuToken != nil {
@@ -277,6 +291,8 @@ func (s *Session) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType
 			return errors.New(ctx, errors.InvalidParameter, op, "worker filter is immutable")
 		case contains(opts.WithFieldMaskPaths, "DynamicCredentials"):
 			return errors.New(ctx, errors.InvalidParameter, op, "dynamic credentials are immutable")
+		case contains(opts.WithFieldMaskPaths, "StaticCredentials"):
+			return errors.New(ctx, errors.InvalidParameter, op, "static credentials are immutable")
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
 				return errors.Wrap(ctx, err, op)

@@ -23,10 +23,20 @@ func (r *Repository) RunJobs(ctx context.Context, serverId string, opt ...Option
 	}
 
 	opts := getOpts(opt...)
+	var limit string
+	switch {
+	case opts.withRunJobsLimit == 0:
+		// zero signals the defaults should be used.
+		limit = fmt.Sprintf("limit %d", defaultRunJobsLimit)
+	case opts.withRunJobsLimit > 0:
+		limit = fmt.Sprintf("limit %d", opts.withRunJobsLimit)
+	}
+
+	query := fmt.Sprintf(runJobsQuery, limit)
 	var runs []*Run
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := w.Query(ctx, runJobsQuery, []interface{}{serverId, opts.withRunJobsLimit})
+			rows, err := w.Query(ctx, query, []interface{}{serverId})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

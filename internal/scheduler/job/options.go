@@ -24,7 +24,7 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withNextRunIn    time.Duration
-	withRunJobsLimit uint
+	withRunJobsLimit int
 	withLimit        int
 	withName         string
 	withControllerId string
@@ -47,7 +47,8 @@ func WithNextRunIn(d time.Duration) Option {
 
 // WithRunJobsLimit provides an option to provide the number of jobs to run.
 // If WithRunJobsLimit == 0, then default run jobs limit is used.
-func WithRunJobsLimit(l uint) Option {
+// If WithRunJobsLimit < 0, then no limit is used.
+func WithRunJobsLimit(l int) Option {
 	return func(o *options) {
 		o.withRunJobsLimit = l
 		if o.withRunJobsLimit == 0 {

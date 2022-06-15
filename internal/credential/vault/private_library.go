@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var _ credential.UserPassword = (*usrPassCred)(nil)
+var _ credential.UsernamePassword = (*usrPassCred)(nil)
 
 type usrPassCred struct {
 	*baseCred
@@ -47,7 +47,7 @@ func (bc *baseCred) getExpiration() time.Duration  { return bc.expiration }
 // UnspecifiedType.
 func convert(ctx context.Context, bc *baseCred) (dynamicCred, error) {
 	switch bc.Library().CredentialType() {
-	case credential.UserPasswordType:
+	case credential.UsernamePasswordType:
 		return baseToUsrPass(ctx, bc)
 	}
 	return bc, nil
@@ -59,7 +59,7 @@ func baseToUsrPass(ctx context.Context, bc *baseCred) (*usrPassCred, error) {
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
 	case bc.lib == nil:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
-	case bc.Library().CredentialType() != credential.UserPasswordType:
+	case bc.Library().CredentialType() != credential.UsernamePasswordType:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
 	}
 

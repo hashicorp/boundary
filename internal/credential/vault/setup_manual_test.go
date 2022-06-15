@@ -79,7 +79,7 @@ func TestSetupSleepyDevEnvironment(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, lib)
-	tgt, err = tcl.AddCredentialLibraries(ctx, tgt.Item.Id, 0, targets.WithAutomaticVersioning(true), targets.WithApplicationCredentialLibraryIds([]string{lib.Item.Id}))
+	tgt, err = tcl.AddCredentialSources(ctx, tgt.Item.Id, 0, targets.WithAutomaticVersioning(true), targets.WithApplicationCredentialSourceIds([]string{lib.Item.Id}))
 	require.NoError(t, err)
 	require.NotNil(t, tgt)
 	// Worker 1

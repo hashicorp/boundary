@@ -71,19 +71,9 @@ func TestTargets(t *testing.T) {
 							HostCatalogId: "host-catalog-id",
 						},
 					},
-					SessionMaxSeconds:               &wrapperspb.UInt32Value{Value: 0},
-					SessionConnectionLimit:          &wrapperspb.Int32Value{Value: 0},
-					WorkerFilter:                    &wrapperspb.StringValue{Value: "worker-filter"},
-					ApplicationCredentialLibraryIds: []string{"application-credential-library-id"},
-					ApplicationCredentialLibraries: []*pb.CredentialLibrary{
-						{
-							Id:                "id",
-							Name:              "name",
-							Description:       "description",
-							CredentialStoreId: "credential-store-id",
-							Type:              "type",
-						},
-					},
+					SessionMaxSeconds:              &wrapperspb.UInt32Value{Value: 0},
+					SessionConnectionLimit:         &wrapperspb.Int32Value{Value: 0},
+					WorkerFilter:                   &wrapperspb.StringValue{Value: "worker-filter"},
 					ApplicationCredentialSourceIds: []string{"application-credential-source-id"},
 					ApplicationCredentialSources: []*pb.CredentialSource{
 						{
@@ -151,19 +141,9 @@ func TestTargets(t *testing.T) {
 							HostCatalogId: "host-catalog-id",
 						},
 					},
-					SessionMaxSeconds:               &wrapperspb.UInt32Value{Value: 0},
-					SessionConnectionLimit:          &wrapperspb.Int32Value{Value: 0},
-					WorkerFilter:                    &wrapperspb.StringValue{Value: "worker-filter"},
-					ApplicationCredentialLibraryIds: []string{"application-credential-library-id"},
-					ApplicationCredentialLibraries: []*pb.CredentialLibrary{
-						{
-							Id:                "id",
-							Name:              "name",
-							Description:       "description",
-							CredentialStoreId: "credential-store-id",
-							Type:              "type",
-						},
-					},
+					SessionMaxSeconds:              &wrapperspb.UInt32Value{Value: 0},
+					SessionConnectionLimit:         &wrapperspb.Int32Value{Value: 0},
+					WorkerFilter:                   &wrapperspb.StringValue{Value: "worker-filter"},
 					ApplicationCredentialSourceIds: []string{"application-credential-source-id"},
 					ApplicationCredentialSources: []*pb.CredentialSource{
 						{
@@ -253,13 +233,6 @@ func TestTargets(t *testing.T) {
 									Type:              "type",
 									CredentialType:    "credential-type",
 								},
-								CredentialLibrary: &pb.CredentialLibrary{
-									Id:                "id",
-									Name:              "name",
-									Description:       "description",
-									CredentialStoreId: "credential-store-id",
-									Type:              "type",
-								},
 								Secret: &pb.SessionSecret{
 									Raw: "raw-secrets",
 									Decoded: &structpb.Struct{
@@ -308,13 +281,6 @@ func TestTargets(t *testing.T) {
 									CredentialStoreId: "credential-store-id",
 									Type:              "type",
 									CredentialType:    "credential-type",
-								},
-								CredentialLibrary: &pb.CredentialLibrary{
-									Id:                "id",
-									Name:              "name",
-									Description:       "description",
-									CredentialStoreId: "credential-store-id",
-									Type:              "type",
 								},
 								Secret: &pb.SessionSecret{
 									Raw: encrypt.RedactedData,

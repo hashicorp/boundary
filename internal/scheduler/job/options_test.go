@@ -31,7 +31,7 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithRunJobsLimit(0))
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
-		assert.Equal(uint(defaultRunJobsLimit), opts.withRunJobsLimit)
+		assert.Equal(defaultRunJobsLimit, opts.withRunJobsLimit)
 	})
 	t.Run("WithLimit", func(t *testing.T) {
 		assert := assert.New(t)

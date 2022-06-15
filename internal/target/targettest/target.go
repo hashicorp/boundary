@@ -5,6 +5,7 @@ package targettest
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -203,8 +204,34 @@ func Vet(ctx context.Context, t target.Target) error {
 	return nil
 }
 
-// VetCredentialLibraries allows for any CredentialLibraries.
-func VetCredentialLibraries(_ context.Context, _ []*target.CredentialLibrary) error {
+// vet validates that the given Target is a targettest.Target and that it
+// has a Target store.
+func VetForUpdate(ctx context.Context, t target.Target, paths []string) error {
+	const op = "targettest.vetForUpdate"
+
+	tt, ok := t.(*Target)
+	if !ok {
+		return errors.New(ctx, errors.InvalidParameter, op, "target is not a tcp.Target")
+	}
+
+	switch {
+	case tt == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing target")
+	case tt.Target == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing target store")
+	}
+
+	for _, f := range paths {
+		if strings.EqualFold("defaultport", f) && tt.GetDefaultPort() == 0 {
+			return errors.New(ctx, errors.InvalidParameter, op, "clearing or setting default port to zero")
+		}
+	}
+
+	return nil
+}
+
+// VetCredentialSources allows for any CredentialLibraries.
+func VetCredentialSources(_ context.Context, _ []*target.CredentialLibrary, _ []*target.StaticCredential) error {
 	return nil
 }
 

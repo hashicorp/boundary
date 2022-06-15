@@ -2,16 +2,17 @@ package targets
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	stderrors "errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -20,7 +21,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -41,14 +41,14 @@ import (
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
-	credentialDomain = "credential"
-	hostDomain       = "host"
+	credentialDomain  = "credential"
+	hostDomain        = "host"
+	missingPortErrStr = "missing port in address"
 )
 
 var (
@@ -65,9 +65,6 @@ var (
 		action.AddHostSources,
 		action.SetHostSources,
 		action.RemoveHostSources,
-		action.AddCredentialLibraries,
-		action.SetCredentialLibraries,
-		action.RemoveCredentialLibraries,
 		action.AddCredentialSources,
 		action.SetCredentialSources,
 		action.RemoveCredentialSources,
@@ -93,6 +90,7 @@ type Service struct {
 	pluginHostRepoFn common.PluginHostRepoFactory
 	staticHostRepoFn common.StaticRepoFactory
 	vaultCredRepoFn  common.VaultCredentialRepoFactory
+	staticCredRepoFn common.StaticCredentialRepoFactory
 	kmsCache         *kms.Kms
 }
 
@@ -107,6 +105,7 @@ func NewService(
 	pluginHostRepoFn common.PluginHostRepoFactory,
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
+	staticCredRepoFn common.StaticCredentialRepoFactory,
 ) (Service, error) {
 	const op = "targets.NewService"
 	if repoFn == nil {
@@ -130,6 +129,9 @@ func NewService(
 	if vaultCredRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential repository")
 	}
+	if staticCredRepoFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
+	}
 	return Service{
 		repoFn:           repoFn,
 		iamRepoFn:        iamRepoFn,
@@ -138,6 +140,7 @@ func NewService(
 		pluginHostRepoFn: pluginHostRepoFn,
 		staticHostRepoFn: staticHostRepoFn,
 		vaultCredRepoFn:  vaultCredRepoFn,
+		staticCredRepoFn: staticCredRepoFn,
 		kmsCache:         kmsCache,
 	}, nil
 }
@@ -486,7 +489,7 @@ func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHos
 	if err := validateAddHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddHostSets)
+	authResults := s.authResult(ctx, req.GetId(), action.AddHostSources)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -524,7 +527,7 @@ func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHos
 	if err := validateSetHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetHostSets)
+	authResults := s.authResult(ctx, req.GetId(), action.SetHostSources)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -557,12 +560,12 @@ func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHos
 
 // RemoveTargetHostSources implements the interface pbs.TargetServiceServer.
 func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTargetHostSourcesRequest) (*pbs.RemoveTargetHostSourcesResponse, error) {
-	const op = "targets.(Service).RemoveTargetHostSets"
+	const op = "targets.(Service).RemoveTargetHostSources"
 
 	if err := validateRemoveHostSourcesRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSets)
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSources)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -593,120 +596,6 @@ func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTar
 	return &pbs.RemoveTargetHostSourcesResponse{Item: item}, nil
 }
 
-// DEPRECATED: AddTargetCredentialLibraries implements the interface pbs.TargetServiceServer.
-func (s Service) AddTargetCredentialLibraries(ctx context.Context, req *pbs.AddTargetCredentialLibrariesRequest) (*pbs.AddTargetCredentialLibrariesResponse, error) {
-	const op = "targets.(Service).AddTargetCredentialLibraries"
-
-	if err := validateAddLibrariesRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddCredentialLibraries)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), nil, req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
-
-	outputFields, ok := requests.OutputFields(ctx)
-	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
-	}
-
-	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
-	if outputFields.Has(globals.ScopeField) {
-		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-	}
-	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
-	}
-
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pbs.AddTargetCredentialLibrariesResponse{Item: item}, nil
-}
-
-// DEPRECATED: SetTargetCredentialLibraries implements the interface pbs.TargetServiceServer.
-func (s Service) SetTargetCredentialLibraries(ctx context.Context, req *pbs.SetTargetCredentialLibrariesRequest) (*pbs.SetTargetCredentialLibrariesResponse, error) {
-	const op = "targets.(Service).SetTargetCredentialLibraries"
-
-	if err := validateSetLibrariesRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetCredentialLibraries)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), nil, req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
-
-	outputFields, ok := requests.OutputFields(ctx)
-	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
-	}
-
-	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
-	if outputFields.Has(globals.ScopeField) {
-		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-	}
-	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
-	}
-
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pbs.SetTargetCredentialLibrariesResponse{Item: item}, nil
-}
-
-// DEPRECATED: RemoveTargetCredentialLibraries implements the interface pbs.TargetServiceServer.
-func (s Service) RemoveTargetCredentialLibraries(ctx context.Context, req *pbs.RemoveTargetCredentialLibrariesRequest) (*pbs.RemoveTargetCredentialLibrariesResponse, error) {
-	const op = "targets.(Service).RemoveTargetCredentialLibraries"
-
-	if err := validateRemoveLibrariesRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveCredentialLibraries)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialLibraryIds(), nil, req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
-
-	outputFields, ok := requests.OutputFields(ctx)
-	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
-	}
-
-	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
-	if outputFields.Has(globals.ScopeField) {
-		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-	}
-	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
-	}
-
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pbs.RemoveTargetCredentialLibrariesResponse{Item: item}, nil
-}
-
 // AddTargetCredentialSources implements the interface pbs.TargetServiceServer.
 func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTargetCredentialSourcesRequest) (*pbs.AddTargetCredentialSourcesResponse, error) {
 	const op = "targets.(Service).AddTargetCredentialSources"
@@ -716,7 +605,12 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.AddCredentialSources)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// TODO AddCredentialLibraries was deprecated but grant actions were never migrated
+		// remove this check once actions have been migrated
+		authResults = s.authResult(ctx, req.GetId(), action.AddCredentialLibraries)
+		if authResults.Error != nil {
+			return nil, authResults.Error
+		}
 	}
 	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetEgressCredentialSourceIds(), req.GetVersion())
 	if err != nil {
@@ -754,7 +648,12 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.SetCredentialSources)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// TODO SetCredentialLibraries was deprecated but grant actions were never migrated
+		// remove this check once actions have been migrated
+		authResults = s.authResult(ctx, req.GetId(), action.SetCredentialLibraries)
+		if authResults.Error != nil {
+			return nil, authResults.Error
+		}
 	}
 	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetEgressCredentialSourceIds(), req.GetVersion())
 	if err != nil {
@@ -792,7 +691,12 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.RemoveCredentialSources)
 	if authResults.Error != nil {
-		return nil, authResults.Error
+		// TODO RemoveCredentialLibraries was deprecated but grant actions were never migrated
+		// remove this check once actions have been migrated
+		authResults = s.authResult(ctx, req.GetId(), action.RemoveCredentialLibraries)
+		if authResults.Error != nil {
+			return nil, authResults.Error
+		}
 	}
 	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetEgressCredentialSourceIds(), req.GetVersion())
 	if err != nil {
@@ -869,7 +773,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, hostSources, libs, err := repo.LookupTarget(ctx, t.GetPublicId())
+	t, hostSources, credSources, err := repo.LookupTarget(ctx, t.GetPublicId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
@@ -978,25 +882,39 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		chosenEndpoint = endpoints[rand.Intn(len(endpoints))]
 	}
 
+	h, p, err := net.SplitHostPort(chosenEndpoint.Address)
+	switch {
+	case err != nil && strings.Contains(err.Error(), missingPortErrStr):
+		if t.GetDefaultPort() == 0 {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("neither the selected host %q nor the target provides a port to use", chosenEndpoint.HostId))
+		}
+		h = chosenEndpoint.Address
+		p = strconv.FormatUint(uint64(t.GetDefaultPort()), 10)
+	case err != nil:
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoints host address"))
+	}
 	// Generate the endpoint URL
 	endpointUrl := &url.URL{
 		Scheme: t.GetType().String(),
-	}
-	defaultPort := t.GetDefaultPort()
-	if defaultPort != 0 {
-		endpointUrl.Host = fmt.Sprintf("%s:%d", chosenEndpoint.Address, defaultPort)
-	} else {
-		endpointUrl.Host = chosenEndpoint.Address
+		Host:   net.JoinHostPort(h, p),
 	}
 
-	var reqs []credential.Request
+	var vaultReqs []credential.Request
+	var staticIds []string
 	var dynCreds []*session.DynamicCredential
-	for _, l := range libs {
-		reqs = append(reqs, credential.Request{
-			SourceId: l.Id(),
-			Purpose:  l.CredentialPurpose(),
-		})
-		dynCreds = append(dynCreds, session.NewDynamicCredential(l.Id(), l.CredentialPurpose()))
+	var staticCreds []*session.StaticCredential
+	for _, cs := range credSources {
+		switch cs.Type() {
+		case target.LibraryCredentialSourceType:
+			vaultReqs = append(vaultReqs, credential.Request{
+				SourceId: cs.Id(),
+				Purpose:  cs.CredentialPurpose(),
+			})
+			dynCreds = append(dynCreds, session.NewDynamicCredential(cs.Id(), cs.CredentialPurpose()))
+		case target.StaticCredentialSourceType:
+			staticIds = append(staticIds, cs.Id())
+			staticCreds = append(staticCreds, session.NewStaticCredential(cs.Id(), cs.CredentialPurpose()))
+		}
 	}
 
 	expTime := timestamppb.Now()
@@ -1013,6 +931,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		ConnectionLimit:    t.GetSessionConnectionLimit(),
 		WorkerFilter:       t.GetWorkerFilter(),
 		DynamicCredentials: dynCreds,
+		StaticCredentials:  staticCreds,
 	}
 
 	sess, err := session.New(sessionComposition)
@@ -1028,108 +947,79 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
-	var cs []credential.Dynamic
-	if len(reqs) > 0 {
+	var dynamic []credential.Dynamic
+	var staticCredsById map[string]credential.Static
+	if len(vaultReqs) > 0 {
 		credRepo, err := s.vaultCredRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		cs, err = credRepo.Issue(ctx, sess.GetPublicId(), reqs)
+		dynamic, err = credRepo.Issue(ctx, sess.GetPublicId(), vaultReqs)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
+	if len(staticIds) > 0 {
+		credRepo, err := s.staticCredRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		// Remove duplicate requests
+		staticIds = strutil.RemoveDuplicates(staticIds, false)
+		creds, err := credRepo.Retrieve(ctx, t.GetScopeId(), staticIds)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		staticCredsById = make(map[string]credential.Static)
+		for _, c := range creds {
+			staticCredsById[c.GetPublicId()] = c
+		}
+	}
+
 	var creds []*pb.SessionCredential
 	var workerCreds []session.Credential
-	for _, cred := range cs {
+	for _, cred := range dynamic {
 		switch cred.Purpose() {
 		case credential.EgressPurpose:
-			m, err := credentialToProto(ctx, cred)
+			c, err := dynamicToWorkerCredential(ctx, cred)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
-			data, err := proto.Marshal(m)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling secret to proto"))
-			}
-			workerCreds = append(workerCreds, data)
+			workerCreds = append(workerCreds, c)
 
 		case credential.ApplicationPurpose:
-			l := cred.Library()
-			secret := cred.Secret()
-			// TODO: Access the json directly from the vault response instead of re-marshalling it.
-			jSecret, err := json.Marshal(secret)
+			c, err := dynamicToSessionCredential(ctx, cred)
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling secret to json"))
+				return nil, errors.Wrap(ctx, err, op)
 			}
-			var sSecret *structpb.Struct
-			switch secret.(type) {
-			case map[string]interface{}:
-				// In this case we actually have to re-decode it. The proto wrappers
-				// choke on json.Number and at the time I'm writing this I don't
-				// have time to write a walk function to dig through with reflect
-				// and find all json.Numbers and replace them. So we eat the
-				// inefficiency. So note that we are specifically _not_ using a
-				// decoder with UseNumber here.
-				var dSecret map[string]interface{}
-				if err := json.Unmarshal(jSecret, &dSecret); err != nil {
-					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("decoding json for proto marshaling"))
-				}
-				sSecret, err = structpb.NewStruct(dSecret)
-				if err != nil {
-					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for secret"))
-				}
-			}
-
-			var credType string
-			var credData *structpb.Struct
-			if l.CredentialType() != credential.UnspecifiedType {
-				credType = string(l.CredentialType())
-
-				switch c := cred.(type) {
-				case credential.UserPassword:
-					credData, err = handlers.ProtoToStruct(
-						&pb.UserPasswordCredential{
-							Username: c.Username(),
-							Password: string(c.Password()),
-						},
-					)
-					if err != nil {
-						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
-					}
-
-				default:
-					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unsupported credential type"))
-				}
-
-			}
-
-			creds = append(creds, &pb.SessionCredential{
-				CredentialLibrary: &pb.CredentialLibrary{
-					Id:                l.GetPublicId(),
-					Name:              l.GetName(),
-					Description:       l.GetDescription(),
-					CredentialStoreId: l.GetStoreId(),
-					Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
-				},
-				CredentialSource: &pb.CredentialSource{
-					Id:                l.GetPublicId(),
-					Name:              l.GetName(),
-					Description:       l.GetDescription(),
-					CredentialStoreId: l.GetStoreId(),
-					Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
-					CredentialType:    credType,
-				},
-				Secret: &pb.SessionSecret{
-					Raw:     base64.StdEncoding.EncodeToString(jSecret),
-					Decoded: sSecret,
-				},
-				Credential: credData,
-			})
+			creds = append(creds, c)
 
 		default:
 			return nil, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unsupported credential purpose %s", cred.Purpose()))
+		}
+	}
+
+	for _, sc := range staticCreds {
+		switch sc.CredentialPurpose {
+		case string(credential.EgressPurpose):
+			c, err := staticToWorkerCredential(ctx, staticCredsById[sc.CredentialStaticId])
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+			workerCreds = append(workerCreds, c)
+
+		case string(credential.ApplicationPurpose):
+			c, err := staticToSessionCredential(ctx, staticCredsById[sc.CredentialStaticId])
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+			creds = append(creds, c)
+
+		default:
+			return nil, errors.New(ctx, errors.Unknown, op, fmt.Sprintf("unsupported credential purpose %s", sc.CredentialPurpose))
 		}
 	}
 
@@ -1166,7 +1056,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		Scope:              authResults.Scope,
 		CreatedTime:        sess.CreateTime.GetTimestamp(),
 		Type:               t.GetType().String(),
-		AuthorizationToken: string(encodedMarshaledSad),
+		AuthorizationToken: encodedMarshaledSad,
 		UserId:             authResults.UserId,
 		HostId:             chosenEndpoint.HostId,
 		HostSetId:          chosenEndpoint.SetId,
@@ -1267,7 +1157,9 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build target for update: %v.", err)
 	}
-	u.SetPublicId(ctx, id)
+	if err := u.SetPublicId(ctx, id); err != nil {
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set target id: %v.", err)
+	}
 
 	maskManager, err := subtypeRegistry.maskManager(subtype)
 	if err != nil {
@@ -1384,12 +1276,16 @@ func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	credLibs, err := createCredLibs(targetId, applicationIds, nil, egressIds)
-	if err != nil {
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
+
+	var creds target.CredentialSources
+	if len(applicationIds) > 0 {
+		creds.ApplicationCredentialIds = strutil.RemoveDuplicates(applicationIds, false)
+	}
+	if len(egressIds) > 0 {
+		creds.EgressCredentialIds = strutil.RemoveDuplicates(egressIds, false)
 	}
 
-	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, credLibs)
+	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, creds)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add credential sources to target: %v.", err)
@@ -1407,12 +1303,15 @@ func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string
 		return nil, nil, nil, err
 	}
 
-	credLibs, err := createCredLibs(targetId, applicationIds, nil, egressIds)
-	if err != nil {
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
+	var ids target.CredentialSources
+	if len(applicationIds) > 0 {
+		ids.ApplicationCredentialIds = strutil.RemoveDuplicates(applicationIds, false)
+	}
+	if len(egressIds) > 0 {
+		ids.EgressCredentialIds = strutil.RemoveDuplicates(egressIds, false)
 	}
 
-	_, _, _, err = repo.SetTargetCredentialSources(ctx, targetId, version, credLibs)
+	_, _, _, err = repo.SetTargetCredentialSources(ctx, targetId, version, ids)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
@@ -1435,11 +1334,14 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 		return nil, nil, nil, err
 	}
 
-	credLibs, err := createCredLibs(targetId, applicationIds, nil, egressIds)
-	if err != nil {
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
+	var ids target.CredentialSources
+	if len(applicationIds) > 0 {
+		ids.ApplicationCredentialIds = strutil.RemoveDuplicates(applicationIds, false)
 	}
-	_, err = repo.DeleteTargetCredentialSources(ctx, targetId, version, credLibs)
+	if len(egressIds) > 0 {
+		ids.EgressCredentialIds = strutil.RemoveDuplicates(egressIds, false)
+	}
+	_, err = repo.DeleteTargetCredentialSources(ctx, targetId, version, ids)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove credential sources from target: %v.", err)
@@ -1584,20 +1486,12 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 
 	var appCredSources, egressCredSources []*pb.CredentialSource
 	var appCredSourceIds, egressCredSourceIds []string
-	var appCredLibraries []*pb.CredentialLibrary
 
 	for _, cs := range credSources {
 		switch cs.CredentialPurpose() {
 		case credential.ApplicationPurpose:
 			appCredSourceIds = append(appCredSourceIds, cs.Id())
 			appCredSources = append(appCredSources, &pb.CredentialSource{
-				Id:                cs.Id(),
-				CredentialStoreId: cs.CredentialStoreId(),
-			})
-
-			// ApplicationCredentialLibrariesField is deprecated and should only be populated
-			// for application purpose
-			appCredLibraries = append(appCredLibraries, &pb.CredentialLibrary{
 				Id:                cs.Id(),
 				CredentialStoreId: cs.CredentialStoreId(),
 			})
@@ -1614,14 +1508,8 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 		}
 	}
 
-	if outputFields.Has(globals.ApplicationCredentialLibraryIdsField) {
-		out.ApplicationCredentialLibraryIds = appCredSourceIds
-	}
 	if outputFields.Has(globals.ApplicationCredentialSourceIdsField) {
 		out.ApplicationCredentialSourceIds = appCredSourceIds
-	}
-	if outputFields.Has(globals.ApplicationCredentialLibrariesField) {
-		out.ApplicationCredentialLibraries = appCredLibraries
 	}
 	if outputFields.Has(globals.ApplicationCredentialSourcesField) {
 		out.ApplicationCredentialSources = appCredSources
@@ -1702,7 +1590,8 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if handlers.MaskContains(req.GetUpdateMask().GetPaths(), globals.NameField) && req.GetItem().GetName().GetValue() == "" {
+		paths := req.GetUpdateMask().GetPaths()
+		if handlers.MaskContains(paths, globals.NameField) && req.GetItem().GetName().GetValue() == "" {
 			badFields[globals.NameField] = "This field cannot be set to empty."
 		}
 		if req.GetItem().GetSessionConnectionLimit() != nil {
@@ -1735,7 +1624,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			if err != nil {
 				badFields[globals.AttributesField] = "Attribute fields do not match the expected format."
 			} else {
-				for k, v := range a.Vet() {
+				for k, v := range a.VetForUpdate(paths) {
 					badFields[k] = v
 				}
 			}
@@ -1901,72 +1790,6 @@ func validateRemoveHostSourcesRequest(req *pbs.RemoveTargetHostSourcesRequest) e
 	return nil
 }
 
-func validateAddLibrariesRequest(req *pbs.AddTargetCredentialLibrariesRequest) error {
-	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
-		badFields[globals.IdField] = "Incorrectly formatted identifier."
-	}
-	if req.GetVersion() == 0 {
-		badFields[globals.VersionField] = "Required field."
-	}
-	if len(req.GetApplicationCredentialLibraryIds()) == 0 {
-		badFields[globals.ApplicationCredentialLibraryIdsField] = "Must be non-empty."
-	}
-	for _, cl := range req.GetApplicationCredentialLibraryIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
-			badFields[globals.ApplicationCredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl)
-			break
-		}
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
-}
-
-func validateSetLibrariesRequest(req *pbs.SetTargetCredentialLibrariesRequest) error {
-	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
-		badFields[globals.IdField] = "Incorrectly formatted identifier."
-	}
-	if req.GetVersion() == 0 {
-		badFields[globals.VersionField] = "Required field."
-	}
-	for _, cl := range req.GetApplicationCredentialLibraryIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
-			badFields[globals.ApplicationCredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl)
-			break
-		}
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
-}
-
-func validateRemoveLibrariesRequest(req *pbs.RemoveTargetCredentialLibrariesRequest) error {
-	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
-		badFields[globals.IdField] = "Incorrectly formatted identifier."
-	}
-	if req.GetVersion() == 0 {
-		badFields[globals.VersionField] = "Required field."
-	}
-	if len(req.GetApplicationCredentialLibraryIds()) == 0 {
-		badFields[globals.ApplicationCredentialLibraryIdsField] = "Must be non-empty."
-	}
-	for _, cl := range req.GetApplicationCredentialLibraryIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
-			badFields[globals.ApplicationCredentialLibraryIdsField] = fmt.Sprintf("Incorrectly formatted credential library identifier %q.", cl)
-			break
-		}
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
-}
-
 func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
@@ -1980,13 +1803,13 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -2006,13 +1829,13 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -2036,13 +1859,13 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -2092,45 +1915,6 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
-}
-
-func createCredLibs(targetId string, applicationIds, ingressIds, egressIds []string) ([]*target.CredentialLibrary, error) {
-	credLibs := make([]*target.CredentialLibrary, 0, len(applicationIds)+len(ingressIds)+len(egressIds))
-
-	byPurpose := map[credential.Purpose][]string{
-		credential.ApplicationPurpose: strutil.RemoveDuplicates(applicationIds, false),
-		credential.IngressPurpose:     strutil.RemoveDuplicates(ingressIds, false),
-		credential.EgressPurpose:      strutil.RemoveDuplicates(egressIds, false),
-	}
-	for purpose, ids := range byPurpose {
-		for _, id := range ids {
-			l, err := target.NewCredentialLibrary(targetId, id, purpose)
-			if err != nil {
-				return nil, err
-			}
-			credLibs = append(credLibs, l)
-		}
-	}
-	return credLibs, nil
-}
-
-// credentialToProto converts the strongly typed credential.Credential into a known proto.Message.
-func credentialToProto(ctx context.Context, cred credential.Credential) (*serverpb.Credential, error) {
-	const op = "targets.credentialToProto"
-	switch c := cred.(type) {
-	case credential.UserPassword:
-		return &serverpb.Credential{
-			Credential: &serverpb.Credential_UserPassword{
-				UserPassword: &serverpb.UserPassword{
-					Username: c.Username(),
-					Password: string(c.Password()),
-				},
-			},
-		}, nil
-
-	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
-	}
 }
 
 // workerList is a helper type to make the selection of workers clearer and more declarative.

@@ -3,14 +3,17 @@ package tcp
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/target"
 )
 
+type targetHooks struct{}
+
 func init() {
-	target.Register(Subtype, newTarget, allocTarget, vet, vetCredentialLibraries, TargetPrefix)
+	target.Register(Subtype, targetHooks{}, TargetPrefix)
 }
 
 const (
@@ -18,9 +21,9 @@ const (
 	TargetPrefix = "ttcp"
 )
 
-// vet validates that the given target.Target is a tcp.Target and that it
+// Vet validates that the given target.Target is a tcp.Target and that it
 // has a Target store.
-func vet(ctx context.Context, t target.Target) error {
+func (h targetHooks) Vet(ctx context.Context, t target.Target) error {
 	const op = "tcp.vet"
 
 	tt, ok := t.(*Target)
@@ -35,16 +38,51 @@ func vet(ctx context.Context, t target.Target) error {
 	if tt.Target == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing target store")
 	}
+	if tt.GetDefaultPort() == 0 {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing target default port")
+	}
 	return nil
 }
 
-// vetCredentialLibraries checks that all of the provided credential libriaries have a CredentialPurpose
-// of ApplicationPurpose. Any other CredentialPurpose will result in an error.
-func vetCredentialLibraries(ctx context.Context, cls []*target.CredentialLibrary) error {
-	const op = "tcp.vetCredentialLibraries"
+// VetForUpdate validates that the given target.Target is a tcp.Target,
+// and that it has a Target store and that it isn't attempting to clear or
+// set to zero the default port.
+func (h targetHooks) VetForUpdate(ctx context.Context, t target.Target, paths []string) error {
+	const op = "tcp.vetForUpdate"
 
-	for _, cl := range cls {
-		if cl.CredentialPurpose != string(credential.ApplicationPurpose) {
+	tt, ok := t.(*Target)
+	if !ok {
+		return errors.New(ctx, errors.InvalidParameter, op, "target is not a tcp.Target")
+	}
+
+	switch {
+	case tt == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing target")
+	case tt.Target == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing target store")
+	}
+
+	for _, f := range paths {
+		if strings.EqualFold("defaultport", f) && tt.GetDefaultPort() == 0 {
+			return errors.New(ctx, errors.InvalidParameter, op, "clearing or setting default port to zero")
+		}
+	}
+
+	return nil
+}
+
+// VetCredentialSources checks that all the provided credential sources have a CredentialPurpose
+// of ApplicationPurpose. Any other CredentialPurpose will result in an error.
+func (h targetHooks) VetCredentialSources(ctx context.Context, libs []*target.CredentialLibrary, creds []*target.StaticCredential) error {
+	const op = "tcp.VetCredentialSources"
+
+	for _, c := range libs {
+		if c.GetCredentialPurpose() != string(credential.ApplicationPurpose) {
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("tcp.Target only supports credential purpose: %q", credential.ApplicationPurpose))
+		}
+	}
+	for _, c := range creds {
+		if c.GetCredentialPurpose() != string(credential.ApplicationPurpose) {
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("tcp.Target only supports credential purpose: %q", credential.ApplicationPurpose))
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
@@ -453,15 +454,24 @@ var inputStructs = []*structInfo{
 		versionEnabled:      true,
 		createResponseTypes: true,
 	},
-	// Credentials
 	{
-		inProto:     &credentialstores.VaultCredentialStoreAttributes{},
-		outFile:     "credentialstores/vault_credential_store_attributes.gen.go",
-		subtypeName: "VaultCredentialStore",
+		inProto:     &credentials.UsernamePasswordAttributes{},
+		outFile:     "credentials/username_password_attributes.gen.go",
+		subtypeName: "UsernamePasswordCredential",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Username",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Password",
+				SkipDefault: true,
+			},
+		},
 	},
 	{
-		inProto: &credentialstores.CredentialStore{},
-		outFile: "credentialstores/credential_store.gen.go",
+		inProto: &credentials.Credential{},
+		outFile: "credentials/credential.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
 			commonCreateTemplate,
@@ -470,8 +480,6 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName: "credential-stores",
-		parentTypeName:     "scope",
 		extraRequiredParams: []requiredParam{
 			{
 				Name:     "resourceType",
@@ -479,47 +487,12 @@ var inputStructs = []*structInfo{
 				PostType: "type",
 			},
 		},
-		versionEnabled:      true,
-		createResponseTypes: true,
-		recursiveListing:    true,
-		fieldOverrides: []fieldInfo{
-			{
-				Name:        "Address",
-				SkipDefault: true,
-			},
-			{
-				Name:        "Token",
-				SkipDefault: true,
-			},
-		},
-	},
-	{
-		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
-		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
-		subtypeName: "VaultCredentialLibrary",
-		fieldOverrides: []fieldInfo{
-			{
-				Name:        "Path",
-				SkipDefault: true,
-			},
-		},
-	},
-	{
-		inProto: &credentiallibraries.CredentialLibrary{},
-		outFile: "credentiallibraries/credential_library.gen.go",
-		templates: []*template.Template{
-			clientTemplate,
-			commonCreateTemplate,
-			readTemplate,
-			updateTemplate,
-			deleteTemplate,
-			listTemplate,
-		},
-		pluralResourceName:  "credential-libraries",
+		pluralResourceName:  "credentials",
 		parentTypeName:      "credential-store",
 		versionEnabled:      true,
 		createResponseTypes: true,
 	},
+
 	// Host related resources
 	{
 		inProto: &hostcatalogs.HostCatalog{},
@@ -611,10 +584,6 @@ var inputStructs = []*structInfo{
 		outFile: "targets/host_source.gen.go",
 	},
 	{
-		inProto: &targets.CredentialLibrary{},
-		outFile: "targets/credential_library.gen.go",
-	},
-	{
 		inProto: &targets.CredentialSource{},
 		outFile: "targets/credential_source.gen.go",
 	},
@@ -668,8 +637,7 @@ var inputStructs = []*structInfo{
 				SliceType: "[]string",
 				VarName:   "hostSourceIds",
 			},
-			"CredentialLibraries": {},
-			"CredentialSources":   {},
+			"CredentialSources": {},
 		},
 		extraFields: []fieldInfo{
 			{
@@ -689,11 +657,6 @@ var inputStructs = []*structInfo{
 				ProtoName:   "scope_name",
 				FieldType:   "string",
 				SkipDefault: true,
-			},
-			{
-				Name:      "ApplicationCredentialLibraryIds",
-				ProtoName: "application_credential_library_ids",
-				FieldType: "[]string",
 			},
 			{
 				Name:      "ApplicationCredentialSourceIds",

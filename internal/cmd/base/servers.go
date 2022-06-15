@@ -589,6 +589,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
 					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
+					pluginutil.WithPluginExecutionDirectory(config.Plugins.ExecutionDir),
 				),
 				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", purpose)),
 			)

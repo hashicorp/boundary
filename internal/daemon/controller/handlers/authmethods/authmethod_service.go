@@ -1265,7 +1265,9 @@ func transformAuthenticateRequestAttributes(msg proto.Message) error {
 			return fmt.Errorf("%s: unknown command %q", op, authRequest.GetCommand())
 		}
 	default:
-		return fmt.Errorf("%s: unknown auth method subtype in ID %q", op, authRequest.GetAuthMethodId())
+		return &subtypes.UnknownSubtypeIDError{
+			ID: authRequest.GetAuthMethodId(),
+		}
 	}
 	return nil
 }

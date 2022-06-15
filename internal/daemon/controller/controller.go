@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
@@ -67,6 +68,7 @@ type Controller struct {
 	// Repo factory methods
 	AuthTokenRepoFn         common.AuthTokenRepoFactory
 	VaultCredentialRepoFn   common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn  common.StaticCredentialRepoFactory
 	IamRepoFn               common.IamRepoFactory
 	OidcRepoFn              common.OidcAuthRepoFactory
 	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
@@ -249,9 +251,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	jobRepoFn := func() (*job.Repository, error) {
 		return job.NewRepository(dbase, dbase, c.kms)
 	}
-	// TODO: the RunJobsLimit is temporary until a better fix gets in. This
-	// currently caps the scheduler at running 10 jobs per interval.
-	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(20)}
+	// TODO: Allow setting run jobs limit from config
+	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
 	if c.conf.RawConfig.Controller.SchedulerRunJobInterval > 0 {
 		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.SchedulerRunJobInterval))
 	}
@@ -278,6 +279,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
 		return vault.NewRepository(dbase, dbase, c.kms, c.scheduler)
+	}
+	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.ServersRepoFn = func() (*servers.Repository, error) {
 		return servers.NewRepository(dbase, dbase, c.kms)

@@ -249,30 +249,6 @@ func (c *Command) Run(args []string) int {
 			version = uint32(c.FlagVersion)
 		}
 
-	case "add-credential-libraries":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "remove-credential-libraries":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "set-credential-libraries":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
 	case "add-credential-sources":
 		switch c.FlagVersion {
 		case 0:

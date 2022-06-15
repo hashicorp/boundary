@@ -398,5 +398,14 @@ func TestErrorsOidc(t *testing.T) {
 		accounts.WithPasswordAccountLoginName("foo"),
 	)
 	require.Error(err)
-	require.JSONEq(err.Error(), `{"kind":"InvalidArgument", "message":"Error in provided request.", "details":{"request_fields":[{"name":"attributes", "description":"Attribute fields do not match the expected format."}]}}`)
+	require.JSONEq(err.Error(), `{
+		"details": {
+			"request_fields": [{
+				"description": "Attribute fields do not match the expected format.",
+				"name": "attributes"
+			}]
+		},
+		"kind": "InvalidArgument",
+		"message": "Error in provided request."
+	}`)
 }

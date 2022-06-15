@@ -21,16 +21,36 @@ type AllocFunc func() Target
 // be used by the Repository.
 type VetFunc func(context.Context, Target) error
 
-// VetCredentialLibrariesFunc is a function that checks the given CredentialLibraries
-// to ensure that they are valid for a Target subtype.
-type VetCredentialLibrariesFunc func(context.Context, []*CredentialLibrary) error
+// VetForUpdateFunc is a function that checks the given Target and field mask
+// paths are valid and be used to update a target in the Repository.
+type VetForUpdateFunc func(context.Context, Target, []string) error
+
+// VetCredentialSourcesFunc is a function that checks the given CredentialLibraries
+// and StaticCredentials to ensure that they are valid for a Target subtype.
+type VetCredentialSourcesFunc func(context.Context, []*CredentialLibrary, []*StaticCredential) error
+
+// targetHooks defines the interface containing all the hooks needed for
+// managing target suptypes.
+type targetHooks interface {
+	// NewTarget creates a new in memory target.
+	NewTarget(scopeId string, opt ...Option) (Target, error)
+	// AllocTarget will allocate an empty target.
+	AllocTarget() Target
+	// Vet validates that the given Target has the proper fields and values
+	// for creation in the database for this type of target.
+	Vet(ctx context.Context, t Target) error
+	// VetForUpdate validates that the given Target has the proper fields
+	// and values for updating the database for this type of target given the
+	// field mask paths.
+	VetForUpdate(ctx context.Context, t Target, paths []string) error
+	// VetCredentialSources checks that the provided credential libriaries and
+	// static credentials are properly built for association with a target of this type.
+	VetCredentialSources(ctx context.Context, cls []*CredentialLibrary, creds []*StaticCredential) error
+}
 
 type registryEntry struct {
-	newFunc                NewFunc
-	alloc                  AllocFunc
-	vet                    VetFunc
-	vetCredentialLibraries VetCredentialLibrariesFunc
-	prefix                 string
+	targetHooks targetHooks
+	prefix      string
 }
 
 type registry struct {
@@ -71,7 +91,7 @@ func (r *registry) newFunc(s subtypes.Subtype) (NewFunc, bool) {
 	if !ok {
 		return nil, ok
 	}
-	return entry.newFunc, ok
+	return entry.targetHooks.NewTarget, ok
 }
 
 func (r *registry) allocFunc(s subtypes.Subtype) (AllocFunc, bool) {
@@ -79,7 +99,7 @@ func (r *registry) allocFunc(s subtypes.Subtype) (AllocFunc, bool) {
 	if !ok {
 		return nil, ok
 	}
-	return entry.alloc, ok
+	return entry.targetHooks.AllocTarget, ok
 }
 
 func (r *registry) vetFunc(s subtypes.Subtype) (VetFunc, bool) {
@@ -87,15 +107,24 @@ func (r *registry) vetFunc(s subtypes.Subtype) (VetFunc, bool) {
 	if !ok {
 		return nil, ok
 	}
-	return entry.vet, ok
+	return entry.targetHooks.Vet, ok
 }
 
-func (r *registry) vetCredentialLibrariesFunc(s subtypes.Subtype) (VetCredentialLibrariesFunc, bool) {
+func (r *registry) vetForUpdateFunc(s subtypes.Subtype) (VetForUpdateFunc, bool) {
 	entry, ok := r.get(s)
 	if !ok {
 		return nil, ok
 	}
-	return entry.vetCredentialLibraries, ok
+	return entry.targetHooks.VetForUpdate, ok
+}
+
+func (r *registry) vetCredentialSourcesFunc(s subtypes.Subtype) (VetCredentialSourcesFunc, bool) {
+	entry, ok := r.get(s)
+	if !ok {
+		return nil, ok
+	}
+
+	return entry.targetHooks.VetCredentialSources, ok
 }
 
 func (r *registry) idPrefix(s subtypes.Subtype) (string, bool) {
@@ -140,12 +169,9 @@ func New(ctx context.Context, subtype subtypes.Subtype, scopeId string, opt ...O
 // Register registers repository hooks and the prefixes for a provided Subtype. Register
 // panics if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
-func Register(s subtypes.Subtype, nf NewFunc, af AllocFunc, vf VetFunc, vclf VetCredentialLibrariesFunc, prefix string) {
+func Register(s subtypes.Subtype, th targetHooks, prefix string) {
 	subtypeRegistry.set(s, &registryEntry{
-		newFunc:                nf,
-		alloc:                  af,
-		vet:                    vf,
-		vetCredentialLibraries: vclf,
-		prefix:                 prefix,
+		targetHooks: th,
+		prefix:      prefix,
 	})
 }

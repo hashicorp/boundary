@@ -15,7 +15,7 @@ func validMappingOverride(m MappingOverride, ct credential.Type) bool {
 	case nil:
 		return true // it is always valid to not specify a mapping override
 	case *UserPasswordOverride:
-		return ct == credential.UserPasswordType
+		return ct == credential.UsernamePasswordType
 	default:
 		return false // an unknown mapping override type is never valid
 	}
