@@ -88,8 +88,8 @@ func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *W
 }
 
 // TestKmsWorker inserts a worker into the db to satisfy foreign key constraints.
-// The worker provided fields are auto generated. WithName and WithDescription,
-// are applied to the resource name
+// The worker provided fields are auto generated. if WithName is not present a
+// random name will be generated and assigned to the worker.
 func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
 	rw := db.New(conn)
