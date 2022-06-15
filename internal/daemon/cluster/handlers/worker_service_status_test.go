@@ -636,7 +636,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
-					Address: worker1.CanonicalAddress(),
+					Address: "someaddress",
 					KeyId:   nodeInfo.Id,
 				},
 			},
@@ -656,7 +656,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 			req: &pbs.StatusRequest{
 				WorkerStatus: &servers.ServerWorkerStatus{
 					KeyId:   nodeInfo.Id,
-					Address: worker1.CanonicalAddress(),
+					Address: "someaddress",
 				},
 				Jobs: []*pbs.JobStatus{
 					{
@@ -701,6 +701,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 				assert.Equal(tc.wantErrMsg, err.Error())
 				return
 			}
+			require.NoError(err)
 			assert.Empty(
 				cmp.Diff(
 					tc.want,
