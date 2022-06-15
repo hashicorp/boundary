@@ -115,6 +115,12 @@ func (c *Command) Run(args []string) int {
 	case "":
 		return cli.RunResultHelp
 
+	case "create":
+		return cli.RunResultHelp
+
+	case "update":
+		return cli.RunResultHelp
+
 	}
 
 	c.plural = "auth token"

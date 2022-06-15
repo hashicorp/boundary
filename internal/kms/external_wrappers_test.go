@@ -20,9 +20,10 @@ func TestExternalWrappers(t *testing.T) {
 	rootWrapper := db.TestWrapper(t)
 	recoveryWrapper := db.TestWrapper(t)
 	workerAuthWrapper := db.TestWrapper(t)
+	workerAuthStorageWrapper := db.TestWrapper(t)
 
 	k := TestKms(t, conn, rootWrapper)
-	err := k.AddExternalWrappers(testCtx, WithRecoveryWrapper(recoveryWrapper), WithWorkerAuthWrapper(workerAuthWrapper))
+	err := k.AddExternalWrappers(testCtx, WithRecoveryWrapper(recoveryWrapper), WithWorkerAuthWrapper(workerAuthWrapper), WithWorkerAuthStorageWrapper(workerAuthStorageWrapper))
 	require.NoError(err)
 
 	assert.Equal(rootWrapper, k.GetExternalWrappers(testCtx).Root())

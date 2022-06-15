@@ -26,6 +26,12 @@ message Job {
 }
 
 message JobRun {
+  // server_id referenced an server table which was replaced with both a
+  // server_controller table and a server_worker table.  For the purpose of
+  // jobs, only the controller table is relevant thus we replaced this column
+  // with controller_id.
+  reserved "server_id";
+
   // private_id is used to access the job run but not intended to be available via the API
   // @inject_tag: `gorm:"primary_key;default:null"`
   string private_id = 1;
@@ -37,10 +43,6 @@ message JobRun {
   // The job_name is the name of the job and must be set.
   // @inject_tag: `gorm:"not_null"`
   string job_name = 3;
-
-  // The server_id of the server running the job and must be set.
-  // @inject_tag: `gorm:"not_null"`
-  string server_id = 4;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
@@ -65,4 +67,8 @@ message JobRun {
   // status of the job run (running, completed, failed or interrupted).
   // @inject_tag: `gorm:"not_null"`
   string status = 10;
+
+  // The controller_id of the controller running the job and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string controller_id = 11;
 }

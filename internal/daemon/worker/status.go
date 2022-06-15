@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -11,13 +12,14 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/resolver"
 )
 
 type LastStatusInformation struct {
 	*pbs.StatusResponse
-	StatusTime time.Time
+	StatusTime              time.Time
+	LastCalculatedUpstreams []string
 }
 
 func (w *Worker) startStatusTicking(cancelCtx context.Context) {
@@ -90,6 +92,15 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 
 func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 	const op = "worker.(Worker).sendWorkerStatus"
+
+	// If we've never managed to successfully authenticate then we won't have
+	// any session information anyways and this will produce a ton of noise in
+	// observability, so suppress it
+	if !w.everAuthenticated.Load() {
+		event.WriteSysEvent(cancelCtx, op, "worker is not authenticated to an upstream, not sending status")
+		return
+	}
+
 	// First send info as-is. We'll perform cleanup duties after we
 	// get cancel/job change info back.
 	var activeJobs []*pbs.JobStatus
@@ -127,22 +138,30 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 
 	// Send status information
 	client := w.controllerStatusConn.Load().(pbs.ServerCoordinationServiceClient)
-	var tags map[string]*servers.TagValues
+	var tags []*servers.TagPair
 	// If we're not going to request a tag update, no reason to have these
 	// marshaled on every status call.
 	if w.updateTags.Load() {
-		tags = w.tags.Load().(map[string]*servers.TagValues)
+		tags = w.tags.Load().([]*servers.TagPair)
 	}
 	statusCtx, statusCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
 	defer statusCancel()
+
+	keyId := w.WorkerAuthCurrentKeyId.Load()
+
+	if w.conf.RawConfig.Worker.Name == "" && keyId == "" {
+		event.WriteError(statusCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
+			event.WithInfoMsg("error making status request to controller"))
+	}
+
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
-		Worker: &servers.Server{
-			PrivateId:   w.conf.RawConfig.Worker.Name,
-			Type:        resource.Worker.String(),
+		WorkerStatus: &servers.ServerWorkerStatus{
+			Name:        w.conf.RawConfig.Worker.Name,
 			Description: w.conf.RawConfig.Worker.Description,
 			Address:     w.conf.RawConfig.Worker.PublicAddr,
 			Tags:        tags,
+			KeyId:       keyId,
 		},
 		UpdateTags: w.updateTags.Load(),
 	})
@@ -182,19 +201,27 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context) {
 		}
 	} else {
 		w.updateTags.Store(false)
-		addrs := make([]resolver.Address, 0, len(result.Controllers))
-		strAddrs := make([]string, 0, len(result.Controllers))
-		for _, v := range result.Controllers {
-			addrs = append(addrs, resolver.Address{Addr: v.Address})
-			strAddrs = append(strAddrs, v.Address)
+		// This may be nil if we are in a multiple hop scenario
+		var addrs []resolver.Address
+		var newUpstreams []string
+		if len(result.CalculatedUpstreams) > 0 {
+			addrs = make([]resolver.Address, 0, len(result.CalculatedUpstreams))
+			for _, v := range result.CalculatedUpstreams {
+				addrs = append(addrs, resolver.Address{Addr: v.Address})
+				newUpstreams = append(newUpstreams, v.Address)
+			}
+			lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
+			// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
+			if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, newUpstreams) {
+				upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, newUpstreams)
+				event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
+				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+			} else if lastStatus == nil {
+				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+				event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", newUpstreams))
+			}
 		}
-		switch len(strAddrs) {
-		case 0:
-			event.WriteError(statusCtx, op, errors.New("got no controller addresses from controller; possibly prior to first status save, not persisting"))
-		default:
-			w.Resolver().UpdateState(resolver.State{Addresses: addrs})
-		}
-		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now()})
+		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: newUpstreams})
 
 		for _, request := range result.GetJobsRequests() {
 			switch request.GetRequestType() {

@@ -29,7 +29,6 @@ type options struct {
 	withTestTofu          []byte
 	withListingConvert    bool
 	withSessionIds        []string
-	withServerId          string
 	withDbOpts            []db.Option
 	withWorkerStateDelay  time.Duration
 	withTerminated        bool
@@ -97,14 +96,6 @@ func WithSessionIds(ids ...string) Option {
 func withListingConvert(withListingConvert bool) Option {
 	return func(o *options) {
 		o.withListingConvert = withListingConvert
-	}
-}
-
-// WithServerId allows the specification of the server id to use for the
-// operation.
-func WithServerId(id string) Option {
-	return func(o *options) {
-		o.withServerId = id
 	}
 }
 

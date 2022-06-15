@@ -13,10 +13,12 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
+	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/nodeenrollment/multihop"
+	"github.com/hashicorp/nodeenrollment/protocol"
 	"google.golang.org/grpc"
 )
 
@@ -103,9 +105,25 @@ func (c *Controller) configureForApi(ln *base.ServerListener) ([]func(), error) 
 }
 
 func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error) {
-	l := tls.NewListener(ln.ClusterListener, &tls.Config{
-		GetConfigForClient: c.validateWorkerTls,
-	})
+	const op = "controller.configureForCluster"
+
+	workerAuthStorage, err := c.WorkerAuthRepoStorageFn()
+	if err != nil {
+		return nil, fmt.Errorf("error fetching worker auth storage: %w", err)
+	}
+
+	l, err := protocol.NewInterceptingListener(
+		&protocol.InterceptingListenerConfiguration{
+			Context:      c.baseContext,
+			Storage:      workerAuthStorage,
+			BaseListener: ln.ClusterListener,
+			BaseTlsConfiguration: &tls.Config{
+				GetConfigForClient: c.validateWorkerTls,
+			},
+		})
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
+	}
 
 	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
 	if err != nil {
@@ -125,10 +143,21 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		),
 	)
 
-	workerService := workers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
+	workerService := handlers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
 		c.workerStatusUpdateTimes, c.kms)
 	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
 	pbs.RegisterSessionServiceServer(workerServer, workerService)
+
+	multihopService, err := handlers.NewMultihopServiceServer(
+		workerAuthStorage,
+		true,
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
+	}
+	multihop.RegisterMultihopServiceServer(workerServer, multihopService)
+
 	metric.InitializeClusterCollectors(c.conf.PrometheusRegisterer, workerServer)
 
 	ln.GrpcServer = workerServer

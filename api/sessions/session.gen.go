@@ -28,7 +28,6 @@ type Session struct {
 	Endpoint          string            `json:"endpoint,omitempty"`
 	States            []*SessionState   `json:"states,omitempty"`
 	Status            string            `json:"status,omitempty"`
-	WorkerInfo        []*WorkerInfo     `json:"worker_info,omitempty"`
 	Certificate       []byte            `json:"certificate,omitempty"`
 	TerminationReason string            `json:"termination_reason,omitempty"`
 	AuthorizedActions []string          `json:"authorized_actions,omitempty"`

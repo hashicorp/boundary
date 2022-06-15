@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package controller.api.resources.workers.v1;
+
+import "controller/api/resources/scopes/v1/scope.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers;workers";
+
+// Worker contains all fields related to a Worker resource
+message Worker {
+  // Output only. The ID of the User.
+  string id = 10; // @gotags: `class:"public"`
+
+  // The ID of the Scope this resource is in.
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+
+  // Output only. Scope information for this resource.
+  resources.scopes.v1.ScopeInfo scope = 30;
+
+  // Optional name for identification purposes. Can only be set through the API
+  // for `pki`-type workers; read-only for `kms`-type workers.
+  google.protobuf.StringValue name = 40 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "name"
+      that: "name"
+    }
+  ]; // @gotags: `class:"sensitive"`
+
+  // Optional user-set description for identification purposes. Can only be set
+  // through the API for `pki`-type workers; read-only for `kms`-type workers.
+  google.protobuf.StringValue description = 50 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "description"
+      that: "description"
+    }
+  ]; // @gotags: `class:"sensitive"`
+
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+
+  // Output only. The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+
+  // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 80; // @gotags: `class:"public"`
+
+  // Output only. The address that this worker is reachable at, as sourced from
+  // the worker's configuration file.
+  string address = 90; // @gotags: `class:"public"`
+
+  // Output only. The deduplicated union of the tags reported by the worker from
+  // its configuration and any tags added through other means.  This is used
+  // when applying worker filters.
+  map<string, google.protobuf.ListValue> canonical_tags = 120 [json_name = "canonical_tags"]; // @gotags: `class:"public"`
+
+  // Output only. The tags set in the worker's configuration file.
+  map<string, google.protobuf.ListValue> config_tags = 130 [json_name = "config_tags"]; // @gotags: `class:"public"`
+
+  // Output only. The time this worker daemon last reported its status.
+  google.protobuf.Timestamp last_status_time = 140 [json_name = "last_status_time"]; // @gotags: `class:"public"`
+
+  // worker_generated_auth_token is input only. Supports the worker led node
+  // enrollment flow where this credentials token is produced by a worker. This
+  // token is a base58 encoded types.FetchNodeCredentialsRequest from
+  // https://github.com/hashicorp/nodeenrollment
+  google.protobuf.StringValue worker_generated_auth_token = 150 [json_name = "worker_generated_auth_token"]; // @gotags: `class:"public"`
+
+  // Output only. The number of connections that this worker is currently handling.
+  google.protobuf.UInt32Value active_connection_count = 160 [json_name = "active_connection_count"]; // @gotags: `class:"public"`
+
+  // Output only. The type of the worker, denoted by how it authenticates: `pki`
+  // or `kms`.
+  string type = 170;
+
+  // Output only. The available actions on this resource for the requester.
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+}

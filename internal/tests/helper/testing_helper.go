@@ -34,7 +34,7 @@ import (
 const (
 	DefaultGracePeriod                       = time.Second * 15
 	expectConnectionStateOnControllerTimeout = time.Minute * 2
-	expectConnectionStateOnWorkerTimeout     = DefaultGracePeriod * 2
+	expectConnectionStateOnWorkerTimeout     = DefaultGracePeriod * 3
 
 	// This is the interval that we check states on in the worker. It
 	// needs to be particularly granular to ensure that we allow for
@@ -70,7 +70,7 @@ func NewTestSession(
 ) *TestSession {
 	t.Helper()
 	require := require.New(t)
-	sar, err := tcl.AuthorizeSession(ctx, "ttcp_1234567890")
+	sar, err := tcl.AuthorizeSession(ctx, targetId)
 	require.NoError(err)
 	require.NotNil(sar)
 

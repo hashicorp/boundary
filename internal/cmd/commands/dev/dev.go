@@ -25,12 +25,18 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/servers/store"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/cli"
+	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
+	"go.uber.org/atomic"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -84,6 +90,10 @@ type Command struct {
 	flagEveryEventDenyFilters        []string
 	flagCreateLoopbackHostPlugin     bool
 	flagPluginExecutionDir           string
+	flagUseKmsWorkerAuthMethod       bool
+	flagWorkerAuthStorageDir         string
+	flagWorkerAuthStorageSkipCleanup bool
+	flagWorkerAuthRotationInterval   time.Duration
 }
 
 func (c *Command) Synopsis() string {
@@ -327,10 +337,33 @@ func (c *Command) Flags() *base.FlagSets {
 		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
 		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
 	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "use-kms-worker-auth-method",
+		Target: &c.flagUseKmsWorkerAuthMethod,
+		Usage:  "If set, the original KMS-based method of worker auth will be used to connect the initial dev worker to the controller.",
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "worker-auth-storage-dir",
+		Target: &c.flagWorkerAuthStorageDir,
+		Usage:  "Specifies the directory to store worker authentication credentials in dev mode.",
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "worker-auth-storage-skip-cleanup",
+		Target: &c.flagWorkerAuthStorageSkipCleanup,
+		Usage:  "Prevents deletion of temp worker credential storage directory if set",
+	})
 
 	f.BoolVar(&base.BoolVar{
 		Name:   "create-loopback-host-plugin",
 		Target: &c.flagCreateLoopbackHostPlugin,
+		Hidden: true,
+	})
+
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-rotation-interval",
+		Target: &c.flagWorkerAuthRotationInterval,
 		Hidden: true,
 	})
 
@@ -384,6 +417,7 @@ func (c *Command) Run(args []string) int {
 	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
+	c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
@@ -449,7 +483,7 @@ func (c *Command) Run(args []string) int {
 			if c.flagControllerClusterListenAddr != "" {
 				l.Address = c.flagControllerClusterListenAddr
 				if !c.flagControllerOnly {
-					c.Config.Worker.Controllers = []string{l.Address}
+					c.Config.Worker.InitialUpstreams = []string{l.Address}
 				}
 			} else {
 				l.Address = "127.0.0.1:9201"
@@ -540,7 +574,7 @@ func (c *Command) Run(args []string) int {
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
-	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config, base.WithSkipWorkerAuthKmsInstantiation(!c.flagUseKmsWorkerAuthMethod)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -548,14 +582,18 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
 	}
-	if c.WorkerAuthKms == nil {
-		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-		return base.CommandUserError
+	if c.flagUseKmsWorkerAuthMethod {
+		if c.WorkerAuthKms == nil {
+			c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
+			return base.CommandUserError
+		}
+		c.Config.Worker.Name = ""
+		c.Config.Worker.Description = ""
+		c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
+		c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 	}
 	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
 	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
-	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
-	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 	c.InfoKeys = append(c.InfoKeys, "[Recovery] AEAD Key Bytes")
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
 
@@ -592,7 +630,7 @@ func (c *Command) Run(args []string) int {
 			opts = append(opts, base.WithContainerImage(c.flagContainerImage))
 		}
 		if err := c.CreateDevDatabase(c.Context, opts...); err != nil {
-			c.UI.Error(fmt.Errorf("Error creating dev database container %w", err).Error())
+			c.UI.Error(fmt.Errorf("Error creating dev database container: %w", err).Error())
 			return base.CommandCliError
 		}
 
@@ -611,12 +649,6 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
 		}
-	}
-
-	c.PrintInfo(c.UI)
-	if err := c.ReleaseLogGate(); err != nil {
-		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
-		return base.CommandCliError
 	}
 
 	{
@@ -644,6 +676,8 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
+	errorEncountered := atomic.NewBool(false)
+
 	if !c.flagControllerOnly {
 		conf := &worker.Config{
 			RawConfig: c.Config,
@@ -655,6 +689,10 @@ func (c *Command) Run(args []string) int {
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing worker: %w", err).Error())
 			return base.CommandCliError
+		}
+
+		if c.flagWorkerAuthRotationInterval > 0 {
+			c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthRotationInterval
 		}
 
 		if err := c.worker.Start(); err != nil {
@@ -669,6 +707,54 @@ func (c *Command) Run(args []string) int {
 			}
 			return base.CommandCliError
 		}
+
+		if !c.flagUseKmsWorkerAuthMethod {
+			req := c.worker.WorkerAuthRegistrationRequest
+			if req == "" {
+				c.UI.Error("No worker auth registration request found at worker start time")
+				return base.CommandCliError
+			}
+			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
+			c.Info["worker auth registration request"] = req
+			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
+			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
+			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
+			c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
+			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
+				// Shutdown on failure
+				retErr := fmt.Errorf("Error storing worker auth request: %w", err)
+				if err := c.worker.Shutdown(); err != nil {
+					c.UI.Error(retErr.Error())
+					retErr = fmt.Errorf("Error shutting down worker: %w", err)
+				}
+				c.UI.Error(retErr.Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
+			go func() {
+				for {
+					select {
+					case <-c.Context.Done():
+						return
+					case <-time.After(time.Second):
+						if err := authorizeWorker(c.Context, c.controller, req); err != nil {
+							c.UI.Error(fmt.Errorf("Error authorizing node: %w", err).Error())
+							errorEncountered.Store(true)
+							return
+						}
+						return
+					}
+				}
+			}()
+		}
+	}
+
+	c.PrintInfo(c.UI)
+	if err := c.ReleaseLogGate(); err != nil {
+		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
+		return base.CommandCliError
 	}
 
 	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
@@ -683,7 +769,7 @@ func (c *Command) Run(args []string) int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
-	for !shutdownTriggered {
+	for !shutdownTriggered && !errorEncountered.Load() {
 		select {
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Boundary dev environment shutdown triggered, interrupt again to force")
@@ -704,11 +790,23 @@ func (c *Command) Run(args []string) int {
 				}
 			}()
 
+			shutdownTriggered = true
+
+		case <-c.SigUSR2Ch:
+			buf := make([]byte, 32*1024*1024)
+			n := runtime.Stack(buf[:], true)
+			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
+		}
+
+		if shutdownTriggered {
 			if c.Config.Controller != nil {
 				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
 			}
 
 			if !c.flagControllerOnly {
+				if !c.flagWorkerAuthStorageSkipCleanup {
+					c.worker.WorkerAuthStorage.Cleanup()
+				}
 				if err := c.worker.Shutdown(); err != nil {
 					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 				}
@@ -722,15 +820,36 @@ func (c *Command) Run(args []string) int {
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
 			}
-
-			shutdownTriggered = true
-
-		case <-c.SigUSR2Ch:
-			buf := make([]byte, 32*1024*1024)
-			n := runtime.Stack(buf[:], true)
-			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 		}
 	}
 
 	return base.CommandSuccess
+}
+
+func authorizeWorker(ctx context.Context, c *controller.Controller, request string) error {
+	reqBytes, err := base58.FastBase58Decoding(request)
+	if err != nil {
+		return fmt.Errorf("error base58-decoding fetch node creds next proto value: %w", err)
+	}
+	// Decode the proto into the request
+	req := new(types.FetchNodeCredentialsRequest)
+	if err := proto.Unmarshal(reqBytes, req); err != nil {
+		return fmt.Errorf("error unmarshaling common name value: %w", err)
+	}
+
+	serversRepo, err := c.ServersRepoFn()
+	if err != nil {
+		return fmt.Errorf("error fetching servers repo: %w", err)
+	}
+
+	_, err = serversRepo.CreateWorker(ctx, &servers.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, servers.WithFetchNodeCredentialsRequest(req))
+	if err != nil {
+		return fmt.Errorf("error creating worker: %w", err)
+	}
+
+	return err
 }

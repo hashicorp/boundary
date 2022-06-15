@@ -6,6 +6,15 @@ deps:
 breaking:
   use:
     - WIRE_JSON
+  ignore_only:
+    FIELD_NO_DELETE_UNLESS_NUMBER_RESERVED:
+      # The proto files in controller/api are only exposed as json files so enforcing
+      # proto backward compatability doesn't make sense, except for maybe the names.
+      - controller/api
+      # Storage protos are used by gorm.  Gorm relies on go tags and the json
+      # names to determine what columns to update so we don't care of the field
+      # numbers remain the same.
+      - controller/storage
 lint:
   use:
     - DEFAULT

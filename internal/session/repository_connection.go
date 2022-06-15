@@ -352,7 +352,7 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 	var orphanedConns []string
 
 	args := make([]interface{}, 0, len(reportedConnections)+2)
-	args = append(args, sql.Named("server_id", workerId))
+	args = append(args, sql.Named("worker_id", workerId))
 	args = append(args, sql.Named("worker_state_delay_seconds", r.workerStateDelay.Seconds()))
 
 	var notInClause string

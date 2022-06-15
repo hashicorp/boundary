@@ -22,5 +22,5 @@ func Now() *Timestamp {
 
 // AsTime converts x to a time.Time.
 func (x *Timestamp) AsTime() time.Time {
-	return x.Timestamp.AsTime()
+	return x.GetTimestamp().AsTime()
 }
