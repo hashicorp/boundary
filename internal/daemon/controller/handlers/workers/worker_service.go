@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -545,6 +546,17 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 		if req.GetItem().GetConfigTags() != nil {
 			badFields[globals.TagsField] = "This is a read only field."
 		}
+		nameString := req.GetItem().GetName().String()
+		if !strutil.Printable(nameString) {
+			badFields[globals.NameField] = "Contains non-printable characters"
+		}
+		if strings.ToLower(nameString) != nameString {
+			badFields[globals.NameField] = "Must be all lowercase."
+		}
+		descriptionString := req.GetItem().GetDescription().String()
+		if !strutil.Printable(descriptionString) {
+			badFields[globals.DescriptionField] = "Contains non-printable characters."
+		}
 		return badFields
 	}, servers.WorkerPrefix)
 }
@@ -576,6 +588,17 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 		}
 		if req.GetItem().AuthorizedActions != nil {
 			badFields[globals.AuthorizedActionsField] = readOnlyFieldMsg
+		}
+		nameString := req.GetItem().GetName().String()
+		if !strutil.Printable(nameString) {
+			badFields[globals.NameField] = "Contains non-printable characters."
+		}
+		if strings.ToLower(nameString) != nameString {
+			badFields[globals.NameField] = "Must be all lowercase"
+		}
+		descriptionString := req.GetItem().GetDescription().String()
+		if !strutil.Printable(descriptionString) {
+			badFields[globals.DescriptionField] = "Contains non-printable characters."
 		}
 		return badFields
 	})
