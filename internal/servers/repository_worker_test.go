@@ -212,16 +212,6 @@ func TestLookupWorker(t *testing.T) {
 		servers.WithDescription("description"),
 		servers.WithAddress("address"),
 		servers.WithWorkerTags(&servers.Tag{"key", "val"}))
-	w, err = repo.UpsertWorkerStatus(context.Background(),
-		servers.NewWorkerForStatus(w.GetScopeId(),
-			servers.WithName(w.GetName()),
-			servers.WithAddress(w.GetAddress()),
-			servers.WithWorkerTags(&servers.Tag{
-				Key:   "config",
-				Value: "test",
-			})),
-		servers.WithUpdateTags(true),
-		servers.WithPublicId(w.GetPublicId()))
 	require.NoError(t, err)
 
 	sessRepo, err := session.NewRepository(rw, rw, kms)
@@ -261,12 +251,11 @@ func TestLookupWorker(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(w, got, protocmp.Transform()))
 		assert.Equal(t, uint32(3), got.ActiveConnectionCount())
-		assert.Equal(t, map[string][]string{"key": {"val"}}, got.GetApiTags())
-		assert.Equal(t, map[string][]string{"config": {"test"}}, got.GetConfigTags())
+		assert.Empty(t, got.GetApiTags())
 		assert.Equal(t, map[string][]string{
-			"key":    {"val"},
-			"config": {"test"},
+			"key": {"val"},
 		}, got.CanonicalTags())
+		assert.Equal(t, got.CanonicalTags(), got.GetConfigTags())
 	})
 	t.Run("not found", func(t *testing.T) {
 		got, err := repo.LookupWorker(ctx, "w_unknownid")
