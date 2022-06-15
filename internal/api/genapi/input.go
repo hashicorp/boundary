@@ -554,10 +554,6 @@ var inputStructs = []*structInfo{
 		outFile: "targets/host_source.gen.go",
 	},
 	{
-		inProto: &targets.CredentialLibrary{},
-		outFile: "targets/credential_library.gen.go",
-	},
-	{
 		inProto: &targets.CredentialSource{},
 		outFile: "targets/credential_source.gen.go",
 	},
@@ -611,8 +607,7 @@ var inputStructs = []*structInfo{
 				SliceType: "[]string",
 				VarName:   "hostSourceIds",
 			},
-			"CredentialLibraries": {},
-			"CredentialSources":   {},
+			"CredentialSources": {},
 		},
 		extraFields: []fieldInfo{
 			{
@@ -632,11 +627,6 @@ var inputStructs = []*structInfo{
 				ProtoName:   "scope_name",
 				FieldType:   "string",
 				SkipDefault: true,
-			},
-			{
-				Name:      "ApplicationCredentialLibraryIds",
-				ProtoName: "application_credential_library_ids",
-				FieldType: "[]string",
 			},
 			{
 				Name:      "ApplicationCredentialSourceIds",

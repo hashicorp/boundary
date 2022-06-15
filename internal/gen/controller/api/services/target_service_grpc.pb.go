@@ -94,33 +94,6 @@ type TargetServiceClient interface {
 	// is returned if a Host Source is attempted to be removed from the Target
 	// when the Target does not have the Host Set.
 	RemoveTargetHostSources(ctx context.Context, in *RemoveTargetHostSourcesRequest, opts ...grpc.CallOption) (*RemoveTargetHostSourcesResponse, error)
-	// Deprecated: Do not use.
-	// AddTargetCredentialLibraries adds Credential Libraries to this Target.
-	// The provided request must include the Target ID to which the Credential
-	// Libraries will be added. All Credential Libraries added to the provided
-	// Target must be a child of a Store that is in the same scope as this
-	// Target. If the scope or Target IDs are missing, malformed, or reference
-	// non-existing resources, an error is returned. An error is returned if a
-	// Credential Library is attempted to be added to a target that is already
-	// present on the Target.
-	AddTargetCredentialLibraries(ctx context.Context, in *AddTargetCredentialLibrariesRequest, opts ...grpc.CallOption) (*AddTargetCredentialLibrariesResponse, error)
-	// Deprecated: Do not use.
-	// SetTargetCredentialLibraries sets the Target's Credential Libraries.
-	// Any existing Credential Libraries on the Target are deleted if they are
-	// not included in this request. The provided request must include the scope,
-	// and the Target ID on which the Credential Libraries will be set.  All
-	// Credential Libraries in the request must be a child of a Store that is
-	// in the same scope as the provided Target. If any IDs are missing,
-	// malformed, or references a non-existing resource, an error is returned.
-	SetTargetCredentialLibraries(ctx context.Context, in *SetTargetCredentialLibrariesRequest, opts ...grpc.CallOption) (*SetTargetCredentialLibrariesResponse, error)
-	// Deprecated: Do not use.
-	// RemoveTargetCredentialLibraries removes the Credential Libraries from the
-	// specified Target. The provided request must include the Target ID for the
-	// Target from which the Credential Libraries will be removed. If the ID is
-	// missing, or malformed, an error is returned.  An error is returned if a
-	// Credential Library is attempted to be removed from the Target when the
-	// Target does not have the Credential Library.
-	RemoveTargetCredentialLibraries(ctx context.Context, in *RemoveTargetCredentialLibrariesRequest, opts ...grpc.CallOption) (*RemoveTargetCredentialLibrariesResponse, error)
 	// AddTargetCredentialSources adds Credential Sources to this Target.
 	// The provided request must include the Target ID to which the Credential
 	// Sources will be added. All Credential Sources added to the provided
@@ -263,36 +236,6 @@ func (c *targetServiceClient) RemoveTargetHostSources(ctx context.Context, in *R
 	return out, nil
 }
 
-// Deprecated: Do not use.
-func (c *targetServiceClient) AddTargetCredentialLibraries(ctx context.Context, in *AddTargetCredentialLibrariesRequest, opts ...grpc.CallOption) (*AddTargetCredentialLibrariesResponse, error) {
-	out := new(AddTargetCredentialLibrariesResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/AddTargetCredentialLibraries", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Deprecated: Do not use.
-func (c *targetServiceClient) SetTargetCredentialLibraries(ctx context.Context, in *SetTargetCredentialLibrariesRequest, opts ...grpc.CallOption) (*SetTargetCredentialLibrariesResponse, error) {
-	out := new(SetTargetCredentialLibrariesResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/SetTargetCredentialLibraries", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Deprecated: Do not use.
-func (c *targetServiceClient) RemoveTargetCredentialLibraries(ctx context.Context, in *RemoveTargetCredentialLibrariesRequest, opts ...grpc.CallOption) (*RemoveTargetCredentialLibrariesResponse, error) {
-	out := new(RemoveTargetCredentialLibrariesResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/RemoveTargetCredentialLibraries", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *targetServiceClient) AddTargetCredentialSources(ctx context.Context, in *AddTargetCredentialSourcesRequest, opts ...grpc.CallOption) (*AddTargetCredentialSourcesResponse, error) {
 	out := new(AddTargetCredentialSourcesResponse)
 	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/AddTargetCredentialSources", in, out, opts...)
@@ -400,33 +343,6 @@ type TargetServiceServer interface {
 	// is returned if a Host Source is attempted to be removed from the Target
 	// when the Target does not have the Host Set.
 	RemoveTargetHostSources(context.Context, *RemoveTargetHostSourcesRequest) (*RemoveTargetHostSourcesResponse, error)
-	// Deprecated: Do not use.
-	// AddTargetCredentialLibraries adds Credential Libraries to this Target.
-	// The provided request must include the Target ID to which the Credential
-	// Libraries will be added. All Credential Libraries added to the provided
-	// Target must be a child of a Store that is in the same scope as this
-	// Target. If the scope or Target IDs are missing, malformed, or reference
-	// non-existing resources, an error is returned. An error is returned if a
-	// Credential Library is attempted to be added to a target that is already
-	// present on the Target.
-	AddTargetCredentialLibraries(context.Context, *AddTargetCredentialLibrariesRequest) (*AddTargetCredentialLibrariesResponse, error)
-	// Deprecated: Do not use.
-	// SetTargetCredentialLibraries sets the Target's Credential Libraries.
-	// Any existing Credential Libraries on the Target are deleted if they are
-	// not included in this request. The provided request must include the scope,
-	// and the Target ID on which the Credential Libraries will be set.  All
-	// Credential Libraries in the request must be a child of a Store that is
-	// in the same scope as the provided Target. If any IDs are missing,
-	// malformed, or references a non-existing resource, an error is returned.
-	SetTargetCredentialLibraries(context.Context, *SetTargetCredentialLibrariesRequest) (*SetTargetCredentialLibrariesResponse, error)
-	// Deprecated: Do not use.
-	// RemoveTargetCredentialLibraries removes the Credential Libraries from the
-	// specified Target. The provided request must include the Target ID for the
-	// Target from which the Credential Libraries will be removed. If the ID is
-	// missing, or malformed, an error is returned.  An error is returned if a
-	// Credential Library is attempted to be removed from the Target when the
-	// Target does not have the Credential Library.
-	RemoveTargetCredentialLibraries(context.Context, *RemoveTargetCredentialLibrariesRequest) (*RemoveTargetCredentialLibrariesResponse, error)
 	// AddTargetCredentialSources adds Credential Sources to this Target.
 	// The provided request must include the Target ID to which the Credential
 	// Sources will be added. All Credential Sources added to the provided
@@ -493,15 +409,6 @@ func (UnimplementedTargetServiceServer) SetTargetHostSources(context.Context, *S
 }
 func (UnimplementedTargetServiceServer) RemoveTargetHostSources(context.Context, *RemoveTargetHostSourcesRequest) (*RemoveTargetHostSourcesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetHostSources not implemented")
-}
-func (UnimplementedTargetServiceServer) AddTargetCredentialLibraries(context.Context, *AddTargetCredentialLibrariesRequest) (*AddTargetCredentialLibrariesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddTargetCredentialLibraries not implemented")
-}
-func (UnimplementedTargetServiceServer) SetTargetCredentialLibraries(context.Context, *SetTargetCredentialLibrariesRequest) (*SetTargetCredentialLibrariesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetTargetCredentialLibraries not implemented")
-}
-func (UnimplementedTargetServiceServer) RemoveTargetCredentialLibraries(context.Context, *RemoveTargetCredentialLibrariesRequest) (*RemoveTargetCredentialLibrariesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetCredentialLibraries not implemented")
 }
 func (UnimplementedTargetServiceServer) AddTargetCredentialSources(context.Context, *AddTargetCredentialSourcesRequest) (*AddTargetCredentialSourcesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTargetCredentialSources not implemented")
@@ -741,60 +648,6 @@ func _TargetService_RemoveTargetHostSources_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TargetService_AddTargetCredentialLibraries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddTargetCredentialLibrariesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TargetServiceServer).AddTargetCredentialLibraries(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.TargetService/AddTargetCredentialLibraries",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TargetServiceServer).AddTargetCredentialLibraries(ctx, req.(*AddTargetCredentialLibrariesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TargetService_SetTargetCredentialLibraries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetTargetCredentialLibrariesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TargetServiceServer).SetTargetCredentialLibraries(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.TargetService/SetTargetCredentialLibraries",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TargetServiceServer).SetTargetCredentialLibraries(ctx, req.(*SetTargetCredentialLibrariesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TargetService_RemoveTargetCredentialLibraries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveTargetCredentialLibrariesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TargetServiceServer).RemoveTargetCredentialLibraries(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.TargetService/RemoveTargetCredentialLibraries",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TargetServiceServer).RemoveTargetCredentialLibraries(ctx, req.(*RemoveTargetCredentialLibrariesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _TargetService_AddTargetCredentialSources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddTargetCredentialSourcesRequest)
 	if err := dec(in); err != nil {
@@ -903,18 +756,6 @@ var TargetService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveTargetHostSources",
 			Handler:    _TargetService_RemoveTargetHostSources_Handler,
-		},
-		{
-			MethodName: "AddTargetCredentialLibraries",
-			Handler:    _TargetService_AddTargetCredentialLibraries_Handler,
-		},
-		{
-			MethodName: "SetTargetCredentialLibraries",
-			Handler:    _TargetService_SetTargetCredentialLibraries_Handler,
-		},
-		{
-			MethodName: "RemoveTargetCredentialLibraries",
-			Handler:    _TargetService_RemoveTargetCredentialLibraries_Handler,
 		},
 		{
 			MethodName: "AddTargetCredentialSources",

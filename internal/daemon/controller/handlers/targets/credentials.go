@@ -96,13 +96,6 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 	}
 
 	return &pb.SessionCredential{
-		CredentialLibrary: &pb.CredentialLibrary{
-			Id:                l.GetPublicId(),
-			Name:              l.GetName(),
-			Description:       l.GetDescription(),
-			CredentialStoreId: l.GetStoreId(),
-			Type:              subtypes.SubtypeFromId(credentialDomain, l.GetPublicId()).String(),
-		},
 		CredentialSource: &pb.CredentialSource{
 			Id:                l.GetPublicId(),
 			Name:              l.GetName(),
