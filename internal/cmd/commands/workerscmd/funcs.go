@@ -9,6 +9,27 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
+	var helpStr string
+	switch c.Func {
+	case "":
+		return base.WrapForHelpText([]string{
+			"Usage: boundary workers [sub command] [options] [args]",
+			"",
+			"  This command allows operations on Boundary worker resources. Example:",
+			"",
+			"    Read a worker:",
+			"",
+			`      $ boundary workers read -id w_1234567890`,
+			"",
+			"  Please see the workers subcommand help for detailed usage information.",
+		})
+	default:
+		helpStr = helpMap[c.Func]()
+	}
+	return helpStr + c.Flags().Help()
+}
+
 func (c *Command) printListTable(items []*workers.Worker) string {
 	if len(items) == 0 {
 		return "No workers found"

@@ -79,7 +79,7 @@ func (c *Command) Help() string {
 
 	default:
 
-		helpStr = helpMap["base"]()
+		helpStr = c.extraHelpFunc(helpMap)
 
 	}
 
