@@ -13,6 +13,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   credential sources for targets, similar to credential libraries from the
   `vault` credential store, and thus can be brokered to users at session
   authorization time. [PR](https://github.com/hashicorp/boundary/pull/2174)
+* `boundary connect` Credential Brokering Integration: we have extended integration
+  into the `boundary connect` helpers. A new `sshpass` style has been added to the 
+  `ssh` helper, when used, if the credential contains a username/password and `sshpass` 
+  is installed, the command will automatically pass the credentials to the `ssh` process.
+  Additionally, the default `ssh` helper will now use the `username` of the brokered credential.
+  [PR](https://github.com/hashicorp/boundary/pull/2191).
 * controller: Improve response time for listing sessions.
   This also creates a new periodic job that will delete terminated
   sessions after 1 hour.
