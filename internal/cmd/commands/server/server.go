@@ -353,10 +353,10 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 
-		if c.Config.HCPBClusterId != "" {
-			_, err := uuid.ParseUUID(c.Config.HCPBClusterId)
+		if c.Config.HcpbClusterId != "" {
+			_, err := uuid.ParseUUID(c.Config.HcpbClusterId)
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Invalid HCPB cluster id %q: %w", c.Config.HCPBClusterId, err).Error())
+				c.UI.Error(fmt.Errorf("Invalid HCP Boundary cluster id %q: %w", c.Config.HcpbClusterId, err).Error())
 				return base.CommandUserError
 			}
 		}

@@ -126,7 +126,7 @@ type Config struct {
 	Plugins Plugins `hcl:"plugins"`
 
 	// Internal field for use with HCP deployments. Used if controllers/ initial_upstreams is not set
-	HCPBClusterId string `hcl:"hcp_boundary_cluster_id"`
+	HcpbClusterId string `hcl:"hcp_boundary_cluster_id"`
 }
 
 type Controller struct {

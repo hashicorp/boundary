@@ -59,10 +59,10 @@ func (w *Worker) StartControllerConnections() error {
 	}
 
 	if len(initialAddrs) == 0 {
-		if w.conf.RawConfig.HCPBClusterId != "" {
-			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HCPBClusterId, hcpbUrlSuffix)
+		if w.conf.RawConfig.HcpbClusterId != "" {
+			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HcpbClusterId, hcpbUrlSuffix)
 			initialAddrs = append(initialAddrs, resolver.Address{Addr: clusterAddress})
-			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCPB Cluster address %s as upstream address", clusterAddress))
+			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCP Boundary cluster address %s as upstream address", clusterAddress))
 		} else {
 			return errors.New("no initial upstream addresses found")
 		}
