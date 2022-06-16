@@ -211,7 +211,13 @@ protobuild:
 .PHONY: protolint
 protolint:
 	@buf lint
-	@buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website'
+	# First check all protos except controller/servers for WIRE_JSON compatibility
+	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
+		--exclude-path=controller/servers \
+		--config buf.breaking.json.yaml
+	# Next check all protos for WIRE compatibility. WIRE is a subset of WIRE_JSON so we don't need to exclude any files.
+	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
+		--config buf.breaking.wire.yaml
 
 .PHONY: website
 # must have nodejs and npm installed
