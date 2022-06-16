@@ -161,11 +161,7 @@ func printItemTable(result api.GenericResult) string {
 		if len(item.ConfigTags) > 0 {
 			tagMap := make(map[string]any, len(item.ConfigTags))
 			for k, v := range item.ConfigTags {
-				nv := make([]string, 0, len(v))
-				for _, vi := range v {
-					nv = append(nv, fmt.Sprintf("%q", vi))
-				}
-				tagMap[k] = nv
+				tagMap[k] = v
 			}
 			ret = append(ret,
 				"    Worker Configuration:",
@@ -175,11 +171,7 @@ func printItemTable(result api.GenericResult) string {
 		if len(item.CanonicalTags) > 0 {
 			tagMap := make(map[string]any, len(item.CanonicalTags))
 			for k, v := range item.CanonicalTags {
-				nv := make([]string, 0, len(v))
-				for _, vi := range v {
-					nv = append(nv, fmt.Sprintf("%q", vi))
-				}
-				tagMap[k] = nv
+				tagMap[k] = v
 			}
 			ret = append(ret,
 				"    Canonical:",
