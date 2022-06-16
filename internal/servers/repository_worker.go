@@ -267,22 +267,22 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			worker := worker.clone()
-			worker.PublicId = workerId
+			workerClone := worker.clone()
+			workerClone.PublicId = workerId
 			switch {
 			case opts.withKeyId != "":
 				// This case goes first in case we want to relax the restriction
 				// around both name and key ID being supplied to account for
 				// e.g. config processing bugs. In that case, a key ID being
 				// supplied should be a clear indicator that we are working with
-				// a PKI worker, and a lack of one a clear indication we are
-				// working with a KMS worker.
+				// a PKI workerClone, and a lack of one a clear indication we are
+				// working with a KMS workerClone.
 				//
 				// Note: unlike in the below case, this purposefully leaves out
 				// "description" since we want description changes for PKI-based
 				// workers to come via API only. We can't really guard on this
 				// in the DB so we need to be sure to not include it here.
-				n, err := w.Update(ctx, worker, []string{"address"}, nil)
+				n, err := w.Update(ctx, workerClone, []string{"address"}, nil)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update status of pki worker"))
 				}
@@ -292,22 +292,25 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				case 1:
 					break
 				default:
-					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("multiple records found when updating worker with id %q", worker.GetPublicId()))
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("multiple records found when updating worker with id %q", workerClone.GetPublicId()))
 				}
 
-			case worker.GetName() != "":
-				worker.Type = KmsWorkerType.String()
+			case workerClone.GetName() != "":
+				workerClone.Type = KmsWorkerType.String()
 				workerCreateConflict := &db.OnConflict{
 					Target: db.Columns{"public_id"},
-					Action: append(db.SetColumns([]string{"description", "address"}),
+					Action: append(db.SetColumns([]string{"address"}),
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
 				var withRowsAffected int64
-				err := w.Create(ctx, worker, db.WithOnConflict(workerCreateConflict), db.WithReturnRowsAffected(&withRowsAffected),
+				err := w.Create(ctx, workerClone, db.WithOnConflict(workerCreateConflict), db.WithReturnRowsAffected(&withRowsAffected),
 					// The intent of this WithWhere option is to operate with the OnConflict such that the action
 					// taken by the OnConflict only applies if the conflict is on a row that is returned by this where
 					// statement, otherwise it should error out.
 					db.WithWhere("server_worker.type = 'kms'"))
+				if err == nil && workerClone.Description != worker.Description {
+					_, err = w.Update(ctx, workerClone, []string{"description"}, nil)
+				}
 				switch {
 				case err != nil:
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
@@ -321,12 +324,12 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			// delete all tags for the given worker, then add the new ones
 			// we've been sent.
 			if opts.withUpdateTags {
-				if err := setWorkerTags(ctx, w, worker.GetPublicId(), ConfigurationTagSource, worker.inputTags); err != nil {
+				if err := setWorkerTags(ctx, w, workerClone.GetPublicId(), ConfigurationTagSource, workerClone.inputTags); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error setting worker tags"))
 				}
 			}
 
-			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
+			wAgg := &workerAggregate{PublicId: workerClone.GetPublicId()}
 			if err := reader.LookupById(ctx, wAgg); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("error looking up worker aggregate"))
 			}
@@ -442,9 +445,13 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			worker := worker.clone()
-			rowsUpdated, err = w.Update(ctx, worker, dbMask, nullFields, db.WithVersion(&version))
+			rowsUpdated, err = w.Update(ctx, worker, dbMask, nullFields, db.WithVersion(&version),
+				db.WithWhere("server_worker.type = 'pki'"))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
+			}
+			if worker.Type == KmsWorkerType.String() {
+				return errors.New(ctx, errors.InvalidParameter, op, "cannot update a KMS worker")
 			}
 			if rowsUpdated > 1 {
 				// return err, which will result in a rollback of the update

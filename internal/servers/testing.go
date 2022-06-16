@@ -113,10 +113,12 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	}
 	wrk := NewWorker(scope.Global.String(),
 		WithName(name),
-		WithAddress(address))
+		WithAddress(address),
+		WithDescription(opts.withDescription))
 	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)
+	require.Equal(t, "kms", wrk.Type)
 
 	if len(opts.withWorkerTags) > 0 {
 		var tags []interface{}
@@ -130,18 +132,7 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 		}
 		require.NoError(t, rw.CreateItems(ctx, tags))
 	}
-	var mask []string
-	if opts.withDescription != "" {
-		wrk.Description = opts.withDescription
-		mask = append(mask, "description")
-	}
-	if len(mask) > 0 {
-		var n int
-		wrk, n, err = serversRepo.UpdateWorker(ctx, wrk, wrk.Version, mask)
-		require.NoError(t, err)
-		require.Equal(t, 1, n)
-		require.NotNil(t, wrk)
-	}
+
 	wrk, err = serversRepo.LookupWorker(ctx, wrk.GetPublicId())
 	require.NoError(t, err)
 	return wrk
