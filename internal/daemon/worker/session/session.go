@@ -41,12 +41,11 @@ type Info struct {
 
 // Activate is a helper worker function that sends session activation request to the
 // controller.
-func Activate(ctx context.Context, sessClient pbs.SessionServiceClient, workerId, sessionId, tofuToken string, version uint32) (pbs.SESSIONSTATUS, error) {
+func Activate(ctx context.Context, sessClient pbs.SessionServiceClient, sessionId, tofuToken string, version uint32) (pbs.SESSIONSTATUS, error) {
 	resp, err := sessClient.ActivateSession(ctx, &pbs.ActivateSessionRequest{
 		SessionId: sessionId,
 		TofuToken: tofuToken,
 		Version:   version,
-		WorkerId:  workerId,
 	})
 	if err != nil {
 		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, fmt.Errorf("error activating session: %w", err)
