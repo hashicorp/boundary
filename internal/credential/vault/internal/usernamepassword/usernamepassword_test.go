@@ -1,4 +1,4 @@
-package userpassword
+package usernamepassword
 
 import (
 	"testing"

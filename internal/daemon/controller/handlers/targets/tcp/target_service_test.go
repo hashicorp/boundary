@@ -2684,10 +2684,10 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	defaultUserPass := v.CreateKVSecret(t, "default-userpass", []byte(`{"data": {"username": "my-user", "password": "my-pass"}}`))
 	require.NotNil(t, defaultUserPass)
 
-	clsRespUserPassword, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+	clsRespUsernamePassword, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 		CredentialStoreId: vaultStore.GetPublicId(),
-		Name:              wrapperspb.String("Userpassword Library"),
-		Description:       wrapperspb.String("Userpassword Library Description"),
+		Name:              wrapperspb.String("Usernamepassword Library"),
+		Description:       wrapperspb.String("Usernamepassword Library Description"),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "default-userpass")),
@@ -2715,10 +2715,10 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	nonDefaultUserPass := v.CreateKVSecret(t, "non-default-userpass", []byte(`{"data": {"non-default-user": "my-user", "non-default-pass": "my-pass"}}`))
 	require.NotNil(t, nonDefaultUserPass)
 
-	clsRespUserPasswordWithMapping, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+	clsRespUsernamePasswordWithMapping, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 		CredentialStoreId: vaultStore.GetPublicId(),
-		Name:              wrapperspb.String("Userpassword Mapping Library"),
-		Description:       wrapperspb.String("Userpassword Mapping Library Description"),
+		Name:              wrapperspb.String("Usernamepassword Mapping Library"),
+		Description:       wrapperspb.String("Usernamepassword Mapping Library Description"),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "non-default-userpass")),
@@ -2776,16 +2776,16 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			},
 		},
 		{
-			name:           "vault-userpassword",
+			name:           "vault-usernamepassword",
 			hostSourceId:   shs.GetPublicId(),
-			credSourceId:   clsRespUserPassword.GetItem().GetId(),
+			credSourceId:   clsRespUsernamePassword.GetItem().GetId(),
 			wantedHostId:   h.GetPublicId(),
 			wantedEndpoint: h.GetAddress(),
 			wantedCred: &pb.SessionCredential{
 				CredentialSource: &pb.CredentialSource{
-					Id:                clsRespUserPassword.GetItem().GetId(),
-					Name:              clsRespUserPassword.GetItem().GetName().GetValue(),
-					Description:       clsRespUserPassword.GetItem().GetDescription().GetValue(),
+					Id:                clsRespUsernamePassword.GetItem().GetId(),
+					Name:              clsRespUsernamePassword.GetItem().GetName().GetValue(),
+					Description:       clsRespUsernamePassword.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.Subtype.String(),
 					CredentialType:    string(credential.UsernamePasswordType),
@@ -2802,16 +2802,16 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			},
 		},
 		{
-			name:           "vault-userpassword-with-mapping",
+			name:           "vault-UsernamePassword-with-mapping",
 			hostSourceId:   shs.GetPublicId(),
-			credSourceId:   clsRespUserPasswordWithMapping.GetItem().GetId(),
+			credSourceId:   clsRespUsernamePasswordWithMapping.GetItem().GetId(),
 			wantedHostId:   h.GetPublicId(),
 			wantedEndpoint: h.GetAddress(),
 			wantedCred: &pb.SessionCredential{
 				CredentialSource: &pb.CredentialSource{
-					Id:                clsRespUserPasswordWithMapping.GetItem().GetId(),
-					Name:              clsRespUserPasswordWithMapping.GetItem().GetName().GetValue(),
-					Description:       clsRespUserPasswordWithMapping.GetItem().GetDescription().GetValue(),
+					Id:                clsRespUsernamePasswordWithMapping.GetItem().GetId(),
+					Name:              clsRespUsernamePasswordWithMapping.GetItem().GetName().GetValue(),
+					Description:       clsRespUsernamePasswordWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.Subtype.String(),
 					CredentialType:    string(credential.UsernamePasswordType),
@@ -2828,7 +2828,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			},
 		},
 		{
-			name:           "static-userpassword",
+			name:           "static-UsernamePassword",
 			hostSourceId:   shs.GetPublicId(),
 			credSourceId:   credResp.GetItem().GetId(),
 			wantedHostId:   h.GetPublicId(),
