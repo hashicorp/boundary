@@ -60,10 +60,12 @@ message LookupSessionResponse {
 }
 
 message ActivateSessionRequest {
+  reserved 40;
+  reserved "worker_id";
+
   string session_id = 10; // @gotags: `class:"public"`
   string tofu_token = 20; // @gotags: `class:"secret"`
   uint32 version = 30; // @gotags: `class:"public"`
-  string worker_id = 40; // @gotags: `class:"public"`
   controller.servers.services.v1.SESSIONSTATUS status = 50; // @gotags: `class:"public"`
 }
 

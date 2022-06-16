@@ -186,9 +186,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 				return
 			}
 			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
-				// TODO: currently workerId is not used during activation...
-				// should it be deprecated and removed?
-				sessStatus, err = session.Activate(ctx, sessClient, workerId, sessionId, handshake.GetTofuToken(), version)
+				sessStatus, err = session.Activate(ctx, sessClient, sessionId, handshake.GetTofuToken(), version)
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
 					if err = conn.Close(websocket.StatusInternalError, "unable to activate session"); err != nil {
@@ -225,6 +223,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 		workerId := w.LastStatusSuccess().WorkerId
+
 		var ci *session.ConnInfo
 		var connsLeft int32
 		ci, connsLeft, err = session.AuthorizeConnection(ctx, sessClient, workerId, sessionId)
