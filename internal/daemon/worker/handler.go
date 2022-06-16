@@ -137,7 +137,22 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			}
 			return
 		}
-		workerId := w.conf.RawConfig.Worker.Name
+
+		var workerId string
+		switch {
+		case w.LastStatusSuccess() != nil:
+			workerId = w.LastStatusSuccess().WorkerId
+		default:
+			// should we really fallback to this name?
+			workerId = w.conf.RawConfig.Worker.Name
+		}
+		if workerId == "" {
+			event.WriteError(ctx, op, errors.New("worker id is empty"))
+			if err = conn.Close(websocket.StatusInternalError, "worker id is empty"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+			return
+		}
 
 		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {

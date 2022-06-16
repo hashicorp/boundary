@@ -390,7 +390,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting servers repo: %v", err)
 	}
-	w, err := serversRepo.LookupWorkerByName(ctx, req.GetWorkerId())
+	w, err := serversRepo.LookupWorker(ctx, req.GetWorkerId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error looking up worker: %v", err)
 	}
