@@ -274,15 +274,13 @@ func TestUpsertWorkerStatus(t *testing.T) {
 
 		// update again and see updated last status time
 		wStatus2 := servers.NewWorker(scope.Global.String(),
-			servers.WithAddress("new_address"), servers.WithName("config_name1"),
-			servers.WithDescription("kms_description2"))
+			servers.WithAddress("new_address"), servers.WithName("config_name1"))
 		worker, err = repo.UpsertWorkerStatus(ctx, wStatus2)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		assert.Equal(t, "config_name1", worker.Name)
-		assert.Equal(t, "kms_description2", worker.Description)
-		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
-		assert.Equal(t, uint32(2), worker.Version)
+		// Version does not change for status updates
+		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "new_address", worker.GetAddress())
 	})
 
@@ -1082,20 +1080,48 @@ func TestRepository_UpdateWorker(t *testing.T) {
 			input: func() *servers.Worker {
 				w := servers.TestKmsWorker(t, conn, wrapper)
 				w.Name = "some change"
+				w.Description = ""
+				w.Type = ""
 				return w
 			}(), path: []string{"name"},
 			version: 1,
-			wantErr: errors.T(errors.NotSpecificIntegrity),
+			wantErr: errors.T(errors.InvalidParameter),
 		},
 		{
 			name: "clearing kms name",
 			input: func() *servers.Worker {
 				w := servers.TestKmsWorker(t, conn, wrapper)
 				w.Name = ""
+				w.Description = ""
+				w.Type = ""
 				return w
 			}(), path: []string{"name"},
 			version: 1,
-			wantErr: errors.T(errors.NotSpecificIntegrity),
+			wantErr: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "changing kms description",
+			input: func() *servers.Worker {
+				w := servers.TestKmsWorker(t, conn, wrapper)
+				w.Description = "some change"
+				w.Name = ""
+				w.Type = ""
+				return w
+			}(), path: []string{"description"},
+			version: 1,
+			wantErr: errors.T(errors.InvalidParameter),
+		},
+		{
+			name: "clearing kms description",
+			input: func() *servers.Worker {
+				w := servers.TestKmsWorker(t, conn, wrapper)
+				w.Description = ""
+				w.Name = ""
+				w.Type = ""
+				return w
+			}(), path: []string{"description"},
+			version: 1,
+			wantErr: errors.T(errors.InvalidParameter),
 		},
 		{
 			name: "no public id",

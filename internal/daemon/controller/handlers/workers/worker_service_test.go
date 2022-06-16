@@ -869,6 +869,7 @@ func TestUpdate_KMS(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateWorkerRequest)
 			proto.Merge(req, tc.req)
+			req.Item.Version = wkr.GetVersion()
 			got, gErr := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, scope.Global.String()), req)
 			assert.Error(t, gErr)
 			assert.Nil(t, got)
@@ -900,7 +901,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	workerService, err := NewService(ctx, repoFn, iamRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
-	wkr := servers.TestKmsWorker(t, conn, wrapper)
+	wkr := servers.TestPkiWorker(t, conn, wrapper)
 
 	upTar, err := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), &pbs.UpdateWorkerRequest{
 		Id: wkr.GetPublicId(),
