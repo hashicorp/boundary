@@ -14,9 +14,8 @@ import (
 
 func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startAuthRotationTicking"
-	if w.conf.WorkerAuthKms != nil {
-		// Nothing to do here, just immediately exit
-		// FIXME: Write a system event
+	if w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream {
+		event.WriteSysEvent(cancelCtx, op, "using kms worker authentication; pki auth rotation ticking not running")
 		return
 	}
 
@@ -38,7 +37,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 
 		select {
 		case <-cancelCtx.Done():
-			event.WriteSysEvent(cancelCtx, op, "auth rotation ticking shutting down")
+			event.WriteSysEvent(cancelCtx, op, "pki auth rotation ticking shutting down")
 			return
 
 		case <-timer.C:
@@ -56,7 +55,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			}
 
 			if currentNodeCreds == nil {
-				event.WriteSysEvent(cancelCtx, op, "no error loading worker auth creds but nil creds, skipping rotation")
+				event.WriteSysEvent(cancelCtx, op, "no error loading worker pki auth creds but nil creds, skipping rotation")
 				continue
 			}
 
@@ -83,7 +82,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			if earliestValid.After(now) || latestValid.Before(now) || earliestValid.After(latestValid) {
 				// We basically have no valid creds so we can't rotate.
 				// TODO (maybe): Have this trigger a new set of creds and request?
-				event.WriteSysEvent(cancelCtx, op, "not within node creds validity period, unsure what to do, not rotating")
+				event.WriteSysEvent(cancelCtx, op, "not within worker creds validity period, unsure what to do, not rotating")
 				continue
 			}
 

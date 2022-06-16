@@ -198,44 +198,44 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 	// the assertions check what the final result is.
 	tests := []struct {
 		name                   string
-		in                     func(t *testing.T, w *Worker)
+		in                     func(*testing.T, nodeenrollment.Storage, *Worker)
 		expKeyId               string // If set, the existing key ID to expect
 		expRegistrationRequest bool   // Whether we should have seen a registration request generated
 		expError               string // Some other error
 	}{
 		{
 			name: "no creds",
-			in: func(t *testing.T, w *Worker) {
+			in: func(t *testing.T, storage nodeenrollment.Storage, w *Worker) {
 				// Do nothing; in this case it will have already been cleared
 			},
 			expRegistrationRequest: true,
 		},
 		{
 			name: "valid creds",
-			in: func(t *testing.T, w *Worker) {
+			in: func(t *testing.T, storage nodeenrollment.Storage, w *Worker) {
 				// Store the authorized creds
-				require.NoError(t, initNodeCreds.Store(ctx, w.WorkerAuthStorage))
+				require.NoError(t, initNodeCreds.Store(ctx, storage))
 			},
 			expKeyId: initKeyId,
 		},
 		{
 			name: "existing but not validated",
-			in: func(t *testing.T, w *Worker) {
+			in: func(t *testing.T, storage nodeenrollment.Storage, w *Worker) {
 				creds := proto.Clone(initNodeCreds).(*types.NodeCredentials)
 				creds.CertificateBundles = nil
 				creds.RegistrationNonce = nonce
-				require.NoError(t, creds.Store(ctx, w.WorkerAuthStorage))
+				require.NoError(t, creds.Store(ctx, storage))
 			},
 			expKeyId:               initKeyId,
 			expRegistrationRequest: true,
 		},
 		{
 			name: "existing and outside cert times", // Note that cert from next CA will already not be valid
-			in: func(t *testing.T, w *Worker) {
+			in: func(t *testing.T, storage nodeenrollment.Storage, w *Worker) {
 				creds := proto.Clone(initNodeCreds).(*types.NodeCredentials)
 				creds.CertificateBundles[0].CertificateNotBefore = timestamppb.New(time.Time{})
 				creds.CertificateBundles[0].CertificateNotAfter = timestamppb.New(time.Time{})
-				require.NoError(t, creds.Store(ctx, w.WorkerAuthStorage))
+				require.NoError(t, creds.Store(ctx, storage))
 			},
 			expRegistrationRequest: true,
 		},
@@ -250,10 +250,12 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 			t.Cleanup(tw.Shutdown)
 
 			// Always clear out storage that was there before, ignore errors
-			_ = tw.Worker().WorkerAuthStorage.Remove(ctx, &types.NodeCredentials{Id: string(nodeenrollment.CurrentId)})
+			storage, err := nodeefile.New(tw.Context(), nodeefile.WithBaseDirectory(tmpDir))
+			require.NoError(t, err)
+			_ = storage.Remove(ctx, &types.NodeCredentials{Id: string(nodeenrollment.CurrentId)})
 
 			// Run node credentials modification
-			tt.in(t, tw.Worker())
+			tt.in(t, storage, tw.Worker())
 
 			// Start up to run logic
 			require.NoError(t, tw.Worker().Start())
