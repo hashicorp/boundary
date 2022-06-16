@@ -215,7 +215,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 
-		if w.LastStatusSuccess() != nil || w.LastStatusSuccess().WorkerId == "" {
+		if w.LastStatusSuccess() == nil || w.LastStatusSuccess().WorkerId == "" {
 			event.WriteError(ctx, op, errors.New("worker id is empty"))
 			if err = conn.Close(websocket.StatusInternalError, "worker id is empty"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
