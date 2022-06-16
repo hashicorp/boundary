@@ -162,8 +162,8 @@ func printItemTable(result api.GenericResult) string {
 			tagMap := make(map[string]any, len(item.ConfigTags))
 			for k, v := range item.ConfigTags {
 				nv := make([]string, 0, len(v))
-				for _, v := range v {
-					nv = append(nv, fmt.Sprintf("%q", v))
+				for _, vi := range v {
+					nv = append(nv, fmt.Sprintf("%q", vi))
 				}
 				tagMap[k] = nv
 			}
@@ -176,8 +176,8 @@ func printItemTable(result api.GenericResult) string {
 			tagMap := make(map[string]any, len(item.CanonicalTags))
 			for k, v := range item.CanonicalTags {
 				nv := make([]string, 0, len(v))
-				for _, v := range v {
-					nv = append(nv, fmt.Sprintf("%q", v))
+				for _, vi := range v {
+					nv = append(nv, fmt.Sprintf("%q", vi))
 				}
 				tagMap[k] = nv
 			}
