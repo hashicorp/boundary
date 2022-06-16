@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -148,17 +149,13 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
-	var serverName string
-	switch {
-	case c.Config.Controller == nil:
-		serverName = "boundary-database-migrate"
-	default:
-		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandCliError
-		}
-		serverName = c.Config.Controller.Name + "/boundary-database-migrate"
+
+	serverName, err := os.Hostname()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Unable to determine hostname: %w", err).Error())
+		return base.CommandCliError
 	}
+	serverName = fmt.Sprintf("%s/boundary-database-migrate", serverName)
 	if err := c.srv.SetupEventing(
 		c.srv.Logger,
 		c.srv.StderrLock,

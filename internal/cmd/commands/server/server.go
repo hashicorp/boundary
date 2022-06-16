@@ -147,25 +147,23 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var serverNames []string
+	serverName, err := os.Hostname()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Unable to determine hostname: %w", err).Error())
+		return base.CommandCliError
+	}
+	var serverTypes []string
 	if c.Config.Controller != nil {
-		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandUserError
-		}
-		serverNames = append(serverNames, c.Config.Controller.Name)
+		serverTypes = append(serverTypes, "controller")
 	}
 	if c.Config.Worker != nil {
-		if _, err := c.Config.Worker.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandUserError
-		}
-		serverNames = append(serverNames, c.Config.Worker.Name)
+		serverTypes = append(serverTypes, "worker")
 	}
+	serverName = fmt.Sprintf("%s/%s", serverName, strings.Join(serverTypes, "+"))
 
 	if err := c.SetupEventing(c.Logger,
 		c.StderrLock,
-		strings.Join(serverNames, "/"),
+		serverName,
 		base.WithEventerConfig(c.Config.Eventing),
 		base.WithEventGating(true)); err != nil {
 		c.UI.Error(err.Error())

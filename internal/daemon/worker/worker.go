@@ -126,11 +126,6 @@ func New(conf *Config) (*Worker, error) {
 		conf.SecureRandomReader = rand.Reader
 	}
 
-	var err error
-	if conf.RawConfig.Worker.Name, err = w.conf.RawConfig.Worker.InitNameIfEmpty(); err != nil {
-		return nil, fmt.Errorf("error auto-generating worker name: %w", err)
-	}
-
 	if !conf.RawConfig.DisableMlock {
 		// Ensure our memory usage is locked into physical RAM
 		if err := mlock.LockMemory(); err != nil {
@@ -168,6 +163,7 @@ func New(conf *Config) (*Worker, error) {
 		return nil, fmt.Errorf("exactly one proxy listener is required")
 	}
 
+	var err error
 	w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
 		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
 	if err != nil {

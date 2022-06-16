@@ -117,7 +117,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		conf.RawConfig.Controller = new(config.Controller)
 	}
 
-	if conf.RawConfig.Controller.Name, err = conf.RawConfig.Controller.InitNameIfEmpty(); err != nil {
+	if err := conf.RawConfig.Controller.InitNameIfEmpty(); err != nil {
 		return nil, fmt.Errorf("error auto-generating controller name: %w", err)
 	}
 
