@@ -26,8 +26,8 @@ func dynamicToWorkerCredential(ctx context.Context, cred credential.Dynamic) (se
 	switch c := cred.(type) {
 	case credential.UsernamePassword:
 		workerCred = &serverpb.Credential{
-			Credential: &serverpb.Credential_UsernamePassword{
-				UsernamePassword: &serverpb.UsernamePassword{
+			Credential: &serverpb.Credential_UserPassword{
+				UserPassword: &serverpb.UserPassword{
 					Username: c.Username(),
 					Password: string(c.Password()),
 				},
@@ -81,7 +81,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 		switch c := cred.(type) {
 		case credential.UsernamePassword:
 			credData, err = handlers.ProtoToStruct(
-				&pb.UsernamePasswordCredential{
+				&pb.UserPasswordCredential{
 					Username: c.Username(),
 					Password: string(c.Password()),
 				},
@@ -120,8 +120,8 @@ func staticToWorkerCredential(ctx context.Context, cred credential.Static) (sess
 	switch c := cred.(type) {
 	case *credstatic.UsernamePasswordCredential:
 		workerCred = &serverpb.Credential{
-			Credential: &serverpb.Credential_UsernamePassword{
-				UsernamePassword: &serverpb.UsernamePassword{
+			Credential: &serverpb.Credential_UserPassword{
+				UserPassword: &serverpb.UserPassword{
 					Username: c.GetUsername(),
 					Password: string(c.GetPassword()),
 				},
@@ -150,7 +150,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		var err error
 		credType = string(credential.UsernamePasswordType)
 		credData, err = handlers.ProtoToStruct(
-			&pb.UsernamePasswordCredential{
+			&pb.UserPasswordCredential{
 				Username: c.GetUsername(),
 				Password: string(c.GetPassword()),
 			},

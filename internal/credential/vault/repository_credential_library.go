@@ -378,7 +378,7 @@ func (pl *publicLibrary) toCredentialLibrary() *CredentialLibrary {
 	cl.CredentialLibrary.CredentialType = pl.CredentialType
 
 	if pl.UsernameAttribute != "" || pl.PasswordAttribute != "" {
-		up := allocUsernamePasswordOverride()
+		up := allocUserPasswordOverride()
 		up.LibraryId = pl.PublicId
 		up.UsernameAttribute = pl.UsernameAttribute
 		up.PasswordAttribute = pl.PasswordAttribute

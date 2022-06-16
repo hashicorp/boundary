@@ -234,11 +234,11 @@ func TestCredentialLibrary_New(t *testing.T) {
 				opts: []Option{
 					WithMethod(MethodGet),
 					WithCredentialType(credential.UsernamePasswordType),
-					WithMappingOverride(NewUsernamePasswordOverride(WithOverrideUsernameAttribute("test"))),
+					WithMappingOverride(NewUserPasswordOverride(WithOverrideUsernameAttribute("test"))),
 				},
 			},
 			want: &CredentialLibrary{
-				MappingOverride: NewUsernamePasswordOverride(WithOverrideUsernameAttribute("test")),
+				MappingOverride: NewUserPasswordOverride(WithOverrideUsernameAttribute("test")),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:        cs.PublicId,
 					VaultPath:      "vault/path",

@@ -1,4 +1,4 @@
-package usernamepassword
+package userpassword
 
 type (
 	data map[string]interface{}

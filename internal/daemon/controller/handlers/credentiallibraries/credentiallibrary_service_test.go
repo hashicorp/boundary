@@ -609,7 +609,7 @@ func TestGet(t *testing.T) {
 	lib, err := vault.NewCredentialLibrary(store.GetPublicId(), "vault/path",
 		vault.WithCredentialType("username_password"),
 		vault.WithMappingOverride(
-			vault.NewUsernamePasswordOverride(
+			vault.NewUserPasswordOverride(
 				vault.WithOverrideUsernameAttribute("user"),
 				vault.WithOverridePasswordAttribute("pass"),
 			)))
@@ -646,7 +646,7 @@ func TestGet(t *testing.T) {
 			},
 		},
 		{
-			name: "success-UsernamePassword",
+			name: "success-userpassword",
 			id:   userPassLib.GetPublicId(),
 			res: &pbs.GetCredentialLibraryResponse{
 				Item: &pb.CredentialLibrary{
@@ -901,11 +901,11 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "username-password-attributes-change-username-attribute",
+			name: "user-password-attributes-change-username-attribute",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUsernamePasswordOverride(
+					vault.NewUserPasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),
@@ -930,11 +930,11 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "username-password-attributes-change-password-attribute",
+			name: "user-password-attributes-change-password-attribute",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUsernamePasswordOverride(
+					vault.NewUserPasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),
@@ -959,11 +959,11 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "username-password-attributes-change-username-and-password-attributes",
+			name: "user-password-attributes-change-username-and-password-attributes",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUsernamePasswordOverride(
+					vault.NewUserPasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),
@@ -1021,11 +1021,11 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "username-password-attributes-delete-mapping-override",
+			name: "user-password-attributes-delete-mapping-override",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUsernamePasswordOverride(
+					vault.NewUserPasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),
@@ -1060,11 +1060,11 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "username-password-attributes-delete-mapping-override-field-specific",
+			name: "user-password-attributes-delete-mapping-override-field-specific",
 			opts: []vault.Option{
 				vault.WithCredentialType("username_password"),
 				vault.WithMappingOverride(
-					vault.NewUsernamePasswordOverride(
+					vault.NewUserPasswordOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePasswordAttribute("orig-pass"),
 					)),

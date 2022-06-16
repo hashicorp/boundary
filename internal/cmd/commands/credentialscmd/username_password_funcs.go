@@ -33,7 +33,7 @@ func extraUsernamePasswordActionsFlagsMapFuncImpl() map[string][]string {
 }
 
 func extraUsernamePasswordFlagsFuncImpl(c *UsernamePasswordCommand, set *base.FlagSets, _ *base.FlagSet) {
-	f := set.NewFlagSet("Username Password Credential Options")
+	f := set.NewFlagSet("User Password Credential Options")
 
 	for _, name := range flagsUsernamePasswordMap[c.Func] {
 		switch name {
@@ -75,7 +75,7 @@ func (c *UsernamePasswordCommand) extraUsernamePasswordHelpFunc(_ map[string]fun
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary credentials create username-password -credential-store-id [options] [args]",
 			"",
-			"  Create a username password credential. Example:",
+			"  Create a user password credential. Example:",
 			"",
 			`    $ boundary credentials create username-password -credential-store-id csvlt_1234567890 -username user -password pass`,
 			"",
@@ -84,9 +84,9 @@ func (c *UsernamePasswordCommand) extraUsernamePasswordHelpFunc(_ map[string]fun
 
 	case "update":
 		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary credentials update username-password [options] [args]",
+			"Usage: boundary credentials update user password [options] [args]",
 			"",
-			"  Update a username password credential given its ID. Example:",
+			"  Update a user password credential given its ID. Example:",
 			"",
 			`    $ boundary credentials update username-password -id clvlt_1234567890 -name devops -description "For DevOps usage"`,
 			"",

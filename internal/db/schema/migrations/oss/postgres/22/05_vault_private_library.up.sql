@@ -1,6 +1,5 @@
 begin;
 
--- Updated in 35/02_vault_private_library.up.sql
 -- Replaces view from 10/04_vault_credential.up.sql
      drop view credential_vault_library_private;
 

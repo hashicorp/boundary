@@ -45,7 +45,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 
 	_, token := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database", "pki", "secret"}))
 
-	// Create valid username password KV secret
+	// Create valid user password KV secret
 	v.CreateKVSecret(t, "my-secret", []byte(`{"data":{"username":"user","password":"pass"}}`))
 
 	var opts []vault.Option
@@ -142,7 +142,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		libPath := path.Join("database", "creds", "opened")
 		opts := []vault.Option{
 			vault.WithCredentialType(credential.UsernamePasswordType),
-			vault.WithMappingOverride(vault.NewUsernamePasswordOverride(
+			vault.WithMappingOverride(vault.NewUserPasswordOverride(
 				vault.WithOverrideUsernameAttribute("test-username"),
 				vault.WithOverridePasswordAttribute("test-password"),
 			)),
@@ -332,10 +332,10 @@ func TestRepository_IssueCredentials(t *testing.T) {
 						assert.NotEmpty(upc.Password())
 						break
 					}
-					assert.Fail("want UsernamePassword credential from library with credential type UsernamePassword")
+					assert.Fail("want UserPassword credential from library with credential type UsernamePassword")
 				case credential.UnspecifiedType:
 					if _, ok := dc.(credential.UsernamePassword); ok {
-						assert.Fail("do not want UsernamePassword credential from library with credential type Unspecified")
+						assert.Fail("do not want UserPassword credential from library with credential type Unspecified")
 					}
 				}
 			}

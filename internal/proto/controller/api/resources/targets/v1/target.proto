@@ -280,8 +280,8 @@ message SessionAuthorization {
   repeated SessionCredential credentials = 110 [json_name = "credentials"];
 }
 
-// The layout of the struct for "credential" field in SessionCredential for a username_password credential type.
-message UsernamePasswordCredential {
+// The layout of the struct for "credential" field in SessionCredential for a user_password credential type.
+message UserPasswordCredential {
   // Username of the credential
   string username = 1; // @gotags: `class:"sensitive"`
 

@@ -48,12 +48,12 @@ func TestValidMappingOverrides(t *testing.T) {
 			want: false,
 		},
 		{
-			m:    allocUsernamePasswordOverride(),
+			m:    allocUserPasswordOverride(),
 			ct:   credential.UnspecifiedType,
 			want: false,
 		},
 		{
-			m:    allocUsernamePasswordOverride(),
+			m:    allocUserPasswordOverride(),
 			ct:   credential.UsernamePasswordType,
 			want: true,
 		},

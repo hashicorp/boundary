@@ -1008,8 +1008,8 @@ func (x *SessionAuthorization) GetCredentials() []*SessionCredential {
 	return nil
 }
 
-// The layout of the struct for "credential" field in SessionCredential for a username_password credential type.
-type UsernamePasswordCredential struct {
+// The layout of the struct for "credential" field in SessionCredential for a user_password credential type.
+type UserPasswordCredential struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -1020,8 +1020,8 @@ type UsernamePasswordCredential struct {
 	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 }
 
-func (x *UsernamePasswordCredential) Reset() {
-	*x = UsernamePasswordCredential{}
+func (x *UserPasswordCredential) Reset() {
+	*x = UserPasswordCredential{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_controller_api_resources_targets_v1_target_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1029,13 +1029,13 @@ func (x *UsernamePasswordCredential) Reset() {
 	}
 }
 
-func (x *UsernamePasswordCredential) String() string {
+func (x *UserPasswordCredential) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UsernamePasswordCredential) ProtoMessage() {}
+func (*UserPasswordCredential) ProtoMessage() {}
 
-func (x *UsernamePasswordCredential) ProtoReflect() protoreflect.Message {
+func (x *UserPasswordCredential) ProtoReflect() protoreflect.Message {
 	mi := &file_controller_api_resources_targets_v1_target_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1047,19 +1047,19 @@ func (x *UsernamePasswordCredential) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UsernamePasswordCredential.ProtoReflect.Descriptor instead.
-func (*UsernamePasswordCredential) Descriptor() ([]byte, []int) {
+// Deprecated: Use UserPasswordCredential.ProtoReflect.Descriptor instead.
+func (*UserPasswordCredential) Descriptor() ([]byte, []int) {
 	return file_controller_api_resources_targets_v1_target_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *UsernamePasswordCredential) GetUsername() string {
+func (x *UserPasswordCredential) GetUsername() string {
 	if x != nil {
 		return x.Username
 	}
 	return ""
 }
 
-func (x *UsernamePasswordCredential) GetPassword() string {
+func (x *UserPasswordCredential) GetPassword() string {
 	if x != nil {
 		return x.Password
 	}
@@ -1321,18 +1321,18 @@ var file_controller_api_resources_targets_v1_target_proto_rawDesc = []byte{
 	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2e, 0x74,
 	0x61, 0x72, 0x67, 0x65, 0x74, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f,
 	0x6e, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x52, 0x0b, 0x63, 0x72, 0x65,
-	0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x73, 0x22, 0x54, 0x0a, 0x1a, 0x55, 0x73, 0x65, 0x72,
-	0x6e, 0x61, 0x6d, 0x65, 0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x43, 0x72, 0x65, 0x64,
-	0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x12, 0x1a, 0x0a, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61,
-	0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61,
-	0x6d, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x42, 0x50,
-	0x5a, 0x4e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73,
-	0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f,
-	0x73, 0x64, 0x6b, 0x2f, 0x70, 0x62, 0x73, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c,
-	0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73,
-	0x2f, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x73, 0x3b, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x73,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x64, 0x65, 0x6e, 0x74, 0x69, 0x61, 0x6c, 0x73, 0x22, 0x50, 0x0a, 0x16, 0x55, 0x73, 0x65, 0x72,
+	0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x43, 0x72, 0x65, 0x64, 0x65, 0x6e, 0x74, 0x69,
+	0x61, 0x6c, 0x12, 0x1a, 0x0a, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x1a,
+	0x0a, 0x08, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x08, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x42, 0x50, 0x5a, 0x4e, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f,
+	0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x73, 0x64, 0x6b, 0x2f,
+	0x70, 0x62, 0x73, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61,
+	0x70, 0x69, 0x2f, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x74, 0x61, 0x72,
+	0x67, 0x65, 0x74, 0x73, 0x3b, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x73, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1349,23 +1349,23 @@ func file_controller_api_resources_targets_v1_target_proto_rawDescGZIP() []byte 
 
 var file_controller_api_resources_targets_v1_target_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_controller_api_resources_targets_v1_target_proto_goTypes = []interface{}{
-	(*HostSource)(nil),                 // 0: controller.api.resources.targets.v1.HostSource
-	(*HostSet)(nil),                    // 1: controller.api.resources.targets.v1.HostSet
-	(*CredentialSource)(nil),           // 2: controller.api.resources.targets.v1.CredentialSource
-	(*SessionSecret)(nil),              // 3: controller.api.resources.targets.v1.SessionSecret
-	(*SessionCredential)(nil),          // 4: controller.api.resources.targets.v1.SessionCredential
-	(*Target)(nil),                     // 5: controller.api.resources.targets.v1.Target
-	(*TcpTargetAttributes)(nil),        // 6: controller.api.resources.targets.v1.TcpTargetAttributes
-	(*WorkerInfo)(nil),                 // 7: controller.api.resources.targets.v1.WorkerInfo
-	(*SessionAuthorizationData)(nil),   // 8: controller.api.resources.targets.v1.SessionAuthorizationData
-	(*SessionAuthorization)(nil),       // 9: controller.api.resources.targets.v1.SessionAuthorization
-	(*UsernamePasswordCredential)(nil), // 10: controller.api.resources.targets.v1.UsernamePasswordCredential
-	(*structpb.Struct)(nil),            // 11: google.protobuf.Struct
-	(*scopes.ScopeInfo)(nil),           // 12: controller.api.resources.scopes.v1.ScopeInfo
-	(*wrapperspb.StringValue)(nil),     // 13: google.protobuf.StringValue
-	(*timestamppb.Timestamp)(nil),      // 14: google.protobuf.Timestamp
-	(*wrapperspb.UInt32Value)(nil),     // 15: google.protobuf.UInt32Value
-	(*wrapperspb.Int32Value)(nil),      // 16: google.protobuf.Int32Value
+	(*HostSource)(nil),               // 0: controller.api.resources.targets.v1.HostSource
+	(*HostSet)(nil),                  // 1: controller.api.resources.targets.v1.HostSet
+	(*CredentialSource)(nil),         // 2: controller.api.resources.targets.v1.CredentialSource
+	(*SessionSecret)(nil),            // 3: controller.api.resources.targets.v1.SessionSecret
+	(*SessionCredential)(nil),        // 4: controller.api.resources.targets.v1.SessionCredential
+	(*Target)(nil),                   // 5: controller.api.resources.targets.v1.Target
+	(*TcpTargetAttributes)(nil),      // 6: controller.api.resources.targets.v1.TcpTargetAttributes
+	(*WorkerInfo)(nil),               // 7: controller.api.resources.targets.v1.WorkerInfo
+	(*SessionAuthorizationData)(nil), // 8: controller.api.resources.targets.v1.SessionAuthorizationData
+	(*SessionAuthorization)(nil),     // 9: controller.api.resources.targets.v1.SessionAuthorization
+	(*UserPasswordCredential)(nil),   // 10: controller.api.resources.targets.v1.UserPasswordCredential
+	(*structpb.Struct)(nil),          // 11: google.protobuf.Struct
+	(*scopes.ScopeInfo)(nil),         // 12: controller.api.resources.scopes.v1.ScopeInfo
+	(*wrapperspb.StringValue)(nil),   // 13: google.protobuf.StringValue
+	(*timestamppb.Timestamp)(nil),    // 14: google.protobuf.Timestamp
+	(*wrapperspb.UInt32Value)(nil),   // 15: google.protobuf.UInt32Value
+	(*wrapperspb.Int32Value)(nil),    // 16: google.protobuf.Int32Value
 }
 var file_controller_api_resources_targets_v1_target_proto_depIdxs = []int32{
 	11, // 0: controller.api.resources.targets.v1.SessionSecret.decoded:type_name -> google.protobuf.Struct
@@ -1527,7 +1527,7 @@ func file_controller_api_resources_targets_v1_target_proto_init() {
 			}
 		}
 		file_controller_api_resources_targets_v1_target_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UsernamePasswordCredential); i {
+			switch v := v.(*UserPasswordCredential); i {
 			case 0:
 				return &v.state
 			case 1:
