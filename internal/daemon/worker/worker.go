@@ -498,13 +498,18 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		event.WriteError(ctx, op, err, event.WithInfo("failed to create controller session client"))
 	}
 
+	lastSuccess := w.LastStatusSuccess()
+	if lastSuccess == nil {
+		event.WriteSysEvent(ctx, op, "no last status information found at session acceptance time")
+		return nil, fmt.Errorf("no last status information found at session acceptance time")
+	}
+
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)
 	defer cancel()
 
 	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
-		ServerId:    w.conf.RawConfig.Worker.Name,
-		SessionId:   sessionId,
-		WorkerKeyId: w.WorkerAuthCurrentKeyId.Load(),
+		SessionId: sessionId,
+		WorkerId:  lastSuccess.WorkerId,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error validating session: %w", err)
