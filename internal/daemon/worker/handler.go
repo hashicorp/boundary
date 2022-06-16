@@ -138,21 +138,14 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 
-		var workerId string
-		switch {
-		case w.LastStatusSuccess() != nil:
-			workerId = w.LastStatusSuccess().WorkerId
-		default:
-			// should we really fallback to this name?
-			workerId = w.conf.RawConfig.Worker.Name
-		}
-		if workerId == "" {
+		if w.LastStatusSuccess() == nil || w.LastStatusSuccess().WorkerId == "" {
 			event.WriteError(ctx, op, errors.New("worker id is empty"))
 			if err = conn.Close(websocket.StatusInternalError, "worker id is empty"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return
 		}
+		workerId := w.LastStatusSuccess().WorkerId
 
 		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
@@ -202,6 +195,8 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 				return
 			}
 			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
+				// TODO: currently workerId is not used during activation...
+				// should it be deprecated and removed?
 				sessStatus, err = session.Activate(ctx, sessClient, workerId, sessionId, handshake.GetTofuToken(), version)
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
