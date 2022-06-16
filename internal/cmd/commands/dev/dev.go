@@ -577,7 +577,7 @@ func (c *Command) Run(args []string) int {
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
-	if err := c.SetupKMSes(c.Context, c.UI, c.Config, base.WithSkipWorkerAuthKmsInstantiation(!c.flagUseKmsWorkerAuthMethod)); err != nil {
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -585,14 +585,15 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
 	}
-	if c.flagUseKmsWorkerAuthMethod {
-		if c.WorkerAuthKms == nil {
-			c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-			return base.CommandUserError
-		}
-		c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
-		c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
-	} else {
+	if c.WorkerAuthKms == nil {
+		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
+		return base.CommandUserError
+	}
+	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
+	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
+
+	if !c.flagUseKmsWorkerAuthMethod {
+		c.DevUsePkiForUpstream = true
 		// These must be unset for PKI
 		c.Config.Worker.Name = ""
 		c.Config.Worker.Description = ""
@@ -809,7 +810,7 @@ func (c *Command) Run(args []string) int {
 			}
 
 			if !c.flagControllerOnly {
-				if !c.flagWorkerAuthStorageSkipCleanup {
+				if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
 					c.worker.WorkerAuthStorage.Cleanup()
 				}
 				if err := c.worker.Shutdown(); err != nil {

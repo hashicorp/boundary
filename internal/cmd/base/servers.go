@@ -126,6 +126,10 @@ type Server struct {
 	DevTargetSessionConnectionLimit  int
 	DevLoopbackHostPluginId          string
 
+	// DevUsePkiForUpstream is a hint that we are in dev mode and have a worker
+	// auth KMS but want to use PKI for upstream connections
+	DevUsePkiForUpstream bool
+
 	EnabledPlugins []EnabledPlugin
 	HostPlugins    map[string]plgpb.HostPluginServiceClient
 

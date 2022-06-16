@@ -84,7 +84,7 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 		var conn net.Conn
 		var err error
 		switch {
-		case w.conf.WorkerAuthKms != nil:
+		case w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream:
 			conn, err = w.v1KmsAuthDialFn(ctx, addr)
 		default:
 			conn, err = protocol.Dial(ctx, w.WorkerAuthStorage, addr, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))

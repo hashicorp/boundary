@@ -258,6 +258,10 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 			Name: opts.Name,
 		}
 	}
+	if opts.WorkerAuthStoragePath != "" {
+		opts.Config.Worker.AuthStoragePath = opts.WorkerAuthStoragePath
+		tw.b.DevUsePkiForUpstream = true
+	}
 	tw.name = opts.Config.Worker.Name
 
 	serverName, err := os.Hostname()
