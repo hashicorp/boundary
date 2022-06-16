@@ -138,15 +138,6 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 
-		if w.LastStatusSuccess() == nil || w.LastStatusSuccess().WorkerId == "" {
-			event.WriteError(ctx, op, errors.New("worker id is empty"))
-			if err = conn.Close(websocket.StatusInternalError, "worker id is empty"); err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
-			}
-			return
-		}
-		workerId := w.LastStatusSuccess().WorkerId
-
 		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error reading handshake from client"))
@@ -226,6 +217,14 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 
+		if w.LastStatusSuccess() != nil || w.LastStatusSuccess().WorkerId == "" {
+			event.WriteError(ctx, op, errors.New("worker id is empty"))
+			if err = conn.Close(websocket.StatusInternalError, "worker id is empty"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+			return
+		}
+		workerId := w.LastStatusSuccess().WorkerId
 		var ci *session.ConnInfo
 		var connsLeft int32
 		ci, connsLeft, err = session.AuthorizeConnection(ctx, sessClient, workerId, sessionId)
