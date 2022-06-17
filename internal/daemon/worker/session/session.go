@@ -112,19 +112,20 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 	return resp, nil
 }
 
-// CloseConnections is a helper worker function that sends connection
-// close requests to the controller, and sets close times within the
-// worker. It is called during the worker status loop and on
-// connection exit on the proxy.
+// CloseConnections is a helper worker function that sends connection close
+// requests to the controller, and sets close times within the worker. It is
+// called during the worker status loop and on connection exit on the proxy.
 //
-// closeInfo is a map of connections mapped to their individual
-// session.
-func CloseConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sessionInfo *sync.Map, closeInfo map[string]string) {
+// The boolean indicates whether the function was successful, e.g. had any
+// errors. Individual events will be sent for the errors if there are any.
+//
+// closeInfo is a map of connections mapped to their individual session.
+func CloseConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sessionInfo *sync.Map, closeInfo map[string]string) bool {
 	const op = "session.CloseConnections"
 	if closeInfo == nil {
 		// This should not happen, but it's a no-op if it does. Just
 		// return.
-		return
+		return false
 	}
 
 	// How we handle close info depends on whether or not we succeeded with
@@ -155,7 +156,7 @@ func CloseConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("serious error in processing return data from controller, aborting additional session/connection state modification"))
-		return
+		return false
 	}
 
 	// Mark connections as closed
@@ -164,7 +165,10 @@ func CloseConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 		for _, err := range errs {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connection closed in state"))
 		}
+		return false
 	}
+
+	return true
 }
 
 // makeCloseConnectionRequest creates a CloseConnectionRequest for

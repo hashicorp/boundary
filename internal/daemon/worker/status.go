@@ -322,7 +322,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 		if err != nil {
 			event.WriteError(cancelCtx, op, err, event.WithInfo("failed to create controller session client, connections won't be cleaned up"))
 		} else {
-			session.CloseConnections(cancelCtx, sessClient, w.sessionInfoMap, closeInfo)
+			_ = session.CloseConnections(cancelCtx, sessClient, w.sessionInfoMap, closeInfo)
 		}
 	}
 
