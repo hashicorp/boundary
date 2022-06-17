@@ -194,6 +194,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 					}
 					return
 				}
+				event.WriteSysEvent(ctx, op, "session successfully activated", "session_id", sessionId)
 			}
 		}
 
@@ -234,7 +235,12 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			}
 			return
 		}
-		defer session.CloseConnections(ctx, sessClient, w.sessionInfoMap, map[string]string{ci.Id: si.Id})
+		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.Id)
+		defer func() {
+			if session.CloseConnections(ctx, sessClient, w.sessionInfoMap, map[string]string{ci.Id: si.Id}) {
+				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.Id)
+			}
+		}()
 
 		si.Lock()
 		ci.ConnCtx = connCtx
