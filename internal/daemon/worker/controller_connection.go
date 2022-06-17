@@ -72,7 +72,7 @@ func (w *Worker) StartControllerConnections() error {
 		Addresses: initialAddrs,
 	})
 	if err := w.createClientConn(initialAddrs[0].Addr); err != nil {
-		return fmt.Errorf("error making client connection to upstream address: %w", err)
+		return fmt.Errorf("error making client connection to upstream address %s: %w", initialAddrs[0].Addr, err)
 	}
 
 	return nil
