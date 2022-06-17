@@ -81,7 +81,6 @@ type Server struct {
 	GatedWriter *gatedwriter.Writer
 	Logger      hclog.Logger
 	CombineLogs bool
-	LogLevel    hclog.Level
 
 	StderrLock *sync.Mutex
 	Eventer    *event.Eventer
@@ -253,6 +252,9 @@ func (b *Server) AddEventerToContext(ctx context.Context) (context.Context, erro
 	return e, nil
 }
 
+// SetupLogging sets up the command's logger. This is mostly historical at this
+// point since we switched to eventing; however, logging is still used as a
+// fallback when events are unable to be sent.
 func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, configLogFormat string) error {
 	b.logOutput = os.Stderr
 	if b.CombineLogs {
@@ -268,9 +270,9 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 	b.Logger = hclog.New(&hclog.LoggerOptions{
 		Output: b.GatedWriter,
 		Level:  logLevel,
-		// Note that if logFormat is either unspecified or standard, then
-		// the resulting logger's format will be standard.
-		JSONFormat: logFormat == logging.JSONFormat,
+		// Note that if logFormat is either unspecified or json, then
+		// the resulting logger's format will be json.
+		JSONFormat: logFormat != logging.StandardFormat,
 		Mutex:      b.StderrLock,
 	})
 
@@ -283,8 +285,6 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 
 	b.Info["log level"] = logLevel.String()
 	b.InfoKeys = append(b.InfoKeys, "log level")
-
-	b.LogLevel = logLevel
 
 	// log proxy settings
 	// TODO: It would be good to show this but Vault has, or will soon, address
