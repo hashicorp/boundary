@@ -305,6 +305,17 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return servers.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
 	}
 
+	// Check that credentials are available at startup, to avoid some harmless
+	// but nasty-looking errors
+	serversRepo, err := servers.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
+	if err != nil {
+		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
+	}
+	err = servers.RotateRoots(ctx, serversRepo)
+	if err != nil {
+		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
+	}
+
 	return c, nil
 }
 
