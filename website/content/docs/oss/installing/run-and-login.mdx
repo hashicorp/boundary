@@ -1,0 +1,131 @@
+---
+layout: docs
+page_title: Run and Login
+description: |-
+  How to run Boundary services in dev mode and login for the first time.
+---
+
+# Run and Login to Boundary
+
+To start Boundary in dev mode:
+
+```bash
+$ boundary dev
+```
+
+## Login to Boundary
+
+Boundary uses a predictable login name (`admin`) and password (`password`) in
+dev mode. These can be overridden, or randomly generated, with flags to
+`boundary dev`.
+
+<Tabs>
+<Tab heading="CLI">
+
+
+```
+$ boundary authenticate password \
+         -login-name=admin \
+         -password password \
+         -auth-method-id=ampw_1234567890
+```
+
+If you are on Unix-like operating system (other than macOS/Darwin), you may get
+an error indicating that the token could not be stored, as the freedesktop.org
+Secret Service implementation is not always available. On these systems, you can
+work around this by installing `dbus-x11` and `gnome-keyring` using your package
+manager, then creating and unlocking the default keyring with the following,
+substituting in a password of your choice for "foobar" (but ending with `\n`).
+You can also avoid putting the password on the command line by running the
+`gnome-keyring-daemon` commands directly and entering in the password, followed
+by a newline (return) and an EOF (`Ctrl+D`).
+
+- `eval "$(printf 'foobar\n' | gnome-keyring-daemon --unlock)"`
+- `eval "$(printf 'foobar\n' | gnome-keyring-daemon --start)"`
+
+This would have to be run in each shell.
+
+If you're unable to install these packages, or don't want to, you can tell the
+Boundary authenticate command to not save the token to the operating system's
+key manager by setting `-token-name=none` flag or `BOUNDARY_TOKEN_NAME=none` env
+variable when running `boundary authenticate`. You'll be responsible for setting
+the token in subsequent commands via `-token` flag or `BOUNDARY_TOKEN` env
+variable. An easy way to do this would be to use the `-format=json` flag along
+with `jq` to pull the token value out of the response and place it wherever you
+wish, then create a command alias for `boundary` that sources that value into
+the environment or the `-token` flag.
+
+~> Token storage on \*nix systems has been more problematic than we expected.
+We're exploring alternatives. See the discussion on [this GitHub
+issue](https://github.com/hashicorp/boundary/issues/697#issuecomment-709448942)
+to track it and voice your thoughts.
+
+</Tab>
+<Tab heading="Admin Console">
+
+
+To authenticate to the Admin UI, open
+[http://127.0.0.1:9200](http://127.0.0.1:9200) in a browser and enter the login
+name and password:
+
+<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1602260993-boundary-clickthrough-getting-started-run-and-login.mp4"
+  />
+</video>
+
+</Tab>
+
+
+<Tab heading="Desktop Client">
+<p>
+
+
+To authenticate using the Boundary desktop client, launch Boundary desktop client
+and connect to boundary to using [http://127.0.0.1:9200](http://127.0.0.1:9200)
+and enter the login name and password:
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1613612831-boundary-desktop-clickthrough-authenticate-v1-0-0.mp4"
+  />
+</video>
+
+</p>
+</Tab>
+
+
+<Tab heading="Terraform">
+
+
+You can also use these overrides to configure the [Terraform provider for
+Boundary](https://github.com/hashicorp/terraform-provider-boundary):
+
+```hcl
+provider "boundary" {
+    base_url             = "http://127.0.0.1:9200"
+    auth_method_id       = "ampw_1234567890"
+    auth_method_username = "admin"
+    auth_method_password = "password"
+}
+```
+
+Note in the example above we're setting `base_url` to `http` and not `https` as
+the Boundary server does not use TLS in development mode.
+
+</Tab>
+</Tabs>
+
+
+## Next Steps
+
+See [connecting to your first target](/docs/getting-started/connect-to-target) for how
+to use Boundary to run your first SSH session.
