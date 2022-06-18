@@ -1,34 +1,94 @@
 ---
 layout: docs
-page_title: Run and Login
+page_title: Deploy and Login
 description: |-
-  How to run Boundary services in dev mode and login for the first time.
+  How to deploy HCP Boundary services and login for the first time.
 ---
 
-# Run and Login to Boundary
+# Deploy an HCP Boundary Instance
 
-To start Boundary in dev mode:
+Navigate to HashiCorp Cloud Platform and login using your credentials. Click on
+the **Boundary (beta)** tab and click **Deploy Boundary** on the right-hand
+pane. 
 
-```bash
-$ boundary dev
-```
+Fill out the following form details:
 
-## Login to Boundary
+- Instance Name
+- Administrator Username
+- Administrator Password
 
-Boundary uses a predictable login name (`admin`) and password (`password`) in
-dev mode. These can be overridden, or randomly generated, with flags to
-`boundary dev`.
+Store the administrator username and password in a safe location. These
+credentials will be used when authenticating using the Admin Console, CLI, or
+Terraform.
+
+Click **Deploy** after completing the form. It may take a few minutes to
+initialize the HCP Boundary instance.
+
+![Deploy boundary](/img/hcp-deploy-form.png)
+
+## Login to HCP Boundary
+
+Once the deployment is complete, the HCP Boundary instance can be accessed
+directly from the HCP Boundary portal using the credentials created during
+setup. 
+
+From the HCP Boundary portal page, click the **Open Admin UI** button. 
+
+Enter the admin username and password you created when you deployed the new
+instance and click **Authenticate**.
+
+The **Welcome to Boundary** setup wizard will launch automatically. There are
+two options for Boundary’s initial setup:
+
+1. Quick setup
+1. Manual
+
+![Setup Wizard](/img/setup-wizard.png)
+
+The **Quick setup** is recommended for new users, and generates a set of initial
+resources to assist in connecting to your first target. 
+
+![Setup Wizard](/img/setup-wizard-target.png)
+
+The **Manual** setup drops the user directly into Boundary, without any
+provisioned resources.
+
+Upon completion of the setup wizard you are logged into your HCP Boundary
+instance's Global scope via the web UI. This is the default scope for all new
+Boundary clusters.
+
+Click **Auth Methods**.
+
+Click the **copy icon** for the Password **Auth Method ID**. The ID is needed to
+authenticate to HCP Boundary using the CLI.
 
 <Tabs>
 <Tab heading="CLI">
 
 
+In the HCP Boundary portal, open the **Boundary Overview** page and click the
+**copy icon** in the **Copy this into Boundary Desktop** section. This copies
+your environment’s Boundary **Origin URL**.
+
+Open a terminal session and set the `BOUNDARY_ADDR` environment variable to the
+copied origin URL.
+
+```shell-session
+$ export BOUNDARY_ADDR=<boundary-origin-url>
 ```
+
+Log in with the administrator credentials you created when you deployed the HCP
+Boundary instance.
+
+```shell-session
 $ boundary authenticate password \
-         -login-name=admin \
-         -password password \
-         -auth-method-id=ampw_1234567890
+   -auth-method-id=COPIED_AUTH_ID \
+   -login-name=ADMIN_USERNAME \
+   -password=ADMIN_PASSWORD
 ```
+
+You are now logged into your HCP Boundary instance's Global scope via the CLI.
+This is the default scope for all new Boundary clusters.
 
 If you are on Unix-like operating system (other than macOS/Darwin), you may get
 an error indicating that the token could not be stored, as the freedesktop.org
@@ -61,30 +121,30 @@ issue](https://github.com/hashicorp/boundary/issues/697#issuecomment-709448942)
 to track it and voice your thoughts.
 
 </Tab>
-<Tab heading="Admin Console">
-
-
-To authenticate to the Admin UI, open
-[http://127.0.0.1:9200](http://127.0.0.1:9200) in a browser and enter the login
-name and password:
-
-<video muted playsInline autoPlay loop class="boundary-clickthrough-video">
-  <source
-    type="video/mp4"
-    src="https://www.datocms-assets.com/2885/1602260993-boundary-clickthrough-getting-started-run-and-login.mp4"
-  />
-</video>
-
-</Tab>
-
-
 <Tab heading="Desktop Client">
-<p>
 
 
-To authenticate using the Boundary desktop client, launch Boundary desktop client
-and connect to boundary to using [http://127.0.0.1:9200](http://127.0.0.1:9200)
-and enter the login name and password:
+[Boundary Desktop](https://www.boundaryproject.io/downloads) can be used to
+connect to HCP Boundary.
+
+To get started with Boundary Desktop:
+
+1. Install Boundary Desktop
+1. Enter your HCP Boundary instance’s origin URL
+1. Enter the login name and password
+
+To authenticate using the Boundary desktop client, launch Boundary desktop
+client and connect to boundary to using your environment's **Origin URL**.
+
+You can find your environment’s origin url In the HCP portal. Open the
+**Boundary Overview** page and click the **copy icon** in the **Copy this into
+Boundary Desktop** section. This copies your environment’s Boundary **Origin
+URL**.
+
+The admin username and password from instance creation can be used for initial
+setup. Once additional users have been created, they can also log in to HCP
+Boundary using the Boundary Desktop app.
+
 
 <video
   muted
@@ -99,27 +159,34 @@ and enter the login name and password:
   />
 </video>
 
-</p>
 </Tab>
-
-
 <Tab heading="Terraform">
 
 
 You can also use these overrides to configure the [Terraform provider for
-Boundary](https://github.com/hashicorp/terraform-provider-boundary):
+Boundary](https://registry.terraform.io/providers/hashicorp/boundary/):
 
 ```hcl
 provider "boundary" {
-    base_url             = "http://127.0.0.1:9200"
-    auth_method_id       = "ampw_1234567890"
-    auth_method_username = "admin"
-    auth_method_password = "password"
+    base_url             = "hcp-boundary-origin-url"
+    auth_method_id       = "auth-method-id"
+    auth_method_username = "admin-username"
+    auth_method_password = "admin-password"
 }
 ```
 
-Note in the example above we're setting `base_url` to `http` and not `https` as
-the Boundary server does not use TLS in development mode.
+To find your environment’s `base_url`: 
+
+1. In the HCP portal, open the **Boundary Overview** page
+1. Click the **copy icon** in the **Copy this into Boundary Desktop** section. This copies your environment’s Boundary **Origin URL**.
+
+To find your environment’s default `auth_method_id`: 
+
+1. In your HCP Boundary portal, click the Admin UI button
+1. Log in to the Admin Console by entering the admin username and password you
+   created when you deployed the HCP Boundary instance and click **Authenticate**
+1. Click **Auth Methods**
+1. Click the **copy icon** for the Password **Auth Method ID**
 
 </Tab>
 </Tabs>
@@ -127,5 +194,5 @@ the Boundary server does not use TLS in development mode.
 
 ## Next Steps
 
-See [connecting to your first target](/docs/getting-started/connect-to-target) for how
-to use Boundary to run your first SSH session.
+See [connecting to your first target](/docs/getting-started/connect-to-target)
+for how to use HCP Boundary to run your first SSH session.
