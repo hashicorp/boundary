@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.9.0 (2022/06/20)
 
 ### New and Improved
 * PKI Workers: This release introduces a new worker type `PKI`, which
