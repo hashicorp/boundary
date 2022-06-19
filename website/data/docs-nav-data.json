@@ -269,6 +269,18 @@
             "path": "oss/installing"
           },
           {
+            "title": "Dev Mode",
+            "path": "oss/installing/dev-mode"
+          },
+          {
+            "title": "Run and Login",
+            "path": "oss/installing/run-and-login"
+          },
+          {
+            "title": "Connect to Dev Target",
+            "path": "oss/installing/connect-to-dev-target"
+          },
+          {
             "title": "Non-Dev Environments",
             "path": "oss/installing/no-gen-resources"
           },
