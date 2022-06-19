@@ -137,27 +137,32 @@ func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	badFields := make(map[string]string)
 
 	attrs := req.GetPasswordLoginAttributes()
-	if attrs.LoginName == "" {
-		badFields["attributes.login_name"] = "This is a required field."
-	}
-	if attrs.Password == "" {
-		badFields["attributes.password"] = "This is a required field."
-	}
-	if req.GetCommand() == "" {
-		// TODO: Eventually, require a command. For now, fall back to "login" for backwards compat.
-		req.Command = loginCommand
-	}
-	if req.Command != loginCommand {
-		badFields[commandField] = "Invalid command for this auth method type."
-	}
-	tokenType := req.GetType()
-	if tokenType == "" {
-		// Fall back to deprecated field if type is not set
-		tokenType = req.GetTokenType()
-	}
-	tType := strings.ToLower(strings.TrimSpace(tokenType))
-	if tType != "" && tType != "token" && tType != "cookie" {
-		badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
+	switch {
+	case attrs == nil:
+		badFields["attributes"] = "This is a required field."
+	default:
+		if attrs.LoginName == "" {
+			badFields["attributes.login_name"] = "This is a required field."
+		}
+		if attrs.Password == "" {
+			badFields["attributes.password"] = "This is a required field."
+		}
+		if req.GetCommand() == "" {
+			// TODO: Eventually, require a command. For now, fall back to "login" for backwards compat.
+			req.Command = loginCommand
+		}
+		if req.Command != loginCommand {
+			badFields[commandField] = "Invalid command for this auth method type."
+		}
+		tokenType := req.GetType()
+		if tokenType == "" {
+			// Fall back to deprecated field if type is not set
+			tokenType = req.GetTokenType()
+		}
+		tType := strings.ToLower(strings.TrimSpace(tokenType))
+		if tType != "" && tType != "token" && tType != "cookie" {
+			badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
+		}
 	}
 
 	if len(badFields) > 0 {

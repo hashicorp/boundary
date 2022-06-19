@@ -630,11 +630,16 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 			}
 			attrs := req.GetItem().GetOidcManagedGroupAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), attrFilterField) {
-				if attrs.Filter == "" {
-					badFields[attrFilterField] = "Field cannot be empty."
-				} else {
-					if _, err := bexpr.CreateEvaluator(attrs.Filter); err != nil {
-						badFields[attrFilterField] = fmt.Sprintf("Error evaluating submitted filter expression: %v.", err)
+				switch {
+				case attrs == nil:
+					badFields["attributes"] = "Attributes field not supplied request"
+				default:
+					if attrs.Filter == "" {
+						badFields[attrFilterField] = "Field cannot be empty."
+					} else {
+						if _, err := bexpr.CreateEvaluator(attrs.Filter); err != nil {
+							badFields[attrFilterField] = fmt.Sprintf("Error evaluating submitted filter expression: %v.", err)
+						}
 					}
 				}
 			}
