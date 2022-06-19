@@ -624,10 +624,11 @@ func TestCreate(t *testing.T) {
 	defaultHcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
 
 	cases := []struct {
-		name string
-		req  *pbs.CreateHostRequest
-		res  *pbs.CreateHostResponse
-		err  error
+		name            string
+		req             *pbs.CreateHostRequest
+		res             *pbs.CreateHostResponse
+		err             error
+		wantErrContains string
 	}{
 		{
 			name: "Create a valid Host",
@@ -658,6 +659,17 @@ func TestCreate(t *testing.T) {
 					AuthorizedActions: testAuthorizedActions[static.Subtype],
 				},
 			},
+		},
+		{
+			name: "no-attributes",
+			req: &pbs.CreateHostRequest{Item: &pb.Host{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "name"},
+				Description:   &wrappers.StringValue{Value: "desc"},
+				Type:          "static",
+			}},
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: `Details: {{name: "attributes", desc: "This is a required field."}}`,
 		},
 		{
 			name: "Create a plugin Host",
@@ -773,6 +785,9 @@ func TestCreate(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				if tc.wantErrContains != "" {
+					assert.Contains(gErr.Error(), tc.wantErrContains)
+				}
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
