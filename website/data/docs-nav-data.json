@@ -25,8 +25,8 @@
         ]
       },
       {
-        "title": "Run and Login",
-        "path": "getting-started/run-and-login"
+        "title": "Deploy and Login",
+        "path": "getting-started/deploy-and-login"
       },
       {
         "title": "Connect to Target",
