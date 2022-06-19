@@ -214,4 +214,40 @@ module.exports = [
     destination: '/docs/common-workflows/manage-targets#define-a-host',
     permanent: false,
   },
+
+  ////////////////////////////////////////////
+  // OSS content migration
+  ////////////////////////////////////////////
+
+  // below is for moved /installing to /oss/installing
+
+  {
+    source: '/docs/installing/:splat*',
+    destination: '/docs/oss/installing/:splat*',
+    permanent: true,
+  },
+
+  // below is for moved /configuration to /oss/configuration
+
+  {
+    source: '/docs/configuration/:splat*',
+    destination: '/docs/oss/configuration/:splat*',
+    permanent: true,
+  },
+
+  // below is for moved /operations to /oss/operations
+
+  {
+    source: '/docs/operations/:splat*',
+    destination: '/docs/oss/operations/:splat*',
+    permanent: true,
+  },
+
+  // below is for moved /developing to /oss/developing
+
+  {
+    source: '/docs/developing/:splat*',
+    destination: '/docs/oss/developing/:splat*',
+    permanent: true,
+  },
 ]
