@@ -14,7 +14,7 @@ connect` is executed against this target, the single available host will be
 selected and a local authenticated proxy to the host is established on the
 target's default port (`127.0.0.1:22`).
 
-```
+```shell-session
 $ boundary connect -target-id ttcp_1234567890
 ```
 
@@ -43,7 +43,7 @@ filling in the local address and port. An expected host ID is set to avoid
 warnings on future connections when a different port is allocated automatically.
 A host key must still be accepted upon first connect.
 
-```
+```shell-session
 $ boundary connect ssh -target-id ttcp_1234567890
 ```
 
@@ -51,7 +51,7 @@ If you want to pass additional flags to the SSH client, add them to the command
 line separated by a double-dash; anything after the double dash will be passed
 to the executed client. For instance:
 
-```
+```shell-session
 $ boundary connect ssh -target-id ttcp_1234567890 -- -l some-other-user
 ```
 
@@ -83,7 +83,7 @@ can correctly identify the desired target.
 
 Here is an SSH example in dev-mode:
 
-```
+```shell-session
 $ boundary connect ssh -target-name "Generated target" -target-scope-name "Generated project scope"
 ```
 
@@ -107,7 +107,7 @@ anything.
 Whether using `-exec` or one of the listed helpers, you can pass flags to the
 executed command by including them after a double-dash `--`:
 
-```
+```shell-session
 $ boundary connect ssh -target-id ttcp_1234567890 -- -l myuser -i ~/.ssh/identity
 ```
 
@@ -126,7 +126,7 @@ For example, if you wanted to use Boundary to create an authenticated firewall
 around 'curl', you could update the default TCP target from a default port
 of `:22` to `:443`:
 
-```
+```shell-session
 $ boundary targets update tcp -default-port 443 -id ttcp_1234567890
 
 Target information:
@@ -159,7 +159,7 @@ In the output above the default port for the target has now changed to `:443`.
 Now, `curl` can be used as the executed client for the TCP target session to do
 an authenticated download of hashicorp.com:
 
-```
+```shell-session
 $ boundary connect -exec curl -target-id ttcp_1234567890 \
          -- -vvsL --output /dev/null hashicorp.com
 
@@ -178,7 +178,7 @@ example, if `putty.exe` is available on a Windows host but the command is being
 run from WSL, the following allows usage of the wrapper while specifying the
 correct available binary (as WSL must use `.exe` when invoking Windows binaries):
 
-```
+```shell-session
 $ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_1234567890
 ```
 
