@@ -7,15 +7,16 @@ description: |-
 
 # `worker` Stanza
 
-The `worker` stanza configures Boundary worker-specific parameters. Boundary supports two different types of workers,
-differentiated by their means of authentication to Boundary.
-- [KMS Workers][] use a shared KMS to authenticate with controllers.
+The `worker` stanza configures Boundary worker-specific parameters. Boundary
+supports two different types of workers, differentiated by their means of
+authentication to Boundary:
+- [KMS Workers][] use a shared KMS to authenticate with controllers
 - [PKI Workers][] use certificates issued by Boundary to authenticate with controllers
 
 Different worker types have different configuration requirements, but share the common worker parameters listed below.
 
 ## Common Worker Parameters
-The following fields are supported for all worker types.
+The following fields are supported for all worker types:
 
 ```hcl
 worker {
