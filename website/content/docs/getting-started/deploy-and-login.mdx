@@ -7,21 +7,22 @@ description: |-
 
 # Deploy an HCP Boundary Instance
 
-Navigate to HashiCorp Cloud Platform and login using your credentials. Click on
-the **Boundary (Beta)** tab and click **Deploy Boundary** on the right-hand
+1. Navigate to HashiCorp Cloud Platform and login using your credentials. 
+2. Click 
+the **Boundary (Beta)** tab, and then and click **Deploy Boundary** on the right-hand
 pane. 
 
-Fill out the following form details:
+3. Fill out the following form details:
 
 - Instance Name
 - Administrator Username
 - Administrator Password
 
-Store the administrator username and password in a safe location. These
+4. Store the administrator username and password in a safe location. These
 credentials will be used when authenticating using the Admin Console, CLI, or
 Terraform.
 
-Click **Deploy** after completing the form. It may take a few minutes to
+5. Click **Deploy** after completing the form. It may take a few minutes to
 initialize the HCP Boundary instance.
 
 ![Deploy boundary](/img/hcp-deploy-form.png)
@@ -32,10 +33,10 @@ Once the deployment is complete, the HCP Boundary instance can be accessed
 directly from the HCP Boundary portal using the credentials created during
 setup. 
 
-From the HCP Boundary portal page, click the **Open Admin UI** button. 
+1. From the HCP Boundary portal page, click the **Open Admin UI** button. 
 
-Enter the admin username and password you created when you deployed the new
-instance and click **Authenticate**.
+2. Enter the admin username and password you created when you deployed the new
+instance, and click **Authenticate**.
 
 The **Welcome to Boundary** setup wizard will launch automatically. There are
 two options for Boundary’s initial setup:
@@ -53,7 +54,7 @@ resources to assist in connecting to your first target.
 The **Manual** setup drops the user directly into Boundary, without any
 provisioned resources.
 
-Upon completion of the setup wizard you are logged into your HCP Boundary
+Upon completion of the setup wizard, you will be logged into your HCP Boundary
 instance's Global scope via the web UI. This is the default scope for all new
 Boundary clusters.
 
