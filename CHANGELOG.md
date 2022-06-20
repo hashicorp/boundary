@@ -5,7 +5,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## 0.9.0 (2022/06/20)
 
 ### New and Improved
-* PKI Workers: This release introduces a new worker type `PKI`, which
+
+* PKI Workers: This release introduces a new worker type `pki`, which
   authenticate to Boundary using a new certificate-based method, allowing for
   worker deployment without using a shared KMS.
 * Credentials: This release introduces a new credential store type `static`,
