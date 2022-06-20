@@ -31,7 +31,8 @@ without using a shared KMS.
 **Static Credential Store:** In Boundary 0.9.0, we are introducing the static credential store, a basic 
 [credential store](https://www.boundaryproject.io/docs/concepts/domain-model/credential-stores) that is native to Boundary. These credentials
 are encrypted and stored directly in Boundary. For users interested in integrated secrets management to Boundary targets, the new basic 
-credential store removes the dependency on HashiCorp Vault. Currently, the static credential store only supports username/password type credentials.
+credential store removes the dependency on HashiCorp Vault. Currently, the static credential store only supports username/password type credentials. Note: If you 
+wish to use the Desktop Client for credential brokering, version 1.4.4 and up is required.
 
 **Admin UI Quickstart:** Users can now access a quickstart tool on the Admin UI which sets up a target along with a host, project, and organization.
 
