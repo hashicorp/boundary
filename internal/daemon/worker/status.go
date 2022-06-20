@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/boundary/internal/server"
 	"math/rand"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/server"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
