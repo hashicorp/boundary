@@ -6,8 +6,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* PKI Workers: This release introduces a new worker type `pki`, which
-  authenticate to Boundary using a new certificate-based method, allowing for
+* PKI Workers: This release introduces a new worker type `pki` which
+  authenticates to Boundary using a new certificate-based method, allowing for
   worker deployment without using a shared KMS.
 * Credentials: This release introduces a new credential store type `static`,
   which simply takes in a user-supplied credential and stores it (encrypted)
