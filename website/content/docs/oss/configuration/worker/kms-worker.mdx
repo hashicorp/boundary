@@ -15,7 +15,7 @@ The `name` value can be:
 - an env var (`env://`) from which the name is read.
 
 KMS Workers accept an optional `description` field. The `description` value can be:
-- a direct name string
+- a direct description string
 - a reference to a file on disk (`file://`) from which the name is read
 - an env var (`env://`) from which the name is read.
 
@@ -42,7 +42,7 @@ authentication between the workers and controllers and must be present. Example 
 This configuration must be the same for the worker-auth configuration for the controller if you're
 running the controller and worker as separate servers.
 
-And optionally, a KMS stanza for configuration encryption purpose:
+An optional KMS stanza for configuration encryption purpose can also be specified:
 
 ```hcl
 # Configuration encryption block: decrypts sensitive values in the
