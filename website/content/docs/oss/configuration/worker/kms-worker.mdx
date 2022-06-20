@@ -14,6 +14,9 @@ The `name` value can be:
 - a reference to a file on disk (`file://`) from which the name is read
 - an env var (`env://`) from which the name is read.
 
+~> **Note:** Changing the `name` results in the creation of a new worker in the
+cluster and assignment of a new worker ID.
+
 KMS Workers accept an optional `description` field. The `description` value can be:
 - a direct description string
 - a reference to a file on disk (`file://`) from which the name is read
