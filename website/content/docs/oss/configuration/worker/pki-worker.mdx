@@ -7,10 +7,12 @@ description: |-
 
 
 ## PKI Worker Configuration
-PKI Workers authenticate to Boundary using a certificate-based method, allowing for worker deployment
-without using a shared KMS. PKI Workers can also be configured using CLI commands.
+PKI Workers authenticate to Boundary using a certificate-based method, allowing
+for worker deployment without using a shared KMS.
 
-PKI Workers require an accessible directory, defined by `auth_storage_path`, for credential storage.
+PKI Workers require an accessible directory defined by `auth_storage_path` for
+credential storage. 
+
 Example (not safe for production!):
 
 ```hcl
@@ -20,8 +22,9 @@ worker {
 }
 ```
 
-__Note__: `name` and `description` fields are not valid config fields for PKI workers. These fields are only valid for
-[KMS Workers][]. `name` and `description` can only be set for PKI workers through the API.
+__Note__: `name` and `description` fields are not valid config fields for PKI
+workers. These fields are only valid for [KMS Workers][]. `name` and
+`description` can only be set for PKI workers through the API.
 
 # Complete Configuration Example
 
