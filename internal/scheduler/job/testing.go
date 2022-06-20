@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/server/store"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
@@ -94,7 +94,7 @@ func testController(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *store.
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
+	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
 	id, err := uuid.GenerateUUID()

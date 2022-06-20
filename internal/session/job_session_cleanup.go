@@ -11,13 +11,13 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 )
 
 // deadWorkerConnCloseMinGrace is the minimum allowable setting for
 // the closeConnectionsForDeadWorkers method. This is synced with
 // the default server liveness setting.
-const deadWorkerConnCloseMinGrace = servers.DefaultLiveness
+const deadWorkerConnCloseMinGrace = server.DefaultLiveness
 
 type closeConnectionsForDeadWorkersResult struct {
 	WorkerId                string

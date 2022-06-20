@@ -15,7 +15,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -59,17 +59,17 @@ func TestGet(t *testing.T) {
 	}
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
-	repo, err := servers.NewRepository(rw, rw, kms)
+	repo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	repoFn := func() (*servers.Repository, error) {
+	repoFn := func() (*server.Repository, error) {
 		return repo, nil
 	}
 
-	kmsWorker := servers.TestKmsWorker(t, conn, wrap,
-		servers.WithName("test kms worker names"),
-		servers.WithDescription("test kms worker description"),
-		servers.WithAddress("test kms worker address"),
-		servers.WithWorkerTags(&servers.Tag{Key: "key", Value: "val"}))
+	kmsWorker := server.TestKmsWorker(t, conn, wrap,
+		server.WithName("test kms worker names"),
+		server.WithDescription("test kms worker description"),
+		server.WithAddress("test kms worker address"),
+		server.WithWorkerTags(&server.Tag{Key: "key", Value: "val"}))
 
 	kmsAuthzActions := make([]string, len(testAuthorizedActions))
 	copy(kmsAuthzActions, testAuthorizedActions)
@@ -97,21 +97,21 @@ func TestGet(t *testing.T) {
 	}
 
 	var pkiWorkerKeyId string
-	pkiWorker := servers.TestPkiWorker(t, conn, wrap,
-		servers.WithName("test pki worker names"),
-		servers.WithDescription("test pki worker description"),
-		servers.WithTestPkiWorkerAuthorizedKeyId(&pkiWorkerKeyId))
+	pkiWorker := server.TestPkiWorker(t, conn, wrap,
+		server.WithName("test pki worker names"),
+		server.WithDescription("test pki worker description"),
+		server.WithTestPkiWorkerAuthorizedKeyId(&pkiWorkerKeyId))
 	// Add config tags to the created worker
 	pkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
-		servers.NewWorker(pkiWorker.GetScopeId(),
-			servers.WithAddress("test kms worker address"),
-			servers.WithWorkerTags(&servers.Tag{
+		server.NewWorker(pkiWorker.GetScopeId(),
+			server.WithAddress("test kms worker address"),
+			server.WithWorkerTags(&server.Tag{
 				Key:   "config",
 				Value: "test",
 			})),
-		servers.WithUpdateTags(true),
-		servers.WithPublicId(pkiWorker.GetPublicId()),
-		servers.WithKeyId(pkiWorkerKeyId))
+		server.WithUpdateTags(true),
+		server.WithPublicId(pkiWorker.GetPublicId()),
+		server.WithKeyId(pkiWorkerKeyId))
 	require.NoError(t, err)
 
 	wantPkiWorker := &pb.Worker{
@@ -157,7 +157,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non-existent Worker",
-			req:  &pbs.GetWorkerRequest{Id: servers.WorkerPrefix + "_DoesntExis"},
+			req:  &pbs.GetWorkerRequest{Id: server.WorkerPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -169,7 +169,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Space in id",
-			req:  &pbs.GetWorkerRequest{Id: servers.WorkerPrefix + "_1 23456789"},
+			req:  &pbs.GetWorkerRequest{Id: server.WorkerPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -200,13 +200,13 @@ func TestList(t *testing.T) {
 	}
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	var wantKmsWorkers []*pb.Worker
 	for i := 0; i < 10; i++ {
-		w := servers.TestKmsWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("kms-worker%d", i)))
+		w := server.TestKmsWorker(t, conn, wrap, server.WithName(fmt.Sprintf("kms-worker%d", i)))
 		kmsAuthzActions := make([]string, len(testAuthorizedActions))
 		copy(kmsAuthzActions, testAuthorizedActions)
 		wantKmsWorkers = append(wantKmsWorkers, &pb.Worker{
@@ -227,7 +227,7 @@ func TestList(t *testing.T) {
 
 	var wantPkiWorkers []*pb.Worker
 	for i := 0; i < 10; i++ {
-		w := servers.TestPkiWorker(t, conn, wrap, servers.WithName(fmt.Sprintf("pki-worker%d", i)))
+		w := server.TestPkiWorker(t, conn, wrap, server.WithName(fmt.Sprintf("pki-worker%d", i)))
 		wantPkiWorkers = append(wantPkiWorkers, &pb.Worker{
 			Id:                    w.GetPublicId(),
 			ScopeId:               w.GetScopeId(),
@@ -332,15 +332,15 @@ func TestDelete(t *testing.T) {
 	}
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
-	repoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	ctx := context.Background()
 
 	s, err := NewService(ctx, repoFn, iamRepoFn)
 	require.NoError(t, err, "Error when getting new worker service.")
 
-	w := servers.TestKmsWorker(t, conn, wrap)
+	w := server.TestKmsWorker(t, conn, wrap)
 
 	cases := []struct {
 		name    string
@@ -360,7 +360,7 @@ func TestDelete(t *testing.T) {
 			name:    "Delete bad worker id",
 			scopeId: w.GetScopeId(),
 			req: &pbs.DeleteWorkerRequest{
-				Id: servers.WorkerPrefix + "_doesntexis",
+				Id: server.WorkerPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -398,15 +398,15 @@ func TestUpdate(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repo, err := servers.NewRepository(rw, rw, kms)
+	repo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	repoFn := func() (*servers.Repository, error) {
+	repoFn := func() (*server.Repository, error) {
 		return repo, nil
 	}
 
-	wkr := servers.TestPkiWorker(t, conn, wrapper,
-		servers.WithName("default"),
-		servers.WithDescription("default"))
+	wkr := server.TestPkiWorker(t, conn, wrapper,
+		server.WithName("default"),
+		server.WithDescription("default"))
 
 	version := wkr.GetVersion()
 
@@ -630,7 +630,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing Worker",
 			req: &pbs.UpdateWorkerRequest{
-				Id: servers.WorkerPrefix + "_DoesntExis",
+				Id: server.WorkerPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -809,15 +809,15 @@ func TestUpdate_KMS(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repo, err := servers.NewRepository(rw, rw, kms)
+	repo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
-	repoFn := func() (*servers.Repository, error) {
+	repoFn := func() (*server.Repository, error) {
 		return repo, nil
 	}
 
-	wkr := servers.TestKmsWorker(t, conn, wrapper,
-		servers.WithName("default"),
-		servers.WithDescription("default"))
+	wkr := server.TestKmsWorker(t, conn, wrapper,
+		server.WithName("default"),
+		server.WithDescription("default"))
 
 	toMerge := &pbs.UpdateWorkerRequest{
 		Id: wkr.GetPublicId(),
@@ -891,9 +891,9 @@ func TestUpdate_BadVersion(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 
 	rw := db.New(conn)
-	repo, err := servers.NewRepository(rw, rw, kms)
+	repo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err, "Couldn't create new worker repo.")
-	repoFn := func() (*servers.Repository, error) {
+	repoFn := func() (*server.Repository, error) {
 		return repo, nil
 	}
 	ctx := context.Background()
@@ -901,7 +901,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	workerService, err := NewService(ctx, repoFn, iamRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
-	wkr := servers.TestPkiWorker(t, conn, wrapper)
+	wkr := server.TestPkiWorker(t, conn, wrapper)
 
 	upTar, err := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), &pbs.UpdateWorkerRequest{
 		Id: wkr.GetPublicId(),
@@ -926,8 +926,8 @@ func TestCreateWorkerLed(t *testing.T) {
 	}
 	rw := db.New(conn)
 	testKms := kms.TestKms(t, conn, testRootWrapper)
-	repoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, testKms)
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, testKms)
 	}
 	testCtx := context.Background()
 
@@ -935,7 +935,7 @@ func TestCreateWorkerLed(t *testing.T) {
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	// Get an initial set of authorized node credentials
-	rootStorage, err := servers.NewRepositoryStorage(testCtx, rw, rw, testKms)
+	rootStorage, err := server.NewRepositoryStorage(testCtx, rw, rw, testKms)
 	require.NoError(t, err)
 	_, err = rotation.RotateRootCertificates(testCtx, rootStorage)
 	require.NoError(t, err)
@@ -1180,8 +1180,8 @@ func TestCreateWorkerLed(t *testing.T) {
 		{
 			name: "create-error",
 			service: func() Service {
-				repoFn := func() (*servers.Repository, error) {
-					return servers.NewRepository(rw, &db.Db{}, testKms)
+				repoFn := func() (*server.Repository, error) {
+					return server.NewRepository(rw, &db.Db{}, testKms)
 				}
 				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
 				require.NoError(t, err, "Error when getting new worker service.")
@@ -1207,13 +1207,13 @@ func TestCreateWorkerLed(t *testing.T) {
 				// CreateWorker(...) and test the createInRepo(...) failure
 				// path if the repoFn returns and err.
 				cnt := 0
-				repoFn := func() (*servers.Repository, error) {
+				repoFn := func() (*server.Repository, error) {
 					cnt = cnt + 1
 					switch {
 					case cnt > 1:
 						return nil, errors.New(testCtx, errors.Internal, "bad-repo-function", "error creating repo")
 					default:
-						return servers.NewRepository(rw, rw, testKms)
+						return server.NewRepository(rw, rw, testKms)
 					}
 				}
 				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)

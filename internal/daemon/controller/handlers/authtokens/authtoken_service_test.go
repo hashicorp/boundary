@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/requests"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -43,8 +43,8 @@ func TestGetSelf(t *testing.T) {
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	a, err := authtokens.NewService(tokenRepoFn, iamRepoFn)
@@ -202,8 +202,8 @@ func TestList_Self(t *testing.T) {
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	// This will result in the scope having default permissions, which now
@@ -426,8 +426,8 @@ func TestDeleteSelf(t *testing.T) {
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	a, err := authtokens.NewService(tokenRepoFn, iamRepoFn)

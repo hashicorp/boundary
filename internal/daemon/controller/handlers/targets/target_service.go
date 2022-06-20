@@ -27,7 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -115,7 +115,7 @@ func NewService(
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
 	if serversRepoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing servers repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing server repository")
 	}
 	if sessionRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing session repository")
@@ -1918,7 +1918,7 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 }
 
 // workerList is a helper type to make the selection of workers clearer and more declarative.
-type workerList []*servers.Worker
+type workerList []*server.Worker
 
 // addresses converts the slice of workers to a slice of their addresses
 func (w workerList) addresses() []string {
@@ -1941,7 +1941,7 @@ func (w workerList) workerInfos() []*pb.WorkerInfo {
 // filtered returns a new workerList where all elements contained in it are the
 // ones which from the original workerList that pass the evaluator's evaluation.
 func (w workerList) filtered(eval *bexpr.Evaluator) (workerList, error) {
-	var ret []*servers.Worker
+	var ret []*server.Worker
 	for _, worker := range w {
 		filterInput := map[string]interface{}{
 			"name": worker.GetName(),

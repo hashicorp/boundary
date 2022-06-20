@@ -26,7 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -112,7 +112,7 @@ func (tc *TestController) AuthTokenRepo() *authtoken.Repository {
 	return repo
 }
 
-func (tc *TestController) ServersRepo() *servers.Repository {
+func (tc *TestController) ServersRepo() *server.Repository {
 	repo, err := tc.c.ServersRepoFn()
 	if err != nil {
 		tc.t.Fatal(err)

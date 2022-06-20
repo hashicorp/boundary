@@ -33,8 +33,8 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	"github.com/hashicorp/boundary/internal/servers"
-	spb "github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
+	spb "github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -85,8 +85,8 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
@@ -2365,8 +2365,8 @@ func TestAuthorizeSession(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
@@ -2529,7 +2529,7 @@ func TestAuthorizeSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			servers.TestKmsWorker(t, conn, wrapper)
+			server.TestKmsWorker(t, conn, wrapper)
 
 			asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
@@ -2625,8 +2625,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
@@ -2874,7 +2874,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			servers.TestKmsWorker(t, conn, wrapper)
+			server.TestKmsWorker(t, conn, wrapper)
 
 			asRes, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
@@ -2931,8 +2931,8 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
@@ -3164,8 +3164,8 @@ func TestAddTargetCredentialLibraryPerms(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -3250,8 +3250,8 @@ func TestSetTargetCredentialLibraryPerms(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -3336,8 +3336,8 @@ func TestRemoveTargetCredentialLibraryPerms(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
