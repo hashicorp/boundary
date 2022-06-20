@@ -39,7 +39,7 @@ worker {
   # Path for worker storage. Must be unique across workers
   auth_storage_path="/boundary/demo-worker-1"
 
-  # Workers must be able to reach upstreams on :9201
+  # Workers typically need to reach upstreams on :9201
   initial_upstreams = [
     "10.0.0.1",
     "10.0.0.2",
