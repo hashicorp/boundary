@@ -22,16 +22,18 @@ authenticated proxy to the host is established on the target's default port.
 
 ![Setup Wizard](/img/quick-start-targets.png)
 
-Copy the **CRM Database target ID** (such as `ttcp_eTcZMueUYv`).
+To connect to the initial CRM Database target:
 
-Open a terminal session. First, ensure the Boundary **Origin URL** has been
-exported as an environment variable.
+1. Copy the **CRM Database target ID** (such as `ttcp_eTcZMueUYv`).
+
+1. Open a terminal session. Export the Boundary **Origin URL** as an environment
+   variable.
 
 ```shell-session
 $ export BOUNDARY_ADDR=<boundary-origin-url>
 ```
 
-Next, connect to the target.
+1. Connect to the target.
 
 ```shell-session
 $ boundary connect -target-id ttcp_eTcZMueUYv
