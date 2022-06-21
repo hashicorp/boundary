@@ -3,7 +3,7 @@ name: build
 on:
   push:
     # Sequence of patterns matched against refs/heads
-    branches:    
+    branches:
       # Push events on main branch
       - 'main'
 
@@ -60,7 +60,7 @@ jobs:
           project="$(go list -m)"
           sha="$(git rev-parse HEAD)"
           echo "::set-output name=ldflags::"-s -w -X \'$project/version.GitCommit=$sha\'""
-  
+
   get-product-edition:
     runs-on: ubuntu-latest
     outputs:
@@ -79,7 +79,7 @@ jobs:
 
 
   build-other:
-    needs: 
+    needs:
       - get-product-version
       - get-product-edition
       - set-ld-flags
@@ -140,7 +140,7 @@ jobs:
           path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-linux:
-    needs: 
+    needs:
       - get-product-version
       - get-product-edition
       - set-ld-flags
@@ -226,7 +226,7 @@ jobs:
 
 
   build-darwin:
-    needs: 
+    needs:
       - get-product-version
       - get-product-edition
       - set-ld-flags
