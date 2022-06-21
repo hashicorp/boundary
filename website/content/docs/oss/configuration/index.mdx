@@ -7,7 +7,6 @@ description: Boundary configuration reference.
 # Configuration
 
 [listener]: /docs/oss/configuration/listener
-[telemetry]: /docs/oss/configuration/telemetry
 [controller]: /docs/oss/configuration/controller
 [worker]: /docs/oss/configuration/worker
 [kms]: /docs/oss/configuration/kms
@@ -67,11 +66,15 @@ path to the file.
   LimitMEMLOCK=infinity
   ```
 
-- `log_level` `(string: "info")` – Specifies the log level to use; overridden by
-  CLI and env var parameters. Supported log levels: Trace, Debug, Error, Warn, Info.
+- `log_level` `(string: "info")` – (Deprecated: this is being phased out in
+  favor of observability and is currently only used as a backup if eventing
+  fails.) Specifies the log level to use; overridden by CLI and env var
+  parameters. Supported log levels: Trace, Debug, Error, Warn, Info.
 
-- `log_format` `(string: "")` – Specifies the log format to use; overridden by
-  CLI and env var parameters. Supported log formats: `"standard"`, `"json"`.
+- `log_format` `(string: "")` – (Deprecated: this is being phased out in favor
+  of observability and is currently only used as a backup if eventing fails.)
+  Specifies the log format to use; overridden by CLI and env var parameters.
+  Supported log formats: `"standard"`, `"json"`.
 
 ## Example Configurations
 
