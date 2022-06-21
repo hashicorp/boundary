@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package controller.servers.services.v1;
 
-import "controller/servers/v1/servers.proto";
-
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
 
 service ServerCoordinationService {
@@ -11,6 +9,33 @@ service ServerCoordinationService {
   // returns the status response which includes the changes the controller would like to make to
   // jobs as well as provide a list of the controllers in the system.
   rpc Status(StatusRequest) returns (StatusResponse) {}
+}
+
+// TagPair matches a key to a value.
+message TagPair {
+  string key = 1; // @gotags: `class:"public"`
+  string value = 2; // @gotags: `class:"public"`
+}
+
+// ServerWorkerStatus is the new message used in place of Server to relay status request info.
+message ServerWorkerStatus {
+  // Id of the worker.
+  string public_id = 10; // @gotags: `class:"public"`
+
+  // Name of the resource (optional)
+  string name = 20; // @gotags: `class:"public"`
+
+  // Description of the resource (optional)
+  string description = 25; // @gotags: `class:"public"`
+
+  // Address for the worker. This must be set.
+  string address = 30; // @gotags: `class:"public"`
+
+  // Tags for workers
+  repeated TagPair tags = 40;
+
+  // The key id for this worker, if applicable (optional)
+  string key_id = 50; // @gotags: `class:"public"`
 }
 
 enum CONNECTIONSTATUS {
@@ -89,7 +114,7 @@ message StatusRequest {
   // The worker info. We could use information from the TLS connection but this
   // is easier and going the other route doesn't provide much benefit -- if you
   // get access to the key and spoof the connection, you're already compromised.
-  servers.v1.ServerWorkerStatus worker_status = 40;
+  ServerWorkerStatus worker_status = 40;
 }
 
 enum CHANGETYPE {

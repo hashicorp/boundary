@@ -105,7 +105,7 @@ func TestStatus(t *testing.T) {
 			name:    "No Sessions",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &server.ServerWorkerStatus{
+				WorkerStatus: &pbs.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
@@ -125,7 +125,7 @@ func TestStatus(t *testing.T) {
 			name:    "Still Active",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &server.ServerWorkerStatus{
+				WorkerStatus: &pbs.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
@@ -164,7 +164,7 @@ func TestStatus(t *testing.T) {
 			name:    "No Name or keyId",
 			wantErr: true,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &server.ServerWorkerStatus{
+				WorkerStatus: &pbs.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Address:  worker1.GetAddress(),
 				},
@@ -175,7 +175,7 @@ func TestStatus(t *testing.T) {
 			name:    "No Address",
 			wantErr: true,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &server.ServerWorkerStatus{
+				WorkerStatus: &pbs.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
 				},
@@ -201,7 +201,7 @@ func TestStatus(t *testing.T) {
 					got,
 					cmpopts.IgnoreUnexported(
 						pbs.StatusResponse{},
-						server.ServerWorkerStatus{},
+						pbs.ServerWorkerStatus{},
 						pbs.UpstreamServer{},
 						pbs.JobChangeRequest{},
 						pbs.Job{},
@@ -209,7 +209,7 @@ func TestStatus(t *testing.T) {
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
 					),
-					cmpopts.IgnoreFields(server.ServerWorkerStatus{}, "Tags"),
+					cmpopts.IgnoreFields(pbs.ServerWorkerStatus{}, "Tags"),
 				),
 			)
 		})
@@ -308,7 +308,7 @@ func TestStatusSessionClosed(t *testing.T) {
 				require.NoError(t, err)
 			},
 			req: &pbs.StatusRequest{
-				WorkerStatus: &server.ServerWorkerStatus{
+				WorkerStatus: &pbs.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
@@ -379,7 +379,7 @@ func TestStatusSessionClosed(t *testing.T) {
 					got,
 					cmpopts.IgnoreUnexported(
 						pbs.StatusResponse{},
-						server.ServerWorkerStatus{},
+						pbs.ServerWorkerStatus{},
 						pbs.UpstreamServer{},
 						pbs.JobChangeRequest{},
 						pbs.Job{},
@@ -387,7 +387,7 @@ func TestStatusSessionClosed(t *testing.T) {
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
 					),
-					cmpopts.IgnoreFields(server.ServerWorkerStatus{}, "Tags"),
+					cmpopts.IgnoreFields(pbs.ServerWorkerStatus{}, "Tags"),
 				),
 			)
 		})
@@ -475,7 +475,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	require.NotEqual(t, deadConn.PublicId, connection.PublicId)
 
 	req := &pbs.StatusRequest{
-		WorkerStatus: &server.ServerWorkerStatus{
+		WorkerStatus: &pbs.ServerWorkerStatus{
 			PublicId: worker1.GetPublicId(),
 			Name:     worker1.GetName(),
 			Address:  worker1.GetAddress(),
@@ -517,7 +517,7 @@ func TestStatusDeadConnection(t *testing.T) {
 			got,
 			cmpopts.IgnoreUnexported(
 				pbs.StatusResponse{},
-				server.ServerWorkerStatus{},
+				pbs.ServerWorkerStatus{},
 				pbs.UpstreamServer{},
 				pbs.JobChangeRequest{},
 				pbs.Job{},
@@ -525,7 +525,7 @@ func TestStatusDeadConnection(t *testing.T) {
 				pbs.SessionJobInfo{},
 				pbs.Connection{},
 			),
-			cmpopts.IgnoreFields(server.ServerWorkerStatus{}, "Tags"),
+			cmpopts.IgnoreFields(pbs.ServerWorkerStatus{}, "Tags"),
 		),
 	)
 
@@ -635,7 +635,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 			name:    "Identify workerID based on keyId in status",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &server.ServerWorkerStatus{
+				WorkerStatus: &pbs.ServerWorkerStatus{
 					Address: "someaddress",
 					KeyId:   nodeInfo.Id,
 				},
@@ -654,7 +654,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 			name:    "Active keyId Worker",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &server.ServerWorkerStatus{
+				WorkerStatus: &pbs.ServerWorkerStatus{
 					KeyId:   nodeInfo.Id,
 					Address: "someaddress",
 				},
@@ -708,7 +708,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 					got,
 					cmpopts.IgnoreUnexported(
 						pbs.StatusResponse{},
-						server.ServerWorkerStatus{},
+						pbs.ServerWorkerStatus{},
 						pbs.UpstreamServer{},
 						pbs.JobChangeRequest{},
 						pbs.Job{},
@@ -716,7 +716,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
 					),
-					cmpopts.IgnoreFields(server.ServerWorkerStatus{}, "Tags"),
+					cmpopts.IgnoreFields(pbs.ServerWorkerStatus{}, "Tags"),
 				),
 			)
 		})
