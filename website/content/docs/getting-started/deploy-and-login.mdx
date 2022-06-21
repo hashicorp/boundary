@@ -43,51 +43,52 @@ setup.
 
 1. From the HCP Boundary portal page, click the **Open Admin UI** button. 
 
-2. Enter the admin username and password you created when you deployed the new
+1. Enter the admin username and password you created when you deployed the new
 instance, and click **Authenticate**.
 
-The **Welcome to Boundary** setup wizard will launch automatically. There are
-two options for Boundary’s initial setup:
+1. The **Welcome to Boundary** setup wizard will launch automatically. 
 
-1. Quick setup
-1. Manual
-
-![Setup Wizard](/img/setup-wizard.png)
-
-The **Quick setup** is recommended for new users, and generates a set of initial
-resources to assist in connecting to your first target. 
-
-![Setup Wizard](/img/setup-wizard-target.png)
-
-The **Manual** setup drops the user directly into Boundary, without any
-provisioned resources.
-
-Upon completion of the setup wizard, you will be logged into your HCP Boundary
-instance's Global scope via the web UI. This is the default scope for all new
-Boundary clusters.
+   There are two options for Boundary’s initial setup:
+ 
+   - Quick setup
+   - Manual
+ 
+   ![Setup Wizard](/img/setup-wizard.png)
+ 
+   The **Quick setup** is recommended for new users, and generates a set of initial
+   resources to assist in connecting to your first target. 
+   
+   ![Setup Wizard](/img/setup-wizard-target.png)
+   
+   The **Manual** setup drops the user directly into Boundary, without any
+   provisioned resources.
+   
+   Upon completion of the setup wizard, you will be logged into your HCP Boundary
+   instance's Global scope via the web UI. This is the default scope for all new
+   Boundary clusters.
 
 1. Click **Auth Methods**.
 
-2. Click the **copy icon** for the Password **Auth Method ID**. The ID is needed to
+1. Click the **copy icon** for the Password **Auth Method ID**. The ID is needed to
 authenticate to HCP Boundary using the CLI.
 
 <Tabs>
 <Tab heading="CLI">
 
 
-1. In the HCP Boundary portal, open the **Boundary Overview** page, and click the
-**copy icon** in the **Copy this into Boundary Desktop** section. This copies
-your environment’s Boundary **Origin URL**.
+1. In the HCP Boundary portal, open the **Boundary Overview** page, and click
+the **copy icon** in the **Copy this into Boundary Desktop** section. This
+copies your environment’s Boundary **Origin URL**.
 
-Open a terminal session and set the `BOUNDARY_ADDR` environment variable to the
-copied origin URL.
+1. Open a terminal session and set the `BOUNDARY_ADDR` environment variable to
+the copied origin URL.
 
 ```shell-session
 $ export BOUNDARY_ADDR=<boundary-origin-url>
 ```
 
-Log in with the administrator credentials you created when you deployed the HCP
-Boundary instance.
+1. Log in with the administrator credentials you created when you deployed the
+HCP Boundary instance.
 
 ```shell-session
 $ boundary authenticate password \
