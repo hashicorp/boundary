@@ -123,7 +123,7 @@ $ boundary database init \
    -skip-host-resources-creation \
    -skip-scopes-creation \
    -skip-target-creation \
-   -config /etc/boundary.hcl
+   -config /etc/boundary.d/boundary-controller.hcl
 ```
 
 When you start Boundary, you will effectively have a blank sheet to work against. The initial migrations in the database have been run (note that this includes creating special users like `u_anon` and the `global` scope) and the internal keyrings have been initialized. From here, it's required that
