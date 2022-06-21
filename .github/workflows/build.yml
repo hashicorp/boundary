@@ -301,7 +301,6 @@ jobs:
           version: ${{ env.version }}
           target: default
           arch: ${{ matrix.arch }}
-          zip_artifact_name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_linux_${{ matrix.arch }}.zip
           tags: |
             docker.io/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
             public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
