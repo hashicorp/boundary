@@ -58,16 +58,16 @@ Upon completion of the setup wizard, you will be logged into your HCP Boundary
 instance's Global scope via the web UI. This is the default scope for all new
 Boundary clusters.
 
-Click **Auth Methods**.
+1. Click **Auth Methods**.
 
-Click the **copy icon** for the Password **Auth Method ID**. The ID is needed to
+2. Click the **copy icon** for the Password **Auth Method ID**. The ID is needed to
 authenticate to HCP Boundary using the CLI.
 
 <Tabs>
 <Tab heading="CLI">
 
 
-In the HCP Boundary portal, open the **Boundary Overview** page and click the
+1. In the HCP Boundary portal, open the **Boundary Overview** page, and click the
 **copy icon** in the **Copy this into Boundary Desktop** section. This copies
 your environment’s Boundary **Origin URL**.
 
@@ -106,7 +106,7 @@ by a newline (return) and an EOF (`Ctrl+D`).
 
 This would have to be run in each shell.
 
-If you're unable to install these packages, or don't want to, you can tell the
+If you're unable to install these packages, or don't wish to, you can tell the
 Boundary authenticate command to not save the token to the operating system's
 key manager by setting `-token-name=none` flag or `BOUNDARY_TOKEN_NAME=none` env
 variable when running `boundary authenticate`. You'll be responsible for setting
@@ -116,7 +116,7 @@ with `jq` to pull the token value out of the response and place it wherever you
 wish, then create a command alias for `boundary` that sources that value into
 the environment or the `-token` flag.
 
-~> Token storage on \*nix systems has been more problematic than we expected.
+~> **Note:**Token storage on \*nix systems has been more problematic than we expected.
 We're exploring alternatives. See the discussion on [this GitHub
 issue](https://github.com/hashicorp/boundary/issues/697#issuecomment-709448942)
 to track it and voice your thoughts.
@@ -130,9 +130,9 @@ connect to HCP Boundary.
 
 To get started with Boundary Desktop:
 
-1. Install Boundary Desktop
-1. Enter your HCP Boundary instance’s origin URL
-1. Enter the login name and password
+1. Install Boundary Desktop.
+1. Enter your HCP Boundary instance’s origin URL.
+1. Enter the login name and password.
 
 To authenticate using the Boundary desktop client, launch Boundary desktop
 client and connect to boundary to using your environment's **Origin URL**.
@@ -178,15 +178,15 @@ provider "boundary" {
 
 To find your environment’s `base_url`: 
 
-1. In the HCP portal, open the **Boundary Overview** page
+1. In the HCP portal, open the **Boundary Overview** page.
 1. Click the **copy icon** in the **Copy this into Boundary Desktop** section. This copies your environment’s Boundary **Origin URL**.
 
 To find your environment’s default `auth_method_id`: 
 
-1. In your HCP Boundary portal, click the Admin UI button
+1. In your HCP Boundary portal, click the Admin UI button.
 1. Log in to the Admin Console by entering the admin username and password you
-   created when you deployed the HCP Boundary instance and click **Authenticate**
-1. Click **Auth Methods**
+   created when you deployed the HCP Boundary instance, and click **Authenticate**.
+1. Click **Auth Methods**.
 1. Click the **copy icon** for the Password **Auth Method ID**
 
 </Tab>
