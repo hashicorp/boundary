@@ -1,9 +1,10 @@
 name: build
 
 on:
+  pull_request:
   push:
     # Sequence of patterns matched against refs/heads
-    branches:    
+    branches:
       # Push events on main branch
       - 'main'
 
@@ -60,7 +61,7 @@ jobs:
           project="$(go list -m)"
           sha="$(git rev-parse HEAD)"
           echo "::set-output name=ldflags::"-s -w -X \'$project/version.GitCommit=$sha\'""
-  
+
   get-product-edition:
     runs-on: ubuntu-latest
     outputs:
@@ -79,7 +80,7 @@ jobs:
 
 
   build-other:
-    needs: 
+    needs:
       - get-product-version
       - get-product-edition
       - set-ld-flags
@@ -140,7 +141,7 @@ jobs:
           path: out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-linux:
-    needs: 
+    needs:
       - get-product-version
       - get-product-edition
       - set-ld-flags
@@ -226,7 +227,7 @@ jobs:
 
 
   build-darwin:
-    needs: 
+    needs:
       - get-product-version
       - get-product-edition
       - set-ld-flags
@@ -298,10 +299,9 @@ jobs:
       - name: Docker Build (Action)
         uses: hashicorp/actions-docker-build@v1
         with:
-          version: ${{ env.dockerversion }}
+          version: ${{ env.version }}
           target: default
           arch: ${{ matrix.arch }}
-          zip_artifact_name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_linux_${{ matrix.arch }}.zip
           tags: |
             docker.io/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
             public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
