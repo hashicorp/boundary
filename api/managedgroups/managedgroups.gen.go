@@ -34,7 +34,7 @@ type ManagedGroupReadResult struct {
 	response *api.Response
 }
 
-func (n ManagedGroupReadResult) GetItem() interface{} {
+func (n ManagedGroupReadResult) GetItem() *ManagedGroup {
 	return n.Item
 }
 
@@ -63,7 +63,7 @@ type ManagedGroupListResult struct {
 	response *api.Response
 }
 
-func (n ManagedGroupListResult) GetItems() interface{} {
+func (n ManagedGroupListResult) GetItems() []*ManagedGroup {
 	return n.Items
 }
 

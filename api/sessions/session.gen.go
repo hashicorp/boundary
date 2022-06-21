@@ -41,7 +41,7 @@ type SessionReadResult struct {
 	response *api.Response
 }
 
-func (n SessionReadResult) GetItem() interface{} {
+func (n SessionReadResult) GetItem() *Session {
 	return n.Item
 }
 
@@ -70,7 +70,7 @@ type SessionListResult struct {
 	response *api.Response
 }
 
-func (n SessionListResult) GetItems() interface{} {
+func (n SessionListResult) GetItems() []*Session {
 	return n.Items
 }
 

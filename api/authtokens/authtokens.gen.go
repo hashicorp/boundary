@@ -33,7 +33,7 @@ type AuthTokenReadResult struct {
 	response *api.Response
 }
 
-func (n AuthTokenReadResult) GetItem() interface{} {
+func (n AuthTokenReadResult) GetItem() *AuthToken {
 	return n.Item
 }
 
@@ -62,7 +62,7 @@ type AuthTokenListResult struct {
 	response *api.Response
 }
 
-func (n AuthTokenListResult) GetItems() interface{} {
+func (n AuthTokenListResult) GetItems() []*AuthToken {
 	return n.Items
 }
 

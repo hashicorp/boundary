@@ -38,7 +38,7 @@ type WorkerReadResult struct {
 	response *api.Response
 }
 
-func (n WorkerReadResult) GetItem() interface{} {
+func (n WorkerReadResult) GetItem() *Worker {
 	return n.Item
 }
 
@@ -67,7 +67,7 @@ type WorkerListResult struct {
 	response *api.Response
 }
 
-func (n WorkerListResult) GetItems() interface{} {
+func (n WorkerListResult) GetItems() []*Worker {
 	return n.Items
 }
 

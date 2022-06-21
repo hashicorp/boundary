@@ -36,7 +36,7 @@ type RoleReadResult struct {
 	response *api.Response
 }
 
-func (n RoleReadResult) GetItem() interface{} {
+func (n RoleReadResult) GetItem() *Role {
 	return n.Item
 }
 
@@ -65,7 +65,7 @@ type RoleListResult struct {
 	response *api.Response
 }
 
-func (n RoleListResult) GetItems() interface{} {
+func (n RoleListResult) GetItems() []*Role {
 	return n.Items
 }
 

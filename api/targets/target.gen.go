@@ -44,7 +44,7 @@ type TargetReadResult struct {
 	response *api.Response
 }
 
-func (n TargetReadResult) GetItem() interface{} {
+func (n TargetReadResult) GetItem() *Target {
 	return n.Item
 }
 
@@ -73,7 +73,7 @@ type TargetListResult struct {
 	response *api.Response
 }
 
-func (n TargetListResult) GetItems() interface{} {
+func (n TargetListResult) GetItems() []*Target {
 	return n.Items
 }
 

@@ -35,7 +35,7 @@ type CredentialLibraryReadResult struct {
 	response *api.Response
 }
 
-func (n CredentialLibraryReadResult) GetItem() interface{} {
+func (n CredentialLibraryReadResult) GetItem() *CredentialLibrary {
 	return n.Item
 }
 
@@ -64,7 +64,7 @@ type CredentialLibraryListResult struct {
 	response *api.Response
 }
 
-func (n CredentialLibraryListResult) GetItems() interface{} {
+func (n CredentialLibraryListResult) GetItems() []*CredentialLibrary {
 	return n.Items
 }
 

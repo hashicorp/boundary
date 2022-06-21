@@ -33,7 +33,7 @@ type CredentialReadResult struct {
 	response *api.Response
 }
 
-func (n CredentialReadResult) GetItem() interface{} {
+func (n CredentialReadResult) GetItem() *Credential {
 	return n.Item
 }
 
@@ -62,7 +62,7 @@ type CredentialListResult struct {
 	response *api.Response
 }
 
-func (n CredentialListResult) GetItems() interface{} {
+func (n CredentialListResult) GetItems() []*Credential {
 	return n.Items
 }
 
