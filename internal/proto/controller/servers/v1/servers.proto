@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package controller.servers.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/servers;servers";
+option go_package = "github.com/hashicorp/boundary/internal/server;server";
 
 // TagPair matches a key to a value.
 message TagPair {

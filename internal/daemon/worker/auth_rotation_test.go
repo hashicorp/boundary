@@ -7,8 +7,8 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/nodeenrollment"
@@ -48,7 +48,7 @@ func TestRotationTicking(t *testing.T) {
 	})
 	t.Cleanup(w.Shutdown)
 
-	// Get a servers repo and worker auth repo
+	// Get a server repo and worker auth repo
 	serversRepo, err := c.Controller().ServersRepoFn()
 	require.NoError(err)
 	workerAuthRepo, err := c.Controller().WorkerAuthRepoStorageFn()
@@ -70,11 +70,11 @@ func TestRotationTicking(t *testing.T) {
 	// Decode the proto into the request and create the worker
 	req := new(types.FetchNodeCredentialsRequest)
 	require.NoError(proto.Unmarshal(reqBytes, req))
-	_, err = serversRepo.CreateWorker(c.Context(), &servers.Worker{
+	_, err = serversRepo.CreateWorker(c.Context(), &server.Worker{
 		Worker: &store.Worker{
 			ScopeId: scope.Global.String(),
 		},
-	}, servers.WithFetchNodeCredentialsRequest(req))
+	}, server.WithFetchNodeCredentialsRequest(req))
 	require.NoError(err)
 
 	// Verify we see one authorized set of credentials now

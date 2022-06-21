@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/mr-tron/base58"
 
@@ -388,13 +388,13 @@ func (w *Worker) Resolver() *manual.Resolver {
 
 func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	if len(incoming) == 0 {
-		w.tags.Store([]*servers.TagPair{})
+		w.tags.Store([]*server.TagPair{})
 		return
 	}
-	tags := []*servers.TagPair{}
+	tags := []*server.TagPair{}
 	for k, vals := range incoming {
 		for _, v := range vals {
-			tags = append(tags, &servers.TagPair{
+			tags = append(tags, &server.TagPair{
 				Key:   k,
 				Value: v,
 			})

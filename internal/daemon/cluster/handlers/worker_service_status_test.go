@@ -14,8 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -38,12 +38,12 @@ func TestStatus(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := servers.NewRepository(rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serversRepoFn := func() (*servers.Repository, error) {
+	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
@@ -71,7 +71,7 @@ func TestStatus(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := servers.TestKmsWorker(t, conn, wrapper)
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -105,7 +105,7 @@ func TestStatus(t *testing.T) {
 			name:    "No Sessions",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &servers.ServerWorkerStatus{
+				WorkerStatus: &server.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
@@ -125,7 +125,7 @@ func TestStatus(t *testing.T) {
 			name:    "Still Active",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &servers.ServerWorkerStatus{
+				WorkerStatus: &server.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
@@ -164,7 +164,7 @@ func TestStatus(t *testing.T) {
 			name:    "No Name or keyId",
 			wantErr: true,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &servers.ServerWorkerStatus{
+				WorkerStatus: &server.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Address:  worker1.GetAddress(),
 				},
@@ -175,7 +175,7 @@ func TestStatus(t *testing.T) {
 			name:    "No Address",
 			wantErr: true,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &servers.ServerWorkerStatus{
+				WorkerStatus: &server.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
 				},
@@ -201,7 +201,7 @@ func TestStatus(t *testing.T) {
 					got,
 					cmpopts.IgnoreUnexported(
 						pbs.StatusResponse{},
-						servers.ServerWorkerStatus{},
+						server.ServerWorkerStatus{},
 						pbs.UpstreamServer{},
 						pbs.JobChangeRequest{},
 						pbs.Job{},
@@ -209,7 +209,7 @@ func TestStatus(t *testing.T) {
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
 					),
-					cmpopts.IgnoreFields(servers.ServerWorkerStatus{}, "Tags"),
+					cmpopts.IgnoreFields(server.ServerWorkerStatus{}, "Tags"),
 				),
 			)
 		})
@@ -224,12 +224,12 @@ func TestStatusSessionClosed(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := servers.NewRepository(rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serversRepoFn := func() (*servers.Repository, error) {
+	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
@@ -257,7 +257,7 @@ func TestStatusSessionClosed(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := servers.TestKmsWorker(t, conn, wrapper)
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
 
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
@@ -308,7 +308,7 @@ func TestStatusSessionClosed(t *testing.T) {
 				require.NoError(t, err)
 			},
 			req: &pbs.StatusRequest{
-				WorkerStatus: &servers.ServerWorkerStatus{
+				WorkerStatus: &server.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
@@ -379,7 +379,7 @@ func TestStatusSessionClosed(t *testing.T) {
 					got,
 					cmpopts.IgnoreUnexported(
 						pbs.StatusResponse{},
-						servers.ServerWorkerStatus{},
+						server.ServerWorkerStatus{},
 						pbs.UpstreamServer{},
 						pbs.JobChangeRequest{},
 						pbs.Job{},
@@ -387,7 +387,7 @@ func TestStatusSessionClosed(t *testing.T) {
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
 					),
-					cmpopts.IgnoreFields(servers.ServerWorkerStatus{}, "Tags"),
+					cmpopts.IgnoreFields(server.ServerWorkerStatus{}, "Tags"),
 				),
 			)
 		})
@@ -402,15 +402,15 @@ func TestStatusDeadConnection(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := servers.NewRepository(rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
 
-	worker1 := servers.TestKmsWorker(t, conn, wrapper)
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
 
-	serversRepoFn := func() (*servers.Repository, error) {
+	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
@@ -475,7 +475,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	require.NotEqual(t, deadConn.PublicId, connection.PublicId)
 
 	req := &pbs.StatusRequest{
-		WorkerStatus: &servers.ServerWorkerStatus{
+		WorkerStatus: &server.ServerWorkerStatus{
 			PublicId: worker1.GetPublicId(),
 			Name:     worker1.GetName(),
 			Address:  worker1.GetAddress(),
@@ -517,7 +517,7 @@ func TestStatusDeadConnection(t *testing.T) {
 			got,
 			cmpopts.IgnoreUnexported(
 				pbs.StatusResponse{},
-				servers.ServerWorkerStatus{},
+				server.ServerWorkerStatus{},
 				pbs.UpstreamServer{},
 				pbs.JobChangeRequest{},
 				pbs.Job{},
@@ -525,7 +525,7 @@ func TestStatusDeadConnection(t *testing.T) {
 				pbs.SessionJobInfo{},
 				pbs.Connection{},
 			),
-			cmpopts.IgnoreFields(servers.ServerWorkerStatus{}, "Tags"),
+			cmpopts.IgnoreFields(server.ServerWorkerStatus{}, "Tags"),
 		),
 	)
 
@@ -545,12 +545,12 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := servers.NewRepository(rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
 	})
-	serversRepoFn := func() (*servers.Repository, error) {
+	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
@@ -578,16 +578,16 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 		target.WithSessionConnectionLimit(-1),
 	)
 
-	worker1 := servers.TestPkiWorker(t, conn, wrapper)
+	worker1 := server.TestPkiWorker(t, conn, wrapper)
 
-	rootStorage, err := servers.NewRepositoryStorage(ctx, rw, rw, kms)
+	rootStorage, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
 	require.NoError(t, err)
 
 	// Create struct to pass in with workerId that will be passed along to storage
-	state, err := servers.AttachWorkerIdToState(ctx, worker1.PublicId)
+	state, err := server.AttachWorkerIdToState(ctx, worker1.PublicId)
 	require.NoError(t, err)
 
 	// This happens on the worker
@@ -635,7 +635,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 			name:    "Identify workerID based on keyId in status",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &servers.ServerWorkerStatus{
+				WorkerStatus: &server.ServerWorkerStatus{
 					Address: "someaddress",
 					KeyId:   nodeInfo.Id,
 				},
@@ -654,7 +654,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 			name:    "Active keyId Worker",
 			wantErr: false,
 			req: &pbs.StatusRequest{
-				WorkerStatus: &servers.ServerWorkerStatus{
+				WorkerStatus: &server.ServerWorkerStatus{
 					KeyId:   nodeInfo.Id,
 					Address: "someaddress",
 				},
@@ -708,7 +708,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 					got,
 					cmpopts.IgnoreUnexported(
 						pbs.StatusResponse{},
-						servers.ServerWorkerStatus{},
+						server.ServerWorkerStatus{},
 						pbs.UpstreamServer{},
 						pbs.JobChangeRequest{},
 						pbs.Job{},
@@ -716,7 +716,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
 					),
-					cmpopts.IgnoreFields(servers.ServerWorkerStatus{}, "Tags"),
+					cmpopts.IgnoreFields(server.ServerWorkerStatus{}, "Tags"),
 				),
 			)
 		})

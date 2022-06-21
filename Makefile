@@ -148,10 +148,10 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
-	@protoc-go-inject-tag -input=./internal/servers/store/controller.pb.go
-	@protoc-go-inject-tag -input=./internal/servers/store/worker.pb.go
-	@protoc-go-inject-tag -input=./internal/servers/store/root_certificate.pb.go
-	@protoc-go-inject-tag -input=./internal/servers/store/worker_auth.pb.go
+	@protoc-go-inject-tag -input=./internal/server/store/controller.pb.go
+	@protoc-go-inject-tag -input=./internal/server/store/worker.pb.go
+	@protoc-go-inject-tag -input=./internal/server/store/root_certificate.pb.go
+	@protoc-go-inject-tag -input=./internal/server/store/worker_auth.pb.go
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/targettest/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/tcp/store/target.pb.go
@@ -160,7 +160,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/static/store/static.pb.go
-	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
+	@protoc-go-inject-tag -input=./internal/server/servers.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)

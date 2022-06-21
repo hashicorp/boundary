@@ -25,8 +25,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -845,14 +845,14 @@ func authorizeWorker(ctx context.Context, c *controller.Controller, request stri
 
 	serversRepo, err := c.ServersRepoFn()
 	if err != nil {
-		return fmt.Errorf("error fetching servers repo: %w", err)
+		return fmt.Errorf("error fetching server repo: %w", err)
 	}
 
-	_, err = serversRepo.CreateWorker(ctx, &servers.Worker{
+	_, err = serversRepo.CreateWorker(ctx, &server.Worker{
 		Worker: &store.Worker{
 			ScopeId: scope.Global.String(),
 		},
-	}, servers.WithFetchNodeCredentialsRequest(req))
+	}, server.WithFetchNodeCredentialsRequest(req))
 	if err != nil {
 		return fmt.Errorf("error creating worker: %w", err)
 	}

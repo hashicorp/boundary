@@ -4,7 +4,7 @@ package controller.storage.servers.store.v1;
 
 import "controller/storage/timestamp/v1/timestamp.proto";
 
-option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
+option go_package = "github.com/hashicorp/boundary/internal/server/store;store";
 
 // Controller contains all fields related to a Controller resource
 message Controller {

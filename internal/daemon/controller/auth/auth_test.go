@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/tests/api"
 	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/hashicorp/go-hclog"
@@ -38,8 +38,8 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -161,8 +161,8 @@ func TestVerify_AuditEvent(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, testKms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, testKms)
 	}
 
 	o, _ := iam.TestScopes(t, iamRepo)
