@@ -1,16 +1,16 @@
 ---
 layout: docs
-page_title: Server Configuration
+page_title: Overview/Top-Level Parameters
 description: Boundary configuration reference.
 ---
 
 # Configuration
 
-[listener]: /docs/oss/configuration/listener
-[controller]: /docs/oss/configuration/controller
-[worker]: /docs/oss/configuration/worker
-[kms]: /docs/oss/configuration/kms
-[plugins]: /docs/oss/configuration/plugins
+[listener]: /docs/configuration/listener
+[controller]: /docs/configuration/controller
+[worker]: /docs/configuration/worker
+[kms]: /docs/configuration/kms
+[plugins]: /docs/configuration/plugins
 
 Outside of development mode, Boundary controllers and workers are configured
 using a file. The format of this file is
@@ -22,13 +22,13 @@ path to the file.
 
 ## Parameters
 
-- [`controller`](/docs/oss/configuration/controller): Controller specific
+- [`controller`](/docs/configuration/controller): Controller specific
   configuration. If present, `boundary server` will start a Controller subprocess.
 
-- [`worker`](/docs/oss/configuration/worker): Worker specific configuration. If
+- [`worker`](/docs/configuration/worker): Worker specific configuration. If
   present, `boundary server` will start a Worker subprocess.
 
-- [`listener`](/docs/oss/configuration/listener): Configures the listeners on which
+- [`listener`](/docs/configuration/listener): Configures the listeners on which
   Boundary serves traffic (API, cluster, and proxy).
 
   Controllers must have at least two listener blocks defined: one marked for
@@ -40,10 +40,10 @@ path to the file.
   where Boundary's operational endpoints live (eg: /health).
 
 
-- [`kms`](/docs/oss/configuration/kms): Configures KMS blocks [for various
+- [`kms`](/docs/configuration/kms): Configures KMS blocks [for various
   purposes](/docs/concepts/security/data-encryption).
 
-- [`plugins`](/docs/oss/configuration/plugins): Configures options for plugins.
+- [`plugins`](/docs/configuration/plugins): Configures options for plugins.
 
 - `disable_mlock` `(bool: false)` – Disables the server from executing the
   `mlock` syscall, which prevents memory from being swapped to disk. This is
@@ -79,5 +79,5 @@ path to the file.
 ## Example Configurations
 
 For complete example configurations see the sections for
-[controller](/docs/oss/configuration/controller) and
-[worker](/docs/oss/configuration/worker).
+[controller](/docs/configuration/controller) and
+[worker](/docs/configuration/worker).

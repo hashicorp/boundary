@@ -254,14 +254,6 @@ module.exports = [
     permanent: true,
   },
 
-  // below is for moved /configuration to /oss/configuration
-
-  {
-    source: '/docs/configuration/:splat*',
-    destination: '/docs/oss/configuration/:splat*',
-    permanent: true,
-  },
-
   // below is for moved /operations to /oss/operations
 
   {

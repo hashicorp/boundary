@@ -47,7 +47,7 @@ kms "aead" {
 ```
 
 In this example, we're using hardcoded AEAD keys, but in a real world non-dev deployment, you
-should use your cloud provider's KMS such as [AWS KMS](/docs/oss/configuration/kms/awskms) to manage the keys Boundary
+should use your cloud provider's KMS such as [AWS KMS](/docs/configuration/kms/awskms) to manage the keys Boundary
 uses to encrypt sensitive information.
 
 The KMS block we're focused on is the `recovery` block. This block specifies the key used to "recover" Boundary

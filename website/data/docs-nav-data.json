@@ -35,6 +35,115 @@
     ]
   },
   {
+    "title": "Configuration",
+    "routes": [
+      {
+        "title": "Overview/Top-Level Parameters",
+        "path": "configuration"
+      },
+      {
+        "title": "worker",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/worker/overview"
+          },
+          {
+            "title": "KMS Workers",
+            "path": "configuration/worker/kms-worker"
+          },
+          {
+            "title": "PKI Workers",
+            "path": "configuration/worker/pki-worker"
+          }
+        ]
+      },
+      {
+        "title": "listener",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/listener"
+          },
+          {
+            "title": "TCP",
+            "path": "configuration/listener/tcp"
+          },
+          {
+            "title": "Unix",
+            "path": "configuration/listener/unix"
+          }
+        ]
+      },
+      {
+        "title": "KMS",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/kms"
+          },
+          {
+            "title": "AEAD",
+            "path": "configuration/kms/aead"
+          },
+          {
+            "title": "AWS KMS",
+            "path": "configuration/kms/awskms"
+          },
+          {
+            "title": "AliCloud KMS",
+            "path": "configuration/kms/alicloudkms"
+          },
+          {
+            "title": "Azure Key Vault",
+            "path": "configuration/kms/azurekeyvault"
+          },
+          {
+            "title": "GCP Cloud KMS",
+            "path": "configuration/kms/gcpckms"
+          },
+          {
+            "title": "OCI KMS",
+            "path": "configuration/kms/ocikms"
+          },
+          {
+            "title": "Vault Transit",
+            "path": "configuration/kms/transit"
+          }
+        ]
+      },
+      {
+        "title": "controller",
+        "path": "configuration/controller"
+      },
+      {
+        "title": "events",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/events/overview"
+          },
+          {
+            "title": "Common Sink Parameters",
+            "path": "configuration/events/common"
+          },
+          {
+            "title": "File Sink",
+            "path": "configuration/events/file"
+          },
+          {
+            "title": "Stderr Sink",
+            "path": "configuration/events/stderr"
+          }
+        ]
+      },
+      {
+        "title": "plugins",
+        "path": "configuration/plugins"
+      }
+    ]
+  },
+  {
     "title": "Concepts",
     "routes": [
       {
@@ -299,115 +408,6 @@
           {
             "title": "Reference Architectures",
             "path": "oss/installing/reference-architectures"
-          }
-        ]
-      },
-      {
-        "title": "Configuration",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/configuration"
-          },
-          {
-            "title": "listener",
-            "routes": [
-              {
-                "title": "Overview",
-                "path": "oss/configuration/listener"
-              },
-              {
-                "title": "TCP",
-                "path": "oss/configuration/listener/tcp"
-              },
-              {
-                "title": "Unix",
-                "path": "oss/configuration/listener/unix"
-              }
-            ]
-          },
-          {
-            "title": "KMS",
-            "routes": [
-              {
-                "title": "Overview",
-                "path": "oss/configuration/kms"
-              },
-              {
-                "title": "AEAD",
-                "path": "oss/configuration/kms/aead"
-              },
-              {
-                "title": "AWS KMS",
-                "path": "oss/configuration/kms/awskms"
-              },
-              {
-                "title": "AliCloud KMS",
-                "path": "oss/configuration/kms/alicloudkms"
-              },
-              {
-                "title": "Azure Key Vault",
-                "path": "oss/configuration/kms/azurekeyvault"
-              },
-              {
-                "title": "GCP Cloud KMS",
-                "path": "oss/configuration/kms/gcpckms"
-              },
-              {
-                "title": "OCI KMS",
-                "path": "oss/configuration/kms/ocikms"
-              },
-              {
-                "title": "Vault Transit",
-                "path": "oss/configuration/kms/transit"
-              }
-            ]
-          },
-          {
-            "title": "controller",
-            "path": "oss/configuration/controller"
-          },
-          {
-            "title": "worker",
-            "routes": [
-              {
-                "title": "Overview",
-                "path": "oss/configuration/worker/overview"
-              },
-              {
-                "title": "KMS Workers",
-                "path": "oss/configuration/worker/kms-worker"
-              },
-              {
-                "title": "PKI Workers",
-                "path": "oss/configuration/worker/pki-worker"
-              }
-            ]
-          },
-          {
-            "title": "events",
-            "routes": [
-              {
-                "title": "Overview",
-                "path": "oss/configuration/events/overview"
-              },
-              {
-                "title": "Common Sink Parameters",
-                "path": "oss/configuration/events/common"
-              },
-              {
-                "title": "File Sink",
-                "path": "oss/configuration/events/file"
-              },
-              {
-                "title": "Stderr Sink",
-                "path": "oss/configuration/events/stderr"
-              }
-            ]
-          },
-          {
-            "title": "plugins",
-            "path": "oss/configuration/plugins"
           }
         ]
       },
