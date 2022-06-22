@@ -4,6 +4,16 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* scheduler: Removes a Postgres check constraint on the length of the controller id.
+  The constraint causes an error when running jobs with controllers configured
+  with a name of less than 10 character:
+  `controller_id_must_be_at_least_10_characters constraint failed`.
+  Since a controller's name is used as its private id, Boundary does not enforce
+  the normal length requirements on the `server_controller` table
+  ([PR](https://github.com/hashicorp/boundary/pull/2226)).
+
 ## 0.9.0 (2022/06/20)
 
 ### New and Improved
