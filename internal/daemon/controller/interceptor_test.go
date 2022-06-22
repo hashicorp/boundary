@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/go-hclog"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
@@ -45,8 +45,8 @@ func Test_requestCtxInterceptor(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kmsCache)
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kmsCache)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kmsCache)
 	}
 
 	validGatewayTicket := "valid-ticket"
@@ -143,7 +143,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 			eventer:                testEventer,
 			wantFactoryErr:         true,
 			wantFactoryErrMatch:    errors.T(errors.InvalidParameter),
-			wantFactoryErrContains: "missing servers repo function",
+			wantFactoryErrContains: "missing server repo function",
 		},
 		{
 			name:                   "missing-kms",

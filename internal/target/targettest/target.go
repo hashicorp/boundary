@@ -230,8 +230,8 @@ func VetForUpdate(ctx context.Context, t target.Target, paths []string) error {
 	return nil
 }
 
-// VetCredentialLibraries allows for any CredentialLibraries.
-func VetCredentialLibraries(_ context.Context, _ []*target.CredentialLibrary) error {
+// VetCredentialSources allows for any CredentialLibraries.
+func VetCredentialSources(_ context.Context, _ []*target.CredentialLibrary, _ []*target.StaticCredential) error {
 	return nil
 }
 

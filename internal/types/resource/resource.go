@@ -25,10 +25,11 @@ const (
 	ManagedGroup
 	CredentialStore
 	CredentialLibrary
+	Credential
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
-	// * The perms.topLevelTypes function
+	// * The perms.topLevelType function
 	// * The scopes service collection actions for appropriate scopes
 	// * The Test_AnonRestrictions test
 )
@@ -58,6 +59,7 @@ func (r Type) String() string {
 		"managed-group",
 		"credential-store",
 		"credential-library",
+		"credential",
 	}[r]
 }
 
@@ -90,4 +92,5 @@ var Map = map[string]Type{
 	ManagedGroup.String():      ManagedGroup,
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
+	Credential.String():        Credential,
 }

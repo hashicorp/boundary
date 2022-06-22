@@ -10,12 +10,19 @@
 package server
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/testing/controller"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -24,26 +31,6 @@ import (
 const workerBaseConfig = `
 disable_mlock = true
 
-telemetry {
-	prometheus_retention_time = "24h"
-	disable_hostname = true
-}
-
-controller {
-	name = "dev-controller"
-	description = "A default controller created in dev mode"
-	database {
-		url = "%s"
-	}
-}
-
-kms "aead" {
-	purpose = "root"
-	aead_type = "aes-gcm"
-	key = "%s"
-	key_id = "global_root"
-}
-
 kms "aead" {
 	purpose = "worker-auth"
 	aead_type = "aes-gcm"
@@ -51,75 +38,54 @@ kms "aead" {
 	key_id = "global_worker-auth"
 }
 
-kms "aead" {
-	purpose = "recovery"
-	aead_type = "aes-gcm"
-	key = "%s"
-	key_id = "global_recovery"
-}
-
-listener "tcp" {
-	purpose = "api"
-	address = "127.0.0.1:9203"
-	tls_disable = true
-	cors_enabled = true
-	cors_allowed_origins = ["*"]
-}
-
-listener "tcp" {
-	purpose = "cluster"
-	address = "127.0.0.1:9204"
-}
-
 listener "tcp" {
 	purpose = "proxy"
-	address = "127.0.0.1:9205"
+	address = "127.0.0.1:9405"
 }
-
 `
 
 const tag1Config = `
 worker {
-	name = "dev-worker"
+	name = "test"
 	description = "A default worker created in dev mode"
-	controllers = ["127.0.0.1:9204"]
+	initial_upstreams = ["%s"]
 	tags {
 		type = ["dev", "local"]
 	}
+	auth_storage_path = "%s"
 }
 `
 
 const tag2Config = `
 worker {
-	name = "dev-worker"
+	name = "test"
 	description = "A default worker created in dev mode"
-	controllers = ["127.0.0.1:9204"]
+	initial_upstreams = ["%s"]
 	tags {
 		foo = ["bar", "baz"]
 	}
+	auth_storage_path = "%s"
 }
 `
 
 func TestServer_ReloadWorkerTags(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
+
+	rootWrapper, _ := wrapperWithKey(t)
+	recoveryWrapper, _ := wrapperWithKey(t)
+	workerAuthWrapper, key := wrapperWithKey(t)
+	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
+	defer testController.Shutdown()
+
+	authStoragePath, err := os.MkdirTemp("", "")
+	require.NoError(err)
+	t.Cleanup(func() { os.RemoveAll(authStoragePath) })
+
 	wg := &sync.WaitGroup{}
 
-	controllerKey, workerAuthKey, recoveryKey := config.DevKeyGeneration()
-
-	cmd := testServerCommand(t, testServerCommandOpts{
-		CreateDevDatabase: true,
-		ControllerKey:     controllerKey,
-		UseDevAuthMethod:  true,
-		UseDevTarget:      true,
-	})
-	defer func() {
-		if cmd.DevDatabaseCleanupFunc != nil {
-			require.NoError(cmd.DevDatabaseCleanupFunc())
-		}
-	}()
-
-	cmd.presetConfig = atomic.NewString(fmt.Sprintf(workerBaseConfig+tag1Config, cmd.DatabaseUrl, controllerKey, workerAuthKey, recoveryKey))
+	cmd := testServerCommand(t, testServerCommandOpts{})
+	cmd.presetConfig = atomic.NewString(fmt.Sprintf(workerBaseConfig+tag1Config, key, testController.ClusterAddrs()[0], filepath.Join(authStoragePath, "tag1")))
 
 	wg.Add(1)
 	go func() {
@@ -138,22 +104,21 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 
 	fetchWorkerTags := func(name string, key string, values []string) {
 		t.Helper()
-		serversRepo, err := cmd.controller.ServersRepoFn()
+		serversRepo, err := testController.Controller().ServersRepoFn()
 		require.NoError(err)
-		tags, err := serversRepo.ListTagsForServers(cmd.Context, []string{name})
+		w, err := serversRepo.LookupWorkerByName(testController.Context(), name)
 		require.NoError(err)
-		require.Len(tags, 2)
-		require.Equal(key, tags[0].Key)
-		require.Equal(values[0], tags[0].Value)
-		require.Equal(key, tags[1].Key)
-		require.Equal(values[1], tags[1].Value)
+		require.NotNil(w)
+		v, ok := w.CanonicalTags()[key]
+		require.True(ok)
+		require.ElementsMatch(values, v)
 	}
 
 	// Give time to populate up to the controller
 	time.Sleep(10 * time.Second)
-	fetchWorkerTags("dev-worker", "type", []string{"dev", "local"})
+	fetchWorkerTags("test", "type", []string{"dev", "local"})
 
-	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, cmd.DatabaseUrl, controllerKey, workerAuthKey, recoveryKey))
+	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, key, testController.ClusterAddrs()[0], filepath.Join(authStoragePath, "tag2")))
 
 	cmd.SighupCh <- struct{}{}
 	select {
@@ -163,9 +128,31 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	}
 
 	time.Sleep(10 * time.Second)
-	fetchWorkerTags("dev-worker", "foo", []string{"bar", "baz"})
+	fetchWorkerTags("test", "foo", []string{"bar", "baz"})
 
 	close(cmd.ShutdownCh)
 
 	wg.Wait()
+}
+
+// TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
+func wrapperWithKey(t testing.TB) (wrapping.Wrapper, string) {
+	t.Helper()
+	rootKey := make([]byte, 32)
+	n, err := rand.Read(rootKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 32 {
+		t.Fatal(n)
+	}
+	root := aead.NewWrapper()
+	_, err = root.SetConfig(context.Background(), wrapping.WithKeyId(base64.StdEncoding.EncodeToString(rootKey)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := root.SetAesGcmKeyBytes(rootKey); err != nil {
+		t.Fatal(err)
+	}
+	return root, base64.StdEncoding.EncodeToString(rootKey)
 }

@@ -123,7 +123,10 @@ func (c *Command) Run(args []string) int {
 	case "":
 		return cli.RunResultHelp
 
-	case "create", "update":
+	case "create":
+		return cli.RunResultHelp
+
+	case "update":
 		return cli.RunResultHelp
 
 	}
@@ -239,30 +242,6 @@ func (c *Command) Run(args []string) int {
 		}
 
 	case "set-host-sources":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "add-credential-libraries":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "remove-credential-libraries":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "set-credential-libraries":
 		switch c.FlagVersion {
 		case 0:
 			opts = append(opts, targets.WithAutomaticVersioning(true))

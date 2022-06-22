@@ -4,17 +4,19 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -31,7 +33,7 @@ type TestWorker struct {
 	name   string
 }
 
-// Worker returns the underlying controller
+// Worker returns the underlying worker
 func (tw *TestWorker) Worker() *Worker {
 	return tw.w
 }
@@ -52,10 +54,10 @@ func (tw *TestWorker) Name() string {
 	return tw.name
 }
 
-func (tw *TestWorker) ControllerAddrs() []string {
+func (tw *TestWorker) UpstreamAddrs() []string {
 	var addrs []string
 	lastStatus := tw.w.LastStatusSuccess()
-	for _, v := range lastStatus.GetControllers() {
+	for _, v := range lastStatus.GetCalculatedUpstreams() {
 		addrs = append(addrs, v.Address)
 	}
 
@@ -164,14 +166,20 @@ type TestWorkerOpts struct {
 	// Config; if not provided a dev one will be created
 	Config *config.Config
 
-	// Sets initial controller addresses
-	InitialControllers []string
+	// Sets initial upstream addresses
+	InitialUpstreams []string
 
 	// If true, the worker will not be started
 	DisableAutoStart bool
 
 	// The worker auth KMS to use, or one will be created
 	WorkerAuthKms wrapping.Wrapper
+
+	// The worker credential storage KMS to use, or one will be created
+	WorkerAuthStorageKms wrapping.Wrapper
+
+	// The location of the worker's auth storage
+	WorkerAuthStoragePath string
 
 	// The name to use for the worker, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
@@ -191,6 +199,9 @@ type TestWorkerOpts struct {
 	// Overrides worker's nonceFn, for cases where we want to have control
 	// over the nonce we send to the Controller
 	NonceFn randFn
+
+	// If set, override the normal auth rotation period
+	AuthRotationPeriod time.Duration
 }
 
 func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
@@ -220,11 +231,13 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		if err != nil {
 			t.Fatal(err)
 		}
-		opts.Config.Worker.Name = opts.Name
+		if opts.Name != "" {
+			opts.Config.Worker.Name = opts.Name
+		}
 	}
 
-	if len(opts.InitialControllers) > 0 {
-		opts.Config.Worker.Controllers = opts.InitialControllers
+	if len(opts.InitialUpstreams) > 0 {
+		opts.Config.Worker.InitialUpstreams = opts.InitialUpstreams
 	}
 
 	// Start a logger
@@ -241,18 +254,22 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	tw.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
 
 	if opts.Config.Worker == nil {
-		opts.Config.Worker = new(config.Worker)
-	}
-	if opts.Config.Worker.Name == "" {
-		opts.Config.Worker.Name, err = opts.Config.Worker.InitNameIfEmpty()
-		if err != nil {
-			t.Fatal(err)
+		opts.Config.Worker = &config.Worker{
+			Name: opts.Name,
 		}
-		event.WriteSysEvent(ctx, op, "worker name generated", "name", opts.Config.Worker.Name)
+	}
+	if opts.WorkerAuthStoragePath != "" {
+		opts.Config.Worker.AuthStoragePath = opts.WorkerAuthStoragePath
+		tw.b.DevUsePkiForUpstream = true
 	}
 	tw.name = opts.Config.Worker.Name
 
-	if err := tw.b.SetupEventing(tw.b.Logger, tw.b.StderrLock, opts.Config.Worker.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+	serverName, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverName = fmt.Sprintf("%s/worker", serverName)
+	if err := tw.b.SetupEventing(tw.b.Logger, tw.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -260,6 +277,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	switch {
 	case opts.WorkerAuthKms != nil:
 		tw.b.WorkerAuthKms = opts.WorkerAuthKms
+	case opts.WorkerAuthStorageKms != nil:
+		tw.b.WorkerAuthStorageKms = opts.WorkerAuthStorageKms
 	default:
 		if err := tw.b.SetupKMSes(tw.b.Context, nil, opts.Config); err != nil {
 			t.Fatal(err)
@@ -288,6 +307,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		t.Fatal(err)
 	}
 
+	tw.w.TestOverrideAuthRotationPeriod = opts.AuthRotationPeriod
+
 	if opts.NonceFn != nil {
 		tw.w.nonceFn = opts.NonceFn
 	}
@@ -309,17 +330,19 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
 		WorkerAuthKms:             tw.w.conf.WorkerAuthKms,
+		WorkerAuthStorageKms:      tw.w.conf.WorkerAuthStorageKms,
 		Name:                      opts.Name,
-		InitialControllers:        tw.ControllerAddrs(),
+		InitialUpstreams:          tw.UpstreamAddrs(),
 		Logger:                    tw.w.conf.Logger,
 		StatusGracePeriodDuration: opts.StatusGracePeriodDuration,
 	}
 	if nextOpts.Name == "" {
 		var err error
-		nextOpts.Name, err = base62.Random(5)
+		nextOpts.Name, err = db.NewPublicId("w")
 		if err != nil {
 			t.Fatal(err)
 		}
+		nextOpts.Name = strings.ToLower(nextOpts.Name)
 		event.WriteSysEvent(context.TODO(), op, "worker name generated", "name", nextOpts.Name)
 	}
 	return NewTestWorker(t, nextOpts)

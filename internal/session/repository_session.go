@@ -19,7 +19,7 @@ import (
 
 // CreateSession inserts into the repository and returns the new Session with
 // its State of "Pending".  The following fields must be empty when creating a
-// session: ServerId, ServerType, and PublicId.  No options are
+// session: WorkerId, and PublicId.  No options are
 // currently supported.
 func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, workerAddresses []string, _ ...Option) (*Session, ed25519.PrivateKey, error) {
 	const op = "session.(Repository).CreateSession"
@@ -49,12 +49,6 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	}
 	if newSession.ScopeId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
-	}
-	if newSession.ServerId != "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "server id is not empty")
-	}
-	if newSession.ServerType != "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "server type is not empty")
 	}
 	if newSession.CtTofuToken != nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "ct is not empty")
@@ -93,12 +87,32 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		func(read db.Reader, w db.Writer) error {
 			returnedSession = newSession.Clone().(*Session)
 			returnedSession.DynamicCredentials = nil
+			returnedSession.StaticCredentials = nil
 			if err = w.Create(ctx, returnedSession); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 
 			for _, cred := range newSession.DynamicCredentials {
 				cred.SessionId = newSession.PublicId
+			}
+
+			var staticCreds []interface{}
+			for _, cred := range newSession.StaticCredentials {
+				cred.SessionId = newSession.PublicId
+				staticCreds = append(staticCreds, cred)
+			}
+
+			if len(staticCreds) > 0 {
+				if err = w.CreateItems(ctx, staticCreds); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("failed to create static credentials"))
+				}
+
+				// Get static creds back from the db for return
+				var c []*StaticCredential
+				if err := read.SearchWhere(ctx, &c, "session_id = ?", []interface{}{newSession.PublicId}); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				returnedSession.StaticCredentials = c
 			}
 
 			// TODO: after upgrading to gorm v2 this batch insert can be replaced, since gorm v2 supports batch inserts
@@ -165,12 +179,20 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 			}
 			session.States = states
 
-			var creds []*DynamicCredential
-			if err := read.SearchWhere(ctx, &creds, "session_id = ?", []interface{}{sessionId}); err != nil {
+			var dynamicCreds []*DynamicCredential
+			if err := read.SearchWhere(ctx, &dynamicCreds, "session_id = ?", []interface{}{sessionId}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			if len(creds) > 0 {
-				session.DynamicCredentials = creds
+			if len(dynamicCreds) > 0 {
+				session.DynamicCredentials = dynamicCreds
+			}
+
+			var staticCreds []*StaticCredential
+			if err := read.SearchWhere(ctx, &staticCreds, "session_id = ?", []interface{}{sessionId}); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if len(staticCreds) > 0 {
+				session.StaticCredentials = staticCreds
 			}
 
 			connections, err := fetchConnections(ctx, read, sessionId, db.WithOrder("create_time desc"))
@@ -251,7 +273,7 @@ func (r *Repository) fetchAuthzProtectedSessionsByScope(
 	return sessionsMap, nil
 }
 
-// ListSessions will sessions.  Supports the WithLimit, WithScopeId, WithSessionIds, and WithServerId options.
+// ListSessions lists sessions.  Supports the WithLimit, WithScopeId, and WithSessionIds options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).ListSessions"
 	opts := getOpts(opt...)
@@ -290,11 +312,6 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 		}
 		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
-	}
-
-	if opts.withServerId != "" {
-		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("server_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withServerId))
 	}
 
 	var limit string
@@ -495,19 +512,13 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 // activated. States are ordered by start time descending. Returns an
 // InvalidSessionState error code if a connection cannot be made because the session
 // was canceled or terminated.
-func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, serverId, serverType string, tofuToken []byte) (*Session, []*State, error) {
+func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sessionVersion uint32, tofuToken []byte) (*Session, []*State, error) {
 	const op = "session.(Repository).ActivateSession"
 	if sessionId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
 	if sessionVersion == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
-	}
-	if serverId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing server id")
-	}
-	if serverType == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing server type")
 	}
 	if len(tofuToken) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing tofu token")
@@ -545,8 +556,6 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			}
 
 			updatedSession.TofuToken = tofuToken
-			updatedSession.ServerId = serverId
-			updatedSession.ServerType = serverType
 			if err := updatedSession.encrypt(ctx, databaseWrapper); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

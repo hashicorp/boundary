@@ -2,12 +2,17 @@ package controller
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -222,4 +227,40 @@ func TestControllerNewListenerConfig(t *testing.T) {
 			tt.assertions(t, c)
 		})
 	}
+}
+
+func TestController_NewPluginsConfig(t *testing.T) {
+	require := require.New(t)
+	testCtx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	tc := &TestController{
+		t:      t,
+		ctx:    ctx,
+		cancel: cancel,
+		opts:   nil,
+	}
+
+	initialConfig, err := config.DevController()
+	require.NoError(err)
+	tmpDir := t.TempDir()
+	initialConfig.Plugins.ExecutionDir = tmpDir
+	conf := TestControllerConfig(t, ctx, tc, &TestControllerOpts{Config: initialConfig})
+	conf.EnabledPlugins = []base.EnabledPlugin{
+		base.EnabledPluginHostAws,
+		base.EnabledPluginHostAzure,
+	}
+
+	_, err = New(testCtx, conf)
+	require.NoError(err)
+
+	// Check that both plugins were written to the temp dir
+	files, err := os.ReadDir(tmpDir)
+	require.NoError(err)
+	require.Len(files, 2)
+	var pluginNames []string
+	for _, file := range files {
+		pluginNames = append(pluginNames, filepath.Base(file.Name()))
+	}
+	expectedPluginNames := []string{host_plugin_assets.HostPluginPrefix + "aws.gz", host_plugin_assets.HostPluginPrefix + "azure.gz"}
+	require.Empty(cmp.Diff(expectedPluginNames, pluginNames))
 }

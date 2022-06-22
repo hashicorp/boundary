@@ -6,11 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/server/store"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/require"
@@ -26,19 +28,17 @@ func TestScheduler(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := servers.NewRepository(rw, rw, kmsCache)
+	serversRepo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 	iam.TestRepo(t, conn, wrapper)
 
 	id, err := uuid.GenerateUUID()
 	require.NoError(t, err)
-	controller := &servers.Server{
-		PrivateId:   "test-job-server-" + id,
-		Type:        servers.ServerTypeController.String(),
-		Description: "Test Job Controller",
-		Address:     "127.0.0.1",
+	controller := &store.Controller{
+		PrivateId: "test-job-server-" + id,
+		Address:   "127.0.0.1",
 	}
-	_, _, err = serversRepo.UpsertServer(context.Background(), controller)
+	_, err = serversRepo.UpsertController(context.Background(), controller)
 	require.NoError(t, err)
 
 	jobRepoFn := func() (*job.Repository, error) {

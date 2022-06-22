@@ -781,210 +781,6 @@ func local_request_TargetService_RemoveTargetHostSources_0(ctx context.Context, 
 
 }
 
-func request_TargetService_AddTargetCredentialLibraries_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AddTargetCredentialLibrariesRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := client.AddTargetCredentialLibraries(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_TargetService_AddTargetCredentialLibraries_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq AddTargetCredentialLibrariesRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := server.AddTargetCredentialLibraries(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
-func request_TargetService_SetTargetCredentialLibraries_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SetTargetCredentialLibrariesRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := client.SetTargetCredentialLibraries(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_TargetService_SetTargetCredentialLibraries_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq SetTargetCredentialLibrariesRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := server.SetTargetCredentialLibraries(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
-func request_TargetService_RemoveTargetCredentialLibraries_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq RemoveTargetCredentialLibrariesRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := client.RemoveTargetCredentialLibraries(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-
-}
-
-func local_request_TargetService_RemoveTargetCredentialLibraries_0(ctx context.Context, marshaler runtime.Marshaler, server TargetServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq RemoveTargetCredentialLibrariesRequest
-	var metadata runtime.ServerMetadata
-
-	newReader, berr := utilities.IOReaderFactory(req.Body)
-	if berr != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
-	}
-	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id"]
-	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id")
-	}
-
-	protoReq.Id, err = runtime.String(val)
-	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id", err)
-	}
-
-	msg, err := server.RemoveTargetCredentialLibraries(ctx, &protoReq)
-	return msg, metadata, err
-
-}
-
 func request_TargetService_AddTargetCredentialSources_0(ctx context.Context, marshaler runtime.Marshaler, client TargetServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq AddTargetCredentialSourcesRequest
 	var metadata runtime.ServerMetadata
@@ -1483,78 +1279,6 @@ func RegisterTargetServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 
 	})
 
-	mux.Handle("POST", pattern_TargetService_AddTargetCredentialLibraries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		var stream runtime.ServerTransportStream
-		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetCredentialLibraries", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-credential-libraries"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_TargetService_AddTargetCredentialLibraries_0(ctx, inboundMarshaler, server, req, pathParams)
-		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_TargetService_AddTargetCredentialLibraries_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AddTargetCredentialLibraries_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("POST", pattern_TargetService_SetTargetCredentialLibraries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		var stream runtime.ServerTransportStream
-		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetCredentialLibraries", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-credential-libraries"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_TargetService_SetTargetCredentialLibraries_0(ctx, inboundMarshaler, server, req, pathParams)
-		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_TargetService_SetTargetCredentialLibraries_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_SetTargetCredentialLibraries_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("POST", pattern_TargetService_RemoveTargetCredentialLibraries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		var stream runtime.ServerTransportStream
-		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetCredentialLibraries", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-credential-libraries"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_TargetService_RemoveTargetCredentialLibraries_0(ctx, inboundMarshaler, server, req, pathParams)
-		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_TargetService_RemoveTargetCredentialLibraries_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetCredentialLibraries_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("POST", pattern_TargetService_AddTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -1920,69 +1644,6 @@ func RegisterTargetServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 
 	})
 
-	mux.Handle("POST", pattern_TargetService_AddTargetCredentialLibraries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/AddTargetCredentialLibraries", runtime.WithHTTPPathPattern("/v1/targets/{id}:add-credential-libraries"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_TargetService_AddTargetCredentialLibraries_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_TargetService_AddTargetCredentialLibraries_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_AddTargetCredentialLibraries_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("POST", pattern_TargetService_SetTargetCredentialLibraries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/SetTargetCredentialLibraries", runtime.WithHTTPPathPattern("/v1/targets/{id}:set-credential-libraries"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_TargetService_SetTargetCredentialLibraries_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_TargetService_SetTargetCredentialLibraries_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_SetTargetCredentialLibraries_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
-	mux.Handle("POST", pattern_TargetService_RemoveTargetCredentialLibraries_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.TargetService/RemoveTargetCredentialLibraries", runtime.WithHTTPPathPattern("/v1/targets/{id}:remove-credential-libraries"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_TargetService_RemoveTargetCredentialLibraries_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-
-		forward_TargetService_RemoveTargetCredentialLibraries_0(ctx, mux, outboundMarshaler, w, req, response_TargetService_RemoveTargetCredentialLibraries_0{resp}, mux.GetForwardResponseOptions()...)
-
-	})
-
 	mux.Handle("POST", pattern_TargetService_AddTargetCredentialSources_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -2139,33 +1800,6 @@ func (m response_TargetService_RemoveTargetHostSources_0) XXX_ResponseBody() int
 	return response.Item
 }
 
-type response_TargetService_AddTargetCredentialLibraries_0 struct {
-	proto.Message
-}
-
-func (m response_TargetService_AddTargetCredentialLibraries_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*AddTargetCredentialLibrariesResponse)
-	return response.Item
-}
-
-type response_TargetService_SetTargetCredentialLibraries_0 struct {
-	proto.Message
-}
-
-func (m response_TargetService_SetTargetCredentialLibraries_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*SetTargetCredentialLibrariesResponse)
-	return response.Item
-}
-
-type response_TargetService_RemoveTargetCredentialLibraries_0 struct {
-	proto.Message
-}
-
-func (m response_TargetService_RemoveTargetCredentialLibraries_0) XXX_ResponseBody() interface{} {
-	response := m.Message.(*RemoveTargetCredentialLibrariesResponse)
-	return response.Item
-}
-
 type response_TargetService_AddTargetCredentialSources_0 struct {
 	proto.Message
 }
@@ -2218,12 +1852,6 @@ var (
 
 	pattern_TargetService_RemoveTargetHostSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "remove-host-sources"))
 
-	pattern_TargetService_AddTargetCredentialLibraries_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "add-credential-libraries"))
-
-	pattern_TargetService_SetTargetCredentialLibraries_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "set-credential-libraries"))
-
-	pattern_TargetService_RemoveTargetCredentialLibraries_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "remove-credential-libraries"))
-
 	pattern_TargetService_AddTargetCredentialSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "add-credential-sources"))
 
 	pattern_TargetService_SetTargetCredentialSources_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1", "targets", "id"}, "set-credential-sources"))
@@ -2255,12 +1883,6 @@ var (
 	forward_TargetService_SetTargetHostSources_0 = runtime.ForwardResponseMessage
 
 	forward_TargetService_RemoveTargetHostSources_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_AddTargetCredentialLibraries_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_SetTargetCredentialLibraries_0 = runtime.ForwardResponseMessage
-
-	forward_TargetService_RemoveTargetCredentialLibraries_0 = runtime.ForwardResponseMessage
 
 	forward_TargetService_AddTargetCredentialSources_0 = runtime.ForwardResponseMessage
 

@@ -50,10 +50,21 @@ func TestValidateCreateRequest(t *testing.T) {
 			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
 		},
 		{
+			name: "missing oidc attributes",
+			item: &pb.Account{
+				Type:         oidc.Subtype.String(),
+				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+			},
+			errContains: fieldError(attributesField, "This is a required field."),
+		},
+		{
 			name: "missing oidc subject",
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				Attrs: &pb.Account_OidcAccountAttributes{
+					OidcAccountAttributes: &pb.OidcAccountAttributes{},
+				},
 			},
 			errContains: fieldError(subjectField, "This is a required field for this type."),
 		},
@@ -80,10 +91,21 @@ func TestValidateCreateRequest(t *testing.T) {
 			errContains: fieldError(emailClaimField, "This is a read only field."),
 		},
 		{
+			name: "missing password attributes",
+			item: &pb.Account{
+				Type:         password.Subtype.String(),
+				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
+			},
+			errContains: fieldError(attributesField, "This is a required field."),
+		},
+		{
 			name: "missing login name for password type",
 			item: &pb.Account{
 				Type:         password.Subtype.String(),
 				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
+				Attrs: &pb.Account_PasswordAccountAttributes{
+					PasswordAccountAttributes: &pb.PasswordAccountAttributes{},
+				},
 			},
 			errContains: fieldError(loginNameKey, "This is a required field for this type."),
 		},

@@ -54,6 +54,9 @@ type ComposedOf struct {
 	// DynamicCredentials are dynamic credentials that will be retrieved
 	// for the session. DynamicCredentials optional.
 	DynamicCredentials []*DynamicCredential
+	// StaticCredentials are static credentials that will be retrieved
+	// for the session. StaticCredentials optional.
+	StaticCredentials []*StaticCredential
 }
 
 // Session contains information about a user's session with a target
@@ -64,10 +67,6 @@ type Session struct {
 	UserId string `json:"user_id,omitempty" gorm:"default:null"`
 	// HostId of the session
 	HostId string `json:"host_id,omitempty" gorm:"default:null"`
-	// ServerId that proxied the session
-	ServerId string `json:"server_id,omitempty" gorm:"default:null"`
-	// ServerType that proxied the session
-	ServerType string `json:"server_type,omitempty" gorm:"default:null"`
 	// TargetId for the session
 	TargetId string `json:"target_id,omitempty" gorm:"default:null"`
 	// HostSetId for the session
@@ -114,6 +113,9 @@ type Session struct {
 	// DynamicCredentials for the session.
 	DynamicCredentials []*DynamicCredential `gorm:"-"`
 
+	// StaticCredentials for the session.
+	StaticCredentials []*StaticCredential `gorm:"-"`
+
 	// Connections for the session are for read only and are ignored during write operations
 	Connections []*Connection `gorm:"-"`
 
@@ -153,6 +155,7 @@ func New(c ComposedOf, _ ...Option) (*Session, error) {
 		ConnectionLimit:    c.ConnectionLimit,
 		WorkerFilter:       c.WorkerFilter,
 		DynamicCredentials: c.DynamicCredentials,
+		StaticCredentials:  c.StaticCredentials,
 	}
 	if err := s.validateNewSession(); err != nil {
 		return nil, errors.WrapDeprecated(err, op)
@@ -171,8 +174,6 @@ func (s *Session) Clone() interface{} {
 		PublicId:          s.PublicId,
 		UserId:            s.UserId,
 		HostId:            s.HostId,
-		ServerId:          s.ServerId,
-		ServerType:        s.ServerType,
 		TargetId:          s.TargetId,
 		HostSetId:         s.HostSetId,
 		AuthTokenId:       s.AuthTokenId,
@@ -196,6 +197,13 @@ func (s *Session) Clone() interface{} {
 		for _, sc := range s.DynamicCredentials {
 			cp := sc.clone()
 			clone.DynamicCredentials = append(clone.DynamicCredentials, cp)
+		}
+	}
+	if len(s.StaticCredentials) > 0 {
+		clone.StaticCredentials = make([]*StaticCredential, 0, len(s.StaticCredentials))
+		for _, sc := range s.StaticCredentials {
+			cp := sc.clone()
+			clone.StaticCredentials = append(clone.StaticCredentials, cp)
 		}
 	}
 	if s.TofuToken != nil {
@@ -283,6 +291,8 @@ func (s *Session) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType
 			return errors.New(ctx, errors.InvalidParameter, op, "worker filter is immutable")
 		case contains(opts.WithFieldMaskPaths, "DynamicCredentials"):
 			return errors.New(ctx, errors.InvalidParameter, op, "dynamic credentials are immutable")
+		case contains(opts.WithFieldMaskPaths, "StaticCredentials"):
+			return errors.New(ctx, errors.InvalidParameter, op, "static credentials are immutable")
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
 				return errors.Wrap(ctx, err, op)
@@ -336,12 +346,6 @@ func (s *Session) validateNewSession() error {
 	}
 	if s.TerminationReason != "" {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "termination reason must be empty")
-	}
-	if s.ServerId != "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "server id must be empty")
-	}
-	if s.ServerType != "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "server type must be empty")
 	}
 	if s.TofuToken != nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "tofu token must be empty")
@@ -449,8 +453,6 @@ type sessionListView struct {
 	PublicId          string               `json:"public_id,omitempty" gorm:"primary_key"`
 	UserId            string               `json:"user_id,omitempty" gorm:"default:null"`
 	HostId            string               `json:"host_id,omitempty" gorm:"default:null"`
-	ServerId          string               `json:"server_id,omitempty" gorm:"default:null"`
-	ServerType        string               `json:"server_type,omitempty" gorm:"default:null"`
 	TargetId          string               `json:"target_id,omitempty" gorm:"default:null"`
 	HostSetId         string               `json:"host_set_id,omitempty" gorm:"default:null"`
 	AuthTokenId       string               `json:"auth_token_id,omitempty" gorm:"default:null"`

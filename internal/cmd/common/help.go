@@ -38,6 +38,7 @@ func HelpMap(resType string) map[string]func() string {
 		resource.Host.String():        "h",
 		resource.Session.String():     "s",
 		resource.Target.String():      "t",
+		resource.Worker.String():      "w",
 	}
 	return map[string]func() string{
 		"base": func() string {

@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,7 +26,7 @@ import (
 	berrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -50,9 +51,9 @@ const (
 	// defaultStatusGracePeriod is the default status grace period, or the period
 	// of time that we will go without a status report before we start
 	// disconnecting and marking connections as closed. This is tied to the
-	// server default liveness setting, a related value. See the servers package
+	// server default liveness setting, a related value. See the server package
 	// for more details.
-	defaultStatusGracePeriod = servers.DefaultLiveness
+	defaultStatusGracePeriod = server.DefaultLiveness
 
 	// statusGracePeriodEnvVar is the environment variable that can be used to
 	// configure the status grace period. This setting is provided in seconds,
@@ -61,6 +62,9 @@ const (
 	// TODO: This value is temporary, it will be removed once we have a better
 	// story/direction on attributes and system defaults.
 	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
+
+	// File name to use for storing workerAuth requests
+	WorkerAuthReqFile = "auth_request_token"
 )
 
 func init() {
@@ -82,11 +86,12 @@ type Server struct {
 	StderrLock *sync.Mutex
 	Eventer    *event.Eventer
 
-	RootKms            wrapping.Wrapper
-	WorkerAuthKms      wrapping.Wrapper
-	RecoveryKms        wrapping.Wrapper
-	Kms                *kms.Kms
-	SecureRandomReader io.Reader
+	RootKms              wrapping.Wrapper
+	WorkerAuthKms        wrapping.Wrapper
+	WorkerAuthStorageKms wrapping.Wrapper
+	RecoveryKms          wrapping.Wrapper
+	Kms                  *kms.Kms
+	SecureRandomReader   io.Reader
 
 	PrometheusRegisterer prometheus.Registerer
 
@@ -120,6 +125,10 @@ type Server struct {
 	DevTargetSessionMaxSeconds       int
 	DevTargetSessionConnectionLimit  int
 	DevLoopbackHostPluginId          string
+
+	// DevUsePkiForUpstream is a hint that we are in dev mode and have a worker
+	// auth KMS but want to use PKI for upstream connections
+	DevUsePkiForUpstream bool
 
 	EnabledPlugins []EnabledPlugin
 	HostPlugins    map[string]plgpb.HostPluginServiceClient
@@ -341,6 +350,29 @@ func (b *Server) RemovePidFile(pidPath string) error {
 	return os.Remove(pidPath)
 }
 
+func (b *Server) StoreWorkerAuthReq(authReq, workerAuthReqPath string) error {
+	// Quit fast if no workerAuthReqFile
+	if workerAuthReqPath == "" {
+		return nil
+	}
+	workerAuthReqFilePath := filepath.Join(workerAuthReqPath, WorkerAuthReqFile)
+
+	// Open the workerAuthReq file
+	workerAuthReqFile, err := os.OpenFile(workerAuthReqFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o640)
+	if err != nil {
+		return fmt.Errorf("could not open file for worker auth request: %w", err)
+	}
+	defer workerAuthReqFile.Close()
+
+	// Write out the workerAuthRequest
+	_, err = workerAuthReqFile.WriteString(authReq)
+	if err != nil {
+		return fmt.Errorf("could not write to file for worker auth request: %w", err)
+	}
+
+	return nil
+}
+
 func (b *Server) PrintInfo(ui cli.Ui) {
 	verInfo := version.Get()
 	if verInfo.Version != "" {
@@ -517,7 +549,9 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 
 // SetupKMSes takes in a parsed config, does some minor checking on purposes,
 // and sends each off to configutil to instantiate a wrapper.
-func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config) error {
+func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config, opt ...Option) error {
+	opts := getOpts(opt...)
+
 	sharedConfig := config.SharedConfig
 	var pluginLogger hclog.Logger
 	var err error
@@ -527,7 +561,11 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case globals.KmsPurposeRoot, globals.KmsPurposeWorkerAuth, globals.KmsPurposeConfig:
+			case globals.KmsPurposeWorkerAuth:
+				if opts.withSkipWorkerAuthKmsInstantiation {
+					continue
+				}
+			case globals.KmsPurposeRoot, globals.KmsPurposeConfig, globals.KmsPurposeWorkerAuthStorage:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
@@ -555,6 +593,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
 					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
+					pluginutil.WithPluginExecutionDirectory(config.Plugins.ExecutionDir),
 				),
 				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", purpose)),
 			)
@@ -591,6 +630,8 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				b.RootKms = wrapper
 			case globals.KmsPurposeWorkerAuth:
 				b.WorkerAuthKms = wrapper
+			case globals.KmsPurposeWorkerAuthStorage:
+				b.WorkerAuthStorageKms = wrapper
 			case globals.KmsPurposeRecovery:
 				b.RecoveryKms = wrapper
 			case globals.KmsPurposeConfig:

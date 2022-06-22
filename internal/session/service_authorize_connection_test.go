@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -35,10 +36,10 @@ func TestService_AuthorizeConnection(t *testing.T) {
 			composedOf.ExpirationTime = exp
 		}
 		s := TestSession(t, conn, wrapper, composedOf)
-		srv := TestWorker(t, conn, wrapper)
-		testServer = srv.PrivateId
+		srv := server.TestKmsWorker(t, conn, wrapper)
+		testServer = srv.PublicId
 		tofu := TestTofu(t)
-		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, srv.PrivateId, srv.Type, tofu)
+		_, _, err := repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)
 		require.NoError(t, err)
 		return s
 	}

@@ -139,6 +139,15 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]interface{}) 
 		if spaces < 0 {
 			spaces = 0
 		}
+
+		if sv, ok := v.([]string); ok {
+			nv := make([]string, 0, len(sv))
+			for _, si := range sv {
+				nv = append(nv, fmt.Sprintf("%q", si))
+			}
+			v = nv
+		}
+
 		vOut := fmt.Sprintf("%v", v)
 		switch v.(type) {
 		case map[string]interface{}:

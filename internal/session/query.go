@@ -81,7 +81,7 @@ active_session as (
 	select
 		ss.session_id as session_id,
 		@public_id as public_id,
-		@worker_id as server_id
+		@worker_id as worker_id
 	from
 		session_state ss
 	where
@@ -92,7 +92,7 @@ active_session as (
 insert into session_connection (
   	session_id,
  	public_id,
-	server_id
+	worker_id
 )
 select * from active_session;
 `
@@ -324,34 +324,48 @@ where
 	// * not closed
 	// * belong to servers that have not reported in within an acceptable
 	// threshold of time
+	// * belong to servers where we do not know when they last reported.
 	//
 	// and marks them as closed.
 	//
 	// The query returns the set of servers that have had connections closed
 	// along with their last update time and the number of connections closed on
-	// each.
+	// each.  If we do not know the last update time, we use the current time.
 	closeConnectionsForDeadServersCte = `
    with
-   dead_servers (server_id, last_update_time) as (
-         select private_id, update_time
-           from server
-          where update_time < wt_sub_seconds_from_now(@grace_period_seconds)
+   dead_workers (worker_id, last_update_time) as (
+         select
+			w.public_id as worker_id,
+			w.last_status_time as last_update_time
+           from server_worker w
+          where
+			w.last_status_time < wt_sub_seconds_from_now(@grace_period_seconds)
    ),
-   closed_connections (connection_id, server_id) as (
+   closed_connections (connection_id, worker_id) as (
          update session_connection
             set closed_reason = 'system error'
-          where server_id in (select server_id from dead_servers)
+          where worker_id in (select worker_id from dead_workers)
             and closed_reason is null
-      returning public_id, server_id
+      returning public_id, worker_id
    )
-   select closed_connections.server_id,
-          dead_servers.last_update_time,
+   select closed_connections.worker_id,
+          dead_workers.last_update_time as last_update_time,
           count(closed_connections.connection_id) as number_connections_closed
      from closed_connections
-     join dead_servers
-       on closed_connections.server_id = dead_servers.server_id
- group by closed_connections.server_id, dead_servers.last_update_time
- order by closed_connections.server_id;
+     join dead_workers
+       on closed_connections.worker_id = dead_workers.worker_id
+ group by closed_connections.worker_id, dead_workers.last_update_time
+ order by closed_connections.worker_id;
+`
+
+	// closeWorkerlessConnections closes any open connections which has the
+	// worker id set to null.
+	closeWorkerlessConnections = `
+	update session_connection
+		set closed_reason = 'system error'
+	where worker_id is null
+		and closed_reason is null
+	returning public_id;
 `
 
 	orphanedConnectionsCte = `
@@ -375,7 +389,7 @@ with
 	  from session_connection
 	 where
 		   -- Related to the worker that just reported to us
-		   server_id = @server_id
+		   worker_id = @worker_id
 		   -- Only unclosed ones
 		   and public_id in (select connection_id from unclosed_connections)
 		   -- These are connection IDs that just got reported to us by the given

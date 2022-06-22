@@ -316,6 +316,36 @@ func Test_ACLAllowed(t *testing.T) {
 				{action: action.ReadSelf, authorized: true},
 			},
 		},
+		{
+			name:     "create worker with create",
+			resource: Resource{ScopeId: scope.Global.String(), Type: resource.Worker},
+			scopeGrants: []scopeGrant{
+				{
+					scope: scope.Global.String(),
+					grants: []string{
+						"type=worker;actions=create",
+					},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.CreateWorkerLed, authorized: true},
+			},
+		},
+		{
+			name:     "create worker with request only",
+			resource: Resource{ScopeId: scope.Global.String(), Type: resource.Worker},
+			scopeGrants: []scopeGrant{
+				{
+					scope: scope.Global.String(),
+					grants: []string{
+						"type=worker;actions=create:worker-led",
+					},
+				},
+			},
+			actionsAuthorized: []actionAuthorized{
+				{action: action.CreateWorkerLed, authorized: true},
+			},
+		},
 	}
 
 	for _, test := range tests {

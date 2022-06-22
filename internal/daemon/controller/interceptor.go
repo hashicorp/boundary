@@ -60,7 +60,7 @@ func requestCtxInterceptor(
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token repo function")
 	}
 	if serversRepoFn == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing servers repo function")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing server repo function")
 	}
 	if kms == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")

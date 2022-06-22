@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"google.golang.org/protobuf/proto"
 )
@@ -27,6 +27,7 @@ type workerAuthEntry struct {
 // been replayed, then stores connection information into the auth cache, which
 // is used by the intercepting listener to log information.
 func (c Controller) validateWorkerTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+	const op = "controller.(Controller).validateWorkerTls"
 	for _, p := range hello.SupportedProtos {
 		switch {
 		case strings.HasPrefix(p, "v1workerauth-"):
@@ -50,7 +51,7 @@ func (c Controller) validateWorkerTls(hello *tls.ClientHelloInfo) (*tls.Config, 
 			return tlsConf, err
 		}
 	}
-	return nil, nil
+	return nil, errors.New("no supported protos found in hello")
 }
 
 // v1WorkerAuthConfig:
@@ -83,6 +84,9 @@ func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.Work
 	if err := proto.Unmarshal(marshaledEncInfo, encInfo); err != nil {
 		return nil, nil, err
 	}
+	if isNil(c.conf.WorkerAuthKms) {
+		return nil, nil, errors.New("worker auth kms not set")
+	}
 	marshaledInfo, err := c.conf.WorkerAuthKms.Decrypt(context.Background(), encInfo)
 	if err != nil {
 		return nil, nil, err
@@ -95,9 +99,9 @@ func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.Work
 	// Check for replays
 	serversRepo, err := c.ServersRepoFn()
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to fetch servers repo: %w", err)
+		return nil, nil, fmt.Errorf("unable to fetch server repo: %w", err)
 	}
-	if err := serversRepo.AddNonce(c.baseContext, info.ConnectionNonce, servers.NoncePurposeWorkerAuth); err != nil {
+	if err := serversRepo.AddNonce(c.baseContext, info.ConnectionNonce, server.NoncePurposeWorkerAuth); err != nil {
 		return nil, nil, fmt.Errorf("unable to add connection nonce to database: %w", err)
 	}
 

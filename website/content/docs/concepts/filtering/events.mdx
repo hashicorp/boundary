@@ -75,8 +75,8 @@ sink "stderr" = {
     event_types = ["*"]
     format = "cloudevents-text"
     allow_filters = [
-        '"/Data/request_info/Path" contains ":authenticate"'
-        '"/Data/Op" contains ".createClientConn"'
+        '"/data/request_info/path" contains ":authenticate"'
+        '"/data/op" contains ".createClientConn"'
     ]
     # note: deny_filters are also supported.
 }
@@ -85,8 +85,8 @@ sink "stderr" = {
 When running `boundary dev` the example allow filter can be given via:
 ```bash
 boundary dev \
-    -event-allow-filter '"/Data/request_info/Path" contains ":authenticate"' \
-    -event-allow-filter '"/Data/Op" contains ".createClientConn"'
+    -event-allow-filter '"/data/request_info/path" contains ":authenticate"' \
+    -event-allow-filter '"/data/op" contains ".createClientConn"'
 ```
 ~> Double quotes are part of the filter syntax; when using the CLI, it is likely
 easier to surround the filter with single quotes than to deal with escaping

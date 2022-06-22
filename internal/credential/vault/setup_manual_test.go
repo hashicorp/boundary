@@ -79,7 +79,7 @@ func TestSetupSleepyDevEnvironment(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, lib)
-	tgt, err = tcl.AddCredentialLibraries(ctx, tgt.Item.Id, 0, targets.WithAutomaticVersioning(true), targets.WithApplicationCredentialLibraryIds([]string{lib.Item.Id}))
+	tgt, err = tcl.AddCredentialSources(ctx, tgt.Item.Id, 0, targets.WithAutomaticVersioning(true), targets.WithApplicationCredentialSourceIds([]string{lib.Item.Id}))
 	require.NoError(t, err)
 	require.NotNil(t, tgt)
 	// Worker 1
@@ -91,10 +91,10 @@ func TestSetupSleepyDevEnvironment(t *testing.T) {
 		"foo":    {"bar"},
 	}
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:             conf,
-		WorkerAuthKms:      c1.Config().WorkerAuthKms,
-		InitialControllers: c1.ClusterAddrs(),
-		Logger:             logger.Named("w1"),
+		Config:           conf,
+		WorkerAuthKms:    c1.Config().WorkerAuthKms,
+		InitialUpstreams: c1.ClusterAddrs(),
+		Logger:           logger.Named("w1"),
 	})
 	defer w1.Shutdown()
 	addr := c1.ApiAddrs()[0]

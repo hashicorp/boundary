@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package controller.storage.servers.store.v1;
+
+import "controller/custom_options/v1/options.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/server/store;store";
+
+// Worker contains all fields related to a Worker resource
+message Worker {
+  // public_id is a surrogate key suitable for use in a public API
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // Name of the resource (optional)
+  // @inject_tag: `gorm:"default:null"`
+  string name = 20 [(custom_options.v1.mask_mapping) = {
+    this: "name"
+    that: "name"
+  }];
+
+  // Description of the resource (optional)
+  // @inject_tag: `gorm:"default:null"`
+  string description = 30 [(custom_options.v1.mask_mapping) = {
+    this: "description"
+    that: "description"
+  }];
+
+  // Address for the worker. This is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string address = 40;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 50;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 60;
+
+  // The scope_id of the owning scope and must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 70;
+
+  // version allows optimistic locking of the resource.
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 80;
+
+  // The last_status_time is the last time a worker daemon sent a status update.
+  // @inject_tag: `gorm:"default:null"`
+  timestamp.v1.Timestamp last_status_time = 110;
+
+  // The type of the worker, denoted by how it authenticates: pki or kms.
+  // @inject_tag: `gorm:"not_null"`
+  string type = 130;
+}
+
+// WorkerTag is a tag for a worker.  The primary key is comprised of the
+// worker_id, key, value, and source.
+message WorkerTag {
+  // worker_id is the public key that key of the worker this tag is for.
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // key is the key of the tag. This must be set.
+  // @inject_tag: `gorm:"primary_key"`
+  string key = 20;
+
+  // value is the value
+  // @inject_tag: `gorm:"primary_key"`
+  string value = 30;
+
+  // source is the source of the tag. Either 'configuration' or 'api'.
+  // @inject_tag: `gorm:"default:not_null"`
+  string source = 40;
+}

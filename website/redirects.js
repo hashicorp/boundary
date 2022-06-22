@@ -1,6 +1,6 @@
 module.exports = [
   // define your custom redirects within this file.
-  // vercel's redirect documentation: https://vercel.com/docs/configuration#project/redirects
+  // vercel's redirect documentation: https://vercel.com/docs/project-configuration#project-configuration/redirects
 
   // Top level redirect
   {
@@ -12,6 +12,11 @@ module.exports = [
     source: '/help/admin-ui',
     destination: '/docs',
     permanent: false,
+  },
+  {
+    source: '/help/admin-ui/downloads',
+    destination: '/downloads',
+    permanent: true,
   },
 
   // `/<path>/index.html` to /<path>
@@ -38,6 +43,28 @@ module.exports = [
     source: '/docs/api-clients/desktop',
     destination:
       'https://learn.hashicorp.com/tutorials/boundary/getting-started-desktop-app',
+    permanent: true,
+  },
+  {
+    source: '/help/admin-ui/getting-started/desktop',
+    destination:
+      'https://learn.hashicorp.com/tutorials/boundary/getting-started-desktop-app',
+    permanent: true,
+  },
+
+  /////////////////////////////////
+  // API CLIENT
+  /////////////////////////////////
+  {
+    source: '/help/admin-ui/api-client/cli',
+    destination:
+      '/docs/api-clients/cli',
+    permanent: true,
+  },
+  {
+    source: '/help/admin-ui/api-client/api',
+    destination:
+      '/docs/api-clients/api',
     permanent: true,
   },
 

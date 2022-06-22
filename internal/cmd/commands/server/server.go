@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
+	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
@@ -146,25 +147,23 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var serverNames []string
+	serverName, err := os.Hostname()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Unable to determine hostname: %w", err).Error())
+		return base.CommandCliError
+	}
+	var serverTypes []string
 	if c.Config.Controller != nil {
-		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandUserError
-		}
-		serverNames = append(serverNames, c.Config.Controller.Name)
+		serverTypes = append(serverTypes, "controller")
 	}
 	if c.Config.Worker != nil {
-		if _, err := c.Config.Worker.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandUserError
-		}
-		serverNames = append(serverNames, c.Config.Worker.Name)
+		serverTypes = append(serverTypes, "worker")
 	}
+	serverName = fmt.Sprintf("%s/%s", serverName, strings.Join(serverTypes, "+"))
 
 	if err := c.SetupEventing(c.Logger,
 		c.StderrLock,
-		strings.Join(serverNames, "/"),
+		serverName,
 		base.WithEventerConfig(c.Config.Eventing),
 		base.WithEventGating(true)); err != nil {
 		c.UI.Error(err.Error())
@@ -177,6 +176,8 @@ func (c *Command) Run(args []string) int {
 
 	base.StartMemProfiler(c.Context)
 
+	// Note: the checks directly after this must remain where they are because
+	// they rely on the state of configured KMSes.
 	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
@@ -187,9 +188,23 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 	}
-	if c.WorkerAuthKms == nil {
-		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-		return base.CommandUserError
+	if c.Config.Worker != nil {
+		switch c.WorkerAuthKms {
+		case nil:
+			if c.Config.Worker.AuthStoragePath == "" {
+				c.UI.Error("No worker auth KMS specified and no worker auth storage path specified.")
+				return base.CommandUserError
+			}
+			if c.Config.Worker.Name != "" || c.Config.Worker.Description != "" {
+				c.UI.Error("Worker config cannot contain name or description when using PKI-based worker authentication; it must be set via the API.")
+				return base.CommandUserError
+			}
+		default:
+			if c.Config.Worker.Name == "" {
+				c.UI.Error("Worker is using KMS auth but has no name set. It must be the unique name of this instance.")
+				return base.CommandUserError
+			}
+		}
 	}
 
 	if c.Config.DefaultMaxRequestDuration != 0 {
@@ -267,6 +282,9 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates worker but no listener with "proxy" purpose found`)
 			return base.CommandUserError
 		}
+		if c.Config.Worker.ControllersRaw != nil {
+			c.UI.Warn("The \"controllers\" field for worker config is deprecated. Please use \"initial_upstreams\" instead.")
+		}
 
 		if err := c.SetupWorkerPublicAddress(c.Config, ""); err != nil {
 			c.UI.Error(err.Error())
@@ -276,25 +294,25 @@ func (c *Command) Run(args []string) int {
 		c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
 
 		if c.Config.Controller != nil {
-			switch len(c.Config.Worker.Controllers) {
+			switch len(c.Config.Worker.InitialUpstreams) {
 			case 0:
 				if c.Config.Controller.PublicClusterAddr != "" {
 					clusterAddr = c.Config.Controller.PublicClusterAddr
 				}
-				c.Config.Worker.Controllers = []string{clusterAddr}
+				c.Config.Worker.InitialUpstreams = []string{clusterAddr}
 			case 1:
-				if c.Config.Worker.Controllers[0] == clusterAddr {
+				if c.Config.Worker.InitialUpstreams[0] == clusterAddr {
 					break
 				}
 				if c.Config.Controller.PublicClusterAddr != "" &&
-					c.Config.Worker.Controllers[0] == c.Config.Controller.PublicClusterAddr {
+					c.Config.Worker.InitialUpstreams[0] == c.Config.Controller.PublicClusterAddr {
 					break
 				}
 				// Best effort see if it's a domain name and if not assume it must match
-				host, _, err := net.SplitHostPort(c.Config.Worker.Controllers[0])
+				host, _, err := net.SplitHostPort(c.Config.Worker.InitialUpstreams[0])
 				if err != nil && strings.Contains(err.Error(), "missing port in address") {
 					err = nil
-					host = c.Config.Worker.Controllers[0]
+					host = c.Config.Worker.InitialUpstreams[0]
 				}
 				if err == nil {
 					ip := net.ParseIP(host)
@@ -305,17 +323,17 @@ func (c *Command) Run(args []string) int {
 				}
 				fallthrough
 			default:
-				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "controllers" key in the worker block with any value other than the controller cluster address/port when using IPs rather than DNS names`)
+				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`)
 				return base.CommandUserError
 			}
 		}
-		for _, controller := range c.Config.Worker.Controllers {
-			host, _, err := net.SplitHostPort(controller)
+		for _, upstream := range c.Config.Worker.InitialUpstreams {
+			host, _, err := net.SplitHostPort(upstream)
 			if err != nil {
 				if strings.Contains(err.Error(), "missing port in address") {
-					host = controller
+					host = upstream
 				} else {
-					c.UI.Error(fmt.Errorf("Invalid controller address %q: %w", controller, err).Error())
+					c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
 					return base.CommandUserError
 				}
 			}
@@ -329,9 +347,17 @@ func (c *Command) Run(args []string) int {
 					errMsg = "a multicast"
 				}
 				if errMsg != "" {
-					c.UI.Error(fmt.Sprintf("Controller address %q is invalid: cannot be %s address", controller, errMsg))
+					c.UI.Error(fmt.Sprintf("Worker upstream address %q is invalid: cannot be %s address", upstream, errMsg))
 					return base.CommandUserError
 				}
+			}
+		}
+
+		if c.Config.HcpbClusterId != "" {
+			_, err := uuid.ParseUUID(c.Config.HcpbClusterId)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Invalid HCP Boundary cluster id %q: %w", c.Config.HcpbClusterId, err).Error())
+				return base.CommandUserError
 			}
 		}
 	}
@@ -449,12 +475,6 @@ func (c *Command) Run(args []string) int {
 		}
 	}()
 
-	c.PrintInfo(c.UI)
-	if err := c.ReleaseLogGate(); err != nil {
-		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
-		return base.CommandCliError
-	}
-
 	if c.Config.Controller != nil {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
 		if err := c.StartController(c.Context); err != nil {
@@ -473,6 +493,34 @@ func (c *Command) Run(args []string) int {
 			}
 			return base.CommandCliError
 		}
+
+		if c.worker.WorkerAuthRegistrationRequest != "" {
+			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
+			c.Info["worker auth registration request"] = c.worker.WorkerAuthRegistrationRequest
+			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
+			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
+
+			// Write the WorkerAuth request to a file
+			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
+				// Shutdown on failure
+				retErr := fmt.Errorf("Error storing worker auth request: %w", err)
+				if err := c.worker.Shutdown(); err != nil {
+					c.UI.Error(retErr.Error())
+					retErr = fmt.Errorf("Error shutting down worker: %w", err)
+				}
+				c.UI.Error(retErr.Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
+		}
+	}
+
+	c.PrintInfo(c.UI)
+	if err := c.ReleaseLogGate(); err != nil {
+		c.UI.Error(fmt.Errorf("Error releasing event gate: %w", err).Error())
+		return base.CommandCliError
 	}
 
 	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
@@ -518,10 +566,6 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	}
 	if c.Config.Controller != nil && c.Config.Controller.Name == "" {
 		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
-		return base.CommandUserError
-	}
-	if c.Config.Worker != nil && c.Config.Worker.Name == "" {
-		c.UI.Error("Worker has no name set. It must be the unique name of this instance.")
 		return base.CommandUserError
 	}
 
@@ -640,6 +684,14 @@ func (c *Command) StartWorker() error {
 			retErr = fmt.Errorf("Error shutting down worker: %w", err)
 		}
 		return retErr
+	}
+
+	if c.WorkerAuthKms == nil || c.DevUsePkiForUpstream {
+		if c.worker.WorkerAuthStorage == nil {
+			return fmt.Errorf("No worker auth storage found")
+		}
+		c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
+		c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
 	}
 
 	return nil

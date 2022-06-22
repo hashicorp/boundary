@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/mitchellh/mapstructure"
 	"github.com/posener/complete"
 )
 
@@ -52,33 +51,18 @@ func (p *postgresFlags) defaultExec() string {
 	return strings.ToLower(p.flagPostgresStyle)
 }
 
-type postgresCredentials struct {
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
-}
-
 func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []string, retErr error) {
-	var creds postgresCredentials
-	if c.sessionAuthz != nil && len(c.sessionAuthz.Credentials) > 0 {
-		for _, cred := range c.sessionAuthz.Credentials {
-			if cred.Secret == nil || cred.Secret.Decoded == nil {
-				continue
-			}
-			// TODO: Could allow switching on library ID or name
-			switch cred.CredentialLibrary.Type {
-			case "vault":
-				// Attempt unmarshaling into creds
-				if err := mapstructure.Decode(cred.Secret.Decoded, &creds); err != nil {
-					return nil, nil, fmt.Errorf("Error interpreting Vault secret: %w", err)
-				}
-			}
-
-			if creds.Username != "" && creds.Password != "" {
-				// In the future we can look for other types if we support other
-				// authentication mechanisms
-				break
-			}
+	var cred usernamePasswordCredentials
+	if c.sessionAuthz != nil {
+		creds, err := parseCredentials(c.sessionAuthz.Credentials)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error interpreting secret: %w", err)
 		}
+		if len(creds) > 0 {
+			// Just use first credentials returned
+			cred = creds[0]
+		}
+
 	}
 
 	switch p.flagPostgresStyle {
@@ -90,13 +74,13 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs
 		}
 
 		switch {
-		case creds.Username != "":
-			args = append(args, "-U", creds.Username)
+		case cred.Username != "":
+			args = append(args, "-U", cred.Username)
 		case c.flagUsername != "":
 			args = append(args, "-U", c.flagUsername)
 		}
 
-		if creds.Password != "" {
+		if cred.Password != "" {
 			passfile, err := ioutil.TempFile("", "*")
 			if err != nil {
 				return nil, nil, fmt.Errorf("Error saving postgres password to tmp file: %w", err)
@@ -107,7 +91,7 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs
 				}
 				return nil
 			})
-			_, err = passfile.WriteString(fmt.Sprintf("*:*:*:*:%s", creds.Password))
+			_, err = passfile.WriteString(fmt.Sprintf("*:*:*:*:%s", cred.Password))
 			if err != nil {
 				return nil, nil, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
 			}

@@ -1,14 +1,27 @@
 package worker
 
 import (
+	"context"
+	"crypto/rand"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/registration"
+	"github.com/hashicorp/nodeenrollment/rotation"
+	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
+	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestWorkerNew(t *testing.T) {
@@ -23,13 +36,13 @@ func TestWorkerNew(t *testing.T) {
 			name:      "nil listeners",
 			in:        &Config{Server: &base.Server{Listeners: nil}},
 			expErr:    true,
-			expErrMsg: "no proxy listeners found",
+			expErrMsg: "exactly one proxy listener is required",
 		},
 		{
 			name:      "zero listeners",
 			in:        &Config{Server: &base.Server{Listeners: []*base.ServerListener{}}},
 			expErr:    true,
-			expErrMsg: "no proxy listeners found",
+			expErrMsg: "exactly one proxy listener is required",
 		},
 		{
 			name: "populated with nil values",
@@ -43,7 +56,7 @@ func TestWorkerNew(t *testing.T) {
 				},
 			},
 			expErr:    true,
-			expErrMsg: "no proxy listeners found",
+			expErrMsg: "exactly one proxy listener is required",
 		},
 		{
 			name: "multiple purposes",
@@ -60,7 +73,7 @@ func TestWorkerNew(t *testing.T) {
 			expErrMsg: `found listener with multiple purposes "api,proxy"`,
 		},
 		{
-			name: "valid listeners",
+			name: "too many proxy listeners",
 			in: &Config{
 				Server: &base.Server{
 					Listeners: []*base.ServerListener{
@@ -71,10 +84,21 @@ func TestWorkerNew(t *testing.T) {
 					},
 				},
 			},
-			expErr: false,
-			assertions: func(t *testing.T, w *Worker) {
-				require.Len(t, w.listeners, 2)
+			expErr:    true,
+			expErrMsg: "exactly one proxy listener is required",
+		},
+		{
+			name: "valid listeners",
+			in: &Config{
+				Server: &base.Server{
+					Listeners: []*base.ServerListener{
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+						{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+					},
+				},
 			},
+			expErr: false,
 		},
 		{
 			name: "worker nonce func is set",
@@ -108,6 +132,144 @@ func TestWorkerNew(t *testing.T) {
 			require.NoError(t, err)
 			if tt.assertions != nil {
 				tt.assertions(t, w)
+			}
+		})
+	}
+}
+
+func TestSetupWorkerAuthStorage(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	ts := db.TestWrapper(t)
+	keyId, err := ts.KeyId(ctx)
+	require.NoError(t, err)
+
+	// First, just test the key ID is populated
+	tmpDir, err := os.MkdirTemp("", "")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(tmpDir)) })
+	tw := NewTestWorker(t, &TestWorkerOpts{
+		WorkerAuthStorageKms:  ts,
+		WorkerAuthStoragePath: tmpDir,
+		DisableAutoStart:      true,
+	})
+	t.Cleanup(tw.Shutdown)
+	err = tw.Worker().Start()
+	require.NoError(t, err)
+
+	wKeyId, err := tw.Config().WorkerAuthStorageKms.KeyId(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, keyId, wKeyId)
+
+	// Create a fresh persistent dir for the following tests
+	tmpDir, err = os.MkdirTemp("", "")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, os.RemoveAll(tmpDir)) })
+
+	// Get an initial set of authorized node credentials
+	initStorage, err := nodeefile.New(ctx)
+	require.NoError(t, err)
+	t.Cleanup(initStorage.Cleanup)
+	_, err = rotation.RotateRootCertificates(ctx, initStorage)
+	require.NoError(t, err)
+	initNodeCreds, err := types.NewNodeCredentials(ctx, initStorage)
+	require.NoError(t, err)
+	req, err := initNodeCreds.CreateFetchNodeCredentialsRequest(ctx)
+	require.NoError(t, err)
+	_, err = registration.AuthorizeNode(ctx, initStorage, req)
+	require.NoError(t, err)
+	fetchResp, err := registration.FetchNodeCredentials(ctx, initStorage, req)
+	require.NoError(t, err)
+	initNodeCreds, err = initNodeCreds.HandleFetchNodeCredentialsResponse(ctx, initStorage, fetchResp)
+	require.NoError(t, err)
+	initKeyId, err := nodeenrollment.KeyIdFromPkix(initNodeCreds.CertificatePublicKeyPkix)
+	require.NoError(t, err)
+
+	nonce := make([]byte, nodeenrollment.NonceSize)
+	_, err = rand.Reader.Read(nonce)
+	require.NoError(t, err)
+
+	// What's going on here: in each test we are simulating a startup of a
+	// worker that has storage in various states. The input is a function to
+	// modify the current state of node credentials by using the worker's
+	// storage, but this happens before Start so we haven't done checking yet;
+	// the assertions check what the final result is.
+	tests := []struct {
+		name                   string
+		in                     func(*testing.T, nodeenrollment.Storage, *Worker)
+		expKeyId               string // If set, the existing key ID to expect
+		expRegistrationRequest bool   // Whether we should have seen a registration request generated
+		expError               string // Some other error
+	}{
+		{
+			name: "no creds",
+			in: func(t *testing.T, storage nodeenrollment.Storage, w *Worker) {
+				// Do nothing; in this case it will have already been cleared
+			},
+			expRegistrationRequest: true,
+		},
+		{
+			name: "valid creds",
+			in: func(t *testing.T, storage nodeenrollment.Storage, w *Worker) {
+				// Store the authorized creds
+				require.NoError(t, initNodeCreds.Store(ctx, storage))
+			},
+			expKeyId: initKeyId,
+		},
+		{
+			name: "existing but not validated",
+			in: func(t *testing.T, storage nodeenrollment.Storage, w *Worker) {
+				creds := proto.Clone(initNodeCreds).(*types.NodeCredentials)
+				creds.CertificateBundles = nil
+				creds.RegistrationNonce = nonce
+				require.NoError(t, creds.Store(ctx, storage))
+			},
+			expKeyId:               initKeyId,
+			expRegistrationRequest: true,
+		},
+		{
+			name: "existing and outside cert times", // Note that cert from next CA will already not be valid
+			in: func(t *testing.T, storage nodeenrollment.Storage, w *Worker) {
+				creds := proto.Clone(initNodeCreds).(*types.NodeCredentials)
+				creds.CertificateBundles[0].CertificateNotBefore = timestamppb.New(time.Time{})
+				creds.CertificateBundles[0].CertificateNotAfter = timestamppb.New(time.Time{})
+				require.NoError(t, creds.Store(ctx, storage))
+			},
+			expRegistrationRequest: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tw := NewTestWorker(t, &TestWorkerOpts{
+				WorkerAuthStoragePath: tmpDir,
+				DisableAutoStart:      true,
+			})
+			t.Cleanup(tw.Shutdown)
+
+			// Always clear out storage that was there before, ignore errors
+			storage, err := nodeefile.New(tw.Context(), nodeefile.WithBaseDirectory(tmpDir))
+			require.NoError(t, err)
+			_ = storage.Remove(ctx, &types.NodeCredentials{Id: string(nodeenrollment.CurrentId)})
+
+			// Run node credentials modification
+			tt.in(t, storage, tw.Worker())
+
+			// Start up to run logic
+			require.NoError(t, tw.Worker().Start())
+
+			// Validate existing key was loaded or new key was created and loaded
+			if tt.expKeyId != "" {
+				assert.Equal(t, tt.expKeyId, tw.Worker().WorkerAuthCurrentKeyId.Load())
+			} else {
+				assert.NotEmpty(t, tw.Worker().WorkerAuthCurrentKeyId.Load())
+			}
+			if tt.expRegistrationRequest {
+				assert.NotEmpty(t, tw.Worker().WorkerAuthRegistrationRequest)
+			} else {
+				assert.Empty(t, tw.Worker().WorkerAuthRegistrationRequest)
 			}
 		})
 	}

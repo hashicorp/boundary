@@ -14,7 +14,7 @@ import (
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/require"
@@ -38,8 +38,8 @@ func TestListingScopeIds(t *testing.T) {
 	authTokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	s, err := groups.NewService(iamRepoFn)
 	require.NoError(t, err)

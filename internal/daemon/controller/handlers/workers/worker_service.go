@@ -2,432 +2,616 @@ package workers
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"sync"
-	"time"
+	"strings"
 
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/errors"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
-	"github.com/hashicorp/go-bexpr"
+	"github.com/hashicorp/boundary/internal/types/scope"
+	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-type workerServiceServer struct {
-	pbs.UnimplementedServerCoordinationServiceServer
-	pbs.UnimplementedSessionServiceServer
-
-	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    common.SessionRepoFactory
-	connectionRepoFn common.ConnectionRepoFactory
-	updateTimes      *sync.Map
-	kms              *kms.Kms
-}
-
-func NewWorkerServiceServer(
-	serversRepoFn common.ServersRepoFactory,
-	sessionRepoFn common.SessionRepoFactory,
-	connectionRepoFn common.ConnectionRepoFactory,
-	updateTimes *sync.Map,
-	kms *kms.Kms,
-) *workerServiceServer {
-	return &workerServiceServer{
-		serversRepoFn:    serversRepoFn,
-		sessionRepoFn:    sessionRepoFn,
-		connectionRepoFn: connectionRepoFn,
-		updateTimes:      updateTimes,
-		kms:              kms,
-	}
-}
+const (
+	PkiWorkerType = "pki"
+	KmsWorkerType = "kms"
+)
 
 var (
-	_ pbs.SessionServiceServer            = &workerServiceServer{}
-	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
+	maskManager handlers.MaskManager
+
+	// IdActions contains the set of actions that can be performed on
+	// individual resources
+	IdActions = action.ActionSet{
+		action.NoOp,
+		action.Read,
+		action.Update,
+		action.Delete,
+	}
+
+	// CollectionActions contains the set of actions that can be performed on
+	// this collection
+	CollectionActions = action.ActionSet{
+		action.CreateWorkerLed,
+		action.List,
+	}
 )
 
-func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
-	const op = "workers.(workerServiceServer).Status"
-	// TODO: on the worker, if we get errors back from this repeatedly, do we
-	// terminate all sessions since we can't know if they were canceled?
-	ws.updateTimes.Store(req.Worker.PrivateId, time.Now())
-	serverRepo, err := ws.serversRepoFn()
+func init() {
+	var err error
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Worker{}}, handlers.MaskSource{&pb.Worker{}}); err != nil {
+		panic(err)
+	}
+}
+
+// Service handles request as described by the pbs.WorkerServiceServer interface.
+type Service struct {
+	pbs.UnimplementedWorkerServiceServer
+
+	repoFn    common.ServersRepoFactory
+	iamRepoFn common.IamRepoFactory
+}
+
+// NewService returns a worker service which handles worker related requests to boundary.
+func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+	const op = "workers.NewService"
+	if repo == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing server repository")
+	}
+	if iamRepoFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+	}
+	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
+}
+
+var _ pbs.WorkerServiceServer = Service{}
+
+// ListWorkers implements the interface pbs.WorkerServiceServer.
+func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (*pbs.ListWorkersResponse, error) {
+	if err := validateListRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	if authResults.Error != nil {
+		// If it's forbidden, and it's a recursive request, and they're
+		// successfully authenticated but just not authorized, keep going as we
+		// may have authorization on downstream scopes. Or, if they've not
+		// authenticated, still process in case u_anon has permissions.
+		if (authResults.Error == handlers.ForbiddenError() || authResults.Error == handlers.UnauthenticatedError()) &&
+			req.GetRecursive() &&
+			authResults.AuthenticationFinished {
+		} else {
+			return nil, authResults.Error
+		}
+	}
+
+	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
+		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.Worker, req.GetRecursive())
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
+		return nil, err
 	}
-	sessRepo, err := ws.sessionRepoFn()
-	connectionRepo, err := ws.connectionRepoFn()
+	// If no scopes match, return an empty response
+	if len(scopeIds) == 0 {
+		return &pbs.ListWorkersResponse{}, nil
+	}
+
+	ul, err := s.listFromRepo(ctx, scopeIds)
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting sessions repo"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to query session status: %v", err)
+		return nil, err
 	}
-	req.Worker.Type = resource.Worker.String()
-	controllers, _, err := serverRepo.UpsertServer(ctx, req.Worker, servers.WithUpdateTags(req.GetUpdateTags()))
+	if len(ul) == 0 {
+		return &pbs.ListWorkersResponse{}, nil
+	}
+
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
+		return nil, err
 	}
-	ret := &pbs.StatusResponse{
-		Controllers: controllers,
+	finalItems := make([]*pb.Worker, 0, len(ul))
+	res := perms.Resource{
+		Type: resource.Worker,
+	}
+	for _, item := range ul {
+		res.Id = item.GetPublicId()
+		res.ScopeId = item.GetScopeId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
+			continue
+		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		item, err := toProto(ctx, item, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+
+		if filter.Match(item) {
+			finalItems = append(finalItems, item)
+		}
+	}
+	return &pbs.ListWorkersResponse{Items: finalItems}, nil
+}
+
+// GetWorker implements the interface pbs.WorkerServiceServer.
+func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs.GetWorkerResponse, error) {
+	const op = "workers.(Service).GetWorker"
+
+	if err := validateGetRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Read)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	w, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
 	}
 
-	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
 
-	for _, jobStatus := range req.GetJobs() {
-		switch jobStatus.Job.GetType() {
-		case pbs.JOBTYPE_JOBTYPE_SESSION:
-			si := jobStatus.GetJob().GetSessionInfo()
-			if si == nil {
-				return nil, status.Error(codes.Internal, "Error getting session info at status time")
-			}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
+	}
 
-			switch si.Status {
-			case pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
-				pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED:
-				// No need to see about canceling anything
-				continue
-			}
+	item, err := toProto(ctx, w, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
 
-			sr := session.StateReport{
-				SessionId:     si.GetSessionId(),
-				ConnectionIds: make([]string, 0, len(si.GetConnections())),
-			}
-			for _, conn := range si.GetConnections() {
-				switch conn.Status {
-				case pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
-					pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
-					sr.ConnectionIds = append(sr.ConnectionIds, conn.GetConnectionId())
+	return &pbs.GetWorkerResponse{Item: item}, nil
+}
+
+// CreateWorker implements the interface pbs.WorkerServiceServer.
+func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRequest) (*pbs.CreateWorkerLedResponse, error) {
+	const op = "workers.(Service).CreateWorkerLed"
+
+	if err := validateCreateRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.CreateWorkerLed)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	reqBytes, err := base58.FastBase58Decoding(req.GetItem().WorkerGeneratedAuthToken.GetValue())
+	if err != nil {
+		return nil, fmt.Errorf("%s: error decoding node_credentials_token: %w", op, err)
+	}
+	// Decode the proto into the request
+	creds := new(types.FetchNodeCredentialsRequest)
+	if err := proto.Unmarshal(reqBytes, creds); err != nil {
+		return nil, fmt.Errorf("%s: error unmarshaling node_credentials_token: %w", op, err)
+	}
+	created, err := s.createInRepo(ctx, req.GetItem(), creds)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating worker: %w", op, err)
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, created.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, created, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.CreateWorkerLedResponse{Item: item}, nil
+}
+
+// DeleteWorker implements the interface pbs.WorkerServiceServer.
+func (s Service) DeleteWorker(ctx context.Context, req *pbs.DeleteWorkerRequest) (*pbs.DeleteWorkerResponse, error) {
+	if err := validateDeleteRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Delete)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	_, err := s.deleteFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// UpdateWorker implements the interface pbs.WorkerServiceServer.
+func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest) (*pbs.UpdateWorkerResponse, error) {
+	const op = "workers.(Service).UpdateWorker"
+
+	if err := validateUpdateRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.Update)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	w, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, w, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.UpdateWorkerResponse{Item: item}, nil
+}
+
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*server.Worker, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	wl, err := repo.ListWorkers(ctx, scopeIds, server.WithLiveness(-1))
+	if err != nil {
+		return nil, err
+	}
+	return wl, nil
+}
+
+func (s Service) getFromRepo(ctx context.Context, id string) (*server.Worker, error) {
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	w, err := repo.LookupWorker(ctx, id)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, handlers.NotFoundErrorf("Worker %q doesn't exist.", id)
+		}
+		return nil, err
+	}
+	if w == nil {
+		return nil, handlers.NotFoundErrorf("Worker %q doesn't exist.", id)
+	}
+	return w, nil
+}
+
+func (s Service) createInRepo(ctx context.Context, worker *pb.Worker, creds *types.FetchNodeCredentialsRequest) (*server.Worker, error) {
+	const op = "workers.(Service).createInRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	newWorker := server.NewWorker(
+		worker.GetScopeId(),
+		server.WithName(worker.GetName().GetValue()),
+		server.WithDescription(worker.GetDescription().GetValue()),
+	)
+	retWorker, err := repo.CreateWorker(ctx, newWorker, server.WithFetchNodeCredentialsRequest(creds))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker"))
+	}
+	return retWorker, nil
+}
+
+func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
+	const op = "workers.(Service).deleteFromRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return false, err
+	}
+	rows, err := repo.DeleteWorker(ctx, id)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return false, nil
+		}
+		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete worker"))
+	}
+	return rows > 0, nil
+}
+
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Worker) (*server.Worker, error) {
+	const op = "workers.(Service).updateInRepo"
+	var opts []server.Option
+	if desc := item.GetDescription(); desc != nil {
+		opts = append(opts, server.WithDescription(desc.GetValue()))
+	}
+	if name := item.GetName(); name != nil {
+		opts = append(opts, server.WithName(name.GetValue()))
+	}
+	w := server.NewWorker(scopeId, opts...)
+	w.PublicId = id
+	dbMask := maskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, rowsUpdated, err := repo.UpdateWorker(ctx, w, item.GetVersion(), dbMask)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update worker"))
+	}
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("Worker %q doesn't exist or incorrect version provided.", id)
+	}
+	return out, nil
+}
+
+func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+	res := auth.VerifyResults{}
+	repo, err := s.repoFn()
+	if err != nil {
+		res.Error = err
+		return res
+	}
+
+	var parentId string
+	opts := []auth.Option{auth.WithType(resource.Worker), auth.WithAction(a)}
+	switch a {
+	case action.List, action.CreateWorkerLed:
+		parentId = id
+	default:
+		w, err := repo.LookupWorker(ctx, id)
+		if err != nil {
+			res.Error = err
+			return res
+		}
+		if w == nil {
+			res.Error = handlers.NotFoundError()
+			return res
+		}
+		parentId = w.GetScopeId()
+		opts = append(opts, auth.WithId(id))
+	}
+	opts = append(opts, auth.WithScopeId(parentId))
+	return auth.Verify(ctx, opts...)
+}
+
+func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*pb.Worker, error) {
+	const op = "workers.toProto"
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building worker proto")
+	}
+	outputFields := *opts.WithOutputFields
+
+	out := pb.Worker{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.GetPublicId()
+	}
+	if outputFields.Has(globals.ScopeIdField) {
+		out.ScopeId = in.GetScopeId()
+	}
+	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
+		out.Description = wrapperspb.String(in.GetDescription())
+	}
+	if outputFields.Has(globals.NameField) && in.GetName() != "" {
+		out.Name = wrapperspb.String(in.GetName())
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
+		out.CreatedTime = in.GetCreateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.UpdatedTimeField) {
+		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.VersionField) {
+		out.Version = in.GetVersion()
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		out.AuthorizedActions = opts.WithAuthorizedActions
+		if in.Type == KmsWorkerType && out.AuthorizedActions != nil {
+			// KMS workers cannot be updated through the API
+			allActions := out.AuthorizedActions
+			out.AuthorizedActions = make([]string, 0, len(allActions))
+			for _, act := range allActions {
+				if act != action.Update.String() {
+					out.AuthorizedActions = append(out.AuthorizedActions, act)
 				}
 			}
-			stateReport = append(stateReport, sr)
+		}
+	}
+	if outputFields.Has(globals.AddressField) && in.GetAddress() != "" {
+		out.Address = in.GetAddress()
+	}
+	if outputFields.Has(globals.TypeField) && in.GetType() != "" {
+		out.Type = in.GetType()
+	}
+	if outputFields.Has(globals.LastStatusTimeField) {
+		out.LastStatusTime = in.GetLastStatusTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.ActiveConnectionCountField) {
+		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.ActiveConnectionCount()}
+	}
+	if outputFields.Has(globals.ConfigTagsField) && len(in.GetConfigTags()) > 0 {
+		var err error
+		out.ConfigTags, err = tagsToMapProto(in.GetConfigTags())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
+		}
+	}
+	if outputFields.Has(globals.CanonicalTagsField) && len(in.CanonicalTags()) > 0 {
+		var err error
+		out.CanonicalTags, err = tagsToMapProto(in.CanonicalTags())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing canonical tags proto"))
 		}
 	}
 
-	notActive, err := session.WorkerStatusReport(ctx, sessRepo, connectionRepo, req.Worker.PrivateId, stateReport)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error comparing state of sessions for worker: %s: %v", req.Worker.PrivateId, err)
-	}
-	for _, na := range notActive {
-		var connChanges []*pbs.Connection
-		for _, connId := range na.ConnectionIds {
-			connChanges = append(connChanges, &pbs.Connection{
-				ConnectionId: connId,
-				Status:       session.StatusClosed.ProtoVal(),
-			})
-		}
-		ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
-			Job: &pbs.Job{
-				Type: pbs.JOBTYPE_JOBTYPE_SESSION,
-				JobInfo: &pbs.Job_SessionInfo{
-					SessionInfo: &pbs.SessionJobInfo{
-						SessionId:   na.SessionId,
-						Status:      na.Status.ProtoVal(),
-						Connections: connChanges,
-					},
-				},
-			},
-			RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
-		})
-	}
+	return &out, nil
+}
 
+func tagsToMapProto(in map[string][]string) (map[string]*structpb.ListValue, error) {
+	b := make(map[string][]interface{})
+	for k, v := range in {
+		result := make([]interface{}, 0, len(v))
+		for _, t := range v {
+			result = append(result, t)
+		}
+		b[k] = result
+	}
+	ret := make(map[string]*structpb.ListValue)
+	var err error
+	for k, v := range b {
+		ret[k], err = structpb.NewList(v)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return ret, nil
 }
 
-func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
-	const op = "workers.(workerServiceServer).LookupSession"
-
-	sessRepo, err := ws.sessionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error getting session repo: %v", err)
-	}
-
-	sessionInfo, authzSummary, err := sessRepo.LookupSession(ctx, req.GetSessionId())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error looking up session: %v", err)
-	}
-	if sessionInfo == nil {
-		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
-	}
-	if len(sessionInfo.States) == 0 {
-		return nil, status.Error(codes.Internal, "Empty session states during lookup.")
-	}
-
-	if sessionInfo.WorkerFilter != "" {
-		if req.ServerId == "" {
-			event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no server ID from worker"))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive server ID when looking up session but filtering is enabled: %v", err)
-		}
-		serversRepo, err := ws.serversRepoFn()
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
-		}
-		tags, err := serversRepo.ListTagsForServers(ctx, []string{req.ServerId})
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up tags for server", "server_id", req.ServerId))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
-		}
-		// Build the map for filtering.
-		tagMap := make(map[string][]string)
-		for _, tag := range tags {
-			tagMap[tag.Key] = append(tagMap[tag.Key], tag.Value)
-			// We don't need to reinsert after the fact because maps are
-			// reference types, so we don't need to re-insert into tagMap
-		}
-
-		// Create the evaluator
-		eval, err := bexpr.CreateEvaluator(sessionInfo.WorkerFilter)
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "server_id", req.ServerId))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
-		}
-		filterInput := map[string]interface{}{
-			"name": req.ServerId,
-			"tags": tagMap,
-		}
-		ok, err := eval.Evaluate(filterInput)
-		if err != nil {
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
-				fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
-		}
-		if !ok {
-			return nil, handlers.ApiErrorWithCodeAndMessage(
-				codes.FailedPrecondition,
-				"Worker filter expression precludes this worker from serving this session")
-		}
-	}
-
-	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ScopeId, sessionInfo.PublicId)
-	if err != nil {
-		return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
-			fmt.Sprintf("Error retrieving session credentials: %s", err))
-	}
-	var workerCreds []*pbs.Credential
-	for _, c := range creds {
-		m := &pbs.Credential{}
-		err = proto.Unmarshal(c, m)
-		if err != nil {
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
-				fmt.Sprintf("Error unmarshaling credentials: %s", err))
-		}
-		workerCreds = append(workerCreds, m)
-	}
-
-	resp := &pbs.LookupSessionResponse{
-		Authorization: &targets.SessionAuthorizationData{
-			SessionId:   sessionInfo.GetPublicId(),
-			Certificate: sessionInfo.Certificate,
-		},
-		Status:          sessionInfo.States[0].Status.ProtoVal(),
-		Version:         sessionInfo.Version,
-		TofuToken:       string(sessionInfo.TofuToken),
-		Endpoint:        sessionInfo.Endpoint,
-		Expiration:      sessionInfo.ExpirationTime.Timestamp,
-		ConnectionLimit: sessionInfo.ConnectionLimit,
-		ConnectionsLeft: authzSummary.ConnectionLimit,
-		HostId:          sessionInfo.HostId,
-		HostSetId:       sessionInfo.HostSetId,
-		TargetId:        sessionInfo.TargetId,
-		UserId:          sessionInfo.UserId,
-		Credentials:     workerCreds,
-	}
-	if resp.ConnectionsLeft != -1 {
-		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
-	}
-
-	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions, kms.WithKeyId(sessionInfo.KeyId))
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
-	}
-
-	// Derive the private key, which should match. Deriving on both ends allows
-	// us to not store it in the DB.
-	_, resp.Authorization.PrivateKey, err = session.DeriveED25519Key(ctx, wrapper, sessionInfo.UserId, sessionInfo.GetPublicId())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
-	}
-
-	return resp, nil
+// A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
+// requirements on the structure of the request.  They verify that:
+//  * The path passed in is correctly formatted
+//  * All required parameters are set
+//  * There are no conflicting parameters provided
+func validateGetRequest(req *pbs.GetWorkerRequest) error {
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
 }
 
-func (ws *workerServiceServer) CancelSession(ctx context.Context, req *pbs.CancelSessionRequest) (*pbs.CancelSessionResponse, error) {
-	const op = "workers.(workerServiceServer).CancelSession"
-
-	sessRepo, err := ws.sessionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
+func validateListRequest(req *pbs.ListWorkersRequest) error {
+	badFields := map[string]string{}
+	if req.GetScopeId() != scope.Global.String() {
+		badFields["scope_id"] = "Must be 'global' when listing."
 	}
-
-	ses, _, err := sessRepo.LookupSession(ctx, req.GetSessionId())
-	if err != nil {
-		return nil, err
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
-
-	ses, err = sessRepo.CancelSession(ctx, req.GetSessionId(), ses.Version)
-	if err != nil {
-		return nil, err
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
-
-	return &pbs.CancelSessionResponse{
-		Status: ses.States[0].Status.ProtoVal(),
-	}, nil
+	return nil
 }
 
-func (ws *workerServiceServer) ActivateSession(ctx context.Context, req *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
-	const op = "workers.(workerServiceServer).ActivateSession"
-
-	sessRepo, err := ws.sessionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
-	}
-
-	sessionInfo, sessionStates, err := sessRepo.ActivateSession(
-		ctx,
-		req.GetSessionId(),
-		req.GetVersion(),
-		req.GetWorkerId(),
-		resource.Worker.String(),
-		[]byte(req.GetTofuToken()))
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error looking up session: %v", err)
-	}
-	if sessionInfo == nil {
-		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
-	}
-	if len(sessionStates) == 0 {
-		return nil, status.Error(codes.Internal, "Invalid session state in activate response.")
-	}
-
-	return &pbs.ActivateSessionResponse{
-		Status: sessionStates[0].Status.ProtoVal(),
-	}, nil
+func validateDeleteRequest(req *pbs.DeleteWorkerRequest) error {
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
 }
 
-func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
-	const op = "workers.(workerServiceServer).AuthorizeConnection"
-	connectionRepo, err := ws.connectionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
-	}
-
-	sessionRepo, err := ws.sessionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
-	}
-
-	connectionInfo, connStates, authzSummary, err := session.AuthorizeConnection(ctx, sessionRepo, connectionRepo, req.GetSessionId(), req.GetWorkerId())
-	if err != nil {
-		return nil, err
-	}
-	if connectionInfo == nil {
-		return nil, status.Error(codes.Internal, "Invalid authorize connection response.")
-	}
-	if len(connStates) == 0 {
-		return nil, status.Error(codes.Internal, "Invalid connection state in authorize response.")
-	}
-
-	ret := &pbs.AuthorizeConnectionResponse{
-		ConnectionId:    connectionInfo.GetPublicId(),
-		Status:          connStates[0].Status.ProtoVal(),
-		ConnectionsLeft: authzSummary.ConnectionLimit,
-	}
-	if ret.ConnectionsLeft != -1 {
-		ret.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
-	}
-
-	return ret, nil
+func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		if req.GetItem().GetAddress() != "" {
+			badFields[globals.AddressField] = "This is a read only field."
+		}
+		if req.GetItem().GetCanonicalTags() != nil {
+			badFields[globals.CanonicalAddressField] = "This is a read only field."
+		}
+		if req.GetItem().GetConfigTags() != nil {
+			badFields[globals.TagsField] = "This is a read only field."
+		}
+		nameString := req.GetItem().GetName().String()
+		if !strutil.Printable(nameString) {
+			badFields[globals.NameField] = "Contains non-printable characters"
+		}
+		if strings.ToLower(nameString) != nameString {
+			badFields[globals.NameField] = "Must be all lowercase."
+		}
+		descriptionString := req.GetItem().GetDescription().String()
+		if !strutil.Printable(descriptionString) {
+			badFields[globals.DescriptionField] = "Contains non-printable characters."
+		}
+		return badFields
+	}, server.WorkerPrefix)
 }
 
-func (ws *workerServiceServer) ConnectConnection(ctx context.Context, req *pbs.ConnectConnectionRequest) (*pbs.ConnectConnectionResponse, error) {
-	const op = "workers.(workerServiceServer).ConnectConnection"
-	connRepo, err := ws.connectionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
-	}
-
-	connectionInfo, connStates, err := connRepo.ConnectConnection(ctx, session.ConnectWith{
-		ConnectionId:       req.GetConnectionId(),
-		ClientTcpAddress:   req.GetClientTcpAddress(),
-		ClientTcpPort:      req.GetClientTcpPort(),
-		EndpointTcpAddress: req.GetEndpointTcpAddress(),
-		EndpointTcpPort:    req.GetEndpointTcpPort(),
-		UserClientIp:       req.GetUserClientIp(),
+func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
+	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		const (
+			mustBeGlobalMsg  = "Must be 'global'"
+			cannotBeEmptyMsg = "Cannot be empty."
+			readOnlyFieldMsg = "This is a read only field."
+		)
+		badFields := map[string]string{}
+		if scope.Global.String() != req.GetItem().GetScopeId() {
+			badFields[globals.ScopeIdField] = mustBeGlobalMsg
+		}
+		// FIXME: in the future, we won't require this token since we'll support
+		// the server led flow where a token is returned when a worker is created.
+		if req.GetItem().WorkerGeneratedAuthToken == nil {
+			badFields[globals.WorkerGeneratedAuthTokenField] = cannotBeEmptyMsg
+		}
+		if req.GetItem().Address != "" {
+			badFields[globals.CanonicalAddressField] = readOnlyFieldMsg
+		}
+		if req.GetItem().CanonicalTags != nil {
+			badFields[globals.CanonicalTagsField] = readOnlyFieldMsg
+		}
+		if req.GetItem().ConfigTags != nil {
+			badFields[globals.ConfigTagsField] = readOnlyFieldMsg
+		}
+		if req.GetItem().LastStatusTime != nil {
+			badFields[globals.LastStatusTimeField] = readOnlyFieldMsg
+		}
+		if req.GetItem().AuthorizedActions != nil {
+			badFields[globals.AuthorizedActionsField] = readOnlyFieldMsg
+		}
+		nameString := req.GetItem().GetName().String()
+		if !strutil.Printable(nameString) {
+			badFields[globals.NameField] = "Name contains non-printable characters."
+		}
+		if strings.ToLower(nameString) != nameString {
+			badFields[globals.NameField] = "Name must be all lowercase."
+		}
+		descriptionString := req.GetItem().GetDescription().String()
+		if !strutil.Printable(descriptionString) {
+			badFields[globals.DescriptionField] = "Description contains non-printable characters."
+		}
+		return badFields
 	})
-	if err != nil {
-		return nil, err
-	}
-	if connectionInfo == nil {
-		return nil, status.Error(codes.Internal, "Invalid connect connection response.")
-	}
-
-	return &pbs.ConnectConnectionResponse{
-		Status: connStates[0].Status.ProtoVal(),
-	}, nil
-}
-
-func (ws *workerServiceServer) CloseConnection(ctx context.Context, req *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
-	const op = "workers.(workerServiceServer).CloseConnection"
-	numCloses := len(req.GetCloseRequestData())
-	if numCloses == 0 {
-		return &pbs.CloseConnectionResponse{}, nil
-	}
-
-	closeWiths := make([]session.CloseWith, 0, numCloses)
-	closeIds := make([]string, 0, numCloses)
-
-	for _, v := range req.GetCloseRequestData() {
-		closeIds = append(closeIds, v.GetConnectionId())
-		closeWiths = append(closeWiths, session.CloseWith{
-			ConnectionId: v.GetConnectionId(),
-			BytesUp:      v.GetBytesUp(),
-			BytesDown:    v.GetBytesDown(),
-			ClosedReason: session.ClosedReason(v.GetReason()),
-		})
-	}
-	connRepo, err := ws.connectionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting connection repo: %v", err)
-	}
-
-	sessRepo, err := ws.sessionRepoFn()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting session repo: %v", err)
-	}
-
-	closeInfos, err := session.CloseConnections(ctx, sessRepo, connRepo, closeWiths)
-	if err != nil {
-		return nil, err
-	}
-	if closeInfos == nil {
-		return nil, status.Error(codes.Internal, "Invalid close connection response.")
-	}
-
-	closeData := make([]*pbs.CloseConnectionResponseData, 0, numCloses)
-	for _, v := range closeInfos {
-		if v.Connection == nil {
-			return nil, status.Errorf(codes.Internal, "No connection found while closing one of the connection IDs: %v", closeIds)
-		}
-		if len(v.ConnectionStates) == 0 {
-			return nil, status.Errorf(codes.Internal, "No connection states found while closing one of the connection IDs: %v", closeIds)
-		}
-		closeData = append(closeData, &pbs.CloseConnectionResponseData{
-			ConnectionId: v.Connection.GetPublicId(),
-			Status:       v.ConnectionStates[0].Status.ProtoVal(),
-		})
-	}
-
-	ret := &pbs.CloseConnectionResponse{
-		CloseResponseData: closeData,
-	}
-
-	return ret, nil
 }

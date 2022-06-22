@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -25,7 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -111,7 +112,7 @@ func (tc *TestController) AuthTokenRepo() *authtoken.Repository {
 	return repo
 }
 
-func (tc *TestController) ServersRepo() *servers.Repository {
+func (tc *TestController) ServersRepo() *server.Repository {
 	repo, err := tc.c.ServersRepoFn()
 	if err != nil {
 		tc.t.Fatal(err)
@@ -542,10 +543,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts.Config.Controller = new(config.Controller)
 	}
 	if opts.Config.Controller.Name == "" {
-		opts.Config.Controller.Name, err = opts.Config.Controller.InitNameIfEmpty()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, opts.Config.Controller.InitNameIfEmpty())
 	}
 	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
 
@@ -572,7 +570,13 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		tc.b.Eventer = e
 		event.TestWithoutEventing(t) // this ensures the sys eventer will also stop eventing
 	default:
-		if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, opts.Config.Controller.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+
+		serverName, err := os.Hostname()
+		if err != nil {
+			t.Fatal(err)
+		}
+		serverName = fmt.Sprintf("%s/controller", serverName)
+		if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -735,10 +739,10 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 // WaitForNextWorkerStatusUpdate waits for the next status check from a worker to
 // come in. If it does not come in within the default status grace
 // period, this function returns an error.
-func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
+func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string) error {
 	const op = "controller.(TestController).WaitForNextWorkerStatusUpdate"
 	ctx := context.TODO()
-	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerId)
+	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerStatusName)
 	waitStatusStart := time.Now()
 	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
 	defer cancel()
@@ -777,7 +781,7 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 				return false
 			}
 
-			if workerStatusUpdateId == workerId {
+			if workerStatusUpdateId == workerStatusName {
 				waitStatusCurrent = workerStatusUpdateTime
 				return false
 			}
@@ -795,10 +799,10 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerId string) error {
 	}
 
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report from worker", "worker", workerId))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error waiting for next status report from worker", "worker", workerStatusName))
 		return err
 	}
-	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerId)
+	event.WriteSysEvent(ctx, op, "waiting for next status report from worker received successfully", "worker", workerStatusName)
 	return nil
 }
 

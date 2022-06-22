@@ -143,7 +143,9 @@ func newFilter(f string) (*filter, error) {
 	if f == "" {
 		return nil, fmt.Errorf("%s: missing filter: %w", op, ErrInvalidParameter)
 	}
-	e, err := bexpr.CreateEvaluator(f, bexpr.WithHookFn(filterpkg.WellKnownTypeFilterHook))
+	// explicitly tell the filter to use the "json" tags so we don't have to
+	// re-tag everything with a mapstructure tag via bexpr.WithTagName("json")
+	e, err := bexpr.CreateEvaluator(f, bexpr.WithHookFn(filterpkg.WellKnownTypeFilterHook), bexpr.WithTagName("json"))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

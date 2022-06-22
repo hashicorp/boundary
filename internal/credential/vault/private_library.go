@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var _ credential.UserPassword = (*usrPassCred)(nil)
+var _ credential.UsernamePassword = (*usrPassCred)(nil)
 
 type usrPassCred struct {
 	*baseCred

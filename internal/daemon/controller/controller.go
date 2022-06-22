@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
@@ -26,7 +27,8 @@ import (
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
+	serversjob "github.com/hashicorp/boundary/internal/server/job"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -64,18 +66,20 @@ type Controller struct {
 	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
-	AuthTokenRepoFn       common.AuthTokenRepoFactory
-	VaultCredentialRepoFn common.VaultCredentialRepoFactory
-	IamRepoFn             common.IamRepoFactory
-	OidcRepoFn            common.OidcAuthRepoFactory
-	PasswordAuthRepoFn    common.PasswordAuthRepoFactory
-	ServersRepoFn         common.ServersRepoFactory
-	SessionRepoFn         common.SessionRepoFactory
-	ConnectionRepoFn      common.ConnectionRepoFactory
-	StaticHostRepoFn      common.StaticRepoFactory
-	PluginHostRepoFn      common.PluginHostRepoFactory
-	HostPluginRepoFn      common.HostPluginRepoFactory
-	TargetRepoFn          common.TargetRepoFactory
+	AuthTokenRepoFn         common.AuthTokenRepoFactory
+	VaultCredentialRepoFn   common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn  common.StaticCredentialRepoFactory
+	IamRepoFn               common.IamRepoFactory
+	OidcRepoFn              common.OidcAuthRepoFactory
+	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
+	ServersRepoFn           common.ServersRepoFactory
+	SessionRepoFn           common.SessionRepoFactory
+	ConnectionRepoFn        common.ConnectionRepoFactory
+	StaticHostRepoFn        common.StaticRepoFactory
+	PluginHostRepoFn        common.PluginHostRepoFactory
+	HostPluginRepoFn        common.HostPluginRepoFactory
+	TargetRepoFn            common.TargetRepoFactory
+	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -113,7 +117,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		conf.RawConfig.Controller = new(config.Controller)
 	}
 
-	if conf.RawConfig.Controller.Name, err = conf.RawConfig.Controller.InitNameIfEmpty(); err != nil {
+	if err := conf.RawConfig.Controller.InitNameIfEmpty(); err != nil {
 		return nil, fmt.Errorf("error auto-generating controller name: %w", err)
 	}
 
@@ -276,8 +280,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
 		return vault.NewRepository(dbase, dbase, c.kms, c.scheduler)
 	}
-	c.ServersRepoFn = func() (*servers.Repository, error) {
-		return servers.NewRepository(dbase, dbase, c.kms)
+	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.ServersRepoFn = func() (*server.Repository, error) {
+		return server.NewRepository(dbase, dbase, c.kms)
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, dbase, dbase, c.kms)
@@ -294,6 +301,21 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)
 	}
+	c.WorkerAuthRepoStorageFn = func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
+	}
+
+	// Check that credentials are available at startup, to avoid some harmless
+	// but nasty-looking errors
+	serversRepo, err := server.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
+	if err != nil {
+		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
+	}
+	err = server.RotateRoots(ctx, serversRepo)
+	if err != nil {
+		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
+	}
+
 	return c, nil
 }
 
@@ -303,7 +325,9 @@ func (c *Controller) Start() error {
 		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
 		return nil
 	}
+
 	c.baseContext, c.baseCancel = context.WithCancel(context.Background())
+
 	if err := c.registerJobs(); err != nil {
 		return fmt.Errorf("error registering jobs: %w", err)
 	}
@@ -311,9 +335,9 @@ func (c *Controller) Start() error {
 		return fmt.Errorf("error starting controller listeners: %w", err)
 	}
 
-	// Upsert server before starting tickers and scheduler to ensure the server exists
-	if err := c.upsertServer(c.baseContext); err != nil {
-		return fmt.Errorf("error upserting server: %w", err)
+	// Upsert controller before starting tickers and scheduler to ensure the controller exists
+	if err := c.upsertController(c.baseContext); err != nil {
+		return fmt.Errorf("error upserting controller: %w", err)
 	}
 	if err := c.scheduler.Start(c.baseContext, c.schedulerWg); err != nil {
 		return fmt.Errorf("error starting scheduler: %w", err)
@@ -353,6 +377,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.StatusGracePeriodDuration); err != nil {
+		return err
+	}
+	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
 		return err
 	}
 

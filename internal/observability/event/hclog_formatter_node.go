@@ -36,7 +36,7 @@ type hclogFormatterFilter struct {
 }
 
 func newHclogFormatterFilter(jsonFormat bool, opt ...Option) (*hclogFormatterFilter, error) {
-	const op = "event.NewHclogFormatter"
+	const op = "event.newHclogFormatterFilter"
 	opts := getOpts(opt...)
 	var s signer
 	n := hclogFormatterFilter{
@@ -147,7 +147,9 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 	var m map[string]interface{}
 	switch string(e.Type) {
 	case string(ErrorType), string(AuditType), string(SystemType):
-		m = structs.Map(e.Payload)
+		s := structs.New(e.Payload)
+		s.TagName = "json"
+		m = s.Map()
 	case string(ObservationType):
 		m = e.Payload.(map[string]interface{})
 	default:

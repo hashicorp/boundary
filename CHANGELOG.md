@@ -4,16 +4,51 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.9.0 (2022/06/20)
+
 ### New and Improved
 
+* PKI Workers: This release introduces a new worker type `pki` which
+  authenticates to Boundary using a new certificate-based method, allowing for
+  worker deployment without using a shared KMS.
+* Credentials: This release introduces a new credential store type `static`,
+  which simply takes in a user-supplied credential and stores it (encrypted)
+  directly in Boundary. Currently, the `static` credential store can hold
+  credentials of type `username_password`. These credentials can act as
+  credential sources for targets, similar to credential libraries from the
+  `vault` credential store, and thus can be brokered to users at session
+  authorization time. [PR](https://github.com/hashicorp/boundary/pull/2174)
+* `boundary connect` Credential Brokering Integration: we have extended integration
+  into the `boundary connect` helpers. A new `sshpass` style has been added to the 
+  `ssh` helper, when used, if the credential contains a username/password and `sshpass` 
+  is installed, the command will automatically pass the credentials to the `ssh` process.
+  Additionally, the default `ssh` helper will now use the `username` of the brokered credential.
+  [PR](https://github.com/hashicorp/boundary/pull/2191).
 * controller: Improve response time for listing sessions.
   This also creates a new periodic job that will delete terminated
   sessions after 1 hour.
   See Deprecations/Changes for some additional details.
   [PR](https://github.com/hashicorp/boundary/pull/2160).
+* event filtering: Change event filters to use lowercase and snake case for data
+  elements like the rest of Boundary filters do. 
+* ui: Use include_terminated flag for listing sessions.
+  [PR](https://github.com/hashicorp/boundary-ui/pull/1126).
+* ui: Add Quick Setup onboarding guide.
+  [PR](https://github.com/hashicorp/boundary-ui/pull/1140).
+
+### Bug Fixes
+
+* The plugin execution_dir configuration parameter is now respected.
+  [PR](https://github.com/hashicorp/boundary/pull/2183).
+* ui: Fix Users page not updating fields correctly.
+  [PR](https://github.com/hashicorp/boundary-ui/pull/1105).
 
 ### Deprecations/Changes
 
+* Targets: Removes support for `credential libraries` with respect to Target resources. 
+  The `library` `fields` and `actions` were deprecated in [Boundary 0.5.0](#050-20210802), 
+  please use `credential sources` instead. See changelog referenced above for 
+  more details ([PR](https://github.com/hashicorp/boundary/pull/1533)).
 * Credential Libraries: The `user_password` credential type has been renamed to
   `username_password` to remove any inconsistency over what the credential type is.
   All existing `user_password` typed credential libraries will be migrated to

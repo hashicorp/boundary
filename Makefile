@@ -148,6 +148,10 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
+	@protoc-go-inject-tag -input=./internal/server/store/controller.pb.go
+	@protoc-go-inject-tag -input=./internal/server/store/worker.pb.go
+	@protoc-go-inject-tag -input=./internal/server/store/root_certificate.pb.go
+	@protoc-go-inject-tag -input=./internal/server/store/worker_auth.pb.go
 	@protoc-go-inject-tag -input=./internal/target/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/targettest/store/target.pb.go
 	@protoc-go-inject-tag -input=./internal/target/tcp/store/target.pb.go
@@ -155,7 +159,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/scheduler/job/store/job.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
-	@protoc-go-inject-tag -input=./internal/servers/servers.pb.go
+	@protoc-go-inject-tag -input=./internal/credential/static/store/static.pb.go
+	@protoc-go-inject-tag -input=./internal/server/servers.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
@@ -184,12 +189,18 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/credential_store_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/credentiallibraries/credential_library.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/credential_library_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/credentials/credential.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/credential_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/roles/role.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/role_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/sessions/session.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/session_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/users/user.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/user_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/workers/worker.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/worker_service.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/server_coordination_service.pb.go
+
 
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
@@ -200,7 +211,13 @@ protobuild:
 .PHONY: protolint
 protolint:
 	@buf lint
-	@buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website'
+	# First check all protos except controller/servers for WIRE_JSON compatibility
+	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
+		--exclude-path=controller/servers \
+		--config buf.breaking.json.yaml
+	# Next check all protos for WIRE compatibility. WIRE is a subset of WIRE_JSON so we don't need to exclude any files.
+	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
+		--config buf.breaking.wire.yaml
 
 .PHONY: website
 # must have nodejs and npm installed

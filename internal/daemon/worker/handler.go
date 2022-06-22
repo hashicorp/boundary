@@ -137,7 +137,6 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			}
 			return
 		}
-		workerId := w.conf.RawConfig.Worker.Name
 
 		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
@@ -187,7 +186,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 				return
 			}
 			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
-				sessStatus, err = session.Activate(ctx, sessClient, workerId, sessionId, handshake.GetTofuToken(), version)
+				sessStatus, err = session.Activate(ctx, sessClient, sessionId, handshake.GetTofuToken(), version)
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
 					if err = conn.Close(websocket.StatusInternalError, "unable to activate session"); err != nil {
@@ -195,6 +194,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 					}
 					return
 				}
+				event.WriteSysEvent(ctx, op, "session successfully activated", "session_id", sessionId)
 			}
 		}
 
@@ -216,6 +216,15 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 
+		if w.LastStatusSuccess() == nil || w.LastStatusSuccess().WorkerId == "" {
+			event.WriteError(ctx, op, errors.New("worker id is empty"))
+			if err = conn.Close(websocket.StatusInternalError, "worker id is empty"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+			return
+		}
+		workerId := w.LastStatusSuccess().WorkerId
+
 		var ci *session.ConnInfo
 		var connsLeft int32
 		ci, connsLeft, err = session.AuthorizeConnection(ctx, sessClient, workerId, sessionId)
@@ -226,7 +235,12 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			}
 			return
 		}
-		defer session.CloseConnections(ctx, sessClient, w.sessionInfoMap, map[string]string{ci.Id: si.Id})
+		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.Id)
+		defer func() {
+			if session.CloseConnections(ctx, sessClient, w.sessionInfoMap, map[string]string{ci.Id: si.Id}) {
+				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.Id)
+			}
+		}()
 
 		si.Lock()
 		ci.ConnCtx = connCtx
