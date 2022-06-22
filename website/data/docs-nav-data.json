@@ -49,12 +49,12 @@
             "path": "configuration/worker/overview"
           },
           {
-            "title": "KMS Workers",
-            "path": "configuration/worker/kms-worker"
-          },
-          {
             "title": "PKI Workers",
             "path": "configuration/worker/pki-worker"
+          },
+          {
+            "title": "KMS Workers <sup>OSS Only</sup>",
+            "path": "configuration/worker/kms-worker"
           }
         ]
       },
@@ -113,10 +113,6 @@
         ]
       },
       {
-        "title": "controller",
-        "path": "configuration/controller"
-      },
-      {
         "title": "events",
         "routes": [
           {
@@ -138,7 +134,11 @@
         ]
       },
       {
-        "title": "plugins",
+        "title": "controller <sup>OSS Only</sup>",
+        "path": "configuration/controller"
+      },
+      {
+        "title": "plugins <sup>OSS Only</sup>",
         "path": "configuration/plugins"
       }
     ]
