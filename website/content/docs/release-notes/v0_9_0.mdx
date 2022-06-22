@@ -1,0 +1,42 @@
+---
+layout: docs
+page_title: v0.9.0
+description: |-
+  Boundary release notes for v0.9.0
+---
+
+# [Boundary v0.9.0](https://www.boundaryproject.io/downloads)
+
+The release notes below contain information about new functionality available in the Boundary v0.9.0 release.
+To see a granular record of when each item was merged into the Boundary project, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md).
+To learn about what Boundary consists of, we highly recommend you start at the [Getting Started Page](/docs/getting-started).
+
+Lastly, for instructions on how to upgrade an existing Boundary deployment to v0.9.0, please review Boundary's [general upgrade guide](https://learn.hashicorp.com/tutorials/boundary/upgrade-version).
+
+## Boundary v0.9.0 Highlights
+
+**HCP Boundary Public Beta:** Boundary is coming to the HashiCorp Cloud Platform! HCP Boundary provides an easy way to securely access 
+critical systems with fine-grained authorizations based on trusted identities. Boundary on HashiCorp Cloud Platform provides a fully managed, 
+single workflow to securely connect to hosts and critical systems across Kubernetes clusters, cloud service catalogs, and on-premises infrastructure.
+You can now [try HCP Boundary](https://learn.hashicorp.com/collections/boundary/hcp-getting-started) for free during our [Public Beta](https://cloud.hashicorp.com/products/boundary).
+
+**Self-Managed Workers:** With HCP Boundary, administrators have the option of setting up private, self-managed workers for infrastructure access. This provides the 
+security of having privately managed workers while providing the low overhead of a managed service. Learn more about setting up self-managed workers
+[here](https://learn.hashicorp.com/tutorials/boundary/hcp-manage-workers).
+
+**Worker Registration Enhancements:** Administrators now have a second method of authenticating workers, and we call these PKI Workers (the original 
+authentication method is now called KMS Workers). PKI Workers authenticate to Boundary using a new certificate-based method, allowing for worker deployment 
+without using a shared KMS.
+
+**Static Credential Store:** In Boundary 0.9.0, we are introducing the static credential store, a basic 
+[credential store](https://www.boundaryproject.io/docs/concepts/domain-model/credential-stores) that is native to Boundary. These credentials
+are encrypted and stored directly in Boundary. For users interested in integrated secrets management to Boundary targets, the new basic 
+credential store removes the dependency on HashiCorp Vault. Currently, the static credential store only supports username/password type credentials. Note: If you 
+wish to use the Desktop Client for credential brokering, version 1.4.4 and up is required.
+
+**Admin UI Quickstart:** Users can now access a quickstart tool on the Admin UI which sets up a target along with a host, project, and organization.
+
+## What's Changed
+
+For more detailed information of all changes since 0.8.0, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md)
+

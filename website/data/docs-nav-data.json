@@ -25,8 +25,8 @@
         ]
       },
       {
-        "title": "Run and Login",
-        "path": "getting-started/run-and-login"
+        "title": "Deploy and Login",
+        "path": "getting-started/deploy-and-login"
       },
       {
         "title": "Connect to Target",
@@ -35,61 +35,111 @@
     ]
   },
   {
-    "title": "Installing",
+    "title": "Configuration",
     "routes": [
       {
-        "title": "Overview",
-        "path": "installing"
+        "title": "Overview/Top-Level Parameters",
+        "path": "configuration"
       },
       {
-        "title": "Non-Dev Environments",
-        "path": "installing/no-gen-resources"
+        "title": "worker",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/worker/overview"
+          },
+          {
+            "title": "KMS Workers",
+            "path": "configuration/worker/kms-worker"
+          },
+          {
+            "title": "PKI Workers",
+            "path": "configuration/worker/pki-worker"
+          }
+        ]
       },
       {
-        "title": "Systemd Install",
-        "path": "installing/systemd"
+        "title": "listener",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/listener"
+          },
+          {
+            "title": "TCP",
+            "path": "configuration/listener/tcp"
+          },
+          {
+            "title": "Unix",
+            "path": "configuration/listener/unix"
+          }
+        ]
       },
       {
-        "title": "Postgres Install",
-        "path": "installing/postgres"
+        "title": "KMS",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/kms"
+          },
+          {
+            "title": "AEAD",
+            "path": "configuration/kms/aead"
+          },
+          {
+            "title": "AWS KMS",
+            "path": "configuration/kms/awskms"
+          },
+          {
+            "title": "AliCloud KMS",
+            "path": "configuration/kms/alicloudkms"
+          },
+          {
+            "title": "Azure Key Vault",
+            "path": "configuration/kms/azurekeyvault"
+          },
+          {
+            "title": "GCP Cloud KMS",
+            "path": "configuration/kms/gcpckms"
+          },
+          {
+            "title": "OCI KMS",
+            "path": "configuration/kms/ocikms"
+          },
+          {
+            "title": "Vault Transit",
+            "path": "configuration/kms/transit"
+          }
+        ]
       },
       {
-        "title": "High Availability Install",
-        "path": "installing/high-availability"
+        "title": "controller",
+        "path": "configuration/controller"
       },
       {
-        "title": "Reference Architectures",
-        "path": "installing/reference-architectures"
-      }
-    ]
-  },
-  {
-    "title": "API/Clients",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "api-clients"
+        "title": "events",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/events/overview"
+          },
+          {
+            "title": "Common Sink Parameters",
+            "path": "configuration/events/common"
+          },
+          {
+            "title": "File Sink",
+            "path": "configuration/events/file"
+          },
+          {
+            "title": "Stderr Sink",
+            "path": "configuration/events/stderr"
+          }
+        ]
       },
       {
-        "title": "API",
-        "path": "api-clients/api"
-      },
-      {
-        "title": "CLI",
-        "path": "api-clients/cli"
-      },
-      {
-        "title": "Go SDK",
-        "path": "api-clients/go-sdk"
-      },
-      {
-        "title": "Desktop",
-        "hidden": true,
-        "path": "api-clients/desktop"
-      },
-      {
-        "title": "Desktop",
-        "href": "https://learn.hashicorp.com/tutorials/boundary/getting-started-desktop-app"
+        "title": "plugins",
+        "path": "configuration/plugins"
       }
     ]
   },
@@ -243,139 +293,6 @@
     ]
   },
   {
-    "title": "Developing Boundary",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "developing"
-      },
-      {
-        "title": "Building",
-        "path": "developing/building"
-      },
-      {
-        "title": "Developing the UI",
-        "path": "developing/ui"
-      }
-    ]
-  },
-  {
-    "divider": true
-  },
-  {
-    "title": "Configuration",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "configuration"
-      },
-      {
-        "title": "listener",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/listener"
-          },
-          {
-            "title": "TCP",
-            "path": "configuration/listener/tcp"
-          },
-          {
-            "title": "Unix",
-            "path": "configuration/listener/unix"
-          }
-        ]
-      },
-      {
-        "title": "KMS",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/kms"
-          },
-          {
-            "title": "AEAD",
-            "path": "configuration/kms/aead"
-          },
-          {
-            "title": "AWS KMS",
-            "path": "configuration/kms/awskms"
-          },
-          {
-            "title": "AliCloud KMS",
-            "path": "configuration/kms/alicloudkms"
-          },
-          {
-            "title": "Azure Key Vault",
-            "path": "configuration/kms/azurekeyvault"
-          },
-          {
-            "title": "GCP Cloud KMS",
-            "path": "configuration/kms/gcpckms"
-          },
-          {
-            "title": "OCI KMS",
-            "path": "configuration/kms/ocikms"
-          },
-          {
-            "title": "Vault Transit",
-            "path": "configuration/kms/transit"
-          }
-        ]
-      },
-      {
-        "title": "controller",
-        "path": "configuration/controller"
-      },
-      {
-        "title": "worker",
-        "path": "configuration/worker"
-      },
-      {
-        "title": "events",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/events/overview"
-          },
-          {
-            "title": "Common Sink Parameters",
-            "path": "configuration/events/common"
-          },
-          {
-            "title": "File Sink",
-            "path": "configuration/events/file"
-          },
-          {
-            "title": "Stderr Sink",
-            "path": "configuration/events/stderr"
-          }
-        ]
-      },
-      {
-        "title": "plugins",
-        "path": "configuration/plugins"
-      }
-    ]
-  },
-  {
-    "title": "Operations",
-    "routes": [
-      {
-        "title": "Overview",
-        "path": "operations"
-      },
-      {
-        "title": "Metrics",
-        "path": "operations/metrics"
-      },
-      {
-        "title": "Health Endpoint",
-        "path": "operations/health"
-      }
-    ]
-  },
-  {
     "title": "Common Workflows",
     "href": "https://learn.hashicorp.com/collections/boundary/basic-administration"
   },
@@ -414,11 +331,129 @@
     ]
   },
   {
+    "title": "API/Clients",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "api-clients"
+      },
+      {
+        "title": "API",
+        "path": "api-clients/api"
+      },
+      {
+        "title": "CLI",
+        "path": "api-clients/cli"
+      },
+      {
+        "title": "Go SDK",
+        "path": "api-clients/go-sdk"
+      },
+      {
+        "title": "Desktop",
+        "hidden": true,
+        "path": "api-clients/desktop"
+      },
+      {
+        "title": "Desktop",
+        "href": "https://learn.hashicorp.com/tutorials/boundary/getting-started-desktop-app"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
+    "title": "Boundary OSS",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "oss"
+      },
+      {
+        "title": "Installation",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "oss/installing"
+          },
+          {
+            "title": "Dev Mode",
+            "path": "oss/installing/dev-mode"
+          },
+          {
+            "title": "Run and Login",
+            "path": "oss/installing/run-and-login"
+          },
+          {
+            "title": "Connect to Dev Target",
+            "path": "oss/installing/connect-to-dev-target"
+          },
+          {
+            "title": "Non-Dev Environments",
+            "path": "oss/installing/no-gen-resources"
+          },
+          {
+            "title": "Systemd Install",
+            "path": "oss/installing/systemd"
+          },
+          {
+            "title": "Postgres Install",
+            "path": "oss/installing/postgres"
+          },
+          {
+            "title": "High Availability Install",
+            "path": "oss/installing/high-availability"
+          },
+          {
+            "title": "Reference Architectures",
+            "path": "oss/installing/reference-architectures"
+          }
+        ]
+      },
+      {
+        "title": "Operations",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "oss/operations"
+          },
+          {
+            "title": "Metrics",
+            "path": "oss/operations/metrics"
+          },
+          {
+            "title": "Health Endpoint",
+            "path": "oss/operations/health"
+          }
+        ]
+      },
+      {
+        "title": "Developing Boundary",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "oss/developing"
+          },
+          {
+            "title": "Building",
+            "path": "oss/developing/building"
+          },
+          {
+            "title": "Developing the UI",
+            "path": "oss/developing/ui"
+          }
+        ]
+      }
+    ]
+  },
+  {
     "divider": true
   },
   {
     "title": "Roadmap",
-    "path": "roadmap"
+    "path": "roadmap",
+    "hidden": true
   },
   {
     "title": "Release Notes",
@@ -426,6 +461,10 @@
       {
         "title": "Overview",
         "path": "release-notes"
+      },
+      {
+        "title": "v0.9.0",
+        "path": "release-notes/v0_9_0"
       },
       {
         "title": "v0.8.0",

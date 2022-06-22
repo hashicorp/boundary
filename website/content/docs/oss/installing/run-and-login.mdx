@@ -30,35 +30,19 @@ $ boundary authenticate password \
          -auth-method-id=ampw_1234567890
 ```
 
-If you are on Unix-like operating system (other than macOS/Darwin), you may get
-an error indicating that the token could not be stored, as the freedesktop.org
-Secret Service implementation is not always available. On these systems, you can
-work around this by installing `dbus-x11` and `gnome-keyring` using your package
-manager, then creating and unlocking the default keyring with the following,
-substituting in a password of your choice for "foobar" (but ending with `\n`).
-You can also avoid putting the password on the command line by running the
-`gnome-keyring-daemon` commands directly and entering in the password, followed
-by a newline (return) and an EOF (`Ctrl+D`).
+If you are on Windows or macOS, the system password store will be used to store
+the new token. On any other operating system, you may get an error indicating
+that the token could not be stored. Boundary defaults to using
+[pass](https://www.passwordstore.org/) on these machines, which uses [GNU
+Privacy Guard](https://gnupg.org/) to encrypt values. If it is not available,
+the token will be displayed and can be stored in a system of your choice and
+passed in via the `BOUNDARY_TOKEN` environment variable.
 
-- `eval "$(printf 'foobar\n' | gnome-keyring-daemon --unlock)"`
-- `eval "$(printf 'foobar\n' | gnome-keyring-daemon --start)"`
-
-This would have to be run in each shell.
-
-If you're unable to install these packages, or don't want to, you can tell the
-Boundary authenticate command to not save the token to the operating system's
-key manager by setting `-token-name=none` flag or `BOUNDARY_TOKEN_NAME=none` env
-variable when running `boundary authenticate`. You'll be responsible for setting
-the token in subsequent commands via `-token` flag or `BOUNDARY_TOKEN` env
-variable. An easy way to do this would be to use the `-format=json` flag along
-with `jq` to pull the token value out of the response and place it wherever you
-wish, then create a command alias for `boundary` that sources that value into
-the environment or the `-token` flag.
-
-~> Token storage on \*nix systems has been more problematic than we expected.
-We're exploring alternatives. See the discussion on [this GitHub
-issue](https://github.com/hashicorp/boundary/issues/697#issuecomment-709448942)
-to track it and voice your thoughts.
+It is recommended to make use of `pass` or another alternative (such as any
+implementation of the freedesktop.org Secret Service feature). Installation and
+configuration of `pass` or other alternatives is beyond the scope of this
+article; consult the documentation for `pass` or your specific OS distribution
+help pages.
 
 </Tab>
 <Tab heading="Admin Console">
@@ -127,5 +111,6 @@ the Boundary server does not use TLS in development mode.
 
 ## Next Steps
 
-See [connecting to your first target](/docs/getting-started/connect-to-target) for how
-to use Boundary to run your first SSH session.
+See [connecting to your first
+target](/docs/oss/installing/connect-to-dev-target) for how to use Boundary to
+run your first SSH session.
