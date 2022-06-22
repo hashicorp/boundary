@@ -248,8 +248,8 @@ alter table session_connection
 -- without having to worry about old values being valid in the new types.
 -- Finally, neither jobs nor servers are exposed out of boundary so the risk of
 -- losing data that would be useful later on is diminished.
--- controller_id column updated in 35/01_job_migrations.up.sql 
 alter table job_run
+  -- Column updated in 35/01_job_migrations.up.sql 
   add column controller_id text,
   drop column server_id;
 alter table job_run
