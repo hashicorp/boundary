@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +66,20 @@ func TestSetup(t testing.TB, dialect string, opt ...TestOption) (*DB, string) {
 	case opts.withLogLevel != DefaultTestLogLevel:
 		db.wrapped.LogLevel(dbw.LogLevel(opts.withLogLevel))
 	default:
-		db.wrapped.LogLevel(dbw.Error)
+		var defaultLevel dbw.LogLevel
+		switch strings.ToLower(os.Getenv("DEFAULT_TEST_LOG_LEVEL")) {
+		case "silent":
+			defaultLevel = dbw.Silent
+		case "error":
+			defaultLevel = dbw.Error
+		case "warn":
+			defaultLevel = dbw.Warn
+		case "info":
+			defaultLevel = dbw.Info
+		default:
+			defaultLevel = dbw.Silent
+		}
+		db.wrapped.LogLevel(defaultLevel)
 	}
 	t.Cleanup(func() {
 		sqlDB, err := db.SqlDB(ctx)

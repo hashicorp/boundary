@@ -1,28 +1,33 @@
 ---
 layout: docs
-page_title: Server Configuration
+page_title: Overview/Top-Level Parameters
 description: Boundary configuration reference.
 ---
 
 # Configuration
 
 [listener]: /docs/configuration/listener
-[telemetry]: /docs/configuration/telemetry
 [controller]: /docs/configuration/controller
 [worker]: /docs/configuration/worker
 [kms]: /docs/configuration/kms
 [plugins]: /docs/configuration/plugins
+[events]: /docs/configuration/events
 
-Outside of development mode, Boundary controllers and workers are configured using a file.
-The format of this file is [HCL](https://github.com/hashicorp/hcl). In this section you'll find
+Outside of development mode, Boundary controllers and workers are configured
+using a file. The format of this file is
+[HCL](https://github.com/hashicorp/hcl). In this section you'll find
 configuration block examples for Boundary controllers and workers.
 
-After the configuration is written, use the `-config` flag to specify a local path to the file.
+After the configuration is written, use the `-config` flag to specify a local
+path to the file.
 
-## Parameters
+## HCP Boundary-Only Parameters
 
-- [`controller`](/docs/configuration/controller): Controller specific
-  configuration. If present, `boundary server` will start a Controller subprocess.
+- `hcp_boundary_cluster_id` `(string)` - The ID of an HCP Boundary cluster.
+  Setting this allows discovery of upstream addresses for self-managed workers
+  to connect to the cluster.
+
+## Shared OSS and HCP Boundary Parameters
 
 - [`worker`](/docs/configuration/worker): Worker specific configuration. If
   present, `boundary server` will start a Worker subprocess.
@@ -38,11 +43,11 @@ After the configuration is written, use the `-config` flag to specify a local pa
   Optionally, the `ops` purpose listener block serves as a higher-level listener
   where Boundary's operational endpoints live (eg: /health).
 
-
 - [`kms`](/docs/configuration/kms): Configures KMS blocks [for various
   purposes](/docs/concepts/security/data-encryption).
 
-- [`plugins`](/docs/configuration/plugins): Configures options for plugins.
+- [`events`](/docs/configuration/events/overview): Configures event (observability,
+  audit, error) handling.
 
 - `disable_mlock` `(bool: false)` – Disables the server from executing the
   `mlock` syscall, which prevents memory from being swapped to disk. This is
@@ -65,12 +70,25 @@ After the configuration is written, use the `-config` flag to specify a local pa
   LimitMEMLOCK=infinity
   ```
 
-- `log_level` `(string: "info")` – Specifies the log level to use; overridden by
-  CLI and env var parameters. Supported log levels: Trace, Debug, Error, Warn, Info.
+- `log_level` `(string: "info")` – (Deprecated: this is being phased out in
+  favor of observability and is currently only used as a backup if eventing
+  fails.) Specifies the log level to use; overridden by CLI and env var
+  parameters. Supported log levels: Trace, Debug, Error, Warn, Info.
 
-- `log_format` `(string: "")` – Specifies the log format to use; overridden by
-  CLI and env var parameters. Supported log formats: `"standard"`, `"json"`.
+- `log_format` `(string: "")` – (Deprecated: this is being phased out in favor
+  of observability and is currently only used as a backup if eventing fails.)
+  Specifies the log format to use; overridden by CLI and env var parameters.
+  Supported log formats: `"standard"`, `"json"`.
+
+## OSS-Only Parameters
+
+- [`controller`](/docs/configuration/controller)<: Controller specific
+  configuration. If present, `boundary server` will start a Controller subprocess.
+
+- [`plugins`](/docs/configuration/plugins): Configures options for plugins.
 
 ## Example Configurations
 
-For complete example configurations see the sections for [controller](/docs/configuration/controller) and [worker](/docs/configuration/worker).
+For complete example configurations see the sections for
+[controller](/docs/configuration/controller) and
+[worker](/docs/configuration/worker).

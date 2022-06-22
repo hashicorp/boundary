@@ -1,0 +1,108 @@
+---
+layout: docs
+page_title: KMS Worker Configuration
+description: |-
+  KMS worker-specific parameters.
+---
+
+
+## KMS Worker Configuration
+
+KMS Workers require a `name` field. This specifies a unique name of this worker within the Boundary cluster.
+The `name` value can be:
+- a direct name string (must be all lowercase)
+- a reference to a file on disk (`file://`) from which the name is read
+- an env var (`env://`) from which the name is read.
+
+~> **Note:** Changing the `name` results in the creation of a new worker in the
+cluster and assignment of a new worker ID.
+
+KMS Workers accept an optional `description` field. The `description` value can be:
+- a direct description string
+- a reference to a file on disk (`file://`) from which the name is read
+- an env var (`env://`) from which the name is read.
+
+```hcl
+worker {
+  name = "example-worker"
+  description = "An example worker"
+  public_addr = "5.1.23.198"
+}
+```
+
+KMS Workers also require a KMS block designated for `worker-auth`. This is the KMS configuration for
+authentication between the workers and controllers and must be present. Example (not safe for production!):
+
+```hcl
+  kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "global_worker-auth"
+}
+```
+
+This configuration must be the same for the worker-auth configuration for the controller if you're
+running the controller and worker as separate servers.
+
+Optionally, a KMS stanza for configuration encryption purpose can also be specified:
+
+```hcl
+# Configuration encryption block: decrypts sensitive values in the
+# configuration file. See `boundary config [encrypt|decrypt] -h`.
+kms "aead" {
+  purpose   = "config"`
+  aead_type = "aes-gcm"
+  key       = "7xtkEoS5EXPbgynwd+dDLHopaCqK8cq0Rpep4eooaTs="
+}
+```
+
+Boundary supports many kinds of KMS integrations. For a complete guide to all available
+KMS types, see our [KMS documentation](/docs/configuration/kms).
+
+# Complete Configuration Example
+
+```hcl
+listener "tcp" {
+	purpose = "proxy"
+	tls_disable = true
+	address = "127.0.0.1"
+}
+
+worker {
+  # Name attr must be unique across workers
+  name = "demo-worker-1"
+  description = "A default worker created for demonstration"
+
+  # Workers must be able to reach upstreams on :9201
+  initial_upstreams = [
+    "10.0.0.1",
+    "10.0.0.2",
+    "10.0.0.3",
+  ]
+
+  public_addr = "myhost.mycompany.com"
+
+  tags {
+    type   = ["prod", "webservers"]
+    region = ["us-east-1"]
+  }
+}
+
+# must be same key as used on controller config
+kms "aead" {
+	purpose = "worker-auth"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "global_worker-auth"
+}
+```
+
+[`initial_upstreams`](/docs/configuration/worker/overview#initial_upstreams)
+are used to connect to upstream Boundary clusters.
+
+## Further Reading
+
+For more on how `tags{}` in the above configuration are used to facilitate
+routing to the correct target, refer to the [Worker
+Tags](/docs/concepts/filtering/worker-tags) page.

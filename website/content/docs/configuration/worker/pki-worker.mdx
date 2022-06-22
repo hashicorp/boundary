@@ -1,0 +1,59 @@
+---
+layout: docs
+page_title: PKI Worker Configuration
+description: |-
+  PKI worker-specific parameters.
+---
+
+
+## PKI Worker Configuration
+PKI Workers authenticate to Boundary using a certificate-based method, allowing
+for worker deployment without using a shared KMS.
+
+PKI Workers require an accessible directory defined by `auth_storage_path` for
+credential storage. 
+
+Example (not safe for production!):
+
+```hcl
+worker {
+  auth_storage_path="/boundary/demo-worker-1"
+  initial_upstreams = ["10.0.0.1"]
+}
+```
+
+~> **Note:** `name` and `description` fields are not valid config fields for PKI
+workers. These fields are only valid for [KMS Workers][]. `name` and
+`description` can only be set for PKI workers through the API.
+
+# Complete Configuration Example
+
+```hcl
+listener "tcp" {
+	purpose = "proxy"
+	tls_disable = true
+	address = "127.0.0.1"
+}
+
+worker {
+  # Path for worker storage. Must be unique across workers
+  auth_storage_path="/boundary/demo-worker-1"
+
+  # Workers typically need to reach upstreams on :9201
+  initial_upstreams = [
+    "10.0.0.1",
+    "10.0.0.2",
+    "10.0.0.3",
+  ]
+
+  public_addr = "myhost.mycompany.com"
+
+  tags {
+    type   = ["prod", "webservers"]
+    region = ["us-east-1"]
+  }
+}
+
+
+```
+[kms workers]: /docs/configuration/worker/kms-worker

@@ -1,42 +1,21 @@
 ---
 layout: docs
-page_title: Connect to Target
+page_title: Connect to Dev Mode Target
 description: |-
   Connecting to your first target
 ---
 
 ## Connect to Your First Target
 
-The [Quick setup
-wizard](/docs/getting-started/deploy-and-login#login-to-hcp-boundary)
-is the fastest way to onboard a target to HCP Boundary.
-
-![Setup Wizard](/img/setup-wizard-target.png)
-
-A `tcp` target with a default port of `22` (the default SSH port using TCP) is
-recommended for an initial target. If using the Quick setup, a sample host set
-called **QA Databases** will contain the **CRM Database** host, with the Address
-provided during setup. When `boundary connect` is executed against the **CRM
-Database target**, the single available host will be selected and a local
-authenticated proxy to the host is established on the target's default port.
-
-![Setup Wizard](/img/quick-start-targets.png)
-
-To connect to the initial CRM Database target:
-
-1. Copy the **CRM Database target ID** (such as `ttcp_eTcZMueUYv`).
-
-1. Open a terminal session. Export the Boundary **Origin URL** as an environment
-   variable.
+The default target is a `tcp` target with a default port of `22` (which
+corresponds to the default SSH port using TCP). The host sets for this target
+contain the default host, which has the address `127.0.0.1`. When `boundary
+connect` is executed against this target, the single available host will be
+selected and a local authenticated proxy to the host is established on the
+target's default port (`127.0.0.1:22`).
 
 ```shell-session
-$ export BOUNDARY_ADDR=<boundary-origin-url>
-```
-
-1. Connect to the target.
-
-```shell-session
-$ boundary connect -target-id ttcp_eTcZMueUYv
+$ boundary connect -target-id ttcp_1234567890
 ```
 
 The output displays the address and port that your SSH client must utilize. In
@@ -46,8 +25,8 @@ to the target with a client.
 The `boundary connect` command has a number of notable options, such as
 `-listen-port` to choose the port on which the connect command will listen for
 an incoming connection. This is convenient for allowing Boundary to work with
-applications that allow you to select the connection address, but not the port.
-For many applications there are still some extra hurdles that can exist, which
+applications that allow you to select the connection address but not the port.
+For many applications, there are still some extra hurdles that can exist, which
 is why connect helpers can be useful.
 
 The dev-mode default target allows you to make as many connections as you want
@@ -65,7 +44,7 @@ warnings on future connections when a different port is allocated automatically.
 A host key must still be accepted upon first connect.
 
 ```shell-session
-$ boundary connect ssh -target-id ttcp_eTcZMueUYv
+$ boundary connect ssh -target-id ttcp_1234567890
 ```
 
 If you want to pass additional flags to the SSH client, add them to the command
@@ -73,7 +52,7 @@ line separated by a double-dash; anything after the double dash will be passed
 to the executed client. For instance:
 
 ```shell-session
-$ boundary connect ssh -target-id ttcp_eTcZMueUYv -- -l some-other-user
+$ boundary connect ssh -target-id ttcp_1234567890 -- -l some-other-user
 ```
 
 There is also a `-style` flag to allow the command to format arguments in a
@@ -102,7 +81,7 @@ across scopes. As a result, when not using the target ID, you must use the
 target's name in conjunction with the scope name or scope ID so that Boundary
 can correctly identify the desired target.
 
-Here is an SSH example in dev-mode:
+Here is an SSH example in dev mode:
 
 ```shell-session
 $ boundary connect ssh -target-name "Generated target" -target-scope-name "Generated project scope"
@@ -129,7 +108,7 @@ Whether using `-exec` or one of the listed helpers, you can pass flags to the
 executed command by including them after a double-dash `--`:
 
 ```shell-session
-$ boundary connect ssh -target-id ttcp_eTcZMueUYv -- -l myuser -i ~/.ssh/identity
+$ boundary connect ssh -target-id ttcp_1234567890 -- -l myuser -i ~/.ssh/identity
 ```
 
 You also have access to some templated values that are substituted into the
@@ -148,28 +127,28 @@ around 'curl', you could update the default TCP target from a default port
 of `:22` to `:443`:
 
 ```shell-session
-$ boundary targets update tcp -default-port 443 -id ttcp_eTcZMueUYv
+$ boundary targets update tcp -default-port 443 -id ttcp_1234567890
 
 Target information:
-  Created Time:               Fri, 17 June 2022 18:35:47 PDT
-  Description:                Sample target created by quick setup
-  ID:                         ttcp_eTcZMueUYv
-  Name:                       CRM Database target
+  Created Time:               Fri, 25 Sep 2020 18:35:47 PDT
+  Description:                Provides an initial target in Boundary
+  ID:                         ttcp_1234567890
+  Name:                       Generated target
   Session Connection Limit:   1
   Session Max Seconds:        28800
   Type:                       tcp
-  Updated Time:               Fri, 17 June 2022 19:15:17 PDT
+  Updated Time:               Fri, 25 Sep 2020 18:36:18 PDT
   Version:                    2
 
   Scope:
-    ID:                       p_A4jfDjZ9jf
-    Name:                     Sample project created by quick setup
-    Parent Scope ID:          o_B1xISmpJ5Y
+    ID:                       p_1234567890
+    Name:                     Generated project scope
+    Parent Scope ID:          o_1234567890
     Type:                     project
 
   Host Sets:
-    Host Catalog ID:          hcst_YgIU0sHxXp
-    ID:                       hsst_pp6f2hfRYB
+    Host Catalog ID:          hcst_1234567890
+    ID:                       hsst_1234567890
 
   Attributes:
     Default Port:             443
@@ -181,7 +160,7 @@ Now, `curl` can be used as the executed client for the TCP target session to do
 an authenticated download of hashicorp.com:
 
 ```shell-session
-$ boundary connect -exec curl -target-id ttcp_eTcZMueUYv \
+$ boundary connect -exec curl -target-id ttcp_1234567890 \
          -- -vvsL --output /dev/null hashicorp.com
 
 *   Trying 76.76.21.21...
@@ -200,7 +179,7 @@ run from WSL, the following allows usage of the wrapper while specifying the
 correct available binary (as WSL must use `.exe` when invoking Windows binaries):
 
 ```shell-session
-$ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_eTcZMueUYv
+$ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_1234567890
 ```
 
 ## Connect using Desktop Client
@@ -213,7 +192,7 @@ proxy details.
   playsInline
   autoPlay
   loop
-  className="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
 >
   <source
     type="video/mp4"
@@ -224,5 +203,5 @@ proxy details.
 ## Next Steps
 
 See our [basic administration
-workflows](https://learn.hashicorp.com/collections/boundary/hcp-administration)
+workflows](https://learn.hashicorp.com/collections/boundary/oss-administration)
 for in depth discussion on managing scopes, targets, identities, and sessions.

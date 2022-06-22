@@ -10,34 +10,12 @@ Before getting started with Boundary, it's important to understand a few key con
 
 ## Requirements
 
-The examples in Getting Started all revolve around running in `dev mode`. There are a few requirements for running dev mode:
+The Getting Started section uses HCP Boundary, a HashiCorp hosted and fully-managed version of the Boundary product. 
 
-1. [Docker](https://docs.docker.com/get-docker/) is installed
-1. A route to download the [Postgres Docker image](https://hub.docker.com/_/postgres) is available or a local image cache is available
-1. A [Boundary binary](https://www.boundaryproject.io/downloads) in your `$PATH`
-1. Optionally, an [installation of Boundary Desktop](https://learn.hashicorp.com/tutorials/boundary/getting-started-desktop-app) if you want to use the desktop examples
+To get started with HCP Boundary, users need:
 
-## What is Dev Mode?
+- A [HashiCorp Cloud Platform](https://portal.cloud.hashicorp.com/sign-up) account
+- A [Boundary binary](https://www.boundaryproject.io/downloads) in your `$PATH`
+- Optionally, an [installation of Boundary Desktop](https://learn.hashicorp.com/tutorials/boundary/getting-started-desktop-app)
 
-Dev mode is an all-in-one installation method for getting started with Boundary quickly. As the name implies,
-dev mode is not a production installation method, but instead a way to get Boundary running with a Postgres
-database easily. Do not use dev mode in a production environment, see [Production Installation](/docs/installing/high-availability) section for
-production ready deployment methods.
-
-Dev mode brings up a fully functioning instance of Boundary, including:
-
-1. A controller server
-2. A worker server
-3. A Postgres database
-
-These components should all be considered ephemeral - no data persistence occurs across dev mode restarts. Along with these external components, dev mode also creates several resources within Boundary to make it easier and faster to connect to your first target:
-
-1. A org [scope](/docs/concepts/domain-model/scopes) and a project scope with a default ID of `o_1234567890` and `p_1234567890` respectively.
-1. An [auth method](/docs/concepts/domain-model/auth-methods) with a random login name and password with a default auth method ID of `ampw_1234567890`.
-1. A static [host catalog](/docs/concepts/domain-model/host-catalogs) with a default ID of `hcst_1234567890`.
-1. A static [host](/docs/concepts/domain-model/hosts) and [host set](/docs/concepts/domain-model/host-sets) with default ID's of `hst_1234567890` and `hsst_1234567890` respectively.
-1. A TCP [target](/docs/concepts/domain-model/targets) with a default ID of `ttcp_1234567890`.
-
-The default ID suffixes are overridable or can be randomly generated, and there are many other dev mode controls. To see a complete list of these override flags, consult `boundary dev -h`.
-
-If you plan on provisioning a large number of resources in dev mode, it's strongly recommended that users leverage our [Terraform Provider for Boundary](https://github.com/hashicorp/terraform-provider-boundary) for managing configuration of Boundary. This will simplify starting up and shutting down your Boundary dev instance.
+If you prefer to Get Started on your local machine, refer to [Run and Login in Dev Mode](/docs/oss/installing/run-and-login). For more information on Boundary OSS and self-managed installations, refer to [Boundary OSS](/docs/oss/index).
