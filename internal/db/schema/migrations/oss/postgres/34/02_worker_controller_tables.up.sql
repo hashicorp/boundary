@@ -3,6 +3,7 @@ begin;
 -- Split the server table into two new tables: controller and worker
 
 create table server_controller (
+  -- Column updated in 35/01_job_migrations.up.sql
   private_id text primary key,
   description wt_description,
   address wt_network_address not null,
@@ -248,6 +249,7 @@ alter table session_connection
 -- Finally, neither jobs nor servers are exposed out of boundary so the risk of
 -- losing data that would be useful later on is diminished.
 alter table job_run
+  -- Column updated in 35/01_job_migrations.up.sql 
   add column controller_id text,
   drop column server_id;
 alter table job_run
