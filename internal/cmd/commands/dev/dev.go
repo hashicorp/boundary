@@ -25,8 +25,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -530,17 +530,20 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var serverName string
-	switch {
-	case c.Config.Controller == nil:
-		serverName = "boundary-dev"
-	default:
-		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandCliError
-		}
-		serverName = c.Config.Controller.Name + "/boundary-dev"
+	serverName, err := os.Hostname()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Unable to determine hostname: %w", err).Error())
+		return base.CommandCliError
 	}
+	var serverTypes []string
+	if c.Config.Controller != nil {
+		serverTypes = append(serverTypes, "controller")
+	}
+	if c.Config.Worker != nil {
+		serverTypes = append(serverTypes, "worker")
+	}
+	serverName = fmt.Sprintf("%s/%s", serverName, strings.Join(serverTypes, "+"))
+
 	eventFlags, err := base.NewEventFlags(event.TextSinkFormat, base.ComposedOfEventArgs{
 		Format:       c.flagEventFormat,
 		Audit:        c.flagAudit,
@@ -574,7 +577,7 @@ func (c *Command) Run(args []string) int {
 	if c.flagRecoveryKey != "" {
 		c.Config.DevRecoveryKey = c.flagRecoveryKey
 	}
-	if err := c.SetupKMSes(c.Context, c.UI, c.Config, base.WithSkipWorkerAuthKmsInstantiation(!c.flagUseKmsWorkerAuthMethod)); err != nil {
+	if err := c.SetupKMSes(c.Context, c.UI, c.Config); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -582,15 +585,18 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
 	}
-	if c.flagUseKmsWorkerAuthMethod {
-		if c.WorkerAuthKms == nil {
-			c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-			return base.CommandUserError
-		}
+	if c.WorkerAuthKms == nil {
+		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
+		return base.CommandUserError
+	}
+	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
+	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
+
+	if !c.flagUseKmsWorkerAuthMethod {
+		c.DevUsePkiForUpstream = true
+		// These must be unset for PKI
 		c.Config.Worker.Name = ""
 		c.Config.Worker.Description = ""
-		c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
-		c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 	}
 	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
 	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
@@ -804,7 +810,7 @@ func (c *Command) Run(args []string) int {
 			}
 
 			if !c.flagControllerOnly {
-				if !c.flagWorkerAuthStorageSkipCleanup {
+				if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
 					c.worker.WorkerAuthStorage.Cleanup()
 				}
 				if err := c.worker.Shutdown(); err != nil {
@@ -839,14 +845,14 @@ func authorizeWorker(ctx context.Context, c *controller.Controller, request stri
 
 	serversRepo, err := c.ServersRepoFn()
 	if err != nil {
-		return fmt.Errorf("error fetching servers repo: %w", err)
+		return fmt.Errorf("error fetching server repo: %w", err)
 	}
 
-	_, err = serversRepo.CreateWorker(ctx, &servers.Worker{
+	_, err = serversRepo.CreateWorker(ctx, &server.Worker{
 		Worker: &store.Worker{
 			ScopeId: scope.Global.String(),
 		},
-	}, servers.WithFetchNodeCredentialsRequest(req))
+	}, server.WithFetchNodeCredentialsRequest(req))
 	if err != nil {
 		return fmt.Errorf("error creating worker: %w", err)
 	}

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-bexpr"
@@ -24,9 +24,9 @@ func TestWorkerList_Addresses(t *testing.T) {
 	var tested workerList
 	for _, a := range addresses {
 		workerInfos = append(workerInfos, &pb.WorkerInfo{Address: a})
-		tested = append(tested, servers.NewWorker(scope.Global.String(),
-			servers.WithName(a),
-			servers.WithAddress(a)))
+		tested = append(tested, server.NewWorker(scope.Global.String(),
+			server.WithName(a),
+			server.WithAddress(a)))
 	}
 	assert.Equal(t, addresses, tested.addresses())
 	assert.Equal(t, workerInfos, tested.workerInfos())
@@ -35,20 +35,20 @@ func TestWorkerList_Addresses(t *testing.T) {
 func TestWorkerList_Filter(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	var workers []*servers.Worker
+	var workers []*server.Worker
 	for i := 0; i < 5; i++ {
 		switch {
 		case i%2 == 0:
-			workers = append(workers, servers.TestKmsWorker(t, conn, wrapper,
-				servers.WithName(fmt.Sprintf("test_worker_%d", i)),
-				servers.WithWorkerTags(&servers.Tag{
+			workers = append(workers, server.TestKmsWorker(t, conn, wrapper,
+				server.WithName(fmt.Sprintf("test_worker_%d", i)),
+				server.WithWorkerTags(&server.Tag{
 					Key:   fmt.Sprintf("key%d", i),
 					Value: fmt.Sprintf("value%d", i),
 				})))
 		default:
-			workers = append(workers, servers.TestPkiWorker(t, conn, wrapper,
-				servers.WithName(fmt.Sprintf("test_worker_%d", i)),
-				servers.WithWorkerTags(&servers.Tag{
+			workers = append(workers, server.TestPkiWorker(t, conn, wrapper,
+				server.WithName(fmt.Sprintf("test_worker_%d", i)),
+				server.WithWorkerTags(&server.Tag{
 					Key:   "key",
 					Value: "configvalue",
 				})))

@@ -1,0 +1,207 @@
+---
+layout: docs
+page_title: Connect to Dev Mode Target
+description: |-
+  Connecting to your first target
+---
+
+## Connect to Your First Target
+
+The default target is a `tcp` target with a default port of `22` (which
+corresponds to the default SSH port using TCP). The host sets for this target
+contain the default host, which has the address `127.0.0.1`. When `boundary
+connect` is executed against this target, the single available host will be
+selected and a local authenticated proxy to the host is established on the
+target's default port (`127.0.0.1:22`).
+
+```shell-session
+$ boundary connect -target-id ttcp_1234567890
+```
+
+The output displays the address and port that your SSH client must utilize. In
+the next section the `ssh` connect helper is used to make it easier to connect
+to the target with a client.
+
+The `boundary connect` command has a number of notable options, such as
+`-listen-port` to choose the port on which the connect command will listen for
+an incoming connection. This is convenient for allowing Boundary to work with
+applications that allow you to select the connection address but not the port.
+For many applications, there are still some extra hurdles that can exist, which
+is why connect helpers can be useful.
+
+The dev-mode default target allows you to make as many connections as you want
+within the authorized session. When you are finished making connections, simply
+`Ctrl-C/Command-C` the `boundary connect` process to shut down the session.
+
+### Using Connect Helpers
+
+Boundary includes connect helpers that automatically accept host SSH key prompts
+for you. These are written as `boundary connect <subcommand>`. 
+
+In the following example, the helper will automatically execute `ssh` for you,
+filling in the local address and port. An expected host ID is set to avoid
+warnings on future connections when a different port is allocated automatically.
+A host key must still be accepted upon first connect.
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_1234567890
+```
+
+If you want to pass additional flags to the SSH client, add them to the command
+line separated by a double-dash; anything after the double dash will be passed
+to the executed client. For instance:
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_1234567890 -- -l some-other-user
+```
+
+There is also a `-style` flag to allow the command to format arguments in a
+different style expected by different SSH clients. Besides the default `ssh`,
+the `boundary connect ssh` command supports `-style putty` to support passing
+connection information to PuTTY.
+
+One advantage to styles is that Boundary will provide information to the client
+in the format that makes sense. For example, the `-username` flag is used to
+specify a username other than your currently logged-in user. This ensures that
+regardless of your `-style` choice, the username is properly passed to the
+executed client, and you don't need to figure out the syntax yourself.
+
+## Selecting Targets
+
+When using `boundary connect` you must identify the target used for connecting.
+Convention in this documentation is to use the target ID because it refers to a
+single explicit value, however other flags are supported:
+
+- `target-name`: The name of the target
+- `target-scope-id`: The ID of the scope in which the target lives
+- `target-scope-name`: The name of the scope in which the target lives
+
+Note however that these are not uniquely identifying, as names can be re-used
+across scopes. As a result, when not using the target ID, you must use the
+target's name in conjunction with the scope name or scope ID so that Boundary
+can correctly identify the desired target.
+
+Here is an SSH example in dev mode:
+
+```shell-session
+$ boundary connect ssh -target-name "Generated target" -target-scope-name "Generated project scope"
+```
+
+## Built-In vs. Exec
+
+Boundary comes with built-in wrappers for popular layer 7 connection protocols,
+such as:
+
+- `ssh`: defaults to the local SSH client (`ssh`)
+- `postgres`: defaults to the official Postgres CLI client (`psql`)
+- `rdp`: defaults to the built-in Windows RDP client (`mstsc`)
+- `http`: defaults to `curl`
+- `kube`: defaults to `kubectl`
+
+However, `boundary connect` can accommodate executing clients even when there is
+no built-in support for a specific client using `-exec`. The `-exec` flag is a
+very powerful tool, allowing you to wrap Boundary TCP sessions in your preferred
+client. You can use this flag to create an authenticated proxy to almost
+anything.
+
+Whether using `-exec` or one of the listed helpers, you can pass flags to the
+executed command by including them after a double-dash `--`:
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_1234567890 -- -l myuser -i ~/.ssh/identity
+```
+
+You also have access to some templated values that are substituted into the
+command arguments, and these values are additionally injected as environment
+variables in the executed command:
+
+- `{{boundary.ip}}` (`BOUNDARY_PROXIED_IP`): The IP address of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.port}}` (`BOUNDARY_PROXIED_PORT`): The port of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): The host:port format of the
+  address. This is essentially equivalent to `{{boundary.ip}}:{{boundary.port}}`.
+
+For example, if you wanted to use Boundary to create an authenticated firewall
+around 'curl', you could update the default TCP target from a default port
+of `:22` to `:443`:
+
+```shell-session
+$ boundary targets update tcp -default-port 443 -id ttcp_1234567890
+
+Target information:
+  Created Time:               Fri, 25 Sep 2020 18:35:47 PDT
+  Description:                Provides an initial target in Boundary
+  ID:                         ttcp_1234567890
+  Name:                       Generated target
+  Session Connection Limit:   1
+  Session Max Seconds:        28800
+  Type:                       tcp
+  Updated Time:               Fri, 25 Sep 2020 18:36:18 PDT
+  Version:                    2
+
+  Scope:
+    ID:                       p_1234567890
+    Name:                     Generated project scope
+    Parent Scope ID:          o_1234567890
+    Type:                     project
+
+  Host Sets:
+    Host Catalog ID:          hcst_1234567890
+    ID:                       hsst_1234567890
+
+  Attributes:
+    Default Port:             443
+```
+
+In the output above the default port for the target has now changed to `:443`.
+
+Now, `curl` can be used as the executed client for the TCP target session to do
+an authenticated download of hashicorp.com:
+
+```shell-session
+$ boundary connect -exec curl -target-id ttcp_1234567890 \
+         -- -vvsL --output /dev/null hashicorp.com
+
+*   Trying 76.76.21.21...
+* TCP_NODELAY set
+* Connected to hashicorp.com (76.76.21.21) port 80 (#0)
+> GET / HTTP/1.1
+> Host: hashicorp.com
+> User-Agent: curl/7.64.1
+> Accept: */*
+...<truncated output>...
+```
+
+Note that `-exec` is available for subcommands that wrap clients as well. As an
+example, if `putty.exe` is available on a Windows host but the command is being
+run from WSL, the following allows usage of the wrapper while specifying the
+correct available binary (as WSL must use `.exe` when invoking Windows binaries):
+
+```shell-session
+$ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_1234567890
+```
+
+## Connect using Desktop Client
+
+While using the desktop client, choose the target and connect to retrieve local
+proxy details.
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1613612836-boundary-desktop-clickthrough-connect-target-v1-0-0.mp4"
+  />
+</video>
+
+## Next Steps
+
+See our [basic administration
+workflows](https://learn.hashicorp.com/collections/boundary/oss-administration)
+for in depth discussion on managing scopes, targets, identities, and sessions.

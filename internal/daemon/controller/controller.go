@@ -27,8 +27,8 @@ import (
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
-	"github.com/hashicorp/boundary/internal/servers"
-	serversjob "github.com/hashicorp/boundary/internal/servers/job"
+	"github.com/hashicorp/boundary/internal/server"
+	serversjob "github.com/hashicorp/boundary/internal/server/job"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -117,7 +117,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		conf.RawConfig.Controller = new(config.Controller)
 	}
 
-	if conf.RawConfig.Controller.Name, err = conf.RawConfig.Controller.InitNameIfEmpty(); err != nil {
+	if err := conf.RawConfig.Controller.InitNameIfEmpty(); err != nil {
 		return nil, fmt.Errorf("error auto-generating controller name: %w", err)
 	}
 
@@ -283,8 +283,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
-	c.ServersRepoFn = func() (*servers.Repository, error) {
-		return servers.NewRepository(dbase, dbase, c.kms)
+	c.ServersRepoFn = func() (*server.Repository, error) {
+		return server.NewRepository(dbase, dbase, c.kms)
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, dbase, dbase, c.kms)
@@ -301,8 +301,19 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)
 	}
-	c.WorkerAuthRepoStorageFn = func() (*servers.WorkerAuthRepositoryStorage, error) {
-		return servers.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
+	c.WorkerAuthRepoStorageFn = func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
+	}
+
+	// Check that credentials are available at startup, to avoid some harmless
+	// but nasty-looking errors
+	serversRepo, err := server.NewRepositoryStorage(ctx, dbase, dbase, c.kms)
+	if err != nil {
+		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
+	}
+	err = server.RotateRoots(ctx, serversRepo)
+	if err != nil {
+		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
 	}
 
 	return c, nil

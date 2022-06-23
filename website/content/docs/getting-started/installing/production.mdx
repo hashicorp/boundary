@@ -50,12 +50,6 @@ Example controller configuration:
 # Disable memory lock: https://www.man7.org/linux/man-pages/man2/mlock.2.html
 disable_mlock = true
 
-telemetry {
-  # prometheus is not currently implemented
-  prometheus_retention_time = "24h"
-  disable_hostname = true
-}
-
 # Controller configuration block
 controller {
   # This name attr must be unique!

@@ -59,10 +59,10 @@ func (w *Worker) StartControllerConnections() error {
 	}
 
 	if len(initialAddrs) == 0 {
-		if w.conf.RawConfig.HCPBClusterId != "" {
-			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HCPBClusterId, hcpbUrlSuffix)
+		if w.conf.RawConfig.HcpbClusterId != "" {
+			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HcpbClusterId, hcpbUrlSuffix)
 			initialAddrs = append(initialAddrs, resolver.Address{Addr: clusterAddress})
-			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCPB Cluster address %s as upstream address", clusterAddress))
+			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCP Boundary cluster address %s as upstream address", clusterAddress))
 		} else {
 			return errors.New("no initial upstream addresses found")
 		}
@@ -72,7 +72,7 @@ func (w *Worker) StartControllerConnections() error {
 		Addresses: initialAddrs,
 	})
 	if err := w.createClientConn(initialAddrs[0].Addr); err != nil {
-		return fmt.Errorf("error making client connection to upstream address: %w", err)
+		return fmt.Errorf("error making client connection to upstream address %s: %w", initialAddrs[0].Addr, err)
 	}
 
 	return nil
@@ -84,7 +84,7 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 		var conn net.Conn
 		var err error
 		switch {
-		case w.conf.WorkerAuthKms != nil:
+		case w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream:
 			conn, err = w.v1KmsAuthDialFn(ctx, addr)
 		default:
 			conn, err = protocol.Dial(ctx, w.WorkerAuthStorage, addr, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))

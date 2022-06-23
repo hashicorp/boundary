@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +35,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
+	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(err)
 	sessionRepo, err := NewRepository(rw, rw, kms)
 	connectionRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
@@ -45,8 +45,8 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Create two "workers". One will remain untouched while the other "goes
 	// away and comes back" (worker 2).
-	worker1 := servers.TestKmsWorker(t, conn, wrapper)
-	worker2 := servers.TestKmsWorker(t, conn, wrapper)
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
+	worker2 := server.TestKmsWorker(t, conn, wrapper)
 
 	// Create a few sessions on each, activate, and authorize a connection
 	var connIds []string
@@ -109,10 +109,10 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
-	_, err = serversRepo.UpsertWorkerStatus(ctx, servers.NewWorker(scope.Global.String(),
-		servers.WithName(worker1.GetName()),
-		servers.WithAddress(worker1.GetAddress())),
-		servers.WithPublicId(worker1.GetPublicId()))
+	_, err = serversRepo.UpsertWorkerStatus(ctx, server.NewWorker(scope.Global.String(),
+		server.WithName(worker1.GetName()),
+		server.WithAddress(worker1.GetAddress())),
+		server.WithPublicId(worker1.GetPublicId()))
 	require.NoError(err)
 
 	// Run the job.
@@ -185,7 +185,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	gracePeriod := 1 * time.Second
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(err)
-	serversRepo, err := servers.NewRepository(rw, rw, kms)
+	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(err)
 
 	job, err := newSessionConnectionCleanupJob(rw, deadWorkerConnCloseMinGrace)
@@ -199,10 +199,10 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// firstly, the last worker will have no connections at all, and we will be
 	// closing the others in stages to test multiple servers being closed at
 	// once.
-	worker1 := servers.TestKmsWorker(t, conn, wrapper)
-	worker2 := servers.TestKmsWorker(t, conn, wrapper)
-	worker3 := servers.TestKmsWorker(t, conn, wrapper)
-	worker4 := servers.TestKmsWorker(t, conn, wrapper)
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
+	worker2 := server.TestKmsWorker(t, conn, wrapper)
+	worker3 := server.TestKmsWorker(t, conn, wrapper)
+	worker4 := server.TestKmsWorker(t, conn, wrapper)
 
 	// Create sessions on the first three, activate, and authorize connections
 	var worker1ConnIds, worker2ConnIds, worker3ConnIds []string
@@ -291,11 +291,11 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	// updateServer is a helper for updating the update time for our
 	// servers. The controller is read back so that we can reference
 	// the most up-to-date fields.
-	updateServer := func(t *testing.T, w *servers.Worker) *servers.Worker {
+	updateServer := func(t *testing.T, w *server.Worker) *server.Worker {
 		t.Helper()
 		pubId := w.GetPublicId()
 		w.PublicId = ""
-		wkr, err := serversRepo.UpsertWorkerStatus(ctx, w, servers.WithPublicId(pubId))
+		wkr, err := serversRepo.UpsertWorkerStatus(ctx, w, server.WithPublicId(pubId))
 		require.NoError(err)
 		return wkr
 	}
@@ -464,7 +464,7 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	}
 
 	// Setup deleted worker connections
-	deletedWorker := servers.TestKmsWorker(t, conn, wrapper)
+	deletedWorker := server.TestKmsWorker(t, conn, wrapper)
 	dActiveConn := createConnection(deletedWorker.GetPublicId())
 	dClosedConn := createConnection(deletedWorker.GetPublicId())
 	connRepo.closeConnections(ctx, []CloseWith{{
@@ -477,7 +477,7 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	require.NoError(err)
 
 	// Non deleted worker case
-	activeWorker := servers.TestKmsWorker(t, conn, wrapper)
+	activeWorker := server.TestKmsWorker(t, conn, wrapper)
 	activeConn := createConnection(activeWorker.GetPublicId())
 	closedConn := createConnection(activeWorker.GetPublicId())
 	connRepo.closeConnections(ctx, []CloseWith{{

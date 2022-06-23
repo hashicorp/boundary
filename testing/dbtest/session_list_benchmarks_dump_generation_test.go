@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -129,7 +129,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			require.NoError(err)
 			connRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms)
 			require.NoError(err)
-			_ = servers.TestKmsWorker(t, conn, wrap)
+			_ = server.TestKmsWorker(t, conn, wrap)
 
 			usersStart := time.Now()
 			t.Logf("Populating %d users", scenario.users)

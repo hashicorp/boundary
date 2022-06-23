@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -230,7 +231,9 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		if err != nil {
 			t.Fatal(err)
 		}
-		opts.Config.Worker.Name = opts.Name
+		if opts.Name != "" {
+			opts.Config.Worker.Name = opts.Name
+		}
 	}
 
 	if len(opts.InitialUpstreams) > 0 {
@@ -251,18 +254,22 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	tw.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
 
 	if opts.Config.Worker == nil {
-		opts.Config.Worker = new(config.Worker)
-	}
-	if opts.Config.Worker.Name == "" {
-		opts.Config.Worker.Name, err = opts.Config.Worker.InitNameIfEmpty()
-		if err != nil {
-			t.Fatal(err)
+		opts.Config.Worker = &config.Worker{
+			Name: opts.Name,
 		}
-		event.WriteSysEvent(ctx, op, "worker name generated", "name", opts.Config.Worker.Name)
+	}
+	if opts.WorkerAuthStoragePath != "" {
+		opts.Config.Worker.AuthStoragePath = opts.WorkerAuthStoragePath
+		tw.b.DevUsePkiForUpstream = true
 	}
 	tw.name = opts.Config.Worker.Name
 
-	if err := tw.b.SetupEventing(tw.b.Logger, tw.b.StderrLock, opts.Config.Worker.Name, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+	serverName, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverName = fmt.Sprintf("%s/worker", serverName)
+	if err := tw.b.SetupEventing(tw.b.Logger, tw.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
 

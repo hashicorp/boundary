@@ -3,7 +3,7 @@ syntax = "proto3";
 // Package store provides protobufs for storing types in the pki package.
 package controller.storage.servers.store.v1;
 
-option go_package = "github.com/hashicorp/boundary/internal/servers/store;store";
+option go_package = "github.com/hashicorp/boundary/internal/server/store;store";
 
 // WorkerAuth contains all fields related to an authorized Worker resource
 message WorkerAuth {

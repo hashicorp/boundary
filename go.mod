@@ -20,8 +20,8 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.0
-	github.com/hashicorp/boundary/api v0.0.24
-	github.com/hashicorp/boundary/sdk v0.0.15
+	github.com/hashicorp/boundary/api v0.0.25
+	github.com/hashicorp/boundary/sdk v0.0.16
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
@@ -92,7 +92,7 @@ require github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f // this i
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220515130442-cac0b5ac133b
-	github.com/hashicorp/nodeenrollment v0.1.0
+	github.com/hashicorp/nodeenrollment v0.1.4
 )
 
 require (

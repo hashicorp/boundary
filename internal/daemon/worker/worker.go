@@ -14,7 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/servers"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
+
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/mr-tron/base58"
 
@@ -126,11 +127,6 @@ func New(conf *Config) (*Worker, error) {
 		conf.SecureRandomReader = rand.Reader
 	}
 
-	var err error
-	if conf.RawConfig.Worker.Name, err = w.conf.RawConfig.Worker.InitNameIfEmpty(); err != nil {
-		return nil, fmt.Errorf("error auto-generating worker name: %w", err)
-	}
-
 	if !conf.RawConfig.DisableMlock {
 		// Ensure our memory usage is locked into physical RAM
 		if err := mlock.LockMemory(); err != nil {
@@ -168,12 +164,6 @@ func New(conf *Config) (*Worker, error) {
 		return nil, fmt.Errorf("exactly one proxy listener is required")
 	}
 
-	w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
-		nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
-	if err != nil {
-		return nil, err
-	}
-
 	return w, nil
 }
 
@@ -191,7 +181,7 @@ func (w *Worker) Start() error {
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
 	w.controllerResolver.Store(controllerResolver)
 
-	if w.conf.WorkerAuthKms == nil {
+	if w.conf.WorkerAuthKms == nil || w.conf.DevUsePkiForUpstream {
 		// In this section, we look for existing worker credentials. The two
 		// variables below store whether to create new credentials and whether
 		// to create a fetch request so it can be displayed in the worker
@@ -200,6 +190,13 @@ func (w *Worker) Start() error {
 		// the controller, we don't want to invalidate that request on restart
 		// by generating a new set of credentials. However it's safe to output a
 		// new fetch request so we do in fact do that.
+		var err error
+		w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
+			nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
+		if err != nil {
+			return fmt.Errorf("error loading worker auth storage directory: %w", err)
+		}
+
 		var createNodeAuthCreds bool
 		var createFetchRequest bool
 		nodeCreds, err := types.LoadNodeCredentials(w.baseContext, w.WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
@@ -392,13 +389,13 @@ func (w *Worker) Resolver() *manual.Resolver {
 
 func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	if len(incoming) == 0 {
-		w.tags.Store([]*servers.TagPair{})
+		w.tags.Store([]*pb.TagPair{})
 		return
 	}
-	tags := []*servers.TagPair{}
+	tags := []*pb.TagPair{}
 	for k, vals := range incoming {
 		for _, v := range vals {
-			tags = append(tags, &servers.TagPair{
+			tags = append(tags, &pb.TagPair{
 				Key:   k,
 				Value: v,
 			})
@@ -493,7 +490,7 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 	}
 
 	if sessionId == "" {
-		event.WriteSysEvent(ctx, op, "session_id not found in either SNI or ALPN protos", "server_name", hello.ServerName, "alpn_protos", hello.SupportedProtos)
+		event.WriteSysEvent(ctx, op, "session_id not found in either SNI or ALPN protos", "server_name", hello.ServerName)
 		return nil, fmt.Errorf("could not find session ID in SNI or ALPN protos")
 	}
 
@@ -502,13 +499,18 @@ func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) 
 		event.WriteError(ctx, op, err, event.WithInfo("failed to create controller session client"))
 	}
 
+	lastSuccess := w.LastStatusSuccess()
+	if lastSuccess == nil {
+		event.WriteSysEvent(ctx, op, "no last status information found at session acceptance time")
+		return nil, fmt.Errorf("no last status information found at session acceptance time")
+	}
+
 	timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)
 	defer cancel()
 
 	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
-		ServerId:    w.conf.RawConfig.Worker.Name,
-		SessionId:   sessionId,
-		WorkerKeyId: w.WorkerAuthCurrentKeyId.Load(),
+		SessionId: sessionId,
+		WorkerId:  lastSuccess.WorkerId,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error validating session: %w", err)

@@ -147,25 +147,23 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var serverNames []string
+	serverName, err := os.Hostname()
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Unable to determine hostname: %w", err).Error())
+		return base.CommandCliError
+	}
+	var serverTypes []string
 	if c.Config.Controller != nil {
-		if _, err := c.Config.Controller.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandUserError
-		}
-		serverNames = append(serverNames, c.Config.Controller.Name)
+		serverTypes = append(serverTypes, "controller")
 	}
 	if c.Config.Worker != nil {
-		if _, err := c.Config.Worker.InitNameIfEmpty(); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandUserError
-		}
-		serverNames = append(serverNames, c.Config.Worker.Name)
+		serverTypes = append(serverTypes, "worker")
 	}
+	serverName = fmt.Sprintf("%s/%s", serverName, strings.Join(serverTypes, "+"))
 
 	if err := c.SetupEventing(c.Logger,
 		c.StderrLock,
-		strings.Join(serverNames, "/"),
+		serverName,
 		base.WithEventerConfig(c.Config.Eventing),
 		base.WithEventGating(true)); err != nil {
 		c.UI.Error(err.Error())
@@ -355,10 +353,10 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 
-		if c.Config.HCPBClusterId != "" {
-			_, err := uuid.ParseUUID(c.Config.HCPBClusterId)
+		if c.Config.HcpbClusterId != "" {
+			_, err := uuid.ParseUUID(c.Config.HcpbClusterId)
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Invalid HCPB cluster id %q: %w", c.Config.HCPBClusterId, err).Error())
+				c.UI.Error(fmt.Errorf("Invalid HCP Boundary cluster id %q: %w", c.Config.HcpbClusterId, err).Error())
 				return base.CommandUserError
 			}
 		}
@@ -496,7 +494,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		if c.WorkerAuthKms == nil && c.worker.WorkerAuthRegistrationRequest != "" {
+		if c.worker.WorkerAuthRegistrationRequest != "" {
 			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
 			c.Info["worker auth registration request"] = c.worker.WorkerAuthRegistrationRequest
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
@@ -679,14 +677,6 @@ func (c *Command) StartWorker() error {
 		return fmt.Errorf("Error initializing worker: %w", err)
 	}
 
-	if c.WorkerAuthKms == nil {
-		if c.worker.WorkerAuthStorage == nil {
-			return fmt.Errorf("No worker auth KMS specified and no worker auth storage found")
-		}
-		c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
-		c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
-	}
-
 	if err := c.worker.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting worker: %w", err)
 		if err := c.worker.Shutdown(); err != nil {
@@ -694,6 +684,14 @@ func (c *Command) StartWorker() error {
 			retErr = fmt.Errorf("Error shutting down worker: %w", err)
 		}
 		return retErr
+	}
+
+	if c.WorkerAuthKms == nil || c.DevUsePkiForUpstream {
+		if c.worker.WorkerAuthStorage == nil {
+			return fmt.Errorf("No worker auth storage found")
+		}
+		c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
+		c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
 	}
 
 	return nil

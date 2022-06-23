@@ -12,7 +12,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
@@ -76,31 +76,31 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
 	}
 
 	// Convert API tags to storage tags
 	wTags := wStat.GetTags()
-	workerTags := make([]*servers.Tag, 0, len(wTags))
+	workerTags := make([]*server.Tag, 0, len(wTags))
 	for _, v := range wTags {
-		workerTags = append(workerTags, &servers.Tag{
+		workerTags = append(workerTags, &server.Tag{
 			Key:   v.GetKey(),
 			Value: v.GetValue(),
 		})
 	}
 
-	wConf := servers.NewWorker(scope.Global.String(),
-		servers.WithName(wStat.GetName()),
-		servers.WithDescription(wStat.GetDescription()),
-		servers.WithAddress(wStat.GetAddress()),
-		servers.WithWorkerTags(workerTags...))
-	opts := []servers.Option{servers.WithUpdateTags(req.GetUpdateTags())}
+	wConf := server.NewWorker(scope.Global.String(),
+		server.WithName(wStat.GetName()),
+		server.WithDescription(wStat.GetDescription()),
+		server.WithAddress(wStat.GetAddress()),
+		server.WithWorkerTags(workerTags...))
+	opts := []server.Option{server.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
-		opts = append(opts, servers.WithPublicId(wStat.GetPublicId()))
+		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))
 	}
 	if wStat.GetKeyId() != "" {
-		opts = append(opts, servers.WithKeyId(wStat.GetKeyId()))
+		opts = append(opts, server.WithKeyId(wStat.GetKeyId()))
 	}
 	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
@@ -221,33 +221,20 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 	}
 
 	if sessionInfo.WorkerFilter != "" {
-		if req.ServerId == "" {
-			event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no server ID from worker"))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive server ID when looking up session but filtering is enabled: %v", err)
+		if req.WorkerId == "" {
+			event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no id information from worker"))
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled: %v", err)
 		}
 		serversRepo, err := ws.serversRepoFn()
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 		}
-		var w *servers.Worker
-		if req.WorkerKeyId != "" {
-			workerId, err := serversRepo.LookupWorkerIdByKeyId(ctx, req.WorkerKeyId)
-			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by keyId", "keyId", req.WorkerKeyId))
-				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
-			}
-			w, err = serversRepo.LookupWorker(ctx, workerId)
-			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by workerId", "workerId", workerId))
-				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
-			}
-		} else {
-			w, err = serversRepo.LookupWorkerByName(ctx, req.GetServerId())
-			if err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker by name", "name", req.ServerId))
-				return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up tags for server: %v", err)
-			}
+		w, err := serversRepo.LookupWorker(ctx, req.WorkerId)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up worker: %v", err)
+
 		}
 		// Build the map for filtering.
 		tagMap := w.CanonicalTags()
@@ -255,7 +242,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		// Create the evaluator
 		eval, err := bexpr.CreateEvaluator(sessionInfo.WorkerFilter)
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "server_id", req.ServerId))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "worker_id", req.WorkerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 		}
 		filterInput := map[string]interface{}{
@@ -388,9 +375,9 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 
 	serversRepo, err := ws.serversRepoFn()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting servers repo: %v", err)
+		return nil, status.Errorf(codes.Internal, "error getting server repo: %v", err)
 	}
-	w, err := serversRepo.LookupWorkerByName(ctx, req.GetWorkerId())
+	w, err := serversRepo.LookupWorker(ctx, req.GetWorkerId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error looking up worker: %v", err)
 	}

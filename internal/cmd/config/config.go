@@ -126,7 +126,7 @@ type Config struct {
 	Plugins Plugins `hcl:"plugins"`
 
 	// Internal field for use with HCP deployments. Used if controllers/ initial_upstreams is not set
-	HCPBClusterId string `hcl:"hcp_boundary_cluster_id"`
+	HcpbClusterId string `hcl:"hcp_boundary_cluster_id"`
 }
 
 type Controller struct {
@@ -164,14 +164,21 @@ type Controller struct {
 	SchedulerRunJobInterval time.Duration `hcl:"-"`
 }
 
-func (c *Controller) InitNameIfEmpty() (string, error) {
+func (c *Controller) InitNameIfEmpty() error {
 	if c == nil {
-		return "", fmt.Errorf("controller config is empty")
+		return fmt.Errorf("controller config is empty")
 	}
-	if err := initNameIfEmpty(&c.Name); err != nil {
-		return "", fmt.Errorf("error auto-generating controller name: %w", err)
+	if c.Name != "" {
+		return nil
 	}
-	return c.Name, nil
+
+	var err error
+	c.Name, err = db.NewPublicId("c")
+	if err != nil {
+		return fmt.Errorf("error auto-generating controller name: %w", err)
+	}
+
+	return nil
 }
 
 type Worker struct {
@@ -205,27 +212,6 @@ type Worker struct {
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
-}
-
-func (w *Worker) InitNameIfEmpty() (string, error) {
-	if w == nil {
-		return "", fmt.Errorf("worker config is empty")
-	}
-	if err := initNameIfEmpty(&w.Name); err != nil {
-		return "", fmt.Errorf("error auto-generating worker name: %w", err)
-	}
-	return w.Name, nil
-}
-
-func initNameIfEmpty(name *string) error {
-	if *name == "" {
-		var err error
-		if *name, err = db.NewPublicId("w"); err != nil {
-			return err
-		}
-		*name = strings.ToLower(*name)
-	}
-	return nil
 }
 
 type Database struct {

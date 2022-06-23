@@ -14,7 +14,7 @@ import (
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/testing/dbtest"
@@ -93,7 +93,7 @@ func BenchmarkSessionList(b *testing.B) {
 			pwRepo, err := password.NewRepository(rw, rw, kmsThing)
 			require.NoError(b, err)
 
-			serversRepo, err := servers.NewRepository(rw, rw, kmsThing)
+			serversRepo, err := server.NewRepository(rw, rw, kmsThing)
 			require.NoError(b, err)
 
 			iamRepoFn := func() (*iam.Repository, error) {
@@ -105,7 +105,7 @@ func BenchmarkSessionList(b *testing.B) {
 			authTokenRepoFn := func() (*authtoken.Repository, error) {
 				return authTokenRepo, nil
 			}
-			serversRepoFn := func() (*servers.Repository, error) {
+			serversRepoFn := func() (*server.Repository, error) {
 				return serversRepo, nil
 			}
 

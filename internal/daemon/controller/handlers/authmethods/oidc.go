@@ -333,33 +333,42 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 	case startCommand:
 		if req.GetOidcStartAttributes() != nil {
 			attrs := req.GetOidcStartAttributes()
+			switch {
+			case attrs == nil:
+				badFields["attributes"] = "Attributes field not supplied request"
+			default:
+				// Ensure we pay no attention to cache information provided by the client
+				attrs.CachedRoundtripPayload = ""
 
-			// Ensure we pay no attention to cache information provided by the client
-			attrs.CachedRoundtripPayload = ""
-
-			payload := attrs.GetRoundtripPayload()
-			if payload == nil {
-				break
-			}
-			m, err := json.Marshal(payload.AsMap())
-			if err != nil {
-				// We don't know what's in this payload so we swallow the
-				// error, as it could be something sensitive.
-				badFields[roundtripPayloadAttributesField] = "Unable to marshal given value as JSON."
-			} else {
-				// Cache for later
-				attrs.CachedRoundtripPayload = string(m)
+				payload := attrs.GetRoundtripPayload()
+				if payload == nil {
+					break
+				}
+				m, err := json.Marshal(payload.AsMap())
+				if err != nil {
+					// We don't know what's in this payload so we swallow the
+					// error, as it could be something sensitive.
+					badFields[roundtripPayloadAttributesField] = "Unable to marshal given value as JSON."
+				} else {
+					// Cache for later
+					attrs.CachedRoundtripPayload = string(m)
+				}
 			}
 		}
 	case callbackCommand:
 		attrs := req.GetOidcAuthMethodAuthenticateCallbackRequest()
+		switch {
+		case attrs == nil:
+			badFields["attributes"] = "Attributes field not supplied request"
+			return handlers.InvalidArgumentErrorf("This is a required field.", badFields)
+		default:
+			if attrs.GetCode() == "" && attrs.GetError() == "" {
+				badFields[codeField] = "Code field not supplied in callback request."
+			}
 
-		if attrs.GetCode() == "" && attrs.GetError() == "" {
-			badFields[codeField] = "Code field not supplied in callback request."
-		}
-
-		if attrs.GetState() == "" {
-			badFields[stateField] = "State field not supplied in callback request."
+			if attrs.GetState() == "" {
+				badFields[stateField] = "State field not supplied in callback request."
+			}
 		}
 
 	case tokenCommand:

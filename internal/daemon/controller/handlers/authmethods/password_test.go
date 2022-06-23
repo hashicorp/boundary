@@ -498,10 +498,11 @@ func TestAuthenticate_Password(t *testing.T) {
 	require.NotNil(t, acct)
 
 	cases := []struct {
-		name     string
-		request  *pbs.AuthenticateRequest
-		wantType string
-		wantErr  error
+		name            string
+		request         *pbs.AuthenticateRequest
+		wantType        string
+		wantErr         error
+		wantErrContains string
 	}{
 		{
 			name: "basic",
@@ -597,6 +598,16 @@ func TestAuthenticate_Password(t *testing.T) {
 			},
 			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
 		},
+		{
+			name: "no-attributes",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: am.GetPublicId(),
+				TokenType:    "token",
+				Attrs:        &pbs.AuthenticateRequest_PasswordLoginAttributes{},
+			},
+			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: `Details: {{name: "attributes", desc: "This is a required field."}}`,
+		},
 	}
 
 	for _, tc := range cases {
@@ -609,6 +620,9 @@ func TestAuthenticate_Password(t *testing.T) {
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
 				return
 			}
 			require.NoError(err)

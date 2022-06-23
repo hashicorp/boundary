@@ -963,31 +963,41 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := req.GetItem().GetPasswordAccountAttributes()
-			if attrs.GetLoginName() == "" {
-				badFields[loginNameKey] = "This is a required field for this type."
+			switch {
+			case attrs == nil:
+				badFields["attributes"] = "This is a required field."
+			default:
+				if attrs.GetLoginName() == "" {
+					badFields[loginNameKey] = "This is a required field for this type."
+				}
 			}
 		case oidc.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != oidc.Subtype.String() {
 				badFields[typeField] = "Doesn't match the parent resource's type."
 			}
 			attrs := req.GetItem().GetOidcAccountAttributes()
-			if attrs.GetSubject() == "" {
-				badFields[subjectField] = "This is a required field for this type."
-			}
-			if attrs.GetIssuer() != "" {
-				du, err := url.Parse(attrs.GetIssuer())
-				if err != nil {
-					badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+			switch {
+			case attrs == nil:
+				badFields["attributes"] = "This is a required field."
+			default:
+				if attrs.GetSubject() == "" {
+					badFields[subjectField] = "This is a required field for this type."
 				}
-				if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
-					badFields[issuerField] = "The path segment of the url should be empty."
+				if attrs.GetIssuer() != "" {
+					du, err := url.Parse(attrs.GetIssuer())
+					if err != nil {
+						badFields[issuerField] = fmt.Sprintf("Cannot be parsed as a url. %v", err)
+					}
+					if trimmed := strings.TrimSuffix(strings.TrimSuffix(du.RawPath, "/"), "/.well-known/openid-configuration"); trimmed != "" {
+						badFields[issuerField] = "The path segment of the url should be empty."
+					}
 				}
-			}
-			if attrs.GetFullName() != "" {
-				badFields[nameClaimField] = "This is a read only field."
-			}
-			if attrs.GetEmail() != "" {
-				badFields[emailClaimField] = "This is a read only field."
+				if attrs.GetFullName() != "" {
+					badFields[nameClaimField] = "This is a read only field."
+				}
+				if attrs.GetEmail() != "" {
+					badFields[emailClaimField] = "This is a read only field."
+				}
 			}
 		default:
 			badFields[authMethodIdField] = "Unknown auth method type from ID."
