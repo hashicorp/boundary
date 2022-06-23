@@ -7,7 +7,7 @@
 package services
 
 import (
-	server "github.com/hashicorp/boundary/internal/server"
+	servers "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -586,7 +586,7 @@ type StatusRequest struct {
 	// The worker info. We could use information from the TLS connection but this
 	// is easier and going the other route doesn't provide much benefit -- if you
 	// get access to the key and spoof the connection, you're already compromised.
-	WorkerStatus *server.ServerWorkerStatus `protobuf:"bytes,40,opt,name=worker_status,json=workerStatus,proto3" json:"worker_status,omitempty"`
+	WorkerStatus *servers.ServerWorkerStatus `protobuf:"bytes,40,opt,name=worker_status,json=workerStatus,proto3" json:"worker_status,omitempty"`
 }
 
 func (x *StatusRequest) Reset() {
@@ -635,7 +635,7 @@ func (x *StatusRequest) GetUpdateTags() bool {
 	return false
 }
 
-func (x *StatusRequest) GetWorkerStatus() *server.ServerWorkerStatus {
+func (x *StatusRequest) GetWorkerStatus() *servers.ServerWorkerStatus {
 	if x != nil {
 		return x.WorkerStatus
 	}
@@ -924,20 +924,20 @@ func file_controller_servers_services_v1_server_coordination_service_proto_rawDe
 var file_controller_servers_services_v1_server_coordination_service_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_controller_servers_services_v1_server_coordination_service_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_controller_servers_services_v1_server_coordination_service_proto_goTypes = []interface{}{
-	(CONNECTIONSTATUS)(0),             // 0: controller.servers.services.v1.CONNECTIONSTATUS
-	(SESSIONSTATUS)(0),                // 1: controller.servers.services.v1.SESSIONSTATUS
-	(JOBTYPE)(0),                      // 2: controller.servers.services.v1.JOBTYPE
-	(CHANGETYPE)(0),                   // 3: controller.servers.services.v1.CHANGETYPE
-	(UpstreamServer_TYPE)(0),          // 4: controller.servers.services.v1.UpstreamServer.TYPE
-	(*Connection)(nil),                // 5: controller.servers.services.v1.Connection
-	(*SessionJobInfo)(nil),            // 6: controller.servers.services.v1.SessionJobInfo
-	(*Job)(nil),                       // 7: controller.servers.services.v1.Job
-	(*JobStatus)(nil),                 // 8: controller.servers.services.v1.JobStatus
-	(*UpstreamServer)(nil),            // 9: controller.servers.services.v1.UpstreamServer
-	(*StatusRequest)(nil),             // 10: controller.servers.services.v1.StatusRequest
-	(*JobChangeRequest)(nil),          // 11: controller.servers.services.v1.JobChangeRequest
-	(*StatusResponse)(nil),            // 12: controller.servers.services.v1.StatusResponse
-	(*server.ServerWorkerStatus)(nil), // 13: controller.servers.v1.ServerWorkerStatus
+	(CONNECTIONSTATUS)(0),              // 0: controller.servers.services.v1.CONNECTIONSTATUS
+	(SESSIONSTATUS)(0),                 // 1: controller.servers.services.v1.SESSIONSTATUS
+	(JOBTYPE)(0),                       // 2: controller.servers.services.v1.JOBTYPE
+	(CHANGETYPE)(0),                    // 3: controller.servers.services.v1.CHANGETYPE
+	(UpstreamServer_TYPE)(0),           // 4: controller.servers.services.v1.UpstreamServer.TYPE
+	(*Connection)(nil),                 // 5: controller.servers.services.v1.Connection
+	(*SessionJobInfo)(nil),             // 6: controller.servers.services.v1.SessionJobInfo
+	(*Job)(nil),                        // 7: controller.servers.services.v1.Job
+	(*JobStatus)(nil),                  // 8: controller.servers.services.v1.JobStatus
+	(*UpstreamServer)(nil),             // 9: controller.servers.services.v1.UpstreamServer
+	(*StatusRequest)(nil),              // 10: controller.servers.services.v1.StatusRequest
+	(*JobChangeRequest)(nil),           // 11: controller.servers.services.v1.JobChangeRequest
+	(*StatusResponse)(nil),             // 12: controller.servers.services.v1.StatusResponse
+	(*servers.ServerWorkerStatus)(nil), // 13: controller.servers.v1.ServerWorkerStatus
 }
 var file_controller_servers_services_v1_server_coordination_service_proto_depIdxs = []int32{
 	0,  // 0: controller.servers.services.v1.Connection.status:type_name -> controller.servers.services.v1.CONNECTIONSTATUS
