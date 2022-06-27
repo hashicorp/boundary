@@ -10,8 +10,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/nodeenrollment/multihop"
 	"math"
 	"math/big"
 	mathrand "math/rand"
@@ -20,6 +18,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/nodeenrollment/multihop"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"

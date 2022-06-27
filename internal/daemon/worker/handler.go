@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/common"
@@ -209,7 +210,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 
 		var ci *session.ConnInfo
 		var connsLeft int32
-		ci, connsLeft, err = sess.AuthorizeConnection(ctx, workerId, connCtx, connCancel)
+		ci, connsLeft, err = sess.AuthorizeConnection(ctx, workerId, connCancel)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to authorize connection"))
 			if err = conn.Close(websocket.StatusInternalError, "unable to authorize connection"); err != nil {

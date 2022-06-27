@@ -24,7 +24,6 @@ var errMakeSessionCloseInfoNilCloseInfo = errors.New("nil closeInfo supplied to 
 // ConnInfo defines the information about a connection attached to a session
 type ConnInfo struct {
 	Id                string
-	ConnCtx           context.Context
 	ConnCtxCancelFunc context.CancelFunc
 	Status            pbs.CONNECTIONSTATUS
 	CloseTime         time.Time
@@ -104,9 +103,10 @@ func (s *Session) GetConnections() map[string]ConnInfo {
 	// Returning the s.connInfoMap directly wouldn't be thread safe.
 	for k, v := range s.connInfoMap {
 		res[k] = ConnInfo{
-			Id:        v.Id,
-			Status:    v.Status,
-			CloseTime: v.CloseTime,
+			Id:                v.Id,
+			ConnCtxCancelFunc: v.ConnCtxCancelFunc,
+			Status:            v.Status,
+			CloseTime:         v.CloseTime,
 		}
 	}
 	return res
@@ -179,12 +179,11 @@ func (s *Session) Activate(ctx context.Context, tofu string) error {
 // The passed in connCtx and connCancel are used to terminate any ongoing
 // proxy connections.
 // The connection status is then viewable in this session's GetConnections() call.
-func (s *Session) AuthorizeConnection(ctx context.Context, workerId string, connCtx context.Context, connCancel context.CancelFunc) (*ConnInfo, int32, error) {
+func (s *Session) AuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (*ConnInfo, int32, error) {
 	ci, connsLeft, err := authorizeConnection(ctx, s.client, workerId, s.GetId())
 	if err != nil {
 		return nil, connsLeft, err
 	}
-	ci.ConnCtx = connCtx
 	ci.ConnCtxCancelFunc = connCancel
 	s.lock.Lock()
 	defer s.lock.Unlock()

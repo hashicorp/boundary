@@ -315,7 +315,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 //
 // The returned map and slice are the maps of connection -> session,
 // and sessions to completely remove from local state, respectively.
-func (w *Worker) cancelConnections(connInfoMap map[string]*session.ConnInfo, ignoreConnectionState bool) []string {
+func (w *Worker) cancelConnections(connInfoMap map[string]session.ConnInfo, ignoreConnectionState bool) []string {
 	var closedIds []string
 	for k, v := range connInfoMap {
 		if v.CloseTime.IsZero() {

@@ -6,11 +6,12 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"fmt"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"math/big"
 	"net"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
@@ -80,8 +81,8 @@ func TestHandleTcpProxyV1(t *testing.T) {
 	cache := session.NewCache(sessClient)
 	s, err := cache.RefreshSession(ctx, "one", "workerid")
 	require.NoError(err)
-	connCtx, connCancelFn := context.WithCancel(context.Background())
-	_, _, err = s.AuthorizeConnection(ctx, "workerid", connCtx, connCancelFn)
+	_, connCancelFn := context.WithCancel(context.Background())
+	_, _, err = s.AuthorizeConnection(ctx, "workerid", connCancelFn)
 	require.NoError(err)
 
 	conf := proxy.Config{

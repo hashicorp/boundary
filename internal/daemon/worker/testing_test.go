@@ -2,6 +2,8 @@ package worker
 
 import (
 	"context"
+	"testing"
+
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/db"
@@ -9,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
@@ -41,8 +42,8 @@ func TestTestWorkerLookupSession(t *testing.T) {
 	require.NoError(err)
 	require.NoError(s.Activate(ctx, sessResp.Item.AuthorizationToken))
 
-	connCtx, connCancelFn := context.WithCancel(context.Background())
-	ci, _, err := s.AuthorizeConnection(ctx, testWorker.GetPublicId(), connCtx, connCancelFn)
+	_, connCancelFn := context.WithCancel(context.Background())
+	ci, _, err := s.AuthorizeConnection(ctx, testWorker.GetPublicId(), connCancelFn)
 	require.NoError(err)
 
 	expected := TestSessionInfo{

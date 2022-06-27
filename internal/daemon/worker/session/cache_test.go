@@ -2,10 +2,11 @@ package session
 
 import (
 	"errors"
-	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/stretchr/testify/require"

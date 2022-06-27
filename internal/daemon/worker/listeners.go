@@ -5,13 +5,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"log"
 	"math"
 	"net"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"

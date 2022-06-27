@@ -1,10 +1,11 @@
 package session
 
 import (
+	"testing"
+
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestWorkerMakeCloseConnectionRequest(t *testing.T) {
