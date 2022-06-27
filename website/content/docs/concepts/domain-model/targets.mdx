@@ -48,9 +48,9 @@ TCP targets have the following additional attributes:
 
 - `session_connection_limit` - (required)
   The cumulative number of TCP connections allowed during a session.
-  The default is 1.
   -1 means no limit.
-  The value must be greater than 0 or -1.
+  The default is -1.
+  The value must be greater than 0 or exactly -1.
 
 ## Referenced By
 

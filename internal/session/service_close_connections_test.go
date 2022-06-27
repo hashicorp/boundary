@@ -3,12 +3,20 @@ package session
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestServiceCloseConnections(t *testing.T) {
@@ -18,9 +26,10 @@ func TestServiceCloseConnections(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
-	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
+	testKms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, testKms)
+	require.NoError(t, err)
+	connRepo, err := NewConnectionRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 
 	type sessionAndCloseWiths struct {
@@ -29,7 +38,47 @@ func TestServiceCloseConnections(t *testing.T) {
 	}
 
 	setupFn := func(cnt int, addtlConn int) sessionAndCloseWiths {
-		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		future := timestamppb.New(time.Now().Add(time.Hour))
+		exp := &timestamp.Timestamp{Timestamp: future}
+		org, proj := iam.TestScopes(t, iamRepo)
+
+		cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
+		hosts := static.TestHosts(t, conn, cats[0].PublicId, 1)
+		sets := static.TestSets(t, conn, cats[0].PublicId, 1)
+		_ = static.TestSetMembers(t, conn, sets[0].PublicId, hosts)
+
+		// We need to set the session connection limit to 1 so that the session
+		// is terminated when the one connection is closed.
+		tcpTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "test target", target.WithSessionConnectionLimit(1))
+
+		targetRepo, err := target.NewRepository(rw, rw, testKms)
+		require.NoError(t, err)
+		_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
+		require.NoError(t, err)
+
+		authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
+		acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
+		user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
+
+		authTokenRepo, err := authtoken.NewRepository(rw, rw, testKms)
+		require.NoError(t, err)
+		at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+		require.NoError(t, err)
+
+		expTime := timestamppb.Now()
+		expTime.Seconds += int64(tcpTarget.GetSessionMaxSeconds())
+		composedOf := ComposedOf{
+			UserId:          user.PublicId,
+			HostId:          hosts[0].PublicId,
+			TargetId:        tcpTarget.GetPublicId(),
+			HostSetId:       sets[0].PublicId,
+			AuthTokenId:     at.PublicId,
+			ScopeId:         tcpTarget.GetScopeId(),
+			Endpoint:        "tcp://127.0.0.1:22",
+			ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
+			ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),
+		}
+		s := TestSession(t, conn, wrapper, composedOf, WithExpirationTime(exp))
 		tofu := TestTofu(t)
 		s, _, err = repo.ActivateSession(context.Background(), s.PublicId, s.Version, tofu)
 		require.NoError(t, err)

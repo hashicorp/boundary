@@ -36,7 +36,7 @@ begin;
     'None',                     -- target_description,
     0,                          -- target_default_port_number,
     28800,                      -- target_session_max_seconds,
-    1,                          -- target_session_connection_limit,
+    -1,                         -- target_session_connection_limit,
 
     'p____bwidget',             -- project_id,
     'Big Widget Factory',       -- project_name,

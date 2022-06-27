@@ -133,7 +133,7 @@ func TestGet(t *testing.T) {
 		HostSourceIds:          []string{hs[0].GetPublicId(), hs[1].GetPublicId()},
 		Attrs:                  &pb.Target_TcpTargetAttributes{},
 		SessionMaxSeconds:      wrapperspb.UInt32(28800),
-		SessionConnectionLimit: wrapperspb.Int32(1),
+		SessionConnectionLimit: wrapperspb.Int32(-1),
 		AuthorizedActions:      testAuthorizedActions,
 	}
 	for _, ihs := range hs {
@@ -227,7 +227,7 @@ func TestList(t *testing.T) {
 			Type:                   tcp.Subtype.String(),
 			Attrs:                  &pb.Target_TcpTargetAttributes{},
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
-			SessionConnectionLimit: wrapperspb.Int32(1),
+			SessionConnectionLimit: wrapperspb.Int32(-1),
 			AuthorizedActions:      testAuthorizedActions,
 		})
 		totalTars = append(totalTars, wantTars[i])
@@ -243,7 +243,7 @@ func TestList(t *testing.T) {
 			Type:                   tcp.Subtype.String(),
 			Attrs:                  &pb.Target_TcpTargetAttributes{},
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
-			SessionConnectionLimit: wrapperspb.Int32(1),
+			SessionConnectionLimit: wrapperspb.Int32(-1),
 			AuthorizedActions:      testAuthorizedActions,
 		})
 	}
@@ -466,7 +466,7 @@ func TestCreate(t *testing.T) {
 						},
 					},
 					SessionMaxSeconds:      wrapperspb.UInt32(28800),
-					SessionConnectionLimit: wrapperspb.Int32(1),
+					SessionConnectionLimit: wrapperspb.Int32(-1),
 					AuthorizedActions:      testAuthorizedActions,
 					WorkerFilter:           wrapperspb.String(`type == "bar"`),
 				},
