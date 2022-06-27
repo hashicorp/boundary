@@ -51,7 +51,12 @@ type Worker struct {
 
 	tickerWg sync.WaitGroup
 
-	grpcClientConn *atomic.Value
+	// grpc.ClientConns are thread safe.
+	// See https://github.com/grpc/grpc-go/blob/master/Documentation/concurrency.md#clients
+	// This is exported for tests.
+	GrpcClientConn *grpc.ClientConn
+
+	sessionCache *session.Cache
 
 	controllerStatusConn *atomic.Value
 	everAuthenticated    *ua.Bool
@@ -59,9 +64,6 @@ type Worker struct {
 	workerStartTime      time.Time
 
 	controllerResolver *atomic.Value
-
-	controllerSessionConn *atomic.Value
-	sessionInfoMap        *sync.Map
 
 	controllerMultihopConn *atomic.Value
 
@@ -99,13 +101,10 @@ func New(conf *Config) (*Worker, error) {
 		conf:                   conf,
 		logger:                 conf.Logger.Named("worker"),
 		started:                ua.NewBool(false),
-		grpcClientConn:         new(atomic.Value),
 		controllerStatusConn:   new(atomic.Value),
 		everAuthenticated:      ua.NewBool(false),
 		lastStatusSuccess:      new(atomic.Value),
 		controllerResolver:     new(atomic.Value),
-		controllerSessionConn:  new(atomic.Value),
-		sessionInfoMap:         new(sync.Map),
 		controllerMultihopConn: new(atomic.Value),
 		tags:                   new(atomic.Value),
 		updateTags:             ua.NewBool(false),
@@ -114,7 +113,9 @@ func New(conf *Config) (*Worker, error) {
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
-	w.controllerResolver.Store((*manual.Resolver)(nil))
+	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
+	controllerResolver := manual.NewBuilderWithScheme(scheme)
+	w.controllerResolver.Store(controllerResolver)
 
 	if conf.RawConfig.Worker == nil {
 		conf.RawConfig.Worker = new(config.Worker)
@@ -175,10 +176,6 @@ func (w *Worker) Start() error {
 		event.WriteSysEvent(w.baseContext, op, "already started, skipping")
 		return nil
 	}
-
-	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
-	controllerResolver := manual.NewBuilderWithScheme(scheme)
-	w.controllerResolver.Store(controllerResolver)
 
 	if w.conf.WorkerAuthKms == nil || w.conf.DevUsePkiForUpstream {
 		// In this section, we look for existing worker credentials. The two
@@ -293,11 +290,13 @@ func (w *Worker) Start() error {
 		w.WorkerAuthCurrentKeyId.Store(currentKeyId)
 	}
 
-	if err := w.startListeners(); err != nil {
-		return fmt.Errorf("error starting worker listeners: %w", err)
-	}
 	if err := w.StartControllerConnections(); err != nil {
 		return fmt.Errorf("error making controller connections: %w", err)
+	}
+
+	w.sessionCache = session.NewCache(pbs.NewSessionServiceClient(w.GrpcClientConn))
+	if err := w.startListeners(w.sessionCache); err != nil {
+		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
 
 	// Rather than deal with some of the potential error conditions for Add on
@@ -307,7 +306,7 @@ func (w *Worker) Start() error {
 	w.tickerWg.Add(2)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext)
+		w.startStatusTicking(w.baseContext, w.sessionCache)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
@@ -342,7 +341,7 @@ func (w *Worker) Shutdown() error {
 	}
 
 	// Shut down all connections.
-	w.cleanupConnections(w.baseContext, true)
+	w.cleanupConnections(w.baseContext, true, w.sessionCache)
 
 	// Wait for next status request to succeed. Don't wait too long;
 	// wrap the base context in a timeout equal to our status grace
@@ -404,40 +403,6 @@ func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	w.updateTags.Store(true)
 }
 
-// GrpcClientConn returns the underlying client connection
-func (w *Worker) GrpcClientConn() (*grpc.ClientConn, error) {
-	rawConn := w.grpcClientConn.Load()
-	if rawConn == nil {
-		return nil, errors.New("unable to load grpc client conn")
-	}
-	cc, ok := rawConn.(*grpc.ClientConn)
-	if !ok {
-		return nil, fmt.Errorf("invalid grpc client connection %T", rawConn)
-	}
-	if cc == nil {
-		return nil, fmt.Errorf("client connection is nil")
-	}
-
-	return cc, nil
-}
-
-// ControllerSessionConn returns the underlying session service client
-func (w *Worker) ControllerSessionConn() (pbs.SessionServiceClient, error) {
-	rawConn := w.controllerSessionConn.Load()
-	if rawConn == nil {
-		return nil, errors.New("unable to load controller session service connection")
-	}
-	sessClient, ok := rawConn.(pbs.SessionServiceClient)
-	if !ok {
-		return nil, fmt.Errorf("invalid session client %T", rawConn)
-	}
-	if sessClient == nil {
-		return nil, fmt.Errorf("session client is nil")
-	}
-
-	return sessClient, nil
-}
-
 // ControllerServerCoordinationServiceConn returns the underlying server coordination service client
 func (w *Worker) ControllerServerCoordinationServiceConn() (pbs.ServerCoordinationServiceClient, error) {
 	rawConn := w.controllerStatusConn.Load()
@@ -472,125 +437,88 @@ func (w *Worker) ControllerMultihopConn() (multihop.MultihopServiceClient, error
 	return multihopClient, nil
 }
 
-func (w *Worker) getSessionTls(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+func (w *Worker) getSessionTls(sessionCache *session.Cache) func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	const op = "worker.(Worker).getSessionTls"
-	ctx := w.baseContext
-	var sessionId string
-	switch {
-	case strings.HasPrefix(hello.ServerName, globals.SessionPrefix):
-		sessionId = hello.ServerName
-	default:
-		for _, proto := range hello.SupportedProtos {
-			if strings.HasPrefix(proto, globals.SessionPrefix) {
-				sessionId = proto
-				break
+	return func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+		ctx := w.baseContext
+		var sessionId string
+		switch {
+		case strings.HasPrefix(hello.ServerName, globals.SessionPrefix):
+			sessionId = hello.ServerName
+		default:
+			for _, proto := range hello.SupportedProtos {
+				if strings.HasPrefix(proto, globals.SessionPrefix) {
+					sessionId = proto
+					break
+				}
 			}
 		}
-	}
 
-	if sessionId == "" {
-		event.WriteSysEvent(ctx, op, "session_id not found in either SNI or ALPN protos", "server_name", hello.ServerName)
-		return nil, fmt.Errorf("could not find session ID in SNI or ALPN protos")
-	}
-
-	conn, err := w.ControllerSessionConn()
-	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfo("failed to create controller session client"))
-	}
-
-	lastSuccess := w.LastStatusSuccess()
-	if lastSuccess == nil {
-		event.WriteSysEvent(ctx, op, "no last status information found at session acceptance time")
-		return nil, fmt.Errorf("no last status information found at session acceptance time")
-	}
-
-	timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)
-	defer cancel()
-
-	resp, err := conn.LookupSession(timeoutContext, &pbs.LookupSessionRequest{
-		SessionId: sessionId,
-		WorkerId:  lastSuccess.WorkerId,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error validating session: %w", err)
-	}
-
-	if resp.GetExpiration().AsTime().Before(time.Now()) {
-		return nil, fmt.Errorf("session is expired")
-	}
-
-	parsedCert, err := x509.ParseCertificate(resp.GetAuthorization().Certificate)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing session certificate: %w", err)
-	}
-
-	certPool := x509.NewCertPool()
-	certPool.AddCert(parsedCert)
-
-	tlsConf := &tls.Config{
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{resp.GetAuthorization().Certificate},
-				PrivateKey:  ed25519.PrivateKey(resp.GetAuthorization().PrivateKey),
-				Leaf:        parsedCert,
-			},
-		},
-		NextProtos: []string{"http/1.1"},
-		MinVersion: tls.VersionTLS13,
-
-		// These two are set this way so we can make use of VerifyConnection,
-		// which we set on this TLS config below. We are not skipping
-		// verification!
-		ClientAuth:         tls.RequireAnyClientCert,
-		InsecureSkipVerify: true,
-	}
-
-	// We disable normal DNS SAN behavior as we don't rely on DNS or IP
-	// addresses for security and want to avoid issues with including localhost
-	// etc.
-	verifyOpts := x509.VerifyOptions{
-		DNSName: sessionId,
-		Roots:   certPool,
-		KeyUsages: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageClientAuth,
-			x509.ExtKeyUsageServerAuth,
-		},
-	}
-	if w.TestOverrideX509VerifyCertPool != nil {
-		verifyOpts.Roots = w.TestOverrideX509VerifyCertPool
-	}
-	if w.TestOverrideX509VerifyDnsName != "" {
-		verifyOpts.DNSName = w.TestOverrideX509VerifyDnsName
-	}
-	tlsConf.VerifyConnection = func(cs tls.ConnectionState) error {
-		// Go will not run this without at least one peer certificate, but
-		// doesn't hurt to check
-		if len(cs.PeerCertificates) == 0 {
-			return errors.New("no peer certificates provided")
+		if sessionId == "" {
+			event.WriteSysEvent(ctx, op, "session_id not found in either SNI or ALPN protos", "server_name", hello.ServerName)
+			return nil, fmt.Errorf("could not find session ID in SNI or ALPN protos")
 		}
-		_, err := cs.PeerCertificates[0].Verify(verifyOpts)
-		return err
-	}
 
-	si := &session.Info{
-		Id:                    resp.GetAuthorization().GetSessionId(),
-		SessionTls:            tlsConf,
-		LookupSessionResponse: resp,
-		Status:                resp.GetStatus(),
-		ConnInfoMap:           make(map[string]*session.ConnInfo),
-	}
-	// TODO: Periodically clean this up. We can't rely on things in here but
-	// not in cancellation because they could be on the way to being
-	// established. However, since cert lifetimes are short, we can simply range
-	// through and remove values that are expired.
-	actualSiRaw, loaded := w.sessionInfoMap.LoadOrStore(sessionId, si)
-	if loaded {
-		// Update the response to the latest
-		actualSi := actualSiRaw.(*session.Info)
-		actualSi.Lock()
-		actualSi.LookupSessionResponse = resp
-		actualSi.Unlock()
-	}
+		lastSuccess := w.LastStatusSuccess()
+		if lastSuccess == nil {
+			event.WriteSysEvent(ctx, op, "no last status information found at session acceptance time")
+			return nil, fmt.Errorf("no last status information found at session acceptance time")
+		}
 
-	return tlsConf, nil
+		timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)
+		defer cancel()
+		sess, err := sessionCache.RefreshSession(timeoutContext, sessionId, lastSuccess.GetWorkerId())
+		if err != nil {
+			return nil, fmt.Errorf("error refreshing session: %w", err)
+		}
+
+		certPool := x509.NewCertPool()
+		certPool.AddCert(sess.GetCertificate())
+
+		tlsConf := &tls.Config{
+			Certificates: []tls.Certificate{
+				{
+					Certificate: [][]byte{sess.GetCertificate().Raw},
+					PrivateKey:  ed25519.PrivateKey(sess.GetPrivateKey()),
+					Leaf:        sess.GetCertificate(),
+				},
+			},
+			NextProtos: []string{"http/1.1"},
+			MinVersion: tls.VersionTLS13,
+
+			// These two are set this way so we can make use of VerifyConnection,
+			// which we set on this TLS config below. We are not skipping
+			// verification!
+			ClientAuth:         tls.RequireAnyClientCert,
+			InsecureSkipVerify: true,
+		}
+
+		// We disable normal DNS SAN behavior as we don't rely on DNS or IP
+		// addresses for security and want to avoid issues with including localhost
+		// etc.
+		verifyOpts := x509.VerifyOptions{
+			DNSName: sessionId,
+			Roots:   certPool,
+			KeyUsages: []x509.ExtKeyUsage{
+				x509.ExtKeyUsageClientAuth,
+				x509.ExtKeyUsageServerAuth,
+			},
+		}
+		if w.TestOverrideX509VerifyCertPool != nil {
+			verifyOpts.Roots = w.TestOverrideX509VerifyCertPool
+		}
+		if w.TestOverrideX509VerifyDnsName != "" {
+			verifyOpts.DNSName = w.TestOverrideX509VerifyDnsName
+		}
+		tlsConf.VerifyConnection = func(cs tls.ConnectionState) error {
+			// Go will not run this without at least one peer certificate, but
+			// doesn't hurt to check
+			if len(cs.PeerCertificates) == 0 {
+				return errors.New("no peer certificates provided")
+			}
+			_, err := cs.PeerCertificates[0].Verify(verifyOpts)
+			return err
+		}
+		return tlsConf, nil
+	}
 }

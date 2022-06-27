@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"nhooyr.io/websocket"
 )
 
@@ -24,9 +23,8 @@ type Config struct {
 	ClientConn     *websocket.Conn
 	RemoteEndpoint string
 
-	SessionClient pbs.SessionServiceClient
-	SessionInfo   *session.Info
-	ConnectionId  string
+	Session      *session.Session
+	ConnectionId string
 }
 
 // Validate checks that the provided config is valid. If invalid, an error is returned
@@ -39,10 +37,8 @@ func (c Config) Validate() error {
 		return errors.New("missing client connection")
 	case c.RemoteEndpoint == "":
 		return errors.New("missing remote endpoint")
-	case c.SessionClient == nil:
-		return errors.New("missing session client")
-	case c.SessionInfo == nil:
-		return errors.New("missing session info")
+	case c.Session == nil:
+		return errors.New("missing session")
 	case c.ConnectionId == "":
 		return errors.New("missing connection id")
 	default:

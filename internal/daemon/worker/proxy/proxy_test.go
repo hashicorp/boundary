@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"nhooyr.io/websocket"
@@ -20,10 +19,7 @@ func TestConfigValidate(t *testing.T) {
 		IP:   net.ParseIP("127.0.0.1"),
 		Port: 50000,
 	}
-	sessClient := pbs.NewMockSessionServiceClient()
-	si := &session.Info{
-		Id: "one",
-	}
+	si := &session.Session{}
 	conn := &websocket.Conn{}
 
 	tests := []struct {
@@ -37,8 +33,7 @@ func TestConfigValidate(t *testing.T) {
 			conf: Config{
 				ClientConn:     conn,
 				RemoteEndpoint: "tcp://remote",
-				SessionClient:  sessClient,
-				SessionInfo:    si,
+				Session:        si,
 				ConnectionId:   "connection-id",
 			},
 			wantErr:    true,
@@ -49,8 +44,7 @@ func TestConfigValidate(t *testing.T) {
 			conf: Config{
 				ClientAddress:  clientAddr,
 				RemoteEndpoint: "tcp://remote",
-				SessionClient:  sessClient,
-				SessionInfo:    si,
+				Session:        si,
 				ConnectionId:   "connection-id",
 			},
 			wantErr:    true,
@@ -61,36 +55,22 @@ func TestConfigValidate(t *testing.T) {
 			conf: Config{
 				ClientAddress: clientAddr,
 				ClientConn:    conn,
-				SessionClient: sessClient,
-				SessionInfo:   si,
+				Session:       si,
 				ConnectionId:  "connection-id",
 			},
 			wantErr:    true,
 			wantErrMsg: "missing remote endpoint",
 		},
 		{
-			name: "missing-session-client",
+			name: "missing-session",
 			conf: Config{
 				ClientAddress:  clientAddr,
 				ClientConn:     conn,
 				RemoteEndpoint: "tcp://remote",
-				SessionInfo:    si,
 				ConnectionId:   "connection-id",
 			},
 			wantErr:    true,
-			wantErrMsg: "missing session client",
-		},
-		{
-			name: "missing-session-info",
-			conf: Config{
-				ClientAddress:  clientAddr,
-				ClientConn:     conn,
-				RemoteEndpoint: "tcp://remote",
-				SessionClient:  sessClient,
-				ConnectionId:   "connection-id",
-			},
-			wantErr:    true,
-			wantErrMsg: "missing session info",
+			wantErrMsg: "missing session",
 		},
 		{
 			name: "missing-connection-id",
@@ -98,8 +78,7 @@ func TestConfigValidate(t *testing.T) {
 				ClientAddress:  clientAddr,
 				ClientConn:     conn,
 				RemoteEndpoint: "tcp://remote",
-				SessionClient:  sessClient,
-				SessionInfo:    si,
+				Session:        si,
 			},
 			wantErr:    true,
 			wantErrMsg: "missing connection id",
@@ -110,8 +89,7 @@ func TestConfigValidate(t *testing.T) {
 				ClientAddress:  clientAddr,
 				ClientConn:     conn,
 				RemoteEndpoint: "tcp://remote",
-				SessionClient:  sessClient,
-				SessionInfo:    si,
+				Session:        si,
 				ConnectionId:   "connection-id",
 			},
 		},

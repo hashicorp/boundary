@@ -11,7 +11,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
@@ -87,7 +86,7 @@ func (tw *TestWorker) ProxyAddrs() []string {
 // the worker's local session state. This detail is a point-in-time
 // snapshot of what's in sessionInfoMap for a particular session, and
 // may not contain all of the information that is contained within
-// it, or the underlying ConnInfoMap. Only details that are really
+// it, or the underlying connInfoMap. Only details that are really
 // important to testing are passed along.
 type TestSessionInfo struct {
 	Id     string
@@ -116,17 +115,13 @@ type TestConnectionInfo struct {
 // See TestSessionInfo for details on how to use this info.
 func (tw *TestWorker) LookupSession(id string) (TestSessionInfo, bool) {
 	var result TestSessionInfo
-	raw, ok := tw.w.sessionInfoMap.Load(id)
-	if !ok {
-		return result, false
+	sess := tw.w.sessionCache.Get(id)
+	if sess == nil {
+		return TestSessionInfo{}, false
 	}
 
-	sess := raw.(*session.Info)
-	sess.RLock()
-	defer sess.RUnlock()
-
 	conns := make(map[string]TestConnectionInfo)
-	for _, conn := range sess.ConnInfoMap {
+	for _, conn := range sess.GetConnections() {
 		conns[conn.Id] = TestConnectionInfo{
 			Id:        conn.Id,
 			Status:    conn.Status,
@@ -134,8 +129,8 @@ func (tw *TestWorker) LookupSession(id string) (TestSessionInfo, bool) {
 		}
 	}
 
-	result.Id = sess.Id
-	result.Status = sess.Status
+	result.Id = sess.GetId()
+	result.Status = sess.GetStatus()
 	result.Connections = conns
 
 	return result, true

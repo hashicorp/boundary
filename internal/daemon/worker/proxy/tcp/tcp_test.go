@@ -2,9 +2,15 @@ package tcp
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
 	"fmt"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"math/big"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
@@ -49,24 +55,40 @@ func TestHandleTcpProxyV1(t *testing.T) {
 		Port: 50000,
 	}
 	sessClient := pbs.NewMockSessionServiceClient()
-	si := &session.Info{
-		Id: "one",
-		LookupSessionResponse: &pbs.LookupSessionResponse{
+	sessClient.LookupSessionFn = func(_ context.Context, request *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
+		cert, _, _ := createTestCert(t)
+		return &pbs.LookupSessionResponse{
 			Authorization: &targets.SessionAuthorizationData{
-				SessionId: "mock-session",
+				SessionId:   request.GetSessionId(),
+				Certificate: cert,
 			},
-		},
-		ConnInfoMap: map[string]*session.ConnInfo{
-			"mock-connection": {},
-		},
+			Expiration: timestamppb.New(time.Now().Add(time.Hour)),
+		}, nil
 	}
+	sessClient.AuthorizeConnectionFn = func(_ context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
+		return &pbs.AuthorizeConnectionResponse{
+			ConnectionId:    "mock-connection",
+			Status:          pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+			ConnectionsLeft: -1,
+		}, nil
+	}
+	sessClient.ConnectConnectionFn = func(_ context.Context, _ *pbs.ConnectConnectionRequest) (*pbs.ConnectConnectionResponse, error) {
+		return &pbs.ConnectConnectionResponse{
+			Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
+		}, nil
+	}
+	cache := session.NewCache(sessClient)
+	s, err := cache.RefreshSession(ctx, "one", "workerid")
+	require.NoError(err)
+	connCtx, connCancelFn := context.WithCancel(context.Background())
+	_, _, err = s.AuthorizeConnection(ctx, "workerid", connCtx, connCancelFn)
+	require.NoError(err)
 
 	conf := proxy.Config{
 		ClientAddress:  clientAddr,
 		ClientConn:     proxyConn,
 		RemoteEndpoint: fmt.Sprintf("tcp://localhost:%d", port),
-		SessionClient:  sessClient,
-		SessionInfo:    si,
+		Session:        s,
 		ConnectionId:   "mock-connection",
 		UserClientIp:   net.ParseIP("127.0.0.1"),
 	}
@@ -108,4 +130,26 @@ func TestHandleTcpProxyV1(t *testing.T) {
 	assert.Equal("client write to endpoint via proxy", string(b1))
 
 	cancelCtx()
+}
+
+func createTestCert(t *testing.T) ([]byte, ed25519.PublicKey, ed25519.PrivateKey) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	template := &x509.Certificate{
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
+		SerialNumber:          big.NewInt(0),
+		NotBefore:             time.Now().Add(-30 * time.Second),
+		NotAfter:              time.Now().Add(5 * time.Minute),
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		DNSNames:              []string{"/tmp/boundary-opslistener-test0.sock", "/tmp/boundary-opslistener-test1.sock"},
+	}
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pub, priv)
+	require.NoError(t, err)
+
+	return certBytes, pub, priv
 }

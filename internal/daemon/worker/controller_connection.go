@@ -10,6 +10,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/nodeenrollment/multihop"
 	"math"
 	"math/big"
 	mathrand "math/rand"
@@ -22,11 +24,9 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/nodeenrollment"
-	"github.com/hashicorp/nodeenrollment/multihop"
 	"github.com/hashicorp/nodeenrollment/protocol"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
@@ -197,10 +197,9 @@ func (w *Worker) createClientConn(addr string) error {
 	if err != nil {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
 	}
-	w.grpcClientConn.Store(cc)
+	w.GrpcClientConn = cc
 
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
-	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
 	w.controllerMultihopConn.Store(multihop.NewMultihopServiceClient(cc))
 	return nil
 }

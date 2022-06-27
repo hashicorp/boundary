@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
-	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"nhooyr.io/websocket"
 )
@@ -56,15 +55,9 @@ func handleProxy(ctx context.Context, conf proxy.Config, _ ...proxy.Option) erro
 		UserClientIp:       conf.UserClientIp.String(),
 	}
 
-	connStatus, err := session.ConnectConnection(ctx, conf.SessionClient, connectionInfo)
-	if err != nil {
+	if err := conf.Session.ConnectConnection(ctx, connectionInfo); err != nil {
 		return fmt.Errorf("error marking connection as connected: %w", err)
 	}
-
-	// Update connection info to set connection status
-	conf.SessionInfo.Lock()
-	conf.SessionInfo.ConnInfoMap[conf.ConnectionId].Status = connStatus
-	conf.SessionInfo.Unlock()
 
 	// Get a wrapped net.Conn so we can use io.Copy
 	netConn := websocket.NetConn(ctx, conn, websocket.MessageBinary)

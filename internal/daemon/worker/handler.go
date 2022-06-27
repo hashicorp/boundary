@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"net"
 	"net/http"
@@ -30,12 +31,12 @@ type HandlerProperties struct {
 
 // Handler returns a http.Handler for the API. This can be used on
 // its own to mount the Worker API within another web server.
-func (w *Worker) handler(props HandlerProperties) (http.Handler, error) {
+func (w *Worker) handler(props HandlerProperties, sc *session.Cache) (http.Handler, error) {
 	const op = "worker.(Worker).handler"
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	h, err := w.handleProxy(props.ListenerConfig)
+	h, err := w.handleProxy(props.ListenerConfig, sc)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -46,7 +47,7 @@ func (w *Worker) handler(props HandlerProperties) (http.Handler, error) {
 	return metricHandler, nil
 }
 
-func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.HandlerFunc, error) {
+func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionManager *session.Cache) (http.HandlerFunc, error) {
 	const op = "worker.(Worker).handleProxy"
 	if listenerCfg == nil {
 		return nil, fmt.Errorf("%s: missing listener config", op)
@@ -98,21 +99,12 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			wr.WriteHeader(http.StatusInternalServerError)
 		}
 
-		siRaw, valid := w.sessionInfoMap.Load(sessionId)
-		if !valid {
-			event.WriteError(ctx, op, errors.New("session not found in info map"), event.WithInfo("session_id", sessionId))
+		sess := sessionManager.Get(sessionId)
+		if sess == nil {
+			event.WriteError(ctx, op, errors.New("session not found in manager"), event.WithInfo("session_id", sessionId))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		si := siRaw.(*session.Info)
-		si.RLock()
-		expiration := si.LookupSessionResponse.GetExpiration()
-		tofuToken := si.LookupSessionResponse.GetTofuToken()
-		version := si.LookupSessionResponse.GetVersion()
-		endpoint := si.LookupSessionResponse.GetEndpoint()
-		credentials := si.LookupSessionResponse.GetCredentials()
-		sessStatus := si.Status
-		si.RUnlock()
 
 		opts := &websocket.AcceptOptions{
 			Subprotocols: []string{globals.TcpProxyV1},
@@ -126,17 +118,8 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 		// Later calls will cause this to noop if they return a different status
 		defer conn.Close(websocket.StatusNormalClosure, "done")
 
-		connCtx, connCancel := context.WithDeadline(ctx, expiration.AsTime())
+		connCtx, connCancel := context.WithDeadline(ctx, sess.GetExpiration())
 		defer connCancel()
-
-		sessClient, err := w.ControllerSessionConn()
-		if err != nil {
-			event.WriteError(ctx, op, err)
-			if err = conn.Close(websocket.StatusInternalError, "unable to get controller session client"); err != nil {
-				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
-			}
-			return
-		}
 
 		var handshake proxy.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
@@ -155,8 +138,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 		}
 
 		if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
-			_, err := session.Cancel(ctx, sessClient, sessionId)
-			if err != nil {
+			if err := sess.Cancel(ctx); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to cancel session"))
 				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil && !errors.Is(err, io.EOF) {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
@@ -169,8 +151,8 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 
-		if tofuToken != "" {
-			if tofuToken != handshake.GetTofuToken() {
+		if sess.GetTofuToken() != "" {
+			if sess.GetTofuToken() != handshake.GetTofuToken() {
 				event.WriteError(ctx, op, errors.New("WARNING: mismatched tofu token"), event.WithInfo("session_id", sessionId))
 				if err = conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed"); err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
@@ -178,7 +160,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 				return
 			}
 		} else {
-			if sessStatus != pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING {
+			if sess.GetStatus() != pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING {
 				event.WriteError(ctx, op, errors.New("no tofu token but not in correct session state"), event.WithInfo("session_id", sessionId))
 				if err = conn.Close(websocket.StatusInternalError, "refusing to activate session"); err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
@@ -186,7 +168,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 				return
 			}
 			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
-				sessStatus, err = session.Activate(ctx, sessClient, sessionId, handshake.GetTofuToken(), version)
+				err = sess.Activate(ctx, handshake.GetTofuToken())
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
 					if err = conn.Close(websocket.StatusInternalError, "unable to activate session"); err != nil {
@@ -199,9 +181,9 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 		}
 
 		// Verify the protocol has a supported proxy before calling AuthorizeConnection
-		endpointUrl, err := url.Parse(endpoint)
+		endpointUrl, err := url.Parse(sess.GetEndpoint())
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("worker failed to parse target endpoint", "endpoint", endpoint))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("worker failed to parse target endpoint", "endpoint", sess.GetEndpoint()))
 			if err = conn.Close(websocket.StatusProtocolError, "unsupported-protocol"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
@@ -227,7 +209,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 
 		var ci *session.ConnInfo
 		var connsLeft int32
-		ci, connsLeft, err = session.AuthorizeConnection(ctx, sessClient, workerId, sessionId)
+		ci, connsLeft, err = sess.AuthorizeConnection(ctx, workerId, connCtx, connCancel)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to authorize connection"))
 			if err = conn.Close(websocket.StatusInternalError, "unable to authorize connection"); err != nil {
@@ -237,22 +219,14 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 		}
 		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.Id)
 		defer func() {
-			if session.CloseConnections(ctx, sessClient, w.sessionInfoMap, map[string]string{ci.Id: si.Id}) {
+			if sessionManager.CloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
 				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.Id)
 			}
 		}()
 
-		si.Lock()
-		ci.ConnCtx = connCtx
-		ci.ConnCancel = connCancel
-		si.ConnInfoMap[ci.Id] = ci
-		si.Status = sessStatus
-		connectionLimit := si.LookupSessionResponse.GetConnectionLimit()
-		si.Unlock()
-
 		handshakeResult := &proxy.HandshakeResult{
-			Expiration:      expiration,
-			ConnectionLimit: connectionLimit,
+			Expiration:      timestamppb.New(sess.GetExpiration()),
+			ConnectionLimit: sess.GetConnectionLimit(),
 			ConnectionsLeft: connsLeft,
 		}
 		if err := wspb.Write(connCtx, conn, handshakeResult); err != nil {
@@ -267,9 +241,8 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			UserClientIp:   net.ParseIP(userClientIp),
 			ClientAddress:  clientAddr,
 			ClientConn:     conn,
-			RemoteEndpoint: endpoint,
-			SessionClient:  sessClient,
-			SessionInfo:    si,
+			RemoteEndpoint: sess.GetEndpoint(),
+			Session:        sess,
 			ConnectionId:   ci.Id,
 		}
 
@@ -281,13 +254,14 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig) (http.Han
 			return
 		}
 
+		credentials := sess.GetCredentials()
 		var proxyOpts []proxyHandlers.Option
 		if len(credentials) > 0 {
 			proxyOpts = append(proxyOpts, proxyHandlers.WithEgressCredentials(credentials))
 		}
 
 		if err = handleProxyFn(connCtx, conf, proxyOpts...); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error handling proxy", "session_id", sessionId, "endpoint", endpoint))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error handling proxy", "session_id", sessionId, "endpoint", sess.GetEndpoint()))
 			if err = conn.Close(websocket.StatusInternalError, "unable to establish proxy"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
