@@ -74,16 +74,16 @@ func TestLookupSession(t *testing.T) {
 
 	creds := []*pbs.Credential{
 		{
-			Credential: &pbs.Credential_UserPassword{
-				UserPassword: &pbs.UserPassword{
+			Credential: &pbs.Credential_UsernamePassword{
+				UsernamePassword: &pbs.UsernamePassword{
 					Username: "username",
 					Password: "password",
 				},
 			},
 		},
 		{
-			Credential: &pbs.Credential_UserPassword{
-				UserPassword: &pbs.UserPassword{
+			Credential: &pbs.Credential_UsernamePassword{
+				UsernamePassword: &pbs.UsernamePassword{
 					Username: "another-username",
 					Password: "a different password",
 				},
@@ -167,7 +167,7 @@ func TestLookupSession(t *testing.T) {
 				cmp.Diff(
 					tc.want,
 					got,
-					cmpopts.IgnoreUnexported(pbs.LookupSessionResponse{}, pbs.Credential{}, pbs.UserPassword{}),
+					cmpopts.IgnoreUnexported(pbs.LookupSessionResponse{}, pbs.Credential{}, pbs.UsernamePassword{}),
 					cmpopts.IgnoreFields(pbs.LookupSessionResponse{}, "Expiration", "Authorization"),
 				),
 			)
