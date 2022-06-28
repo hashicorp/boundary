@@ -14,7 +14,7 @@ func validMappingOverride(m MappingOverride, ct credential.Type) bool {
 	switch m.(type) {
 	case nil:
 		return true // it is always valid to not specify a mapping override
-	case *UserPasswordOverride:
+	case *UsernamePasswordOverride:
 		return ct == credential.UsernamePasswordType
 	default:
 		return false // an unknown mapping override type is never valid
@@ -22,7 +22,7 @@ func validMappingOverride(m MappingOverride, ct credential.Type) bool {
 }
 
 // A MappingOverride is an interface holding one of the mapping override
-// types: UserPasswordOverride.
+// types: UsernamePasswordOverride.
 type MappingOverride interface {
 	clone() MappingOverride
 	setLibraryId(i string)
@@ -34,23 +34,23 @@ type MappingOverride interface {
 	sanitize()
 }
 
-// A UserPasswordOverride contains optional values for overriding the
-// default mappings used to map a Vault secret to a UserPassword credential
+// A UsernamePasswordOverride contains optional values for overriding the
+// default mappings used to map a Vault secret to a UsernamePassword credential
 // type for the credential library that owns it.
-type UserPasswordOverride struct {
-	*store.UserPasswordOverride
+type UsernamePasswordOverride struct {
+	*store.UsernamePasswordOverride
 	tableName string `gorm:"-"`
 }
 
-var _ MappingOverride = (*UserPasswordOverride)(nil)
+var _ MappingOverride = (*UsernamePasswordOverride)(nil)
 
-// NewUserPasswordOverride creates a new in memory UserPasswordOverride.
+// NewUsernamePasswordOverride creates a new in memory UsernamePasswordOverride.
 // WithOverrideUsernameAttribute and WithOverridePasswordAttribute are the
 // only valid options. All other options are ignored.
-func NewUserPasswordOverride(opt ...Option) *UserPasswordOverride {
+func NewUsernamePasswordOverride(opt ...Option) *UsernamePasswordOverride {
 	opts := getOpts(opt...)
-	o := &UserPasswordOverride{
-		UserPasswordOverride: &store.UserPasswordOverride{
+	o := &UsernamePasswordOverride{
+		UsernamePasswordOverride: &store.UsernamePasswordOverride{
 			UsernameAttribute: sanitize.String(opts.withOverrideUsernameAttribute),
 			PasswordAttribute: sanitize.String(opts.withOverridePasswordAttribute),
 		},
@@ -58,24 +58,24 @@ func NewUserPasswordOverride(opt ...Option) *UserPasswordOverride {
 	return o
 }
 
-func allocUserPasswordOverride() *UserPasswordOverride {
-	return &UserPasswordOverride{
-		UserPasswordOverride: &store.UserPasswordOverride{},
+func allocUsernamePasswordOverride() *UsernamePasswordOverride {
+	return &UsernamePasswordOverride{
+		UsernamePasswordOverride: &store.UsernamePasswordOverride{},
 	}
 }
 
-func (o *UserPasswordOverride) clone() MappingOverride {
-	cp := proto.Clone(o.UserPasswordOverride)
-	return &UserPasswordOverride{
-		UserPasswordOverride: cp.(*store.UserPasswordOverride),
+func (o *UsernamePasswordOverride) clone() MappingOverride {
+	cp := proto.Clone(o.UsernamePasswordOverride)
+	return &UsernamePasswordOverride{
+		UsernamePasswordOverride: cp.(*store.UsernamePasswordOverride),
 	}
 }
 
-func (o *UserPasswordOverride) setLibraryId(i string) {
+func (o *UsernamePasswordOverride) setLibraryId(i string) {
 	o.LibraryId = i
 }
 
-func (o *UserPasswordOverride) sanitize() {
+func (o *UsernamePasswordOverride) sanitize() {
 	if sentinel.Is(o.UsernameAttribute) {
 		o.UsernameAttribute = ""
 	}
@@ -85,14 +85,14 @@ func (o *UserPasswordOverride) sanitize() {
 }
 
 // TableName returns the table name.
-func (o *UserPasswordOverride) TableName() string {
+func (o *UsernamePasswordOverride) TableName() string {
 	if o.tableName != "" {
 		return o.tableName
 	}
-	return "credential_vault_library_user_password_mapping_override"
+	return "credential_vault_library_username_password_mapping_override"
 }
 
 // SetTableName sets the table name.
-func (o *UserPasswordOverride) SetTableName(n string) {
+func (o *UsernamePasswordOverride) SetTableName(n string) {
 	o.tableName = n
 }

@@ -1,7 +1,7 @@
 begin;
 
--- Updated in 36/02_vault_private_library.up.sql
--- Replaces view from 10/04_vault_credential.up.sql
+-- Replaces view from 22/05_vault_private_library.up.sql
+     drop view credential_vault_library_public;
      drop view credential_vault_library_private;
 
      create view credential_vault_library_private as
@@ -10,7 +10,7 @@ begin;
        select library_id,
               nullif(username_attribute, wt_to_sentinel('no override')),
               nullif(password_attribute, wt_to_sentinel('no override'))
-         from credential_vault_library_user_password_mapping_override
+         from credential_vault_library_username_password_mapping_override
      )
      select library.public_id         as public_id,
             library.store_id          as store_id,
