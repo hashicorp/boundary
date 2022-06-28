@@ -160,16 +160,19 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]hostsets.O
 	return true
 }
 
-func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, hostsetClient *hostsets.Client, version uint32, opts []hostsets.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *hostsets.HostSet, origItems []*hostsets.HostSet, origError error, hostsetClient *hostsets.Client, version uint32, opts []hostsets.Option) (*api.Response, *hostsets.HostSet, []*hostsets.HostSet, error) {
 	switch c.Func {
 	case "add-hosts":
-		return hostsetClient.AddHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		result, err := hostsetClient.AddHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-hosts":
-		return hostsetClient.RemoveHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		result, err := hostsetClient.RemoveHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-hosts":
-		return hostsetClient.SetHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		result, err := hostsetClient.SetHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	}
-	return origResult, origError
+	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*hostsets.HostSet) string {
@@ -231,8 +234,7 @@ func (c *Command) printListTable(items []*hostsets.HostSet) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*hostsets.HostSet)
+func printItemTable(item *hostsets.HostSet, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id

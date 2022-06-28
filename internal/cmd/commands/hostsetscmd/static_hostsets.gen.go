@@ -191,19 +191,28 @@ func (c *StaticCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *hostsets.HostSet
+
+	var createResult *hostsets.HostSetCreateResult
+
+	var updateResult *hostsets.HostSetUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = hostsetsClient.Create(c.Context, c.FlagHostCatalogId, opts...)
+		createResult, err = hostsetsClient.Create(c.Context, c.FlagHostCatalogId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = hostsetsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = hostsetsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraStaticActions(c, result, err, hostsetsClient, version, opts)
+	resp, item, err = executeExtraStaticActions(c, resp, item, err, hostsetsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -231,10 +240,10 @@ func (c *StaticCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -247,8 +256,8 @@ var (
 	extraStaticSynopsisFunc        = func(*StaticCommand) string { return "" }
 	extraStaticFlagsFunc           = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
 	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *base.FlagSets, *[]hostsets.Option) bool { return true }
-	executeExtraStaticActions      = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *hostsets.Client, _ uint32, _ []hostsets.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraStaticActions      = func(_ *StaticCommand, inResp *api.Response, inItem *hostsets.HostSet, inErr error, _ *hostsets.Client, _ uint32, _ []hostsets.Option) (*api.Response, *hostsets.HostSet, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomStaticActionOutput = func(*StaticCommand) (bool, error) { return false, nil }
 )
