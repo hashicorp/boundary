@@ -55,7 +55,7 @@ func handleProxy(ctx context.Context, conf proxy.Config, _ ...proxy.Option) erro
 		UserClientIp:       conf.UserClientIp.String(),
 	}
 
-	if err := conf.Session.ConnectConnection(ctx, connectionInfo); err != nil {
+	if err := conf.Session.RequestConnectConnection(ctx, connectionInfo); err != nil {
 		return fmt.Errorf("error marking connection as connected: %w", err)
 	}
 

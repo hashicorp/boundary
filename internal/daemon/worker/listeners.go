@@ -28,7 +28,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (w *Worker) startListeners(sc *session.Cache) error {
+func (w *Worker) startListeners(sm *session.Manager) error {
 	const op = "worker.(Worker).startListeners"
 
 	e := event.SysEventer()
@@ -43,7 +43,7 @@ func (w *Worker) startListeners(sc *session.Cache) error {
 		return fmt.Errorf("%s: nil proxy listener", op)
 	}
 
-	workerServer, err := w.configureForWorker(w.proxyListener, logger, sc)
+	workerServer, err := w.configureForWorker(w.proxyListener, logger, sm)
 	if err != nil {
 		return fmt.Errorf("%s: failed to configure for worker: %w", op, err)
 	}
@@ -53,9 +53,9 @@ func (w *Worker) startListeners(sc *session.Cache) error {
 	return nil
 }
 
-func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger, sessionCache *session.Cache) (func(), error) {
+func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger, sessionManager *session.Manager) (func(), error) {
 	const op = "worker.configureForWorker"
-	handler, err := w.handler(HandlerProperties{ListenerConfig: ln.Config}, sessionCache)
+	handler, err := w.handler(HandlerProperties{ListenerConfig: ln.Config}, sessionManager)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 			Storage:      w.WorkerAuthStorage,
 			BaseListener: ln.ProxyListener,
 			BaseTlsConfiguration: &tls.Config{
-				GetConfigForClient: w.getSessionTls(sessionCache),
+				GetConfigForClient: w.getSessionTls(sessionManager),
 			},
 			FetchCredsFunc:                 fetchCredsFn,
 			GenerateServerCertificatesFunc: generateServerCertificatesFn,

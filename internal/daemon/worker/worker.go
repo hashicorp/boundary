@@ -56,7 +56,7 @@ type Worker struct {
 	// This is exported for tests.
 	GrpcClientConn *grpc.ClientConn
 
-	sessionCache *session.Cache
+	sessionManager *session.Manager
 
 	controllerStatusConn *atomic.Value
 	everAuthenticated    *ua.Bool
@@ -294,8 +294,8 @@ func (w *Worker) Start() error {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
 
-	w.sessionCache = session.NewCache(pbs.NewSessionServiceClient(w.GrpcClientConn))
-	if err := w.startListeners(w.sessionCache); err != nil {
+	w.sessionManager = session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
+	if err := w.startListeners(w.sessionManager); err != nil {
 		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
 
@@ -306,7 +306,7 @@ func (w *Worker) Start() error {
 	w.tickerWg.Add(2)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext, w.sessionCache)
+		w.startStatusTicking(w.baseContext, w.sessionManager)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
@@ -341,7 +341,7 @@ func (w *Worker) Shutdown() error {
 	}
 
 	// Shut down all connections.
-	w.cleanupConnections(w.baseContext, true, w.sessionCache)
+	w.cleanupConnections(w.baseContext, true, w.sessionManager)
 
 	// Wait for next status request to succeed. Don't wait too long;
 	// wrap the base context in a timeout equal to our status grace
@@ -437,7 +437,7 @@ func (w *Worker) ControllerMultihopConn() (multihop.MultihopServiceClient, error
 	return multihopClient, nil
 }
 
-func (w *Worker) getSessionTls(sessionCache *session.Cache) func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+func (w *Worker) getSessionTls(sessionManager *session.Manager) func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	const op = "worker.(Worker).getSessionTls"
 	return func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 		ctx := w.baseContext
@@ -467,7 +467,7 @@ func (w *Worker) getSessionTls(sessionCache *session.Cache) func(hello *tls.Clie
 
 		timeoutContext, cancel := context.WithTimeout(w.baseContext, session.ValidateSessionTimeout)
 		defer cancel()
-		sess, err := sessionCache.RefreshSession(timeoutContext, sessionId, lastSuccess.GetWorkerId())
+		sess, err := sessionManager.LoadLocalSession(timeoutContext, sessionId, lastSuccess.GetWorkerId())
 		if err != nil {
 			return nil, fmt.Errorf("error refreshing session: %w", err)
 		}

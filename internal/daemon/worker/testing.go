@@ -115,13 +115,13 @@ type TestConnectionInfo struct {
 // See TestSessionInfo for details on how to use this info.
 func (tw *TestWorker) LookupSession(id string) (TestSessionInfo, bool) {
 	var result TestSessionInfo
-	sess := tw.w.sessionCache.Get(id)
+	sess := tw.w.sessionManager.Get(id)
 	if sess == nil {
 		return TestSessionInfo{}, false
 	}
 
 	conns := make(map[string]TestConnectionInfo)
-	for _, conn := range sess.GetConnections() {
+	for _, conn := range sess.GetLocalConnections() {
 		conns[conn.Id] = TestConnectionInfo{
 			Id:        conn.Id,
 			Status:    conn.Status,

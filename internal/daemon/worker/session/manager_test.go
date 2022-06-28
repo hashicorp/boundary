@@ -20,7 +20,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCache_RefreshSession(t *testing.T) {
+func TestManager_Get(t *testing.T) {
+	mockSessionClient := pbs.NewMockSessionServiceClient()
+	mockSessionClient.LookupSessionFn = func(context.Context, *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
+		return &pbs.LookupSessionResponse{
+			Authorization: &targets.SessionAuthorizationData{
+				SessionId:   "foo",
+				Certificate: createTestCert(t),
+			},
+			Version:    1,
+			Expiration: timestamppb.New(time.Now().Add(time.Hour)),
+			Status:     pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
+		}, nil
+	}
+	manager := NewManager(mockSessionClient)
+	_, err := manager.LoadLocalSession(context.Background(), "foo", "worker id")
+	require.NoError(t, err)
+
+	assert.NotNil(t, manager.Get("foo"))
+	assert.Nil(t, manager.Get("unknown"))
+}
+
+func TestManager_RefreshSession(t *testing.T) {
 	mockSessionClient := pbs.NewMockSessionServiceClient()
 	errorCases := []struct {
 		name               string
@@ -88,8 +109,8 @@ func TestCache_RefreshSession(t *testing.T) {
 			mockSessionClient.LookupSessionFn = func(context.Context, *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 				return tc.controllerResponse()
 			}
-			cache := NewCache(mockSessionClient)
-			s, err := cache.RefreshSession(context.Background(), tc.inId, tc.inWorkerId)
+			manager := NewManager(mockSessionClient)
+			s, err := manager.LoadLocalSession(context.Background(), tc.inId, tc.inWorkerId)
 			require.Error(t, err)
 			assert.Nil(t, s)
 
@@ -111,12 +132,12 @@ func TestCache_RefreshSession(t *testing.T) {
 				Status:          pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
 			}, nil
 		}
-		cache := NewCache(mockSessionClient)
-		s, err := cache.RefreshSession(context.Background(), "foo", "worker id")
+		manager := NewManager(mockSessionClient)
+		s, err := manager.LoadLocalSession(context.Background(), "foo", "worker id")
 		require.NoError(t, err)
 		assert.Equal(t, "foo", s.GetId())
 		assert.Equal(t, pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING, s.GetStatus())
-		assert.Empty(t, s.GetConnections())
+		assert.Empty(t, s.GetLocalConnections())
 		assert.Equal(t, int32(-1), s.GetConnectionLimit())
 		assert.Equal(t, expirationTime, s.GetExpiration())
 	})
@@ -326,14 +347,14 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
-			cache := NewCache(nil)
-			cache.sessionMap = tc.sessionInfoMap()
-			actual, actualErr := setCloseTimeForResponse(cache, tc.sessionCloseInfo)
+			manager := NewManager(nil)
+			manager.sessionMap = tc.sessionInfoMap()
+			actual, actualErr := setCloseTimeForResponse(manager, tc.sessionCloseInfo)
 
 			// Assert all close times were set
-			cache.ForEachSession(func(value *Session) bool {
+			manager.ForEachLocalSession(func(value *Session) bool {
 				t.Helper()
-				for _, ci := range value.GetConnections() {
+				for _, ci := range value.GetLocalConnections() {
 					if _, ok := tc.expectedClosed[ci.Id]; ok {
 						require.NotEqual(time.Time{}, ci.CloseTime)
 					} else {

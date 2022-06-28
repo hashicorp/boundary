@@ -78,7 +78,7 @@ func TestStartListeners(t *testing.T) {
 			require.NoError(t, err)
 			w.baseContext = context.Background()
 
-			err = w.startListeners(session.NewCache(pbs.NewSessionServiceClient(w.GrpcClientConn)))
+			err = w.startListeners(session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn)))
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				return

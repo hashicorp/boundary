@@ -32,12 +32,12 @@ type HandlerProperties struct {
 
 // Handler returns a http.Handler for the API. This can be used on
 // its own to mount the Worker API within another web server.
-func (w *Worker) handler(props HandlerProperties, sc *session.Cache) (http.Handler, error) {
+func (w *Worker) handler(props HandlerProperties, sm *session.Manager) (http.Handler, error) {
 	const op = "worker.(Worker).handler"
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
-	h, err := w.handleProxy(props.ListenerConfig, sc)
+	h, err := w.handleProxy(props.ListenerConfig, sm)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -48,7 +48,7 @@ func (w *Worker) handler(props HandlerProperties, sc *session.Cache) (http.Handl
 	return metricHandler, nil
 }
 
-func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionCache *session.Cache) (http.HandlerFunc, error) {
+func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionManager *session.Manager) (http.HandlerFunc, error) {
 	const op = "worker.(Worker).handleProxy"
 	if listenerCfg == nil {
 		return nil, fmt.Errorf("%s: missing listener config", op)
@@ -100,7 +100,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionCa
 			wr.WriteHeader(http.StatusInternalServerError)
 		}
 
-		sess := sessionCache.Get(sessionId)
+		sess := sessionManager.Get(sessionId)
 		if sess == nil {
 			event.WriteError(ctx, op, errors.New("session not found locally"), event.WithInfo("session_id", sessionId))
 			wr.WriteHeader(http.StatusInternalServerError)
@@ -139,7 +139,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionCa
 		}
 
 		if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
-			if err := sess.Cancel(ctx); err != nil {
+			if err := sess.RequestCancel(ctx); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to cancel session"))
 				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil && !errors.Is(err, io.EOF) {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
@@ -169,7 +169,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionCa
 				return
 			}
 			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
-				err = sess.Activate(ctx, handshake.GetTofuToken())
+				err = sess.RequestActivate(ctx, handshake.GetTofuToken())
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
 					if err = conn.Close(websocket.StatusInternalError, "unable to activate session"); err != nil {
@@ -181,7 +181,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionCa
 			}
 		}
 
-		// Verify the protocol has a supported proxy before calling AuthorizeConnection
+		// Verify the protocol has a supported proxy before calling RequestAuthorizeConnection
 		endpointUrl, err := url.Parse(sess.GetEndpoint())
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("worker failed to parse target endpoint", "endpoint", sess.GetEndpoint()))
@@ -210,7 +210,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionCa
 
 		var ci session.ConnInfo
 		var connsLeft int32
-		ci, connsLeft, err = sess.AuthorizeConnection(ctx, workerId, connCancel)
+		ci, connsLeft, err = sess.RequestAuthorizeConnection(ctx, workerId, connCancel)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to authorize connection"))
 			if err = conn.Close(websocket.StatusInternalError, "unable to authorize connection"); err != nil {
@@ -220,7 +220,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionCa
 		}
 		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.Id)
 		defer func() {
-			if sessionCache.RequestCloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
+			if sessionManager.RequestCloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
 				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.Id)
 			}
 		}()

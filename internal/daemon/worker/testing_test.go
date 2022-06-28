@@ -27,7 +27,7 @@ func TestTestWorkerLookupSession(t *testing.T) {
 	ctx := context.Background()
 
 	mockSessionClient := pbs.NewMockSessionServiceClient()
-	cache := session.NewCache(mockSessionClient)
+	manager := session.NewManager(mockSessionClient)
 	mockSessionClient.LookupSessionFn = func(_ context.Context, request *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 		cert, _, _ := createTestCert(t)
 		return &pbs.LookupSessionResponse{
@@ -40,12 +40,12 @@ func TestTestWorkerLookupSession(t *testing.T) {
 			Expiration: timestamppb.New(time.Now().Add(time.Hour)),
 		}, nil
 	}
-	s, err := cache.RefreshSession(ctx, "foo", "worker id")
+	s, err := manager.LoadLocalSession(ctx, "foo", "worker id")
 	require.NoError(err)
 	mockSessionClient.ActivateSessionFn = func(_ context.Context, _ *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
 		return &pbs.ActivateSessionResponse{Status: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE}, nil
 	}
-	require.NoError(s.Activate(ctx, "tofu"))
+	require.NoError(s.RequestActivate(ctx, "tofu"))
 
 	mockSessionClient.AuthorizeConnectionFn = func(_ context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
 		return &pbs.AuthorizeConnectionResponse{
@@ -55,16 +55,16 @@ func TestTestWorkerLookupSession(t *testing.T) {
 		}, nil
 	}
 	_, cancelFn := context.WithCancel(context.Background())
-	_, _, err = s.AuthorizeConnection(ctx, "worker id", cancelFn)
+	_, _, err = s.RequestAuthorizeConnection(ctx, "worker id", cancelFn)
 	require.NoError(err)
-	require.NoError(s.ApplyConnectionStatus("one", pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED))
+	require.NoError(s.ApplyLocalConnectionStatus("one", pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED))
 
 	tw := new(TestWorker)
 	tw.w = &Worker{
-		sessionCache: cache,
+		sessionManager: manager,
 	}
 
-	closeTime := s.GetConnections()["one"].CloseTime
+	closeTime := s.GetLocalConnections()["one"].CloseTime
 	assert.NotZero(t, closeTime)
 	expected := TestSessionInfo{
 		Id:     "foo",

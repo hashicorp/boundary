@@ -78,11 +78,11 @@ func TestHandleTcpProxyV1(t *testing.T) {
 			Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
 		}, nil
 	}
-	cache := session.NewCache(sessClient)
-	s, err := cache.RefreshSession(ctx, "one", "workerid")
+	manager := session.NewManager(sessClient)
+	s, err := manager.LoadLocalSession(ctx, "one", "workerid")
 	require.NoError(err)
 	_, connCancelFn := context.WithCancel(context.Background())
-	_, _, err = s.AuthorizeConnection(ctx, "workerid", connCancelFn)
+	_, _, err = s.RequestAuthorizeConnection(ctx, "workerid", connCancelFn)
 	require.NoError(err)
 
 	conf := proxy.Config{
