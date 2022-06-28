@@ -97,29 +97,14 @@ func (m *Manager) DeleteLocalSession(sessIds []string) {
 	}
 }
 
+// RequestCloseConnections sends connection close requests to the controller,
+// and sets close times within the worker. It should be called during the worker
+// status loop and on connection exit on the proxy.
+//
+// The boolean indicates whether the function was successful, e.g. had any
+// errors. Individual events will be sent for the errors if there are any.
+//
+// closeInfo is a map of connection ids mapped to their individual session ids.
 func (m *Manager) RequestCloseConnections(ctx context.Context, closeInfo map[string]string) bool {
 	return closeConnections(ctx, m.controllerSessionConn, m, closeInfo)
-}
-
-// cancelConnections is run by cleanupConnections to iterate over a
-// session's connInfoMap and close connections based on the
-// connection's state (or regardless if ignoreConnectionState is
-// set).
-//
-// The returned map and slice are the maps of connection -> session,
-// and sessions to completely remove from local state, respectively.
-func (w *Manager) cancelConnections(connInfoMap map[string]*ConnInfo, ignoreConnectionState bool) []string {
-	var closedIds []string
-	for k, v := range connInfoMap {
-		if v.CloseTime.IsZero() {
-			if !ignoreConnectionState && v.Status != pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
-				continue
-			}
-
-			v.connCtxCancelFunc()
-			closedIds = append(closedIds, k)
-		}
-	}
-
-	return closedIds
 }

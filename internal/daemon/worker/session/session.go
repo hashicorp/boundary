@@ -192,10 +192,9 @@ func (s *Session) RequestAuthorizeConnection(ctx context.Context, workerId strin
 	defer s.lock.Unlock()
 	s.connInfoMap[ci.Id] = ci
 	return ConnInfo{
-		Id:                ci.Id,
-		connCtxCancelFunc: connCancel,
-		Status:            ci.Status,
-		CloseTime:         ci.CloseTime,
+		Id:        ci.Id,
+		Status:    ci.Status,
+		CloseTime: ci.CloseTime,
 	}, connsLeft, err
 }
 
@@ -321,17 +320,9 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 	return resp, nil
 }
 
-// closeConnections is a helper worker function that sends connection close
-// requests to the controller, and sets close times within the worker. It is
-// called during the worker status loop and on connection exit on the proxy.
-//
-// The boolean indicates whether the function was successful, e.g. had any
-// errors. Individual events will be sent for the errors if there are any.
-//
-// closeInfo is a map of connections mapped to their individual session.
 func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sCache *Manager, closeInfo map[string]string) bool {
 	const op = "session.closeConnections"
-	if closeInfo == nil {
+	if len(closeInfo) == 0 {
 		// This should not happen, but it's a no-op if it does. Just
 		// return.
 		return false
@@ -355,17 +346,12 @@ func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 			"session_and_connection_ids", fmt.Sprintf("%#v", closeInfo),
 		))
 
-		// Since we could not reach the controller, we have to make a "fake" response set.
-		sessionCloseInfo, err = makeFakeSessionCloseInfo(closeInfo)
+		event.WriteError(ctx, op, err, event.WithInfoMsg("serious error in processing return data from controller, aborting additional session/connection state modification"))
+		return false
 	} else {
 		// Connection succeeded, so we can proceed with making the sessionCloseInfo
 		// off of the response data.
 		sessionCloseInfo, err = makeSessionCloseInfo(closeInfo, response)
-	}
-
-	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("serious error in processing return data from controller, aborting additional session/connection state modification"))
-		return false
 	}
 
 	// Mark connections as closed
@@ -417,26 +403,6 @@ func makeSessionCloseInfo(
 	result := make(map[string][]*pbs.CloseConnectionResponseData)
 	for _, v := range response.GetCloseResponseData() {
 		result[closeInfo[v.GetConnectionId()]] = append(result[closeInfo[v.GetConnectionId()]], v)
-	}
-
-	return result, nil
-}
-
-// makeFakeSessionCloseInfo makes a "fake" makeFakeSessionCloseInfo, intended
-// for use when we can't contact the controller.
-func makeFakeSessionCloseInfo(
-	closeInfo map[string]string,
-) (map[string][]*pbs.CloseConnectionResponseData, error) {
-	if closeInfo == nil {
-		return nil, errMakeSessionCloseInfoNilCloseInfo
-	}
-
-	result := make(map[string][]*pbs.CloseConnectionResponseData)
-	for connectionId, sessionId := range closeInfo {
-		result[sessionId] = append(result[sessionId], &pbs.CloseConnectionResponseData{
-			ConnectionId: connectionId,
-			Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
-		})
 	}
 
 	return result, nil

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"math/big"
 	"net"
 	"sync"
@@ -40,7 +41,103 @@ func TestManager_Get(t *testing.T) {
 	assert.Nil(t, manager.Get("unknown"))
 }
 
-func TestManager_RefreshSession(t *testing.T) {
+func TestManager_DeleteLocalSession(t *testing.T) {
+	mockSessionClient := pbs.NewMockSessionServiceClient()
+	mockSessionClient.LookupSessionFn = func(_ context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
+		return &pbs.LookupSessionResponse{
+			Authorization: &targets.SessionAuthorizationData{
+				SessionId:   req.GetSessionId(),
+				Certificate: createTestCert(t),
+			},
+			Version:    1,
+			Expiration: timestamppb.New(time.Now().Add(time.Hour)),
+			Status:     pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
+		}, nil
+	}
+	manager := NewManager(mockSessionClient)
+	_, err := manager.LoadLocalSession(context.Background(), "foo", "worker id")
+	require.NoError(t, err)
+
+	require.NotNil(t, manager.Get("foo"))
+	manager.DeleteLocalSession([]string{"foo"})
+	assert.Nil(t, manager.Get("foo"))
+	// A second call to DeleteLocalSession is ok.
+	manager.DeleteLocalSession([]string{"foo"})
+	assert.Nil(t, manager.Get("foo"))
+}
+
+func TestManager_RequestCloseConnections(t *testing.T) {
+	ctx := context.Background()
+	mockSessionClient := pbs.NewMockSessionServiceClient()
+
+	manager := NewManager(mockSessionClient)
+	assert.False(t, manager.RequestCloseConnections(ctx, nil))
+	assert.False(t, manager.RequestCloseConnections(ctx, map[string]string{}))
+
+	mockSessionClient.LookupSessionFn = func(_ context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
+		return &pbs.LookupSessionResponse{
+			Authorization: &targets.SessionAuthorizationData{
+				SessionId:   req.GetSessionId(),
+				Certificate: createTestCert(t),
+			},
+			Version:    1,
+			Expiration: timestamppb.New(time.Now().Add(time.Hour)),
+			Status:     pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
+		}, nil
+	}
+	session1, err := manager.LoadLocalSession(ctx, "sess1", "worker id")
+	require.NoError(t, err)
+	session2, err := manager.LoadLocalSession(ctx, "sess2", "worker id")
+	require.NoError(t, err)
+	session3, err := manager.LoadLocalSession(ctx, "sess3", "worker id")
+	require.NoError(t, err)
+
+	mockSessionClient.CloseConnectionFn = func(context.Context, *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
+		return nil, errors.New("error")
+	}
+	assert.False(t, manager.RequestCloseConnections(ctx, map[string]string{"connection id": session1.GetId()}))
+	mockSessionClient.CloseConnectionFn = func(_ context.Context, req *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
+		var data []*pbs.CloseConnectionResponseData
+		for _, r := range req.GetCloseRequestData() {
+			data = append(data, &pbs.CloseConnectionResponseData{
+				ConnectionId: r.GetConnectionId(),
+				Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
+			})
+		}
+		return &pbs.CloseConnectionResponse{CloseResponseData: data}, nil
+	}
+	// There is no connection information yet for this connection.
+	assert.False(t, manager.RequestCloseConnections(ctx, map[string]string{
+		"random_connection_id": session1.GetId(),
+	}))
+
+	// Load the connection info into the local storage
+	mockSessionClient.AuthorizeConnectionFn = func(_ context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
+		return &pbs.AuthorizeConnectionResponse{
+			ConnectionId:    fmt.Sprintf("connection_%s", req.GetSessionId()),
+			Status:          pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+			ConnectionsLeft: -1,
+		}, nil
+	}
+	_, cancelFn := context.WithCancel(ctx)
+	c1, _, err := session1.RequestAuthorizeConnection(ctx, "worker id", cancelFn)
+	require.NoError(t, err)
+
+	assert.True(t, manager.RequestCloseConnections(ctx, map[string]string{
+		c1.Id: session1.GetId(),
+	}))
+
+	c2, _, err := session2.RequestAuthorizeConnection(ctx, "worker id", cancelFn)
+	require.NoError(t, err)
+	c3, _, err := session3.RequestAuthorizeConnection(ctx, "worker id", cancelFn)
+	require.NoError(t, err)
+	assert.True(t, manager.RequestCloseConnections(ctx, map[string]string{
+		c2.Id: session2.GetId(),
+		c3.Id: session3.GetId(),
+	}))
+}
+
+func TestManager_LoadLocalSession(t *testing.T) {
 	mockSessionClient := pbs.NewMockSessionServiceClient()
 	errorCases := []struct {
 		name               string
