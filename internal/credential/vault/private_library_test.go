@@ -130,7 +130,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			{
 				opts := []Option{
 					WithCredentialType(credential.UsernamePasswordType),
-					WithMappingOverride(NewUserPasswordOverride(
+					WithMappingOverride(NewUsernamePasswordOverride(
 						WithOverrideUsernameAttribute("test-username"),
 					)),
 				}
@@ -147,7 +147,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			{
 				opts := []Option{
 					WithCredentialType(credential.UsernamePasswordType),
-					WithMappingOverride(NewUserPasswordOverride(
+					WithMappingOverride(NewUsernamePasswordOverride(
 						WithOverridePasswordAttribute("test-password"),
 					)),
 				}
@@ -164,7 +164,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			{
 				opts := []Option{
 					WithCredentialType(credential.UsernamePasswordType),
-					WithMappingOverride(NewUserPasswordOverride(
+					WithMappingOverride(NewUsernamePasswordOverride(
 						WithOverrideUsernameAttribute("test-username"),
 						WithOverridePasswordAttribute("test-password"),
 					)),
@@ -201,7 +201,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.Equal(want.CredentialType(), got.CredentialType())
 				if mo := want.MappingOverride; mo != nil {
 					switch w := mo.(type) {
-					case *UserPasswordOverride:
+					case *UsernamePasswordOverride:
 						assert.Equal(w.UsernameAttribute, got.UsernameAttribute)
 						assert.Equal(w.PasswordAttribute, got.PasswordAttribute)
 					default:

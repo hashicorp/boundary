@@ -46,6 +46,9 @@ core/authtoken:
 core/cmd:
   - internal/cmd/**/8
 
+core/daemon:
+  - internal/daemon/**/*
+
 core/db:
   - internal/db/**/*
 
@@ -76,8 +79,8 @@ core/proto:
 core/proxy:
   - internal/proxy/**/*
 
-core/servers:
-  - internal/servers/**/*
+core/server:
+  - internal/server/**/*
 
 core/session:
   - internal/session/**/*

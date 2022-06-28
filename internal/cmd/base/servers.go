@@ -26,7 +26,7 @@ import (
 	berrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -51,9 +51,9 @@ const (
 	// defaultStatusGracePeriod is the default status grace period, or the period
 	// of time that we will go without a status report before we start
 	// disconnecting and marking connections as closed. This is tied to the
-	// server default liveness setting, a related value. See the servers package
+	// server default liveness setting, a related value. See the server package
 	// for more details.
-	defaultStatusGracePeriod = servers.DefaultLiveness
+	defaultStatusGracePeriod = server.DefaultLiveness
 
 	// statusGracePeriodEnvVar is the environment variable that can be used to
 	// configure the status grace period. This setting is provided in seconds,

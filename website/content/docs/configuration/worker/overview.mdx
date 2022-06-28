@@ -1,0 +1,64 @@
+---
+layout: docs
+page_title: Worker - Overview
+description: |-
+  The worker stanza configures worker-specific parameters.
+---
+
+# `worker` Stanza
+
+The `worker` stanza configures Boundary worker-specific parameters. Boundary
+supports two different types of workers, differentiated by their means of
+authentication to Boundary:
+- [KMS Workers][] use a shared KMS to authenticate with controllers
+- [PKI Workers][] use certificates issued by Boundary to authenticate with controllers
+
+Different worker types have different configuration requirements, but share the common worker parameters listed below.
+
+## Common Worker Parameters
+The following fields are supported for all worker types:
+
+```hcl
+worker {
+  public_addr = "5.1.23.198"
+
+  initial_upstreams = [
+    "10.0.0.1",
+    "10.0.0.2",
+  ]
+
+  tags {
+    type   = ["prod", "webservers"]
+    region = ["us-east-1"]
+  }
+}
+```
+
+- `public_addr` - Specifies the public host or IP address (and optionally port)
+  at which the worker can be reached _by clients for proxying_. This defaults to
+  the address of the listener marked for `proxy` purpose. This is especially
+  useful for cloud environments that do not bind a publicly accessible IP to a NIC
+  on the host directly, such as an Amazon EIP. 
+  
+  This value can reference any of the following:
+  - a direct address string
+  - a file on disk (file://) from which an address will be read
+  - an env var (env://) from which the address will be read
+  - a [go-sockaddr template](https://godoc.org/github.com/hashicorp/go-sockaddr/template)
+
+- `initial_upstreams` - A list of hosts/IP addresses and optionally ports for
+  reaching the boundary cluster. The port will default to `:9201` if not
+  specified. This value can be a direct access string array with the addresses,
+  or it can refer to a file on disk (`file://`) from which the addresses will be
+  read, or an env var (`env://`) from which the addresses will be read. When using
+  env or file, their contents must formatted as a JSON array: `["127.0.0.1",
+  "192.168.0.1", "10.0.0.1"]`
+
+- `tags` - A map of key-value pairs where values are an array of strings. Most
+  commonly used for [filtering](/docs/concepts/filtering) targets a worker can
+  proxy via [worker tags](/docs/concepts/filtering/worker-tags). On `SIGHUP`, the
+  tags set here will be re-parsed and new values used. It can also be a string
+  referring to a file on disk (`file://`) or an env var (`env://`).
+
+[kms workers]: /docs/configuration/worker/kms-worker
+[pki workers]: /docs/configuration/worker/pki-worker

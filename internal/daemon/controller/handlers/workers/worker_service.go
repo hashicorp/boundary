@@ -14,8 +14,8 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -73,7 +73,7 @@ type Service struct {
 func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "workers.NewService"
 	if repo == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing servers repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing server repository")
 	}
 	if iamRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
@@ -297,19 +297,19 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 	return &pbs.UpdateWorkerResponse{Item: item}, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*servers.Worker, error) {
+func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*server.Worker, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	wl, err := repo.ListWorkers(ctx, scopeIds, servers.WithLiveness(-1))
+	wl, err := repo.ListWorkers(ctx, scopeIds, server.WithLiveness(-1))
 	if err != nil {
 		return nil, err
 	}
 	return wl, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*servers.Worker, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*server.Worker, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
@@ -327,18 +327,18 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*servers.Worker, e
 	return w, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, worker *pb.Worker, creds *types.FetchNodeCredentialsRequest) (*servers.Worker, error) {
+func (s Service) createInRepo(ctx context.Context, worker *pb.Worker, creds *types.FetchNodeCredentialsRequest) (*server.Worker, error) {
 	const op = "workers.(Service).createInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
-	newWorker := servers.NewWorker(
+	newWorker := server.NewWorker(
 		worker.GetScopeId(),
-		servers.WithName(worker.GetName().GetValue()),
-		servers.WithDescription(worker.GetDescription().GetValue()),
+		server.WithName(worker.GetName().GetValue()),
+		server.WithDescription(worker.GetDescription().GetValue()),
 	)
-	retWorker, err := repo.CreateWorker(ctx, newWorker, servers.WithFetchNodeCredentialsRequest(creds))
+	retWorker, err := repo.CreateWorker(ctx, newWorker, server.WithFetchNodeCredentialsRequest(creds))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker"))
 	}
@@ -361,16 +361,16 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Worker) (*servers.Worker, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Worker) (*server.Worker, error) {
 	const op = "workers.(Service).updateInRepo"
-	var opts []servers.Option
+	var opts []server.Option
 	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, servers.WithDescription(desc.GetValue()))
+		opts = append(opts, server.WithDescription(desc.GetValue()))
 	}
 	if name := item.GetName(); name != nil {
-		opts = append(opts, servers.WithName(name.GetValue()))
+		opts = append(opts, server.WithName(name.GetValue()))
 	}
-	w := servers.NewWorker(scopeId, opts...)
+	w := server.NewWorker(scopeId, opts...)
 	w.PublicId = id
 	dbMask := maskManager.Translate(mask)
 	if len(dbMask) == 0 {
@@ -420,7 +420,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(ctx context.Context, in *servers.Worker, opt ...handlers.Option) (*pb.Worker, error) {
+func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*pb.Worker, error) {
 	const op = "workers.toProto"
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
@@ -522,7 +522,7 @@ func tagsToMapProto(in map[string][]string) (map[string]*structpb.ListValue, err
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetWorkerRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, servers.WorkerPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
 }
 
 func validateListRequest(req *pbs.ListWorkersRequest) error {
@@ -540,7 +540,7 @@ func validateListRequest(req *pbs.ListWorkersRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteWorkerRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, servers.WorkerPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
 }
 
 func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
@@ -567,7 +567,7 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 			badFields[globals.DescriptionField] = "Contains non-printable characters."
 		}
 		return badFields
-	}, servers.WorkerPrefix)
+	}, server.WorkerPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {

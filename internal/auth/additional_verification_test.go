@@ -16,7 +16,7 @@ import (
 	authmethodsservice "github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -37,7 +37,7 @@ func TestFetchActionSetForId(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return tc.IamRepo(), nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
+	serversRepoFn := func() (*server.Repository, error) {
 		return tc.ServersRepo(), nil
 	}
 	authTokenRepoFn := func() (*authtoken.Repository, error) {

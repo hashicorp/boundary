@@ -7,7 +7,7 @@
 package services
 
 import (
-	servers "github.com/hashicorp/boundary/internal/servers"
+	servers "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"path"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -16,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
-	cluster "github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentiallibraries"
@@ -25,7 +23,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
-	spbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -33,8 +30,7 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	"github.com/hashicorp/boundary/internal/servers"
-	spb "github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -85,8 +81,8 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
@@ -2365,8 +2361,8 @@ func TestAuthorizeSession(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
@@ -2529,7 +2525,7 @@ func TestAuthorizeSession(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			servers.TestKmsWorker(t, conn, wrapper)
+			server.TestKmsWorker(t, conn, wrapper)
 
 			asRes1, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
@@ -2625,8 +2621,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
@@ -2684,10 +2680,10 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	defaultUserPass := v.CreateKVSecret(t, "default-userpass", []byte(`{"data": {"username": "my-user", "password": "my-pass"}}`))
 	require.NotNil(t, defaultUserPass)
 
-	clsRespUserPassword, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+	clsRespUsernamePassword, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 		CredentialStoreId: vaultStore.GetPublicId(),
-		Name:              wrapperspb.String("Userpassword Library"),
-		Description:       wrapperspb.String("Userpassword Library Description"),
+		Name:              wrapperspb.String("Usernamepassword Library"),
+		Description:       wrapperspb.String("Usernamepassword Library Description"),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "default-userpass")),
@@ -2715,10 +2711,10 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	nonDefaultUserPass := v.CreateKVSecret(t, "non-default-userpass", []byte(`{"data": {"non-default-user": "my-user", "non-default-pass": "my-pass"}}`))
 	require.NotNil(t, nonDefaultUserPass)
 
-	clsRespUserPasswordWithMapping, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+	clsRespUsernamePasswordWithMapping, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 		CredentialStoreId: vaultStore.GetPublicId(),
-		Name:              wrapperspb.String("Userpassword Mapping Library"),
-		Description:       wrapperspb.String("Userpassword Mapping Library Description"),
+		Name:              wrapperspb.String("Usernamepassword Mapping Library"),
+		Description:       wrapperspb.String("Usernamepassword Mapping Library Description"),
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path:       wrapperspb.String(path.Join("secret", "data", "non-default-userpass")),
@@ -2776,16 +2772,16 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			},
 		},
 		{
-			name:           "vault-userpassword",
+			name:           "vault-usernamepassword",
 			hostSourceId:   shs.GetPublicId(),
-			credSourceId:   clsRespUserPassword.GetItem().GetId(),
+			credSourceId:   clsRespUsernamePassword.GetItem().GetId(),
 			wantedHostId:   h.GetPublicId(),
 			wantedEndpoint: h.GetAddress(),
 			wantedCred: &pb.SessionCredential{
 				CredentialSource: &pb.CredentialSource{
-					Id:                clsRespUserPassword.GetItem().GetId(),
-					Name:              clsRespUserPassword.GetItem().GetName().GetValue(),
-					Description:       clsRespUserPassword.GetItem().GetDescription().GetValue(),
+					Id:                clsRespUsernamePassword.GetItem().GetId(),
+					Name:              clsRespUsernamePassword.GetItem().GetName().GetValue(),
+					Description:       clsRespUsernamePassword.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.Subtype.String(),
 					CredentialType:    string(credential.UsernamePasswordType),
@@ -2802,16 +2798,16 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			},
 		},
 		{
-			name:           "vault-userpassword-with-mapping",
+			name:           "vault-UsernamePassword-with-mapping",
 			hostSourceId:   shs.GetPublicId(),
-			credSourceId:   clsRespUserPasswordWithMapping.GetItem().GetId(),
+			credSourceId:   clsRespUsernamePasswordWithMapping.GetItem().GetId(),
 			wantedHostId:   h.GetPublicId(),
 			wantedEndpoint: h.GetAddress(),
 			wantedCred: &pb.SessionCredential{
 				CredentialSource: &pb.CredentialSource{
-					Id:                clsRespUserPasswordWithMapping.GetItem().GetId(),
-					Name:              clsRespUserPasswordWithMapping.GetItem().GetName().GetValue(),
-					Description:       clsRespUserPasswordWithMapping.GetItem().GetDescription().GetValue(),
+					Id:                clsRespUsernamePasswordWithMapping.GetItem().GetId(),
+					Name:              clsRespUsernamePasswordWithMapping.GetItem().GetName().GetValue(),
+					Description:       clsRespUsernamePasswordWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.Subtype.String(),
 					CredentialType:    string(credential.UsernamePasswordType),
@@ -2828,7 +2824,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			},
 		},
 		{
-			name:           "static-userpassword",
+			name:           "static-UsernamePassword",
 			hostSourceId:   shs.GetPublicId(),
 			credSourceId:   credResp.GetItem().GetId(),
 			wantedHostId:   h.GetPublicId(),
@@ -2874,7 +2870,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 			require.NoError(t, err)
 
 			// Tell our DB that there is a worker ready to serve the data
-			servers.TestKmsWorker(t, conn, wrapper)
+			server.TestKmsWorker(t, conn, wrapper)
 
 			asRes, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
 				Id: tar.GetPublicId(),
@@ -2931,14 +2927,11 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
-	}
-	connectionRepoFn := func() (*session.ConnectionRepository, error) {
-		return session.NewConnectionRepository(ctx, rw, rw, kms)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -2982,15 +2975,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 
 	workerExists := func(tar target.Target) (version uint32) {
-		workerService := cluster.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, &sync.Map{}, kms)
-		_, err := workerService.Status(context.Background(), &spbs.StatusRequest{
-			WorkerStatus: &spb.ServerWorkerStatus{
-				PublicId: "w_1234567890",
-				Name:     "w_1234567890",
-				Address:  "localhost:123",
-			},
-		})
-		require.NoError(t, err)
+		server.TestKmsWorker(t, conn, wrapper)
 		return tar.GetVersion()
 	}
 
@@ -3164,8 +3149,8 @@ func TestAddTargetCredentialLibraryPerms(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -3250,8 +3235,8 @@ func TestSetTargetCredentialLibraryPerms(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -3336,8 +3321,8 @@ func TestRemoveTargetCredentialLibraryPerms(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)

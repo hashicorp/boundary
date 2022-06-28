@@ -1,0 +1,43 @@
+---
+layout: docs
+page_title: Postgres Installation
+description: |-
+  Postgres configuration for Boundary
+---
+
+# Postgres Configuration
+
+This section covers Postgres-specific installation requirements.
+
+## Version
+
+Boundary has only been tested on Postgres 11 or greater.
+
+## Network
+
+Boundary controllers must be able to reach Postgres.
+In non-HA configurations, this means Boundary servers;
+if you're running in [high availability](/docs/oss/installing/high-availability),
+then the controllers need access to the Postgres server infrastructure.
+Worker nodes never need access to the database.
+
+## Users/Roles
+
+After the database has been initialized,
+the database user for a Boundary controller
+only requires permissions for [Data Manipulation](https://www.postgresql.org/docs/current/dml.html)
+(select, insert, update, and delete) operations.
+
+Database initialization requires elevated privileges.
+When initializing the database with the `boundary database init` command,
+the boundary database user
+requires the `superuser` role plus `all privileges` on the boundary database.
+
+## Required Postgres Modules
+
+Boundary has a dependency on the Postgres
+[pgcrypto](https://www.postgresql.org/docs/11/pgcrypto.html) module
+which is one of the standard modules supplied with Postgres.
+Please see the
+[Additional Supplied Modules](https://www.postgresql.org/docs/11/contrib.html)
+page in the Postgres documentation for more information.

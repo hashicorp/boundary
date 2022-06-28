@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -31,8 +31,8 @@ func TestLookupSession(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serversRepoFn := func() (*servers.Repository, error) {
-		return servers.NewRepository(rw, rw, kms)
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func() (*session.Repository, error) {
 		return session.NewRepository(rw, rw, kms)
@@ -74,16 +74,16 @@ func TestLookupSession(t *testing.T) {
 
 	creds := []*pbs.Credential{
 		{
-			Credential: &pbs.Credential_UserPassword{
-				UserPassword: &pbs.UserPassword{
+			Credential: &pbs.Credential_UsernamePassword{
+				UsernamePassword: &pbs.UsernamePassword{
 					Username: "username",
 					Password: "password",
 				},
 			},
 		},
 		{
-			Credential: &pbs.Credential_UserPassword{
-				UserPassword: &pbs.UserPassword{
+			Credential: &pbs.Credential_UsernamePassword{
+				UsernamePassword: &pbs.UsernamePassword{
 					Username: "another-username",
 					Password: "a different password",
 				},
@@ -167,7 +167,7 @@ func TestLookupSession(t *testing.T) {
 				cmp.Diff(
 					tc.want,
 					got,
-					cmpopts.IgnoreUnexported(pbs.LookupSessionResponse{}, pbs.Credential{}, pbs.UserPassword{}),
+					cmpopts.IgnoreUnexported(pbs.LookupSessionResponse{}, pbs.Credential{}, pbs.UsernamePassword{}),
 					cmpopts.IgnoreFields(pbs.LookupSessionResponse{}, "Expiration", "Authorization"),
 				),
 			)

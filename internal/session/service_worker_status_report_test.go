@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/servers"
-	"github.com/hashicorp/boundary/internal/servers/store"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -26,7 +26,7 @@ func TestWorkerStatusReport(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := servers.NewRepository(rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	_, err := serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
@@ -52,7 +52,7 @@ func TestWorkerStatusReport(t *testing.T) {
 	)
 
 	type testCase struct {
-		worker              *servers.Worker
+		worker              *server.Worker
 		req                 []session.StateReport
 		want                []session.StateReport
 		orphanedConnections []string
@@ -64,7 +64,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "No Sessions",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestKmsWorker(t, conn, wrapper)
+				worker := server.TestKmsWorker(t, conn, wrapper)
 				return testCase{
 					worker: worker,
 					req:    []session.StateReport{},
@@ -75,7 +75,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "No Sessions already canceled",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestKmsWorker(t, conn, wrapper)
+				worker := server.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -107,7 +107,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "Still Active",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestKmsWorker(t, conn, wrapper)
+				worker := server.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -141,7 +141,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "SessionClosed",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestKmsWorker(t, conn, wrapper)
+				worker := server.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -181,7 +181,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "MultipleSessionsClosed",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestKmsWorker(t, conn, wrapper)
+				worker := server.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -248,7 +248,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "OrphanedConnection",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestKmsWorker(t, conn, wrapper)
+				worker := server.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),
@@ -299,7 +299,7 @@ func TestWorkerStatusReport(t *testing.T) {
 		{
 			name: "MultipleSessionsAndOrphanedConnections",
 			caseFn: func(t *testing.T) testCase {
-				worker := servers.TestKmsWorker(t, conn, wrapper)
+				worker := server.TestKmsWorker(t, conn, wrapper)
 				sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 					UserId:          uId,
 					HostId:          h.GetPublicId(),

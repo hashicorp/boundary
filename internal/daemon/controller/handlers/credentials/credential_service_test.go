@@ -347,6 +347,21 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
+			name: "Invalid Credential Store Id",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: "p_invalidid",
+				Type:              static.UsernamePasswordSubtype.String(),
+				Attrs: &pb.Credential_UsernamePasswordAttributes{
+					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
+						Username: wrapperspb.String("username"),
+						Password: wrapperspb.String("password"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),

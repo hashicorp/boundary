@@ -352,22 +352,22 @@ begin;
       ('vs_______wvs', 'vl______wvl6', 'widget vault kv four',  'None',      '/secrets/kv/four',   'GET',       'username_password'),
       ('vs_______wvs', 'vl______wvl7', 'widget vault kv five',  'None',      '/secrets/kv/five',   'GET',       'username_password');
 
-    insert into credential_vault_library_user_password_mapping_override
+    insert into credential_vault_library_username_password_mapping_override
       (library_id)
     values
       ('vl______wvl4');
 
-    insert into credential_vault_library_user_password_mapping_override
+    insert into credential_vault_library_username_password_mapping_override
       (library_id,     username_attribute)
     values
       ('vl______wvl5', 'my_username');
 
-    insert into credential_vault_library_user_password_mapping_override
+    insert into credential_vault_library_username_password_mapping_override
       (library_id,     password_attribute)
     values
       ('vl______wvl6', 'my_password');
 
-    insert into credential_vault_library_user_password_mapping_override
+    insert into credential_vault_library_username_password_mapping_override
       (library_id,     username_attribute, password_attribute)
     values
       ('vl______wvl7', 'my_username',      'my_password');

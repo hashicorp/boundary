@@ -3,11 +3,14 @@ package event
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
 )
+
+var ci bool
 
 type key int
 
@@ -17,6 +20,10 @@ const (
 	eventerKey key = iota
 	requestInfoKey
 )
+
+func init() {
+	ci = os.Getenv("CI") != ""
+}
 
 // NewEventerContext will return a context containing a value of the provided Eventer
 func NewEventerContext(ctx context.Context, eventer *Eventer) (context.Context, error) {
@@ -128,8 +135,10 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
-			logger := hclog.New(nil)
-			logger.Error(fmt.Sprintf("%s: no eventer available to write error: %v", op, e))
+			if !ci {
+				logger := hclog.New(nil)
+				logger.Error(fmt.Sprintf("%s: no eventer available to write error: %v", op, e))
+			}
 			return
 		}
 	}

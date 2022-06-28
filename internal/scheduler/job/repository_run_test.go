@@ -25,6 +25,7 @@ func TestRepository_RunJobs(t *testing.T) {
 	iam.TestRepo(t, conn, wrapper)
 
 	server := testController(t, conn, wrapper)
+	shortName := testController(t, conn, wrapper, withControllerId("not_10"))
 
 	tests := []struct {
 		name         string
@@ -54,6 +55,17 @@ func TestRepository_RunJobs(t *testing.T) {
 			job: &Job{
 				Job: &store.Job{
 					Name:        "valid-test",
+					Description: "description",
+				},
+			},
+			wantRun: true,
+		},
+		{
+			name:         "valid-short",
+			ControllerId: shortName.PrivateId,
+			job: &Job{
+				Job: &store.Job{
+					Name:        "valid-short-controller-name",
 					Description: "description",
 				},
 			},

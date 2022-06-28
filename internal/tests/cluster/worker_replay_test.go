@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 )
@@ -54,10 +54,10 @@ func TestWorkerReplay(t *testing.T) {
 	require.Equal(t, 1, strings.Count(string(logBuf), "worker successfully authed"))
 
 	// Assert we have the expected nonce in the DB
-	nonces, err := c1.ServersRepo().ListNonces(c1.Context(), servers.NoncePurposeWorkerAuth)
+	nonces, err := c1.ServersRepo().ListNonces(c1.Context(), server.NoncePurposeWorkerAuth)
 	require.NoError(t, err)
 	require.Len(t, nonces, 1)
-	require.Equal(t, &servers.Nonce{Nonce: "test_noncetest_nonce", Purpose: servers.NoncePurposeWorkerAuth}, nonces[0])
+	require.Equal(t, &server.Nonce{Nonce: "test_noncetest_nonce", Purpose: server.NoncePurposeWorkerAuth}, nonces[0])
 
 	require.NoError(t, w1.Worker().Shutdown())
 
@@ -81,8 +81,8 @@ func TestWorkerReplay(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, strings.Count(string(logBuf), "worker successfully authed"))
 
-	nonces, err = c1.ServersRepo().ListNonces(c1.Context(), servers.NoncePurposeWorkerAuth)
+	nonces, err = c1.ServersRepo().ListNonces(c1.Context(), server.NoncePurposeWorkerAuth)
 	require.NoError(t, err)
 	require.Len(t, nonces, 1)
-	require.Equal(t, &servers.Nonce{Nonce: "test_noncetest_nonce", Purpose: servers.NoncePurposeWorkerAuth}, nonces[0])
+	require.Equal(t, &server.Nonce{Nonce: "test_noncetest_nonce", Purpose: server.NoncePurposeWorkerAuth}, nonces[0])
 }

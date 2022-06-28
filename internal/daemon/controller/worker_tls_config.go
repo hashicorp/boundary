@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"google.golang.org/protobuf/proto"
 )
@@ -99,9 +99,9 @@ func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.Work
 	// Check for replays
 	serversRepo, err := c.ServersRepoFn()
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to fetch servers repo: %w", err)
+		return nil, nil, fmt.Errorf("unable to fetch server repo: %w", err)
 	}
-	if err := serversRepo.AddNonce(c.baseContext, info.ConnectionNonce, servers.NoncePurposeWorkerAuth); err != nil {
+	if err := serversRepo.AddNonce(c.baseContext, info.ConnectionNonce, server.NoncePurposeWorkerAuth); err != nil {
 		return nil, nil, fmt.Errorf("unable to add connection nonce to database: %w", err)
 	}
 

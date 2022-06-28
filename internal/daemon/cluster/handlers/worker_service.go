@@ -12,7 +12,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/servers"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
@@ -76,31 +76,31 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	serverRepo, err := ws.serversRepoFn()
 	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to store worker status: %v", err)
 	}
 
 	// Convert API tags to storage tags
 	wTags := wStat.GetTags()
-	workerTags := make([]*servers.Tag, 0, len(wTags))
+	workerTags := make([]*server.Tag, 0, len(wTags))
 	for _, v := range wTags {
-		workerTags = append(workerTags, &servers.Tag{
+		workerTags = append(workerTags, &server.Tag{
 			Key:   v.GetKey(),
 			Value: v.GetValue(),
 		})
 	}
 
-	wConf := servers.NewWorker(scope.Global.String(),
-		servers.WithName(wStat.GetName()),
-		servers.WithDescription(wStat.GetDescription()),
-		servers.WithAddress(wStat.GetAddress()),
-		servers.WithWorkerTags(workerTags...))
-	opts := []servers.Option{servers.WithUpdateTags(req.GetUpdateTags())}
+	wConf := server.NewWorker(scope.Global.String(),
+		server.WithName(wStat.GetName()),
+		server.WithDescription(wStat.GetDescription()),
+		server.WithAddress(wStat.GetAddress()),
+		server.WithWorkerTags(workerTags...))
+	opts := []server.Option{server.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
-		opts = append(opts, servers.WithPublicId(wStat.GetPublicId()))
+		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))
 	}
 	if wStat.GetKeyId() != "" {
-		opts = append(opts, servers.WithKeyId(wStat.GetKeyId()))
+		opts = append(opts, server.WithKeyId(wStat.GetKeyId()))
 	}
 	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
@@ -227,7 +227,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		}
 		serversRepo, err := ws.serversRepoFn()
 		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting servers repo"))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 		}
 		w, err := serversRepo.LookupWorker(ctx, req.WorkerId)
@@ -375,7 +375,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 
 	serversRepo, err := ws.serversRepoFn()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "error getting servers repo: %v", err)
+		return nil, status.Errorf(codes.Internal, "error getting server repo: %v", err)
 	}
 	w, err := serversRepo.LookupWorker(ctx, req.GetWorkerId())
 	if err != nil {
