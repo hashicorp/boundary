@@ -364,7 +364,7 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 	}
 	_, err := w.Exec(ctx, deleteTagsByWorkerIdSql, []interface{}{ts.String(), id})
 	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("couldn't delete exist tags for worker %q", id)))
+		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("couldn't delete existing tags for worker %q", id)))
 	}
 
 	// If tags were cleared out entirely, then we'll have nothing
@@ -557,4 +557,161 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return returnedWorker, nil
+}
+
+// AddWorkerTags adds specified tags to the repo worker and returns its new tags.
+// No options are currently supported.
+// TODO: return correct error when adding multiple of the same tag
+func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerVersion uint32, ts TagSource, tags []*Tag, _ ...Option) ([]*Tag, error) {
+	const op = "server.(Repository).AddWorkerTags"
+	switch {
+	case !ts.isValid():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid tag source provided")
+	case workerId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker public id is empty")
+	case workerVersion == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+	case isNil(tags):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no tags provided")
+	}
+
+	worker, err := lookupWorker(ctx, r.reader, workerId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if worker == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no worker found with public id %s", workerId))
+	}
+
+	var newTags []*Tag
+	switch ts {
+	case ConfigurationTagSource:
+		newTags = worker.configTags
+	case ApiTagSource:
+		newTags = worker.apiTags
+	}
+	for _, t := range tags {
+		newTags = append(newTags, t)
+	}
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
+		worker := worker.clone()
+		worker.PublicId = workerId
+		worker.Version = workerVersion + 1
+		rowsUpdated, err := w.Update(ctx, worker, []string{"Version"}, nil, db.WithVersion(&workerVersion))
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update worker version"))
+		}
+		if rowsUpdated != 1 {
+			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated worker and %d rows updated", rowsUpdated))
+		}
+		err = setWorkerTags(ctx, w, workerId, ts, newTags)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return newTags, nil
+}
+
+// SetWorkerTags clears the current repo worker tags and sets them from the input parameters. Returns the current repo worker tags.
+// No options are currently supported.
+func (r *Repository) SetWorkerTags(ctx context.Context, workerId string, workerVersion uint32, ts TagSource, tags []*Tag, _ ...Option) ([]*Tag, error) {
+	const op = "server.(Repository).SetWorkerTags"
+	switch {
+	case !ts.isValid():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid tag source provided")
+	case workerId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker public id is empty")
+	case workerVersion == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+	}
+
+	worker, err := lookupWorker(ctx, r.reader, workerId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if worker == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no worker found with public id %s", workerId))
+	}
+
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
+		worker := worker.clone()
+		worker.PublicId = workerId
+		worker.Version = workerVersion + 1
+		rowsUpdated, err := w.Update(ctx, worker, []string{"Version"}, nil, db.WithVersion(&workerVersion))
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update worker version"))
+		}
+		if rowsUpdated != 1 {
+			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated worker and %d rows updated", rowsUpdated))
+		}
+		err = setWorkerTags(ctx, w, workerId, ts, tags)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return tags, nil
+}
+
+// DeleteWorkerTags deletes in input worker tags from the repo. Returns the number of rows deleted.
+// No options are currently supported.
+func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, workerVersion uint32, ts TagSource, tags []*Tag, _ ...Option) (int, error) {
+	const op = "server.(Repository).DeleteWorkerTags"
+	switch {
+	case !ts.isValid():
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "invalid tag source provided")
+	case workerId == "":
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker public id is empty")
+	case workerVersion == 0:
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+	case isNil(tags):
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no tags provided")
+	}
+
+	rowsDeleted := 0
+	worker, err := lookupWorker(ctx, r.reader, workerId)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	if worker == nil {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no worker found with public id %s", workerId))
+	}
+
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
+		worker := worker.clone()
+		worker.PublicId = workerId
+		worker.Version = workerVersion + 1
+		rowsUpdated, err := w.Update(ctx, worker, []string{"Version"}, nil, db.WithVersion(&workerVersion))
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update worker version"))
+		}
+		if rowsUpdated != 1 {
+			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated worker and %d rows updated", rowsUpdated))
+		}
+
+		for _, t := range tags {
+			rd, err := w.Exec(ctx, deleteWorkerTagByKeyValueSql, []interface{}{ts.String(), workerId, t.Key, t.Value})
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg(
+					fmt.Sprintf("couldn't delete tag for worker %q with key %q and value %q", workerId, t.Key, t.Value)))
+			}
+			rowsDeleted += rd
+		}
+		if rowsDeleted != len(tags) {
+			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("tags deleted %d did not match request for %d", rowsDeleted, len(tags)))
+		}
+		return nil
+	})
+
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	return rowsDeleted, nil
 }
