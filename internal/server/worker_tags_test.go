@@ -110,14 +110,6 @@ func TestWorkerTags_Create(t *testing.T) {
 	}
 }
 
-func makeTagsList(tags ...*Tag) []*Tag {
-	var tagsList []*Tag
-	for _, t := range tags {
-		tagsList = append(tagsList, t)
-	}
-	return tagsList
-}
-
 func TestRepository_AddWorkerTags(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -130,14 +122,15 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(repo)
 	worker := TestKmsWorker(t, conn, wrapper)
-	// add another worker here to avoid issue with worker version input being locked in at compile time
+	// use new workers to avoid potential version conflicts when testing individually and sequentially
 	worker2 := TestKmsWorker(t, conn, wrapper)
+	workerc := TestKmsWorker(t, conn, wrapper)
+	workerc.configTags = []*Tag{{Key: "key", Value: "value"}}
 
 	type args struct {
 		publicId string
 		version  uint32
 		tags     []*Tag
-		opt      []Option
 	}
 
 	tests := []struct {
@@ -152,10 +145,10 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 			args: args{
 				publicId: "",
 				version:  worker.Version,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
 			wantIsErr:       errors.InvalidParameter,
 			wantErrContains: "worker public id is empty",
@@ -165,10 +158,10 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 			args: args{
 				publicId: worker.PublicId,
 				version:  0,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
 			wantIsErr:       errors.InvalidParameter,
 			wantErrContains: "missing version",
@@ -178,10 +171,10 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 			args: args{
 				publicId: worker.PublicId,
 				version:  100,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
 			wantIsErr:       errors.MultipleRecords,
 			wantErrContains: "updated worker version and 0 rows updated",
@@ -201,48 +194,65 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 			args: args{
 				publicId: worker.PublicId,
 				version:  worker.Version,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
-			want: makeTagsList(&Tag{
+			want: []*Tag{{
 				Key:   "key",
 				Value: "value",
-			}),
+			}},
 		},
 		{
 			name: "add-many-tags",
 			args: args{
 				publicId: worker2.PublicId,
 				version:  worker2.Version,
-				tags: makeTagsList(
-					&Tag{
+				tags: []*Tag{
+					{
 						Key:   "key",
 						Value: "value",
 					},
-					&Tag{
+					{
 						Key:   "key2",
 						Value: "value2",
 					},
-					&Tag{
+					{
 						Key:   "key3",
 						Value: "value3",
-					}),
+					},
+				},
 			},
-			want: makeTagsList(
-				&Tag{
+			want: []*Tag{
+				{
 					Key:   "key",
 					Value: "value",
 				},
-				&Tag{
+				{
 					Key:   "key2",
 					Value: "value2",
 				},
-				&Tag{
+				{
 					Key:   "key3",
 					Value: "value3",
-				}),
+				},
+			},
+		},
+		{
+			name: "add-preexisting-config-tags",
+			args: args{
+				publicId: workerc.PublicId,
+				version:  workerc.Version,
+				tags: []*Tag{{
+					Key:   "key",
+					Value: "value",
+				}},
+			},
+			want: []*Tag{{
+				Key:   "key",
+				Value: "value",
+			}},
 		},
 	}
 
@@ -278,6 +288,7 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 	worker := TestKmsWorker(t, conn, wrapper)
 	// add another worker here to avoid issue with worker version input being locked in at compile time
 	worker2 := TestKmsWorker(t, conn, wrapper)
+	workerc := TestKmsWorker(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
 	repo, err := NewRepository(rw, rw, kms)
@@ -288,7 +299,6 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 		publicId string
 		version  uint32
 		tags     []*Tag
-		opt      []Option
 	}
 
 	tests := []struct {
@@ -303,10 +313,10 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 			args: args{
 				publicId: "",
 				version:  worker.Version,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
 			wantIsErr:       errors.InvalidParameter,
 			wantErrContains: "worker public id is empty",
@@ -316,10 +326,10 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 			args: args{
 				publicId: worker.PublicId,
 				version:  0,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
 			wantIsErr:       errors.InvalidParameter,
 			wantErrContains: "missing version",
@@ -329,10 +339,10 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 			args: args{
 				publicId: worker.PublicId,
 				version:  100,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
 			wantIsErr:       errors.MultipleRecords,
 			wantErrContains: "updated worker version and 0 rows updated",
@@ -351,33 +361,50 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 			args: args{
 				publicId: worker2.PublicId,
 				version:  worker2.Version,
-				tags: makeTagsList(
-					&Tag{
+				tags: []*Tag{
+					{
 						Key:   "key",
 						Value: "value",
 					},
-					&Tag{
+					{
 						Key:   "key2",
 						Value: "value2",
 					},
-					&Tag{
+					{
 						Key:   "key3",
 						Value: "value3",
-					}),
+					},
+				},
 			},
-			want: makeTagsList(
-				&Tag{
+			want: []*Tag{
+				{
 					Key:   "key",
 					Value: "value",
 				},
-				&Tag{
+				{
 					Key:   "key2",
 					Value: "value2",
 				},
-				&Tag{
+				{
 					Key:   "key3",
 					Value: "value3",
-				}),
+				},
+			},
+		},
+		{
+			name: "set-preexisting-config-tags",
+			args: args{
+				publicId: workerc.PublicId,
+				version:  workerc.Version,
+				tags: []*Tag{{
+					Key:   "key",
+					Value: "value",
+				}},
+			},
+			want: []*Tag{{
+				Key:   "key",
+				Value: "value",
+			}},
 		},
 	}
 
@@ -421,7 +448,6 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 		publicId string
 		version  uint32
 		tags     []*Tag
-		opt      []Option
 	}
 
 	tests := []struct {
@@ -436,10 +462,10 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 			args: args{
 				publicId: "",
 				version:  worker.Version,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
 			wantIsErr:       errors.InvalidParameter,
 			wantErrContains: "worker public id is empty",
@@ -449,10 +475,10 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 			args: args{
 				publicId: worker.PublicId,
 				version:  0,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
 			wantIsErr:       errors.InvalidParameter,
 			wantErrContains: "missing version",
@@ -462,10 +488,10 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 			args: args{
 				publicId: worker.PublicId,
 				version:  100,
-				tags: makeTagsList(&Tag{
+				tags: []*Tag{{
 					Key:   "key",
 					Value: "value",
-				}),
+				}},
 			},
 			wantIsErr:       errors.MultipleRecords,
 			wantErrContains: "updated worker version and 0 rows updated",
@@ -485,12 +511,13 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 			args: args{
 				publicId: worker.PublicId,
 				version:  worker.Version,
-				tags: makeTagsList(&Tag{
-					Key:   "key",
-					Value: "value",
-				},
+				tags: []*Tag{
+					{
+						Key:   "key",
+						Value: "value",
+					},
 					nil,
-				),
+				},
 			},
 			wantIsErr:       errors.InvalidParameter,
 			wantErrContains: "found nil tag value in input",
@@ -533,11 +560,20 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	require.NotNil(repo)
 	worker := TestKmsWorker(t, conn, wrapper)
 
+	// Set various overlapping config tags
+	worker.configTags = []*Tag{
+		{Key: "key", Value: "value"},
+		{Key: "keykey", Value: "valval"},
+		{Key: "key3", Value: "value3"},
+		{Key: "key?", Value: "value?"},
+	}
+
 	// Add three valid tags to worker
-	manyTags := makeTagsList(
-		&Tag{Key: "key", Value: "value"},
-		&Tag{Key: "key2", Value: "value2"},
-		&Tag{Key: "key3", Value: "value3"})
+	manyTags := []*Tag{
+		{Key: "key", Value: "value"},
+		{Key: "key2", Value: "value2"},
+		{Key: "key3", Value: "value3"},
+	}
 	added, err := repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
 	assert.NoError(err)
 	assert.Equal(manyTags, added)
@@ -546,8 +582,9 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	assert.Equal(uint32(2), worker.Version)
 
 	// Test adding a duplicate tag
-	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, makeTagsList(
-		&Tag{Key: "key", Value: "value"}))
+	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
+		{Key: "key", Value: "value"},
+	})
 	assert.Error(err)
 	assert.Contains(err.Error(), "duplicate key value violates unique constraint")
 	assert.Nil(added)
@@ -555,9 +592,31 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(uint32(2), worker.Version)
 
+	// Test adding/setting/deleting an invalid batch of tags
+	invalidTags := []*Tag{
+		{Key: "keya", Value: "valuea"},
+		{Key: "keyb", Value: "valueb"},
+		{Key: "keykey", Value: "valval"},
+		{Key: "keykey", Value: "valval"},
+	}
+	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, invalidTags)
+	assert.Contains(err.Error(), "duplicate key value violates unique constraint")
+	assert.Nil(added)
+	set, err := repo.SetWorkerTags(context.Background(), worker.PublicId, worker.Version, invalidTags)
+	assert.Contains(err.Error(), "duplicate key value violates unique constraint")
+	assert.Nil(set)
+	rowsDeleted, err := repo.DeleteWorkerTags(context.Background(), worker.PublicId, worker.Version, invalidTags)
+	assert.Contains(err.Error(), "tags deleted 0 did not match request for 4")
+	assert.Equal(0, rowsDeleted)
+	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
+	require.NoError(err)
+	assert.Equal(uint32(2), worker.Version)
+	assert.Equal(len(manyTags), len(worker.apiTags))
+
 	// Delete a valid tag from worker
-	rowsDeleted, err := repo.DeleteWorkerTags(context.Background(), worker.PublicId, worker.Version, makeTagsList(
-		&Tag{Key: "key3", Value: "value3"}))
+	rowsDeleted, err = repo.DeleteWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
+		{Key: "key3", Value: "value3"},
+	})
 	assert.Equal(1, rowsDeleted)
 	assert.NoError(err)
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
@@ -567,8 +626,9 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	assert.Contains(worker.apiTags, &Tag{Key: "key2", Value: "value2"})
 
 	// Add another valid tag to worker
-	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, makeTagsList(
-		&Tag{Key: "key!", Value: "value!"}))
+	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
+		{Key: "key!", Value: "value!"},
+	})
 	assert.NoError(err)
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
@@ -577,8 +637,9 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	assert.Equal(3, len(worker.apiTags))
 
 	// Delete a nonexistent tag
-	rowsDeleted, err = repo.DeleteWorkerTags(context.Background(), worker.PublicId, worker.Version, makeTagsList(
-		&Tag{Key: "key?", Value: "value?"}))
+	rowsDeleted, err = repo.DeleteWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
+		{Key: "key?", Value: "value?"},
+	})
 	assert.Equal(0, rowsDeleted)
 	assert.Contains(err.Error(), "tags deleted 0 did not match request for 1: search issue: error #1101")
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
@@ -586,7 +647,7 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	assert.Equal(uint32(4), worker.Version)
 
 	// Set all tags to nil
-	set, err := repo.SetWorkerTags(context.Background(), worker.PublicId, worker.Version, nil)
+	set, err = repo.SetWorkerTags(context.Background(), worker.PublicId, worker.Version, nil)
 	assert.Equal([]*Tag(nil), set)
 	assert.NoError(err)
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)

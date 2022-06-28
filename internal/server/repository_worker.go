@@ -561,7 +561,6 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 
 // AddWorkerTags adds specified api tags to the repo worker and returns its new tags.
 // No options are currently supported.
-// TODO: return correct error when adding multiple of the same tag
 func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerVersion uint32, tags []*Tag, _ ...Option) ([]*Tag, error) {
 	const op = "server.(Repository).AddWorkerTags"
 	switch {
@@ -569,7 +568,7 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker public id is empty")
 	case workerVersion == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
-	case isNil(tags):
+	case len(tags) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no tags provided")
 	}
 
@@ -608,8 +607,8 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 	return newTags, nil
 }
 
-// SetWorkerTags clears the current repo worker's api tags and sets them from the input parameters. Returns the current repo worker tags.
-// No options are currently supported.
+// SetWorkerTags clears the current repo worker's api tags and sets them from the input parameters.
+// Returns the current repo worker tags. No options are currently supported.
 func (r *Repository) SetWorkerTags(ctx context.Context, workerId string, workerVersion uint32, tags []*Tag, _ ...Option) ([]*Tag, error) {
 	const op = "server.(Repository).SetWorkerTags"
 	switch {
@@ -659,7 +658,7 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "worker public id is empty")
 	case workerVersion == 0:
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
-	case isNil(tags):
+	case len(tags) == 0:
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no tags provided")
 	}
 
