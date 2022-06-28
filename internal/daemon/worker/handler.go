@@ -48,7 +48,7 @@ func (w *Worker) handler(props HandlerProperties, sc *session.Cache) (http.Handl
 	return metricHandler, nil
 }
 
-func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionManager *session.Cache) (http.HandlerFunc, error) {
+func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionCache *session.Cache) (http.HandlerFunc, error) {
 	const op = "worker.(Worker).handleProxy"
 	if listenerCfg == nil {
 		return nil, fmt.Errorf("%s: missing listener config", op)
@@ -100,9 +100,9 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			wr.WriteHeader(http.StatusInternalServerError)
 		}
 
-		sess := sessionManager.Get(sessionId)
+		sess := sessionCache.Get(sessionId)
 		if sess == nil {
-			event.WriteError(ctx, op, errors.New("session not found in manager"), event.WithInfo("session_id", sessionId))
+			event.WriteError(ctx, op, errors.New("session not found locally"), event.WithInfo("session_id", sessionId))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -208,7 +208,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 		workerId := w.LastStatusSuccess().WorkerId
 
-		var ci *session.ConnInfo
+		var ci session.ConnInfo
 		var connsLeft int32
 		ci, connsLeft, err = sess.AuthorizeConnection(ctx, workerId, connCancel)
 		if err != nil {
@@ -220,7 +220,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.Id)
 		defer func() {
-			if sessionManager.CloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
+			if sessionCache.CloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
 				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.Id)
 			}
 		}()

@@ -2,63 +2,81 @@ package worker
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"math/big"
+	"net"
 	"testing"
+	"time"
 
-	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
 func TestTestWorkerLookupSession(t *testing.T) {
 	require := require.New(t)
+	ctx := context.Background()
 
-	tc := controller.NewTestController(t, nil)
-	testWorker := server.TestKmsWorker(t, tc.DbConn(), tc.Config().WorkerAuthKms)
-	ctx := tc.Context()
-	client := tc.Client()
-	token := tc.Token()
-	client.SetToken(token.Token)
-	tarClient := targets.NewClient(client)
-	resp, err := tarClient.List(ctx, "global", targets.WithRecursive(true))
+	mockSessionClient := pbs.NewMockSessionServiceClient()
+	cache := session.NewCache(mockSessionClient)
+	mockSessionClient.LookupSessionFn = func(_ context.Context, request *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
+		cert, _, _ := createTestCert(t)
+		return &pbs.LookupSessionResponse{
+			Authorization: &targets.SessionAuthorizationData{
+				SessionId:   request.GetSessionId(),
+				Certificate: cert,
+			},
+			TofuToken:  "tofu",
+			Expiration: timestamppb.New(time.Now().Add(time.Hour)),
+		}, nil
+	}
+	s, err := cache.RefreshSession(ctx, "foo", "")
+	mockSessionClient.ActivateSessionFn = func(_ context.Context, _ *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
+		return &pbs.ActivateSessionResponse{Status: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE}, nil
+	}
+	require.NoError(s.Activate(ctx, "tofu"))
+
+	mockSessionClient.AuthorizeConnectionFn = func(_ context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
+		return &pbs.AuthorizeConnectionResponse{
+			ConnectionId:    "one",
+			Status:          pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+			ConnectionsLeft: -1,
+		}, nil
+	}
+	_, cancelFn := context.WithCancel(context.Background())
+	_, _, err = s.AuthorizeConnection(ctx, "", cancelFn)
 	require.NoError(err)
-	require.NotEmpty(resp.Items)
-	sessResp, err := tarClient.AuthorizeSession(context.Background(), resp.Items[0].Id)
-	require.NoError(err)
-	require.NotEmpty(sessResp.Item)
-	sessionId := sessResp.Item.SessionId
+	require.NoError(s.ApplyConnectionStatus("one", pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED))
 
-	tw := NewTestWorker(t, &TestWorkerOpts{
-		InitialUpstreams: tc.ClusterAddrs(),
-		WorkerAuthKms:    tc.Config().WorkerAuthKms,
-	})
+	tw := new(TestWorker)
+	tw.w = &Worker{
+		sessionCache: cache,
+	}
 
-	s, err := tw.w.sessionCache.RefreshSession(ctx, sessionId, testWorker.GetPublicId())
-	require.NoError(err)
-	require.NoError(s.Activate(ctx, sessResp.Item.AuthorizationToken))
-
-	_, connCancelFn := context.WithCancel(context.Background())
-	ci, _, err := s.AuthorizeConnection(ctx, testWorker.GetPublicId(), connCancelFn)
-	require.NoError(err)
-
+	closeTime := s.GetConnections()["one"].CloseTime
+	assert.NotZero(t, closeTime)
 	expected := TestSessionInfo{
-		Id:     sessionId,
+		Id:     "foo",
 		Status: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
 		Connections: map[string]TestConnectionInfo{
-			ci.Id: {
-				Id:        ci.Id,
-				Status:    ci.Status,
-				CloseTime: ci.CloseTime,
+			"one": {
+				Id:        "one",
+				Status:    pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
+				CloseTime: closeTime,
 			},
 		},
 	}
 
-	actual, ok := tw.LookupSession(sessionId)
+	actual, ok := tw.LookupSession("foo")
 	require.True(ok)
 	require.Equal(expected, actual)
 }
@@ -94,4 +112,26 @@ func TestTestWorker_WorkerAuthStorageKms(t *testing.T) {
 			require.Equal(tt.wrapper, tw.Config().WorkerAuthStorageKms)
 		})
 	}
+}
+
+func createTestCert(t *testing.T) ([]byte, ed25519.PublicKey, ed25519.PrivateKey) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	template := &x509.Certificate{
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign,
+		SerialNumber:          big.NewInt(0),
+		NotBefore:             time.Now().Add(-30 * time.Second),
+		NotAfter:              time.Now().Add(5 * time.Minute),
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		DNSNames:              []string{"/tmp/boundary-opslistener-test0.sock", "/tmp/boundary-opslistener-test1.sock"},
+	}
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pub, priv)
+	require.NoError(t, err)
+
+	return certBytes, pub, priv
 }

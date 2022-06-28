@@ -86,7 +86,7 @@ func (tw *TestWorker) ProxyAddrs() []string {
 // the worker's local session state. This detail is a point-in-time
 // snapshot of what's in sessionInfoMap for a particular session, and
 // may not contain all of the information that is contained within
-// it, or the underlying connInfoMap. Only details that are really
+// it, or the underlying ConnInfoMap. Only details that are really
 // important to testing are passed along.
 type TestSessionInfo struct {
 	Id     string

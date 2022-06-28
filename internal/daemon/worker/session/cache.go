@@ -15,6 +15,8 @@ type Cache struct {
 	sessionMap            *sync.Map
 }
 
+// NewCache returns a *Cache which uses the provided ServiceServiceClient to
+// perform actions on Sessions and Connections on the Controller.
 func NewCache(client pbs.SessionServiceClient) *Cache {
 	return &Cache{
 		controllerSessionConn: client,
@@ -29,7 +31,11 @@ func (m *Cache) Get(id string) *Session {
 	return nil
 }
 
-// ForEachSession allows iteration over all the sessions in the cache.
+// ForEachSession calls the provided function with each Session object.
+// If the provided function ever returns false the iteration stops.
+// If changes to the cessions in the cache happen concurrently, this function
+// does not guarantee that the key will or will not be provided in the
+// iteration.
 func (m *Cache) ForEachSession(f func(*Session) bool) {
 	m.sessionMap.Range(func(_, value any) bool {
 		s, ok := value.(*Session)
@@ -42,6 +48,9 @@ func (m *Cache) ForEachSession(f func(*Session) bool) {
 
 // RefreshSession looks up from the source of truth the session information,
 // validates it is valid, and then refreshes the local cache.
+// On a local worker, the only value of a Session that we care about that can
+// be modified is the Status.  Because of that, if RefreshSession is called on
+// a Session that is already in the cache, only the Status is updated.
 func (m *Cache) RefreshSession(ctx context.Context, id string, workerId string) (*Session, error) {
 	resp, err := m.controllerSessionConn.LookupSession(ctx, &pbs.LookupSessionRequest{
 		SessionId: id,

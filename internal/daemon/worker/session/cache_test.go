@@ -12,16 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//func TestNewCache(t *testing.T) {
-//	c := controller.NewTestController(t, nil)
-//
-//	ctx := context.Background()
-//	cc, err := grpc.DialContext(ctx, c.ClusterAddrs()[0])
-//	require.NoError(t, err)
-//	cache := NewCache(cc)
-//	_ = cache
-//}
-
 func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 	cases := []struct {
 		name             string

@@ -176,19 +176,24 @@ func (s *Session) Activate(ctx context.Context, tofu string) error {
 // AuthorizeConnection sends and AuthorizeConnection request to the controller.
 // It is called by the worker handler after a connection has been received by
 // the worker, and the session has been validated.
-// The passed in connCtx and connCancel are used to terminate any ongoing
-// proxy connections.
+// The passed in context.CancelFunc is used to terminate any ongoing proxy
+// connections.
 // The connection status is then viewable in this session's GetConnections() call.
-func (s *Session) AuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (*ConnInfo, int32, error) {
+func (s *Session) AuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (ConnInfo, int32, error) {
 	ci, connsLeft, err := authorizeConnection(ctx, s.client, workerId, s.GetId())
 	if err != nil {
-		return nil, connsLeft, err
+		return ConnInfo{}, connsLeft, err
 	}
 	ci.ConnCtxCancelFunc = connCancel
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.connInfoMap[ci.Id] = ci
-	return ci, connsLeft, err
+	return ConnInfo{
+		Id:                ci.Id,
+		ConnCtxCancelFunc: connCancel,
+		Status:            ci.Status,
+		CloseTime:         ci.CloseTime,
+	}, connsLeft, err
 }
 
 // ConnectConnection sends a ConnectConnection request to the controller. It
@@ -277,7 +282,7 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 // errors. Individual events will be sent for the errors if there are any.
 //
 // closeInfo is a map of connections mapped to their individual session.
-func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sessManager *Cache, closeInfo map[string]string) bool {
+func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sCache *Cache, closeInfo map[string]string) bool {
 	const op = "session.closeConnections"
 	if closeInfo == nil {
 		// This should not happen, but it's a no-op if it does. Just
@@ -317,7 +322,7 @@ func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 	}
 
 	// Mark connections as closed
-	_, errs := setCloseTimeForResponse(sessManager, sessionCloseInfo)
+	_, errs := setCloseTimeForResponse(sCache, sessionCloseInfo)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connection closed in state"))
@@ -402,11 +407,11 @@ func makeFakeSessionCloseInfo(
 // failed, as some connections may have been marked as closed. The
 // actual list of connection IDs closed is returned as the first
 // return value.
-func setCloseTimeForResponse(sessManager *Cache, sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData) ([]string, []error) {
+func setCloseTimeForResponse(sCache *Cache, sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData) ([]string, []error) {
 	closedIds := make([]string, 0)
 	var result []error
 	for sessionId, responses := range sessionCloseInfo {
-		si := sessManager.Get(sessionId)
+		si := sCache.Get(sessionId)
 		if si == nil {
 			result = append(result, fmt.Errorf("could not find session ID %q in local state after closing connections", sessionId))
 			continue
