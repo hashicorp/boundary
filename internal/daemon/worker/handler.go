@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
@@ -22,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
 )

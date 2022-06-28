@@ -11,8 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -20,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"nhooyr.io/websocket"
 )
 

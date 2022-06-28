@@ -12,10 +12,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/daemon/worker/session"
-
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
+	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"

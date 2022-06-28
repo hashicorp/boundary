@@ -12,12 +12,11 @@ import (
 	"testing"
 	"time"
 
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestManager_Get(t *testing.T) {

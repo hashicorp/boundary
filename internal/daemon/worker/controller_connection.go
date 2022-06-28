@@ -19,15 +19,14 @@ import (
 	"strings"
 	"time"
 
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/nodeenrollment/multihop"
-
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/multihop"
 	"github.com/hashicorp/nodeenrollment/protocol"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"

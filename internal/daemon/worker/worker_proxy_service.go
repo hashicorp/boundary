@@ -4,9 +4,8 @@ import (
 	"context"
 	"sync/atomic"
 
-	"google.golang.org/grpc"
-
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"google.golang.org/grpc"
 )
 
 type workerProxyServiceServer struct {

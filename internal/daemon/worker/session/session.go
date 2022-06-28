@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/session"
-
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
 // ValidateSessionTimeout is the duration of the timeout when the worker queries the
