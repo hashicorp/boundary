@@ -11,18 +11,6 @@ const (
 	and
 		worker_id = ?`
 
-	deleteWorkerTagByKeyValueSql = `
-	delete
-	from server_worker_tag
-	where
-		source = ?
-	and
-		worker_id = ?
-	and
-		key = ?
-	and
-		value = ?`
-
 	deleteWorkerAuthQuery = `
 		delete from worker_auth_authorized
  		where worker_key_identifier = @worker_key_identifier;
