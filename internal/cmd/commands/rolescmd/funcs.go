@@ -226,22 +226,28 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Opti
 	return true
 }
 
-func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, roleClient *roles.Client, version uint32, opts []roles.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *roles.Role, origItems []*roles.Role, origError error, roleClient *roles.Client, version uint32, opts []roles.Option) (*api.Response, *roles.Role, []*roles.Role, error) {
 	switch c.Func {
 	case "add-principals":
-		return roleClient.AddPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		result, err := roleClient.AddPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-principals":
-		return roleClient.SetPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		result, err := roleClient.SetPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-principals":
-		return roleClient.RemovePrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		result, err := roleClient.RemovePrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-grants":
-		return roleClient.AddGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		result, err := roleClient.AddGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-grants":
-		return roleClient.SetGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		result, err := roleClient.SetGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-grants":
-		return roleClient.RemoveGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		result, err := roleClient.RemoveGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	}
-	return origResult, origError
+	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*roles.Role) string {
@@ -298,8 +304,7 @@ func (c *Command) printListTable(items []*roles.Role) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*roles.Role)
+func printItemTable(item *roles.Role, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
