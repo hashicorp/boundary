@@ -174,14 +174,16 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 	return true
 }
 
-func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, accountClient *accounts.Client, version uint32, opts []accounts.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *accounts.Account, origItems []*accounts.Account, origError error, accountClient *accounts.Client, version uint32, opts []accounts.Option) (*api.Response, *accounts.Account, []*accounts.Account, error) {
 	switch c.Func {
 	case "set-password":
-		return accountClient.SetPassword(c.Context, c.FlagId, c.flagPassword, version, opts...)
+		result, err := accountClient.SetPassword(c.Context, c.FlagId, c.flagPassword, version, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "change-password":
-		return accountClient.ChangePassword(c.Context, c.FlagId, c.flagCurrentPassword, c.flagNewPassword, version, opts...)
+		result, err := accountClient.ChangePassword(c.Context, c.FlagId, c.flagCurrentPassword, c.flagNewPassword, version, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	}
-	return origResult, origError
+	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*accounts.Account) string {
@@ -237,8 +239,7 @@ func (c *Command) printListTable(items []*accounts.Account) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*accounts.Account)
+func printItemTable(item *accounts.Account, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id

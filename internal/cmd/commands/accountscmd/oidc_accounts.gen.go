@@ -193,19 +193,28 @@ func (c *OidcCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *accounts.Account
+
+	var createResult *accounts.AccountCreateResult
+
+	var updateResult *accounts.AccountUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = accountsClient.Create(c.Context, c.FlagAuthMethodId, opts...)
+		createResult, err = accountsClient.Create(c.Context, c.FlagAuthMethodId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = accountsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = accountsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraOidcActions(c, result, err, accountsClient, version, opts)
+	resp, item, err = executeExtraOidcActions(c, resp, item, err, accountsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -233,10 +242,10 @@ func (c *OidcCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -249,8 +258,8 @@ var (
 	extraOidcSynopsisFunc        = func(*OidcCommand) string { return "" }
 	extraOidcFlagsFunc           = func(*OidcCommand, *base.FlagSets, *base.FlagSet) {}
 	extraOidcFlagsHandlingFunc   = func(*OidcCommand, *base.FlagSets, *[]accounts.Option) bool { return true }
-	executeExtraOidcActions      = func(_ *OidcCommand, inResult api.GenericResult, inErr error, _ *accounts.Client, _ uint32, _ []accounts.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraOidcActions      = func(_ *OidcCommand, inResp *api.Response, inItem *accounts.Account, inErr error, _ *accounts.Client, _ uint32, _ []accounts.Option) (*api.Response, *accounts.Account, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomOidcActionOutput = func(*OidcCommand) (bool, error) { return false, nil }
 )
