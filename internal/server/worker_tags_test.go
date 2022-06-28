@@ -522,6 +522,7 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 }
 
 func TestRepository_WorkerTagsConsequent(t *testing.T) {
+	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -585,11 +586,23 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	assert.Equal(uint32(4), worker.Version)
 
 	// Set all tags to nil
-	_, err = repo.SetWorkerTags(context.Background(), worker.PublicId, worker.Version, nil)
-	// assert.Equal(nil, set)
+	set, err := repo.SetWorkerTags(context.Background(), worker.PublicId, worker.Version, nil)
+	assert.Equal([]*Tag(nil), set)
 	assert.NoError(err)
 	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
 	require.NoError(err)
 	assert.Equal(uint32(5), worker.Version)
-	assert.Equal(nil, worker.apiTags)
+	assert.Equal(set, worker.apiTags)
+	assert.Equal(0, len(worker.apiTags))
+
+	// Go full circle
+	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
+	assert.NoError(err)
+	worker, err = repo.LookupWorker(context.Background(), worker.PublicId)
+	require.NoError(err)
+	assert.Equal(uint32(6), worker.Version)
+	assert.Equal(len(manyTags), len(worker.apiTags))
+	for _, t := range manyTags {
+		assert.Contains(worker.apiTags, t)
+	}
 }
