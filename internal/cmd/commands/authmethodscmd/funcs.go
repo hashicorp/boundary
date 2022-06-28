@@ -133,8 +133,7 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*authmethods.AuthMethod)
+func printItemTable(item *authmethods.AuthMethod, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
@@ -157,8 +156,8 @@ func printItemTable(result api.GenericResult) string {
 	if item.Description != "" {
 		nonAttributeMap["Description"] = item.Description
 	}
-	if result.GetResponse() != nil && result.GetResponse().Map != nil {
-		if result.GetResponse().Map[globals.IsPrimaryField] != nil {
+	if resp != nil && resp.Map != nil {
+		if resp.Map[globals.IsPrimaryField] != nil {
 			nonAttributeMap["Is Primary For Scope"] = item.IsPrimary
 		}
 	}
