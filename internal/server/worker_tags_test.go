@@ -256,7 +256,6 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			got, err := repo.AddWorkerTags(context.Background(), tt.args.publicId, tt.args.version, tt.args.ts, tt.args.tags)
 			if tt.wantErrContains != "" {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
@@ -398,7 +397,6 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			got, err := repo.SetWorkerTags(context.Background(), tt.args.publicId, tt.args.version, tt.args.ts, tt.args.tags)
 			if tt.wantErrContains != "" {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
@@ -506,7 +504,6 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-
 			got, err := repo.DeleteWorkerTags(context.Background(), tt.args.publicId, tt.args.version, tt.args.ts, tt.args.tags)
 			if tt.wantErrContains != "" {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
@@ -562,5 +559,4 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	// TODO: add tests for adding multiple of the same tag
 
 	// TODO: delete some tags, verify behavior, append new tags, and then set tags to nil
-
 }
