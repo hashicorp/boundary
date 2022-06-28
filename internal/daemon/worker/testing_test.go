@@ -35,11 +35,13 @@ func TestTestWorkerLookupSession(t *testing.T) {
 				SessionId:   request.GetSessionId(),
 				Certificate: cert,
 			},
+			Version:    1,
 			TofuToken:  "tofu",
 			Expiration: timestamppb.New(time.Now().Add(time.Hour)),
 		}, nil
 	}
-	s, err := cache.RefreshSession(ctx, "foo", "")
+	s, err := cache.RefreshSession(ctx, "foo", "worker id")
+	require.NoError(err)
 	mockSessionClient.ActivateSessionFn = func(_ context.Context, _ *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
 		return &pbs.ActivateSessionResponse{Status: pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE}, nil
 	}
@@ -53,7 +55,7 @@ func TestTestWorkerLookupSession(t *testing.T) {
 		}, nil
 	}
 	_, cancelFn := context.WithCancel(context.Background())
-	_, _, err = s.AuthorizeConnection(ctx, "", cancelFn)
+	_, _, err = s.AuthorizeConnection(ctx, "worker id", cancelFn)
 	require.NoError(err)
 	require.NoError(s.ApplyConnectionStatus("one", pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED))
 
