@@ -108,8 +108,7 @@ func (c *Command) printListTable(items []*credentials.Credential) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*credentials.Credential)
+func printItemTable(item *credentials.Credential, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
