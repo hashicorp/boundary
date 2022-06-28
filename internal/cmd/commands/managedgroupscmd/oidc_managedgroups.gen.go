@@ -193,19 +193,28 @@ func (c *OidcCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *managedgroups.ManagedGroup
+
+	var createResult *managedgroups.ManagedGroupCreateResult
+
+	var updateResult *managedgroups.ManagedGroupUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = managedgroupsClient.Create(c.Context, c.FlagAuthMethodId, opts...)
+		createResult, err = managedgroupsClient.Create(c.Context, c.FlagAuthMethodId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = managedgroupsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = managedgroupsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraOidcActions(c, result, err, managedgroupsClient, version, opts)
+	resp, item, err = executeExtraOidcActions(c, resp, item, err, managedgroupsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -233,10 +242,10 @@ func (c *OidcCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -249,8 +258,8 @@ var (
 	extraOidcSynopsisFunc        = func(*OidcCommand) string { return "" }
 	extraOidcFlagsFunc           = func(*OidcCommand, *base.FlagSets, *base.FlagSet) {}
 	extraOidcFlagsHandlingFunc   = func(*OidcCommand, *base.FlagSets, *[]managedgroups.Option) bool { return true }
-	executeExtraOidcActions      = func(_ *OidcCommand, inResult api.GenericResult, inErr error, _ *managedgroups.Client, _ uint32, _ []managedgroups.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraOidcActions      = func(_ *OidcCommand, inResp *api.Response, inItem *managedgroups.ManagedGroup, inErr error, _ *managedgroups.Client, _ uint32, _ []managedgroups.Option) (*api.Response, *managedgroups.ManagedGroup, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomOidcActionOutput = func(*OidcCommand) (bool, error) { return false, nil }
 )
