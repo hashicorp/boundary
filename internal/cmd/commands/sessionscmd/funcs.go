@@ -86,12 +86,13 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	return helpStr + c.Flags().Help()
 }
 
-func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, sessionClient *sessions.Client, version uint32, opts []sessions.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *sessions.Session, origItems []*sessions.Session, origError error, sessionClient *sessions.Client, version uint32, opts []sessions.Option) (*api.Response, *sessions.Session, []*sessions.Session, error) {
 	switch c.Func {
 	case "cancel":
-		return sessionClient.Cancel(c.Context, c.FlagId, version, opts...)
+		result, err := sessionClient.Cancel(c.Context, c.FlagId, version, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	}
-	return origResult, origError
+	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*sessions.Session) string {
@@ -162,8 +163,7 @@ func (c *Command) printListTable(items []*sessions.Session) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*sessions.Session)
+func printItemTable(item *sessions.Session, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
