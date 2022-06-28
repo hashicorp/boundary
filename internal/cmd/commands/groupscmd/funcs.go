@@ -128,16 +128,19 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]groups.Opt
 	return true
 }
 
-func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, groupClient *groups.Client, version uint32, opts []groups.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *groups.Group, origItems []*groups.Group, origError error, groupClient *groups.Client, version uint32, opts []groups.Option) (*api.Response, *groups.Group, []*groups.Group, error) {
 	switch c.Func {
 	case "add-members":
-		return groupClient.AddMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)
+		result, err := groupClient.AddMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-members":
-		return groupClient.SetMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)
+		result, err := groupClient.SetMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-members":
-		return groupClient.RemoveMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)
+		result, err := groupClient.RemoveMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	}
-	return origResult, origError
+	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*groups.Group) string {
@@ -193,8 +196,7 @@ func (c *Command) printListTable(items []*groups.Group) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*groups.Group)
+func printItemTable(item *groups.Group, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
