@@ -32,10 +32,7 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 		}))
 
 	case "json":
-		if ok := c.PrintJsonItem(&dummyGenericResponse{
-			item:     token,
-			response: result.GetResponse(),
-		}); !ok {
+		if ok := c.PrintJsonItem(result.GetResponse()); !ok {
 			return base.CommandCliError
 		}
 		return base.CommandSuccess
