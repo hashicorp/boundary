@@ -193,19 +193,28 @@ func (c *StaticCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *hosts.Host
+
+	var createResult *hosts.HostCreateResult
+
+	var updateResult *hosts.HostUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = hostsClient.Create(c.Context, c.FlagHostCatalogId, opts...)
+		createResult, err = hostsClient.Create(c.Context, c.FlagHostCatalogId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = hostsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = hostsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraStaticActions(c, result, err, hostsClient, version, opts)
+	resp, item, err = executeExtraStaticActions(c, resp, item, err, hostsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -233,10 +242,10 @@ func (c *StaticCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -249,8 +258,8 @@ var (
 	extraStaticSynopsisFunc        = func(*StaticCommand) string { return "" }
 	extraStaticFlagsFunc           = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
 	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *base.FlagSets, *[]hosts.Option) bool { return true }
-	executeExtraStaticActions      = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *hosts.Client, _ uint32, _ []hosts.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraStaticActions      = func(_ *StaticCommand, inResp *api.Response, inItem *hosts.Host, inErr error, _ *hosts.Client, _ uint32, _ []hosts.Option) (*api.Response, *hosts.Host, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomStaticActionOutput = func(*StaticCommand) (bool, error) { return false, nil }
 )
