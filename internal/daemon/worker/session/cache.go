@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
@@ -52,6 +53,14 @@ func (m *Cache) ForEachSession(f func(*Session) bool) {
 // be modified is the Status.  Because of that, if RefreshSession is called on
 // a Session that is already in the cache, only the Status is updated.
 func (m *Cache) RefreshSession(ctx context.Context, id string, workerId string) (*Session, error) {
+	const op = "session.(*Cache).RefreshSession"
+	switch {
+	case id == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "id is not set")
+	case workerId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "workerId is not set")
+	}
+
 	resp, err := m.controllerSessionConn.LookupSession(ctx, &pbs.LookupSessionRequest{
 		SessionId: id,
 		WorkerId:  workerId,

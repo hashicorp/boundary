@@ -163,7 +163,8 @@ func (s *Session) Cancel(ctx context.Context) error {
 }
 
 // Activate Sends session activation request to the controller.  The Session's
-// status is then updated with the result of the call.
+// status is then updated with the result of the call.  After a successful
+// call to Activate, subsequent calls will fail.
 func (s *Session) Activate(ctx context.Context, tofu string) error {
 	st, err := activate(ctx, s.client, s.GetId(), tofu, s.resp.GetVersion())
 	if err != nil {
