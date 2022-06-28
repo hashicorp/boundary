@@ -196,19 +196,28 @@ func (c *StaticCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *credentialstores.CredentialStore
+
+	var createResult *credentialstores.CredentialStoreCreateResult
+
+	var updateResult *credentialstores.CredentialStoreUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = credentialstoresClient.Create(c.Context, "static", c.FlagScopeId, opts...)
+		createResult, err = credentialstoresClient.Create(c.Context, "static", c.FlagScopeId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = credentialstoresClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = credentialstoresClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraStaticActions(c, result, err, credentialstoresClient, version, opts)
+	resp, item, err = executeExtraStaticActions(c, resp, item, err, credentialstoresClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -238,10 +247,10 @@ func (c *StaticCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -254,8 +263,8 @@ var (
 	extraStaticSynopsisFunc        = func(*StaticCommand) string { return "" }
 	extraStaticFlagsFunc           = func(*StaticCommand, *base.FlagSets, *base.FlagSet) {}
 	extraStaticFlagsHandlingFunc   = func(*StaticCommand, *base.FlagSets, *[]credentialstores.Option) bool { return true }
-	executeExtraStaticActions      = func(_ *StaticCommand, inResult api.GenericResult, inErr error, _ *credentialstores.Client, _ uint32, _ []credentialstores.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraStaticActions      = func(_ *StaticCommand, inResp *api.Response, inItem *credentialstores.CredentialStore, inErr error, _ *credentialstores.Client, _ uint32, _ []credentialstores.Option) (*api.Response, *credentialstores.CredentialStore, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomStaticActionOutput = func(*StaticCommand) (bool, error) { return false, nil }
 )
