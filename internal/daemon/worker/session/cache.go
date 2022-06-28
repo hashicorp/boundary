@@ -97,7 +97,7 @@ func (m *Cache) DeleteSessionsLocally(sessIds []string) {
 	}
 }
 
-func (m *Cache) CloseConnections(ctx context.Context, closeInfo map[string]string) bool {
+func (m *Cache) RequestCloseConnections(ctx context.Context, closeInfo map[string]string) bool {
 	return closeConnections(ctx, m.controllerSessionConn, m, closeInfo)
 }
 
@@ -116,7 +116,7 @@ func (w *Cache) cancelConnections(connInfoMap map[string]*ConnInfo, ignoreConnec
 				continue
 			}
 
-			v.ConnCtxCancelFunc()
+			v.connCtxCancelFunc()
 			closedIds = append(closedIds, k)
 		}
 	}

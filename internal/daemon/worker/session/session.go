@@ -23,10 +23,16 @@ var errMakeSessionCloseInfoNilCloseInfo = errors.New("nil closeInfo supplied to 
 
 // ConnInfo defines the information about a connection attached to a session
 type ConnInfo struct {
-	Id                string
-	ConnCtxCancelFunc context.CancelFunc
-	Status            pbs.CONNECTIONSTATUS
-	CloseTime         time.Time
+	Id     string
+	Status pbs.CONNECTIONSTATUS
+
+	// The context.CancelFunc for the proxy connection.  Calling this function
+	// closes the proxy connection.
+	connCtxCancelFunc context.CancelFunc
+
+	// The time the controller has successfully reported that this connection is
+	// closed.
+	CloseTime time.Time
 }
 
 // Session is the local representation of a session.  After initial loading
@@ -79,7 +85,6 @@ func (s *Session) ApplyConnectionStatus(connId string, status pbs.CONNECTIONSTAT
 	if connInfo.Status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
 		connInfo.CloseTime = time.Now()
 	}
-	connInfo.Status = status
 	return nil
 }
 
@@ -93,8 +98,6 @@ func (s *Session) ApplyStatus(st pbs.SESSIONSTATUS) {
 	s.status = st
 }
 
-// TODO: Only expose the Connection id -> Status since that seems to be all that
-//  is needed.
 // GetConnections returns the connections this session is handling.
 func (s *Session) GetConnections() map[string]ConnInfo {
 	s.lock.RLock()
@@ -103,10 +106,9 @@ func (s *Session) GetConnections() map[string]ConnInfo {
 	// Returning the s.connInfoMap directly wouldn't be thread safe.
 	for k, v := range s.connInfoMap {
 		res[k] = ConnInfo{
-			Id:                v.Id,
-			ConnCtxCancelFunc: v.ConnCtxCancelFunc,
-			Status:            v.Status,
-			CloseTime:         v.CloseTime,
+			Id:        v.Id,
+			Status:    v.Status,
+			CloseTime: v.CloseTime,
 		}
 	}
 	return res
@@ -185,13 +187,13 @@ func (s *Session) AuthorizeConnection(ctx context.Context, workerId string, conn
 	if err != nil {
 		return ConnInfo{}, connsLeft, err
 	}
-	ci.ConnCtxCancelFunc = connCancel
+	ci.connCtxCancelFunc = connCancel
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.connInfoMap[ci.Id] = ci
 	return ConnInfo{
 		Id:                ci.Id,
-		ConnCtxCancelFunc: connCancel,
+		connCtxCancelFunc: connCancel,
 		Status:            ci.Status,
 		CloseTime:         ci.CloseTime,
 	}, connsLeft, err
@@ -208,6 +210,48 @@ func (s *Session) ConnectConnection(ctx context.Context, info *pbs.ConnectConnec
 	}
 	s.ApplyConnectionStatus(info.GetConnectionId(), st)
 	return nil
+}
+
+// CancelOpenConnections closes the connections in this session based on the
+// connection's state
+//
+// The returned slice are connection ids that were closed.
+func (s *Session) CancelOpenConnections() []string {
+	var closedIds []string
+	for k, v := range s.connInfoMap {
+		if v.Status != pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
+			continue
+		}
+		v.connCtxCancelFunc()
+
+		// CloseTime is set when the controller has reported that the connection
+		// is closed.  The worker should only request a connection be marked
+		// closed after it has already been cancelled.
+		if v.CloseTime.IsZero() {
+			closedIds = append(closedIds, k)
+		}
+	}
+
+	return closedIds
+}
+
+// CancelAllConnections close connections regardless of connection's state
+//
+// The returned slice is the connection ids which were closed.
+func (s *Session) CancelAllConnections() []string {
+	var closedIds []string
+	for k, v := range s.connInfoMap {
+		v.connCtxCancelFunc()
+
+		// CloseTime is set when the controller has reported that the connection
+		// is closed.  The worker should only request a connection be marked
+		// closed after it has already been cancelled.
+		if v.CloseTime.IsZero() {
+			closedIds = append(closedIds, k)
+		}
+	}
+
+	return closedIds
 }
 
 func activate(ctx context.Context, sessClient pbs.SessionServiceClient, sessionId, tofuToken string, version uint32) (pbs.SESSIONSTATUS, error) {

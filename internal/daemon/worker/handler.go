@@ -220,7 +220,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionCa
 		}
 		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.Id)
 		defer func() {
-			if sessionCache.CloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
+			if sessionCache.RequestCloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
 				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.Id)
 			}
 		}()
