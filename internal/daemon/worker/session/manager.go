@@ -34,7 +34,7 @@ func (m *Manager) Get(id string) *Session {
 
 // ForEachLocalSession calls the provided function with each Session object.
 // If the provided function ever returns false the iteration stops.
-// If changes to the cessions in the cache happen concurrently, this function
+// If changes to the sessions in the manager happen concurrently, this function
 // does not guarantee that the key will or will not be provided in the
 // iteration.
 func (m *Manager) ForEachLocalSession(f func(*Session) bool) {
@@ -48,10 +48,10 @@ func (m *Manager) ForEachLocalSession(f func(*Session) bool) {
 }
 
 // LoadLocalSession looks up from the source of truth the session information,
-// validates it is valid, and then refreshes the local cache.
+// validates it is valid, and then refreshes the local manager's data.
 // On a local worker, the only value of a Session that we care about that can
 // be modified is the Status.  Because of that, if LoadLocalSession is called on
-// a Session that is already in the cache, only the Status is updated.
+// a Session that is already in the manager's data, only the Status is updated.
 func (m *Manager) LoadLocalSession(ctx context.Context, id string, workerId string) (*Session, error) {
 	const op = "session.(*Manager).LoadLocalSession"
 	switch {
@@ -89,7 +89,7 @@ func (m *Manager) LoadLocalSession(ctx context.Context, id string, workerId stri
 }
 
 // DeleteLocalSession removes all sessions with the provided id from the
-// local cache.  If ids are passed in which do not exist in the local cache
+// local manager.  If ids are passed in which do not exist in the manager
 // no error is returned.
 func (m *Manager) DeleteLocalSession(sessIds []string) {
 	for _, s := range sessIds {

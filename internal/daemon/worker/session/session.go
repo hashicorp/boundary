@@ -320,7 +320,7 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 	return resp, nil
 }
 
-func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sCache *Manager, closeInfo map[string]string) bool {
+func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sManager *Manager, closeInfo map[string]string) bool {
 	const op = "session.closeConnections"
 	if len(closeInfo) == 0 {
 		// This should not happen, but it's a no-op if it does. Just
@@ -346,16 +346,21 @@ func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 			"session_and_connection_ids", fmt.Sprintf("%#v", closeInfo),
 		))
 
-		event.WriteError(ctx, op, err, event.WithInfoMsg("serious error in processing return data from controller, aborting additional session/connection state modification"))
-		return false
+		// Since we could not reach the controller, we have to make a "fake" response set.
+		sessionCloseInfo, err = makeFakeSessionCloseInfo(closeInfo)
 	} else {
 		// Connection succeeded, so we can proceed with making the sessionCloseInfo
 		// off of the response data.
 		sessionCloseInfo, err = makeSessionCloseInfo(closeInfo, response)
 	}
 
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("serious error in processing return data from controller, aborting additional session/connection state modification"))
+		return false
+	}
+
 	// Mark connections as closed
-	_, errs := setCloseTimeForResponse(sCache, sessionCloseInfo)
+	_, errs := setCloseTimeForResponse(sManager, sessionCloseInfo)
 	if len(errs) > 0 {
 		for _, err := range errs {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connection closed in state"))
@@ -408,6 +413,26 @@ func makeSessionCloseInfo(
 	return result, nil
 }
 
+// makeFakeSessionCloseInfo makes a "fake" makeFakeSessionCloseInfo, intended
+// for use when we can't contact the controller.
+func makeFakeSessionCloseInfo(
+	closeInfo map[string]string,
+) (map[string][]*pbs.CloseConnectionResponseData, error) {
+	if closeInfo == nil {
+		return nil, errMakeSessionCloseInfoNilCloseInfo
+	}
+
+	result := make(map[string][]*pbs.CloseConnectionResponseData)
+	for connectionId, sessionId := range closeInfo {
+		result[sessionId] = append(result[sessionId], &pbs.CloseConnectionResponseData{
+			ConnectionId: connectionId,
+			Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,
+		})
+	}
+
+	return result, nil
+}
+
 // setCloseTimeForResponse iterates a CloseConnectionResponse and
 // sets the close time for any connection found to be closed to the
 // current time.
@@ -420,11 +445,11 @@ func makeSessionCloseInfo(
 // failed, as some connections may have been marked as closed. The
 // actual list of connection IDs closed is returned as the first
 // return value.
-func setCloseTimeForResponse(sCache *Manager, sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData) ([]string, []error) {
+func setCloseTimeForResponse(sManager *Manager, sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData) ([]string, []error) {
 	closedIds := make([]string, 0)
 	var result []error
 	for sessionId, responses := range sessionCloseInfo {
-		si := sCache.Get(sessionId)
+		si := sManager.Get(sessionId)
 		if si == nil {
 			result = append(result, fmt.Errorf("could not find session ID %q in local state after closing connections", sessionId))
 			continue

@@ -23,7 +23,7 @@ type LastStatusInformation struct {
 	LastCalculatedUpstreams []string
 }
 
-func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionCache *session.Manager) {
+func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager *session.Manager) {
 	const op = "worker.(Worker).startStatusTicking"
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// This function exists to desynchronize calls to controllers from
@@ -47,7 +47,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionCache *ses
 			return
 
 		case <-timer.C:
-			w.sendWorkerStatus(cancelCtx, sessionCache)
+			w.sendWorkerStatus(cancelCtx, sessionManager)
 			timer.Reset(getRandomInterval())
 		}
 	}
@@ -91,7 +91,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	return nil
 }
 
-func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionCache *session.Manager) {
+func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager *session.Manager) {
 	const op = "worker.(Worker).sendWorkerStatus"
 
 	// If we've never managed to successfully authenticate then we won't have
@@ -107,7 +107,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionCache *sessi
 	var activeJobs []*pbs.JobStatus
 
 	// Range over known sessions and collect info
-	sessionCache.ForEachLocalSession(func(s *session.Session) bool {
+	sessionManager.ForEachLocalSession(func(s *session.Session) bool {
 		var jobInfo pbs.SessionJobInfo
 		status := s.GetStatus()
 		sessionId := s.GetId()
@@ -173,7 +173,6 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionCache *sessi
 		// want to start terminating all connections as a "break glass" kind of
 		// scenario, as there will be no way we can really tell if these
 		// connections should continue to exist.
-
 		if isPastGrace, lastStatusTime, gracePeriod := w.isPastGrace(); isPastGrace {
 			event.WriteError(statusCtx, op,
 				errors.New("status error grace period has expired, canceling all sessions on worker"),
@@ -182,7 +181,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionCache *sessi
 
 			// Cancel connections if grace period has expired. These Connections will be closed in the
 			// database on the next successful status report, or via the Controller’s dead Worker cleanup connections job.
-			sessionCache.ForEachLocalSession(func(s *session.Session) bool {
+			sessionManager.ForEachLocalSession(func(s *session.Session) bool {
 				for _, connId := range s.CancelAllLocalConnections() {
 					event.WriteSysEvent(cancelCtx, op, "terminated connection due to status grace period expiration", "session_id", s.GetId(), "connection_id", connId)
 				}
@@ -190,7 +189,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionCache *sessi
 			})
 
 			// Exit out of status function; our work here is done and we don't need to create closeConnection requests
-			return
+			//return
 		}
 	} else {
 		w.updateTags.Store(false)
@@ -223,7 +222,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionCache *sessi
 				case pbs.JOBTYPE_JOBTYPE_SESSION:
 					sessInfo := request.GetJob().GetSessionInfo()
 					sessionId := sessInfo.GetSessionId()
-					si := sessionCache.Get(sessionId)
+					si := sessionManager.Get(sessionId)
 					if si == nil {
 						event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
 						continue
@@ -244,7 +243,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionCache *sessi
 
 	// Standard cleanup: Run through current jobs. Cancel connections
 	// for any canceling session or any session that is expired.
-	w.cleanupConnections(cancelCtx, false, sessionCache)
+	w.cleanupConnections(cancelCtx, false, sessionManager)
 }
 
 // cleanupConnections walks all sessions and shuts down all proxy connections.
@@ -255,11 +254,11 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionCache *sessi
 //
 // Use ignoreSessionState to ignore the state checks, this closes all
 // connections, regardless of whether or not the session is still active.
-func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool, sessionCache *session.Manager) {
+func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool, sessionManager *session.Manager) {
 	const op = "worker.(Worker).cleanupConnections"
 	closeInfo := make(map[string]string)
 	cleanSessionIds := make([]string, 0)
-	sessionCache.ForEachLocalSession(func(s *session.Session) bool {
+	sessionManager.ForEachLocalSession(func(s *session.Session) bool {
 		switch {
 		case ignoreSessionState,
 			s.GetStatus() == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
@@ -298,11 +297,11 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 		// Call out to a helper to send the connection close requests to the
 		// controller, and set the close time. This functionality is shared with
 		// post-close functionality in the proxy handler.
-		_ = sessionCache.RequestCloseConnections(cancelCtx, closeInfo)
+		_ = sessionManager.RequestCloseConnections(cancelCtx, closeInfo)
 	}
 	// Forget sessions where the session is expired/canceled and all
 	// connections are canceled and marked closed
-	sessionCache.DeleteLocalSession(cleanSessionIds)
+	sessionManager.DeleteLocalSession(cleanSessionIds)
 }
 
 func (w *Worker) lastSuccessfulStatusTime() time.Time {
