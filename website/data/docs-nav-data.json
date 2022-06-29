@@ -294,7 +294,7 @@
   },
   {
     "title": "Common Workflows",
-    "href": "https://learn.hashicorp.com/collections/boundary/basic-administration"
+    "href": "https://learn.hashicorp.com/boundary"
   },
   {
     "title": "Common Workflows",
@@ -356,7 +356,7 @@
       },
       {
         "title": "Desktop",
-        "href": "https://learn.hashicorp.com/tutorials/boundary/getting-started-desktop-app"
+        "href": "https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app"
       }
     ]
   },

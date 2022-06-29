@@ -13,8 +13,8 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithEgressCredentials", func(t *testing.T) {
 		assert := assert.New(t)
 		c := &serverpb.Credential{
-			Credential: &serverpb.Credential_UserPassword{
-				UserPassword: &serverpb.UserPassword{
+			Credential: &serverpb.Credential_UsernamePassword{
+				UsernamePassword: &serverpb.UsernamePassword{
 					Username: "user",
 					Password: "pass",
 				},

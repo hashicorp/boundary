@@ -90,20 +90,60 @@ func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime t
 	return run, nil
 }
 
-func testController(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) *store.Controller {
+func testController(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...testOption) *store.Controller {
 	t.Helper()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
-	id, err := uuid.GenerateUUID()
-	require.NoError(t, err)
+	opts := getTestOpts(t, opt...)
+
+	privateId := opts.controllerId
+	if privateId == "" {
+		// generate a unique ID for the test
+		id, err := uuid.GenerateUUID()
+		require.NoError(t, err)
+		privateId = "test-job-server-" + id
+	}
 	controller := &store.Controller{
-		PrivateId: "test-job-server-" + id,
+		PrivateId: privateId,
 		Address:   "127.0.0.1",
 	}
 	_, err = serversRepo.UpsertController(context.Background(), controller)
 	require.NoError(t, err)
 	return controller
+}
+
+func getTestOpts(t testing.TB, opt ...testOption) testOptions {
+	t.Helper()
+	opts := getDefaultTestOptions(t)
+	for _, o := range opt {
+		o(t, &opts)
+	}
+	return opts
+}
+
+// testOption - how Options are passed as arguments.
+type testOption func(testing.TB, *testOptions)
+
+// options = how options are represented
+type testOptions struct {
+	controllerId string
+}
+
+func getDefaultTestOptions(t testing.TB) testOptions {
+	t.Helper()
+
+	return testOptions{
+		controllerId: "",
+	}
+}
+
+// withControllerId sets the controller id
+func withControllerId(p string) testOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.controllerId = p
+	}
 }

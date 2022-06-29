@@ -539,7 +539,7 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 		if req.Item.GetType() != static.UsernamePasswordSubtype.String() {
 			badFields[globals.TypeField] = fmt.Sprintf("Unsupported credential type %q", req.Item.GetType())
 		}
-		if req.Item.GetCredentialStoreId() == "" {
+		if !handlers.ValidId(handlers.Id(req.Item.GetCredentialStoreId()), static.CredentialStorePrefix) {
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 		}
 

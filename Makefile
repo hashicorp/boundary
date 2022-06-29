@@ -160,7 +160,6 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/credential/store/credential.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/static/store/static.pb.go
-	@protoc-go-inject-tag -input=./internal/server/servers.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
@@ -200,6 +199,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/workers/worker.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/worker_service.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/server_coordination_service.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/servers/servers.pb.go
 
 
 	# these protos, services and openapi artifacts are purely for testing purposes
