@@ -12,6 +12,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * sessions: Fix an additional case from the changes in the 0.8.x series that
   could result in sessions never moving from `canceling` state to terminated.
   ([PR](https://github.com/hashicorp/boundary/pull/2229))
+* The plugin execution_dir configuration parameter is now respected by kms plugins too
+  [PR](https://github.com/hashicorp/boundary/pull/2239).
 
 ## 0.9.0 (2022/06/20)
 
