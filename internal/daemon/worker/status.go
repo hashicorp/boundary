@@ -189,7 +189,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager *ses
 			})
 
 			// Exit out of status function; our work here is done and we don't need to create closeConnection requests
-			//return
+			return
 		}
 	} else {
 		w.updateTags.Store(false)
