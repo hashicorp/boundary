@@ -76,6 +76,7 @@ func main() {
 		session,
 		target,
 		user,
+		worker,
 	)
 
 	fileContents, err := ioutil.ReadFile(permsFile)
@@ -253,16 +254,9 @@ func sortedKeys(in map[string]string) []string {
 	return out
 }
 
-func clActions(typ string) []*Action {
+func lActions(typ string) []*Action {
 	listVersion := strings.TrimPrefix(strings.TrimPrefix(typ, "an "), "a ")
 	return []*Action{
-		{
-			Name:        "create",
-			Description: fmt.Sprintf("Create %s", typ),
-			Examples: []string{
-				"type=<type>;actions=create",
-			},
-		},
 		{
 			Name:        "list",
 			Description: fmt.Sprintf("List %ss", listVersion),
@@ -271,6 +265,18 @@ func clActions(typ string) []*Action {
 			},
 		},
 	}
+}
+
+func clActions(typ string) []*Action {
+	return append([]*Action{
+		{
+			Name:        "create",
+			Description: fmt.Sprintf("Create %s", typ),
+			Examples: []string{
+				"type=<type>;actions=create",
+			},
+		},
+	}, lActions(typ)...)
 }
 
 func rudActions(typ string, pin bool) []*Action {
@@ -824,6 +830,40 @@ var user = &Resource{
 						"id=<id>;actions=remove-accounts",
 					},
 				},
+			),
+		},
+	},
+}
+
+var worker = &Resource{
+	Type:   "Worker",
+	Scopes: []string{"Global"},
+	Endpoints: []*Endpoint{
+		{
+			Path: "/workers",
+			Params: map[string]string{
+				"Type": "workers",
+			},
+			Actions: append(
+				lActions("a worker"),
+				&Action{
+					Name:        "create:worker-led",
+					Description: "Create a worker using the worker-led workflow",
+					Examples: []string{
+						"type=<type>;actions=create",
+						"type=<type>;actions=create:worker-led",
+					},
+				},
+			),
+		},
+		{
+			Path: "/workers/<id>",
+			Params: map[string]string{
+				"ID":   "<id>",
+				"Type": "workers",
+			},
+			Actions: append(
+				rudActions("a worker", false),
 			),
 		},
 	},
