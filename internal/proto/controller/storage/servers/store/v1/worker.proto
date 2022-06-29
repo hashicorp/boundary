@@ -72,6 +72,6 @@ message WorkerTag {
   string value = 30;
 
   // source is the source of the tag. Either 'configuration' or 'api'.
-  // @inject_tag: `gorm:"default:not_null"`
+  // @inject_tag: `gorm:"primary_key"`
   string source = 40;
 }
