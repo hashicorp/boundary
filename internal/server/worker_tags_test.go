@@ -124,8 +124,7 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 	worker := TestKmsWorker(t, conn, wrapper)
 	// use new workers to avoid potential version conflicts when testing individually and sequentially
 	worker2 := TestKmsWorker(t, conn, wrapper)
-	workerc := TestKmsWorker(t, conn, wrapper)
-	workerc.configTags = []*Tag{{Key: "key", Value: "value"}}
+	workerc := TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key", Value: "value"}))
 
 	type args struct {
 		publicId string
@@ -286,9 +285,9 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	worker := TestKmsWorker(t, conn, wrapper)
-	// add another worker here to avoid issue with worker version input being locked in at compile time
+	// use new workers to avoid potential version conflicts when testing individually and sequentially
 	worker2 := TestKmsWorker(t, conn, wrapper)
-	workerc := TestKmsWorker(t, conn, wrapper)
+	workerc := TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key", Value: "value"}))
 
 	assert, require := assert.New(t), require.New(t)
 	repo, err := NewRepository(rw, rw, kms)
@@ -397,13 +396,13 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 				publicId: workerc.PublicId,
 				version:  workerc.Version,
 				tags: []*Tag{{
-					Key:   "key",
-					Value: "value",
+					Key:   "key!",
+					Value: "value!",
 				}},
 			},
 			want: []*Tag{{
-				Key:   "key",
-				Value: "value",
+				Key:   "key!",
+				Value: "value!",
 			}},
 		},
 	}
@@ -558,15 +557,13 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
-	worker := TestKmsWorker(t, conn, wrapper)
 
-	// Set various overlapping config tags
-	worker.configTags = []*Tag{
-		{Key: "key", Value: "value"},
-		{Key: "keykey", Value: "valval"},
-		{Key: "key3", Value: "value3"},
-		{Key: "key?", Value: "value?"},
-	}
+	// Create worker and set various overlapping config tags
+	worker := TestKmsWorker(t, conn, wrapper, WithWorkerTags(
+		&Tag{Key: "key", Value: "value"},
+		&Tag{Key: "keykey", Value: "valval"},
+		&Tag{Key: "key3", Value: "value3"},
+		&Tag{Key: "key?", Value: "value?"}))
 
 	// Add three valid tags to worker
 	manyTags := []*Tag{
@@ -656,6 +653,15 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	assert.Equal(set, worker.apiTags)
 	assert.Equal(0, len(worker.apiTags))
 
+	// Ensure config tags are untouched
+	for _, ct := range []*Tag{
+		{Key: "key", Value: "value"},
+		{Key: "keykey", Value: "valval"},
+		{Key: "key3", Value: "value3"},
+		{Key: "key?", Value: "value?"}} {
+		assert.Contains(worker.configTags, ct)
+	}
+
 	// Go full circle
 	added, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, manyTags)
 	assert.NoError(err)
@@ -666,4 +672,5 @@ func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	for _, t := range manyTags {
 		assert.Contains(worker.apiTags, t)
 	}
+
 }
