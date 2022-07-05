@@ -439,6 +439,7 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 }
 
 func TestRepository_DeleteWorkerTags(t *testing.T) {
+	// Note: more delete operation testcases are found in subsequent func TestRepository_WorkerTagsConsequent
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -460,7 +461,7 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 	tests := []struct {
 		name            string
 		args            args
-		want            []*Tag
+		want            int
 		wantIsErr       errors.Code
 		wantErrContains string
 	}{
@@ -529,7 +530,41 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 			wantIsErr:       errors.InvalidParameter,
 			wantErrContains: "found nil tag value in input",
 		},
-		// Note: actual delete operation testcases are found in subsequent func TestRepository_WorkerTagsConsequent
+		{
+			name: "nonexistent-tag",
+			args: args{
+				publicId: worker.PublicId,
+				version:  worker.Version,
+				tags: []*Tag{
+					{
+						Key:   "bad_key",
+						Value: "bad_value",
+					},
+				},
+			},
+			wantIsErr:       errors.MultipleRecords,
+			wantErrContains: "tags deleted 0 did not match request for 1",
+		},
+		{
+			name: "valid-delete",
+			args: func() args {
+				worker := TestKmsWorker(t, conn, wrapper)
+				_, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
+					{Key: "key", Value: "value"}})
+				require.NoError(err)
+				return args{
+					publicId: worker.PublicId,
+					version:  worker.Version + 1,
+					tags: []*Tag{
+						{
+							Key:   "key",
+							Value: "value",
+						},
+					},
+				}
+			}(),
+			want: 1,
+		},
 	}
 
 	for _, tt := range tests {
