@@ -461,8 +461,6 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-
-
 	output, err := printCustom{{ camelCase .SubActionPrefix }}ActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
