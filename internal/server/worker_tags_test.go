@@ -550,7 +550,8 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 			args: func() args {
 				worker := TestKmsWorker(t, conn, wrapper)
 				_, err = repo.AddWorkerTags(context.Background(), worker.PublicId, worker.Version, []*Tag{
-					{Key: "key", Value: "value"}})
+					{Key: "key", Value: "value"},
+				})
 				require.NoError(err)
 				return args{
 					publicId: worker.PublicId,
