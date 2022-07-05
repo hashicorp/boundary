@@ -8,6 +8,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * api module: Changed the return types that reference interfaces into their expected typed definition. Type casting is only allowed against interface types, therefore to mitigate compiler errors please remove any type casting done against the return values. ([Issue](https://github.com/hashicorp/boundary/issues/2122), [PR](https://github.com/hashicorp/boundary/pull/2238))
 
+### New and Improved
+
+* `azure` host plugin: Support multiple MSI identities
+  ([PR](https://github.com/hashicorp/go-kms-wrapping/pull/97)
+
 ### Bug Fixes
 
 * scheduler: Fix regression causing controller names of less than 10 characters
@@ -16,6 +21,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * sessions: Fix an additional case from the changes in the 0.8.x series that
   could result in sessions never moving from `canceling` state to terminated.
   ([PR](https://github.com/hashicorp/boundary/pull/2229))
+* The plugin execution_dir configuration parameter is now respected by kms plugins too
+  [PR](https://github.com/hashicorp/boundary/pull/2239).
 
 ## 0.9.0 (2022/06/20)
 

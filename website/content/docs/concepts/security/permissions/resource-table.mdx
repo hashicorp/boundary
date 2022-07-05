@@ -1442,6 +1442,99 @@ documentation](https://www.boundaryproject.io/api-docs) for guidance.
         </ul>
       </td>
     </tr>
+    <tr>
+      <td rowSpan="2">Worker</td>
+      <td rowSpan="2">
+        <ul>
+          <li>Global</li>
+        </ul>
+      </td>
+      <td>
+        <code>/workers</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>workers</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>list</code>: List workers
+          </li>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
+          <li>
+            <code>create:worker-led</code>: Create a worker using the worker-led workflow
+          </li>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+            <li>
+              <code>type=&lt;type&gt;;actions=create:worker-led</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/workers/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>workers</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a worker
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
+          <li>
+            <code>update</code>: Update a worker
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+          </ul>
+          <li>
+            <code>delete</code>: Delete a worker
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
   </tbody>
 </table>
 

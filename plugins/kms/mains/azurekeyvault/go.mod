@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0
-	github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.0.0
+	github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.0.1
 )
 
 require (
