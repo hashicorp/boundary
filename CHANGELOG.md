@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* `azure` host plugin: Support multiple MSI identities
+  ([PR](https://github.com/hashicorp/go-kms-wrapping/pull/97)
+
 ### Bug Fixes
 
 * scheduler: Fix regression causing controller names of less than 10 characters
