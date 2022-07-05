@@ -130,15 +130,12 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 		tags     []*Tag
 	}
 
-	// overwriteWorkerVersion helps avoid potential version conflicts when testing individually vs sequentially
-	// by creating a new TestKmsWorker
 	tests := []struct {
-		name                  string
-		overrideWorkerVersion bool
-		args                  args
-		want                  []*Tag
-		wantIsErr             errors.Code
-		wantErrContains       string
+		name            string
+		args            args
+		want            []*Tag
+		wantIsErr       errors.Code
+		wantErrContains string
 	}{
 		{
 			name: "empty-public-id",
@@ -205,26 +202,29 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 			}},
 		},
 		{
-			name:                  "add-many-tags",
-			overrideWorkerVersion: true,
-			args: args{
-				publicId: worker.PublicId,
-				version:  worker.Version,
-				tags: []*Tag{
-					{
-						Key:   "key",
-						Value: "value",
+			name: "add-many-tags",
+			args: func() args {
+				// reset test worker to avoid worker version conflicts when running tests individually vs sequentially
+				worker := TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key_c", Value: "value_c"}))
+				return args{
+					publicId: worker.PublicId,
+					version:  worker.Version,
+					tags: []*Tag{
+						{
+							Key:   "key",
+							Value: "value",
+						},
+						{
+							Key:   "key2",
+							Value: "value2",
+						},
+						{
+							Key:   "key3",
+							Value: "value3",
+						},
 					},
-					{
-						Key:   "key2",
-						Value: "value2",
-					},
-					{
-						Key:   "key3",
-						Value: "value3",
-					},
-				},
-			},
+				}
+			}(),
 			want: []*Tag{
 				{
 					Key:   "key",
@@ -241,16 +241,18 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 			},
 		},
 		{
-			name:                  "add-preexisting-config-tags",
-			overrideWorkerVersion: true,
-			args: args{
-				publicId: worker.PublicId,
-				version:  worker.Version,
-				tags: []*Tag{{
-					Key:   "key_c",
-					Value: "value_c",
-				}},
-			},
+			name: "add-preexisting-config-tags",
+			args: func() args {
+				worker := TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key_c", Value: "value_c"}))
+				return args{
+					publicId: worker.PublicId,
+					version:  worker.Version,
+					tags: []*Tag{{
+						Key:   "key_c",
+						Value: "value_c",
+					}},
+				}
+			}(),
 			want: []*Tag{{
 				Key:   "key_c",
 				Value: "value_c",
@@ -261,9 +263,6 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.overrideWorkerVersion == true {
-				tt.args.publicId = TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key_c", Value: "value_c"})).PublicId
-			}
 			got, err := repo.AddWorkerTags(context.Background(), tt.args.publicId, tt.args.version, tt.args.tags)
 			if tt.wantErrContains != "" {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
@@ -303,15 +302,12 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 		tags     []*Tag
 	}
 
-	// overwriteWorkerVersion helps avoid potential version conflicts when testing individually vs sequentially
-	// by creating a new TestKmsWorker
 	tests := []struct {
-		name                   string
-		overwriteWorkerVersion bool
-		args                   args
-		want                   []*Tag
-		wantIsErr              errors.Code
-		wantErrContains        string
+		name            string
+		args            args
+		want            []*Tag
+		wantIsErr       errors.Code
+		wantErrContains string
 	}{
 		{
 			name: "empty-public-id",
@@ -362,26 +358,28 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 			want: nil,
 		},
 		{
-			name:                   "set-many-tags",
-			overwriteWorkerVersion: true,
-			args: args{
-				publicId: worker.PublicId,
-				version:  worker.Version,
-				tags: []*Tag{
-					{
-						Key:   "key",
-						Value: "value",
+			name: "set-many-tags",
+			args: func() args {
+				worker := TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key_c", Value: "value_c"}))
+				return args{
+					publicId: worker.PublicId,
+					version:  worker.Version,
+					tags: []*Tag{
+						{
+							Key:   "key",
+							Value: "value",
+						},
+						{
+							Key:   "key2",
+							Value: "value2",
+						},
+						{
+							Key:   "key3",
+							Value: "value3",
+						},
 					},
-					{
-						Key:   "key2",
-						Value: "value2",
-					},
-					{
-						Key:   "key3",
-						Value: "value3",
-					},
-				},
-			},
+				}
+			}(),
 			want: []*Tag{
 				{
 					Key:   "key",
@@ -398,16 +396,18 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 			},
 		},
 		{
-			name:                   "set-preexisting-config-tags",
-			overwriteWorkerVersion: true,
-			args: args{
-				publicId: worker.PublicId,
-				version:  worker.Version,
-				tags: []*Tag{{
-					Key:   "key_c",
-					Value: "value_c",
-				}},
-			},
+			name: "set-preexisting-config-tags",
+			args: func() args {
+				worker := TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key_c", Value: "value_c"}))
+				return args{
+					publicId: worker.PublicId,
+					version:  worker.Version,
+					tags: []*Tag{{
+						Key:   "key_c",
+						Value: "value_c",
+					}},
+				}
+			}(),
 			want: []*Tag{{
 				Key:   "key_c",
 				Value: "value_c",
@@ -418,9 +418,6 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.overwriteWorkerVersion == true {
-				tt.args.publicId = TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key_c", Value: "value_c"})).PublicId
-			}
 			got, err := repo.SetWorkerTags(context.Background(), tt.args.publicId, tt.args.version, tt.args.tags)
 			if tt.wantErrContains != "" {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
