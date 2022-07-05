@@ -35,18 +35,41 @@ description will be read.
     Boundary will not be able to connect by default. To run Boundary without a TLS connection
     to Postgres (not recommended for production usage), add the `sslmode=disable` parameter to
     your connection string, such as `url = "postgresql://postgres:boundary@192.168.1.1:5432/boundary?sslmode=disable"`
+    This value can refer to a file on disk (file://) from which a URL will be read; an env
+    var (env://) from which the URL will be read; or a direct database URL (postgres://).
   - `migration_url` - Can be used to specify a different URL for migrations, as that
     usually requires higher privileges.
+    This value can refer to a file on disk (file://) from which a URL will be read; an env
+    var (env://) from which the URL will be read; or a direct database URL (postgres://).
   - `max_open_connections` - Can be used to control the maximum number of
     connections that can be opened by the controller.
     The minimum number of connections required is 5.
-    Setting this value to 0 will allow the controller to open as many
-    connections as needed. This value can be a string representing the max number of connections, can refer to a file
-    on disk (file://) from which the number of connections will be read; or an env var (env://) from which the
-    number of connections will be read.
-
-  Either URL can refer to a file on disk (file://) from which a URL will be read; an env
-  var (env://) from which the URL will be read; or a direct database URL (postgres://).
+    Setting this value to 0 will allow the controller to open as many connections as needed.
+    This value can be a string or an integer representing the max number of connections,
+    or a string that can refer to a file
+    on disk (file://) from which the number of connections will be read,
+    or an env var (env://) from which the number of connections will be read.
+  - `max_idle_connections` - Can be used to control the maximum number of
+    idle connections in the idle connection pool.
+    If `max_open_connections` is greater than 0 but less than
+    `max_idle_connections`, then `max_idle_connections` will be reduced to match the `max_open_connections` limit. 
+    Setting this value to 0 will mean that no idle connections are retained.
+    If not set or set to less than 0, the default
+    [sql.DB](https://pkg.go.dev/database/sql#DB.SetMaxIdleConns) setting will be used.
+    This value can be a string or an integer representing the max number of connections,
+    or a string that can refer to a file on disk (file://) from which the number of connections will be read,
+    or an env var (env://) from which the number of connections will be read.
+  - `max_idle_time` - Can be used to control the maximum amount of time
+    a connection may be idle.
+    Setting this value to 0 will mean that connections are not closed due to a
+    connections idle time.
+    If not set or set to less than 0, the default
+    [sql.DB](https://pkg.go.dev/database/sql#DB.SetConnMaxIdleTime) setting will be used.
+    This value can be a string representing the duration,
+    or a string that can refer to a file on disk (file://) from which the duration will be read,
+    or an env var (env://) from which the duration will be read.
+    Valid time units are anything specified by Golang's
+    [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method.
 
 - `public_cluster_addr` - Specifies the public host or IP address (and
   optionally port) at which the controller can be reached _by workers_. This will

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -166,8 +167,10 @@ type Options struct {
 	// withPrngValues is used to switch the ID generation to a pseudo-random mode
 	withPrngValues []string
 
-	withGormFormatter      hclog.Logger
-	withMaxOpenConnections int
+	withGormFormatter           hclog.Logger
+	withMaxOpenConnections      int
+	withMaxIdleConnections      *int
+	withConnMaxIdleTimeDuration *time.Duration
 
 	// withDebug indicates that the given operation should invoke Gorm's debug
 	// mode
@@ -189,11 +192,13 @@ func getDefaultOptions() Options {
 			wrapper:  nil,
 			metadata: oplog.Metadata{},
 		},
-		withLookup:         false,
-		WithFieldMaskPaths: []string{},
-		WithNullPaths:      []string{},
-		WithLimit:          0,
-		WithVersion:        nil,
+		withLookup:                  false,
+		WithFieldMaskPaths:          []string{},
+		WithNullPaths:               []string{},
+		WithLimit:                   0,
+		WithVersion:                 nil,
+		withMaxIdleConnections:      nil,
+		withConnMaxIdleTimeDuration: nil,
 	}
 }
 
@@ -306,11 +311,29 @@ func WithGormFormatter(l hclog.Logger) Option {
 	}
 }
 
-// WithMaxOpenConnections specifices and optional max open connections for the
+// WithMaxOpenConnections specifies an optional max open connections for the
 // database
 func WithMaxOpenConnections(max int) Option {
 	return func(o *Options) {
 		o.withMaxOpenConnections = max
+	}
+}
+
+// WithMaxIdleConnections specifies an optional max idle connections for the
+// database.
+// This corresponds with: https://pkg.go.dev/database/sql#DB.SetMaxIdleConns
+func WithMaxIdleConnections(max *int) Option {
+	return func(o *Options) {
+		o.withMaxIdleConnections = max
+	}
+}
+
+// WithConnMaxIdleTimeDuration specifies an optional connection max idle time
+// for the database.
+// This corresponds with: https://pkg.go.dev/database/sql#DB.SetConnMaxIdleTime
+func WithConnMaxIdleTimeDuration(max *time.Duration) Option {
+	return func(o *Options) {
+		o.withConnMaxIdleTimeDuration = max
 	}
 }
 

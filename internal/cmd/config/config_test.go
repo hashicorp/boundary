@@ -1390,6 +1390,18 @@ func TestDatabaseMaxConnections(t *testing.T) {
 			expErr:                false,
 		},
 		{
+			name: "Valid string value",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_open_connections = "5"
+			  	}
+			}`,
+			expMaxOpenConnections: 5,
+			expErr:                false,
+		},
+		{
 			name: "Invalid value string",
 			in: `
 			controller {
@@ -1457,6 +1469,178 @@ func TestDatabaseMaxConnections(t *testing.T) {
 			require.NotNil(t, c.Controller)
 			require.NotNil(t, c.Controller.Database)
 			require.Equal(t, tt.expMaxOpenConnections, c.Controller.Database.MaxOpenConnections)
+		})
+	}
+}
+
+func TestDatabaseMaxIdleConnections(t *testing.T) {
+	tests := []struct {
+		name                  string
+		in                    string
+		envMaxIdleConnections string
+		expMaxIdleConnections int
+		expErr                bool
+		expErrStr             string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_idle_connections = 5
+			  	}
+			}`,
+			expMaxIdleConnections: 5,
+			expErr:                false,
+		},
+		{
+			name: "Valid integer string",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_idle_connections = "5"
+			  	}
+			}`,
+			expMaxIdleConnections: 5,
+			expErr:                false,
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_idle_connections = "string bad"
+				}
+			}`,
+			expErr: true,
+			expErrStr: "Database max idle connections value is not a uint: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_idle_connections = false
+				}
+			}`,
+			expErr:    true,
+			expErrStr: "Database max idle connections: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_idle_connections = "env://ENV_MAX_IDLE_CONN"
+			  	}
+			}`,
+			expMaxIdleConnections: 8,
+			envMaxIdleConnections: "8",
+			expErr:                false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_idle_connections = "env://ENV_MAX_IDLE_CONN"
+			  	}
+			}`,
+			envMaxIdleConnections: "bogus value",
+			expErr:                true,
+			expErrStr: "Database max idle connections value is not a uint: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_IDLE_CONN", tt.envMaxIdleConnections)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.NotNil(t, c.Controller.Database)
+			require.Equal(t, tt.expMaxIdleConnections, *c.Controller.Database.MaxIdleConnections)
+		})
+	}
+}
+
+func TestDatabaseConnMaxIdleTimeDuration(t *testing.T) {
+	tests := []struct {
+		name                       string
+		in                         string
+		envConnMaxIdleTimeDuration string
+		expConnMaxIdleTimeDuration time.Duration
+		expErr                     bool
+		expErrStr                  string
+	}{
+		{
+			name: "Valid duration value",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_idle_time = "5m"
+			  	}
+			}`,
+			expConnMaxIdleTimeDuration: time.Minute * 5,
+			expErr:                     false,
+		},
+		{
+			name:                       "Valid env var value",
+			envConnMaxIdleTimeDuration: "5m",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_idle_time = "env://ENV_CONN_MAX_IDLE_TIME"
+			  	}
+			}`,
+			expConnMaxIdleTimeDuration: time.Minute * 5,
+			expErr:                     false,
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					max_idle_time = "string bad"
+				}
+			}`,
+			expErr: true,
+			expErrStr: "Connection max idle time is not a duration: " +
+				"strconv.ParseInt: parsing \"string ba\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_CONN_MAX_IDLE_TIME", tt.envConnMaxIdleTimeDuration)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.NotNil(t, c.Controller.Database)
+			require.Equal(t, tt.expConnMaxIdleTimeDuration, *c.Controller.Database.ConnMaxIdleTimeDuration)
 		})
 	}
 }

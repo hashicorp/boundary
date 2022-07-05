@@ -410,6 +410,8 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 		c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
+		c.DatabaseMaxIdleConnections = c.Config.Controller.Database.MaxIdleConnections
+		c.DatabaseConnMaxIdleTimeDuration = c.Config.Controller.Database.ConnMaxIdleTimeDuration
 
 		if err := c.ConnectToDatabase(c.Context, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
