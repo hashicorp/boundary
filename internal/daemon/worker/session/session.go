@@ -369,6 +369,14 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 	return resp, nil
 }
 
+// closeConnections is a helper worker function that sends connection close
+// requests to the controller, and sets close times within the worker. It is
+// called during the worker status loop and on connection exit on the proxy.
+//
+// The boolean indicates whether the function was successful, e.g. had any
+// errors. Individual events will be sent for the errors if there are any.
+//
+// closeInfo is a map of connections mapped to their individual session.
 func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sManager Manager, closeInfo map[string]string) bool {
 	const op = "session.closeConnections"
 	if len(closeInfo) == 0 {
