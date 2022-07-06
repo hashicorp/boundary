@@ -2,6 +2,7 @@ package db
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-hclog"
@@ -190,6 +191,26 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 		opts = GetOpts(WithMaxOpenConnections(22))
 		testOpts.withMaxOpenConnections = 22
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithMaxIdleConnections", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+		ic := 22
+		opts = GetOpts(WithMaxIdleConnections(&ic))
+		testOpts.withMaxIdleConnections = &ic
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithConnMaxIdleTimeDuration", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts()
+		testOpts := getDefaultOptions()
+		assert.Equal(opts, testOpts)
+		d := time.Minute * 5
+		opts = GetOpts(WithConnMaxIdleTimeDuration(&d))
+		testOpts.withConnMaxIdleTimeDuration = &d
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithDebug", func(t *testing.T) {

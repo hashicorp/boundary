@@ -8,7 +8,7 @@ begin;
     'h_____wb__01', 'static host',         'None',                      'None',
     's___2wb-sths', 'static host set',     'Big Widget Static Set 2',   'None',
     'c___wb-sthcl', 'static host catalog', 'Big Widget Static Catalog', 'None',
-    't_________wb', 'tcp target',          'Big Widget Target',         'None', 0,              28800, 1,
+    't_________wb', 'tcp target',          'Big Widget Target',         'None', 0,              28800, -1,
     'p____bwidget', 'Big Widget Factory',  'None',
     'o_____widget', 'Widget Inc',          'None'
   )::whx_host_dimension_source)
@@ -22,7 +22,7 @@ begin;
     'h_____wb__01-plgh',  'plugin host',         'None',                      'None',
     's___2wb-plghs',      'plugin host set',     'Big Widget Plugin Set 2',   'None',
     'c___wb-plghcl',      'plugin host catalog', 'Big Widget Plugin Catalog', 'None',
-    't_________wb',       'tcp target',          'Big Widget Target',         'None', 0,              28800, 1,
+    't_________wb',       'tcp target',          'Big Widget Target',         'None', 0,              28800, -1,
     'p____bwidget',       'Big Widget Factory',  'None',
     'o_____widget',       'Widget Inc',          'None'
     )::whx_host_dimension_source)

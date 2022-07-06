@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.9.1 (2022/07/06)
+
+### New and Improved
+
+* `azure` host plugin: Support multiple MSI identities
+  ([PR](https://github.com/hashicorp/go-kms-wrapping/pull/97)
+
 ### Bug Fixes
 
 * scheduler: Fix regression causing controller names of less than 10 characters
@@ -14,6 +21,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2229))
 * The plugin execution_dir configuration parameter is now respected by kms plugins too
   [PR](https://github.com/hashicorp/boundary/pull/2239).
+
+### Deprecations/Changes
+
+* sessions: The default connect limit for new sessions changed from 1 to unlimited (-1).
+  Specific connection limits is an advanced feature of Boundary and this setting is
+  more friendly for new users.
+  ([PR](https://github.com/hashicorp/boundary/pull/2234))
 
 ## 0.9.0 (2022/06/20)
 

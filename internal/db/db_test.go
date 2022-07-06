@@ -57,7 +57,7 @@ func TestOpen(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Open(tt.args.dbType, tt.args.connectionUrl)
+			got, err := Open(ctx, tt.args.dbType, tt.args.connectionUrl)
 			defer func() {
 				if err == nil {
 					sqlDB, err := got.SqlDB(ctx)

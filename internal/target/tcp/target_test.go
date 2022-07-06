@@ -55,7 +55,7 @@ func TestTarget_Create(t *testing.T) {
 					prj.PublicId,
 					target.WithName("valid-proj-scope"),
 					target.WithSessionMaxSeconds(uint32((8 * time.Hour).Seconds())),
-					target.WithSessionConnectionLimit(1),
+					target.WithSessionConnectionLimit(-1),
 				)
 				return t
 			}(),

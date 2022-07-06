@@ -135,9 +135,12 @@ type Server struct {
 
 	DevOidcSetup oidcSetup
 
-	DatabaseUrl                string
-	DatabaseMaxOpenConnections int
-	DevDatabaseCleanupFunc     func() error
+	DatabaseUrl                     string
+	DatabaseMaxOpenConnections      int
+	DatabaseMaxIdleConnections      *int
+	DatabaseConnMaxIdleTimeDuration *time.Duration
+
+	DevDatabaseCleanupFunc func() error
 
 	Database *db.DB
 
@@ -675,11 +678,13 @@ func (b *Server) ConnectToDatabase(ctx context.Context, dialect string) error {
 	}
 	opts := []db.Option{
 		db.WithMaxOpenConnections(b.DatabaseMaxOpenConnections),
+		db.WithMaxIdleConnections(b.DatabaseMaxIdleConnections),
+		db.WithConnMaxIdleTimeDuration(b.DatabaseConnMaxIdleTimeDuration),
 	}
 	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
 		opts = append(opts, db.WithGormFormatter(b.Logger))
 	}
-	dbase, err := db.Open(dbType, b.DatabaseUrl, opts...)
+	dbase, err := db.Open(ctx, dbType, b.DatabaseUrl, opts...)
 	if err != nil {
 		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
