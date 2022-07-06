@@ -110,6 +110,10 @@ scenario "fresh_install" {
     provider.enos.default
   ]
 
+  matrix {
+    builder = ["local", "crt"]
+  }
+
   step "find_azs" {
     module = module.az_finder
 
@@ -126,7 +130,8 @@ scenario "fresh_install" {
   }
 
   step "build_boundary" {
-    module = module.build
+    skip_step = matrix.builder == "crt"
+    module    = module.build
   }
 
   step "create_base_infra" {
@@ -154,7 +159,7 @@ scenario "fresh_install" {
       boundary_install_dir     = var.boundary_install_dir
       controller_count         = var.controller_count
       worker_count             = var.worker_count
-      local_artifact_path      = step.build_boundary.artifact_path
+      local_artifact_path      = matrix.builder == "crt" ? var.crt_bundle_path : step.build_boundary.artifact_path
     }
   }
 

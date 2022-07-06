@@ -63,6 +63,12 @@ variable "local_boundary_dir" {
   type        = string
 }
 
+variable "crt_bundle_path" {
+  description = "Path to CRT generated boundary bundle"
+  type        = string
+  default     = null
+}
+
 variable "boundary_install_dir" {
   description = "Path boundary binaries will be installed to on remote instances"
   type        = string
