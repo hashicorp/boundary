@@ -304,6 +304,8 @@ func (s *sess) CancelAllLocalConnections() []string {
 	return closedIds
 }
 
+// activate is a helper worker function that sends session activation request to the
+// controller.
 func activate(ctx context.Context, sessClient pbs.SessionServiceClient, sessionId, tofuToken string, version uint32) (pbs.SESSIONSTATUS, error) {
 	resp, err := sessClient.ActivateSession(ctx, &pbs.ActivateSessionRequest{
 		SessionId: sessionId,
@@ -316,6 +318,8 @@ func activate(ctx context.Context, sessClient pbs.SessionServiceClient, sessionI
 	return resp.GetStatus(), nil
 }
 
+// cancel is a helper worker function that sends session cancellation request to the
+// controller.
 func cancel(ctx context.Context, sessClient pbs.SessionServiceClient, sessionId string) (pbs.SESSIONSTATUS, error) {
 	resp, err := sessClient.CancelSession(ctx, &pbs.CancelSessionRequest{
 		SessionId: sessionId,
@@ -326,6 +330,9 @@ func cancel(ctx context.Context, sessClient pbs.SessionServiceClient, sessionId 
 	return resp.GetStatus(), nil
 }
 
+// authorizeConnection is a helper worker function that sends connection
+// authorization request to the controller. It is called by the worker handler after a
+// connection has been received by the worker, and the session has been validated.
 func authorizeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, workerId, sessionId string) (*ConnInfo, int32, error) {
 	resp, err := sessClient.AuthorizeConnection(ctx, &pbs.AuthorizeConnectionRequest{
 		SessionId: sessionId,
@@ -341,6 +348,9 @@ func authorizeConnection(ctx context.Context, sessClient pbs.SessionServiceClien
 	}, resp.GetConnectionsLeft(), nil
 }
 
+// connectConnection is a helper worker function that sends connection
+// connect request to the controller. It is called by the worker handler after a
+// connection has been authorized.
 func connectConnection(ctx context.Context, sessClient pbs.SessionServiceClient, req *pbs.ConnectConnectionRequest) (pbs.CONNECTIONSTATUS, error) {
 	resp, err := sessClient.ConnectConnection(ctx, req)
 	if err != nil {
