@@ -110,9 +110,8 @@ func TestRotationTicking(t *testing.T) {
 		// are valid; if not, we won't establish a new connection and rotation
 		// will fail
 		w.Worker().Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
-		cc, err := w.Worker().GrpcClientConn()
-		require.NoError(err)
-		require.NoError(cc.Close())
+		require.NotNil(w.Worker().GrpcClientConn)
+		require.NoError(w.Worker().GrpcClientConn.Close())
 		require.NoError(w.Worker().StartControllerConnections())
 	}
 }

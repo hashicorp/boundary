@@ -105,6 +105,7 @@ create table target_tcp (
     constraint session_max_seconds_must_be_greater_than_0
     check(session_max_seconds > 0),
   -- limit on number of session connections allowed. -1 equals no limit
+  -- The default was updated in 37/01_set_unlimited_connections_limit.up.sql.
   session_connection_limit int not null default 1
     constraint session_connection_limit_must_be_greater_than_0_or_negative_1
     check(session_connection_limit > 0 or session_connection_limit = -1),

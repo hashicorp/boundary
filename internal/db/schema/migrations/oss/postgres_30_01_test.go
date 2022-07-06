@@ -58,7 +58,7 @@ func TestMigrations_KMS_Refactor(t *testing.T) {
 	// get a connection
 	dbType, err := db.StringToDbType(dialect)
 	require.NoError(t, err)
-	conn, err := db.Open(dbType, u)
+	conn, err := db.Open(ctx, dbType, u)
 	require.NoError(t, err)
 	rw := db.New(conn)
 
@@ -97,7 +97,7 @@ func TestMigrations_KMS_Refactor(t *testing.T) {
 		// get a new connection
 		dbType, err := db.StringToDbType(dialect)
 		require.NoError(t, err)
-		conn, err := db.Open(dbType, u)
+		conn, err := db.Open(ctx, dbType, u)
 		require.NoError(t, err)
 		rw := db.New(conn)
 

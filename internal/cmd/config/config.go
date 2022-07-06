@@ -215,10 +215,14 @@ type Worker struct {
 }
 
 type Database struct {
-	Url                   string      `hcl:"url"`
-	MigrationUrl          string      `hcl:"migration_url"`
-	MaxOpenConnections    int         `hcl:"-"`
-	MaxOpenConnectionsRaw interface{} `hcl:"max_open_connections"`
+	Url                     string         `hcl:"url"`
+	MigrationUrl            string         `hcl:"migration_url"`
+	MaxOpenConnections      int            `hcl:"-"`
+	MaxOpenConnectionsRaw   interface{}    `hcl:"max_open_connections"`
+	MaxIdleConnections      *int           `hcl:"-"`
+	MaxIdleConnectionsRaw   interface{}    `hcl:"max_idle_connections"`
+	ConnMaxIdleTime         interface{}    `hcl:"max_idle_time"`
+	ConnMaxIdleTimeDuration *time.Duration `hcl:"-"`
 }
 
 type Plugins struct {
@@ -375,7 +379,7 @@ func Parse(d string) (*Config, error) {
 				switch t := result.Controller.Database.MaxOpenConnectionsRaw.(type) {
 				case string:
 					maxOpenConnectionsString, err := parseutil.ParsePath(t)
-					if err != nil {
+					if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 						return nil, fmt.Errorf("Error parsing database max open connections: %w", err)
 					}
 					result.Controller.Database.MaxOpenConnections, err = strconv.Atoi(maxOpenConnectionsString)
@@ -389,6 +393,43 @@ func Parse(d string) (*Config, error) {
 						reflect.TypeOf(t).String())
 				}
 			}
+			if result.Controller.Database.MaxIdleConnectionsRaw != nil {
+				switch t := result.Controller.Database.MaxIdleConnectionsRaw.(type) {
+				case string:
+					maxIdleConnectionsString, err := parseutil.ParsePath(t)
+					if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+						return nil, fmt.Errorf("Error parsing database max idle connections: %w", err)
+					}
+					idleConns, err := strconv.Atoi(maxIdleConnectionsString)
+					if err != nil {
+						return nil, fmt.Errorf("Database max idle connections value is not a uint: %w", err)
+					}
+					result.Controller.Database.MaxIdleConnections = &idleConns
+				case int:
+					result.Controller.Database.MaxIdleConnections = &t
+				default:
+					return nil, fmt.Errorf("Database max idle connections: unsupported type %q",
+						reflect.TypeOf(t).String())
+				}
+			}
+			if result.Controller.Database.ConnMaxIdleTime != nil {
+				switch t := result.Controller.Database.ConnMaxIdleTime.(type) {
+				case string:
+					durationString, err := parseutil.ParsePath(t)
+					if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+						return nil, fmt.Errorf("Error parsing connection max idle time: %w", err)
+					}
+					connMaxIdleTime, err := parseutil.ParseDurationSecond(durationString)
+					if err != nil {
+						return nil, fmt.Errorf("Connection max idle time is not a duration: %w", err)
+					}
+					result.Controller.Database.ConnMaxIdleTimeDuration = &connMaxIdleTime
+				default:
+					return nil, fmt.Errorf("Database connection max idle time: unsupported type %q",
+						reflect.TypeOf(t).String())
+				}
+			}
+
 		}
 	}
 
