@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (w *Worker) startListeners(sm *session.Manager) error {
+func (w *Worker) startListeners(sm session.Manager) error {
 	const op = "worker.(Worker).startListeners"
 
 	e := event.SysEventer()
@@ -52,7 +52,7 @@ func (w *Worker) startListeners(sm *session.Manager) error {
 	return nil
 }
 
-func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger, sessionManager *session.Manager) (func(), error) {
+func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger, sessionManager session.Manager) (func(), error) {
 	const op = "worker.configureForWorker"
 	handler, err := w.handler(HandlerProperties{ListenerConfig: ln.Config}, sessionManager)
 	if err != nil {

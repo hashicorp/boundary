@@ -11,6 +11,10 @@ import (
 	"nhooyr.io/websocket"
 )
 
+type testSession struct {
+	session.Session
+}
+
 func TestConfigValidate(t *testing.T) {
 	t.Parallel()
 
@@ -19,7 +23,7 @@ func TestConfigValidate(t *testing.T) {
 		IP:   net.ParseIP("127.0.0.1"),
 		Port: 50000,
 	}
-	si := &session.Session{}
+	si := testSession{}
 	conn := &websocket.Conn{}
 
 	tests := []struct {

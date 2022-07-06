@@ -23,7 +23,7 @@ type Config struct {
 	ClientConn     *websocket.Conn
 	RemoteEndpoint string
 
-	Session      *session.Session
+	Session      session.Session
 	ConnectionId string
 }
 

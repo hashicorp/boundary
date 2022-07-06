@@ -37,7 +37,70 @@ type ConnInfo struct {
 // Session is the local representation of a session.  After initial loading
 // the only values that will change will be the status (readable from
 // GetStatus()) and the Connections (GetLocalConnections()).
-type Session struct {
+type Session interface {
+	// ApplyLocalConnectionStatus set's a connection's status to the one provided.
+	// If there is no connection with the provided id, an error is returned.
+	ApplyLocalConnectionStatus(connId string, status pbs.CONNECTIONSTATUS) error
+
+	// ApplyLocalStatus updates the given session with the status provided by
+	// the SessionJobInfo.  It returns an error if any of the connections
+	// in the SessionJobInfo are not present, however, it still applies the
+	// status change to the session and the connections which are present.
+	ApplyLocalStatus(st pbs.SESSIONSTATUS)
+
+	GetStatus() pbs.SESSIONSTATUS
+	// GetLocalConnections returns the connections this session is handling.
+	GetLocalConnections() map[string]ConnInfo
+
+	GetTofuToken() string
+	GetConnectionLimit() int32
+	GetEndpoint() string
+	GetCredentials() []*pbs.Credential
+	GetExpiration() time.Time
+	GetCertificate() *x509.Certificate
+	GetPrivateKey() []byte
+	GetId() string
+
+	// CancelOpenLocalConnections closes the local connections in this session
+	//based on the connection's state by calling the connections context cancel
+	// function.
+	//
+	// The returned slice are connection ids that were closed.
+	CancelOpenLocalConnections() []string
+
+	// CancelAllLocalConnections close connections regardless of connection's state
+	// by calling the connection context's CancelFunc.
+	//
+	// The returned slice is the connection ids which were closed.
+	CancelAllLocalConnections() []string
+
+	// RequestCancel sends session cancellation request to the controller.  If there is no
+	// error the local session's status is updated with the result of the cancel
+	// request
+	RequestCancel(ctx context.Context) error
+
+	// RequestActivate sends session activation request to the controller.  The Session's
+	// status is then updated with the result of the call.  After a successful
+	// call to RequestActivate, subsequent calls will fail.
+	RequestActivate(ctx context.Context, tofu string) error
+
+	// RequestAuthorizeConnection sends an AuthorizeConnection request to
+	// the controller.
+	// It is called by the worker handler after a connection has been received by
+	// the worker, and the session has been validated.
+	// The passed in context.CancelFunc is used to terminate any ongoing local proxy
+	// connections.
+	// The connection status is then viewable in this session's GetLocalConnections() call.
+	RequestAuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (ConnInfo, int32, error)
+
+	// RequestConnectConnection sends a RequestConnectConnection request to the controller. It
+	// should only be called by the worker handler after a connection has been
+	// authorized.  The local connection's status is updated with the result of the
+	// call.
+	RequestConnectConnection(ctx context.Context, info *pbs.ConnectConnectionRequest) error
+}
+
+type sess struct {
 	lock        sync.RWMutex
 	client      pbs.SessionServiceClient
 	connInfoMap map[string]*ConnInfo
@@ -46,8 +109,11 @@ type Session struct {
 	cert        *x509.Certificate
 }
 
-func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (*Session, error) {
-	if resp.GetExpiration().AsTime().Before(time.Now()) {
+func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (*sess, error) {
+	switch {
+	case isNil(client):
+		return nil, errors.New("SessionServiceClient is nil")
+	case resp.GetExpiration().AsTime().Before(time.Now()):
 		return nil, fmt.Errorf("session is expired")
 	}
 
@@ -56,7 +122,7 @@ func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (
 		return nil, fmt.Errorf("error parsing session certificate: %w", err)
 	}
 
-	s := &Session{
+	s := &sess{
 		client:      client,
 		connInfoMap: make(map[string]*ConnInfo),
 		resp:        resp,
@@ -66,9 +132,8 @@ func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (
 	return s, nil
 }
 
-// ApplyLocalConnectionStatus set's a connection's status to the one provided.
-// If there is no connection with the provided id, an error is returned.
-func (s *Session) ApplyLocalConnectionStatus(connId string, status pbs.CONNECTIONSTATUS) error {
+// ApplyLocalConnectionStatus Satisfies the Session interface
+func (s *sess) ApplyLocalConnectionStatus(connId string, status pbs.CONNECTIONSTATUS) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	// Update connection status if there are any connections in
@@ -87,18 +152,13 @@ func (s *Session) ApplyLocalConnectionStatus(connId string, status pbs.CONNECTIO
 	return nil
 }
 
-// ApplyLocalStatus updates the given session with the status provided by
-// the SessionJobInfo.  It returns an error if any of the connections
-// in the SessionJobInfo are not present, however, it still applies the
-// status change to the session and the connections which are present.
-func (s *Session) ApplyLocalStatus(st pbs.SESSIONSTATUS) {
+func (s *sess) ApplyLocalStatus(st pbs.SESSIONSTATUS) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.status = st
 }
 
-// GetLocalConnections returns the connections this session is handling.
-func (s *Session) GetLocalConnections() map[string]ConnInfo {
+func (s *sess) GetLocalConnections() map[string]ConnInfo {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	res := make(map[string]ConnInfo, len(s.connInfoMap))
@@ -113,48 +173,45 @@ func (s *Session) GetLocalConnections() map[string]ConnInfo {
 	return res
 }
 
-func (s *Session) GetTofuToken() string {
+func (s *sess) GetTofuToken() string {
 	return s.resp.GetTofuToken()
 }
 
-func (s *Session) GetConnectionLimit() int32 {
+func (s *sess) GetConnectionLimit() int32 {
 	return s.resp.GetConnectionLimit()
 }
 
-func (s *Session) GetEndpoint() string {
+func (s *sess) GetEndpoint() string {
 	return s.resp.GetEndpoint()
 }
 
-func (s *Session) GetCredentials() []*pbs.Credential {
+func (s *sess) GetCredentials() []*pbs.Credential {
 	return s.resp.GetCredentials()
 }
 
-func (s *Session) GetStatus() pbs.SESSIONSTATUS {
+func (s *sess) GetStatus() pbs.SESSIONSTATUS {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.status
 }
 
-func (s *Session) GetExpiration() time.Time {
+func (s *sess) GetExpiration() time.Time {
 	return s.resp.GetExpiration().AsTime()
 }
 
-func (s *Session) GetCertificate() *x509.Certificate {
+func (s *sess) GetCertificate() *x509.Certificate {
 	return s.cert
 }
 
-func (s *Session) GetPrivateKey() []byte {
+func (s *sess) GetPrivateKey() []byte {
 	return s.resp.GetAuthorization().GetPrivateKey()
 }
 
-func (s *Session) GetId() string {
+func (s *sess) GetId() string {
 	return s.resp.GetAuthorization().GetSessionId()
 }
 
-// RequestCancel sends session cancellation request to the controller.  If there is no
-// error the local session's status is updated with the result of the cancel
-// request
-func (s *Session) RequestCancel(ctx context.Context) error {
+func (s *sess) RequestCancel(ctx context.Context) error {
 	st, err := cancel(ctx, s.client, s.GetId())
 	if err != nil {
 		return err
@@ -163,10 +220,7 @@ func (s *Session) RequestCancel(ctx context.Context) error {
 	return nil
 }
 
-// RequestActivate Sends session activation request to the controller.  The Session's
-// status is then updated with the result of the call.  After a successful
-// call to RequestActivate, subsequent calls will fail.
-func (s *Session) RequestActivate(ctx context.Context, tofu string) error {
+func (s *sess) RequestActivate(ctx context.Context, tofu string) error {
 	st, err := activate(ctx, s.client, s.GetId(), tofu, s.resp.GetVersion())
 	if err != nil {
 		return err
@@ -175,14 +229,13 @@ func (s *Session) RequestActivate(ctx context.Context, tofu string) error {
 	return nil
 }
 
-// RequestAuthorizeConnection sends an AuthorizeConnection request to
-// the controller.
-// It is called by the worker handler after a connection has been received by
-// the worker, and the session has been validated.
-// The passed in context.CancelFunc is used to terminate any ongoing local proxy
-// connections.
-// The connection status is then viewable in this session's GetLocalConnections() call.
-func (s *Session) RequestAuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (ConnInfo, int32, error) {
+func (s *sess) RequestAuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (ConnInfo, int32, error) {
+	switch {
+	case connCancel == nil:
+		return ConnInfo{}, 0, errors.New("the provided context.CancelFunc was nil")
+	case workerId == "":
+		return ConnInfo{}, 0, errors.New("worker id is empty")
+	}
 	ci, connsLeft, err := authorizeConnection(ctx, s.client, workerId, s.GetId())
 	if err != nil {
 		return ConnInfo{}, connsLeft, err
@@ -198,11 +251,7 @@ func (s *Session) RequestAuthorizeConnection(ctx context.Context, workerId strin
 	}, connsLeft, err
 }
 
-// RequestConnectConnection sends a RequestConnectConnection request to the controller. It
-// should only be called by the worker handler after a connection has been
-// authorized.  The local connection's status is updated with the result of the
-// call.
-func (s *Session) RequestConnectConnection(ctx context.Context, info *pbs.ConnectConnectionRequest) error {
+func (s *sess) RequestConnectConnection(ctx context.Context, info *pbs.ConnectConnectionRequest) error {
 	st, err := connectConnection(ctx, s.client, info)
 	if err != nil {
 		return err
@@ -216,7 +265,7 @@ func (s *Session) RequestConnectConnection(ctx context.Context, info *pbs.Connec
 // function.
 //
 // The returned slice are connection ids that were closed.
-func (s *Session) CancelOpenLocalConnections() []string {
+func (s *sess) CancelOpenLocalConnections() []string {
 	var closedIds []string
 	for k, v := range s.connInfoMap {
 		if v.Status != pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
@@ -239,7 +288,7 @@ func (s *Session) CancelOpenLocalConnections() []string {
 // by calling the connection context's CancelFunc.
 //
 // The returned slice is the connection ids which were closed.
-func (s *Session) CancelAllLocalConnections() []string {
+func (s *sess) CancelAllLocalConnections() []string {
 	var closedIds []string
 	for k, v := range s.connInfoMap {
 		v.connCtxCancelFunc()
@@ -320,7 +369,7 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 	return resp, nil
 }
 
-func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sManager *Manager, closeInfo map[string]string) bool {
+func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sManager Manager, closeInfo map[string]string) bool {
 	const op = "session.closeConnections"
 	if len(closeInfo) == 0 {
 		// This should not happen, but it's a no-op if it does. Just
@@ -445,7 +494,7 @@ func makeFakeSessionCloseInfo(
 // failed, as some connections may have been marked as closed. The
 // actual list of connection IDs closed is returned as the first
 // return value.
-func setCloseTimeForResponse(sManager *Manager, sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData) ([]string, []error) {
+func setCloseTimeForResponse(sManager Manager, sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData) ([]string, []error) {
 	closedIds := make([]string, 0)
 	var result []error
 	for sessionId, responses := range sessionCloseInfo {

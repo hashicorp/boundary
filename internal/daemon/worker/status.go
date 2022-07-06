@@ -23,7 +23,7 @@ type LastStatusInformation struct {
 	LastCalculatedUpstreams []string
 }
 
-func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager *session.Manager) {
+func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager session.Manager) {
 	const op = "worker.(Worker).startStatusTicking"
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// This function exists to desynchronize calls to controllers from
@@ -91,7 +91,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	return nil
 }
 
-func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager *session.Manager) {
+func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager) {
 	const op = "worker.(Worker).sendWorkerStatus"
 
 	// If we've never managed to successfully authenticate then we won't have
@@ -107,7 +107,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager *ses
 	var activeJobs []*pbs.JobStatus
 
 	// Range over known sessions and collect info
-	sessionManager.ForEachLocalSession(func(s *session.Session) bool {
+	sessionManager.ForEachLocalSession(func(s session.Session) bool {
 		var jobInfo pbs.SessionJobInfo
 		status := s.GetStatus()
 		sessionId := s.GetId()
@@ -181,7 +181,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager *ses
 
 			// Cancel connections if grace period has expired. These Connections will be closed in the
 			// database on the next successful status report, or via the Controller’s dead Worker cleanup connections job.
-			sessionManager.ForEachLocalSession(func(s *session.Session) bool {
+			sessionManager.ForEachLocalSession(func(s session.Session) bool {
 				for _, connId := range s.CancelAllLocalConnections() {
 					event.WriteSysEvent(cancelCtx, op, "terminated connection due to status grace period expiration", "session_id", s.GetId(), "connection_id", connId)
 				}
@@ -254,11 +254,11 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager *ses
 //
 // Use ignoreSessionState to ignore the state checks, this closes all
 // connections, regardless of whether or not the session is still active.
-func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool, sessionManager *session.Manager) {
+func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool, sessionManager session.Manager) {
 	const op = "worker.(Worker).cleanupConnections"
 	closeInfo := make(map[string]string)
 	cleanSessionIds := make([]string, 0)
-	sessionManager.ForEachLocalSession(func(s *session.Session) bool {
+	sessionManager.ForEachLocalSession(func(s session.Session) bool {
 		switch {
 		case ignoreSessionState,
 			s.GetStatus() == pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,

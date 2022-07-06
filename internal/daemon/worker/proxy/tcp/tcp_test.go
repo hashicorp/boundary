@@ -77,7 +77,8 @@ func TestHandleTcpProxyV1(t *testing.T) {
 			Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
 		}, nil
 	}
-	manager := session.NewManager(sessClient)
+	manager, err := session.NewManager(sessClient)
+	require.NoError(err)
 	s, err := manager.LoadLocalSession(ctx, "one", "workerid")
 	require.NoError(err)
 	_, connCancelFn := context.WithCancel(context.Background())

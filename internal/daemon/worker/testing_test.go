@@ -27,7 +27,8 @@ func TestTestWorkerLookupSession(t *testing.T) {
 	ctx := context.Background()
 
 	mockSessionClient := pbs.NewMockSessionServiceClient()
-	manager := session.NewManager(mockSessionClient)
+	manager, err := session.NewManager(mockSessionClient)
+	require.NoError(err)
 	mockSessionClient.LookupSessionFn = func(_ context.Context, request *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 		cert, _, _ := createTestCert(t)
 		return &pbs.LookupSessionResponse{

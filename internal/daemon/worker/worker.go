@@ -57,7 +57,7 @@ type Worker struct {
 	// This is exported for tests.
 	GrpcClientConn *grpc.ClientConn
 
-	sessionManager *session.Manager
+	sessionManager session.Manager
 
 	controllerStatusConn *atomic.Value
 	everAuthenticated    *ua.Bool
@@ -295,7 +295,12 @@ func (w *Worker) Start() error {
 		return fmt.Errorf("error making controller connections: %w", err)
 	}
 
-	w.sessionManager = session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
+	var err error
+	w.sessionManager, err = session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
+	if err != nil {
+		return fmt.Errorf("error creating session manager: %w", err)
+	}
+
 	if err := w.startListeners(w.sessionManager); err != nil {
 		return fmt.Errorf("error starting worker listeners: %w", err)
 	}
@@ -438,7 +443,7 @@ func (w *Worker) ControllerMultihopConn() (multihop.MultihopServiceClient, error
 	return multihopClient, nil
 }
 
-func (w *Worker) getSessionTls(sessionManager *session.Manager) func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 	const op = "worker.(Worker).getSessionTls"
 	return func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 		ctx := w.baseContext

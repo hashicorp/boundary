@@ -31,7 +31,7 @@ type HandlerProperties struct {
 
 // Handler returns a http.Handler for the API. This can be used on
 // its own to mount the Worker API within another web server.
-func (w *Worker) handler(props HandlerProperties, sm *session.Manager) (http.Handler, error) {
+func (w *Worker) handler(props HandlerProperties, sm session.Manager) (http.Handler, error) {
 	const op = "worker.(Worker).handler"
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
@@ -47,7 +47,7 @@ func (w *Worker) handler(props HandlerProperties, sm *session.Manager) (http.Han
 	return metricHandler, nil
 }
 
-func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionManager *session.Manager) (http.HandlerFunc, error) {
+func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionManager session.Manager) (http.HandlerFunc, error) {
 	const op = "worker.(Worker).handleProxy"
 	if listenerCfg == nil {
 		return nil, fmt.Errorf("%s: missing listener config", op)

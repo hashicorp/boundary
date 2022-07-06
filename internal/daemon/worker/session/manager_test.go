@@ -33,8 +33,9 @@ func TestManager_Get(t *testing.T) {
 			Status:     pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
 		}, nil
 	}
-	manager := NewManager(mockSessionClient)
-	_, err := manager.LoadLocalSession(context.Background(), "foo", "worker id")
+	manager, err := NewManager(mockSessionClient)
+	require.NoError(t, err)
+	_, err = manager.LoadLocalSession(context.Background(), "foo", "worker id")
 	require.NoError(t, err)
 
 	assert.NotNil(t, manager.Get("foo"))
@@ -54,8 +55,9 @@ func TestManager_DeleteLocalSession(t *testing.T) {
 			Status:     pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
 		}, nil
 	}
-	manager := NewManager(mockSessionClient)
-	_, err := manager.LoadLocalSession(context.Background(), "foo", "worker id")
+	manager, err := NewManager(mockSessionClient)
+	require.NoError(t, err)
+	_, err = manager.LoadLocalSession(context.Background(), "foo", "worker id")
 	require.NoError(t, err)
 
 	require.NotNil(t, manager.Get("foo"))
@@ -70,7 +72,8 @@ func TestManager_RequestCloseConnections(t *testing.T) {
 	ctx := context.Background()
 	mockSessionClient := pbs.NewMockSessionServiceClient()
 
-	manager := NewManager(mockSessionClient)
+	manager, err := NewManager(mockSessionClient)
+	require.NoError(t, err)
 	assert.False(t, manager.RequestCloseConnections(ctx, nil))
 	assert.False(t, manager.RequestCloseConnections(ctx, map[string]string{}))
 
@@ -205,7 +208,8 @@ func TestManager_LoadLocalSession(t *testing.T) {
 			mockSessionClient.LookupSessionFn = func(context.Context, *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 				return tc.controllerResponse()
 			}
-			manager := NewManager(mockSessionClient)
+			manager, err := NewManager(mockSessionClient)
+			require.NoError(t, err)
 			s, err := manager.LoadLocalSession(context.Background(), tc.inId, tc.inWorkerId)
 			require.Error(t, err)
 			assert.Nil(t, s)
@@ -228,7 +232,8 @@ func TestManager_LoadLocalSession(t *testing.T) {
 				Status:          pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
 			}, nil
 		}
-		manager := NewManager(mockSessionClient)
+		manager, err := NewManager(mockSessionClient)
+		require.NoError(t, err)
 		s, err := manager.LoadLocalSession(context.Background(), "foo", "worker id")
 		require.NoError(t, err)
 		assert.Equal(t, "foo", s.GetId())
@@ -265,7 +270,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 	cases := []struct {
 		name             string
 		sessionCloseInfo map[string][]*pbs.CloseConnectionResponseData
-		sessionInfoMap   func() *sync.Map
+		sessionInfoMap   func() sync.Map
 		expected         []string
 		expectedClosed   map[string]struct{}
 		expectedErr      []error
@@ -280,9 +285,9 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
 			},
-			sessionInfoMap: func() *sync.Map {
-				m := new(sync.Map)
-				m.Store("one", &Session{
+			sessionInfoMap: func() sync.Map {
+				var m sync.Map
+				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
 					}},
@@ -290,7 +295,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 						"foo": {Id: "foo"},
 					},
 				})
-				m.Store("two", &Session{
+				m.Store("two", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "two",
 					}},
@@ -298,7 +303,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 						"bar": {Id: "bar"},
 					},
 				})
-				m.Store("three", &Session{
+				m.Store("three", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "three",
 					}},
@@ -325,9 +330,9 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED},
 				},
 			},
-			sessionInfoMap: func() *sync.Map {
-				m := new(sync.Map)
-				m.Store("one", &Session{
+			sessionInfoMap: func() sync.Map {
+				var m sync.Map
+				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
 					}},
@@ -335,7 +340,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 						"foo": {Id: "foo"},
 					},
 				})
-				m.Store("two", &Session{
+				m.Store("two", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "two",
 					}},
@@ -361,9 +366,9 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
 			},
-			sessionInfoMap: func() *sync.Map {
-				m := new(sync.Map)
-				m.Store("one", &Session{
+			sessionInfoMap: func() sync.Map {
+				var m sync.Map
+				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
 					}},
@@ -392,9 +397,9 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 					{ConnectionId: "bar", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
 				},
 			},
-			sessionInfoMap: func() *sync.Map {
-				m := new(sync.Map)
-				m.Store("one", &Session{
+			sessionInfoMap: func() sync.Map {
+				var m sync.Map
+				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
 					}},
@@ -402,7 +407,7 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 						"foo": {Id: "foo"},
 					},
 				})
-				m.Store("two", &Session{
+				m.Store("two", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "two",
 					}},
@@ -421,9 +426,9 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 		{
 			name:             "empty",
 			sessionCloseInfo: make(map[string][]*pbs.CloseConnectionResponseData),
-			sessionInfoMap: func() *sync.Map {
-				m := new(sync.Map)
-				m.Store("one", &Session{
+			sessionInfoMap: func() sync.Map {
+				var m sync.Map
+				m.Store("one", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "one",
 					}},
@@ -443,12 +448,12 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			require := require.New(t)
-			manager := NewManager(nil)
+			manager := &manager{}
 			manager.sessionMap = tc.sessionInfoMap()
 			actual, actualErr := setCloseTimeForResponse(manager, tc.sessionCloseInfo)
 
 			// Assert all close times were set
-			manager.ForEachLocalSession(func(value *Session) bool {
+			manager.ForEachLocalSession(func(value Session) bool {
 				t.Helper()
 				for _, ci := range value.GetLocalConnections() {
 					if _, ok := tc.expectedClosed[ci.Id]; ok {

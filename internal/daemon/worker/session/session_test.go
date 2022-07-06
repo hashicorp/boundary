@@ -13,7 +13,7 @@ import (
 )
 
 func TestSession_ApplyLocalStatus(t *testing.T) {
-	sess := &Session{
+	sess := &sess{
 		status: pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
 	}
 	for _, s := range []pbs.SESSIONSTATUS{
@@ -49,7 +49,7 @@ func TestSession_CancelAllLocalConnections(t *testing.T) {
 			CloseTime:         time.Now(),
 		},
 	}
-	sess := &Session{
+	sess := &sess{
 		connInfoMap: connInfo,
 	}
 	assert.ElementsMatch(t, sess.CancelAllLocalConnections(), []string{"1", "2"})
@@ -83,7 +83,7 @@ func TestSession_CancelOpenLocalConnections(t *testing.T) {
 			Status:            pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
 		},
 	}
-	sess := &Session{
+	sess := &sess{
 		connInfoMap: connInfo,
 	}
 	assert.ElementsMatch(t, sess.CancelOpenLocalConnections(), []string{"1"})
@@ -97,7 +97,7 @@ func TestSession_RequestActivate(t *testing.T) {
 	mockClient.ActivateSessionFn = func(context.Context, *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
 		return nil, fmt.Errorf("test error")
 	}
-	sess := &Session{
+	sess := &sess{
 		client: mockClient,
 		resp: &pbs.LookupSessionResponse{
 			TofuToken:       "tofu",
@@ -121,7 +121,7 @@ func TestSession_RequestCancel(t *testing.T) {
 	mockClient.CancelSessionFn = func(context.Context, *pbs.CancelSessionRequest) (*pbs.CancelSessionResponse, error) {
 		return nil, fmt.Errorf("test error")
 	}
-	sess := &Session{
+	sess := &sess{
 		client: mockClient,
 		resp: &pbs.LookupSessionResponse{
 			TofuToken:       "tofu",
@@ -145,7 +145,7 @@ func TestSession_RequestAuthorizeConnection(t *testing.T) {
 	mockClient.AuthorizeConnectionFn = func(ctx context.Context, request *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
 		return nil, fmt.Errorf("test error")
 	}
-	sess := &Session{
+	sess := &sess{
 		client:      mockClient,
 		connInfoMap: make(map[string]*ConnInfo),
 		resp: &pbs.LookupSessionResponse{
