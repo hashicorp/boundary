@@ -20,6 +20,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * The plugin execution_dir configuration parameter is now respected by kms plugins too
   [PR](https://github.com/hashicorp/boundary/pull/2239).
 
+### Deprecations/Changes
+
+* sessions: The default connect limit for new sessions changed from 1 to unlimited (-1).
+  Specific connection limits is an advanced feature of Boundary and this setting is
+  more friendly for new users.
+  ([PR](https://github.com/hashicorp/boundary/pull/2234))
+
 ## 0.9.0 (2022/06/20)
 
 ### Known Issues
