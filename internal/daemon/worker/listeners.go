@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
+	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
@@ -26,7 +27,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (w *Worker) startListeners() error {
+func (w *Worker) startListeners(sm session.Manager) error {
 	const op = "worker.(Worker).startListeners"
 
 	e := event.SysEventer()
@@ -41,7 +42,7 @@ func (w *Worker) startListeners() error {
 		return fmt.Errorf("%s: nil proxy listener", op)
 	}
 
-	workerServer, err := w.configureForWorker(w.proxyListener, logger)
+	workerServer, err := w.configureForWorker(w.proxyListener, logger, sm)
 	if err != nil {
 		return fmt.Errorf("%s: failed to configure for worker: %w", op, err)
 	}
@@ -51,10 +52,9 @@ func (w *Worker) startListeners() error {
 	return nil
 }
 
-func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger) (func(), error) {
+func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger, sessionManager session.Manager) (func(), error) {
 	const op = "worker.configureForWorker"
-
-	handler, err := w.handler(HandlerProperties{ListenerConfig: ln.Config})
+	handler, err := w.handler(HandlerProperties{ListenerConfig: ln.Config}, sessionManager)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 			Storage:      w.WorkerAuthStorage,
 			BaseListener: ln.ProxyListener,
 			BaseTlsConfiguration: &tls.Config{
-				GetConfigForClient: w.getSessionTls,
+				GetConfigForClient: w.getSessionTls(sessionManager),
 			},
 			FetchCredsFunc:                 fetchCredsFn,
 			GenerateServerCertificatesFunc: generateServerCertificatesFn,
@@ -150,7 +150,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger)
 		return nil, fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
 	}
 	multihop.RegisterMultihopServiceServer(downstreamServer, multihopService)
-	statusSessionService := NewWorkerProxyServiceServer(w.controllerStatusConn, w.controllerSessionConn)
+	statusSessionService := NewWorkerProxyServiceServer(w.GrpcClientConn, w.controllerStatusConn)
 	pbs.RegisterServerCoordinationServiceServer(downstreamServer, statusSessionService)
 	pbs.RegisterSessionServiceServer(downstreamServer, statusSessionService)
 
