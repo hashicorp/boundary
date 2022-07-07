@@ -22,6 +22,8 @@ type ServerCoordinationServiceClient interface {
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	// Returns the addresses of managed workers, if any
+	ManagedWorkers(ctx context.Context, in *ManagedWorkersRequest, opts ...grpc.CallOption) (*ManagedWorkersResponse, error)
 }
 
 type serverCoordinationServiceClient struct {
@@ -41,6 +43,15 @@ func (c *serverCoordinationServiceClient) Status(ctx context.Context, in *Status
 	return out, nil
 }
 
+func (c *serverCoordinationServiceClient) ManagedWorkers(ctx context.Context, in *ManagedWorkersRequest, opts ...grpc.CallOption) (*ManagedWorkersResponse, error) {
+	out := new(ManagedWorkersResponse)
+	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.ServerCoordinationService/ManagedWorkers", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServerCoordinationServiceServer is the server API for ServerCoordinationService service.
 // All implementations must embed UnimplementedServerCoordinationServiceServer
 // for forward compatibility
@@ -49,6 +60,8 @@ type ServerCoordinationServiceServer interface {
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
+	// Returns the addresses of managed workers, if any
+	ManagedWorkers(context.Context, *ManagedWorkersRequest) (*ManagedWorkersResponse, error)
 	mustEmbedUnimplementedServerCoordinationServiceServer()
 }
 
@@ -58,6 +71,9 @@ type UnimplementedServerCoordinationServiceServer struct {
 
 func (UnimplementedServerCoordinationServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
+}
+func (UnimplementedServerCoordinationServiceServer) ManagedWorkers(context.Context, *ManagedWorkersRequest) (*ManagedWorkersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ManagedWorkers not implemented")
 }
 func (UnimplementedServerCoordinationServiceServer) mustEmbedUnimplementedServerCoordinationServiceServer() {
 }
@@ -91,6 +107,24 @@ func _ServerCoordinationService_Status_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ServerCoordinationService_ManagedWorkers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ManagedWorkersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerCoordinationServiceServer).ManagedWorkers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.servers.services.v1.ServerCoordinationService/ManagedWorkers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerCoordinationServiceServer).ManagedWorkers(ctx, req.(*ManagedWorkersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ServerCoordinationService_ServiceDesc is the grpc.ServiceDesc for ServerCoordinationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -101,6 +135,10 @@ var ServerCoordinationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Status",
 			Handler:    _ServerCoordinationService_Status_Handler,
+		},
+		{
+			MethodName: "ManagedWorkers",
+			Handler:    _ServerCoordinationService_ManagedWorkers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

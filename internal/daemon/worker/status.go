@@ -14,7 +14,9 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/status"
 )
 
 type LastStatusInformation struct {
@@ -193,15 +195,36 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		}
 	} else {
 		w.updateTags.Store(false)
-		// This may be nil if we are in a multiple hop scenario
 		var addrs []resolver.Address
 		var newUpstreams []string
+		// This may be empty if we are in a multiple hop scenario
 		if len(result.CalculatedUpstreams) > 0 {
 			addrs = make([]resolver.Address, 0, len(result.CalculatedUpstreams))
+			newUpstreams = make([]string, 0, len(result.CalculatedUpstreams))
 			for _, v := range result.CalculatedUpstreams {
 				addrs = append(addrs, resolver.Address{Addr: v.Address})
 				newUpstreams = append(newUpstreams, v.Address)
 			}
+
+		} else if w.conf.RawConfig.HcpbClusterId != "" {
+			// This is a worker that is one hop away from managed workers, so attempt to get that list
+			managedWorkersCtx, managedWorkersCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
+			defer managedWorkersCancel()
+			workersResp, err := client.ManagedWorkers(managedWorkersCtx, &pbs.ManagedWorkersRequest{})
+			if err != nil {
+				if status.Code(err) != codes.Unimplemented {
+					event.WriteError(managedWorkersCtx, op, err, event.WithInfoMsg("error fetching managed worker information"))
+				}
+			} else {
+				addrs = make([]resolver.Address, 0, len(workersResp.Workers))
+				newUpstreams = make([]string, 0, len(workersResp.Workers))
+				for _, v := range workersResp.Workers {
+					addrs = append(addrs, resolver.Address{Addr: v.Address})
+					newUpstreams = append(newUpstreams, v.Address)
+				}
+			}
+		}
+		if len(addrs) > 0 {
 			lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
 			// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
 			if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, newUpstreams) {
