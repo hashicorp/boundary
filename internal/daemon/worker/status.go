@@ -47,6 +47,14 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager se
 			return
 
 		case <-timer.C:
+			// If we've never managed to successfully authenticate then we won't have
+			// any session information anyways and this will produce a ton of noise in
+			// observability, so skip calling the function and retry in a short duration
+			if !w.everAuthenticated.Load() {
+				timer.Reset(10 * time.Millisecond)
+				continue
+			}
+
 			w.sendWorkerStatus(cancelCtx, sessionManager)
 			timer.Reset(getRandomInterval())
 		}
@@ -93,14 +101,6 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 
 func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager) {
 	const op = "worker.(Worker).sendWorkerStatus"
-
-	// If we've never managed to successfully authenticate then we won't have
-	// any session information anyways and this will produce a ton of noise in
-	// observability, so suppress it
-	if !w.everAuthenticated.Load() {
-		event.WriteSysEvent(cancelCtx, op, "worker is not authenticated to an upstream, not sending status")
-		return
-	}
 
 	// First send info as-is. We'll perform cleanup duties after we
 	// get cancel/job change info back.
