@@ -1388,14 +1388,16 @@ func TestService_AddWorkerTags(t *testing.T) {
 						{Key: "key", Value: "value"},
 						{Key: "key2", Value: "value2"},
 						{Key: "key3", Value: "value3"},
-						{Key: "key4", Value: "value4"}},
+						{Key: "key4", Value: "value4"},
+					},
 				}
 			}(),
 			wantTags: []*servers.TagPair{
 				{Key: "key", Value: "value"},
 				{Key: "key2", Value: "value2"},
 				{Key: "key3", Value: "value3"},
-				{Key: "key4", Value: "value4"}},
+				{Key: "key4", Value: "value4"},
+			},
 		},
 		{
 			name: "mixed-invalid-tags",
@@ -1408,7 +1410,8 @@ func TestService_AddWorkerTags(t *testing.T) {
 						nil,
 						{Key: "key2", Value: "value2"},
 						{},
-						{Key: "key4", Value: "value4"}},
+						{Key: "key4", Value: "value4"},
+					},
 				}
 			}(),
 			wantErrContains: "Tags must be non-empty.",
@@ -1504,14 +1507,16 @@ func TestService_SetWorkerTags(t *testing.T) {
 						{Key: "key", Value: "value"},
 						{Key: "key2", Value: "value2"},
 						{Key: "key3", Value: "value3"},
-						{Key: "key4", Value: "value4"}},
+						{Key: "key4", Value: "value4"},
+					},
 				}
 			}(),
 			wantTags: []*servers.TagPair{
 				{Key: "key", Value: "value"},
 				{Key: "key2", Value: "value2"},
 				{Key: "key3", Value: "value3"},
-				{Key: "key4", Value: "value4"}},
+				{Key: "key4", Value: "value4"},
+			},
 		},
 		{
 			name: "mixed-invalid-tags",
@@ -1524,7 +1529,8 @@ func TestService_SetWorkerTags(t *testing.T) {
 						nil,
 						{Key: "key2", Value: "value2"},
 						{},
-						{Key: "key4", Value: "value4"}},
+						{Key: "key4", Value: "value4"},
+					},
 				}
 			}(),
 			wantErrContains: "Tags must be non-empty.",
@@ -1622,7 +1628,8 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 						{Key: "key", Value: "value3"},
 						{Key: "key4", Value: "value4"},
 						{Key: "key", Value: "value5"},
-						{Key: "key6", Value: "value"}})
+						{Key: "key6", Value: "value"},
+					})
 				return &pbs.RemoveWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version + 1,
@@ -1630,14 +1637,16 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 						{Key: "key", Value: "value"},
 						{Key: "key2", Value: "value2"},
 						{Key: "key", Value: "value3"},
-						{Key: "key4", Value: "value4"}},
+						{Key: "key4", Value: "value4"},
+					},
 				}
 			}(),
 			wantDeletedTags: []*servers.TagPair{
 				{Key: "key", Value: "value"},
 				{Key: "key2", Value: "value2"},
 				{Key: "key", Value: "value3"},
-				{Key: "key4", Value: "value4"}},
+				{Key: "key4", Value: "value4"},
+			},
 		},
 		{
 			name: "mixed-invalid-tags",
@@ -1650,7 +1659,8 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 						nil,
 						{Key: "key2", Value: "value2"},
 						{},
-						{Key: "key4", Value: "value4"}},
+						{Key: "key4", Value: "value4"},
+					},
 				}
 			}(),
 			wantErrContains: "Tags must be non-empty.",
@@ -1666,7 +1676,8 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 						{Key: "key", Value: "value3"},
 						{Key: "key4", Value: "value4"},
 						{Key: "key", Value: "value5"},
-						{Key: "key6", Value: "value"}})
+						{Key: "key6", Value: "value"},
+					})
 				return &pbs.RemoveWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version + 1,
@@ -1674,7 +1685,8 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 						{Key: "no-key", Value: "no-value"},
 						{Key: "key2", Value: "value2"},
 						{Key: "key", Value: "value3"},
-						{Key: "key4", Value: "value4"}},
+						{Key: "key4", Value: "value4"},
+					},
 				}
 			}(),
 			wantErrContains: "Unable to remove worker tags in repo:",
