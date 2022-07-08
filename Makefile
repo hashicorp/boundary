@@ -316,10 +316,13 @@ docker-multiarch-build:
 		--platform linux/amd64,linux/arm64 \
 		.
 
+DEV_DOCKER_GOOS ?= linux
+DEV_DOCKER_GOARCH ?= amd64
+
 .PHONY: docker-build-dev
 # Builds from the locally generated binary in ./bin/
-docker-build-dev: export GOOS=linux
-docker-build-dev: export GOARCH=amd64
+docker-build-dev: export GOOS=$(DEV_DOCKER_GOOS)
+docker-build-dev: export GOARCH=$(DEV_DOCKER_GOARCH)
 docker-build-dev: build
 	docker build \
 		--tag $(IMAGE_TAG_DEV) \
