@@ -127,8 +127,9 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		}
 		workerInfo := workerInfoRaw.(*workerAuthEntry)
 		workerInfo.conn = tlsConn
+		m.c.workerAuthCache.Delete(string(nonce))
 		event.WriteSysEvent(ctx, op, "worker successfully authed", "name", workerInfo.Name, "description", workerInfo.Description, "proxy_address", workerInfo.ProxyAddress)
-		return tlsConn, nil
+		return protocol.NewConn(tlsConn, workerInfo.clientNextProtos), nil
 
 	default:
 		return nil, newTempError(errors.New("unable to authenticate incoming connection"))

@@ -19,7 +19,8 @@ import (
 
 type workerAuthEntry struct {
 	*base.WorkerAuthInfo
-	conn net.Conn
+	conn             net.Conn
+	clientNextProtos []string
 }
 
 // validateWorkerTls is called by the Go TLS stack with client info. It calls
@@ -44,9 +45,14 @@ func (c Controller) validateWorkerTls(hello *tls.ClientHelloInfo) (*tls.Config, 
 				// nonce unique constraint, which is by far the more important
 				// thing to validate (although there are DB-level tests for that
 				// too).
-				c.workerAuthCache.Store(workerInfo.ConnectionNonce, &workerAuthEntry{
+				authEntry := &workerAuthEntry{
 					WorkerAuthInfo: workerInfo,
-				})
+				}
+				if len(hello.SupportedProtos) > 0 {
+					authEntry.clientNextProtos = make([]string, len(hello.SupportedProtos))
+					copy(authEntry.clientNextProtos, hello.SupportedProtos)
+				}
+				c.workerAuthCache.Store(workerInfo.ConnectionNonce, authEntry)
 			}
 			return tlsConf, err
 		}
