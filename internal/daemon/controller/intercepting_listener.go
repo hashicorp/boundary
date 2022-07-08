@@ -80,6 +80,8 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 	var tlsConn *tls.Conn
 	switch c := conn.(type) {
 	case *protocol.Conn:
+		// If we so choose, at this point we can pull out the client's
+		// NextProtos with c.ClientNextProtos
 		tlsConn = c.Conn
 	case *tls.Conn:
 		tlsConn = c

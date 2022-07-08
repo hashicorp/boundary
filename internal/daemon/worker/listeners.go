@@ -293,10 +293,13 @@ func (e *eventingListener) Accept() (net.Conn, error) {
 	var tlsConn *tls.Conn
 	switch c := conn.(type) {
 	case *protocol.Conn:
+		// If we so choose, at this point we can pull out the client's
+		// NextProtos with c.ClientNextProtos
 		tlsConn = c.Conn
 	case *tls.Conn:
 		tlsConn = c
 	}
+
 	if tlsConn != nil && len(tlsConn.ConnectionState().PeerCertificates) > 0 {
 		keyId, err := nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId)
 		if err == nil {
