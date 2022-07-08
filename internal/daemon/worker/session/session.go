@@ -29,6 +29,11 @@ type ConnInfo struct {
 	// closes the proxy connection.
 	connCtxCancelFunc context.CancelFunc
 
+	// The number of bytes uploaded from the client.
+	BytesUp func() uint64
+	// The number of bytes downloaded to the client.
+	BytesDown func() uint64
+
 	// The time the controller has successfully reported that this connection is
 	// closed.
 	CloseTime time.Time
@@ -41,6 +46,11 @@ type Session interface {
 	// ApplyLocalConnectionStatus set's a connection's status to the one provided.
 	// If there is no connection with the provided id, an error is returned.
 	ApplyLocalConnectionStatus(connId string, status pbs.CONNECTIONSTATUS) error
+
+	// ApplyCounterCallbacks sets a connection's bytes up and bytes down callbacks
+	// to the provided functions. Both functions must be safe for concurrent use.
+	// If there is no connection with the provided id, an error is returned.
+	ApplyCounterCallbacks(connId string, bytesUp func() uint64, bytesDown func() uint64) error
 
 	// ApplyLocalStatus updates the given session with the status provided by
 	// the SessionJobInfo.  It returns an error if any of the connections
@@ -158,6 +168,23 @@ func (s *sess) ApplyLocalStatus(st pbs.SESSIONSTATUS) {
 	s.status = st
 }
 
+// ApplyCounterCallbacks adds the callbacks for getting the current counter of
+// bytes uploaded and downloaded to the client over a connection on the session.
+// Both callbacks must be safe for concurrent use.
+func (s *sess) ApplyCounterCallbacks(connId string, bytesUp func() uint64, bytesDown func() uint64) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	connInfo, ok := s.connInfoMap[connId]
+	if !ok {
+		return fmt.Errorf("could not find connection ID %q for session ID %q in local state",
+			connId,
+			s.GetId())
+	}
+	connInfo.BytesUp = bytesUp
+	connInfo.BytesDown = bytesDown
+	return nil
+}
+
 func (s *sess) GetLocalConnections() map[string]ConnInfo {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -168,6 +195,8 @@ func (s *sess) GetLocalConnections() map[string]ConnInfo {
 			Id:        v.Id,
 			Status:    v.Status,
 			CloseTime: v.CloseTime,
+			BytesUp:   v.BytesUp,
+			BytesDown: v.BytesDown,
 		}
 	}
 	return res
@@ -241,6 +270,9 @@ func (s *sess) RequestAuthorizeConnection(ctx context.Context, workerId string, 
 		return ConnInfo{}, connsLeft, err
 	}
 	ci.connCtxCancelFunc = connCancel
+	// Install safe callbacks before connection has been established
+	ci.BytesUp = func() uint64 { return 0 }
+	ci.BytesDown = func() uint64 { return 0 }
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.connInfoMap[ci.Id] = ci
@@ -248,6 +280,8 @@ func (s *sess) RequestAuthorizeConnection(ctx context.Context, workerId string, 
 		Id:        ci.Id,
 		Status:    ci.Status,
 		CloseTime: ci.CloseTime,
+		BytesUp:   ci.BytesUp,
+		BytesDown: ci.BytesDown,
 	}, connsLeft, err
 }
 
@@ -379,6 +413,14 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 	return resp, nil
 }
 
+// ConnectionCloseData encapsulates the data we need to
+// send the CloseConnection RPC to the controller.
+type ConnectionCloseData struct {
+	SessionId string
+	BytesUp   uint64
+	BytesDown uint64
+}
+
 // closeConnections is a helper worker function that sends connection close
 // requests to the controller, and sets close times within the worker. It is
 // called during the worker status loop and on connection exit on the proxy.
@@ -386,8 +428,8 @@ func closeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, r
 // The boolean indicates whether the function was successful, e.g. had any
 // errors. Individual events will be sent for the errors if there are any.
 //
-// closeInfo is a map of connections mapped to their individual session.
-func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sManager Manager, closeInfo map[string]string) bool {
+// closeInfo is a map of connection ID mapped to connection metadata.
+func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, sManager Manager, closeInfo map[string]*ConnectionCloseData) bool {
 	const op = "session.closeConnections"
 	if len(closeInfo) == 0 {
 		// This should not happen, but it's a no-op if it does. Just
@@ -445,12 +487,14 @@ func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 // sessions IDs that those connections belong to. The values are
 // ignored; the parameter is expected as such just for convenience of
 // its caller.
-func makeCloseConnectionRequest(closeInfo map[string]string) *pbs.CloseConnectionRequest {
+func makeCloseConnectionRequest(closeInfo map[string]*ConnectionCloseData) *pbs.CloseConnectionRequest {
 	closeData := make([]*pbs.CloseConnectionRequestData, 0, len(closeInfo))
-	for connId := range closeInfo {
+	for connId, data := range closeInfo {
 		closeData = append(closeData, &pbs.CloseConnectionRequestData{
 			ConnectionId: connId,
 			Reason:       session.UnknownReason.String(),
+			BytesUp:      data.BytesUp,
+			BytesDown:    data.BytesDown,
 		})
 	}
 
@@ -465,7 +509,7 @@ func makeCloseConnectionRequest(closeInfo map[string]string) *pbs.CloseConnectio
 // easily lock on session once for all connections in
 // setCloseTimeForResponse.
 func makeSessionCloseInfo(
-	closeInfo map[string]string,
+	closeInfo map[string]*ConnectionCloseData,
 	response *pbs.CloseConnectionResponse,
 ) (map[string][]*pbs.CloseConnectionResponseData, error) {
 	if closeInfo == nil {
@@ -474,7 +518,8 @@ func makeSessionCloseInfo(
 
 	result := make(map[string][]*pbs.CloseConnectionResponseData)
 	for _, v := range response.GetCloseResponseData() {
-		result[closeInfo[v.GetConnectionId()]] = append(result[closeInfo[v.GetConnectionId()]], v)
+		sessionId := closeInfo[v.GetConnectionId()].SessionId
+		result[sessionId] = append(result[sessionId], v)
 	}
 
 	return result, nil
@@ -483,14 +528,15 @@ func makeSessionCloseInfo(
 // makeFakeSessionCloseInfo makes a "fake" makeFakeSessionCloseInfo, intended
 // for use when we can't contact the controller.
 func makeFakeSessionCloseInfo(
-	closeInfo map[string]string,
+	closeInfo map[string]*ConnectionCloseData,
 ) (map[string][]*pbs.CloseConnectionResponseData, error) {
 	if closeInfo == nil {
 		return nil, errMakeSessionCloseInfoNilCloseInfo
 	}
 
 	result := make(map[string][]*pbs.CloseConnectionResponseData)
-	for connectionId, sessionId := range closeInfo {
+	for connectionId, closeData := range closeInfo {
+		sessionId := closeData.SessionId
 		result[sessionId] = append(result[sessionId], &pbs.CloseConnectionResponseData{
 			ConnectionId: connectionId,
 			Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED,

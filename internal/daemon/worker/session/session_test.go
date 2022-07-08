@@ -176,11 +176,32 @@ func TestSession_RequestAuthorizeConnection(t *testing.T) {
 
 func TestWorkerMakeCloseConnectionRequest(t *testing.T) {
 	require := require.New(t)
-	in := map[string]string{"foo": "one", "bar": "two"}
+	in := map[string]*ConnectionCloseData{
+		"foo": {
+			SessionId: "one",
+			BytesUp:   100,
+			BytesDown: 200,
+		},
+		"bar": {
+			SessionId: "two",
+			BytesUp:   300,
+			BytesDown: 400,
+		},
+	}
 	expected := &pbs.CloseConnectionRequest{
 		CloseRequestData: []*pbs.CloseConnectionRequestData{
-			{ConnectionId: "foo", Reason: session.UnknownReason.String()},
-			{ConnectionId: "bar", Reason: session.UnknownReason.String()},
+			{
+				ConnectionId: "foo",
+				Reason:       session.UnknownReason.String(),
+				BytesUp:      100,
+				BytesDown:    200,
+			},
+			{
+				ConnectionId: "bar",
+				Reason:       session.UnknownReason.String(),
+				BytesUp:      300,
+				BytesDown:    400,
+			},
 		},
 	}
 	actual := makeCloseConnectionRequest(in)
@@ -189,7 +210,18 @@ func TestWorkerMakeCloseConnectionRequest(t *testing.T) {
 
 func TestMakeSessionCloseInfo(t *testing.T) {
 	require := require.New(t)
-	closeInfo := map[string]string{"foo": "one", "bar": "two"}
+	closeInfo := map[string]*ConnectionCloseData{
+		"foo": {
+			SessionId: "one",
+			BytesUp:   100,
+			BytesDown: 200,
+		},
+		"bar": {
+			SessionId: "two",
+			BytesUp:   300,
+			BytesDown: 400,
+		},
+	}
 	response := &pbs.CloseConnectionResponse{
 		CloseResponseData: []*pbs.CloseConnectionResponseData{
 			{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
@@ -218,7 +250,7 @@ func TestMakeSessionCloseInfoErrorIfCloseInfoNil(t *testing.T) {
 
 func TestMakeSessionCloseInfoEmpty(t *testing.T) {
 	require := require.New(t)
-	actual, err := makeSessionCloseInfo(make(map[string]string), nil)
+	actual, err := makeSessionCloseInfo(make(map[string]*ConnectionCloseData), nil)
 	require.NoError(err)
 	require.Equal(
 		make(map[string][]*pbs.CloseConnectionResponseData),
@@ -228,7 +260,18 @@ func TestMakeSessionCloseInfoEmpty(t *testing.T) {
 
 func TestMakeFakeSessionCloseInfo(t *testing.T) {
 	require := require.New(t)
-	closeInfo := map[string]string{"foo": "one", "bar": "two"}
+	closeInfo := map[string]*ConnectionCloseData{
+		"foo": {
+			SessionId: "one",
+			BytesUp:   100,
+			BytesDown: 200,
+		},
+		"bar": {
+			SessionId: "two",
+			BytesUp:   300,
+			BytesDown: 400,
+		},
+	}
 	expected := map[string][]*pbs.CloseConnectionResponseData{
 		"one": {
 			{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
@@ -251,7 +294,7 @@ func TestMakeFakeSessionCloseInfoErrorIfCloseInfoNil(t *testing.T) {
 
 func TestMakeFakeSessionCloseInfoEmpty(t *testing.T) {
 	require := require.New(t)
-	actual, err := makeFakeSessionCloseInfo(make(map[string]string))
+	actual, err := makeFakeSessionCloseInfo(make(map[string]*ConnectionCloseData))
 	require.NoError(err)
 	require.Equal(
 		make(map[string][]*pbs.CloseConnectionResponseData),

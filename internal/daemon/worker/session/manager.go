@@ -42,8 +42,8 @@ type Manager interface {
 	// The boolean indicates whether the function was successful, e.g. had any
 	// errors. Individual events will be sent for the errors if there are any.
 	//
-	// closeInfo is a map of connection ids mapped to their individual session ids.
-	RequestCloseConnections(context.Context, map[string]string) bool
+	// closeInfo is a map of connection ids mapped to connection metadata.
+	RequestCloseConnections(context.Context, map[string]*ConnectionCloseData) bool
 }
 
 type manager struct {
@@ -123,7 +123,7 @@ func (m *manager) DeleteLocalSession(sessIds []string) {
 	}
 }
 
-func (m *manager) RequestCloseConnections(ctx context.Context, closeInfo map[string]string) bool {
+func (m *manager) RequestCloseConnections(ctx context.Context, closeInfo map[string]*ConnectionCloseData) bool {
 	return closeConnections(ctx, m.controllerSessionConn, m, closeInfo)
 }
 

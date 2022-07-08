@@ -10,9 +10,9 @@ import (
 
 // StateReport is used to report on the state of a Session.
 type StateReport struct {
-	SessionId     string
-	Status        Status
-	ConnectionIds []string
+	SessionId   string
+	Status      Status
+	Connections []Connection
 }
 
 // WorkerStatusReport is a domain service function that compares the state of
@@ -29,7 +29,13 @@ func WorkerStatusReport(ctx context.Context, repo *Repository, connRepo *Connect
 	reportedSessions := make([]string, 0, len(report))
 	for _, r := range report {
 		reportedSessions = append(reportedSessions, r.SessionId)
-		reportedConnections = append(reportedConnections, r.ConnectionIds...)
+		for _, connection := range r.Connections {
+			reportedConnections = append(reportedConnections, connection.PublicId)
+		}
+
+		if err := connRepo.updateBytesUpDown(ctx, r.Connections); err != nil {
+			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error updating connection bytes up/down for worker %s: %v", workerId, err))
+		}
 	}
 
 	notActive, err := repo.checkIfNoLongerActive(ctx, reportedSessions)

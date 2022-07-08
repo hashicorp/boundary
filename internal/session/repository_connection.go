@@ -393,6 +393,38 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 	return orphanedConns, nil
 }
 
+func (r *ConnectionRepository) updateBytesUpDown(ctx context.Context, connections []Connection) error {
+	const op = "session.(ConnectionRepository).updateBytesUpDown"
+
+	for _, connection := range connections {
+		_, err := r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			func(reader db.Reader, w db.Writer) error {
+				_, err := w.Exec(
+					ctx,
+					"update session_connection set bytes_up = @bytes_up, bytes_down = @bytes_down where public_id = @public_id",
+					[]interface{}{
+						sql.Named("bytes_up", connection.BytesUp),
+						sql.Named("bytes_down", connection.BytesDown),
+						sql.Named("public_id", connection.PublicId),
+					},
+				)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				return nil
+			},
+		)
+
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("error updating bytes up/down"))
+		}
+	}
+	return nil
+}
+
 func fetchConnectionStates(ctx context.Context, r db.Reader, connectionId string, opt ...db.Option) ([]*ConnectionState, error) {
 	const op = "session.fetchConnectionStates"
 	var states []*ConnectionState

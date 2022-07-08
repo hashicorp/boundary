@@ -218,8 +218,28 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			return
 		}
 		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.Id)
+		counter := &countingConn{
+			Conn: websocket.NetConn(ctx, conn, websocket.MessageBinary),
+		}
+		// We're wrapping the client websocket, so the number of bytes uploaded
+		// by the client is the number of bytes read from the conn,
+		// and the number downloaded is the number written to the client.
+		if err := sess.ApplyCounterCallbacks(ci.Id, counter.BytesRead, counter.BytesWritten); err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to set counter callbacks in session"))
+			if err = conn.Close(websocket.StatusInternalError, "unable to set counter callbacks in session"); err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+			return
+		}
 		defer func() {
-			if sessionManager.RequestCloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
+			closeInfo := map[string]*session.ConnectionCloseData{
+				ci.Id: {
+					SessionId: sess.GetId(),
+					BytesUp:   counter.BytesRead(),
+					BytesDown: counter.BytesWritten(),
+				},
+			}
+			if sessionManager.RequestCloseConnections(ctx, closeInfo) {
 				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.Id)
 			}
 		}()
@@ -240,7 +260,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		conf := proxyHandlers.Config{
 			UserClientIp:   net.ParseIP(userClientIp),
 			ClientAddress:  clientAddr,
-			ClientConn:     conn,
+			ClientConn:     counter,
 			RemoteEndpoint: sess.GetEndpoint(),
 			Session:        sess,
 			ConnectionId:   ci.Id,

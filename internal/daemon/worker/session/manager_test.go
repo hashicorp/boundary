@@ -75,7 +75,7 @@ func TestManager_RequestCloseConnections(t *testing.T) {
 	manager, err := NewManager(mockSessionClient)
 	require.NoError(t, err)
 	assert.False(t, manager.RequestCloseConnections(ctx, nil))
-	assert.False(t, manager.RequestCloseConnections(ctx, map[string]string{}))
+	assert.False(t, manager.RequestCloseConnections(ctx, map[string]*ConnectionCloseData{}))
 
 	mockSessionClient.LookupSessionFn = func(_ context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 		return &pbs.LookupSessionResponse{
