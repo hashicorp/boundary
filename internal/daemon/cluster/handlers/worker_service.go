@@ -22,6 +22,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const ManagedWorkerTagKey = "boundary.cloud.hashicorp.com:managed"
+
 type workerServiceServer struct {
 	pbs.UnimplementedServerCoordinationServiceServer
 	pbs.UnimplementedSessionServiceServer
@@ -199,6 +201,38 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	return ret, nil
+}
+
+func (ws *workerServiceServer) HcpbWorkers(ctx context.Context, req *pbs.HcpbWorkersRequest) (*pbs.HcpbWorkersResponse, error) {
+	const op = "workers.(workerServiceServer).HcpbWorkers"
+
+	serversRepo, err := ws.serversRepoFn()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error getting servers repo: %v", err)
+	}
+
+	workers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithWorkerType(server.KmsWorkerType))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error looking up workers: %v", err)
+	}
+
+	resp := &pbs.HcpbWorkersResponse{}
+	if len(workers) == 0 {
+		return resp, nil
+	}
+
+	resp.Workers = make([]*pbs.WorkerInfo, 0, len(workers))
+	for _, worker := range workers {
+		vals := worker.CanonicalTags()[ManagedWorkerTagKey]
+		if len(vals) == 1 && vals[0] == "true" {
+			resp.Workers = append(resp.Workers, &pbs.WorkerInfo{
+				Id:      worker.GetPublicId(),
+				Address: worker.GetAddress(),
+			})
+		}
+	}
+
+	return resp, nil
 }
 
 func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {

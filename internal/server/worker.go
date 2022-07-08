@@ -126,7 +126,8 @@ func (w *Worker) ActiveConnectionCount() uint32 {
 }
 
 // CanonicalTags is the deduplicated set of tags contained on both the resource
-// set over the API as well as the tags reported by the worker itself.
+// set over the API as well as the tags reported by the worker itself. This
+// function is guaranteed to return a non-nil map.
 func (w *Worker) CanonicalTags() map[string][]string {
 	dedupedTags := make(map[Tag]struct{})
 	for _, t := range w.apiTags {

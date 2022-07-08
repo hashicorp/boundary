@@ -12,8 +12,8 @@ service ServerCoordinationService {
   // jobs as well as provide a list of the controllers in the system.
   rpc Status(StatusRequest) returns (StatusResponse) {}
 
-  // Returns the addresses of managed workers, if any
-  rpc ManagedWorkers(ManagedWorkersRequest) returns (ManagedWorkersResponse) {}
+  // Returns the addresses of HCP Boundary workers, if any
+  rpc HcpbWorkers(HcpbWorkersRequest) returns (HcpbWorkersResponse) {}
 }
 
 enum CONNECTIONSTATUS {
@@ -126,7 +126,7 @@ message StatusResponse {
   string worker_id = 40; // @gotags: `class:"public"`
 }
 
-// WorkerInfo contains information about workers for the ManagedWorkerResponse message
+// WorkerInfo contains information about workers for the HcpbWorkerResponse message
 message WorkerInfo {
   // The id of the worker
   string id = 1;
@@ -135,10 +135,10 @@ message WorkerInfo {
   string address = 2;
 }
 
-// A managed workers request. Empty for now.
-message ManagedWorkersRequest {}
+// A HCP Boundary workers request. Empty for now.
+message HcpbWorkersRequest {}
 
 // A response containing worker information
-message ManagedWorkersResponse {
+message HcpbWorkersResponse {
   repeated WorkerInfo workers = 1;
 }

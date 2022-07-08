@@ -2,6 +2,7 @@ package handlers_test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -173,4 +174,50 @@ func TestLookupSession(t *testing.T) {
 			)
 		})
 	}
+}
+
+// This test creates workers of both kms and pki type and verifies that the only
+// returned workers are those of kms type with the expected tag key/value
+func TestHcpbWorkers(t *testing.T) {
+	t.Parallel()
+	require, assert := require.New(t), assert.New(t)
+
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
+	sessionRepoFn := func() (*session.Repository, error) {
+		return session.NewRepository(rw, rw, kms)
+	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
+
+	for i := 0; i < 3; i++ {
+		var opt []server.Option
+		if i > 0 {
+			// Out of three KMS workers we expect to see two
+			opt = append(opt, server.WithWorkerTags(&server.Tag{Key: handlers.ManagedWorkerTagKey, Value: "true"}))
+		}
+		server.TestKmsWorker(t, conn, wrapper, append(opt, server.WithAddress(fmt.Sprintf("kms.%d", i)))...)
+		server.TestPkiWorker(t, conn, wrapper, opt...)
+	}
+
+	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms)
+	require.NotNil(t, s)
+
+	res, err := s.HcpbWorkers(ctx, &pbs.HcpbWorkersRequest{})
+	require.NoError(err)
+	require.NotNil(res)
+	expValues := []string{"kms.1", "kms.2"}
+	var gotValues []string
+	for _, worker := range res.Workers {
+		gotValues = append(gotValues, worker.Address)
+	}
+	assert.ElementsMatch(expValues, gotValues)
 }

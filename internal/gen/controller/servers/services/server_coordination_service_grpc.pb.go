@@ -22,8 +22,8 @@ type ServerCoordinationServiceClient interface {
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
-	// Returns the addresses of managed workers, if any
-	ManagedWorkers(ctx context.Context, in *ManagedWorkersRequest, opts ...grpc.CallOption) (*ManagedWorkersResponse, error)
+	// Returns the addresses of HCP Boundary workers, if any
+	HcpbWorkers(ctx context.Context, in *HcpbWorkersRequest, opts ...grpc.CallOption) (*HcpbWorkersResponse, error)
 }
 
 type serverCoordinationServiceClient struct {
@@ -43,9 +43,9 @@ func (c *serverCoordinationServiceClient) Status(ctx context.Context, in *Status
 	return out, nil
 }
 
-func (c *serverCoordinationServiceClient) ManagedWorkers(ctx context.Context, in *ManagedWorkersRequest, opts ...grpc.CallOption) (*ManagedWorkersResponse, error) {
-	out := new(ManagedWorkersResponse)
-	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.ServerCoordinationService/ManagedWorkers", in, out, opts...)
+func (c *serverCoordinationServiceClient) HcpbWorkers(ctx context.Context, in *HcpbWorkersRequest, opts ...grpc.CallOption) (*HcpbWorkersResponse, error) {
+	out := new(HcpbWorkersResponse)
+	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.ServerCoordinationService/HcpbWorkers", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +60,8 @@ type ServerCoordinationServiceServer interface {
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
-	// Returns the addresses of managed workers, if any
-	ManagedWorkers(context.Context, *ManagedWorkersRequest) (*ManagedWorkersResponse, error)
+	// Returns the addresses of HCP Boundary workers, if any
+	HcpbWorkers(context.Context, *HcpbWorkersRequest) (*HcpbWorkersResponse, error)
 	mustEmbedUnimplementedServerCoordinationServiceServer()
 }
 
@@ -72,8 +72,8 @@ type UnimplementedServerCoordinationServiceServer struct {
 func (UnimplementedServerCoordinationServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
-func (UnimplementedServerCoordinationServiceServer) ManagedWorkers(context.Context, *ManagedWorkersRequest) (*ManagedWorkersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ManagedWorkers not implemented")
+func (UnimplementedServerCoordinationServiceServer) HcpbWorkers(context.Context, *HcpbWorkersRequest) (*HcpbWorkersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HcpbWorkers not implemented")
 }
 func (UnimplementedServerCoordinationServiceServer) mustEmbedUnimplementedServerCoordinationServiceServer() {
 }
@@ -107,20 +107,20 @@ func _ServerCoordinationService_Status_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ServerCoordinationService_ManagedWorkers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ManagedWorkersRequest)
+func _ServerCoordinationService_HcpbWorkers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HcpbWorkersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ServerCoordinationServiceServer).ManagedWorkers(ctx, in)
+		return srv.(ServerCoordinationServiceServer).HcpbWorkers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/controller.servers.services.v1.ServerCoordinationService/ManagedWorkers",
+		FullMethod: "/controller.servers.services.v1.ServerCoordinationService/HcpbWorkers",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ServerCoordinationServiceServer).ManagedWorkers(ctx, req.(*ManagedWorkersRequest))
+		return srv.(ServerCoordinationServiceServer).HcpbWorkers(ctx, req.(*HcpbWorkersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -137,8 +137,8 @@ var ServerCoordinationService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ServerCoordinationService_Status_Handler,
 		},
 		{
-			MethodName: "ManagedWorkers",
-			Handler:    _ServerCoordinationService_ManagedWorkers_Handler,
+			MethodName: "HcpbWorkers",
+			Handler:    _ServerCoordinationService_HcpbWorkers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
