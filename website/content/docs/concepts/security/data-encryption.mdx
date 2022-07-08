@@ -13,7 +13,7 @@ Systems](/docs/configuration/kms) that protect the base encryption keys used
 for various functions. This page describes the various KMS key purposes that
 Boundary supports and how they are used within the system.
 
-~> Boundary does not currently support rotation of its internal keys, but this
+~> **Note:** Boundary does not currently support rotation of its internal keys, but this
 will be supported in a future version. External keys can be rotated so long as
 the original keys remain available for decryption; full support for rotating
 these will come in a future version as well.
@@ -31,7 +31,7 @@ with the KMS key marked for `root` purpose.
 
 The current scoped DEKs and their purposes are detailed below:
 
-~> Management of these keys is handled entirely internally; the information
+~> **Note:** Management of these keys is handled entirely internally; the information
 provided in this section is purely for informational purposes.
 
 - `database`: This is the general-purpose DEK used to encrypt values within the
@@ -66,7 +66,7 @@ cannot be replayed by an adversary, and also to ensure that each operation must
 be individually authenticated by a client so that revoking access to the KMS has
 an immediate result.
 
-~> It is not required for this `kms` configuration block to exist in the
+~> **Note:** It is not required for this `kms` configuration block to exist in the
 Controller's configuration file. It's best practice to leave it out except when
 actually needed, and to use change control capabilities to ensure that the
 configuration file modification is authorized. After it's no longer needed, the
@@ -76,7 +76,7 @@ On the client side, a user can use the `-recovery-config` flag with any
 operation on the CLI to specify a configuration file containing a suitable `kms`
 block. This functionality is also accessible via the Go SDK.
 
-~> Requests authorized via this mechanism will show a user of `u_recovery`. This
+~> **Note:** Requests authorized via this mechanism will show a user of `u_recovery`. This
 mechanism _cannot_ be used to authorize a session, as there is no uniquely
 identifying user information available.
 

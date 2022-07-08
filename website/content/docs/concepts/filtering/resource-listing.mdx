@@ -8,7 +8,7 @@ description: |-
 This page describes how to use filters when listing resources. This can be used
 to reduce the returned set of resources when performing a list operation.
 
-~> This feature is intended to provide a userful service to clients; it does not
+~> **Note:** This feature is intended to provide a userful service to clients; it does not
 affect the database queries generated for the operation and as such is not
 designed to provide greater efficiency.
 
@@ -63,13 +63,13 @@ within the filter at `/item`.
 
 On the CLI a filter can be given via `-filter`.
 
-~> Double quotes are part of the filter syntax; when using the CLI, it is likely
+~> **Tip:** Double quotes are part of the filter syntax; when using the CLI, it is likely
 easier to surround the filter with single quotes than to deal with escaping
 double quotes.
 
 When using the HTTP API, it is a `filter` query parameter.
 
-~> Ensure that the query parameter is properly escaped! Most HTTP libraries will
+~> **Tip:** Ensure that the query parameter is properly escaped! Most HTTP libraries will
 do this for you. If you're having trouble, try using the `-output-curl-string`
 flag with the Boundary CLI:
 

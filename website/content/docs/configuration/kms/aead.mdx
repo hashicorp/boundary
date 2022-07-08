@@ -5,7 +5,7 @@ description: |-
   The AEAD KMS configures AEAD-specific parameters.
 ---
 
-~> This is mostly used for `dev` workflows or testing. The key will be exposed
+~> **Note:** This is mostly used for `dev` workflows or testing. The key will be exposed
 to anyone that can view the configuration file. If using this KMS, consider
 using `boundary config encrypt` to encrypt all but the `config` KMS and using an
 external KMS for `config` purposes.

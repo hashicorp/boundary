@@ -11,7 +11,7 @@ PKI Workers authenticate to Boundary using a certificate-based method, allowing
 for worker deployment without using a shared KMS.
 
 PKI Workers require an accessible directory defined by `auth_storage_path` for
-credential storage. 
+credential storage.
 
 Example (not safe for production!):
 
@@ -57,3 +57,7 @@ worker {
 
 ```
 [kms workers]: /docs/configuration/worker/kms-worker
+
+## Tutorial
+
+Refer to the [Self-Managed Worker Registration with HCP Boundary](https://learn.hashicorp.com/tutorials/boundary/hcp-manage-workers?in=boundary/hcp-administration) tutorial to learn how to register and manage PKI workers.
