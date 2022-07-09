@@ -3,9 +3,9 @@ syntax = "proto3";
 package controller.api.services.v1;
 
 import "controller/api/resources/workers/v1/worker.proto";
-import "controller/servers/v1/servers.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/struct.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
@@ -173,7 +173,7 @@ message AddWorkerTagsRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated servers.v1.TagPair tags = 3 [json_name = "tags"]; // @gotags: `class:"public"`
+  map<string, google.protobuf.ListValue> api_tags = 3 [json_name = "api_tags"]; // @gotags: `class:"public"`
 }
 
 message AddWorkerTagsResponse {
@@ -185,7 +185,7 @@ message SetWorkerTagsRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated servers.v1.TagPair tags = 3 [json_name = "tags"]; // @gotags: `class:"public"`
+  map<string, google.protobuf.ListValue> api_tags = 3 [json_name = "api_tags"]; // @gotags: `class:"public"`
 }
 
 message SetWorkerTagsResponse {
@@ -197,7 +197,7 @@ message RemoveWorkerTagsRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated servers.v1.TagPair tags = 3 [json_name = "tags"]; // @gotags: `class:"public"`
+  map<string, google.protobuf.ListValue> api_tags = 3 [json_name = "api_tags"]; // @gotags: `class:"public"`
 }
 
 message RemoveWorkerTagsResponse {

@@ -3818,10 +3818,13 @@
                   "format": "int64",
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
-                "tags": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/controller.servers.v1.TagPair"
+                "api_tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
                   }
                 }
               }
@@ -3864,10 +3867,13 @@
                   "format": "int64",
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
-                "tags": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/controller.servers.v1.TagPair"
+                "api_tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
                   }
                 }
               }
@@ -3910,10 +3916,13 @@
                   "format": "int64",
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
-                "tags": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/controller.servers.v1.TagPair"
+                "api_tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
                   }
                 }
               }
@@ -5749,6 +5758,17 @@
           "description": "Output only. The type of the worker, denoted by how it authenticates: `pki`\nor `kms`.",
           "readOnly": true
         },
+        "api_tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The api tags set for the worker.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
@@ -6688,18 +6708,6 @@
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
-    },
-    "controller.servers.v1.TagPair": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "description": "TagPair matches a key to a value."
     },
     "google.protobuf.NullValue": {
       "type": "string",

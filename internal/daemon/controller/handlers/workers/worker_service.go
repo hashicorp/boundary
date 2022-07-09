@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/gen/controller/servers"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
@@ -312,7 +311,7 @@ func (s Service) AddWorkerTags(ctx context.Context, req *pbs.AddWorkerTagsReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	w, err := s.addTagsInRepo(ctx, req.GetId(), req.GetVersion(), req.GetTags())
+	w, err := s.addTagsInRepo(ctx, req.GetId(), req.GetVersion(), req.GetApiTags())
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +347,7 @@ func (s Service) SetWorkerTags(ctx context.Context, req *pbs.SetWorkerTagsReques
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	w, err := s.setTagsInRepo(ctx, req.GetId(), req.GetVersion(), req.GetTags())
+	w, err := s.setTagsInRepo(ctx, req.GetId(), req.GetVersion(), req.GetApiTags())
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +383,7 @@ func (s Service) RemoveWorkerTags(ctx context.Context, req *pbs.RemoveWorkerTags
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	w, err := s.removeTagsInRepo(ctx, req.GetId(), req.GetVersion(), req.GetTags())
+	w, err := s.removeTagsInRepo(ctx, req.GetId(), req.GetVersion(), req.GetApiTags())
 	if err != nil {
 		return nil, err
 	}
@@ -502,16 +501,16 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	return out, nil
 }
 
-func (s Service) addTagsInRepo(ctx context.Context, workerId string, workerVersion uint32, tagPairs []*servers.TagPair) (*server.Worker, error) {
+func (s Service) addTagsInRepo(ctx context.Context, workerId string, workerVersion uint32, addTags map[string]*structpb.ListValue) (*server.Worker, error) {
 	const op = "workers.(Service).addTagsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
 
-	tags := make([]*server.Tag, 0, len(tagPairs))
-	for _, t := range tagPairs {
-		tags = append(tags, &server.Tag{Key: t.Key, Value: t.Value})
+	tags := make([]*server.Tag, 0, len(addTags))
+	for k, lv := range addTags {
+		tags = append(tags, &server.Tag{Key: k, Value: lv.GetValues()[0].GetStringValue()})
 	}
 	_, err = repo.AddWorkerTags(ctx, workerId, workerVersion, tags)
 	if err != nil {
@@ -527,16 +526,16 @@ func (s Service) addTagsInRepo(ctx context.Context, workerId string, workerVersi
 	return w, nil
 }
 
-func (s Service) setTagsInRepo(ctx context.Context, workerId string, workerVersion uint32, tagPairs []*servers.TagPair) (*server.Worker, error) {
+func (s Service) setTagsInRepo(ctx context.Context, workerId string, workerVersion uint32, setTags map[string]*structpb.ListValue) (*server.Worker, error) {
 	const op = "workers.(Service).setTagsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
 
-	tags := make([]*server.Tag, 0, len(tagPairs))
-	for _, t := range tagPairs {
-		tags = append(tags, &server.Tag{Key: t.Key, Value: t.Value})
+	tags := make([]*server.Tag, 0, len(setTags))
+	for k, lv := range setTags {
+		tags = append(tags, &server.Tag{Key: k, Value: lv.GetValues()[0].GetStringValue()})
 	}
 	_, err = repo.SetWorkerTags(ctx, workerId, workerVersion, tags)
 	if err != nil {
@@ -552,16 +551,16 @@ func (s Service) setTagsInRepo(ctx context.Context, workerId string, workerVersi
 	return w, nil
 }
 
-func (s Service) removeTagsInRepo(ctx context.Context, workerId string, workerVersion uint32, tagPairs []*servers.TagPair) (*server.Worker, error) {
+func (s Service) removeTagsInRepo(ctx context.Context, workerId string, workerVersion uint32, removeTags map[string]*structpb.ListValue) (*server.Worker, error) {
 	const op = "workers.(Service).removeTagsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
 	}
 
-	tags := make([]*server.Tag, 0, len(tagPairs))
-	for _, t := range tagPairs {
-		tags = append(tags, &server.Tag{Key: t.Key, Value: t.Value})
+	tags := make([]*server.Tag, 0, len(removeTags))
+	for k, lv := range removeTags {
+		tags = append(tags, &server.Tag{Key: k, Value: lv.GetValues()[0].GetStringValue()})
 	}
 	_, err = repo.DeleteWorkerTags(ctx, workerId, workerVersion, tags)
 	if err != nil {
@@ -670,6 +669,13 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 		out.ConfigTags, err = tagsToMapProto(in.GetConfigTags())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
+		}
+	}
+	if outputFields.Has(globals.ApiTagsField) && len(in.GetApiTags()) > 0 {
+		var err error
+		out.ApiTags, err = tagsToMapProto(in.GetApiTags())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing api tags proto"))
 		}
 	}
 	if outputFields.Has(globals.CanonicalTagsField) && len(in.CanonicalTags()) > 0 {
@@ -811,12 +817,12 @@ func validateAddTagsRequest(req *pbs.AddWorkerTagsRequest) error {
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetTags()) == 0 {
-		badFields[globals.TagsField] = "Must be non-empty."
+	if req.GetApiTags() == nil {
+		badFields[globals.ApiTagsField] = "Must be non-empty."
 	}
-	for _, t := range req.GetTags() {
-		if t == nil {
-			badFields[globals.TagsField] = "Tags must be non-empty."
+	for _, lv := range req.GetApiTags() {
+		if lv.GetValues() == nil {
+			badFields[globals.ApiTagsField] = "Tags must be non-empty."
 			break
 		}
 	}
@@ -834,9 +840,9 @@ func validateSetTagsRequest(req *pbs.SetWorkerTagsRequest) error {
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	for _, t := range req.GetTags() {
-		if t == nil {
-			badFields[globals.TagsField] = "Tags must be non-empty."
+	for _, lv := range req.GetApiTags() {
+		if lv.GetValues() == nil {
+			badFields[globals.ApiTagsField] = "Tags must be non-empty."
 			break
 		}
 	}
@@ -854,12 +860,12 @@ func validateRemoveTagsRequest(req *pbs.RemoveWorkerTagsRequest) error {
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetTags()) == 0 {
-		badFields[globals.TagsField] = "Must be non-empty."
+	if req.GetApiTags() == nil {
+		badFields[globals.ApiTagsField] = "Must be non-empty."
 	}
-	for _, t := range req.GetTags() {
-		if t == nil {
-			badFields[globals.TagsField] = "Tags must be non-empty."
+	for _, lv := range req.GetApiTags() {
+		if lv.GetValues() == nil {
+			badFields[globals.ApiTagsField] = "Tags must be non-empty."
 			break
 		}
 	}
