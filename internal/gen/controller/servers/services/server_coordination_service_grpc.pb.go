@@ -23,7 +23,7 @@ type ServerCoordinationServiceClient interface {
 	// jobs as well as provide a list of the controllers in the system.
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	// Returns the addresses of HCP Boundary workers, if any
-	HcpbWorkers(ctx context.Context, in *HcpbWorkersRequest, opts ...grpc.CallOption) (*HcpbWorkersResponse, error)
+	ListHcpbWorkers(ctx context.Context, in *ListHcpbWorkersRequest, opts ...grpc.CallOption) (*ListHcpbWorkersResponse, error)
 }
 
 type serverCoordinationServiceClient struct {
@@ -43,9 +43,9 @@ func (c *serverCoordinationServiceClient) Status(ctx context.Context, in *Status
 	return out, nil
 }
 
-func (c *serverCoordinationServiceClient) HcpbWorkers(ctx context.Context, in *HcpbWorkersRequest, opts ...grpc.CallOption) (*HcpbWorkersResponse, error) {
-	out := new(HcpbWorkersResponse)
-	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.ServerCoordinationService/HcpbWorkers", in, out, opts...)
+func (c *serverCoordinationServiceClient) ListHcpbWorkers(ctx context.Context, in *ListHcpbWorkersRequest, opts ...grpc.CallOption) (*ListHcpbWorkersResponse, error) {
+	out := new(ListHcpbWorkersResponse)
+	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.ServerCoordinationService/ListHcpbWorkers", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ type ServerCoordinationServiceServer interface {
 	// jobs as well as provide a list of the controllers in the system.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
 	// Returns the addresses of HCP Boundary workers, if any
-	HcpbWorkers(context.Context, *HcpbWorkersRequest) (*HcpbWorkersResponse, error)
+	ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error)
 	mustEmbedUnimplementedServerCoordinationServiceServer()
 }
 
@@ -72,8 +72,8 @@ type UnimplementedServerCoordinationServiceServer struct {
 func (UnimplementedServerCoordinationServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
 }
-func (UnimplementedServerCoordinationServiceServer) HcpbWorkers(context.Context, *HcpbWorkersRequest) (*HcpbWorkersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method HcpbWorkers not implemented")
+func (UnimplementedServerCoordinationServiceServer) ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListHcpbWorkers not implemented")
 }
 func (UnimplementedServerCoordinationServiceServer) mustEmbedUnimplementedServerCoordinationServiceServer() {
 }
@@ -107,20 +107,20 @@ func _ServerCoordinationService_Status_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ServerCoordinationService_HcpbWorkers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HcpbWorkersRequest)
+func _ServerCoordinationService_ListHcpbWorkers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListHcpbWorkersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ServerCoordinationServiceServer).HcpbWorkers(ctx, in)
+		return srv.(ServerCoordinationServiceServer).ListHcpbWorkers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/controller.servers.services.v1.ServerCoordinationService/HcpbWorkers",
+		FullMethod: "/controller.servers.services.v1.ServerCoordinationService/ListHcpbWorkers",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ServerCoordinationServiceServer).HcpbWorkers(ctx, req.(*HcpbWorkersRequest))
+		return srv.(ServerCoordinationServiceServer).ListHcpbWorkers(ctx, req.(*ListHcpbWorkersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -137,8 +137,8 @@ var ServerCoordinationService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ServerCoordinationService_Status_Handler,
 		},
 		{
-			MethodName: "HcpbWorkers",
-			Handler:    _ServerCoordinationService_HcpbWorkers_Handler,
+			MethodName: "ListHcpbWorkers",
+			Handler:    _ServerCoordinationService_ListHcpbWorkers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

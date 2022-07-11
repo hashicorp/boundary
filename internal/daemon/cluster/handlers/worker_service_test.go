@@ -211,7 +211,7 @@ func TestHcpbWorkers(t *testing.T) {
 	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
-	res, err := s.HcpbWorkers(ctx, &pbs.HcpbWorkersRequest{})
+	res, err := s.ListHcpbWorkers(ctx, &pbs.ListHcpbWorkersRequest{})
 	require.NoError(err)
 	require.NotNil(res)
 	expValues := []string{"kms.1", "kms.2"}

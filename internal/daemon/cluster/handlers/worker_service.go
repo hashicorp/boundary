@@ -203,8 +203,10 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	return ret, nil
 }
 
-func (ws *workerServiceServer) HcpbWorkers(ctx context.Context, req *pbs.HcpbWorkersRequest) (*pbs.HcpbWorkersResponse, error) {
-	const op = "workers.(workerServiceServer).HcpbWorkers"
+// ListHcpbWorkers looks up workers that are HCP Boundary-managed, currently by
+// seeing if they are KMS and have a known tag
+func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.ListHcpbWorkersRequest) (*pbs.ListHcpbWorkersResponse, error) {
+	const op = "workers.(workerServiceServer).ListHcpbWorkers"
 
 	serversRepo, err := ws.serversRepoFn()
 	if err != nil {
@@ -216,7 +218,7 @@ func (ws *workerServiceServer) HcpbWorkers(ctx context.Context, req *pbs.HcpbWor
 		return nil, status.Errorf(codes.Internal, "Error looking up workers: %v", err)
 	}
 
-	resp := &pbs.HcpbWorkersResponse{}
+	resp := &pbs.ListHcpbWorkersResponse{}
 	if len(workers) == 0 {
 		return resp, nil
 	}

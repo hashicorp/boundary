@@ -13,7 +13,7 @@ service ServerCoordinationService {
   rpc Status(StatusRequest) returns (StatusResponse) {}
 
   // Returns the addresses of HCP Boundary workers, if any
-  rpc HcpbWorkers(HcpbWorkersRequest) returns (HcpbWorkersResponse) {}
+  rpc ListHcpbWorkers(ListHcpbWorkersRequest) returns (ListHcpbWorkersResponse) {}
 }
 
 enum CONNECTIONSTATUS {
@@ -136,9 +136,9 @@ message WorkerInfo {
 }
 
 // A HCP Boundary workers request. Empty for now.
-message HcpbWorkersRequest {}
+message ListHcpbWorkersRequest {}
 
 // A response containing worker information
-message HcpbWorkersResponse {
+message ListHcpbWorkersResponse {
   repeated WorkerInfo workers = 1;
 }

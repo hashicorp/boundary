@@ -208,7 +208,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			// This is a worker that is one hop away from managed workers, so attempt to get that list
 			hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
 			defer hcpbWorkersCancel()
-			workersResp, err := client.HcpbWorkers(hcpbWorkersCtx, &pbs.HcpbWorkersRequest{})
+			workersResp, err := client.ListHcpbWorkers(hcpbWorkersCtx, &pbs.ListHcpbWorkersRequest{})
 			if err != nil {
 				event.WriteError(hcpbWorkersCtx, op, err, event.WithInfoMsg("error fetching managed worker information"))
 			} else {
