@@ -125,9 +125,6 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			reader: rand.Reader,
 			setup: func(k *kms.Kms) {
 				kms.TestKmsDeleteKeyPurpose(t, conn, kms.KeyPurposeAudit)
-				// make sure the kms is in the proper state for the unit test
-				// before proceeding.
-				k.ClearCache(testCtx)
 				_, err := k.GetWrapper(testCtx, scope.Global.String(), kms.KeyPurposeAudit)
 				require.Error(t, err)
 			},

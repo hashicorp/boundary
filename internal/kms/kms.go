@@ -39,7 +39,7 @@ func New(ctx context.Context, reader *db.Db, writer *db.Db, _ ...Option) (*Kms, 
 
 	r := dbw.New(reader.UnderlyingDB())
 	w := dbw.New(writer.UnderlyingDB())
-	k, err := wrappingKms.New(r, w, purposes, wrappingKms.WithCache(true))
+	k, err := wrappingKms.New(r, w, purposes)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
 	}
@@ -69,7 +69,7 @@ func NewUsingReaderWriter(ctx context.Context, reader db.Reader, writer db.Write
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	k, err := wrappingKms.New(r, w, purposes, wrappingKms.WithCache(true))
+	k, err := wrappingKms.New(r, w, purposes)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
 	}
@@ -223,16 +223,6 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, opt ...Option) err
 		purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
 	}
 	if err := k.underlying.CreateKeys(ctx, scopeId, purposes, kmsOpts...); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	return nil
-}
-
-// ClearCache will clear the kms's cache which is useful after a scope has been
-// deleted.
-func (k *Kms) ClearCache(ctx context.Context) error {
-	const op = "kms.(Kms).ClearCache"
-	if err := k.underlying.ClearCache(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
