@@ -70,7 +70,7 @@ func parsePBs() {
 					name = fmt.Sprintf("%s.%s", pkg, name)
 				}
 				switch name {
-				case "v1.AuthorizedCollectionActionsEntry", "v1.CanonicalTagsEntry", "v1.TagsEntry", "v1.ConfigTagsEntry":
+				case "v1.AuthorizedCollectionActionsEntry", "v1.CanonicalTagsEntry", "v1.TagsEntry", "v1.ConfigTagsEntry", "v1.ApiTagsEntry":
 					fi.FieldType = "map[string][]string"
 				default:
 					fi.FieldType = sliceText + ptr + name
