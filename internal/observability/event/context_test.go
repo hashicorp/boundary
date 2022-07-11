@@ -156,10 +156,7 @@ func Test_RequestInfoFromContext(t *testing.T) {
 func Test_NewEventerContext(t *testing.T) {
 	testSetup := event.TestEventerConfig(t, "Test_NewEventerContext")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 	testEventer, err := event.NewEventer(testLogger, testLock, "Test_NewEventerContext", testSetup.EventerConfig)
 	require.NoError(t, err)
 	tests := []struct {
@@ -213,10 +210,7 @@ func Test_EventerFromContext(t *testing.T) {
 	testSetup := event.TestEventerConfig(t, "Test_EventerFromContext")
 
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 	testEventer, err := event.NewEventer(testLogger, testLock, "Test_EventerFromContext", testSetup.EventerConfig)
 	require.NoError(t, err)
 
@@ -267,10 +261,7 @@ func Test_WriteObservation(t *testing.T) {
 	c := event.TestEventerConfig(t, "WriteObservation")
 
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 	e, err := event.NewEventer(testLogger, testLock, "Test_WriteObservation", c.EventerConfig)
 	require.NoError(t, err)
 
@@ -479,10 +470,6 @@ func Test_WriteObservation(t *testing.T) {
 		c := event.TestEventerConfig(t, "WriteObservation")
 		c.EventerConfig.ObservationsEnabled = false
 		testLock := &sync.Mutex{}
-		testLogger := hclog.New(&hclog.LoggerOptions{
-			Mutex: testLock,
-			Name:  "test",
-		})
 		e, err := event.NewEventer(testLogger, testLock, "not-enabled", c.EventerConfig)
 		require.NoError(err)
 
@@ -504,10 +491,7 @@ func Test_WriteObservation(t *testing.T) {
 
 func Test_Filtering(t *testing.T) {
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 	tests := []struct {
 		name  string
 		allow []string
@@ -634,10 +618,7 @@ func Test_WriteAudit(t *testing.T) {
 
 	c := event.TestEventerConfig(t, "WriteAudit")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 	e, err := event.NewEventer(testLogger, testLock, "Test_WriteAudit", c.EventerConfig)
 	require.NoError(t, err)
 
@@ -945,10 +926,6 @@ func Test_WriteAudit(t *testing.T) {
 		c := event.TestEventerConfig(t, "WriteAudit")
 		c.EventerConfig.AuditEnabled = false
 		testLock := &sync.Mutex{}
-		testLogger := hclog.New(&hclog.LoggerOptions{
-			Mutex: testLock,
-			Name:  "test",
-		})
 		e, err := event.NewEventer(testLogger, testLock, "not-enabled", c.EventerConfig)
 		require.NoError(err)
 
@@ -971,10 +948,7 @@ func Test_WriteError(t *testing.T) {
 
 	c := event.TestEventerConfig(t, "WriteAudit")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 	e, err := event.NewEventer(testLogger, testLock, "Test_WriteError", c.EventerConfig, event.WithNow(now))
 	require.NoError(t, err)
 
@@ -1141,10 +1115,7 @@ func Test_WriteSysEvent(t *testing.T) {
 	ctx := context.Background()
 	c := event.TestEventerConfig(t, "Test_WriteSysEvent")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 
 	tests := []struct {
 		name         string
@@ -1296,4 +1267,13 @@ type testIntKeyWithStringer int
 
 func (ti testIntKeyWithStringer) String() string {
 	return fmt.Sprint("*", int(ti), "*")
+}
+
+func testLogger(t *testing.T, testLock hclog.Locker) hclog.Logger {
+	t.Helper()
+	return hclog.New(&hclog.LoggerOptions{
+		Mutex:      testLock,
+		Name:       "test",
+		JSONFormat: true,
+	})
 }

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/eventlogger"
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,9 +20,8 @@ func TestEventer_retrySend(t *testing.T) {
 	testConfig := TestEventerConfig(t, "TestEventer_retrySend")
 
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-	})
+	testLogger := testLogger(t, testLock)
+
 	eventer, err := NewEventer(testLogger, testLock, "TestEventer_retrySend", testConfig.EventerConfig)
 	require.NoError(t, err)
 

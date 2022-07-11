@@ -8,7 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,10 +35,8 @@ func TestEventer_Gating(t *testing.T) {
 		},
 	}
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
+
 	eventer, err := NewEventer(
 		testLogger,
 		testLock,
