@@ -510,7 +510,9 @@ func (s Service) addTagsInRepo(ctx context.Context, workerId string, workerVersi
 
 	tags := make([]*server.Tag, 0, len(addTags))
 	for k, lv := range addTags {
-		tags = append(tags, &server.Tag{Key: k, Value: lv.GetValues()[0].GetStringValue()})
+		for _, v := range lv.GetValues() {
+			tags = append(tags, &server.Tag{Key: k, Value: v.GetStringValue()})
+		}
 	}
 	_, err = repo.AddWorkerTags(ctx, workerId, workerVersion, tags)
 	if err != nil {
@@ -535,7 +537,9 @@ func (s Service) setTagsInRepo(ctx context.Context, workerId string, workerVersi
 
 	tags := make([]*server.Tag, 0, len(setTags))
 	for k, lv := range setTags {
-		tags = append(tags, &server.Tag{Key: k, Value: lv.GetValues()[0].GetStringValue()})
+		for _, v := range lv.GetValues() {
+			tags = append(tags, &server.Tag{Key: k, Value: v.GetStringValue()})
+		}
 	}
 	_, err = repo.SetWorkerTags(ctx, workerId, workerVersion, tags)
 	if err != nil {
@@ -560,7 +564,9 @@ func (s Service) removeTagsInRepo(ctx context.Context, workerId string, workerVe
 
 	tags := make([]*server.Tag, 0, len(removeTags))
 	for k, lv := range removeTags {
-		tags = append(tags, &server.Tag{Key: k, Value: lv.GetValues()[0].GetStringValue()})
+		for _, v := range lv.GetValues() {
+			tags = append(tags, &server.Tag{Key: k, Value: v.GetStringValue()})
+		}
 	}
 	_, err = repo.DeleteWorkerTags(ctx, workerId, workerVersion, tags)
 	if err != nil {
@@ -809,6 +815,19 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 	})
 }
 
+// validateStringForDb checks a string is valid for db storage and returns a string for an error message if needed.
+// returns an empty string otherwise.
+func validateStringForDb(str string) string {
+	switch {
+	case str == "" || len(str) < 0:
+		return "must be non-empty."
+	case len(str) > 512:
+		return "must be within 512 characters."
+	default:
+		return ""
+	}
+}
+
 func validateAddTagsRequest(req *pbs.AddWorkerTagsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
@@ -820,10 +839,24 @@ func validateAddTagsRequest(req *pbs.AddWorkerTagsRequest) error {
 	if req.GetApiTags() == nil {
 		badFields[globals.ApiTagsField] = "Must be non-empty."
 	}
-	for _, lv := range req.GetApiTags() {
-		if lv.GetValues() == nil {
-			badFields[globals.ApiTagsField] = "Tags must be non-empty."
+	for k, lv := range req.GetApiTags() {
+		if err := validateStringForDb(k); err != "" {
+			badFields[globals.ApiTagsField] = "Tag keys " + err
 			break
+		}
+		if lv.GetValues() == nil {
+			badFields[globals.ApiTagsField] = "Tag values must be non-empty."
+			break
+		}
+		for _, v := range lv.GetValues() {
+			if _, ok := v.GetKind().(*structpb.Value_StringValue); !ok {
+				badFields[globals.ApiTagsField] = "Tag values must be strings."
+				break
+			}
+			if err := validateStringForDb(v.GetStringValue()); err != "" {
+				badFields[globals.ApiTagsField] = "Tag values " + err
+				break
+			}
 		}
 	}
 	if len(badFields) > 0 {
@@ -840,10 +873,24 @@ func validateSetTagsRequest(req *pbs.SetWorkerTagsRequest) error {
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	for _, lv := range req.GetApiTags() {
-		if lv.GetValues() == nil {
-			badFields[globals.ApiTagsField] = "Tags must be non-empty."
+	for k, lv := range req.GetApiTags() {
+		if err := validateStringForDb(k); err != "" {
+			badFields[globals.ApiTagsField] = "Tag keys " + err
 			break
+		}
+		if lv.GetValues() == nil {
+			badFields[globals.ApiTagsField] = "Tag values must be non-empty."
+			break
+		}
+		for _, v := range lv.GetValues() {
+			if _, ok := v.GetKind().(*structpb.Value_StringValue); !ok {
+				badFields[globals.ApiTagsField] = "Tag values must be strings."
+				break
+			}
+			if err := validateStringForDb(v.GetStringValue()); err != "" {
+				badFields[globals.ApiTagsField] = "Tag values " + err
+				break
+			}
 		}
 	}
 	if len(badFields) > 0 {
@@ -863,10 +910,24 @@ func validateRemoveTagsRequest(req *pbs.RemoveWorkerTagsRequest) error {
 	if req.GetApiTags() == nil {
 		badFields[globals.ApiTagsField] = "Must be non-empty."
 	}
-	for _, lv := range req.GetApiTags() {
-		if lv.GetValues() == nil {
-			badFields[globals.ApiTagsField] = "Tags must be non-empty."
+	for k, lv := range req.GetApiTags() {
+		if err := validateStringForDb(k); err != "" {
+			badFields[globals.ApiTagsField] = "Tag keys " + err
 			break
+		}
+		if lv.GetValues() == nil {
+			badFields[globals.ApiTagsField] = "Tag values must be non-empty."
+			break
+		}
+		for _, v := range lv.GetValues() {
+			if _, ok := v.GetKind().(*structpb.Value_StringValue); !ok {
+				badFields[globals.ApiTagsField] = "Tag values must be strings."
+				break
+			}
+			if err := validateStringForDb(v.GetStringValue()); err != "" {
+				badFields[globals.ApiTagsField] = "Tag values " + err
+				break
+			}
 		}
 	}
 	if len(badFields) > 0 {

@@ -1413,7 +1413,7 @@ func TestService_AddWorkerTags(t *testing.T) {
 					},
 				}
 			}(),
-			wantErrContains: "Tags must be non-empty.",
+			wantErrContains: "Tag keys must be non-empty.",
 		},
 	}
 	for _, tc := range tests {
@@ -1532,7 +1532,7 @@ func TestService_SetWorkerTags(t *testing.T) {
 					},
 				}
 			}(),
-			wantErrContains: "Tags must be non-empty.",
+			wantErrContains: "Tag values must be non-empty.",
 		},
 	}
 	for _, tc := range tests {
@@ -1664,7 +1664,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 					},
 				}
 			}(),
-			wantErrContains: "Tags must be non-empty.",
+			wantErrContains: "Tag values must be non-empty.",
 		},
 		{
 			name: "remove-nonexistent-tags",
