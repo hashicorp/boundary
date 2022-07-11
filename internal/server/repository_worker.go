@@ -162,6 +162,7 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 // then the last status update time is ignored.
 // If WithLimit < 0, then unlimited results are returned. If WithLimit == 0, then
 // default limits are used for results.
+// Also supports: WithWorkerType
 func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
 	const op = "server.(Repository).ListWorkers"
 	switch {
@@ -183,6 +184,15 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 	if len(scopeIds) > 0 {
 		where = append(where, "scope_id in (?)")
 		whereArgs = append(whereArgs, scopeIds)
+	}
+
+	switch opts.withWorkerType {
+	case "":
+	case KmsWorkerType, PkiWorkerType:
+		where = append(where, "type = ?")
+		whereArgs = append(whereArgs, opts.withWorkerType.String())
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown worker type %v", opts.withWorkerType))
 	}
 
 	limit := r.defaultLimit

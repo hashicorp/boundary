@@ -14,9 +14,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
-	"google.golang.org/grpc/status"
 )
 
 type LastStatusInformation struct {
@@ -208,13 +206,11 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 
 		} else if w.conf.RawConfig.HcpbClusterId != "" {
 			// This is a worker that is one hop away from managed workers, so attempt to get that list
-			managedWorkersCtx, managedWorkersCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
-			defer managedWorkersCancel()
-			workersResp, err := client.ManagedWorkers(managedWorkersCtx, &pbs.ManagedWorkersRequest{})
+			hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
+			defer hcpbWorkersCancel()
+			workersResp, err := client.ListHcpbWorkers(hcpbWorkersCtx, &pbs.ListHcpbWorkersRequest{})
 			if err != nil {
-				if status.Code(err) != codes.Unimplemented {
-					event.WriteError(managedWorkersCtx, op, err, event.WithInfoMsg("error fetching managed worker information"))
-				}
+				event.WriteError(hcpbWorkersCtx, op, err, event.WithInfoMsg("error fetching managed worker information"))
 			} else {
 				addrs = make([]resolver.Address, 0, len(workersResp.Workers))
 				newUpstreams = make([]string, 0, len(workersResp.Workers))
