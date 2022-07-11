@@ -30,7 +30,7 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.1.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.6-0.20220512190651-85bdcdd684e6
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.6-0.20220711120347-32232bae6803
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
@@ -91,7 +91,7 @@ require github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f // this i
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220515130442-cac0b5ac133b
+	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220711120347-32232bae6803
 	github.com/hashicorp/nodeenrollment v0.1.7
 )
 
