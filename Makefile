@@ -211,9 +211,10 @@ protobuild:
 .PHONY: protolint
 protolint:
 	@buf lint
-	# First check all protos except controller/servers for WIRE_JSON compatibility
+	# First check all protos except controller/servers and controller/storage for WIRE_JSON compatibility
 	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
 		--exclude-path=controller/servers \
+		--exclude-path=controller/storage \
 		--config buf.breaking.json.yaml
 	# Next check all protos for WIRE compatibility. WIRE is a subset of WIRE_JSON so we don't need to exclude any files.
 	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
