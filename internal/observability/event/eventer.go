@@ -97,9 +97,9 @@ type pipeline struct {
 }
 
 var (
-	sysEventer     *Eventer     // sysEventer is the system-wide Eventer
-	sysEventerLock sync.RWMutex // sysEventerLock allows the sysEventer to safely be written concurrently.
-	fallbackLogger struct {
+	sysEventer        *Eventer     // sysEventer is the system-wide Eventer
+	sysEventerLock    sync.RWMutex // sysEventerLock allows the sysEventer to safely be written concurrently.
+	sysFallbackLogger struct {
 		mu     sync.RWMutex
 		logger hclog.Logger
 	}
@@ -111,15 +111,15 @@ func defaultLogger() hclog.Logger {
 	return hclog.New(opts)
 }
 
-// FallbackLogger returns the current fallback logger for eventing.  If there's
+// fallbackLogger returns the current fallback logger for eventing.  If there's
 // no current fallback logger, then a default logger is returned.
-func FallbackLogger() hclog.Logger {
-	fallbackLogger.mu.RLock()
-	defer fallbackLogger.mu.RUnlock()
-	if fallbackLogger.logger == nil {
+func fallbackLogger() hclog.Logger {
+	sysFallbackLogger.mu.RLock()
+	defer sysFallbackLogger.mu.RUnlock()
+	if sysFallbackLogger.logger == nil {
 		return defaultLogger()
 	}
-	return fallbackLogger.logger
+	return sysFallbackLogger.logger
 }
 
 // InitFallbackLogger will initialize the fallback logger for eventing
@@ -129,9 +129,9 @@ func InitFallbackLogger(l hclog.Logger) error {
 		return fmt.Errorf("%s: missing logger: %w", op, ErrInvalidParameter)
 	}
 
-	fallbackLogger.mu.Lock()
-	defer fallbackLogger.mu.Unlock()
-	fallbackLogger.logger = l
+	sysFallbackLogger.mu.Lock()
+	defer sysFallbackLogger.mu.Unlock()
+	sysFallbackLogger.logger = l
 
 	return nil
 }
