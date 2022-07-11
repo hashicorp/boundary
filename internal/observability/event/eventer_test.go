@@ -27,7 +27,8 @@ func Test_InitSysEventer(t *testing.T) {
 	testConfig := TestEventerConfig(t, "InitSysEventer")
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
+		Mutex:      testLock,
+		JSONFormat: true,
 	})
 	testEventer, err := NewEventer(testLogger, testLock, "Test_InitSysEventer", testConfig.EventerConfig)
 	require.NoError(t, err)
@@ -164,9 +165,8 @@ func TestEventer_writeObservation(t *testing.T) {
 	ctx := context.Background()
 	testSetup := TestEventerConfig(t, "TestEventer_writeObservation")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-	})
+	testLogger := testLogger(t, testLock)
+
 	eventer, err := NewEventer(testLogger, testLock, "TestEventer_writeObservation", testSetup.EventerConfig)
 	require.NoError(t, err)
 
@@ -219,11 +219,7 @@ func TestEventer_writeObservation(t *testing.T) {
 		c := EventerConfig{
 			ObservationsEnabled: true,
 		}
-		testLock := &sync.Mutex{}
-		testLogger := hclog.New(&hclog.LoggerOptions{
-			Mutex: testLock,
-			Name:  "test",
-		})
+
 		// with no defined config, it will default to a stderr sink
 		e, err := NewEventer(testLogger, testLock, "e2e-test", c)
 		require.NoError(err)
@@ -244,10 +240,7 @@ func TestEventer_writeAudit(t *testing.T) {
 	ctx := context.Background()
 	testSetup := TestEventerConfig(t, "Test_NewEventer")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 	eventer, err := NewEventer(testLogger, testLock, "TestEventer_writeAudit", testSetup.EventerConfig)
 	require.NoError(t, err)
 
@@ -304,10 +297,8 @@ func TestEventer_writeError(t *testing.T) {
 	ctx := context.Background()
 	testSetup := TestEventerConfig(t, "Test_NewEventer")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
+
 	eventer, er := NewEventer(testLogger, testLock, "TestEventer_writeError", testSetup.EventerConfig)
 	require.NoError(t, er)
 
@@ -363,10 +354,7 @@ func Test_NewEventer(t *testing.T) {
 	testHclogSetup := TestEventerConfig(t, "Test_NewEventer", testWithSinkFormat(t, TextHclogSinkFormat))
 
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 
 	twrapper := testWrapper(t)
 
@@ -772,10 +760,7 @@ func TestEventer_Reopen(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		testLock := &sync.Mutex{}
-		testLogger := hclog.New(&hclog.LoggerOptions{
-			Mutex: testLock,
-			Name:  "test",
-		})
+		testLogger := testLogger(t, testLock)
 
 		e, err := NewEventer(testLogger, testLock, "TestEventer_Reopen", EventerConfig{})
 		require.NoError(err)
@@ -794,10 +779,7 @@ func TestEventer_FlushNodes(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		testLock := &sync.Mutex{}
-		testLogger := hclog.New(&hclog.LoggerOptions{
-			Mutex: testLock,
-			Name:  "test",
-		})
+		testLogger := testLogger(t, testLock)
 
 		e, err := NewEventer(testLogger, testLock, "TestEventer_FlushNodes", EventerConfig{})
 		require.NoError(err)
@@ -832,10 +814,8 @@ func Test_StandardLogger(t *testing.T) {
 	testCtx := context.Background()
 	c := TestEventerConfig(t, "Test_StandardLogger")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
+
 	require.NoError(t, InitSysEventer(testLogger, testLock, "Test_StandardLogger", WithEventerConfig(&c.EventerConfig)))
 
 	tests := []struct {
@@ -923,10 +903,8 @@ func Test_StandardWriter(t *testing.T) {
 
 	c := TestEventerConfig(t, "Test_StandardLogger")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
+
 	require.NoError(t, InitSysEventer(testLogger, testLock, "Test_StandardLogger", WithEventerConfig(&c.EventerConfig)))
 
 	testCtx, err := NewEventerContext(context.Background(), SysEventer())
@@ -1017,10 +995,8 @@ func Test_logAdapter_Write(t *testing.T) {
 
 	c := TestEventerConfig(t, "Test_StandardLogger")
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
+
 	require.NoError(t, InitSysEventer(testLogger, testLock, "Test_StandardLogger", WithEventerConfig(&c.EventerConfig)))
 
 	testCtx, err := NewEventerContext(context.Background(), SysEventer())
@@ -1177,10 +1153,7 @@ func TestEventer_RotateAuditWrapper(t *testing.T) {
 	hclogConfig := TestEventerConfig(t, "TestEventer_RotateAuditWrapper", testWithSinkFormat(t, JSONHclogSinkFormat))
 
 	testLock := &sync.Mutex{}
-	testLogger := hclog.New(&hclog.LoggerOptions{
-		Mutex: testLock,
-		Name:  "test",
-	})
+	testLogger := testLogger(t, testLock)
 
 	testCtx := context.Background()
 	tests := []struct {

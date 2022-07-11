@@ -97,9 +97,44 @@ type pipeline struct {
 }
 
 var (
-	sysEventer     *Eventer     // sysEventer is the system-wide Eventer
-	sysEventerLock sync.RWMutex // sysEventerLock allows the sysEventer to safely be written concurrently.
+	sysEventer        *Eventer     // sysEventer is the system-wide Eventer
+	sysEventerLock    sync.RWMutex // sysEventerLock allows the sysEventer to safely be written concurrently.
+	sysFallbackLogger struct {
+		mu     sync.RWMutex
+		logger hclog.Logger
+	}
 )
+
+func defaultLogger() hclog.Logger {
+	opts := hclog.DefaultOptions
+	opts.JSONFormat = true
+	return hclog.New(opts)
+}
+
+// fallbackLogger returns the current fallback logger for eventing.  If there's
+// no current fallback logger, then a default logger is returned.
+func fallbackLogger() hclog.Logger {
+	sysFallbackLogger.mu.RLock()
+	defer sysFallbackLogger.mu.RUnlock()
+	if sysFallbackLogger.logger == nil {
+		return defaultLogger()
+	}
+	return sysFallbackLogger.logger
+}
+
+// InitFallbackLogger will initialize the fallback logger for eventing
+func InitFallbackLogger(l hclog.Logger) error {
+	const op = "event.InitFallbackLogger"
+	if isNil(l) {
+		return fmt.Errorf("%s: missing logger: %w", op, ErrInvalidParameter)
+	}
+
+	sysFallbackLogger.mu.Lock()
+	defer sysFallbackLogger.mu.Unlock()
+	sysFallbackLogger.logger = l
+
+	return nil
+}
 
 // InitSysEventer provides a mechanism to initialize a "system wide" eventer
 // singleton for Boundary.  Support the options of: WithEventer(...) and
@@ -883,4 +918,15 @@ func (s *logAdapter) pickType(str string) (Type, string) {
 	default:
 		return SystemType, str
 	}
+}
+
+func isNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	switch reflect.TypeOf(i).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return reflect.ValueOf(i).IsNil()
+	}
+	return false
 }
