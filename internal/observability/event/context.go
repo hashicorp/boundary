@@ -6,8 +6,6 @@ import (
 	"os"
 	"runtime"
 	"time"
-
-	"github.com/hashicorp/go-hclog"
 )
 
 var ci bool
@@ -136,8 +134,7 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 		eventer = SysEventer()
 		if eventer == nil {
 			if !ci {
-				logger := hclog.New(nil)
-				logger.Error(fmt.Sprintf("%s: no eventer available to write error: %v", op, e))
+				FallbackLogger().Error(fmt.Sprintf("%s: no eventer available to write error: %v", op, e))
 			}
 			return
 		}
@@ -286,8 +283,7 @@ func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...interface
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
-			logger := hclog.New(nil)
-			logger.Error(fmt.Sprintf("%s: no eventer available to write sysevent: (%s) %+v", op, caller, info))
+			FallbackLogger().Error(fmt.Sprintf("%s: no eventer available to write sysevent: (%s) %+v", op, caller, info))
 			return
 		}
 	}

@@ -276,6 +276,10 @@ func (b *Server) SetupLogging(flagLogLevel, flagLogFormat, configLogLevel, confi
 		Mutex:      b.StderrLock,
 	})
 
+	if err := event.InitFallbackLogger(b.Logger); err != nil {
+		return err
+	}
+
 	// create GRPC logger
 	namedGRPCLogFaker := b.Logger.Named("grpclogfaker")
 	grpclog.SetLogger(&GRPCLogFaker{
