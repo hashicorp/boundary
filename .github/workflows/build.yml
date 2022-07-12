@@ -27,9 +27,8 @@ jobs:
       - name: get product version
         id: get-product-version
         run: |
-          make version
-          export VERSION=$(make version)
-          export MINOR_VERSION=${VERSION%.*}
+          VERSION=$(make version)
+          MINOR_VERSION=${VERSION%.*}
           echo "::set-output name=product-version::$VERSION"
           echo "::set-output name=product-minor-version::$MINOR_VERSION"
 
@@ -40,7 +39,7 @@ jobs:
       - name: Verify version strings
         run: |
           echo product-version: ${{ needs.get-product-version.outputs.product-version }}
-          echo minor-version: ${{ needs.get-product-version.outputs.minor-version }}
+          echo minor-version: ${{ needs.get-product-version.outputs.product-minor-version }}
 
   generate-metadata-file:
     needs: get-product-version
@@ -322,5 +321,5 @@ jobs:
           # Per-commit dev images follow the naming convention MAJOR.MINOR-dev
           # And MAJOR.MINOR-dev-$COMMITSHA
           dev_tags: |
-            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev
-            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
+            docker.io/hashicorppreview/${{ env.repo }}:${{ env.product-minor-version }}-dev
+            docker.io/hashicorppreview/${{ env.repo }}:${{ env.product-minor-version }}-dev-${{ github.sha }}
