@@ -32,6 +32,7 @@ jobs:
           MINOR_VERSION=${VERSION%.*}
 
   verify-product-version:
+    needs: get-product-version
     runs-on: ubuntu-latest
     steps:
       - name: Verify version strings
