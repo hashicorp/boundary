@@ -9,7 +9,7 @@ description: |-
 
 The Transit configures Boundary to use Vault's Transit Secret Engine for key management.
 
-The Transit KMS is activated by the presence of a `kms "transit"` block in Boundary's configuration file
+The Transit KMS is activated by the presence of a `kms transit` block in Boundary's configuration file
 
 ## `transit` Example
 
@@ -54,11 +54,11 @@ These parameters apply to the `kms` stanza in the Vault configuration file:
   decryption. This may also be supplied using the `TRANSIT_WRAPPER_KEY_NAME`
   environment variable.
 
-- `mount_path` `(string: <required>)`: The mount path to the transit secret engine.  
+- `mount_path` `(string: <required>)`: The mount path to the transit secret engine.
   This may also be supplied using the `TRANSIT_WRAPPER_MOUNT_PATH` environment
   variable.
 
-- `namespace` `(string: "")`: The namespace path to the transit secret engine.  
+- `namespace` `(string: "")`: The namespace path to the transit secret engine.
   This may also be supplied using the `VAULT_NAMESPACE` environment variable.
 
 - `disable_renewal` `(string: "false")`: Disables the automatic renewal of the token

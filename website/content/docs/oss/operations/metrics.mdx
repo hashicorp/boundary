@@ -20,7 +20,7 @@ Boundary deployment through Prometheus.
 The metrics uses the [OpenMetric
 exposition](https://prometheus.io/docs/instrumenting/exposition_formats/#openmetrics-text-format)
 format which can be read by
-[Prometheus](https://prometheus.io/docs/introduction/overview/). 
+[Prometheus](https://prometheus.io/docs/introduction/overview/).
 
 ### Controller
 
@@ -29,7 +29,7 @@ by controllers.
 
 | Name                                                          | Description                                   |
 |---------------------------------------------------------------|-----------------------------------------------|
-| `boundary_controller_api_http_request_duration_seconds`       | Histogram of latencies for HTTP requests.     |  
+| `boundary_controller_api_http_request_duration_seconds`       | Histogram of latencies for HTTP requests.     |
 | `boundary_controller_api_http_request_size_bytes`             | Histogram of request sizes for HTTP requests.  |
 | `boundary_controller_api_http_response_size_bytes`            | Histogram of response sizes for HTTP requests. |
 | `boundary_controller_cluster_grpc_request_duration_seconds`   | Histogram of latencies for requests made to the gRPC service running on the cluster listener. |
@@ -69,7 +69,7 @@ measurements collected.
 | `method`     | The name of the method on the HTTP request.  For example "GET", “POST”, “DELETE”. |
 
 
-#### Metrics for gRPC requests include the following labels: 
+#### Metrics for gRPC requests include the following labels:
 
 | Label           | Description                                                     |
 |-----------------|-----------------------------------------------------------------|
@@ -78,7 +78,7 @@ measurements collected.
 | `grpc_code`     | The grpc [status code](https://github.com/grpc/grpc-go/blob/master/codes/codes.go) in human-readable format. For example, `OK`, `IllegalArgument`, `Unknown`. |
 
 
-## Example configuration 
+## Example configuration
 
 Defining a listener stanza in the config file is sufficient for enabling metrics
 reporting in Boundary. For details on what fields are allowed in this stanza,
@@ -96,6 +96,6 @@ listener "tcp" {
 
 ## Tutorial
 
-Refer to [Prometheus
+Refer to the [Prometheus
 Metrics](https://learn.hashicorp.com/tutorials/boundary/prometheus-metrics)
 tutorial for a step-by-step introduction to metrics.

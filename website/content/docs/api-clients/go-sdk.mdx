@@ -64,7 +64,7 @@ Now let's create an auth method client using the base client from above:
 amClient := authmethods.NewClient(client)
 ```
 
-~> This creates a shallow copy of the base client. Modifications made to the client via `am.ApiClient()` will not be reflected in the base client.
+~> **Note:** This creates a shallow copy of the base client. Modifications made to the client via `am.ApiClient()` will not be reflected in the base client.
 
 The last thing you'll need is the ID of the auth method in Boundary. You can get this on the CLI
 with:

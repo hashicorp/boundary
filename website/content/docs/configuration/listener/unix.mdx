@@ -9,7 +9,7 @@ description: |-
 
 The Unix listener configures Boundary to listen on a Unix domain socket.
 
-~> This is only available for listeners for `"api"` and `"cluster"` purpose.
+~> **Note:** This is only available for listeners for `api` and `cluster` purpose.
 Unix sockets cannot currently be used for `"proxy"` purpose on a Worker.
 
 ```hcl
@@ -88,7 +88,7 @@ allowed.
 ### TLS
 
 ~> `tls` parameters are valid for `api` and `ops` listeners. `cluster`
-and `proxy` connections use their own ephemeral TLS stacks. For more 
+and `proxy` connections use their own ephemeral TLS stacks. For more
 information, see [the connections security concepts
 page](https://www.boundaryproject.io/docs/concepts/security/connections-tls).
 

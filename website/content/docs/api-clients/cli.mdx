@@ -14,7 +14,7 @@ of the CLI.
 ## CLI Command Structure
 
 There are a number of command and subcommand options available.
-To see all available command options, run `boundary -h` 
+To see all available command options, run `boundary -h`
 and to see all available subcommand options run `boundary <command> -h`.
 
 Below is the typical structure for most Boundary CLI commands:
@@ -28,7 +28,7 @@ boundary <command> <subcommand> [options] [args]
 
 #### Examples:
 
-The following shows use of the [`-addr`](/docs/api-clients/cli#addr) flag to specify which Boundary controller to send the request to. 
+The following shows use of the [`-addr`](/docs/api-clients/cli#addr) flag to specify which Boundary controller to send the request to.
 
 ```shell-session
 $ boundary authenticate password \
@@ -174,7 +174,7 @@ values to the empty string `""` is usually not an allowed operation, since when
 set to a specific value it must be non-empty. Using `null` to clear a value
 ensures you'll revert to Boundary's recommended default.
 
-~> `null` is used because of the fact that the API is JSON. Using `null` as the
+~> **Note:** `null` is used because of the fact that the API is JSON. Using `null` as the
 value causes the key for the parameter to be inserted into the eventual API
 call's JSON object but with the value set to the JSON `null`. This in turn
 informs the Controller that this value should be set to its default. Keep in
@@ -183,7 +183,7 @@ mind that this is not a direct translation to database `NULL` semantics!
 ### Connection Options
 
 Every command that results in an API call contains a set of flags that control
-connection options, which control TLS and other settings for the connection. 
+connection options, which control TLS and other settings for the connection.
 You can also run `boundary dev -h` to see the available connection options.
 
 -  `-addr=<string>`: Address of the Boundary controller, as a complete URL (e.g.
