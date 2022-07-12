@@ -55,10 +55,10 @@ func equalTags(t *testing.T, expected map[string]*structpb.ListValue, actual map
 	if len(expected) != len(actual) {
 		return false
 	}
-	for eK, eVal := range expected {
+	for eK, eValList := range expected {
 		found := false
-		for k, val := range actual {
-			if eK == k && eVal.GetValues()[0].GetStringValue() == val.GetValues()[0].GetStringValue() {
+		for k, valList := range actual {
+			if eK == k && eValList.String() == valList.String() {
 				found = true
 				break
 			}
@@ -1384,7 +1384,7 @@ func TestService_AddWorkerTags(t *testing.T) {
 					Id:      worker.PublicId,
 					Version: worker.Version,
 					ApiTags: map[string]*structpb.ListValue{
-						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value2")}},
 						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
 						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
 						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
@@ -1392,7 +1392,7 @@ func TestService_AddWorkerTags(t *testing.T) {
 				}
 			}(),
 			wantTags: map[string]*structpb.ListValue{
-				"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+				"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value2")}},
 				"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
 				"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
 				"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
@@ -1414,6 +1414,22 @@ func TestService_AddWorkerTags(t *testing.T) {
 				}
 			}(),
 			wantErrContains: "Tag keys must be non-empty.",
+		},
+		{
+			name: "duplicate-tags",
+			req: func() *pbs.AddWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2"), structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantErrContains: "Unable to add worker tags in repo",
 		},
 	}
 	for _, tc := range tests {
@@ -1503,7 +1519,7 @@ func TestService_SetWorkerTags(t *testing.T) {
 					Id:      worker.PublicId,
 					Version: worker.Version,
 					ApiTags: map[string]*structpb.ListValue{
-						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value2")}},
 						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
 						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
 						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
@@ -1511,7 +1527,7 @@ func TestService_SetWorkerTags(t *testing.T) {
 				}
 			}(),
 			wantTags: map[string]*structpb.ListValue{
-				"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+				"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value2")}},
 				"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
 				"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
 				"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
@@ -1533,6 +1549,22 @@ func TestService_SetWorkerTags(t *testing.T) {
 				}
 			}(),
 			wantErrContains: "Tag values must be non-empty.",
+		},
+		{
+			name: "duplicate-tags",
+			req: func() *pbs.SetWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.SetWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2"), structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantErrContains: "Unable to set worker tags in repo",
 		},
 	}
 	for _, tc := range tests {
@@ -1622,7 +1654,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 				worker := server.TestKmsWorker(t, conn, wrapper)
 				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
 					worker.Version, map[string]*structpb.ListValue{
-						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value1")}},
 						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
 						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
 						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
@@ -1633,7 +1665,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 					Id:      worker.PublicId,
 					Version: worker.Version + 1,
 					ApiTags: map[string]*structpb.ListValue{
-						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value1")}},
 						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
 						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
 						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
@@ -1690,6 +1722,22 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 				}
 			}(),
 			wantErrContains: "Unable to remove worker tags in repo:",
+		},
+		{
+			name: "duplicate-tags",
+			req: func() *pbs.RemoveWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.RemoveWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2"), structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantErrContains: "Unable to remove worker tags in repo",
 		},
 	}
 	for _, tc := range tests {

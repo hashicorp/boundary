@@ -819,7 +819,7 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 // returns an empty string otherwise.
 func validateStringForDb(str string) string {
 	switch {
-	case str == "" || len(str) < 0:
+	case len(str) <= 0:
 		return "must be non-empty."
 	case len(str) > 512:
 		return "must be within 512 characters."
