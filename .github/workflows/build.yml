@@ -7,6 +7,7 @@ on:
     branches:
       # Push events on main branch
       - 'main'
+      - support-devtags-and-fossa
 
 env:
   PKG_NAME: "boundary"
@@ -16,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       product-version: ${{ steps.get-product-version.outputs.product-version }}
+      product-minor-version: ${{ steps.get-product-version.outputs.product-minor-version }}
     steps:
       - uses: actions/checkout@v3
       - name: Setup go
@@ -26,7 +28,10 @@ jobs:
         id: get-product-version
         run: |
           make version
-          echo "::set-output name=product-version::$(make version)"
+          VERSION=$(make version)
+          MINOR_VERSION=${VERSION%.*}
+          echo "::set-output name=product-version::$VERSION"
+          echo "::set-output name=product-minor-version::$MINOR_VERSION"
 
   generate-metadata-file:
     needs: get-product-version
@@ -305,3 +310,8 @@ jobs:
           tags: |
             docker.io/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
             public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
+          # Per-commit dev images follow the naming convention MAJOR.MINOR-dev
+          # And MAJOR.MINOR-dev-$COMMITSHA
+           dev_tags: |
+            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev
+            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
