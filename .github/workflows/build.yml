@@ -304,11 +304,9 @@ jobs:
     env:
       repo: ${{ github.event.repository.name }}
       version: ${{ needs.get-product-version.outputs.product-version }}
+      minor-version: ${{ needs.get-product-version.outputs.product-minor-version }}
     steps:
       - uses: actions/checkout@v3
-      - name: Replace + in version
-        run: |
-          echo "dockerversion=$(echo ${{ needs.get-product-version.outputs.product-version }} | sed 's/+ent/-ent/g')" >> $GITHUB_ENV
       - name: Docker Build (Action)
         uses: hashicorp/actions-docker-build@v1
         with:
@@ -316,10 +314,10 @@ jobs:
           target: default
           arch: ${{ matrix.arch }}
           tags: |
-            docker.io/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
-            public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
+            docker.io/hashicorp/${{ env.repo }}:${{ env.version }}
+            public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.version }}
           # Per-commit dev images follow the naming convention MAJOR.MINOR-dev
           # And MAJOR.MINOR-dev-$COMMITSHA
           dev_tags: |
-            docker.io/hashicorppreview/${{ env.repo }}:${{ env.product-minor-version }}-dev
-            docker.io/hashicorppreview/${{ env.repo }}:${{ env.product-minor-version }}-dev-${{ github.sha }}
+            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev
+            docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
