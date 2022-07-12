@@ -312,6 +312,6 @@ jobs:
             public.ecr.aws/hashicorp/${{ env.repo }}:${{ env.dockerversion }}
           # Per-commit dev images follow the naming convention MAJOR.MINOR-dev
           # And MAJOR.MINOR-dev-$COMMITSHA
-           dev_tags: |
+          dev_tags: |
             docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev
             docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
