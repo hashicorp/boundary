@@ -38,6 +38,7 @@ type options struct {
 	withFetchNodeCredentialsRequest    *types.FetchNodeCredentialsRequest
 	withTestPkiWorkerAuthorized        bool
 	withTestPkiWorkerKeyId             *string
+	withWorkerType                     WorkerType
 }
 
 func getDefaultOptions() options {
@@ -161,5 +162,13 @@ func WithTestPkiWorkerAuthorizedKeyId(id *string) Option {
 	return func(o *options) {
 		o.withTestPkiWorkerAuthorized = true
 		o.withTestPkiWorkerKeyId = id
+	}
+}
+
+// WithWorkerType allows specifying a particular type of worker (kms, pki)
+// during lookup or listing
+func WithWorkerType(with WorkerType) Option {
+	return func(o *options) {
+		o.withWorkerType = with
 	}
 }

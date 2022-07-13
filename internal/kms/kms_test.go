@@ -57,7 +57,7 @@ func Test_New(t *testing.T) {
 
 					r := dbw.New(rw.UnderlyingDB())
 					w := dbw.New(rw.UnderlyingDB())
-					wrapped, err := wrappingKms.New(r, w, purposes, wrappingKms.WithCache(true))
+					wrapped, err := wrappingKms.New(r, w, purposes)
 					require.NoError(t, err)
 					return wrapped
 				}(),
@@ -140,7 +140,7 @@ func Test_NewUsingReaderWriter(t *testing.T) {
 					purposes := stdNewKmsPurposes()
 					r := dbw.New(rw.UnderlyingDB())
 					w := dbw.New(rw.UnderlyingDB())
-					wrapped, err := wrappingKms.New(r, w, purposes, wrappingKms.WithCache(true))
+					wrapped, err := wrappingKms.New(r, w, purposes)
 					require.NoError(t, err)
 					return wrapped
 				}(),

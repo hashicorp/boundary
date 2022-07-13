@@ -78,13 +78,13 @@ TLS establishment is performed as follows:
    for a single client to make multiple connections within a session, without the
    credentials being usable via a different client:
 
-- If the worker was not given a TOFU token in step 5, the worker submits the
+9. If the worker was not given a TOFU token in step 5, the worker submits the
   value to the Controller. The Controller verifies (via a database transaction)
   that the session has not had a different TOFU token submitted prior and stores
   it. Otherwise it's rejected, and so is the connection, as a possible replay
   attack.
 
-- If the Worker was given a TOFU token in step 5, it checks to see whether the
+10. If the Worker was given a TOFU token in step 5, it checks to see whether the
   token values match. If not, the connection is rejected as a possible replay
   attack.
 

@@ -4,9 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-### Breaking Changes
+### Deprecations/Changes
 
 * api module: Changed the return types that reference interfaces into their expected typed definition. Type casting is only allowed against interface types, therefore to mitigate compiler errors please remove any type casting done against the return values. ([Issue](https://github.com/hashicorp/boundary/issues/2122), [PR](https://github.com/hashicorp/boundary/pull/2238))
+
+## 0.9.1 (2022/07/06)
 
 ### New and Improved
 
@@ -23,6 +25,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2229))
 * The plugin execution_dir configuration parameter is now respected by kms plugins too
   [PR](https://github.com/hashicorp/boundary/pull/2239).
+
+### Deprecations/Changes
+
+* sessions: The default connect limit for new sessions changed from 1 to unlimited (-1).
+  Specific connection limits is an advanced feature of Boundary and this setting is
+  more friendly for new users.
+  ([PR](https://github.com/hashicorp/boundary/pull/2234))
 
 ## 0.9.0 (2022/06/20)
 

@@ -22,6 +22,8 @@ type ServerCoordinationServiceClient interface {
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	// Returns the addresses of HCP Boundary workers, if any
+	ListHcpbWorkers(ctx context.Context, in *ListHcpbWorkersRequest, opts ...grpc.CallOption) (*ListHcpbWorkersResponse, error)
 }
 
 type serverCoordinationServiceClient struct {
@@ -41,6 +43,15 @@ func (c *serverCoordinationServiceClient) Status(ctx context.Context, in *Status
 	return out, nil
 }
 
+func (c *serverCoordinationServiceClient) ListHcpbWorkers(ctx context.Context, in *ListHcpbWorkersRequest, opts ...grpc.CallOption) (*ListHcpbWorkersResponse, error) {
+	out := new(ListHcpbWorkersResponse)
+	err := c.cc.Invoke(ctx, "/controller.servers.services.v1.ServerCoordinationService/ListHcpbWorkers", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ServerCoordinationServiceServer is the server API for ServerCoordinationService service.
 // All implementations must embed UnimplementedServerCoordinationServiceServer
 // for forward compatibility
@@ -49,6 +60,8 @@ type ServerCoordinationServiceServer interface {
 	// returns the status response which includes the changes the controller would like to make to
 	// jobs as well as provide a list of the controllers in the system.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
+	// Returns the addresses of HCP Boundary workers, if any
+	ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error)
 	mustEmbedUnimplementedServerCoordinationServiceServer()
 }
 
@@ -58,6 +71,9 @@ type UnimplementedServerCoordinationServiceServer struct {
 
 func (UnimplementedServerCoordinationServiceServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
+}
+func (UnimplementedServerCoordinationServiceServer) ListHcpbWorkers(context.Context, *ListHcpbWorkersRequest) (*ListHcpbWorkersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListHcpbWorkers not implemented")
 }
 func (UnimplementedServerCoordinationServiceServer) mustEmbedUnimplementedServerCoordinationServiceServer() {
 }
@@ -91,6 +107,24 @@ func _ServerCoordinationService_Status_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ServerCoordinationService_ListHcpbWorkers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListHcpbWorkersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerCoordinationServiceServer).ListHcpbWorkers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.servers.services.v1.ServerCoordinationService/ListHcpbWorkers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerCoordinationServiceServer).ListHcpbWorkers(ctx, req.(*ListHcpbWorkersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ServerCoordinationService_ServiceDesc is the grpc.ServiceDesc for ServerCoordinationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -101,6 +135,10 @@ var ServerCoordinationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Status",
 			Handler:    _ServerCoordinationService_Status_Handler,
+		},
+		{
+			MethodName: "ListHcpbWorkers",
+			Handler:    _ServerCoordinationService_ListHcpbWorkers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

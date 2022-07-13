@@ -54,7 +54,7 @@ func getDefaultOptions() options {
 		WithCredentialLibraries:    nil,
 		WithStaticCredentials:      nil,
 		WithSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
-		WithSessionConnectionLimit: 1,
+		WithSessionConnectionLimit: -1,
 		WithPublicId:               "",
 		WithWorkerFilter:           "",
 	}

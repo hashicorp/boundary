@@ -315,3 +315,12 @@ func (b *testMockBroker) SetSuccessThreshold(t eventlogger.EventType, successThr
 	b.successThresholds[t] = successThreshold
 	return nil
 }
+
+func testLogger(t *testing.T, testLock hclog.Locker) hclog.Logger {
+	t.Helper()
+	return hclog.New(&hclog.LoggerOptions{
+		Mutex:      testLock,
+		Name:       "test",
+		JSONFormat: true,
+	})
+}

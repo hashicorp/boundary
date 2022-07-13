@@ -58,7 +58,7 @@ func TestSetup(t testing.TB, dialect string, opt ...TestOption) (*DB, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	db, err := Open(dbType, url)
+	db, err := Open(ctx, dbType, url)
 	if err != nil {
 		t.Fatal(err)
 	}

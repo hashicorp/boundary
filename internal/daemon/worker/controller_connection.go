@@ -197,10 +197,9 @@ func (w *Worker) createClientConn(addr string) error {
 	if err != nil {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
 	}
-	w.grpcClientConn.Store(cc)
+	w.GrpcClientConn = cc
 
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
-	w.controllerSessionConn.Store(pbs.NewSessionServiceClient(cc))
 	w.controllerMultihopConn.Store(multihop.NewMultihopServiceClient(cc))
 	return nil
 }

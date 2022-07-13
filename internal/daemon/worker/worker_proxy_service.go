@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"google.golang.org/grpc"
 )
 
 type workerProxyServiceServer struct {
@@ -12,16 +13,16 @@ type workerProxyServiceServer struct {
 	pbs.UnimplementedSessionServiceServer
 
 	scsClient *atomic.Value
-	ssClient  *atomic.Value
+	ssClient  pbs.SessionServiceClient
 }
 
 func NewWorkerProxyServiceServer(
+	cc *grpc.ClientConn,
 	scsClient *atomic.Value,
-	ssClient *atomic.Value,
 ) *workerProxyServiceServer {
 	return &workerProxyServiceServer{
 		scsClient: scsClient,
-		ssClient:  ssClient,
+		ssClient:  pbs.NewSessionServiceClient(cc),
 	}
 }
 
@@ -43,25 +44,25 @@ func (ws *workerProxyServiceServer) Status(ctx context.Context, req *pbs.StatusR
 }
 
 func (ws *workerProxyServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
-	return ws.ssClient.Load().(pbs.SessionServiceClient).LookupSession(ctx, req)
+	return ws.ssClient.LookupSession(ctx, req)
 }
 
 func (ws *workerProxyServiceServer) CancelSession(ctx context.Context, req *pbs.CancelSessionRequest) (*pbs.CancelSessionResponse, error) {
-	return ws.ssClient.Load().(pbs.SessionServiceClient).CancelSession(ctx, req)
+	return ws.ssClient.CancelSession(ctx, req)
 }
 
 func (ws *workerProxyServiceServer) ActivateSession(ctx context.Context, req *pbs.ActivateSessionRequest) (*pbs.ActivateSessionResponse, error) {
-	return ws.ssClient.Load().(pbs.SessionServiceClient).ActivateSession(ctx, req)
+	return ws.ssClient.ActivateSession(ctx, req)
 }
 
 func (ws *workerProxyServiceServer) AuthorizeConnection(ctx context.Context, req *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
-	return ws.ssClient.Load().(pbs.SessionServiceClient).AuthorizeConnection(ctx, req)
+	return ws.ssClient.AuthorizeConnection(ctx, req)
 }
 
 func (ws *workerProxyServiceServer) ConnectConnection(ctx context.Context, req *pbs.ConnectConnectionRequest) (*pbs.ConnectConnectionResponse, error) {
-	return ws.ssClient.Load().(pbs.SessionServiceClient).ConnectConnection(ctx, req)
+	return ws.ssClient.ConnectConnection(ctx, req)
 }
 
 func (ws *workerProxyServiceServer) CloseConnection(ctx context.Context, req *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
-	return ws.ssClient.Load().(pbs.SessionServiceClient).CloseConnection(ctx, req)
+	return ws.ssClient.CloseConnection(ctx, req)
 }

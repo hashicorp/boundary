@@ -6,36 +6,60 @@ import (
 	"google.golang.org/grpc"
 )
 
-// TODO (lcr 08/2021): implement mockSessionServiceClient outside of primitive support for
-// ConnectConnection
-type mockSessionServiceClient struct{}
+type mockSessionServiceClient struct {
+	LookupSessionFn       func(context.Context, *LookupSessionRequest) (*LookupSessionResponse, error)
+	ActivateSessionFn     func(context.Context, *ActivateSessionRequest) (*ActivateSessionResponse, error)
+	CancelSessionFn       func(context.Context, *CancelSessionRequest) (*CancelSessionResponse, error)
+	AuthorizeConnectionFn func(context.Context, *AuthorizeConnectionRequest) (*AuthorizeConnectionResponse, error)
+	ConnectConnectionFn   func(context.Context, *ConnectConnectionRequest) (*ConnectConnectionResponse, error)
+	CloseConnectionFn     func(context.Context, *CloseConnectionRequest) (*CloseConnectionResponse, error)
+}
 
-func NewMockSessionServiceClient() SessionServiceClient {
+// NewMockSessionServiceClient returns a mock SessionServiceClient which allows
+// the mocking out specific calls to a SessionService by assigning values to
+// the respective mock client member variables.
+func NewMockSessionServiceClient() *mockSessionServiceClient {
 	return &mockSessionServiceClient{}
 }
 
-func (c *mockSessionServiceClient) LookupSession(_ context.Context, _ *LookupSessionRequest, _ ...grpc.CallOption) (*LookupSessionResponse, error) {
+func (c *mockSessionServiceClient) LookupSession(ctx context.Context, req *LookupSessionRequest, _ ...grpc.CallOption) (*LookupSessionResponse, error) {
+	if c.LookupSessionFn != nil {
+		return c.LookupSessionFn(ctx, req)
+	}
 	panic("not implemented")
 }
 
-func (c *mockSessionServiceClient) ActivateSession(_ context.Context, _ *ActivateSessionRequest, _ ...grpc.CallOption) (*ActivateSessionResponse, error) {
+func (c *mockSessionServiceClient) ActivateSession(ctx context.Context, req *ActivateSessionRequest, _ ...grpc.CallOption) (*ActivateSessionResponse, error) {
+	if c.ActivateSessionFn != nil {
+		return c.ActivateSessionFn(ctx, req)
+	}
 	panic("not implemented")
 }
 
-func (c *mockSessionServiceClient) CancelSession(_ context.Context, _ *CancelSessionRequest, _ ...grpc.CallOption) (*CancelSessionResponse, error) {
+func (c *mockSessionServiceClient) CancelSession(ctx context.Context, req *CancelSessionRequest, _ ...grpc.CallOption) (*CancelSessionResponse, error) {
+	if c.CancelSessionFn != nil {
+		return c.CancelSessionFn(ctx, req)
+	}
 	panic("not implemented")
 }
 
-func (c *mockSessionServiceClient) AuthorizeConnection(_ context.Context, _ *AuthorizeConnectionRequest, _ ...grpc.CallOption) (*AuthorizeConnectionResponse, error) {
+func (c *mockSessionServiceClient) AuthorizeConnection(ctx context.Context, req *AuthorizeConnectionRequest, _ ...grpc.CallOption) (*AuthorizeConnectionResponse, error) {
+	if c.AuthorizeConnectionFn != nil {
+		return c.AuthorizeConnectionFn(ctx, req)
+	}
 	panic("not implemented")
 }
 
-func (c *mockSessionServiceClient) ConnectConnection(_ context.Context, _ *ConnectConnectionRequest, _ ...grpc.CallOption) (*ConnectConnectionResponse, error) {
-	return &ConnectConnectionResponse{
-		Status: CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
-	}, nil
+func (c *mockSessionServiceClient) ConnectConnection(ctx context.Context, req *ConnectConnectionRequest, _ ...grpc.CallOption) (*ConnectConnectionResponse, error) {
+	if c.ConnectConnectionFn != nil {
+		return c.ConnectConnectionFn(ctx, req)
+	}
+	panic("not implemented")
 }
 
-func (c *mockSessionServiceClient) CloseConnection(_ context.Context, _ *CloseConnectionRequest, _ ...grpc.CallOption) (*CloseConnectionResponse, error) {
+func (c *mockSessionServiceClient) CloseConnection(ctx context.Context, req *CloseConnectionRequest, _ ...grpc.CallOption) (*CloseConnectionResponse, error) {
+	if c.CloseConnectionFn != nil {
+		return c.CloseConnectionFn(ctx, req)
+	}
 	panic("not implemented")
 }

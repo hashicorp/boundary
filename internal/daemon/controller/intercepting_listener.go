@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/observability/event"
 	nodee "github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/protocol"
 )
 
 // tempError is an error that satisfies the temporary error interface that is
@@ -76,7 +77,20 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		return nil, newTempError(err)
 	}
 
-	tlsConn := conn.(*tls.Conn)
+	var tlsConn *tls.Conn
+	switch c := conn.(type) {
+	case *protocol.Conn:
+		// If we so choose, at this point we can pull out the client's
+		// NextProtos with c.ClientNextProtos
+		tlsConn = c.Conn
+	case *tls.Conn:
+		tlsConn = c
+	default:
+		err := fmt.Errorf("unknown connection type %T received", c)
+		event.WriteError(ctx, op, err)
+		return nil, newTempError(err)
+	}
+
 	switch {
 	case nodee.ContainsKnownAlpnProto(tlsConn.ConnectionState().NegotiatedProtocol):
 		keyId, err := nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId)
@@ -113,8 +127,9 @@ func (m *interceptingListener) Accept() (net.Conn, error) {
 		}
 		workerInfo := workerInfoRaw.(*workerAuthEntry)
 		workerInfo.conn = tlsConn
+		m.c.workerAuthCache.Delete(string(nonce))
 		event.WriteSysEvent(ctx, op, "worker successfully authed", "name", workerInfo.Name, "description", workerInfo.Description, "proxy_address", workerInfo.ProxyAddress)
-		return tlsConn, nil
+		return protocol.NewConn(tlsConn, workerInfo.clientNextProtos), nil
 
 	default:
 		return nil, newTempError(errors.New("unable to authenticate incoming connection"))

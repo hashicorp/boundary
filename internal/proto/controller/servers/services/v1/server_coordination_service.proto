@@ -11,6 +11,9 @@ service ServerCoordinationService {
   // returns the status response which includes the changes the controller would like to make to
   // jobs as well as provide a list of the controllers in the system.
   rpc Status(StatusRequest) returns (StatusResponse) {}
+
+  // Returns the addresses of HCP Boundary workers, if any
+  rpc ListHcpbWorkers(ListHcpbWorkersRequest) returns (ListHcpbWorkersResponse) {}
 }
 
 enum CONNECTIONSTATUS {
@@ -121,4 +124,21 @@ message StatusResponse {
   // The ID of the worker which made the request. The worker can send this value in subsequent requests so the
   // controller does not need to do a database lookup for the id using the name field.
   string worker_id = 40; // @gotags: `class:"public"`
+}
+
+// WorkerInfo contains information about workers for the HcpbWorkerResponse message
+message WorkerInfo {
+  // The id of the worker
+  string id = 1;
+
+  // The public address of the worker
+  string address = 2;
+}
+
+// A HCP Boundary workers request. Empty for now.
+message ListHcpbWorkersRequest {}
+
+// A response containing worker information
+message ListHcpbWorkersResponse {
+  repeated WorkerInfo workers = 1;
 }

@@ -113,7 +113,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Target:     &c.flagLogLevel,
 		EnvVar:     "BOUNDARY_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "err"),
-		Usage: "Log verbosity level. Supported values (in order of more detail to less) are " +
+		Usage: "Log verbosity level, mostly as a fallback for events. Supported values (in order of more detail to less) are " +
 			"\"trace\", \"debug\", \"info\", \"warn\", and \"err\".",
 	})
 
@@ -121,7 +121,7 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:       "log-format",
 		Target:     &c.flagLogFormat,
 		Completion: complete.PredictSet("standard", "json"),
-		Usage:      `Log format. Supported values are "standard" and "json".`,
+		Usage:      `Log format, mostly as a fallback for events. Supported values are "standard" and "json".`,
 	})
 
 	return set
@@ -410,6 +410,8 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 		c.DatabaseMaxOpenConnections = c.Config.Controller.Database.MaxOpenConnections
+		c.DatabaseMaxIdleConnections = c.Config.Controller.Database.MaxIdleConnections
+		c.DatabaseConnMaxIdleTimeDuration = c.Config.Controller.Database.ConnMaxIdleTimeDuration
 
 		if err := c.ConnectToDatabase(c.Context, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())

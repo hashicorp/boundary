@@ -40,7 +40,7 @@ As HCL is JSON-compatible, this turns into an input JSON value of:
 }
 ```
 
-Note that this is the canonical format, as it maps closely to the filter
+~> **Note:** This is the canonical format, as it maps closely to the filter
 structure. However, for compatibility with some other systems, it is also
 possible to specify the tags in a pure key=value style:
 
@@ -120,7 +120,7 @@ nested under `tags` and include a `name` value:
 }
 ```
 
-!> If an expression fails due to a key not being found within the input data,
+~> **Note:** If an expression fails due to a key not being found within the input data,
 the worker is not included in the final set, so ensure that all workers that
 should match a given filter are populated with tags referenced in the filter
 string. As a corollary, it is not possible to distinguish between a worker that

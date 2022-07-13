@@ -515,8 +515,31 @@ func TestListWorkers(t *testing.T) {
 			createCnt: testLimit + 1,
 			reqScopes: []string{scope.Global.String()},
 			opts:      []server.Option{server.WithLimit(-1)},
+			wantCnt:   testLimit*2 + 2,
+			wantErr:   false,
+		},
+		{
+			name:      "only-kms-type",
+			createCnt: testLimit + 1,
+			reqScopes: []string{scope.Global.String()},
+			opts:      []server.Option{server.WithLimit(-1), server.WithWorkerType(server.KmsWorkerType)},
 			wantCnt:   testLimit + 1,
 			wantErr:   false,
+		},
+		{
+			name:      "only-pki-type",
+			createCnt: testLimit + 1,
+			reqScopes: []string{scope.Global.String()},
+			opts:      []server.Option{server.WithLimit(-1), server.WithWorkerType(server.PkiWorkerType)},
+			wantCnt:   testLimit + 1,
+			wantErr:   false,
+		},
+		{
+			name:      "bad-type",
+			createCnt: testLimit + 1,
+			reqScopes: []string{scope.Global.String()},
+			opts:      []server.Option{server.WithLimit(-1), server.WithWorkerType("foo")},
+			wantErr:   true,
 		},
 		{
 			name:      "default-limit",
@@ -545,7 +568,10 @@ func TestListWorkers(t *testing.T) {
 			w := server.NewWorker(scope.Global.String())
 			db.TestDeleteWhere(t, conn, w, "true")
 			for i := 0; i < tt.createCnt; i++ {
-				server.TestKmsWorker(t, conn, wrapper)
+				server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{"key", "val"}))
+			}
+			for i := 0; i < tt.createCnt; i++ {
+				server.TestPkiWorker(t, conn, wrapper)
 			}
 			// the purpose of these tests isn't to check liveness, so disable
 			// liveness checking.
@@ -557,6 +583,17 @@ func TestListWorkers(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Len(t, got, tt.wantCnt)
+			for _, worker := range got {
+				switch worker.GetType() {
+				case server.KmsWorkerType.String():
+					canonicalTags := worker.CanonicalTags()
+					assert.Len(t, canonicalTags, 1)
+					require.Len(t, canonicalTags["key"], 1)
+					assert.Equal(t, canonicalTags["key"][0], "val")
+				case server.PkiWorkerType.String():
+					assert.Empty(t, worker.CanonicalTags())
+				}
+			}
 		})
 	}
 }

@@ -77,7 +77,7 @@ func (d *DB) Close(ctx context.Context) error {
 // Note: Consider if you need to call Close() on the returned DB.  Typically the
 // answer is no, but there are occasions when it's necessary.  See the sql.DB
 // docs for more information.
-func Open(dbType DbType, connectionUrl string, opt ...Option) (*DB, error) {
+func Open(ctx context.Context, dbType DbType, connectionUrl string, opt ...Option) (*DB, error) {
 	const op = "db.Open"
 	var dialect dbw.Dialector
 	switch dbType {
@@ -105,5 +105,19 @@ func Open(dbType DbType, connectionUrl string, opt ...Option) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	sdb, err := wrapped.SqlDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.withMaxIdleConnections != nil {
+		sdb.SetMaxIdleConns(*opts.withMaxIdleConnections)
+	}
+
+	if opts.withConnMaxIdleTimeDuration != nil {
+		sdb.SetConnMaxIdleTime(*opts.withConnMaxIdleTimeDuration)
+	}
+
 	return &DB{wrapped: wrapped}, nil
 }

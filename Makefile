@@ -211,9 +211,10 @@ protobuild:
 .PHONY: protolint
 protolint:
 	@buf lint
-	# First check all protos except controller/servers for WIRE_JSON compatibility
+	# First check all protos except controller/servers and controller/storage for WIRE_JSON compatibility
 	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
 		--exclude-path=controller/servers \
+		--exclude-path=controller/storage \
 		--config buf.breaking.json.yaml
 	# Next check all protos for WIRE compatibility. WIRE is a subset of WIRE_JSON so we don't need to exclude any files.
 	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
@@ -316,10 +317,13 @@ docker-multiarch-build:
 		--platform linux/amd64,linux/arm64 \
 		.
 
+DEV_DOCKER_GOOS ?= linux
+DEV_DOCKER_GOARCH ?= amd64
+
 .PHONY: docker-build-dev
 # Builds from the locally generated binary in ./bin/
-docker-build-dev: export GOOS=linux
-docker-build-dev: export GOARCH=amd64
+docker-build-dev: export GOOS=$(DEV_DOCKER_GOOS)
+docker-build-dev: export GOARCH=$(DEV_DOCKER_GOARCH)
 docker-build-dev: build
 	docker build \
 		--tag $(IMAGE_TAG_DEV) \

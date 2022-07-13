@@ -158,4 +158,10 @@ func Test_GetOpts(t *testing.T) {
 		opts.withNewIdFunc = nil
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithWorkerType", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.Empty(t, opts.withWorkerType)
+		opts = getOpts(WithWorkerType(KmsWorkerType))
+		assert.Equal(t, KmsWorkerType, opts.withWorkerType)
+	})
 }
