@@ -1665,7 +1665,7 @@ func validateAddSetsRequest(req *pbs.AddTargetHostSetsRequest) error {
 	}
 	for _, id := range req.GetHostSetIds() {
 		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1686,7 +1686,7 @@ func validateSetSetsRequest(req *pbs.SetTargetHostSetsRequest) error {
 	}
 	for _, id := range req.GetHostSetIds() {
 		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1710,7 +1710,7 @@ func validateRemoveSetsRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 	}
 	for _, id := range req.GetHostSetIds() {
 		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1734,7 +1734,7 @@ func validateAddHostSourcesRequest(req *pbs.AddTargetHostSourcesRequest) error {
 	}
 	for _, id := range req.GetHostSourceIds() {
 		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1755,7 +1755,7 @@ func validateSetHostSourcesRequest(req *pbs.SetTargetHostSourcesRequest) error {
 	}
 	for _, id := range req.GetHostSourceIds() {
 		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1779,7 +1779,7 @@ func validateRemoveHostSourcesRequest(req *pbs.RemoveTargetHostSourcesRequest) e
 	}
 	for _, id := range req.GetHostSourceIds() {
 		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}

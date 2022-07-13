@@ -2,7 +2,13 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.9.2 (Not Released)
+
+### Deprecations/Changes
+
+* Host plugins: Plugin-type host catalogs/sets/hosts now use typed prefixes for
+  any newly-created resources. Existing resources will not be affected.
+  ([PR](https://github.com/hashicorp/boundary/pull/2256))
 
 ## 0.9.1 (2022/07/06)
 

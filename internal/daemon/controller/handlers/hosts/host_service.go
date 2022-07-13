@@ -614,7 +614,7 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
-	}, req, static.HostPrefix, plugin.HostPrefix)
+	}, req, static.HostPrefix, plugin.HostPrefix, plugin.PreviousHostPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
@@ -705,7 +705,7 @@ func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 
 func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix, plugin.HostCatalogPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix, plugin.HostCatalogPrefix, plugin.PreviousHostCatalogPrefix) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
