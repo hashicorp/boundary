@@ -13,7 +13,6 @@ project "boundary" {
 
     release_branches = [
       "main",
-      "support-devtags-and-fossa"
     ]
   }
 }
