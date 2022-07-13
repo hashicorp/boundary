@@ -1399,6 +1399,18 @@ func TestService_AddWorkerTags(t *testing.T) {
 			},
 		},
 		{
+			name: "invalid-tag-value",
+			req: func() *pbs.AddWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewBoolValue(false)}}},
+				}
+			}(),
+			wantErrContains: "Tag values must be strings.",
+		},
+		{
 			name: "mixed-invalid-tags",
 			req: func() *pbs.AddWorkerTagsRequest {
 				worker := server.TestKmsWorker(t, conn, wrapper)
@@ -1532,6 +1544,18 @@ func TestService_SetWorkerTags(t *testing.T) {
 				"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
 				"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
 			},
+		},
+		{
+			name: "invalid-tag-value",
+			req: func() *pbs.SetWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.SetWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewBoolValue(false)}}},
+				}
+			}(),
+			wantErrContains: "Tag values must be strings.",
 		},
 		{
 			name: "mixed-invalid-tags",
@@ -1682,6 +1706,18 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 				"key5": {Values: []*structpb.Value{structpb.NewStringValue("value5")}},
 				"key6": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
 			},
+		},
+		{
+			name: "invalid-tag-value",
+			req: func() *pbs.RemoveWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.RemoveWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewBoolValue(false)}}},
+				}
+			}(),
+			wantErrContains: "Tag values must be strings.",
 		},
 		{
 			name: "mixed-invalid-tags",
