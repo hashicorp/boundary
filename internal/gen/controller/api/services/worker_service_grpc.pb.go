@@ -46,6 +46,16 @@ type WorkerServiceClient interface {
 	// DeleteWorker removes a Worker from Boundary. If the provided Worker ID
 	// is malformed or not provided an error is returned.
 	DeleteWorker(ctx context.Context, in *DeleteWorkerRequest, opts ...grpc.CallOption) (*DeleteWorkerResponse, error)
+	// AddWorkerTags adds api tags to an existing Worker. If missing, malformed,
+	// or referencing a non-existing resource, an error is returned.
+	AddWorkerTags(ctx context.Context, in *AddWorkerTagsRequest, opts ...grpc.CallOption) (*AddWorkerTagsResponse, error)
+	// SetWorkerTags sets api tags for an existing Worker. Any existing tags are overridden
+	// if they are not included in this request. If missing, malformed, or referencing a
+	// non-existing resource, an error is returned.
+	SetWorkerTags(ctx context.Context, in *SetWorkerTagsRequest, opts ...grpc.CallOption) (*SetWorkerTagsResponse, error)
+	// RemoveWorkerTags removes api tags from an existing Worker. If missing, malformed,
+	// or referencing a non-existing resource, an error is returned.
+	RemoveWorkerTags(ctx context.Context, in *RemoveWorkerTagsRequest, opts ...grpc.CallOption) (*RemoveWorkerTagsResponse, error)
 }
 
 type workerServiceClient struct {
@@ -101,6 +111,33 @@ func (c *workerServiceClient) DeleteWorker(ctx context.Context, in *DeleteWorker
 	return out, nil
 }
 
+func (c *workerServiceClient) AddWorkerTags(ctx context.Context, in *AddWorkerTagsRequest, opts ...grpc.CallOption) (*AddWorkerTagsResponse, error) {
+	out := new(AddWorkerTagsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.WorkerService/AddWorkerTags", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workerServiceClient) SetWorkerTags(ctx context.Context, in *SetWorkerTagsRequest, opts ...grpc.CallOption) (*SetWorkerTagsResponse, error) {
+	out := new(SetWorkerTagsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.WorkerService/SetWorkerTags", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workerServiceClient) RemoveWorkerTags(ctx context.Context, in *RemoveWorkerTagsRequest, opts ...grpc.CallOption) (*RemoveWorkerTagsResponse, error) {
+	out := new(RemoveWorkerTagsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.WorkerService/RemoveWorkerTags", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkerServiceServer is the server API for WorkerService service.
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility
@@ -133,6 +170,16 @@ type WorkerServiceServer interface {
 	// DeleteWorker removes a Worker from Boundary. If the provided Worker ID
 	// is malformed or not provided an error is returned.
 	DeleteWorker(context.Context, *DeleteWorkerRequest) (*DeleteWorkerResponse, error)
+	// AddWorkerTags adds api tags to an existing Worker. If missing, malformed,
+	// or referencing a non-existing resource, an error is returned.
+	AddWorkerTags(context.Context, *AddWorkerTagsRequest) (*AddWorkerTagsResponse, error)
+	// SetWorkerTags sets api tags for an existing Worker. Any existing tags are overridden
+	// if they are not included in this request. If missing, malformed, or referencing a
+	// non-existing resource, an error is returned.
+	SetWorkerTags(context.Context, *SetWorkerTagsRequest) (*SetWorkerTagsResponse, error)
+	// RemoveWorkerTags removes api tags from an existing Worker. If missing, malformed,
+	// or referencing a non-existing resource, an error is returned.
+	RemoveWorkerTags(context.Context, *RemoveWorkerTagsRequest) (*RemoveWorkerTagsResponse, error)
 	mustEmbedUnimplementedWorkerServiceServer()
 }
 
@@ -154,6 +201,15 @@ func (UnimplementedWorkerServiceServer) UpdateWorker(context.Context, *UpdateWor
 }
 func (UnimplementedWorkerServiceServer) DeleteWorker(context.Context, *DeleteWorkerRequest) (*DeleteWorkerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteWorker not implemented")
+}
+func (UnimplementedWorkerServiceServer) AddWorkerTags(context.Context, *AddWorkerTagsRequest) (*AddWorkerTagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddWorkerTags not implemented")
+}
+func (UnimplementedWorkerServiceServer) SetWorkerTags(context.Context, *SetWorkerTagsRequest) (*SetWorkerTagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetWorkerTags not implemented")
+}
+func (UnimplementedWorkerServiceServer) RemoveWorkerTags(context.Context, *RemoveWorkerTagsRequest) (*RemoveWorkerTagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveWorkerTags not implemented")
 }
 func (UnimplementedWorkerServiceServer) mustEmbedUnimplementedWorkerServiceServer() {}
 
@@ -258,6 +314,60 @@ func _WorkerService_DeleteWorker_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkerService_AddWorkerTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddWorkerTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).AddWorkerTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.WorkerService/AddWorkerTags",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).AddWorkerTags(ctx, req.(*AddWorkerTagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkerService_SetWorkerTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetWorkerTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).SetWorkerTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.WorkerService/SetWorkerTags",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).SetWorkerTags(ctx, req.(*SetWorkerTagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkerService_RemoveWorkerTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveWorkerTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).RemoveWorkerTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.WorkerService/RemoveWorkerTags",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).RemoveWorkerTags(ctx, req.(*RemoveWorkerTagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkerService_ServiceDesc is the grpc.ServiceDesc for WorkerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -284,6 +394,18 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteWorker",
 			Handler:    _WorkerService_DeleteWorker_Handler,
+		},
+		{
+			MethodName: "AddWorkerTags",
+			Handler:    _WorkerService_AddWorkerTags_Handler,
+		},
+		{
+			MethodName: "SetWorkerTags",
+			Handler:    _WorkerService_SetWorkerTags_Handler,
+		},
+		{
+			MethodName: "RemoveWorkerTags",
+			Handler:    _WorkerService_RemoveWorkerTags_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -44,6 +44,9 @@ var (
 		action.Read,
 		action.Update,
 		action.Delete,
+		action.AddWorkerTags,
+		action.SetWorkerTags,
+		action.RemoveWorkerTags,
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -297,6 +300,114 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 	return &pbs.UpdateWorkerResponse{Item: item}, nil
 }
 
+// AddWorkerTags implements the interface pbs.WorkerServiceServer.
+func (s Service) AddWorkerTags(ctx context.Context, req *pbs.AddWorkerTagsRequest) (*pbs.AddWorkerTagsResponse, error) {
+	const op = "workers.(Service).AddWorkerTags"
+
+	if err := validateAddTagsRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.AddWorkerTags)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	w, err := s.addTagsInRepo(ctx, req.GetId(), req.GetVersion(), req.GetApiTags())
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
+	}
+	item, err := toProto(ctx, w, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.AddWorkerTagsResponse{Item: item}, nil
+}
+
+// SetWorkerTags implements the interface pbs.WorkerServiceServer.
+func (s Service) SetWorkerTags(ctx context.Context, req *pbs.SetWorkerTagsRequest) (*pbs.SetWorkerTagsResponse, error) {
+	const op = "workers.(Service).SetWorkerTags"
+
+	if err := validateSetTagsRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.SetWorkerTags)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	w, err := s.setTagsInRepo(ctx, req.GetId(), req.GetVersion(), req.GetApiTags())
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
+	}
+	item, err := toProto(ctx, w, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.SetWorkerTagsResponse{Item: item}, nil
+}
+
+// RemoveWorkerTags implements the interface pbs.WorkerServiceServer.
+func (s Service) RemoveWorkerTags(ctx context.Context, req *pbs.RemoveWorkerTagsRequest) (*pbs.RemoveWorkerTagsResponse, error) {
+	const op = "workers.(Service).RemoveWorkerTags"
+
+	if err := validateRemoveTagsRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveWorkerTags)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	w, err := s.removeTagsInRepo(ctx, req.GetId(), req.GetVersion(), req.GetApiTags())
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
+	}
+	item, err := toProto(ctx, w, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.RemoveWorkerTagsResponse{Item: item}, nil
+}
+
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*server.Worker, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -388,6 +499,87 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		return nil, handlers.NotFoundErrorf("Worker %q doesn't exist or incorrect version provided.", id)
 	}
 	return out, nil
+}
+
+func (s Service) addTagsInRepo(ctx context.Context, workerId string, workerVersion uint32, addTags map[string]*structpb.ListValue) (*server.Worker, error) {
+	const op = "workers.(Service).addTagsInRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	tags := make([]*server.Tag, 0, len(addTags))
+	for k, lv := range addTags {
+		for _, v := range lv.GetValues() {
+			tags = append(tags, &server.Tag{Key: k, Value: v.GetStringValue()})
+		}
+	}
+	_, err = repo.AddWorkerTags(ctx, workerId, workerVersion, tags)
+	if err != nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add worker tags in repo: %v.", err)
+	}
+	w, err := repo.LookupWorker(ctx, workerId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up worker after adding tags"))
+	}
+	if w == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to look up worker after adding tags.")
+	}
+	return w, nil
+}
+
+func (s Service) setTagsInRepo(ctx context.Context, workerId string, workerVersion uint32, setTags map[string]*structpb.ListValue) (*server.Worker, error) {
+	const op = "workers.(Service).setTagsInRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	tags := make([]*server.Tag, 0, len(setTags))
+	for k, lv := range setTags {
+		for _, v := range lv.GetValues() {
+			tags = append(tags, &server.Tag{Key: k, Value: v.GetStringValue()})
+		}
+	}
+	_, err = repo.SetWorkerTags(ctx, workerId, workerVersion, tags)
+	if err != nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set worker tags in repo: %v.", err)
+	}
+	w, err := repo.LookupWorker(ctx, workerId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up worker after setting tags"))
+	}
+	if w == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to look up worker after setting tags.")
+	}
+	return w, nil
+}
+
+func (s Service) removeTagsInRepo(ctx context.Context, workerId string, workerVersion uint32, removeTags map[string]*structpb.ListValue) (*server.Worker, error) {
+	const op = "workers.(Service).removeTagsInRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	tags := make([]*server.Tag, 0, len(removeTags))
+	for k, lv := range removeTags {
+		for _, v := range lv.GetValues() {
+			tags = append(tags, &server.Tag{Key: k, Value: v.GetStringValue()})
+		}
+	}
+	_, err = repo.DeleteWorkerTags(ctx, workerId, workerVersion, tags)
+	if err != nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove worker tags in repo: %v.", err)
+	}
+	w, err := repo.LookupWorker(ctx, workerId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up worker after removing tags"))
+	}
+	if w == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to look up worker after removing tags.")
+	}
+	return w, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
@@ -483,6 +675,13 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 		out.ConfigTags, err = tagsToMapProto(in.GetConfigTags())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing config tags proto"))
+		}
+	}
+	if outputFields.Has(globals.ApiTagsField) && len(in.GetApiTags()) > 0 {
+		var err error
+		out.ApiTags, err = tagsToMapProto(in.GetApiTags())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error preparing api tags proto"))
 		}
 	}
 	if outputFields.Has(globals.CanonicalTagsField) && len(in.CanonicalTags()) > 0 {
@@ -614,4 +813,125 @@ func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
 		}
 		return badFields
 	})
+}
+
+// validateStringForDb checks a string is valid for db storage and returns a string for an error message if needed.
+// returns an empty string otherwise.
+func validateStringForDb(str string) string {
+	switch {
+	case len(str) <= 0:
+		return "must be non-empty."
+	case len(str) > 512:
+		return "must be within 512 characters."
+	default:
+		return ""
+	}
+}
+
+func validateAddTagsRequest(req *pbs.AddWorkerTagsRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
+		badFields[globals.IdField] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields[globals.VersionField] = "Required field."
+	}
+	if req.GetApiTags() == nil {
+		badFields[globals.ApiTagsField] = "Must be non-empty."
+	}
+	for k, lv := range req.GetApiTags() {
+		if err := validateStringForDb(k); err != "" {
+			badFields[globals.ApiTagsField] = "Tag keys " + err
+			break
+		}
+		if lv.GetValues() == nil {
+			badFields[globals.ApiTagsField] = "Tag values must be non-empty."
+			break
+		}
+		for _, v := range lv.GetValues() {
+			if _, ok := v.GetKind().(*structpb.Value_StringValue); !ok {
+				badFields[globals.ApiTagsField] = "Tag values must be strings."
+				break
+			}
+			if err := validateStringForDb(v.GetStringValue()); err != "" {
+				badFields[globals.ApiTagsField] = "Tag values " + err
+				break
+			}
+		}
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateSetTagsRequest(req *pbs.SetWorkerTagsRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
+		badFields[globals.IdField] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields[globals.VersionField] = "Required field."
+	}
+	for k, lv := range req.GetApiTags() {
+		if err := validateStringForDb(k); err != "" {
+			badFields[globals.ApiTagsField] = "Tag keys " + err
+			break
+		}
+		if lv.GetValues() == nil {
+			badFields[globals.ApiTagsField] = "Tag values must be non-empty."
+			break
+		}
+		for _, v := range lv.GetValues() {
+			if _, ok := v.GetKind().(*structpb.Value_StringValue); !ok {
+				badFields[globals.ApiTagsField] = "Tag values must be strings."
+				break
+			}
+			if err := validateStringForDb(v.GetStringValue()); err != "" {
+				badFields[globals.ApiTagsField] = "Tag values " + err
+				break
+			}
+		}
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+func validateRemoveTagsRequest(req *pbs.RemoveWorkerTagsRequest) error {
+	badFields := map[string]string{}
+	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
+		badFields[globals.IdField] = "Incorrectly formatted identifier."
+	}
+	if req.GetVersion() == 0 {
+		badFields[globals.VersionField] = "Required field."
+	}
+	if req.GetApiTags() == nil {
+		badFields[globals.ApiTagsField] = "Must be non-empty."
+	}
+	for k, lv := range req.GetApiTags() {
+		if err := validateStringForDb(k); err != "" {
+			badFields[globals.ApiTagsField] = "Tag keys " + err
+			break
+		}
+		if lv.GetValues() == nil {
+			badFields[globals.ApiTagsField] = "Tag values must be non-empty."
+			break
+		}
+		for _, v := range lv.GetValues() {
+			if _, ok := v.GetKind().(*structpb.Value_StringValue); !ok {
+				badFields[globals.ApiTagsField] = "Tag values must be strings."
+				break
+			}
+			if err := validateStringForDb(v.GetStringValue()); err != "" {
+				badFields[globals.ApiTagsField] = "Tag values " + err
+				break
+			}
+		}
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
 }

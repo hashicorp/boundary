@@ -79,6 +79,7 @@ const (
 	TagsField                            = "tags"
 	CanonicalTagsField                   = "canonical_tags"
 	ConfigTagsField                      = "config_tags"
+	ApiTagsField                         = "api_tags"
 	ConfigurationField                   = "configuration"
 	WorkerGeneratedAuthTokenField        = "worker_generated_auth_token"
 	WorkerProvidedConfigurationField     = "worker_provided_configuration"
