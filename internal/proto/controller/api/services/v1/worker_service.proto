@@ -5,6 +5,7 @@ package controller.api.services.v1;
 import "controller/api/resources/workers/v1/worker.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/struct.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
@@ -82,6 +83,46 @@ service WorkerService {
       summary: "Deletes a Worker."
     };
   }
+
+  // AddWorkerTags adds api tags to an existing Worker. If missing, malformed,
+  // or referencing a non-existing resource, an error is returned.
+  rpc AddWorkerTags(AddWorkerTagsRequest) returns (AddWorkerTagsResponse) {
+    option (google.api.http) = {
+      post: "/v1/workers/{id}:add-worker-tags"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Adds api tags to an existing Worker."
+    };
+  }
+
+  // SetWorkerTags sets api tags for an existing Worker. Any existing tags are overridden
+  // if they are not included in this request. If missing, malformed, or referencing a
+  // non-existing resource, an error is returned.
+  rpc SetWorkerTags(SetWorkerTagsRequest) returns (SetWorkerTagsResponse) {
+    option (google.api.http) = {
+      post: "/v1/workers/{id}:set-worker-tags"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sets api tags for an existing Worker."
+    };
+  }
+
+  // RemoveWorkerTags removes api tags from an existing Worker. If missing, malformed,
+  // or referencing a non-existing resource, an error is returned.
+  rpc RemoveWorkerTags(RemoveWorkerTagsRequest) returns (RemoveWorkerTagsResponse) {
+    option (google.api.http) = {
+      post: "/v1/workers/{id}:remove-worker-tags"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Removes api tags from an existing Worker."
+    };
+  }
 }
 
 message GetWorkerRequest {
@@ -126,3 +167,39 @@ message DeleteWorkerRequest {
 }
 
 message DeleteWorkerResponse {}
+
+message AddWorkerTagsRequest {
+  string id = 1; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+  map<string, google.protobuf.ListValue> api_tags = 3 [json_name = "api_tags"]; // @gotags: `class:"public"`
+}
+
+message AddWorkerTagsResponse {
+  resources.workers.v1.Worker item = 1;
+}
+
+message SetWorkerTagsRequest {
+  string id = 1; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+  map<string, google.protobuf.ListValue> api_tags = 3 [json_name = "api_tags"]; // @gotags: `class:"public"`
+}
+
+message SetWorkerTagsResponse {
+  resources.workers.v1.Worker item = 1;
+}
+
+message RemoveWorkerTagsRequest {
+  string id = 1; // @gotags: `class:"public"`
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+  map<string, google.protobuf.ListValue> api_tags = 3 [json_name = "api_tags"]; // @gotags: `class:"public"`
+}
+
+message RemoveWorkerTagsResponse {
+  resources.workers.v1.Worker item = 1;
+}

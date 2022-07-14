@@ -79,6 +79,9 @@ message Worker {
   // or `kms`.
   string type = 170;
 
+  // Output only. The api tags set for the worker.
+  map<string, google.protobuf.ListValue> api_tags = 180 [json_name = "api_tags"]; // @gotags: `class:"public"`
+
   // Output only. The available actions on this resource for the requester.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }

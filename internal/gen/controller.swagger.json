@@ -3787,6 +3787,153 @@
         ]
       }
     },
+    "/v1/workers/{id}:add-worker-tags": {
+      "post": {
+        "summary": "Adds api tags to an existing Worker.",
+        "operationId": "WorkerService_AddWorkerTags",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "api_tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      }
+    },
+    "/v1/workers/{id}:remove-worker-tags": {
+      "post": {
+        "summary": "Removes api tags from an existing Worker.",
+        "operationId": "WorkerService_RemoveWorkerTags",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "api_tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      }
+    },
+    "/v1/workers/{id}:set-worker-tags": {
+      "post": {
+        "summary": "Sets api tags for an existing Worker.",
+        "operationId": "WorkerService_SetWorkerTags",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "api_tags": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      }
+    },
     "/v1/workers:create:worker-led": {
       "post": {
         "summary": "Creates a single Worker.",
@@ -5611,6 +5758,17 @@
           "description": "Output only. The type of the worker, denoted by how it authenticates: `pki`\nor `kms`.",
           "readOnly": true
         },
+        "api_tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "description": "Output only. The api tags set for the worker.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
@@ -5683,6 +5841,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.AddWorkerTagsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
     },
@@ -6335,6 +6501,14 @@
         }
       }
     },
+    "controller.api.services.v1.RemoveWorkerTagsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+        }
+      }
+    },
     "controller.api.services.v1.SetGroupMembersResponse": {
       "type": "object",
       "properties": {
@@ -6404,6 +6578,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
+        }
+      }
+    },
+    "controller.api.services.v1.SetWorkerTagsResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
     },
