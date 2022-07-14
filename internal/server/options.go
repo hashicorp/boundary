@@ -39,6 +39,7 @@ type options struct {
 	withTestPkiWorkerAuthorized        bool
 	withTestPkiWorkerKeyId             *string
 	withWorkerType                     WorkerType
+	withRoot                           string
 }
 
 func getDefaultOptions() options {
@@ -170,5 +171,12 @@ func WithTestPkiWorkerAuthorizedKeyId(id *string) Option {
 func WithWorkerType(with WorkerType) Option {
 	return func(o *options) {
 		o.withWorkerType = with
+	}
+}
+
+// WithRoot provides an optional root worker id.
+func WithRoot(workerId string) Option {
+	return func(o *options) {
+		o.withRoot = workerId
 	}
 }

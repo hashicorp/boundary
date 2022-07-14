@@ -40,6 +40,9 @@ const (
 	InvalidDynamicCredential Code = 116 // InvalidDynamicCredential represents that a dynamic credential for a session was in an invalid state
 	JobAlreadyRunning        Code = 117 // JobAlreadyRunning represents that a Job is already running when an attempt to run again was made
 	SubtypeAlreadyRegistered Code = 118 // SubtypeAlreadyRegistered represents that a value has already been registered in the subtype registry system.
+	NoPathFound                   = 119 // NoPathFound represents an error when no path is found to a worker
+	WorkerNotFound                = 120 // WorkerNotFound represents an error when a worker is not found in the graph of downstream workers
+	CycleFound                    = 121 // CycleFound represents an error when a cycle is found between a parent and child worker
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
