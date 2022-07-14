@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -121,7 +122,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assertPublicId(t, UsernamePasswordCredentialPrefix, got.PublicId)
+			assertPublicId(t, credential.UsernamePasswordCredentialPrefix, got.PublicId)
 			assert.Equal(tt.cred.Username, got.Username)
 			assert.Nil(got.Password)
 			assert.Nil(got.CtPassword)
@@ -172,12 +173,14 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 
 		in2, err := NewUsernamePasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		require.NoError(err)
 		got2, err := repo.CreateUsernamePasswordCredential(ctx, prj.GetPublicId(), in2)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 
 		// Creating credential in different scope should not conflict
 		in3, err := NewUsernamePasswordCredential(orgCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		require.NoError(err)
 		got3, err := repo.CreateUsernamePasswordCredential(ctx, org.GetPublicId(), in3)
 		require.NoError(err)
 		assert.Equal(in3.Name, got3.Name)
@@ -243,9 +246,10 @@ func TestRepository_LookupCredential(t *testing.T) {
 			}
 
 			assert.NotNil(got)
-			assert.Empty(got.Password)
-			assert.Empty(got.CtPassword)
-			assert.NotEmpty(got.PasswordHmac)
+			upCred := got.(*UsernamePasswordCredential)
+			assert.Empty(upCred.Password)
+			assert.Empty(upCred.CtPassword)
+			assert.NotEmpty(upCred.PasswordHmac)
 		})
 	}
 }
@@ -853,7 +857,7 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, UsernamePasswordCredentialPrefix, got.PublicId)
+			assertPublicId(t, credential.UsernamePasswordCredentialPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)

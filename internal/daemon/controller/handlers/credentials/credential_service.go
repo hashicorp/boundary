@@ -53,8 +53,8 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.UsernamePasswordCredential{}},
-		handlers.MaskSource{&pb.Credential{}, &pb.UsernamePasswordAttributes{}}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.UsernamePasswordCredential{}, &store.SshPrivateKeyCredential{}},
+		handlers.MaskSource{&pb.Credential{}, &pb.UsernamePasswordAttributes{}, &pb.SshPrivateKeyAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -319,7 +319,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Static,
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Credential) (credential.Static, error) {
 	const op = "credentials.(Service).createInRepo"
 	switch item.GetType() {
-	case static.UsernamePasswordSubtype.String():
+	case credential.UsernamePasswordSubtype.String():
 		cred, err := toUsernamePasswordStorageCredential(item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -358,7 +358,7 @@ func (s Service) updateInRepo(
 	}
 
 	switch subtypes.SubtypeFromId(domain, id) {
-	case static.UsernamePasswordSubtype:
+	case credential.UsernamePasswordSubtype:
 		cred, err := toUsernamePasswordStorageCredential(storeId, in)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert to username/password storage credential"))
@@ -465,7 +465,7 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 	if outputFields.Has(globals.TypeField) {
 		switch in.(type) {
 		case *static.UsernamePasswordCredential:
-			out.Type = static.UsernamePasswordSubtype.String()
+			out.Type = credential.UsernamePasswordSubtype.String()
 		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -500,12 +500,21 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 				},
 			}
 		}
+	case *static.SshPrivateKeyCredential:
+		if outputFields.Has(globals.AttributesField) {
+			out.Attrs = &pb.Credential_SshPrivateKeyAttributes{
+				SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+					Username:       wrapperspb.String(cred.GetUsername()),
+					PrivateKeyHmac: base64.RawURLEncoding.EncodeToString(cred.GetPrivateKeyHmac()),
+				},
+			}
+		}
 	}
 	return &out, nil
 }
 
 func toUsernamePasswordStorageCredential(storeId string, in *pb.Credential) (out *static.UsernamePasswordCredential, err error) {
-	const op = "credentials.toStorageCredential"
+	const op = "credentials.toUsernamePasswordStorageCredential"
 	var opts []static.Option
 	if in.GetName() != nil {
 		opts = append(opts, static.WithName(in.GetName().GetValue()))
@@ -527,19 +536,43 @@ func toUsernamePasswordStorageCredential(storeId string, in *pb.Credential) (out
 	return cs, err
 }
 
+func toSshPrivateKeyStorageCredential(ctx context.Context, storeId string, in *pb.Credential) (out *static.SshPrivateKeyCredential, err error) {
+	const op = "credentials.toSshPrivateKeyStorageCredential"
+	var opts []static.Option
+	if in.GetName() != nil {
+		opts = append(opts, static.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, static.WithDescription(in.GetDescription().GetValue()))
+	}
+
+	attrs := in.GetSshPrivateKeyAttributes()
+	cs, err := static.NewSshPrivateKeyCredential(
+		ctx,
+		storeId,
+		attrs.GetUsername().GetValue(),
+		credential.PrivateKey(attrs.GetPassword().GetValue()),
+		opts...)
+	if err != nil {
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential"))
+	}
+
+	return cs, err
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //  * The path passed in is correctly formatted
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetCredentialRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.UsernamePasswordCredentialPrefix, static.PreviousUsernamePasswordCredentialPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, credential.UsernamePasswordCredentialPrefix, credential.PreviousUsernamePasswordCredentialPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.Item.GetType() != static.UsernamePasswordSubtype.String() {
+		if req.Item.GetType() != credential.UsernamePasswordSubtype.String() {
 			badFields[globals.TypeField] = fmt.Sprintf("Unsupported credential type %q", req.Item.GetType())
 		}
 		if !handlers.ValidId(handlers.Id(req.Item.GetCredentialStoreId()), static.CredentialStorePrefix, static.PreviousCredentialStorePrefix) {
@@ -560,7 +593,7 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.UsernamePasswordSubtype.String() {
+		if req.GetItem().GetType() != "" && req.GetItem().GetType() != credential.UsernamePasswordSubtype.String() {
 			badFields[globals.TypeField] = "Cannot modify resource type."
 		}
 
@@ -573,11 +606,11 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 		}
 
 		return badFields
-	}, static.UsernamePasswordCredentialPrefix, static.PreviousUsernamePasswordCredentialPrefix)
+	}, credential.UsernamePasswordCredentialPrefix, credential.PreviousUsernamePasswordCredentialPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.UsernamePasswordCredentialPrefix, static.PreviousUsernamePasswordCredentialPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, credential.UsernamePasswordCredentialPrefix, credential.PreviousUsernamePasswordCredentialPrefix)
 }
 
 func validateListRequest(req *pbs.ListCredentialsRequest) error {

@@ -28,6 +28,7 @@ type Type string
 const (
 	UnspecifiedType      Type = "unspecified"
 	UsernamePasswordType Type = "username_password"
+	SshPrivateKeyType    Type = "ssh_private_key"
 )
 
 // A Library is a resource that provides credentials that are of the same

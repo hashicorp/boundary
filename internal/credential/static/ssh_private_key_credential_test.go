@@ -16,101 +16,124 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
-func TestUsernamePasswordCredential_New(t *testing.T) {
+const privKeyPem = `
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACDxfwhEAZKrnsbQxOjVA3PFiB3bW3tSpNKx8TdMiCqlzQAAAJDmpbfr5qW3
+6wAAAAtzc2gtZWQyNTUxOQAAACDxfwhEAZKrnsbQxOjVA3PFiB3bW3tSpNKx8TdMiCqlzQ
+AAAEBvvkQkH06ad2GpX1VVARzu9NkHA6gzamAaQ/hkn5FuZvF/CEQBkquextDE6NUDc8WI
+Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
+-----END OPENSSH PRIVATE KEY-----
+`
+
+func TestSshPrivateKeyCredential_New(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kkms := kms.TestKms(t, conn, wrapper)
 	rw := db.New(conn)
 
+	privKey := []byte(privKeyPem)
+
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
 
 	type args struct {
-		username string
-		password credential.Password
-		storeId  string
-		options  []Option
+		username      string
+		sshPrivateKey credential.PrivateKey
+		storeId       string
+		options       []Option
 	}
 
 	tests := []struct {
 		name           string
 		args           args
-		want           *UsernamePasswordCredential
+		want           *SshPrivateKeyCredential
 		wantCreateErr  bool
 		wantEncryptErr bool
+		wantAllocError bool
 	}{
 		{
-			name: "missing-password",
+			name: "missing-private-key",
 			args: args{
 				username: "test-user",
 				storeId:  cs.PublicId,
 			},
-			want:           allocUsernamePasswordCredential(),
-			wantEncryptErr: true,
+			want:           allocSshPrivateKeyCredential(),
+			wantAllocError: true,
 		},
 		{
 			name: "missing-username",
 			args: args{
-				password: "test-pass",
-				storeId:  cs.PublicId,
+				sshPrivateKey: privKey,
+				storeId:       cs.PublicId,
 			},
-			want:          allocUsernamePasswordCredential(),
+			want:          allocSshPrivateKeyCredential(),
 			wantCreateErr: true,
 		},
 		{
 			name: "missing-store-id",
 			args: args{
-				username: "test-user",
-				password: "test-pass",
+				username:      "test-user",
+				sshPrivateKey: privKey,
 			},
-			want:          allocUsernamePasswordCredential(),
+			want:          allocSshPrivateKeyCredential(),
 			wantCreateErr: true,
+		},
+		{
+			name: "bad-private-key",
+			args: args{
+				username:      "test-user",
+				sshPrivateKey: []byte("foobar"),
+				storeId:       cs.PublicId,
+			},
+			want:           allocSshPrivateKeyCredential(),
+			wantAllocError: true,
 		},
 		{
 			name: "valid-no-options",
 			args: args{
-				username: "test-user",
-				password: "test-pass",
-				storeId:  cs.PublicId,
+				username:      "test-user",
+				sshPrivateKey: privKey,
+				storeId:       cs.PublicId,
 			},
-			want: &UsernamePasswordCredential{
-				UsernamePasswordCredential: &store.UsernamePasswordCredential{
-					Username: "test-user",
-					Password: []byte("test-pass"),
-					StoreId:  cs.PublicId,
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "test-user",
+					PrivateKey: privKey,
+					StoreId:    cs.PublicId,
 				},
 			},
 		},
 		{
 			name: "valid-with-name",
 			args: args{
-				username: "test-user",
-				password: "test-pass",
-				storeId:  cs.PublicId,
-				options:  []Option{WithName("my-credential")},
+				username:      "test-user",
+				sshPrivateKey: privKey,
+				storeId:       cs.PublicId,
+				options:       []Option{WithName("my-credential")},
 			},
-			want: &UsernamePasswordCredential{
-				UsernamePasswordCredential: &store.UsernamePasswordCredential{
-					Username: "test-user",
-					Password: []byte("test-pass"),
-					StoreId:  cs.PublicId,
-					Name:     "my-credential",
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "test-user",
+					PrivateKey: privKey,
+					StoreId:    cs.PublicId,
+					Name:       "my-credential",
 				},
 			},
 		},
 		{
 			name: "valid-with-description",
 			args: args{
-				username: "test-user",
-				password: "test-pass",
-				storeId:  cs.PublicId,
-				options:  []Option{WithDescription("my-credential-description")},
+				username:      "test-user",
+				sshPrivateKey: privKey,
+				storeId:       cs.PublicId,
+				options:       []Option{WithDescription("my-credential-description")},
 			},
-			want: &UsernamePasswordCredential{
-				UsernamePasswordCredential: &store.UsernamePasswordCredential{
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					Username:    "test-user",
-					Password:    []byte("test-pass"),
+					PrivateKey:  privKey,
 					StoreId:     cs.PublicId,
 					Description: "my-credential-description",
 				},
@@ -123,12 +146,16 @@ func TestUsernamePasswordCredential_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
-			got, err := NewUsernamePasswordCredential(tt.args.storeId, tt.args.username, tt.args.password, tt.args.options...)
+			got, err := NewSshPrivateKeyCredential(ctx, tt.args.storeId, tt.args.username, tt.args.sshPrivateKey, tt.args.options...)
+			if tt.wantAllocError {
+				assert.Error(err)
+				return
+			}
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Emptyf(got.PublicId, "PublicId set")
 
-			id, err := credential.NewUsernamePasswordCredentialId(ctx)
+			id, err := credential.NewSshPrivateKeyCredentialId(ctx)
 			require.NoError(err)
 
 			tt.want.PublicId = id
@@ -151,7 +178,7 @@ func TestUsernamePasswordCredential_New(t *testing.T) {
 			}
 			assert.NoError(err)
 
-			got2 := allocUsernamePasswordCredential()
+			got2 := allocSshPrivateKeyCredential()
 			got2.PublicId = id
 			assert.Equal(id, got2.GetPublicId())
 			require.NoError(rw.LookupById(ctx, got2))
@@ -166,12 +193,12 @@ func TestUsernamePasswordCredential_New(t *testing.T) {
 
 			// KeyId is allocated via kms no need to validate in this test
 			tt.want.KeyId = got2.KeyId
-			got2.CtPassword = nil
+			got2.CtPrivateKey = nil
 
 			// encrypt also calculates the hmac, validate it is correct
-			hm, err := crypto.HmacSha256(ctx, got.Password, databaseWrapper, []byte(got.StoreId), nil, crypto.WithEd25519())
+			hm, err := crypto.HmacSha256(ctx, got.PrivateKey, databaseWrapper, []byte(got.StoreId), nil)
 			require.NoError(err)
-			tt.want.PasswordHmac = []byte(hm)
+			tt.want.PrivateKeyHmac = []byte(hm)
 
 			assert.Empty(cmp.Diff(tt.want, got2.clone(), protocmp.Transform()))
 		})

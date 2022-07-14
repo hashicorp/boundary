@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 // CreateUsernamePasswordCredential inserts c into the repository and returns a new
@@ -53,7 +55,7 @@ func (r *Repository) CreateUsernamePasswordCredential(
 	}
 
 	c = c.clone()
-	id, err := newUsernamePasswordCredentialId(ctx)
+	id, err := credential.NewUsernamePasswordCredentialId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -101,23 +103,43 @@ func (r *Repository) CreateUsernamePasswordCredential(
 // LookupCredential returns the Credential for the publicId. Returns
 // nil, nil if no Credential is found for the publicId.
 // TODO: This should hit a view and return the interface type...
-func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ...Option) (*UsernamePasswordCredential, error) {
+func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ...Option) (credential.Static, error) {
 	const op = "static.(Repository).LookupCredential"
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	cred := allocUsernamePasswordCredential()
-	cred.PublicId = publicId
-	if err := r.reader.LookupByPublicId(ctx, cred); err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
-	}
 
-	// Clear password fields, only passwordHmac should be returned
-	cred.CtPassword = nil
-	cred.Password = nil
+	var cred credential.Static
+
+	switch subtypes.SubtypeFromId(credential.Domain, publicId) {
+	case credential.UsernamePasswordSubtype:
+		upCred := allocUsernamePasswordCredential()
+		upCred.PublicId = publicId
+		if err := r.reader.LookupByPublicId(ctx, upCred); err != nil {
+			if errors.IsNotFoundError(err) {
+				return nil, nil
+			}
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
+		}
+		// Clear password fields, only passwordHmac should be returned
+		upCred.CtPassword = nil
+		upCred.Password = nil
+		cred = upCred
+
+	case credential.SshPrivateKeySubtype:
+		spkCred := allocSshPrivateKeyCredential()
+		spkCred.PublicId = publicId
+		if err := r.reader.LookupByPublicId(ctx, spkCred); err != nil {
+			if errors.IsNotFoundError(err) {
+				return nil, nil
+			}
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
+		}
+		// Clear private key fields, only privateKeyHmac should be returned
+		spkCred.CtPrivateKey = nil
+		spkCred.PrivateKey = nil
+		cred = spkCred
+	}
 
 	return cred, nil
 }

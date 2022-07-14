@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -70,7 +71,7 @@ func TestList(t *testing.T) {
 			CreatedTime:       c.GetCreateTime().GetTimestamp(),
 			UpdatedTime:       c.GetUpdateTime().GetTimestamp(),
 			Version:           c.GetVersion(),
-			Type:              static.UsernamePasswordSubtype.String(),
+			Type:              credential.UsernamePasswordSubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Attrs: &pb.Credential_UsernamePasswordAttributes{
 				UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
@@ -172,7 +173,7 @@ func TestGet(t *testing.T) {
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 	cred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
-	credPrev := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), static.WithPublicId(fmt.Sprintf("%s_1234567890", static.PreviousUsernamePasswordCredentialPrefix)))
+	credPrev := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), static.WithPublicId(fmt.Sprintf("%s_1234567890", credential.PreviousUsernamePasswordCredentialPrefix)))
 	s, err := NewService(staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
@@ -196,7 +197,7 @@ func TestGet(t *testing.T) {
 					Id:                cred.GetPublicId(),
 					CredentialStoreId: cred.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              static.UsernamePasswordSubtype.String(),
+					Type:              credential.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       cred.CreateTime.GetTimestamp(),
 					UpdatedTime:       cred.UpdateTime.GetTimestamp(),
@@ -218,7 +219,7 @@ func TestGet(t *testing.T) {
 					Id:                credPrev.GetPublicId(),
 					CredentialStoreId: cred.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-					Type:              static.UsernamePasswordSubtype.String(),
+					Type:              credential.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       credPrev.CreateTime.GetTimestamp(),
 					UpdatedTime:       credPrev.UpdateTime.GetTimestamp(),
@@ -234,7 +235,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "not found error",
-			id:   fmt.Sprintf("%s_1234567890", static.UsernamePasswordCredentialPrefix),
+			id:   fmt.Sprintf("%s_1234567890", credential.UsernamePasswordCredentialPrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -302,7 +303,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "not found error",
-			id:   fmt.Sprintf("%s_1234567890", static.UsernamePasswordCredentialPrefix),
+			id:   fmt.Sprintf("%s_1234567890", credential.UsernamePasswordCredentialPrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -357,8 +358,8 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Id:                static.UsernamePasswordCredentialPrefix + "_notallowed",
-				Type:              static.UsernamePasswordSubtype.String(),
+				Id:                credential.UsernamePasswordCredentialPrefix + "_notallowed",
+				Type:              credential.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -373,7 +374,7 @@ func TestCreate(t *testing.T) {
 			name: "Invalid Credential Store Id",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: "p_invalidid",
-				Type:              static.UsernamePasswordSubtype.String(),
+				Type:              credential.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -389,7 +390,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
 				CreatedTime:       timestamppb.Now(),
-				Type:              static.UsernamePasswordSubtype.String(),
+				Type:              credential.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -404,7 +405,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
 				UpdatedTime:       timestamppb.Now(),
-				Type:              static.UsernamePasswordSubtype.String(),
+				Type:              credential.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -433,7 +434,7 @@ func TestCreate(t *testing.T) {
 			name: "Must provide username",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              static.UsernamePasswordSubtype.String(),
+				Type:              credential.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Password: wrapperspb.String("password"),
@@ -447,7 +448,7 @@ func TestCreate(t *testing.T) {
 			name: "Must provide password]",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              static.UsernamePasswordSubtype.String(),
+				Type:              credential.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -461,7 +462,7 @@ func TestCreate(t *testing.T) {
 			name: "valid",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              static.UsernamePasswordSubtype.String(),
+				Type:              credential.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 						Username: wrapperspb.String("username"),
@@ -469,9 +470,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: static.UsernamePasswordCredentialPrefix + "_",
+			idPrefix: credential.UsernamePasswordCredentialPrefix + "_",
 			res: &pbs.CreateCredentialResponse{
-				Uri: fmt.Sprintf("credentials/%s_", static.UsernamePasswordCredentialPrefix),
+				Uri: fmt.Sprintf("credentials/%s_", credential.UsernamePasswordCredentialPrefix),
 				Item: &pb.Credential{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -479,7 +480,7 @@ func TestCreate(t *testing.T) {
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
-					Type:              static.UsernamePasswordSubtype.String(),
+					Type:              credential.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
