@@ -312,6 +312,21 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    UnexpectedRowsAffected,
 			want: UnexpectedRowsAffected,
 		},
+		{
+			name: "NoPathFound",
+			c:    NoPathFound,
+			want: NoPathFound,
+		},
+		{
+			name: "CycleFound",
+			c:    CycleFound,
+			want: CycleFound,
+		},
+		{
+			name: "WorkerNotFound",
+			c:    WorkerNotFound,
+			want: WorkerNotFound,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
