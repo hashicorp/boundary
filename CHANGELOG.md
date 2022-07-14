@@ -9,6 +9,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Host plugins: Plugin-type host catalogs/sets/hosts now use typed prefixes for
   any newly-created resources. Existing resources will not be affected.
   ([PR](https://github.com/hashicorp/boundary/pull/2256))
+* Credential stores: Static-type credential stores/credentials now use typed
+  prefixes for any newly-created resources. Existing resources will not be
+  affected. ([PR](https://github.com/hashicorp/boundary/pull/2256))
 
 ## 0.9.1 (2022/07/06)
 

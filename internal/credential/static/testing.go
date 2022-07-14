@@ -15,7 +15,7 @@ import (
 // TestCredentialStore creates a static credential store in the provided DB with
 // the provided scope and any values passed in through the Options vars.
 // If any errors are encountered during the creation of the store, the test will fail.
-func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId string, opts ...Option) *CredentialStore {
+func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId string, opt ...Option) *CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -25,12 +25,17 @@ func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, sc
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
-	cs, err := NewCredentialStore(scopeId, opts...)
+	cs, err := NewCredentialStore(scopeId, opt...)
 	assert.NoError(t, err)
 	require.NotNil(t, cs)
-	id, err := newCredentialStoreId(ctx)
-	assert.NoError(t, err)
-	require.NotEmpty(t, id)
+
+	opts := getOpts(opt...)
+	id := opts.withPublicId
+	if id == "" {
+		id, err = newCredentialStoreId(ctx)
+		assert.NoError(t, err)
+		require.NotEmpty(t, id)
+	}
 	cs.PublicId = id
 
 	_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
@@ -72,23 +77,28 @@ func TestUsernamePasswordCredential(
 	conn *db.DB,
 	wrapper wrapping.Wrapper,
 	username, password, storeId, scopeId string,
-	opts ...Option,
+	opt ...Option,
 ) *UsernamePasswordCredential {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	w := db.New(conn)
 
+	opts := getOpts(opt...)
+
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
-	cred, err := NewUsernamePasswordCredential(storeId, username, credential.Password(password), opts...)
+	cred, err := NewUsernamePasswordCredential(storeId, username, credential.Password(password), opt...)
 	require.NoError(t, err)
 	require.NotNil(t, cred)
 
-	id, err := newCredentialId(ctx)
-	require.NoError(t, err)
+	id := opts.withPublicId
+	if id == "" {
+		id, err = newCredentialId(ctx)
+		require.NoError(t, err)
+	}
 	cred.PublicId = id
 
 	err = cred.encrypt(ctx, databaseWrapper)

@@ -172,6 +172,7 @@ func TestGet(t *testing.T) {
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 	cred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
+	credPrev := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), static.WithPublicId(fmt.Sprintf("%s_1234567890", static.PreviousCredentialPrefix)))
 	s, err := NewService(staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
@@ -199,6 +200,28 @@ func TestGet(t *testing.T) {
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       cred.CreateTime.GetTimestamp(),
 					UpdatedTime:       cred.UpdateTime.GetTimestamp(),
+					Version:           1,
+					Attrs: &pb.Credential_UsernamePasswordAttributes{
+						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
+							Username:     wrapperspb.String("user"),
+							PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "success-prev-prefix",
+			id:   credPrev.GetPublicId(),
+			res: &pbs.GetCredentialResponse{
+				Item: &pb.Credential{
+					Id:                credPrev.GetPublicId(),
+					CredentialStoreId: cred.GetStoreId(),
+					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:              static.UsernamePasswordSubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+					CreatedTime:       credPrev.CreateTime.GetTimestamp(),
+					UpdatedTime:       credPrev.UpdateTime.GetTimestamp(),
 					Version:           1,
 					Attrs: &pb.Credential_UsernamePasswordAttributes{
 						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{

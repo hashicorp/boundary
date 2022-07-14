@@ -530,7 +530,7 @@ func toUsernamePasswordStorageCredential(storeId string, in *pb.Credential) (out
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetCredentialRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.CredentialPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.CredentialPrefix, static.PreviousCredentialPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
@@ -539,7 +539,7 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 		if req.Item.GetType() != static.UsernamePasswordSubtype.String() {
 			badFields[globals.TypeField] = fmt.Sprintf("Unsupported credential type %q", req.Item.GetType())
 		}
-		if !handlers.ValidId(handlers.Id(req.Item.GetCredentialStoreId()), static.CredentialStorePrefix) {
+		if !handlers.ValidId(handlers.Id(req.Item.GetCredentialStoreId()), static.CredentialStorePrefix, static.PreviousCredentialPrefix) {
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 		}
 
@@ -570,16 +570,16 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 		}
 
 		return badFields
-	}, static.CredentialPrefix)
+	}, static.CredentialPrefix, static.PreviousCredentialPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.CredentialPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.CredentialPrefix, static.PreviousCredentialPrefix)
 }
 
 func validateListRequest(req *pbs.ListCredentialsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), static.CredentialStorePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), static.CredentialStorePrefix, static.PreviousCredentialPrefix) {
 		badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
