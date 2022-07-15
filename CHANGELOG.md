@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## 0.9.2 (Not Released)
+## Next
 
 ### Deprecations/Changes
 
