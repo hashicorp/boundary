@@ -194,7 +194,7 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 
-	_, err = c.Read(tc.Context(), static.CredentialPrefix+"_doesntexis")
+	_, err = c.Read(tc.Context(), static.UsernamePasswordCredentialPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

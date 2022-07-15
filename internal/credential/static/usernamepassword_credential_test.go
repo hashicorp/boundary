@@ -128,7 +128,7 @@ func TestCredential_New(t *testing.T) {
 			require.NotNil(got)
 			assert.Emptyf(got.PublicId, "PublicId set")
 
-			id, err := newCredentialId(ctx)
+			id, err := newUsernamePasswordCredentialId(ctx)
 			require.NoError(err)
 
 			tt.want.PublicId = id

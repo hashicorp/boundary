@@ -186,6 +186,7 @@ func TestGet_Plugin(t *testing.T) {
 	name := "test"
 	plg := host.TestPlugin(t, conn, name)
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac([]byte("foobar")))
+	hcPrev := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac([]byte("foobar")), plugin.WithPublicId(fmt.Sprintf("%s_1234567890", plugin.PreviousHostCatalogPrefix)))
 
 	toMerge := &pbs.GetHostCatalogRequest{
 		Id: hc.GetPublicId(),
@@ -223,6 +224,17 @@ func TestGet_Plugin(t *testing.T) {
 			name: "Get an Existing HostCatalog",
 			req:  &pbs.GetHostCatalogRequest{Id: hc.GetPublicId()},
 			res:  &pbs.GetHostCatalogResponse{Item: pHostCatalog},
+		},
+		{
+			name: "Get an Existing Previous-ID HostCatalog",
+			req:  &pbs.GetHostCatalogRequest{Id: hcPrev.GetPublicId()},
+			res: func() *pbs.GetHostCatalogResponse {
+				resp := proto.Clone(pHostCatalog).(*pb.HostCatalog)
+				resp.Id = hcPrev.PublicId
+				resp.CreatedTime = hcPrev.CreateTime.GetTimestamp()
+				resp.UpdatedTime = hcPrev.UpdateTime.GetTimestamp()
+				return &pbs.GetHostCatalogResponse{Item: resp}
+			}(),
 		},
 		{
 			name: "Get a non existing Host Catalog",

@@ -10,16 +10,19 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(host.Domain, Subtype, HostCatalogPrefix, HostSetPrefix, HostPrefix); err != nil {
+	if err := subtypes.Register(host.Domain, Subtype, HostCatalogPrefix, PreviousHostCatalogPrefix, HostSetPrefix, PreviousHostSetPrefix, HostPrefix, PreviousHostPrefix); err != nil {
 		panic(err)
 	}
 }
 
 // PublicId prefixes for the resources in the plugin package.
 const (
-	HostCatalogPrefix = "hc"
-	HostSetPrefix     = "hs"
-	HostPrefix        = "h"
+	HostCatalogPrefix         = "hcplg"
+	PreviousHostCatalogPrefix = "hc"
+	HostSetPrefix             = "hsplg"
+	PreviousHostSetPrefix     = "hs"
+	HostPrefix                = "hplg"
+	PreviousHostPrefix        = "h"
 
 	Subtype = subtypes.Subtype("plugin")
 )

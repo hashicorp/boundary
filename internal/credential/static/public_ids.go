@@ -10,18 +10,20 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix, PreviousCredentialStorePrefix); err != nil {
 		panic(err)
 	}
-	if err := subtypes.Register(credential.Domain, UsernamePasswordSubtype, CredentialPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, UsernamePasswordSubtype, UsernamePasswordCredentialPrefix, PreviousUsernamePasswordCredentialPrefix); err != nil {
 		panic(err)
 	}
 }
 
 // PublicId prefixes for the resources in the static package.
 const (
-	CredentialStorePrefix = "cs"
-	CredentialPrefix      = "cred"
+	CredentialStorePrefix                    = "csst"
+	PreviousCredentialStorePrefix            = "cs"
+	UsernamePasswordCredentialPrefix         = "credup"
+	PreviousUsernamePasswordCredentialPrefix = "cred"
 
 	Subtype                 = subtypes.Subtype("static")
 	UsernamePasswordSubtype = subtypes.Subtype("username_password")
@@ -35,10 +37,10 @@ func newCredentialStoreId(ctx context.Context) (string, error) {
 	return id, nil
 }
 
-func newCredentialId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(CredentialPrefix)
+func newUsernamePasswordCredentialId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(UsernamePasswordCredentialPrefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "static.newCredentialId")
+		return "", errors.Wrap(ctx, err, "static.newUsernamePasswordCredentialId")
 	}
 	return id, nil
 }

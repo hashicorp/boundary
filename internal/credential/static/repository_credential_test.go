@@ -121,7 +121,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assertPublicId(t, CredentialPrefix, got.PublicId)
+			assertPublicId(t, UsernamePasswordCredentialPrefix, got.PublicId)
 			assert.Equal(tt.cred.Username, got.Username)
 			assert.Nil(got.Password)
 			assert.Nil(got.CtPassword)
@@ -853,7 +853,7 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialPrefix, got.PublicId)
+			assertPublicId(t, UsernamePasswordCredentialPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)
