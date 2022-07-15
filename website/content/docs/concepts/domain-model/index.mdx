@@ -7,94 +7,129 @@ description: |-
 
 # Overview
 
-Boundary has a rich domain model
-consisting of resources that represent
-[IAM][] principals,
-infrastructure,
-and the means to tie them together.
-This section contains information about the various resources within the domain
-and how they relate to each other.
+[HashiCorp Boundary](https://www.boundaryproject.io/) has an extensible domain model that allows administrators to organize IAM (Identity and Access Management) and target resources in a way that best compliments how their organization manages its computing infrastructure. This concept page is a high-level look at scopes, how they work, and their role in the domain model. We will also explore how Boundary approaches IAM and granting access to Targets. For more information about Boundary’s resource types, see the subpages of the Domain Model section.
+
+## Scopes
+
+When conducting threat modeling exercises, it is common practice to mitigate  identified risks by reducing their potential blast radius and attack surface. Boundary uses the concept of scopes to help security operators achieve this type of mitigation.  A [Scope](/docs/concepts/domain-model/scopes) can be considered as a container for resources and permissions. Each scope has a permissions boundary that is isolated from other scopes on the same level, creating a defined blast radius.
+The diagram below illustrates the relationship between the different levels of scopes.
+
 
 ![](/img/boundary-domain-model-overview.jpg)
 
-## Resources
+The highest-level  scope is the [Global Scope](/docs/concepts/domain-model/scopes#global). Boundary administrators operate on this level to configure and manage Boundary for the entire business. Boundary administrators  can also manage child scopes, auth methods, users, groups, roles, and grants.
 
-A resource is any element in Boundary
-to which principals may be granted [permissions][].
-All resources have an ID which is unique within Boundary.
+The intermediate scope level is  [Organizations](/docs/concepts/domain-model/scopes#organizations), also referred to as orgs, which are a child scope of global.  Though the implementation may be flexible for organization scopes, we recommend scoping by business units in this case. Scoping by business unit provides a clear separation of concerns for each business unit. Creating organizations for the development, operations, and support teams would be an example.
+
+The lowest scope level is the [Project](/docs/concepts/domain-model/scopes#projects). An organization’s scope may have as many projects as required based on its business workflows. To expand on the example used earlier, the development team’s organization can also have project scopes for their different products.
+
+For example, they could have the following project scopes:
+
+- Product 1
+- Product 2
+- Product 3
+
+## Identity and Access Management
+
+As mentioned earlier, IAM  is handled at the organization and global scope levels. Here, operators can create and manage principals. Principals are entities in Boundary that are either [Users](/docs/concepts/domain-model/users) or [Groups](/docs/concepts/domain-model/groups) that may be assigned capabilities.
+
+Users are associated with either the global or an organization’s scope. For better access control management, users may be positioned into groups to ease access  control demands. Groups can also contain users from different organizations or global scopes without creating multiple users for a single entity, making permissioning less complicated to implement.
+
+An [Auth Method](/docs/concepts/domain-model/auth-methods) is the mechanism in Boundary used for authentication. An organization may use numerous authentication methods. Boundary supports Open ID Connect (OIDC) auth methods to delegate authentication to an external identity provider (IDP) - such as Azure Active Directory, Okta, and other OIDC providers - as well as a Boundary-native password auth method. Within an auth method, [Accounts](/docs/concepts/domain-model/accounts) may be created and associated with users.  Once associated  with a user, the principal may authenticate in Boundary using the method specified by their auth method. An account for the password auth method consists of a login name and password.
+
+## Access Management
+
+Boundary’s method of access management starts at the lowest level with Actions. Actions are capabilities that can be performed against Boundary resources. Boundary supports generic Actions such as, Create, Read, Update, Delete, and List. However, there are many more that are resource-type-specific actions that can be used in grants.
+
+The next level of access management is a [Grant](/docs/concepts/security/permissions#grant-strings). A grant in Boundary contains an action(s) and the resource(s) that the action(s) are permitted to be performed against. This can be thought of like a rule.
+
+For example, a grant can specify the List Action against a specific resource. Grants can specify resource types or resource IDs and may also be implemented as a rule.
+
+The highest-level in Boundary utilizes the concepts of [Roles](/docs/concepts/domain-model/roles). Roles are a collection of zero or more grants. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.  Roles belong to a single scope and their lifecycle is dependent on the existence of that scope. Should the scope be deleted, the role would be deleted too. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.
+The diagram below illustrates the relationship between the different IAM components within Boundary.
+
+![](/img/component-relationship.jpg)
+
+
+## Target and Host Resources
+
+Boundary exposes endpoints to users as [Targets](/docs/concepts/domain-model/targets). A target is a resource representing a networked service, with an associated set of permissions, that allows a user to connect and interact with Boundary within a single  session. A target may contain references to [Host](/docs/concepts/domain-model/hosts) sources and [Credential](/docs/concepts/domain-model/credentials) sources. Users who access a target create an authorized session to one of its host sources with returned credentials from the target’s credential source.
+
+![](/img/target-host-resources.jpg)
+
 
 ### Summary of Resources
 
 - **[Account][]** :
-  An account is a resource
+  A resource
   that represents a unique set of credentials
   issued from a configured [authentication method][]
   which can be used to establish the identity of a [user][].
 
 - **[Credential][]** :
-  A credential is a data structure containing one or more secrets
+  A data structure containing one or more secrets
   that binds an identity to a set of permissions or capabilities
   on a [host][] for a [session][].
 
 - **[Credential Library][]** :
-  A credential library is a resource
+  A resource
   that provides [credentials][]
   of the same type and same access level
   from a single [credential store][].
 
 - **[Credential Store][]** :
-  A credential store is a resource
+  A resource
   that can retrieve, store, and potentially generate [credentials][]
   of differing types and differing access levels.
   It may also contain [credential libraries][].
 
 - **[Authentication Method][]** :
-  An authentication method is a resource
+  A resource
   that provides a mechanism
   for [users][] to authenticate to Boundary.
 
 - **[Group][]** :
-  A group is a resource
+  A resource
   that represents a collection of [users][]
   which can be treated equally
   for the purposes of access control.
 
 - **[Host][]** :
-  A host is a resource
+  A resource
   that represents a computing element with a network address
   reachable from Boundary.
 
 - **[Host Catalog][]** :
-  A host catalog is a resource
+  A resource
   that contains [hosts][] and [host sets][].
 
 - **[Host Set][]** :
-  A host set is a resource
+  A resource
   that represents a collection of [hosts][]
   which are considered equivalent
   for the purposes of access control.
 
 - **[Managed Group][]** :
-  A managed group is a resource that groups [accounts][] based on criteria
+  A resource that groups [accounts][] based on criteria
   established by a third-party service backing the [authentication method][]. It
   can be used as a principal in [roles][].
 
 - **[Role][]** :
-  A role is a resource
+  A resource
   that contains a collection of [permissions][]
   which are granted to any principal assigned to the role.
 
 - **[Session][]** :
-  A session is a set of related connections between a [user][] and a [host][].
+  A set of related connections between a [user][] and a [host][].
   A session may include a set of [credentials][]
   which define the permissions granted to the [user][] on the [host][] for the duration
   of the session.
 
 - **[Scope][]** :
-  A scope is a [permission][] boundary modeled as a container.
+  A [permission][] boundary modeled as a container.
 
 - **[Target][]** :
-  A target is a resource
+  A resource
   that represents a networked service
   with an associated set of permissions
   a [user][] can connect to
@@ -103,18 +138,18 @@ All resources have an ID which is unique within Boundary.
   by way of a [session][].
 
 - **[User][]** :
-  A user is a resource
+  A resource
   that represents an individual person or entity
   for the purposes of access control.
 
 ## Next Steps
 
 When getting started with Boundary,
-the first resource to look at should probably be [Scopes][].
+the first resource to look at should be [Scopes][].
 Every other resources is either contained within a scope,
 or contained within another resource
 that is itself contained within a scope.
-That page can help you understand the structure of resources within Boundary.
+Refer to the [Scopes] section to help you understand the structure of resources within Boundary.
 
 [iam]: https://en.wikipedia.org/wiki/Identity_management
 [account]: /docs/concepts/domain-model/accounts
