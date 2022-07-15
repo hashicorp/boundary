@@ -37,12 +37,12 @@ func TestNewStaticCredential(targetId, credentialId string, purpose credential.P
 }
 
 // TestCredentialLibrary creates a CredentialLibrary for targetId and
-// libraryId with the credential purpose of application.
+// libraryId with the credential purpose of brokered.
 func TestCredentialLibrary(t testing.TB, conn *db.DB, targetId, libraryId string) *CredentialLibrary {
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	lib := TestNewCredentialLibrary(targetId, libraryId, credential.ApplicationPurpose)
+	lib := TestNewCredentialLibrary(targetId, libraryId, credential.BrokeredPurpose)
 	err := rw.Create(context.Background(), lib)
 	require.NoError(err)
 	return lib

@@ -13,28 +13,30 @@ import (
 )
 
 type Target struct {
-	Id                             string                 `json:"id,omitempty"`
-	ScopeId                        string                 `json:"scope_id,omitempty"`
-	Scope                          *scopes.ScopeInfo      `json:"scope,omitempty"`
-	Name                           string                 `json:"name,omitempty"`
-	Description                    string                 `json:"description,omitempty"`
-	CreatedTime                    time.Time              `json:"created_time,omitempty"`
-	UpdatedTime                    time.Time              `json:"updated_time,omitempty"`
-	Version                        uint32                 `json:"version,omitempty"`
-	Type                           string                 `json:"type,omitempty"`
-	HostSetIds                     []string               `json:"host_set_ids,omitempty"`
-	HostSets                       []*HostSet             `json:"host_sets,omitempty"`
-	HostSourceIds                  []string               `json:"host_source_ids,omitempty"`
-	HostSources                    []*HostSource          `json:"host_sources,omitempty"`
-	SessionMaxSeconds              uint32                 `json:"session_max_seconds,omitempty"`
-	SessionConnectionLimit         int32                  `json:"session_connection_limit,omitempty"`
-	WorkerFilter                   string                 `json:"worker_filter,omitempty"`
-	ApplicationCredentialSourceIds []string               `json:"application_credential_source_ids,omitempty"`
-	ApplicationCredentialSources   []*CredentialSource    `json:"application_credential_sources,omitempty"`
-	EgressCredentialSourceIds      []string               `json:"egress_credential_source_ids,omitempty"`
-	EgressCredentialSources        []*CredentialSource    `json:"egress_credential_sources,omitempty"`
-	Attributes                     map[string]interface{} `json:"attributes,omitempty"`
-	AuthorizedActions              []string               `json:"authorized_actions,omitempty"`
+	Id                                     string                 `json:"id,omitempty"`
+	ScopeId                                string                 `json:"scope_id,omitempty"`
+	Scope                                  *scopes.ScopeInfo      `json:"scope,omitempty"`
+	Name                                   string                 `json:"name,omitempty"`
+	Description                            string                 `json:"description,omitempty"`
+	CreatedTime                            time.Time              `json:"created_time,omitempty"`
+	UpdatedTime                            time.Time              `json:"updated_time,omitempty"`
+	Version                                uint32                 `json:"version,omitempty"`
+	Type                                   string                 `json:"type,omitempty"`
+	HostSetIds                             []string               `json:"host_set_ids,omitempty"`
+	HostSets                               []*HostSet             `json:"host_sets,omitempty"`
+	HostSourceIds                          []string               `json:"host_source_ids,omitempty"`
+	HostSources                            []*HostSource          `json:"host_sources,omitempty"`
+	SessionMaxSeconds                      uint32                 `json:"session_max_seconds,omitempty"`
+	SessionConnectionLimit                 int32                  `json:"session_connection_limit,omitempty"`
+	WorkerFilter                           string                 `json:"worker_filter,omitempty"`
+	ApplicationCredentialSourceIds         []string               `json:"application_credential_source_ids,omitempty"`
+	ApplicationCredentialSources           []*CredentialSource    `json:"application_credential_sources,omitempty"`
+	BrokeredCredentialSourceIds            []string               `json:"brokered_credential_source_ids,omitempty"`
+	BrokeredCredentialSources              []*CredentialSource    `json:"brokered_credential_sources,omitempty"`
+	InjectedApplicationCredentialSourceIds []string               `json:"injected_application_credential_source_ids,omitempty"`
+	InjectedApplicationCredentialSources   []*CredentialSource    `json:"injected_application_credential_sources,omitempty"`
+	Attributes                             map[string]interface{} `json:"attributes,omitempty"`
+	AuthorizedActions                      []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }

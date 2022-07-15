@@ -16,10 +16,10 @@ begin;
   insert into session_credential_dynamic
     ( session_id,    library_id,     credential_id,  credential_purpose)
   values
-    ('s1____walter', 'vl______wvl1', null,           'application'),
-    ('s1____walter', 'vl______wvl2', null,           'application'),
-    ('s1____walter', 'vl______wvl3', null,           'application'),
-    ('s1____walter', 'vl______wvl3', null,           'egress');
+    ('s1____walter', 'vl______wvl1', null,           'brokered'),
+    ('s1____walter', 'vl______wvl2', null,           'brokered'),
+    ('s1____walter', 'vl______wvl3', null,           'brokered'),
+    ('s1____walter', 'vl______wvl3', null,           'injected_application');
 
   select is(count(*), 4::bigint) from wh_credential_dimension        where organization_id      =  'o_____widget';
   select is(count(*), 4::bigint) from wh_credential_group_membership where credential_group_key != 'no credentials' and credential_group_key != 'Unknown';

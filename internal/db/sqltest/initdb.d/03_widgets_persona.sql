@@ -375,10 +375,10 @@ begin;
     insert into target_credential_library
       (target_id,      credential_library_id, credential_purpose)
     values
-      ('t_________wb', 'vl______wvl1',        'application'),
-      ('t_________wb', 'vl______wvl2',        'application'),
-      ('t_________wb', 'vl______wvl3',        'application'),
-      ('t_________wb', 'vl______wvl3',        'egress');
+      ('t_________wb', 'vl______wvl1',        'brokered'),
+      ('t_________wb', 'vl______wvl2',        'brokered'),
+      ('t_________wb', 'vl______wvl3',        'brokered'),
+      ('t_________wb', 'vl______wvl3',        'injected_application');
   end;
   $$ language plpgsql;
 

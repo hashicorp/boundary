@@ -88,7 +88,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -99,7 +99,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -110,7 +110,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -124,7 +124,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -141,7 +141,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -158,7 +158,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -176,7 +176,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 
@@ -233,7 +233,7 @@ func TestRequestMap(t *testing.T) {
 				requests: []credential.Request{
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 				},
 			},
@@ -245,11 +245,11 @@ func TestRequestMap(t *testing.T) {
 				requests: []credential.Request{
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 					{
 						SourceId: "gary",
-						Purpose:  credential.EgressPurpose,
+						Purpose:  credential.InjectedApplicationPurpose,
 					},
 				},
 			},
@@ -261,11 +261,11 @@ func TestRequestMap(t *testing.T) {
 				requests: []credential.Request{
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 					{
 						SourceId: "kaz",
-						Purpose:  credential.EgressPurpose,
+						Purpose:  credential.InjectedApplicationPurpose,
 					},
 				},
 			},
@@ -277,11 +277,11 @@ func TestRequestMap(t *testing.T) {
 				requests: []credential.Request{
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 				},
 			},

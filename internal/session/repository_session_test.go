@@ -1470,19 +1470,19 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	upCreds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", staticStore.GetPublicId(), params.ScopeId, 2)
 
 	ids := target.CredentialSources{
-		ApplicationCredentialIds: []string{libIds[0].GetPublicId(), libIds[1].GetPublicId(), upCreds[0].GetPublicId(), upCreds[1].GetPublicId()},
+		BrokeredCredentialIds: []string{libIds[0].GetPublicId(), libIds[1].GetPublicId(), upCreds[0].GetPublicId(), upCreds[1].GetPublicId()},
 	}
 	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), ids)
 	require.NoError(err)
 	dynamicCreds := []*DynamicCredential{
-		NewDynamicCredential(libIds[0].GetPublicId(), cred.ApplicationPurpose),
-		NewDynamicCredential(libIds[1].GetPublicId(), cred.ApplicationPurpose),
+		NewDynamicCredential(libIds[0].GetPublicId(), cred.BrokeredPurpose),
+		NewDynamicCredential(libIds[1].GetPublicId(), cred.BrokeredPurpose),
 	}
 	params.DynamicCredentials = dynamicCreds
 
 	staticCreds := []*StaticCredential{
-		NewStaticCredential(upCreds[0].GetPublicId(), cred.ApplicationPurpose),
-		NewStaticCredential(upCreds[1].GetPublicId(), cred.ApplicationPurpose),
+		NewStaticCredential(upCreds[0].GetPublicId(), cred.BrokeredPurpose),
+		NewStaticCredential(upCreds[1].GetPublicId(), cred.BrokeredPurpose),
 	}
 	params.StaticCredentials = staticCreds
 	return params

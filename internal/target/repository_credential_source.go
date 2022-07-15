@@ -263,8 +263,8 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	)
 
 	byPurpose := map[credential.Purpose][]string{
-		credential.ApplicationPurpose: ids.ApplicationCredentialIds,
-		credential.EgressPurpose:      ids.EgressCredentialIds,
+		credential.BrokeredPurpose:            ids.BrokeredCredentialIds,
+		credential.InjectedApplicationPurpose: ids.InjectedApplicationCredentialIds,
 	}
 	for p, ids := range byPurpose {
 		addL, delL, addS, delS, err := r.changes(ctx, targetId, ids, p)
@@ -526,9 +526,7 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 	const op = "target.(Repository).createSources"
 
 	// Get a list of unique ids being attached to the target, to be used for looking up the source type (library or static)
-	ids := make([]string, 0, len(credSources.ApplicationCredentialIds)+len(credSources.EgressCredentialIds))
-	ids = append(ids, credSources.ApplicationCredentialIds...)
-	ids = append(ids, credSources.EgressCredentialIds...)
+	ids := strutil.MergeSlices(credSources.BrokeredCredentialIds, credSources.InjectedApplicationCredentialIds)
 	totalCreds := len(ids)
 	ids = strutil.RemoveDuplicates(ids, false)
 	if len(ids) == 0 {
@@ -555,8 +553,8 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 	credLibs := make([]*CredentialLibrary, 0, totalCreds)
 	staticCred := make([]*StaticCredential, 0, totalCreds)
 	byPurpose := map[credential.Purpose][]string{
-		credential.ApplicationPurpose: credSources.ApplicationCredentialIds,
-		credential.EgressPurpose:      credSources.EgressCredentialIds,
+		credential.BrokeredPurpose:            credSources.BrokeredCredentialIds,
+		credential.InjectedApplicationPurpose: credSources.InjectedApplicationCredentialIds,
 	}
 	for purpose, ids := range byPurpose {
 		for _, id := range ids {

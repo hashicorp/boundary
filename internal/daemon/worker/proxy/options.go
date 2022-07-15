@@ -18,18 +18,19 @@ func GetOpts(opt ...Option) Options {
 
 // Options = how options are represented
 type Options struct {
-	WithEgressCredentials []*serverpb.Credential
+	WithInjectedApplicationCredentials []*serverpb.Credential
 }
 
 func getDefaultOptions() Options {
 	return Options{
-		WithEgressCredentials: nil,
+		WithInjectedApplicationCredentials: nil,
 	}
 }
 
-// WithEgressCredentials provides an optional egress credentials to use when establishing a proxy
-func WithEgressCredentials(creds []*serverpb.Credential) Option {
+// WithInjectedApplicationCredentials provides an optional injected application
+// credentials to use when establishing a proxy
+func WithInjectedApplicationCredentials(creds []*serverpb.Credential) Option {
 	return func(o *Options) {
-		o.WithEgressCredentials = creds
+		o.WithInjectedApplicationCredentials = creds
 	}
 }

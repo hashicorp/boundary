@@ -378,8 +378,24 @@ message AddTargetCredentialSourcesRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string application_credential_source_ids = 3 [json_name = "application_credential_source_ids"]; // @gotags: `class:"public"`
-  repeated string egress_credential_source_ids = 4 [json_name = "egress_credential_source_ids"]; // @gotags: `class:"public"`
+
+  // Deprecated use brokered_credential_source_ids instead
+  repeated string application_credential_source_ids = 3 [
+    json_name = "application_credential_source_ids",
+    deprecated = true
+  ]; // @gotags: `class:"public"`
+
+  // Brokered credentials are returned to the user during session authorization.
+  repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
+
+  // Injected application credentials are used by a Boundary worker to secure the
+  // connection between the worker and the endpoint. Injected application credentials are
+  // never returned to the user.
+  repeated string injected_application_credential_source_ids = 20 [json_name = "injected_application_credential_source_ids"]; // @gotags: `class:"public"`
+
+  // Deprecated fields
+  reserved "egress_credential_source_ids";
+  reserved 4;
 }
 
 message AddTargetCredentialSourcesResponse {
@@ -393,8 +409,24 @@ message SetTargetCredentialSourcesRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string application_credential_source_ids = 3 [json_name = "application_credential_source_ids"]; // @gotags: `class:"public"`
-  repeated string egress_credential_source_ids = 4 [json_name = "egress_credential_source_ids"]; // @gotags: `class:"public"`
+
+  // Deprecated use brokered_credential_source_ids instead
+  repeated string application_credential_source_ids = 3 [
+    json_name = "application_credential_source_ids",
+    deprecated = true
+  ]; // @gotags: `class:"public"`
+
+  // Brokered credentials are returned to the user during session authorization.
+  repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
+
+  // Injected application credentials are used by a Boundary worker to secure the
+  // connection between the worker and the endpoint. Injected application credentials are
+  // never returned to the user.
+  repeated string injected_application_credential_source_ids = 20 [json_name = "injected_application_credential_source_ids"]; // @gotags: `class:"public"`
+
+  // Deprecated fields
+  reserved "egress_credential_source_ids";
+  reserved 4;
 }
 
 message SetTargetCredentialSourcesResponse {
@@ -406,8 +438,24 @@ message RemoveTargetCredentialSourcesRequest {
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
-  repeated string application_credential_source_ids = 3 [json_name = "application_credential_source_id"]; // @gotags: `class:"public"`
-  repeated string egress_credential_source_ids = 4 [json_name = "egress_credential_source_ids"]; // @gotags: `class:"public"`
+
+  // Deprecated use brokered_credential_source_ids instead
+  repeated string application_credential_source_ids = 3 [
+    json_name = "application_credential_source_id",
+    deprecated = true
+  ]; // @gotags: `class:"public"`
+
+  // Brokered credentials are returned to the user during session authorization.
+  repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
+
+  // Injected application credentials are used by a Boundary worker to secure the
+  // connection between the worker and the endpoint. Injected application credentials are
+  // never returned to the user.
+  repeated string injected_application_credential_source_ids = 20 [json_name = "injected_application_credential_source_ids"]; // @gotags: `class:"public"`
+
+  // Deprecated fields
+  reserved "egress_credential_source_ids";
+  reserved 4;
 }
 
 message RemoveTargetCredentialSourcesResponse {

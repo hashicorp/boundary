@@ -204,7 +204,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libDB],
-					Purpose:  credential.ApplicationPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 		},
@@ -214,11 +214,11 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libDB],
-					Purpose:  credential.ApplicationPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 				{
 					SourceId: libs[libPKI],
-					Purpose:  credential.IngressPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 		},
@@ -228,7 +228,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libErrPKI],
-					Purpose:  credential.IngressPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 			wantErr: errors.VaultCredentialRequest,
@@ -239,11 +239,11 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libDB],
-					Purpose:  credential.ApplicationPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 				{
 					SourceId: libs[libPKI],
-					Purpose:  credential.IngressPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 			wantErr: errors.InvalidDynamicCredential,
@@ -254,7 +254,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libKV],
-					Purpose:  credential.IngressPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 		},
@@ -264,7 +264,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libUsrPassDB],
-					Purpose:  credential.ApplicationPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 		},
@@ -274,7 +274,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libErrKV],
-					Purpose:  credential.ApplicationPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 			wantErr: errors.VaultEmptySecret,
@@ -285,7 +285,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libErrUsrPassDB],
-					Purpose:  credential.ApplicationPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 			wantErr: errors.VaultInvalidCredentialMapping,
@@ -296,7 +296,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libUsrPassKV],
-					Purpose:  credential.ApplicationPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 		},

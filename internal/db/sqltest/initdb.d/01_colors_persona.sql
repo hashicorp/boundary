@@ -238,7 +238,7 @@ begin;
   insert into target_credential_library
     (target_id,      credential_library_id, credential_purpose)
   values
-    ('t_________cb', 'vl______cvl',         'application');
+    ('t_________cb', 'vl______cvl',         'brokered');
 
   insert into session
     ( scope_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)

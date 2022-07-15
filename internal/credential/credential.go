@@ -47,26 +47,20 @@ func (p Purpose) String() string {
 
 // Credential purpose values.
 const (
-	// ApplicationPurpose is a credential used for application specific
-	// purposes. Application credentials are returned to the user.
-	ApplicationPurpose Purpose = "application"
+	// BrokeredPurpose is a credential used for brokering specific
+	// purposes. Brokered credentials are returned to the user.
+	BrokeredPurpose Purpose = "brokered"
 
-	// IngressPurpose is a credential used by a boundary worker to secure
-	// the connection between the user and the worker. Ingress credentials
-	// are never returned to the user.
-	IngressPurpose Purpose = "ingress"
-
-	// EgressPurpose is a credential used by a boundary worker to secure
-	// the connection between the worker and the endpoint. Egress
-	// credentials are never returned to the user.
-	EgressPurpose Purpose = "egress"
+	// InjectedApplicationPurpose is a credential used by a boundary
+	// worker to secure the connection between the worker and the endpoint.
+	// Injected Application credentials are never returned to the user.
+	InjectedApplicationPurpose Purpose = "injected_application"
 )
 
 // ValidPurposes are the set of all credential Purposes.
 var ValidPurposes = []Purpose{
-	ApplicationPurpose,
-	IngressPurpose,
-	EgressPurpose,
+	BrokeredPurpose,
+	InjectedApplicationPurpose,
 }
 
 // SecretData represents secret data.

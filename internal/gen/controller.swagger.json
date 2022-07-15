@@ -2930,13 +2930,22 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": "Deprecated use brokered_credential_source_ids instead"
                 },
-                "egress_credential_source_ids": {
+                "brokered_credential_source_ids": {
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "description": "Brokered credentials are returned to the user during session authorization."
+                },
+                "injected_application_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Injected application credentials are used by a Boundary worker to secure the\nconnection between the worker and the endpoint. Injected application credentials are\nnever returned to the user."
                 }
               }
             }
@@ -3126,13 +3135,22 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": "Deprecated use brokered_credential_source_ids instead"
                 },
-                "egress_credential_source_ids": {
+                "brokered_credential_source_ids": {
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "description": "Brokered credentials are returned to the user during session authorization."
+                },
+                "injected_application_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Injected application credentials are used by a Boundary worker to secure the\nconnection between the worker and the endpoint. Injected application credentials are\nnever returned to the user."
                 }
               }
             }
@@ -3270,13 +3288,22 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": "Deprecated use brokered_credential_source_ids instead"
                 },
-                "egress_credential_source_ids": {
+                "brokered_credential_source_ids": {
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "description": "Brokered credentials are returned to the user during session authorization."
+                },
+                "injected_application_credential_source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Injected application credentials are used by a Boundary worker to secure the\nconnection between the worker and the endpoint. Injected application credentials are\nnever returned to the user."
                 }
               },
               "description": "Sets the values for credential sources. Any credential_source_id field that\nis not set in the request will result in those fields being cleared."
@@ -5522,7 +5549,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Output only. The IDs of the application credential source ids associated with this Target.",
+          "description": "Output only. The IDs of the application credential source ids associated with this Target.\nDeprecated use \"brokered_credential_source_ids\" instead.",
           "readOnly": true
         },
         "application_credential_sources": {
@@ -5530,23 +5557,39 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
-          "description": "Output only. The application credential sources associated with this Target.",
+          "description": "Output only. The application credential sources associated with this Target.\nDeprecated use \"brokered_credential_sources\" instead.",
           "readOnly": true
         },
-        "egress_credential_source_ids": {
+        "brokered_credential_source_ids": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Output only. The IDs of the egress credential source ids associated with this Target.",
+          "description": "Output only. The IDs of the brokered credential source ids associated with this Target.",
           "readOnly": true
         },
-        "egress_credential_sources": {
+        "brokered_credential_sources": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
-          "description": "Output only. The egress credential sources associated with this Target.",
+          "description": "Output only. The brokered credential sources associated with this Target.",
+          "readOnly": true
+        },
+        "injected_application_credential_source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs of the injected application credential source ids associated with this Target.",
+          "readOnly": true
+        },
+        "injected_application_credential_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
+          },
+          "description": "Output only. The injected application credential sources associated with this Target.",
           "readOnly": true
         },
         "attributes": {
