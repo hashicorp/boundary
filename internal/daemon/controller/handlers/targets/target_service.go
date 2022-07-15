@@ -1664,8 +1664,7 @@ func validateAddSetsRequest(req *pbs.AddTargetHostSetsRequest) error {
 		badFields[globals.HostSetIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1685,8 +1684,7 @@ func validateSetSetsRequest(req *pbs.SetTargetHostSetsRequest) error {
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1709,8 +1707,7 @@ func validateRemoveSetsRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 		badFields[globals.HostSetIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1733,8 +1730,7 @@ func validateAddHostSourcesRequest(req *pbs.AddTargetHostSourcesRequest) error {
 		badFields[globals.HostSourceIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSourceIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1754,8 +1750,7 @@ func validateSetHostSourcesRequest(req *pbs.SetTargetHostSourcesRequest) error {
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, id := range req.GetHostSourceIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1778,8 +1773,7 @@ func validateRemoveHostSourcesRequest(req *pbs.RemoveTargetHostSourcesRequest) e
 		badFields[globals.HostSourceIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSourceIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!(strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) || strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.PreviousHostSetPrefix))) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1803,13 +1797,13 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix, credstatic.PreviousCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.UsernamePasswordCredentialPrefix, credstatic.PreviousUsernamePasswordCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix, credstatic.PreviousCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.UsernamePasswordCredentialPrefix, credstatic.PreviousUsernamePasswordCredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1829,13 +1823,13 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix, credstatic.PreviousCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.UsernamePasswordCredentialPrefix, credstatic.PreviousUsernamePasswordCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix, credstatic.PreviousCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.UsernamePasswordCredentialPrefix, credstatic.PreviousUsernamePasswordCredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1859,13 +1853,13 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix, credstatic.PreviousCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.UsernamePasswordCredentialPrefix, credstatic.PreviousUsernamePasswordCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix, credstatic.PreviousCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.UsernamePasswordCredentialPrefix, credstatic.PreviousUsernamePasswordCredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}

@@ -96,7 +96,7 @@ func TestUsernamePasswordCredential(
 
 	id := opts.withPublicId
 	if id == "" {
-		id, err = newCredentialId(ctx)
+		id, err = newUsernamePasswordCredentialId(ctx)
 		require.NoError(t, err)
 	}
 	cred.PublicId = id

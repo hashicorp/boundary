@@ -53,7 +53,7 @@ func (r *Repository) CreateUsernamePasswordCredential(
 	}
 
 	c = c.clone()
-	id, err := newCredentialId(ctx)
+	id, err := newUsernamePasswordCredentialId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
