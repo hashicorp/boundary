@@ -48,14 +48,14 @@ For example, a grant can specify the List Action against a specific resource. Gr
 The highest-level in Boundary utilizes the concepts of [Roles](/docs/concepts/domain-model/roles). Roles are a collection of zero or more grants. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.  Roles belong to a single scope and their lifecycle is dependent on the existence of that scope. Should the scope be deleted, the role would be deleted too. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.
 The diagram below illustrates the relationship between the different IAM components within Boundary.
 
-![](/img/component-relationship.jpg)
+![](/img/component-relationship.png)
 
 
 ## Target and Host Resources
 
 Boundary exposes endpoints to users as [Targets](/docs/concepts/domain-model/targets). A target is a resource representing a networked service, with an associated set of permissions, that allows a user to connect and interact with Boundary within a single  session. A target may contain references to [Host](/docs/concepts/domain-model/hosts) sources and [Credential](/docs/concepts/domain-model/credentials) sources. Users who access a target create an authorized session to one of its host sources with returned credentials from the target’s credential source.
 
-![](/img/target-host-resources.jpg)
+![](/img/target-host-resources.png)
 
 
 ### Summary of Resources
