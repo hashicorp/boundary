@@ -617,9 +617,9 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 		}
 	}
 
-	deletePublicId := func() func(*UsernamePasswordCredential) *UsernamePasswordCredential {
+	setPublicId := func(n string) func(*UsernamePasswordCredential) *UsernamePasswordCredential {
 		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
-			c.PublicId = ""
+			c.PublicId = n
 			return c
 		}
 	}
@@ -634,13 +634,6 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 	deleteVersion := func() func(*UsernamePasswordCredential) *UsernamePasswordCredential {
 		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
 			c.Version = 0
-			return c
-		}
-	}
-
-	nonExistentPublicId := func() func(*UsernamePasswordCredential) *UsernamePasswordCredential {
-		return func(c *UsernamePasswordCredential) *UsernamePasswordCredential {
-			c.PublicId = "abcd_OOOOOOOOOO"
 			return c
 		}
 	}
@@ -709,7 +702,7 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 					Password: []byte("pass"),
 				},
 			},
-			chgFn:   deletePublicId(),
+			chgFn:   setPublicId(""),
 			masks:   []string{"Name", "Description"},
 			wantErr: errors.InvalidPublicId,
 		},
@@ -746,7 +739,7 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 					Password: []byte("pass"),
 				},
 			},
-			chgFn:   combine(nonExistentPublicId(), changeName("test-update-name-repo")),
+			chgFn:   combine(setPublicId("abcd_OOOOOOOOOO"), changeName("test-update-name-repo")),
 			masks:   []string{"Name"},
 			wantErr: errors.RecordNotFound,
 		},
@@ -1097,6 +1090,529 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 			hm, err := crypto.HmacSha256(ctx, tt.want.Password, databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 			require.NoError(err)
 			assert.Equal([]byte(hm), got.PasswordHmac)
+
+			if tt.wantCount > 0 {
+				assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+			}
+		})
+	}
+}
+
+func TestRepository_UpdateSshPrivateKeyCredential(t *testing.T) {
+	const testSecondarySshPrivateKeyPem = `
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACDxfwhEAZKrnsbQxOjVA3PFiB3bW3tSpNKx8TdMiCqlzQAAAJDmpbfr5qW3
+6wAAAAtzc2gtZWQyNTUxOQAAACDxfwhEAZKrnsbQxOjVA3PFiB3bW3tSpNKx8TdMiCqlzQ
+AAAEBvvkQkH06ad2GpX1VVARzu9NkHA6gzamAaQ/hkn5FuZvF/CEQBkquextDE6NUDc8WI
+Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
+-----END OPENSSH PRIVATE KEY-----
+`
+
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	changeName := func(n string) func(credential *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			c.Name = n
+			return c
+		}
+	}
+
+	changeDescription := func(d string) func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			c.Description = d
+			return c
+		}
+	}
+
+	makeNil := func() func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(_ *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			return nil
+		}
+	}
+
+	makeEmbeddedNil := func() func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(_ *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			return &SshPrivateKeyCredential{}
+		}
+	}
+
+	setPublicId := func(n string) func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			c.PublicId = n
+			return c
+		}
+	}
+
+	deleteStoreId := func() func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			c.StoreId = ""
+			return c
+		}
+	}
+
+	deleteVersion := func() func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			c.Version = 0
+			return c
+		}
+	}
+
+	changeUser := func(n string) func(credential *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			c.Username = n
+			return c
+		}
+	}
+
+	changePrivateKey := func(d string) func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			c.PrivateKey = []byte(d)
+			return c
+		}
+	}
+
+	combine := func(fns ...func(cs *SshPrivateKeyCredential) *SshPrivateKeyCredential) func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			for _, fn := range fns {
+				c = fn(c)
+			}
+			return c
+		}
+	}
+
+	tests := []struct {
+		name      string
+		orig      *SshPrivateKeyCredential
+		chgFn     func(*SshPrivateKeyCredential) *SshPrivateKeyCredential
+		masks     []string
+		want      *SshPrivateKeyCredential
+		wantCount int
+		wantErr   errors.Code
+	}{
+		{
+			name: "nil-credential",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn:   makeNil(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "nil-embedded-credential",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn:   makeEmbeddedNil(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "no-public-id",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn:   setPublicId(""),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidPublicId,
+		},
+		{
+			name: "no-store-id",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn:   deleteStoreId(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "no-version",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn:   deleteVersion(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "updating-non-existent-credential",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:       "test-name-repo",
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn:   combine(setPublicId("abcd_OOOOOOOOOO"), changeName("test-update-name-repo")),
+			masks:   []string{"Name"},
+			wantErr: errors.RecordNotFound,
+		},
+		{
+			name: "empty-field-mask",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:       "test-name-repo",
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn:   changeName("test-update-name-repo"),
+			wantErr: errors.EmptyFieldMask,
+		},
+		{
+			name: "read-only-fields-in-field-mask",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:       "test-name-repo",
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn:   changeName("test-update-name-repo"),
+			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			wantErr: errors.InvalidFieldMask,
+		},
+		{
+			name: "unknown-field-in-field-mask",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:       "test-name-repo",
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn:   changeName("test-update-name-repo"),
+			masks:   []string{"Bilbo"},
+			wantErr: errors.InvalidFieldMask,
+		},
+		{
+			name: "change-name",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:       "test-name-repo",
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn: changeName("test-update-name-repo"),
+			masks: []string{"Name"},
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:       "test-update-name-repo",
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-description",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Description: "test-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn: changeDescription("test-update-description-repo"),
+			masks: []string{"Description"},
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Description: "test-update-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-name-and-description",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			masks: []string{"Name", "Description"},
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:        "test-update-name-repo",
+					Description: "test-update-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-username",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn: changeUser("test-update-user"),
+			masks: []string{"Username"},
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "test-update-user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-private-keyu",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn: changePrivateKey(testSecondarySshPrivateKeyPem),
+			masks: []string{"PrivateKey"},
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(testSecondarySshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-username-and-private-key",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			chgFn: combine(changeUser("test-update-user"), changePrivateKey(testSecondarySshPrivateKeyPem)),
+			masks: []string{"Username", "PrivateKey"},
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "test-update-user",
+					PrivateKey: []byte(testSecondarySshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-private-key",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			masks: []string{"Username"},
+			chgFn: combine(changeUser("test-new-user"), changePrivateKey("")),
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "test-new-user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-username",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			masks: []string{"PrivateKey"},
+			chgFn: combine(changeUser(""), changePrivateKey(testSecondarySshPrivateKeyPem)),
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: []byte(testSecondarySshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-name",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Description: "test-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-description",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:       "test-name-repo",
+					Username:   "user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-name",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:        "test-name-repo",
+					Description: "test-update-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-description",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Name:        "test-update-name-repo",
+					Description: "test-description-repo",
+					Username:    "user",
+					PrivateKey:  []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kkms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(ctx, rw, rw, kkms)
+			assert.NoError(err)
+			require.NotNil(repo)
+
+			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+			store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+			tt.orig.StoreId = store.PublicId
+
+			orig, err := repo.CreateSshPrivateKeyCredential(ctx, prj.GetPublicId(), tt.orig)
+			assert.NoError(err)
+			require.NotNil(orig)
+
+			if tt.chgFn != nil {
+				orig = tt.chgFn(orig)
+			}
+			var version uint32
+			if orig != nil {
+				version = orig.GetVersion()
+			}
+			got, gotCount, err := repo.UpdateSshPrivateKeyCredential(ctx, prj.GetPublicId(), orig, version, tt.masks)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Equal(tt.wantCount, gotCount, "row count")
+				assert.Nil(got)
+				return
+			}
+			assert.NoError(err)
+			assert.Empty(tt.orig.PublicId)
+			require.NotNil(got)
+			assertPublicId(t, credential.SshPrivateKeyCredentialPrefix, got.PublicId)
+			assert.Equal(tt.wantCount, gotCount, "row count")
+			assert.NotSame(tt.orig, got)
+			assert.Equal(tt.orig.StoreId, got.StoreId)
+			underlyingDB, err := conn.SqlDB(ctx)
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
+			if tt.want.Name == "" {
+				got := got.clone()
+				dbassert.IsNull(got, "name")
+			} else {
+				assert.Equal(tt.want.Name, got.Name)
+			}
+
+			if tt.want.Description == "" {
+				got := got.clone()
+				dbassert.IsNull(got, "description")
+			} else {
+				assert.Equal(tt.want.Description, got.Description)
+			}
+
+			assert.Equal(tt.want.Username, got.Username)
+
+			// Validate only PrivateKeyHmac is returned
+			assert.Empty(got.PrivateKey)
+			assert.Empty(got.PrivateKeyEncrypted)
+			assert.NotEmpty(got.PrivateKeyHmac)
+
+			// Validate hmac
+			databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
+			require.NoError(err)
+			hm, err := crypto.HmacSha256(ctx, tt.want.PrivateKey, databaseWrapper, []byte(store.GetPublicId()), nil)
+			require.NoError(err)
+			assert.Equal([]byte(hm), got.PrivateKeyHmac)
 
 			if tt.wantCount > 0 {
 				assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
