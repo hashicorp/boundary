@@ -57,6 +57,16 @@ func TestValidMappingOverrides(t *testing.T) {
 			ct:   credential.UsernamePasswordType,
 			want: true,
 		},
+		{
+			m:    allocSshPrivateKeyOverride(),
+			ct:   credential.UnspecifiedType,
+			want: false,
+		},
+		{
+			m:    allocSshPrivateKeyOverride(),
+			ct:   credential.SshPrivateKeyType,
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
