@@ -452,7 +452,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 		return nil, db.NoRowsAffected, err
 	}
 
-	// Clear password fields, only PrivateKeyHmac should be returned
+	// Clear private key fields, only PrivateKeyHmac should be returned
 	returnedCredential.PrivateKeyEncrypted = nil
 	returnedCredential.PrivateKey = nil
 
