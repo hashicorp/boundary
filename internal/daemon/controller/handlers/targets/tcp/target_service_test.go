@@ -2734,7 +2734,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	require.NoError(t, err)
 	credResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
 		CredentialStoreId: staticStore.GetPublicId(),
-		Type:              credstatic.UsernamePasswordSubtype.String(),
+		Type:              credential.UsernamePasswordSubtype.String(),
 		Name:              wrapperspb.String("Cred Name"),
 		Description:       wrapperspb.String("Cred Description"),
 		Attrs: &credpb.Credential_UsernamePasswordAttributes{

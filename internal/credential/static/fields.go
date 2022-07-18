@@ -6,4 +6,5 @@ const (
 	descriptionField = "Description"
 	usernameField    = "Username"
 	passwordField    = "Password"
+	privateKeyField  = "PrivateKey"
 )
