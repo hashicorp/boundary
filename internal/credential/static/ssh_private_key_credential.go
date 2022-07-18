@@ -16,7 +16,7 @@ import (
 
 var _ credential.Static = (*SshPrivateKeyCredential)(nil)
 
-// A SshPrivateKeyCredential contains the credential with a username and password.
+// A SshPrivateKeyCredential contains the credential with a username and private key.
 // It is owned by a credential store.
 type SshPrivateKeyCredential struct {
 	*store.SshPrivateKeyCredential
