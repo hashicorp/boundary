@@ -35,13 +35,15 @@ func NewSshPrivateKeyCredential(
 ) (*SshPrivateKeyCredential, error) {
 	const op = "static.NewSshPrivateKeyCredential"
 
-	_, err := ssh.ParsePrivateKey(privateKey)
-	switch {
-	case err == nil:
-	case err.Error() == (&ssh.PassphraseMissingError{}).Error():
-		// This is okay, if it's brokered and the client can use it, no worries
-	default:
-		return nil, errors.Wrap(ctx, err, op)
+	if len(privateKey) != 0 {
+		_, err := ssh.ParsePrivateKey(privateKey)
+		switch {
+		case err == nil:
+		case err.Error() == (&ssh.PassphraseMissingError{}).Error():
+			// This is okay, if it's brokered and the client can use it, no worries
+		default:
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	opts := getOpts(opt...)
