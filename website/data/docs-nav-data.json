@@ -4,6 +4,10 @@
     "path": "what-is-boundary"
   },
   {
+    "title": "Use Cases",
+    "path": "use-cases"
+  },
+  {
     "title": "Getting Started",
     "routes": [
       {
