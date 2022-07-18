@@ -53,17 +53,16 @@ func TestList(t *testing.T) {
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 	storeNoCreds := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
+	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
 	var wantCreds []*pb.Credential
 	for i := 0; i < 10; i++ {
 		user := fmt.Sprintf("user-%d", i)
 		pass := fmt.Sprintf("pass-%d", i)
 		c := static.TestUsernamePasswordCredential(t, conn, wrapper, user, pass, store.GetPublicId(), prj.GetPublicId())
-
-		databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
-		require.NoError(t, err)
 		hm, err := crypto.HmacSha256(context.Background(), []byte(pass), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 		require.NoError(t, err)
-
 		wantCreds = append(wantCreds, &pb.Credential{
 			Id:                c.GetPublicId(),
 			CredentialStoreId: store.GetPublicId(),
@@ -77,6 +76,26 @@ func TestList(t *testing.T) {
 				UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 					Username:     wrapperspb.String(c.GetUsername()),
 					PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
+				},
+			},
+		})
+
+		spk := static.TestSshPrivateKeyCredential(t, conn, wrapper, user, static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
+		hm, err = crypto.HmacSha256(context.Background(), []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
+		require.NoError(t, err)
+		wantCreds = append(wantCreds, &pb.Credential{
+			Id:                spk.GetPublicId(),
+			CredentialStoreId: store.GetPublicId(),
+			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+			CreatedTime:       spk.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       spk.GetUpdateTime().GetTimestamp(),
+			Version:           spk.GetVersion(),
+			Type:              credential.SshPrivateKeySubtype.String(),
+			AuthorizedActions: testAuthorizedActions,
+			Attrs: &pb.Credential_SshPrivateKeyAttributes{
+				SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+					Username:       wrapperspb.String(c.GetUsername()),
+					PrivateKeyHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
 				},
 			},
 		})
@@ -110,7 +129,7 @@ func TestList(t *testing.T) {
 		{
 			name:    "Filter on Attribute",
 			req:     &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/username"==%q`, wantCreds[2].GetUsernamePasswordAttributes().GetUsername().Value)},
-			res:     &pbs.ListCredentialsResponse{Items: wantCreds[2:3]},
+			res:     &pbs.ListCredentialsResponse{Items: wantCreds[2:4]},
 			anonRes: &pbs.ListCredentialsResponse{}, // anonymous user does not have access to attributes
 		},
 		{
@@ -170,17 +189,20 @@ func TestGet(t *testing.T) {
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
+	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	cred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
-	credPrev := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), static.WithPublicId(fmt.Sprintf("%s_1234567890", credential.PreviousUsernamePasswordCredentialPrefix)))
 	s, err := NewService(staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
-	// Calculate hmac
-	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
+	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
+	upCredPrev := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), static.WithPublicId(fmt.Sprintf("%s_1234567890", credential.PreviousUsernamePasswordCredentialPrefix)))
+	upHm, err := crypto.HmacSha256(context.Background(), []byte("pass"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 	require.NoError(t, err)
-	hm, err := crypto.HmacSha256(context.Background(), []byte("pass"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
+
+	spkCred := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
+	spkHm, err := crypto.HmacSha256(context.Background(), []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -190,44 +212,66 @@ func TestGet(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "success",
-			id:   cred.GetPublicId(),
+			name: "success-up",
+			id:   upCred.GetPublicId(),
 			res: &pbs.GetCredentialResponse{
 				Item: &pb.Credential{
-					Id:                cred.GetPublicId(),
-					CredentialStoreId: cred.GetStoreId(),
+					Id:                upCred.GetPublicId(),
+					CredentialStoreId: upCred.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:              credential.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
-					CreatedTime:       cred.CreateTime.GetTimestamp(),
-					UpdatedTime:       cred.UpdateTime.GetTimestamp(),
+					CreatedTime:       upCred.CreateTime.GetTimestamp(),
+					UpdatedTime:       upCred.UpdateTime.GetTimestamp(),
 					Version:           1,
 					Attrs: &pb.Credential_UsernamePasswordAttributes{
 						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 							Username:     wrapperspb.String("user"),
-							PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
+							PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(upHm)),
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "success-prev-prefix",
-			id:   credPrev.GetPublicId(),
+			name: "success-up-prev-prefix",
+			id:   upCredPrev.GetPublicId(),
 			res: &pbs.GetCredentialResponse{
 				Item: &pb.Credential{
-					Id:                credPrev.GetPublicId(),
-					CredentialStoreId: cred.GetStoreId(),
+					Id:                upCredPrev.GetPublicId(),
+					CredentialStoreId: upCred.GetStoreId(),
 					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:              credential.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
-					CreatedTime:       credPrev.CreateTime.GetTimestamp(),
-					UpdatedTime:       credPrev.UpdateTime.GetTimestamp(),
+					CreatedTime:       upCredPrev.CreateTime.GetTimestamp(),
+					UpdatedTime:       upCredPrev.UpdateTime.GetTimestamp(),
 					Version:           1,
 					Attrs: &pb.Credential_UsernamePasswordAttributes{
 						UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
 							Username:     wrapperspb.String("user"),
-							PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
+							PasswordHmac: base64.RawURLEncoding.EncodeToString([]byte(upHm)),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "success-spk",
+			id:   spkCred.GetPublicId(),
+			res: &pbs.GetCredentialResponse{
+				Item: &pb.Credential{
+					Id:                spkCred.GetPublicId(),
+					CredentialStoreId: spkCred.GetStoreId(),
+					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:              credential.SshPrivateKeySubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+					CreatedTime:       spkCred.CreateTime.GetTimestamp(),
+					UpdatedTime:       spkCred.UpdateTime.GetTimestamp(),
+					Version:           1,
+					Attrs: &pb.Credential_SshPrivateKeyAttributes{
+						SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+							Username:       wrapperspb.String("user"),
+							PrivateKeyHmac: base64.RawURLEncoding.EncodeToString([]byte(spkHm)),
 						},
 					},
 				},
@@ -287,9 +331,11 @@ func TestDelete(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	cred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	s, err := NewService(staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
+
+	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
+	spkCred := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 
 	cases := []struct {
 		name string
@@ -298,8 +344,12 @@ func TestDelete(t *testing.T) {
 		res  *pbs.DeleteCredentialResponse
 	}{
 		{
-			name: "success",
-			id:   cred.GetPublicId(),
+			name: "success-up",
+			id:   upCred.GetPublicId(),
+		},
+		{
+			name: "success-spk",
+			id:   spkCred.GetPublicId(),
 		},
 		{
 			name: "not found error",

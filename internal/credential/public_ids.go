@@ -9,7 +9,10 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(Domain, UsernamePasswordSubtype, UsernamePasswordCredentialPrefix, PreviousUsernamePasswordCredentialPrefix, SshPrivateKeyCredentialPrefix); err != nil {
+	if err := subtypes.Register(Domain, UsernamePasswordSubtype, UsernamePasswordCredentialPrefix, PreviousUsernamePasswordCredentialPrefix); err != nil {
+		panic(err)
+	}
+	if err := subtypes.Register(Domain, SshPrivateKeySubtype, SshPrivateKeyCredentialPrefix); err != nil {
 		panic(err)
 	}
 }

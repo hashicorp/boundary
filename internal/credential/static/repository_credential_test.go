@@ -190,6 +190,178 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 	})
 }
 
+func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
+
+	tests := []struct {
+		name        string
+		scopeId     string
+		cred        *SshPrivateKeyCredential
+		wantErr     bool
+		wantErrCode errors.Code
+	}{
+		{
+			name:        "missing-store",
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:        "missing-embedded-cred",
+			cred:        &SshPrivateKeyCredential{},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "missing-scope-id",
+			cred: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "my-user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+					StoreId:    cs.PublicId,
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:    "missing-username",
+			scopeId: prj.PublicId,
+			cred: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+					StoreId:    cs.PublicId,
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:    "missing-private-key",
+			scopeId: prj.PublicId,
+			cred: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username: "my-user",
+					StoreId:  cs.PublicId,
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:    "missing-store-id",
+			scopeId: prj.PublicId,
+			cred: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "my-user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:    "valid",
+			scopeId: prj.PublicId,
+			cred: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "my-user",
+					PrivateKey: []byte(TestSshPrivateKeyPem),
+					StoreId:    cs.PublicId,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kkms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(ctx, rw, rw, kkms)
+			require.NoError(err)
+			require.NotNil(repo)
+
+			got, err := repo.CreateSshPrivateKeyCredential(ctx, tt.scopeId, tt.cred)
+			if tt.wantErr {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assertPublicId(t, credential.SshPrivateKeyCredentialPrefix, got.PublicId)
+			assert.Equal(tt.cred.Username, got.Username)
+			assert.Nil(got.PrivateKey)
+			assert.Nil(got.PrivateKeyEncrypted)
+
+			// Validate password
+			lookupCred := allocSshPrivateKeyCredential()
+			lookupCred.PublicId = got.PublicId
+			require.NoError(rw.LookupById(ctx, lookupCred))
+
+			databaseWrapper, err := kkms.GetWrapper(context.Background(), tt.scopeId, kms.KeyPurposeDatabase)
+			require.NoError(err)
+			require.NoError(lookupCred.decrypt(ctx, databaseWrapper))
+			assert.Equal(tt.cred.PrivateKey, lookupCred.PrivateKey)
+
+			assert.Empty(got.PrivateKey)
+			assert.Empty(got.PrivateKeyEncrypted)
+			assert.NotEmpty(got.PrivateKeyHmac)
+
+			// Validate hmac
+			hm, err := crypto.HmacSha256(ctx, tt.cred.PrivateKey, databaseWrapper, []byte(tt.cred.StoreId), nil)
+			require.NoError(err)
+			assert.Equal([]byte(hm), got.PrivateKeyHmac)
+
+			// Validate oplog
+			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+		})
+	}
+
+	t.Run("duplicate-names", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(ctx, rw, rw, kms)
+		require.NoError(err)
+		require.NotNil(repo)
+		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		require.NoError(err)
+
+		prjCs := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+		orgCs := TestCredentialStore(t, conn, wrapper, org.GetPublicId())
+
+		in, err := NewUsernamePasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("original"))
+		assert.NoError(err)
+
+		got, err := repo.CreateUsernamePasswordCredential(ctx, prj.PublicId, in)
+		require.NoError(err)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
+
+		in2, err := NewUsernamePasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		require.NoError(err)
+		got2, err := repo.CreateUsernamePasswordCredential(ctx, prj.GetPublicId(), in2)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
+		assert.Nil(got2)
+
+		// Creating credential in different scope should not conflict
+		in3, err := NewUsernamePasswordCredential(orgCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		require.NoError(err)
+		got3, err := repo.CreateUsernamePasswordCredential(ctx, org.GetPublicId(), in3)
+		require.NoError(err)
+		assert.Equal(in3.Name, got3.Name)
+		assert.Equal(in3.Description, got3.Description)
+
+		assert.NotEqual(got.PublicId, got3.PublicId)
+	})
+}
+
 func TestRepository_LookupCredential(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -198,18 +370,24 @@ func TestRepository_LookupCredential(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	store := TestCredentialStore(t, conn, wrapper, prj.PublicId)
-	cred := TestUsernamePasswordCredential(t, conn, wrapper, "username", "password", store.PublicId, prj.PublicId)
+	upCred := TestUsernamePasswordCredential(t, conn, wrapper, "username", "password", store.PublicId, prj.PublicId)
+	spkCred := TestSshPrivateKeyCredential(t, conn, wrapper, "username", TestSshPrivateKeyPem, store.PublicId, prj.PublicId)
 
 	tests := []struct {
 		name    string
 		id      string
-		want    *UsernamePasswordCredential
+		want    credential.Static
 		wantErr errors.Code
 	}{
 		{
-			name: "valid-with-client-cert",
-			id:   cred.GetPublicId(),
-			want: cred,
+			name: "up-valid",
+			id:   upCred.GetPublicId(),
+			want: upCred,
+		},
+		{
+			name: "spk-valid",
+			id:   spkCred.GetPublicId(),
+			want: spkCred,
 		},
 		{
 			name:    "empty-public-id",
@@ -245,11 +423,19 @@ func TestRepository_LookupCredential(t *testing.T) {
 				return
 			}
 
-			assert.NotNil(got)
-			upCred := got.(*UsernamePasswordCredential)
-			assert.Empty(upCred.Password)
-			assert.Empty(upCred.CtPassword)
-			assert.NotEmpty(upCred.PasswordHmac)
+			require.NotNil(got)
+			switch v := got.(type) {
+			case *UsernamePasswordCredential:
+				assert.Empty(v.Password)
+				assert.Empty(v.CtPassword)
+				assert.NotEmpty(v.PasswordHmac)
+			case *SshPrivateKeyCredential:
+				assert.Empty(v.PrivateKey)
+				assert.Empty(v.PrivateKeyEncrypted)
+				assert.NotEmpty(v.PrivateKeyHmac)
+			default:
+				require.Fail("unknown type")
+			}
 		})
 	}
 }
@@ -261,15 +447,12 @@ func TestRepository_ListCredentials(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(context.Background(), rw, rw, kms)
-	assert.NoError(err)
-	require.NotNil(repo)
-
-	total := 10
+	defaultLimit := 5
+	total := 20
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), total)
+	TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), total/2)
+	TestSshPrivateKeyCredentials(t, conn, wrapper, "user", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), total/2)
 
 	type args struct {
 		storeId string
@@ -293,7 +476,7 @@ func TestRepository_ListCredentials(t *testing.T) {
 			args: args{
 				storeId: store.PublicId,
 			},
-			wantCnt: total,
+			wantCnt: defaultLimit * 2,
 		},
 		{
 			name: "custom-limit",
@@ -301,7 +484,7 @@ func TestRepository_ListCredentials(t *testing.T) {
 				storeId: store.PublicId,
 				opt:     []Option{WithLimit(3)},
 			},
-			wantCnt: 3,
+			wantCnt: 3 * 2,
 		},
 		{
 			name: "bad-store",
@@ -312,16 +495,33 @@ func TestRepository_ListCredentials(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		got, err := repo.ListCredentials(context.Background(), tt.args.storeId, tt.args.opt...)
-		require.NoError(err)
-		assert.Equal(tt.wantCnt, len(got))
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			repo, err := NewRepository(context.Background(), rw, rw, kms)
+			assert.NoError(err)
+			require.NotNil(repo)
+			repo.defaultLimit = defaultLimit
 
-		// Validate only passwordHmac is returned
-		for _, c := range got {
-			assert.Empty(c.Password)
-			assert.Empty(c.CtPassword)
-			assert.NotEmpty(c.PasswordHmac)
-		}
+			got, err := repo.ListCredentials(context.Background(), tt.args.storeId, tt.args.opt...)
+			require.NoError(err)
+			assert.Equal(tt.wantCnt, len(got))
+
+			// Validate only hmac values are returned
+			for _, c := range got {
+				switch v := c.(type) {
+				case *UsernamePasswordCredential:
+					assert.Empty(v.Password)
+					assert.Empty(v.CtPassword)
+					assert.NotEmpty(v.PasswordHmac)
+				case *SshPrivateKeyCredential:
+					assert.Empty(v.PrivateKey)
+					assert.Empty(v.PrivateKeyEncrypted)
+					assert.NotEmpty(v.PrivateKeyHmac)
+				default:
+					require.Fail("unknown type")
+				}
+			}
+		})
 	}
 }
 
@@ -335,7 +535,8 @@ func TestRepository_DeleteCredential(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	store := TestCredentialStore(t, conn, wrapper, prj.PublicId)
-	cred := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
+	upCred := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
+	spkCred := TestSshPrivateKeyCredential(t, conn, wrapper, "user", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 
 	tests := []struct {
 		name        string
@@ -355,8 +556,13 @@ func TestRepository_DeleteCredential(t *testing.T) {
 			want: 0,
 		},
 		{
-			name: "With existing id",
-			in:   cred.GetPublicId(),
+			name: "With existing username-password id",
+			in:   upCred.GetPublicId(),
+			want: 1,
+		},
+		{
+			name: "With existing ssh private key id",
+			in:   spkCred.GetPublicId(),
 			want: 1,
 		},
 	}

@@ -16,16 +16,6 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
-const privKeyPem = `
------BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
-QyNTUxOQAAACDxfwhEAZKrnsbQxOjVA3PFiB3bW3tSpNKx8TdMiCqlzQAAAJDmpbfr5qW3
-6wAAAAtzc2gtZWQyNTUxOQAAACDxfwhEAZKrnsbQxOjVA3PFiB3bW3tSpNKx8TdMiCqlzQ
-AAAEBvvkQkH06ad2GpX1VVARzu9NkHA6gzamAaQ/hkn5FuZvF/CEQBkquextDE6NUDc8WI
-Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
------END OPENSSH PRIVATE KEY-----
-`
-
 func TestSshPrivateKeyCredential_New(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -33,7 +23,7 @@ func TestSshPrivateKeyCredential_New(t *testing.T) {
 	kkms := kms.TestKms(t, conn, wrapper)
 	rw := db.New(conn)
 
-	privKey := []byte(privKeyPem)
+	privKey := []byte(TestSshPrivateKeyPem)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
@@ -193,7 +183,7 @@ func TestSshPrivateKeyCredential_New(t *testing.T) {
 
 			// KeyId is allocated via kms no need to validate in this test
 			tt.want.KeyId = got2.KeyId
-			got2.CtPrivateKey = nil
+			got2.PrivateKeyEncrypted = nil
 
 			// encrypt also calculates the hmac, validate it is correct
 			hm, err := crypto.HmacSha256(ctx, got.PrivateKey, databaseWrapper, []byte(got.StoreId), nil)
