@@ -50,7 +50,7 @@ func TestSshPrivateKeyCredential_New(t *testing.T) {
 				storeId:  cs.PublicId,
 			},
 			want:           allocSshPrivateKeyCredential(),
-			wantAllocError: true,
+			wantEncryptErr: true,
 		},
 		{
 			name: "missing-username",
