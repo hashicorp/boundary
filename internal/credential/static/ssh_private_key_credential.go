@@ -24,7 +24,7 @@ type SshPrivateKeyCredential struct {
 }
 
 // NewSshPrivateKeyCredential creates a new in memory static Credential containing a
-// username and password that is assigned to storeId. Name and description are the only
+// username and private key that is assigned to storeId. Name and description are the only
 // valid options. All other options are ignored.
 func NewSshPrivateKeyCredential(
 	ctx context.Context,
