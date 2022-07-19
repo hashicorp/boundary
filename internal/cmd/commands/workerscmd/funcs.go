@@ -10,6 +10,35 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+func init() {
+	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
+	extraSynopsisFunc = extraSynopsisFuncImpl
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+	executeExtraActions = executeExtraActionsImpl
+}
+
+func extraActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"add-worker-tags":    {"id", "tags", "version"},
+		"set-worker-tags":    {"id", "tags", "version"},
+		"remove-worker-tags": {"id", "tags", "version"},
+	}
+}
+
+func extraSynopsisFuncImpl(c *Command) string {
+	switch c.Func {
+	case "add-worker-tags":
+		return "Add api tags to the specified worker"
+	case "set-worker-tags":
+		return "Set api tags for the specified worker"
+	case "remove-worker-tags":
+		return "Remove api tags from the specified worker"
+	default:
+		return ""
+	}
+}
+
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
@@ -25,10 +54,82 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"  Please see the workers subcommand help for detailed usage information.",
 		})
+	case "add-worker-tags":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary workers add-worker-tags [sub command] [args]",
+			"",
+			"  This command allows adding api tags to worker resources. Example:",
+			"",
+			"    Add a set of api tags to a specified worker:",
+			"",
+			`      & boundary workers add-worker-tags -id w_1234567890 -tags "key1=val-a, key2=val-b,val-c"`,
+			"",
+			"",
+		})
+	case "set-worker-tags":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary workers set-worker-tags [sub command] [args]",
+			"",
+			"  This command allows setting api tags for worker resources. Example:",
+			"",
+			"    Set api tags for a specified worker:",
+			"",
+			`      & boundary workers set-worker-tags -id w_1234567890 -tags "key1=val-a, key2=val-b,val-c"`,
+			"",
+			"",
+		})
+	case "remove-worker-tags":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary workers remove-worker-tags [sub command] [args]",
+			"",
+			"  This command allows removing api tags from worker resources. Example:",
+			"",
+			"    Remove a set of api tags to a specified worker:",
+			"",
+			`      & boundary workers remove-worker-tags -id w_1234567890 -tags "key1=val-a, key2=val-b,val-c"`,
+			"",
+			"",
+		})
 	default:
 		helpStr = helpMap[c.Func]()
 	}
 	return helpStr + c.Flags().Help()
+}
+
+func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
+	for _, name := range flagsMap[c.Func] {
+		switch name {
+		case "tags":
+			f.StringSliceMapVar(&base.StringSliceMapVar{
+				Name:   "tags",
+				Target: &c.FlagTags,
+				Usage:  "The api tag resources to add, remove, or set.",
+			})
+		}
+	}
+}
+
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]workers.Option) bool {
+	switch c.Func {
+	case "add-worker-tags", "remove-worker-tags":
+		if len(c.FlagTags) == 0 {
+			c.UI.Error("No tags supplied via -tags")
+			return false
+		}
+	}
+	return true
+}
+
+func executeExtraActionsImpl(c *Command, inResult api.GenericResult, inError error, workerClient *workers.Client, version uint32, opts []workers.Option) (api.GenericResult, error) {
+	switch c.Func {
+	case "add-worker-tags":
+		return workerClient.AddWorkerTags(c.Context, c.FlagId, version, c.FlagTags)
+	case "set-worker-tags":
+		return workerClient.SetWorkerTags(c.Context, c.FlagId, version, c.FlagTags)
+	case "remove-worker-tags":
+		return workerClient.RemoveWorkerTags(c.Context, c.FlagId, version, c.FlagTags)
+	}
+	return inResult, inError
 }
 
 func (c *Command) printListTable(items []*workers.Worker) string {

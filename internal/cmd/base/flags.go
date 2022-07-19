@@ -682,6 +682,94 @@ func mapToKV(m map[string]string) string {
 	return strings.Join(list, ",")
 }
 
+// StringSliceMapVar maps a key string to a slice of string values.
+// This is useful for cases such as modifying Worker tags, which can have
+// multiple values associated per key.
+type StringSliceMapVar struct {
+	Name       string
+	Aliases    []string
+	Usage      string
+	Default    map[string][]string
+	Hidden     bool
+	Target     *map[string][]string
+	Completion complete.Predictor
+}
+
+func (f *FlagSet) StringSliceMapVar(i *StringSliceMapVar) {
+	f.VarFlag(&VarFlag{
+		Name:       i.Name,
+		Aliases:    i.Aliases,
+		Usage:      i.Usage,
+		Value:      newStringSliceMapValue(i.Default, i.Target, i.Hidden),
+		Completion: i.Completion,
+	})
+}
+
+type stringSliceMapValue struct {
+	hidden bool
+	target *map[string][]string
+}
+
+func newStringSliceMapValue(def map[string][]string, target *map[string][]string, hidden bool) *stringSliceMapValue {
+	*target = def
+	return &stringSliceMapValue{
+		hidden: hidden,
+		target: target,
+	}
+}
+
+func (s *stringSliceMapValue) Set(val string) error {
+	kv := strings.TrimSpace(val)
+	if *s.target == nil {
+		*s.target = make(map[string][]string)
+	}
+
+	split := strings.Split(kv, "=")
+	if len(split) < 2 {
+		return fmt.Errorf("missing = in KV pair: %q", val)
+	}
+
+	key := split[0]
+	for i := 1; i <= len(split)-1; i++ {
+		var vals []string
+		var nextKey string
+
+		if i == len(split)-1 {
+			// handle edge case at final index; assign values and don't worry about next key
+			vals = strings.Split(split[i], ",")
+		} else {
+			// ..otherwise split by comma and identify key for the next loop
+			vals = strings.Split(split[i], ",")
+			nextKey = vals[len(vals)-1]
+			vals = vals[:len(vals)-1]
+		}
+
+		// trim space and assign to map
+		key = strings.TrimSpace(key)
+		for i, v := range vals {
+			vals[i] = strings.TrimSpace(v)
+		}
+		(*s.target)[key] = vals
+		key = nextKey
+	}
+
+	return nil
+}
+
+func sliceMapToKV(m map[string][]string) string {
+	list := make([]string, 0, len(m))
+	for k, vals := range m {
+		vv := strings.Join(vals, ",")
+		list = append(list, k+"="+vv)
+	}
+	return strings.Join(list, ", ")
+}
+
+func (c *stringSliceMapValue) Get() interface{} { return *c.target }
+func (c *stringSliceMapValue) String() string   { return sliceMapToKV(*c.target) }
+func (c *stringSliceMapValue) Example() string  { return "key1=val-a, key2=val-b,val-c" }
+func (c *stringSliceMapValue) Hidden() bool     { return c.hidden }
+
 // -- VarFlag
 type VarFlag struct {
 	Name       string

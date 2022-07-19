@@ -737,7 +737,13 @@ var inputStructs = []*structInfo{
 				PostType: "worker_generated_auth_token",
 			},
 		},
-		pluralResourceName:  "workers",
+		pluralResourceName: "workers",
+		sliceSubtypes: map[string]sliceSubtypeInfo{
+			"WorkerTags": {
+				SliceType: "map[string][]string",
+				VarName:   "tags",
+			},
+		},
 		createResponseTypes: true,
 		recursiveListing:    true,
 		versionEnabled:      true,
