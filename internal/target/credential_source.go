@@ -29,8 +29,8 @@ type CredentialSource interface {
 // CredentialSources contains slices of credential publicIds
 // per purpose to be attached to the target.
 type CredentialSources struct {
-	ApplicationCredentialIds []string
-	EgressCredentialIds      []string
+	BrokeredCredentialIds            []string
+	InjectedApplicationCredentialIds []string
 }
 
 // A TargetCredentialSource represents the relationship between a target and a

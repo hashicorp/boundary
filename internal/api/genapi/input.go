@@ -679,8 +679,13 @@ var inputStructs = []*structInfo{
 				FieldType: "[]string",
 			},
 			{
-				Name:      "EgressCredentialSourceIds",
-				ProtoName: "egress_credential_source_ids",
+				Name:      "BrokeredCredentialSourceIds",
+				ProtoName: "brokered_credential_source_ids",
+				FieldType: "[]string",
+			},
+			{
+				Name:      "InjectedApplicationCredentialSourceIds",
+				ProtoName: "injected_application_credential_source_ids",
 				FieldType: "[]string",
 			},
 		},

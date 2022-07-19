@@ -16,7 +16,7 @@ begin;
   insert into session_credential_dynamic
     ( session_id,     library_id,     credential_id,  credential_purpose)
   values
-    ('s1____walter',  'vl______wvl1', null,           'application');
+    ('s1____walter',  'vl______wvl1', null,           'brokered');
   select is(count(*), 1::bigint) from wh_credential_dimension where organization_id = 'o_____widget';
 
   -- another session with:
@@ -31,7 +31,7 @@ begin;
   insert into session_credential_dynamic
     ( session_id,    library_id,     credential_id,  credential_purpose)
   values
-    ('s2____walter', 'vl______wvl1', null,           'application');
+    ('s2____walter', 'vl______wvl1', null,           'brokered');
   select is(count(*), 1::bigint) from wh_credential_dimension where organization_id = 'o_____widget';
 
   -- change the crediential for the target
@@ -45,7 +45,7 @@ begin;
   insert into session_credential_dynamic
     ( session_id,    library_id,     credential_id,  credential_purpose)
   values
-    ('s3____walter', 'vl______wvl1', null,           'application');
+    ('s3____walter', 'vl______wvl1', null,           'brokered');
   select is(count(*), 2::bigint) from wh_credential_dimension where organization_id = 'o_____widget';
 
   -- start another session, should result in a one new credential dimensions
@@ -56,8 +56,8 @@ begin;
   insert into session_credential_dynamic
     ( session_id,     library_id,     credential_id,  credential_purpose)
   values
-    ('s4____walter',  'vl______wvl1', null,           'application'),
-    ('s4____walter',  'vl______wvl2', null,           'application');
+    ('s4____walter',  'vl______wvl1', null,           'brokered'),
+    ('s4____walter',  'vl______wvl2', null,           'brokered');
   select is(count(*), 3::bigint) from wh_credential_dimension where organization_id = 'o_____widget';
 
   -- change the crediential again for the target
@@ -71,8 +71,8 @@ begin;
   insert into session_credential_dynamic
     ( session_id,     library_id,     credential_id,  credential_purpose)
   values
-    ('s5____walter',  'vl______wvl1', null,           'application'),
-    ('s5____walter',  'vl______wvl2', null,           'application');
+    ('s5____walter',  'vl______wvl1', null,           'brokered'),
+    ('s5____walter',  'vl______wvl2', null,           'brokered');
   select is(count(*), 4::bigint) from wh_credential_dimension where organization_id = 'o_____widget';
   select is(count(*), 2::bigint) from wh_credential_dimension where organization_id = 'o_____widget' and current_row_indicator = 'Current';
 

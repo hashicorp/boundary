@@ -46,7 +46,7 @@ func TestStaticCredential_New(t *testing.T) {
 				StaticCredential: &store.StaticCredential{
 					TargetId:          "targ_0000000",
 					CredentialId:      "cred_0000000",
-					CredentialPurpose: string(credential.ApplicationPurpose),
+					CredentialPurpose: string(credential.BrokeredPurpose),
 				},
 			},
 		},
@@ -55,7 +55,7 @@ func TestStaticCredential_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := target.NewStaticCredential(tt.args.targetId, tt.args.credId, credential.ApplicationPurpose)
+			got, err := target.NewStaticCredential(tt.args.targetId, tt.args.credId, credential.BrokeredPurpose)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)

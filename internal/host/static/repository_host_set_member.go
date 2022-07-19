@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 // AddSetMembers adds hostIds to setId in the repository. It returns a

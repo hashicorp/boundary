@@ -71,11 +71,11 @@ func TestTargets(t *testing.T) {
 							HostCatalogId: "host-catalog-id",
 						},
 					},
-					SessionMaxSeconds:              &wrapperspb.UInt32Value{Value: 0},
-					SessionConnectionLimit:         &wrapperspb.Int32Value{Value: 0},
-					WorkerFilter:                   &wrapperspb.StringValue{Value: "worker-filter"},
-					ApplicationCredentialSourceIds: []string{"application-credential-source-id"},
-					ApplicationCredentialSources: []*pb.CredentialSource{
+					SessionMaxSeconds:           &wrapperspb.UInt32Value{Value: 0},
+					SessionConnectionLimit:      &wrapperspb.Int32Value{Value: 0},
+					WorkerFilter:                &wrapperspb.StringValue{Value: "worker-filter"},
+					BrokeredCredentialSourceIds: []string{"brokered-credential-source-id"},
+					BrokeredCredentialSources: []*pb.CredentialSource{
 						{
 							Id:                "id",
 							Name:              "name",
@@ -85,8 +85,8 @@ func TestTargets(t *testing.T) {
 							CredentialType:    "credential-type",
 						},
 					},
-					EgressCredentialSourceIds: []string{"egress-credential-source-id"},
-					EgressCredentialSources: []*pb.CredentialSource{
+					InjectedApplicationCredentialSourceIds: []string{"injected-app-credential-source-id"},
+					InjectedApplicationCredentialSources: []*pb.CredentialSource{
 						{
 							Id:                "id",
 							Name:              "name",
@@ -141,11 +141,11 @@ func TestTargets(t *testing.T) {
 							HostCatalogId: "host-catalog-id",
 						},
 					},
-					SessionMaxSeconds:              &wrapperspb.UInt32Value{Value: 0},
-					SessionConnectionLimit:         &wrapperspb.Int32Value{Value: 0},
-					WorkerFilter:                   &wrapperspb.StringValue{Value: "worker-filter"},
-					ApplicationCredentialSourceIds: []string{"application-credential-source-id"},
-					ApplicationCredentialSources: []*pb.CredentialSource{
+					SessionMaxSeconds:           &wrapperspb.UInt32Value{Value: 0},
+					SessionConnectionLimit:      &wrapperspb.Int32Value{Value: 0},
+					WorkerFilter:                &wrapperspb.StringValue{Value: "worker-filter"},
+					BrokeredCredentialSourceIds: []string{"brokered-credential-source-id"},
+					BrokeredCredentialSources: []*pb.CredentialSource{
 						{
 							Id:                "id",
 							Name:              "name",
@@ -155,8 +155,8 @@ func TestTargets(t *testing.T) {
 							CredentialType:    "credential-type",
 						},
 					},
-					EgressCredentialSourceIds: []string{"egress-credential-source-id"},
-					EgressCredentialSources: []*pb.CredentialSource{
+					InjectedApplicationCredentialSourceIds: []string{"injected-app-credential-source-id"},
+					InjectedApplicationCredentialSources: []*pb.CredentialSource{
 						{
 							Id:                "id",
 							Name:              "name",

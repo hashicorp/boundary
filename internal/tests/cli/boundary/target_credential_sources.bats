@@ -34,7 +34,7 @@ export NEW_CREDENTIAL2='third-credential'
 @test "boundary/target: can add $NEW_CREDENTIAL credential source" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
-  run add_target_application_credential_sources $DEFAULT_TARGET $cid
+  run add_target_brokered_credential_sources $DEFAULT_TARGET $cid
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -50,7 +50,7 @@ export NEW_CREDENTIAL2='third-credential'
 @test "boundary/target: cannot add duplicate credential source" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
-  run add_target_application_credential_sources $DEFAULT_TARGET $cid
+  run add_target_brokered_credential_sources $DEFAULT_TARGET $cid
   echo "$output"
   [ "$status" -eq 1 ]
 }
@@ -58,7 +58,7 @@ export NEW_CREDENTIAL2='third-credential'
 @test "boundary/target: can delete $NEW_CREDENTIAL credential source" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
-  run remove_target_application_credential_sources $DEFAULT_TARGET $cid
+  run remove_target_brokered_credential_sources $DEFAULT_TARGET $cid
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -87,7 +87,7 @@ export NEW_CREDENTIAL2='third-credential'
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
   local cid1=$(credential_id $NEW_CREDENTIAL1 $csid)
   local cid2=$(credential_id $NEW_CREDENTIAL2 $csid)
-  run add_target_application_credential_sources $DEFAULT_TARGET $cid $cid1 $cid2
+  run add_target_brokered_credential_sources $DEFAULT_TARGET $cid $cid1 $cid2
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -106,7 +106,7 @@ export NEW_CREDENTIAL2='third-credential'
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
   local cid1=$(credential_id $NEW_CREDENTIAL1 $csid)
-  run remove_target_application_credential_sources $DEFAULT_TARGET $cid $cid1
+  run remove_target_brokered_credential_sources $DEFAULT_TARGET $cid $cid1
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -133,7 +133,7 @@ export NEW_CREDENTIAL2='third-credential'
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
   local cid1=$(credential_id $NEW_CREDENTIAL1 $csid)
   local cid2=$(credential_id $NEW_CREDENTIAL2 $csid)
-  run set_target_application_credential_sources $DEFAULT_TARGET $cid $cid1 $cid2
+  run set_target_brokered_credential_sources $DEFAULT_TARGET $cid $cid1 $cid2
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -151,7 +151,7 @@ export NEW_CREDENTIAL2='third-credential'
 @test "boundary/target: can set just $NEW_CREDENTIAL credential source" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
-  run set_target_application_credential_sources $DEFAULT_TARGET $cid
+  run set_target_brokered_credential_sources $DEFAULT_TARGET $cid
   echo "$output"
   [ "$status" -eq 0 ]
 }
