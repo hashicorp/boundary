@@ -239,7 +239,7 @@ begin;
 
   create table credential_purpose_enm (
     name text primary key
-      -- This constraint is updated in 39/01_credential.up.sql
+      -- This constraint is updated in 40/01_credential.up.sql
       constraint only_predefined_credential_purposes_allowed
       check (
         name in (
@@ -253,7 +253,7 @@ begin;
     'credential_purpose_enm is an enumeration table for credential purposes. '
     'It contains rows for representing the application, egress, and ingress credential purposes.';
 
-  -- These values are updated in 39/01_credential.up.sql
+  -- These values are updated in 40/01_credential.up.sql
   insert into credential_purpose_enm (name)
   values
     ('application'),
