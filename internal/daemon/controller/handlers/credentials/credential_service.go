@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
+	"golang.org/x/crypto/ssh"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -324,7 +325,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 	const op = "credentials.(Service).createInRepo"
 	switch item.GetType() {
 	case credential.UsernamePasswordSubtype.String():
-		cred, err := toUsernamePasswordStorageCredential(item.GetCredentialStoreId(), item)
+		cred, err := toUsernamePasswordStorageCredential(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -380,7 +381,7 @@ func (s Service) updateInRepo(
 			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 		}
 
-		cred, err := toUsernamePasswordStorageCredential(storeId, in)
+		cred, err := toUsernamePasswordStorageCredential(ctx, storeId, in)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert to username/password storage credential"))
 		}
@@ -561,7 +562,7 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 	return &out, nil
 }
 
-func toUsernamePasswordStorageCredential(storeId string, in *pb.Credential) (out *static.UsernamePasswordCredential, err error) {
+func toUsernamePasswordStorageCredential(ctx context.Context, storeId string, in *pb.Credential) (out *static.UsernamePasswordCredential, err error) {
 	const op = "credentials.toUsernamePasswordStorageCredential"
 	var opts []static.Option
 	if in.GetName() != nil {
@@ -578,7 +579,7 @@ func toUsernamePasswordStorageCredential(storeId string, in *pb.Credential) (out
 		credential.Password(attrs.GetPassword().GetValue()),
 		opts...)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential"))
 	}
 
 	return cs, err
@@ -602,7 +603,7 @@ func toSshPrivateKeyStorageCredential(ctx context.Context, storeId string, in *p
 		credential.PrivateKey(attrs.GetPrivateKey().GetValue()),
 		opts...)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential"))
 	}
 
 	return cs, err
@@ -638,13 +639,25 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 			if req.Item.GetUsernamePasswordAttributes().GetPassword().GetValue() == "" {
 				badFields[passwordField] = "Field required for creating a username-password credential."
 			}
+
 		case credential.SshPrivateKeySubtype.String():
 			if req.Item.GetSshPrivateKeyAttributes().GetUsername().GetValue() == "" {
 				badFields[usernameField] = "Field required for creating an SSH private key credential."
 			}
-			if req.Item.GetSshPrivateKeyAttributes().GetPrivateKey().GetValue() == "" {
+			privateKey := req.Item.GetSshPrivateKeyAttributes().GetPrivateKey().GetValue()
+			if privateKey == "" {
 				badFields[privateKeyField] = "Field required for creating an SSH private key credential."
+			} else {
+				_, err := ssh.ParsePrivateKey([]byte(privateKey))
+				switch {
+				case err == nil:
+				case err.Error() == (&ssh.PassphraseMissingError{}).Error():
+					// This is okay, if it's brokered and the client can use it, no worries
+				default:
+					badFields[privateKeyField] = "Unable to parse given private key value."
+				}
 			}
+
 		default:
 			badFields[globals.TypeField] = fmt.Sprintf("Unsupported credential type %q", req.Item.GetType())
 		}
@@ -666,14 +679,26 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), passwordField) && attrs.GetPassword().GetValue() == "" {
 				badFields[passwordField] = "This is a required field and cannot be set to empty."
 			}
+
 		case credential.SshPrivateKeySubtype.String():
 			attrs := req.GetItem().GetSshPrivateKeyAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
 				badFields[usernameField] = "This is a required field and cannot be set to empty."
 			}
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), privateKeyField) && attrs.GetPrivateKey().GetValue() == "" {
+			privateKey := attrs.GetPrivateKey().GetValue()
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), privateKeyField) && privateKey == "" {
 				badFields[privateKeyField] = "This is a required field and cannot be set to empty."
+			} else {
+				_, err := ssh.ParsePrivateKey([]byte(privateKey))
+				switch {
+				case err == nil:
+				case err.Error() == (&ssh.PassphraseMissingError{}).Error():
+					// This is okay, if it's brokered and the client can use it, no worries
+				default:
+					badFields[privateKeyField] = "Unable to parse given private key value."
+				}
 			}
+
 		default:
 			badFields[globals.TypeField] = "Cannot modify resource type."
 		}
