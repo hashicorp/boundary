@@ -323,7 +323,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			requests: []credential.Request{
 				{
 					SourceId: libs[libSshPkKV],
-					Purpose:  credential.ApplicationPurpose,
+					Purpose:  credential.BrokeredPurpose,
 				},
 			},
 		},
