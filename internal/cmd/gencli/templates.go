@@ -24,7 +24,7 @@ func fillTemplates() {
 
 			fName := pkg
 			if data.SubActionPrefix != "" {
-				fName = fmt.Sprintf("%s_%s", data.SubActionPrefix, fName)
+				fName = fmt.Sprintf("%s_%s", strcase.ToKebab(data.SubActionPrefix), fName)
 			}
 			outFile, err := filepath.Abs(fmt.Sprintf("%s/%scmd/%s.gen.go", os.Getenv("CLI_GEN_BASEPATH"), pkg, fName))
 			if err != nil {
@@ -137,7 +137,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 
 	synopsisStr := "{{ lowerSpaceCase .ResourceType }}"
 	{{ if .SubActionPrefix }}
-	synopsisStr = fmt.Sprintf("%s %s", "{{ .SubActionPrefix }}-type", synopsisStr)
+	synopsisStr = fmt.Sprintf("%s %s", "{{ kebabCase .SubActionPrefix }}-type", synopsisStr)
 	{{ end }}
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
@@ -199,7 +199,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map, c.Func)
+	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ kebabCase .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map, c.Func)
 
 	{{ if .HasGenericAttributes }}
 	f = set.NewFlagSet("Attribute Options")
@@ -239,10 +239,10 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	}
 
-	c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}"
+	c.plural = "{{ if .SubActionPrefix }}{{ kebabCase .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}"
 	switch c.Func {
 	case "list":
-		c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}s"		
+		c.plural = "{{ if .SubActionPrefix }}{{ kebabCase .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}s"
 	}
 
 	f := c.Flags()

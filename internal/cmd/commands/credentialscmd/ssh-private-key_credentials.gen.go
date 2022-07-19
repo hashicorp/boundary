@@ -14,54 +14,54 @@ import (
 	"github.com/posener/complete"
 )
 
-func initUsernamePasswordFlags() {
+func initSshPrivateKeyFlags() {
 	flagsOnce.Do(func() {
-		extraFlags := extraUsernamePasswordActionsFlagsMapFunc()
+		extraFlags := extraSshPrivateKeyActionsFlagsMapFunc()
 		for k, v := range extraFlags {
-			flagsUsernamePasswordMap[k] = append(flagsUsernamePasswordMap[k], v...)
+			flagsSshPrivateKeyMap[k] = append(flagsSshPrivateKeyMap[k], v...)
 		}
 	})
 }
 
 var (
-	_ cli.Command             = (*UsernamePasswordCommand)(nil)
-	_ cli.CommandAutocomplete = (*UsernamePasswordCommand)(nil)
+	_ cli.Command             = (*SshPrivateKeyCommand)(nil)
+	_ cli.CommandAutocomplete = (*SshPrivateKeyCommand)(nil)
 )
 
-type UsernamePasswordCommand struct {
+type SshPrivateKeyCommand struct {
 	*base.Command
 
 	Func string
 
 	plural string
 
-	extraUsernamePasswordCmdVars
+	extraSshPrivateKeyCmdVars
 }
 
-func (c *UsernamePasswordCommand) AutocompleteArgs() complete.Predictor {
-	initUsernamePasswordFlags()
+func (c *SshPrivateKeyCommand) AutocompleteArgs() complete.Predictor {
+	initSshPrivateKeyFlags()
 	return complete.PredictAnything
 }
 
-func (c *UsernamePasswordCommand) AutocompleteFlags() complete.Flags {
-	initUsernamePasswordFlags()
+func (c *SshPrivateKeyCommand) AutocompleteFlags() complete.Flags {
+	initSshPrivateKeyFlags()
 	return c.Flags().Completions()
 }
 
-func (c *UsernamePasswordCommand) Synopsis() string {
-	if extra := extraUsernamePasswordSynopsisFunc(c); extra != "" {
+func (c *SshPrivateKeyCommand) Synopsis() string {
+	if extra := extraSshPrivateKeySynopsisFunc(c); extra != "" {
 		return extra
 	}
 
 	synopsisStr := "credential"
 
-	synopsisStr = fmt.Sprintf("%s %s", "username_password-type", synopsisStr)
+	synopsisStr = fmt.Sprintf("%s %s", "ssh-private-key-type", synopsisStr)
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
-func (c *UsernamePasswordCommand) Help() string {
-	initUsernamePasswordFlags()
+func (c *SshPrivateKeyCommand) Help() string {
+	initSshPrivateKeyFlags()
 
 	var helpStr string
 	helpMap := common.HelpMap("credential")
@@ -70,7 +70,7 @@ func (c *UsernamePasswordCommand) Help() string {
 
 	default:
 
-		helpStr = c.extraUsernamePasswordHelpFunc(helpMap)
+		helpStr = c.extraSshPrivateKeyHelpFunc(helpMap)
 
 	}
 
@@ -79,29 +79,29 @@ func (c *UsernamePasswordCommand) Help() string {
 	return helpStr
 }
 
-var flagsUsernamePasswordMap = map[string][]string{
+var flagsSshPrivateKeyMap = map[string][]string{
 
 	"create": {"credential-store-id", "name", "description"},
 
 	"update": {"id", "name", "description", "version"},
 }
 
-func (c *UsernamePasswordCommand) Flags() *base.FlagSets {
-	if len(flagsUsernamePasswordMap[c.Func]) == 0 {
+func (c *SshPrivateKeyCommand) Flags() *base.FlagSets {
+	if len(flagsSshPrivateKeyMap[c.Func]) == 0 {
 		return c.FlagSet(base.FlagSetNone)
 	}
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "username_password-type credential", flagsUsernamePasswordMap, c.Func)
+	common.PopulateCommonFlags(c.Command, f, "ssh-private-key-type credential", flagsSshPrivateKeyMap, c.Func)
 
-	extraUsernamePasswordFlagsFunc(c, set, f)
+	extraSshPrivateKeyFlagsFunc(c, set, f)
 
 	return set
 }
 
-func (c *UsernamePasswordCommand) Run(args []string) int {
-	initUsernamePasswordFlags()
+func (c *SshPrivateKeyCommand) Run(args []string) int {
+	initSshPrivateKeyFlags()
 
 	switch c.Func {
 	case "":
@@ -109,10 +109,10 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 
 	}
 
-	c.plural = "username_password-type credential"
+	c.plural = "ssh-private-key-type credential"
 	switch c.Func {
 	case "list":
-		c.plural = "username_password-type credentials"
+		c.plural = "ssh-private-key-type credentials"
 	}
 
 	f := c.Flags()
@@ -122,14 +122,14 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if strutil.StrListContains(flagsUsernamePasswordMap[c.Func], "id") && c.FlagId == "" {
+	if strutil.StrListContains(flagsSshPrivateKeyMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
 		return base.CommandUserError
 	}
 
 	var opts []credentials.Option
 
-	if strutil.StrListContains(flagsUsernamePasswordMap[c.Func], "credential-store-id") {
+	if strutil.StrListContains(flagsSshPrivateKeyMap[c.Func], "credential-store-id") {
 		switch c.Func {
 
 		case "create":
@@ -189,7 +189,7 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 
 	}
 
-	if ok := extraUsernamePasswordFlagsHandlingFunc(c, f, &opts); !ok {
+	if ok := extraSshPrivateKeyFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -198,20 +198,20 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		result, err = credentialsClient.Create(c.Context, "username_password", c.FlagCredentialStoreId, opts...)
+		result, err = credentialsClient.Create(c.Context, "ssh_private_key", c.FlagCredentialStoreId, opts...)
 
 	case "update":
 		result, err = credentialsClient.Update(c.Context, c.FlagId, version, opts...)
 
 	}
 
-	result, err = executeExtraUsernamePasswordActions(c, result, err, credentialsClient, version, opts)
+	result, err = executeExtraSshPrivateKeyActions(c, result, err, credentialsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
 			var opts []base.Option
 
-			opts = append(opts, base.WithAttributeFieldPrefix("username_password"))
+			opts = append(opts, base.WithAttributeFieldPrefix("ssh_private_key"))
 
 			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
 			return base.CommandApiError
@@ -220,7 +220,7 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	output, err := printCustomUsernamePasswordActionOutput(c)
+	output, err := printCustomSshPrivateKeyActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
@@ -247,12 +247,12 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 }
 
 var (
-	extraUsernamePasswordActionsFlagsMapFunc = func() map[string][]string { return nil }
-	extraUsernamePasswordSynopsisFunc        = func(*UsernamePasswordCommand) string { return "" }
-	extraUsernamePasswordFlagsFunc           = func(*UsernamePasswordCommand, *base.FlagSets, *base.FlagSet) {}
-	extraUsernamePasswordFlagsHandlingFunc   = func(*UsernamePasswordCommand, *base.FlagSets, *[]credentials.Option) bool { return true }
-	executeExtraUsernamePasswordActions      = func(_ *UsernamePasswordCommand, inResult api.GenericResult, inErr error, _ *credentials.Client, _ uint32, _ []credentials.Option) (api.GenericResult, error) {
+	extraSshPrivateKeyActionsFlagsMapFunc = func() map[string][]string { return nil }
+	extraSshPrivateKeySynopsisFunc        = func(*SshPrivateKeyCommand) string { return "" }
+	extraSshPrivateKeyFlagsFunc           = func(*SshPrivateKeyCommand, *base.FlagSets, *base.FlagSet) {}
+	extraSshPrivateKeyFlagsHandlingFunc   = func(*SshPrivateKeyCommand, *base.FlagSets, *[]credentials.Option) bool { return true }
+	executeExtraSshPrivateKeyActions      = func(_ *SshPrivateKeyCommand, inResult api.GenericResult, inErr error, _ *credentials.Client, _ uint32, _ []credentials.Option) (api.GenericResult, error) {
 		return inResult, inErr
 	}
-	printCustomUsernamePasswordActionOutput = func(*UsernamePasswordCommand) (bool, error) { return false, nil }
+	printCustomSshPrivateKeyActionOutput = func(*SshPrivateKeyCommand) (bool, error) { return false, nil }
 )

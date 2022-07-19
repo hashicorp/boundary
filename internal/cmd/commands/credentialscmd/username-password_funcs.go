@@ -3,6 +3,7 @@ package credentialscmd
 import (
 	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
 func init() {
@@ -10,11 +11,6 @@ func init() {
 	extraUsernamePasswordActionsFlagsMapFunc = extraUsernamePasswordActionsFlagsMapFuncImpl
 	extraUsernamePasswordFlagsHandlingFunc = extraUsernamePasswordFlagHandlingFuncImpl
 }
-
-const (
-	usernameFlagName = "username"
-	passwordFlagName = "password"
-)
 
 type extraUsernamePasswordCmdVars struct {
 	flagUsername string
@@ -33,7 +29,7 @@ func extraUsernamePasswordActionsFlagsMapFuncImpl() map[string][]string {
 }
 
 func extraUsernamePasswordFlagsFuncImpl(c *UsernamePasswordCommand, set *base.FlagSets, _ *base.FlagSet) {
-	f := set.NewFlagSet("Username Password Credential Options")
+	f := set.NewFlagSet("Username/Password Credential Options")
 
 	for _, name := range flagsUsernamePasswordMap[c.Func] {
 		switch name {
@@ -47,7 +43,7 @@ func extraUsernamePasswordFlagsFuncImpl(c *UsernamePasswordCommand, set *base.Fl
 			f.StringVar(&base.StringVar{
 				Name:   passwordFlagName,
 				Target: &c.flagPassword,
-				Usage:  "The password associated with the credential.",
+				Usage:  "The password associated with the credential. This can be the value itself, refer to a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.",
 			})
 		}
 	}
@@ -62,7 +58,12 @@ func extraUsernamePasswordFlagHandlingFuncImpl(c *UsernamePasswordCommand, _ *ba
 	switch c.flagPassword {
 	case "":
 	default:
-		*opts = append(*opts, credentials.WithUsernamePasswordCredentialPassword(c.flagPassword))
+		password, err := parseutil.ParsePath(c.flagPassword)
+		if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
+			c.UI.Error("Error parsing password flag: " + err.Error())
+			return false
+		}
+		*opts = append(*opts, credentials.WithUsernamePasswordCredentialPassword(password))
 	}
 
 	return true
