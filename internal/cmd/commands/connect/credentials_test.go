@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_parseUsernamePasswordCredentials(t *testing.T) {
+func Test_parseCredentials(t *testing.T) {
 	tests := []struct {
 		name      string
 		creds     []*targets.SessionCredential
-		wantCreds []usernamePasswordCredentials
+		wantCreds []any
 		wantErr   bool
 	}{
 		{
@@ -35,7 +35,7 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name: "valid-typed",
+			name: "valid-username-password-typed",
 			creds: []*targets.SessionCredential{
 				{
 					CredentialSource: &targets.CredentialSource{
@@ -47,10 +47,31 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 					},
 				},
 			},
-			wantCreds: []usernamePasswordCredentials{
-				{
+			wantCreds: []any{
+				usernamePasswordCredential{
 					Username: "user",
 					Password: "pass",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-ssh-private-key-typed",
+			creds: []*targets.SessionCredential{
+				{
+					CredentialSource: &targets.CredentialSource{
+						CredentialType: string(credential.SshPrivateKeyType),
+					},
+					Credential: map[string]interface{}{
+						"username":    "user",
+						"private_key": "my-pk",
+					},
+				},
+			},
+			wantCreds: []any{
+				sshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: "my-pk",
 				},
 			},
 			wantErr: false,
@@ -74,8 +95,8 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 					},
 				},
 			},
-			wantCreds: []usernamePasswordCredentials{
-				{
+			wantCreds: []any{
+				usernamePasswordCredential{
 					Username: "user",
 					Password: "pass",
 				},
@@ -83,7 +104,7 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "valid-vault-not-typed",
+			name: "valid-vault-not-typed-username-password",
 			creds: []*targets.SessionCredential{
 				{
 					CredentialSource: &targets.CredentialSource{
@@ -97,8 +118,8 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 					},
 				},
 			},
-			wantCreds: []usernamePasswordCredentials{
-				{
+			wantCreds: []any{
+				usernamePasswordCredential{
 					Username: "user",
 					Password: "pass",
 				},
@@ -106,7 +127,30 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "valid-static-not-typed",
+			name: "valid-vault-not-typed-ssh-private-key",
+			creds: []*targets.SessionCredential{
+				{
+					CredentialSource: &targets.CredentialSource{
+						Type: "vault",
+					},
+					Secret: &targets.SessionSecret{
+						Decoded: map[string]interface{}{
+							"username":    "user",
+							"private_key": "my-pk",
+						},
+					},
+				},
+			},
+			wantCreds: []any{
+				sshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: "my-pk",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-static-not-typed-username-password",
 			creds: []*targets.SessionCredential{
 				{
 					CredentialSource: &targets.CredentialSource{
@@ -120,10 +164,33 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 					},
 				},
 			},
-			wantCreds: []usernamePasswordCredentials{
-				{
+			wantCreds: []any{
+				usernamePasswordCredential{
 					Username: "user",
 					Password: "pass",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid-static-not-typed-ssh-private-key",
+			creds: []*targets.SessionCredential{
+				{
+					CredentialSource: &targets.CredentialSource{
+						Type: "static",
+					},
+					Secret: &targets.SessionSecret{
+						Decoded: map[string]interface{}{
+							"username":    "user",
+							"private_key": "my-pk",
+						},
+					},
+				},
+			},
+			wantCreds: []any{
+				sshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: "my-pk",
 				},
 			},
 			wantErr: false,
@@ -150,12 +217,12 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 					},
 				},
 			},
-			wantCreds: []usernamePasswordCredentials{
-				{
+			wantCreds: []any{
+				usernamePasswordCredential{
 					Username: "user",
 					Password: "pass",
 				},
-				{
+				usernamePasswordCredential{
 					Username: "user1",
 					Password: "pass1",
 				},
@@ -176,6 +243,15 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 				},
 				{
 					CredentialSource: &targets.CredentialSource{
+						CredentialType: string(credential.SshPrivateKeyType),
+					},
+					Credential: map[string]interface{}{
+						"username":    "user",
+						"private_key": "my-first-pk",
+					},
+				},
+				{
+					CredentialSource: &targets.CredentialSource{
 						Type: "vault",
 					},
 					Secret: &targets.SessionSecret{
@@ -191,24 +267,43 @@ func Test_parseUsernamePasswordCredentials(t *testing.T) {
 					},
 					Secret: &targets.SessionSecret{
 						Decoded: map[string]interface{}{
+							"username":    "another-user",
+							"private_key": "my-pk",
+						},
+					},
+				},
+				{
+					CredentialSource: &targets.CredentialSource{
+						Type: "static",
+					},
+					Secret: &targets.SessionSecret{
+						Decoded: map[string]interface{}{
 							"username": "user2",
 							"password": "pass2",
 						},
 					},
 				},
 			},
-			wantCreds: []usernamePasswordCredentials{
-				{
+			wantCreds: []any{
+				usernamePasswordCredential{
 					Username: "user",
 					Password: "pass",
 				},
-				{
+				usernamePasswordCredential{
 					Username: "user1",
 					Password: "pass1",
 				},
-				{
+				usernamePasswordCredential{
 					Username: "user2",
 					Password: "pass2",
+				},
+				sshPrivateKeyCredential{
+					Username:   "another-user",
+					PrivateKey: "my-pk",
+				},
+				sshPrivateKeyCredential{
+					Username:   "user",
+					PrivateKey: "my-first-pk",
 				},
 			},
 			wantErr: false,

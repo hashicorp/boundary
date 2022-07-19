@@ -3,6 +3,8 @@ package connect
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -43,15 +45,23 @@ func (s *sshFlags) defaultExec() string {
 }
 
 func (s *sshFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []string, retErr error) {
-	var cred usernamePasswordCredentials
+	var username, password, privateKey string
 	if c.sessionAuthz != nil {
 		creds, err := parseCredentials(c.sessionAuthz.Credentials)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error interpreting secret: %w", err)
 		}
 		if len(creds) > 0 {
-			// Just use first credentials returned
-			cred = creds[0]
+			// Just use first credential returned
+			switch v := creds[0].(type) {
+			case usernamePasswordCredential:
+				username = v.Username
+				password = v.Password
+
+			case sshPrivateKeyCredential:
+				username = v.Username
+				privateKey = v.PrivateKey
+			}
 		}
 	}
 
@@ -65,12 +75,12 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []st
 		args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
 
 	case "sshpass":
-		if cred.Password == "" {
+		if password == "" {
 			return nil, nil, errors.New("Password is required when using sshpass")
 		}
 		// sshpass requires that the password is passed as env-var "SSHPASS"
 		// when the using env-vars.
-		envs = append(envs, fmt.Sprintf("SSHPASS=%s", cred.Password))
+		envs = append(envs, fmt.Sprintf("SSHPASS=%s", password))
 		args = append(args, "-e", "ssh")
 		args = append(args, "-p", port, ip)
 
@@ -82,9 +92,30 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []st
 		args = append(args, "-P", port, ip)
 	}
 
+	if privateKey != "" {
+		pkFile, err := ioutil.TempFile("", "*")
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error saving ssh private key to tmp file: %w", err)
+		}
+		c.cleanupFuncs = append(c.cleanupFuncs, func() error {
+			if err := os.Remove(pkFile.Name()); err != nil {
+				return fmt.Errorf("Error removing temporary ssh private key file; consider removing %s manually: %w", pkFile.Name(), err)
+			}
+			return nil
+		})
+		_, err = pkFile.WriteString(privateKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error writing private key file to %s: %w", pkFile.Name(), err)
+		}
+		if err := pkFile.Close(); err != nil {
+			return nil, nil, fmt.Errorf("Error closing private key file after writing to %s: %w", pkFile.Name(), err)
+		}
+		args = append(args, "-i", pkFile.Name())
+	}
+
 	switch {
-	case cred.Username != "":
-		args = append(args, "-l", cred.Username)
+	case username != "":
+		args = append(args, "-l", username)
 	case c.flagUsername != "":
 		args = append(args, "-l", c.flagUsername)
 	}

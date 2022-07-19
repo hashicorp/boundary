@@ -52,17 +52,19 @@ func (p *postgresFlags) defaultExec() string {
 }
 
 func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []string, retErr error) {
-	var cred usernamePasswordCredentials
+	var cred usernamePasswordCredential
 	if c.sessionAuthz != nil {
 		creds, err := parseCredentials(c.sessionAuthz.Credentials)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error interpreting secret: %w", err)
 		}
-		if len(creds) > 0 {
-			// Just use first credentials returned
-			cred = creds[0]
+		for _, c := range creds {
+			if upCred, ok := c.(usernamePasswordCredential); ok {
+				// Just use first valid credential returned
+				cred = upCred
+				break
+			}
 		}
-
 	}
 
 	switch p.flagPostgresStyle {
