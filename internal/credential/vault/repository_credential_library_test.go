@@ -285,6 +285,128 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-ssh-private-key-credential-type",
+			in: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+		},
+		{
+			name: "unknown-ssh-private-key-mapping-override-type",
+			in: &CredentialLibrary{
+				MappingOverride: unknownMapper(1),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			wantErr: errors.VaultInvalidMappingOverride,
+		},
+		{
+			name: "invalid-ssh-private-key-mapping-override-type",
+			in: &CredentialLibrary{
+				MappingOverride: NewUsernamePasswordOverride(WithOverrideUsernameAttribute("test")),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			wantErr: errors.VaultInvalidMappingOverride,
+		},
+		{
+			name: "valid-ssh-prviate-key-credential-type-with-username-override",
+			in: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("utest"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			want: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("utest"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+		},
+		{
+			name: "valid-ssh-private-key-credential-type-with-private-key-override",
+			in: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverridePrivateKeyAttribute("ptest"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			want: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverridePrivateKeyAttribute("ptest"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+		},
+		{
+			name: "valid-ssh-private-keyt-credential-type-with-username-and-private-key-override",
+			in: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("utest"),
+					WithOverridePrivateKeyAttribute("ptest"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			want: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("utest"),
+					WithOverridePrivateKeyAttribute("ptest"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.GetPublicId(),
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -324,13 +446,24 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 					require.True(ok)
 					assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
 					assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
+
+					// verify it was persisted in the database
+					override := allocUsernamePasswordOverride()
+					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []interface{}{got.GetPublicId()}))
+
+				case *SshPrivateKeyOverride:
+					g, ok := got.MappingOverride.(*SshPrivateKeyOverride)
+					require.True(ok)
+					assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
+					assert.Equal(w.PrivateKeyAttribute, g.PrivateKeyAttribute)
+
+					// verify it was persisted in the database
+					override := allocSshPrivateKeyOverride()
+					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []interface{}{got.GetPublicId()}))
+
 				default:
 					assert.Fail("Unknown mapping override")
 				}
-
-				// verify it was persisted in the database
-				override := allocUsernamePasswordOverride()
-				assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []interface{}{got.GetPublicId()}))
 			}
 		})
 	}
@@ -1104,6 +1237,162 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			masks:   []string{"MappingOverride"},
 			wantErr: errors.VaultInvalidMappingOverride,
 		},
+		{
+			name: "ssh-private-key-attributes-change-username-attribute",
+			orig: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+				),
+			),
+			masks: []string{"MappingOverride"},
+			want: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "ssh-private-key-attributes-change-private-key-attribute",
+			orig: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverridePrivateKeyAttribute("orig-private-key"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewSshPrivateKeyOverride(
+					WithOverridePrivateKeyAttribute("changed-private-key"),
+				),
+			),
+			masks: []string{"MappingOverride"},
+			want: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverridePrivateKeyAttribute("changed-private-key"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "ssh-private-key-attributes-change-username-and-private-key-attributes",
+			orig: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+					WithOverridePrivateKeyAttribute("orig-private-key"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePrivateKeyAttribute("changed-private-key"),
+				),
+			),
+			masks: []string{"MappingOverride"},
+			want: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePrivateKeyAttribute("changed-private-key"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "no-mapping-override-change-username-and-private-key-attributes",
+			orig: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			chgFn: changeMappingOverride(
+				NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePrivateKeyAttribute("changed-private-key"),
+				),
+			),
+			masks: []string{"MappingOverride"},
+			want: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("changed-username"),
+					WithOverridePrivateKeyAttribute("changed-private-key"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "ssh-private-key-attributes-delete-mapping-override",
+			orig: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(
+					WithOverrideUsernameAttribute("orig-username"),
+					WithOverridePrivateKeyAttribute("orig-private-key"),
+				),
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			chgFn: changeMappingOverride(nil),
+			masks: []string{"MappingOverride"},
+			want: &CredentialLibrary{
+				CredentialLibrary: &store.CredentialLibrary{
+					HttpMethod:     "GET",
+					VaultPath:      "/some/path",
+					Name:           "test-ssh-private-key-repo",
+					CredentialType: string(credential.SshPrivateKeyType),
+				},
+			},
+			wantCount: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1172,6 +1461,11 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 				require.True(ok)
 				assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
 				assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
+			case *SshPrivateKeyOverride:
+				g, ok := got.MappingOverride.(*SshPrivateKeyOverride)
+				require.True(ok)
+				assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
+				assert.Equal(w.PrivateKeyAttribute, g.PrivateKeyAttribute)
 			default:
 				assert.Fail("Unknown mapping override")
 			}
@@ -1371,6 +1665,60 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 					},
 				},
 			},
+			{
+				name: "valid-ssh-private-key-credential-type",
+				in: &CredentialLibrary{
+					CredentialLibrary: &store.CredentialLibrary{
+						StoreId:        cs.GetPublicId(),
+						HttpMethod:     "GET",
+						VaultPath:      "/some/path",
+						CredentialType: string(credential.SshPrivateKeyType),
+					},
+				},
+			},
+			{
+				name: "valid-ssh-private-key-credential-type-with-username-override",
+				in: &CredentialLibrary{
+					MappingOverride: NewSshPrivateKeyOverride(
+						WithOverrideUsernameAttribute("utest"),
+					),
+					CredentialLibrary: &store.CredentialLibrary{
+						StoreId:        cs.GetPublicId(),
+						HttpMethod:     "GET",
+						VaultPath:      "/some/path",
+						CredentialType: string(credential.SshPrivateKeyType),
+					},
+				},
+			},
+			{
+				name: "valid-ssh-private-key-credential-type-with-private-key-override",
+				in: &CredentialLibrary{
+					MappingOverride: NewSshPrivateKeyOverride(
+						WithOverridePrivateKeyAttribute("ptest"),
+					),
+					CredentialLibrary: &store.CredentialLibrary{
+						StoreId:        cs.GetPublicId(),
+						HttpMethod:     "GET",
+						VaultPath:      "/some/path",
+						CredentialType: string(credential.SshPrivateKeyType),
+					},
+				},
+			},
+			{
+				name: "valid-ssh-private-key-credential-type-with-username-and-private-key-override",
+				in: &CredentialLibrary{
+					MappingOverride: NewSshPrivateKeyOverride(
+						WithOverrideUsernameAttribute("utest"),
+						WithOverridePrivateKeyAttribute("ptest"),
+					),
+					CredentialLibrary: &store.CredentialLibrary{
+						StoreId:        cs.GetPublicId(),
+						HttpMethod:     "GET",
+						VaultPath:      "/some/path",
+						CredentialType: string(credential.SshPrivateKeyType),
+					},
+				},
+			},
 		}
 
 		for _, tt := range tests {
@@ -1403,6 +1751,11 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 						require.True(ok)
 						assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
 						assert.Equal(w.PasswordAttribute, g.PasswordAttribute)
+					case *SshPrivateKeyOverride:
+						g, ok := got.MappingOverride.(*SshPrivateKeyOverride)
+						require.True(ok)
+						assert.Equal(w.UsernameAttribute, g.UsernameAttribute)
+						assert.Equal(w.PrivateKeyAttribute, g.PrivateKeyAttribute)
 					default:
 						assert.Fail("Unknown mapping override")
 					}

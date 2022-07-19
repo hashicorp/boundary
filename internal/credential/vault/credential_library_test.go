@@ -234,16 +234,43 @@ func TestCredentialLibrary_New(t *testing.T) {
 				opts: []Option{
 					WithMethod(MethodGet),
 					WithCredentialType(credential.UsernamePasswordType),
-					WithMappingOverride(NewUsernamePasswordOverride(WithOverrideUsernameAttribute("test"))),
+					WithMappingOverride(NewUsernamePasswordOverride(
+						WithOverrideUsernameAttribute("test"),
+						WithOverridePasswordAttribute("testpass")),
+					),
 				},
 			},
 			want: &CredentialLibrary{
-				MappingOverride: NewUsernamePasswordOverride(WithOverrideUsernameAttribute("test")),
+				MappingOverride: NewUsernamePasswordOverride(WithOverrideUsernameAttribute("test"), WithOverridePasswordAttribute("testpass")),
 				CredentialLibrary: &store.CredentialLibrary{
 					StoreId:        cs.PublicId,
 					VaultPath:      "vault/path",
 					HttpMethod:     string(MethodGet),
 					CredentialType: string(credential.UsernamePasswordType),
+				},
+			},
+		},
+		{
+			name: "credential-type-with-ssh-pk-mapping",
+			args: args{
+				storeId:   cs.PublicId,
+				vaultPath: "vault/path",
+				opts: []Option{
+					WithMethod(MethodGet),
+					WithCredentialType(credential.SshPrivateKeyType),
+					WithMappingOverride(NewSshPrivateKeyOverride(
+						WithOverrideUsernameAttribute("test"),
+						WithOverridePrivateKeyAttribute("testpk")),
+					),
+				},
+			},
+			want: &CredentialLibrary{
+				MappingOverride: NewSshPrivateKeyOverride(WithOverrideUsernameAttribute("test"), WithOverridePrivateKeyAttribute("testpk")),
+				CredentialLibrary: &store.CredentialLibrary{
+					StoreId:        cs.PublicId,
+					VaultPath:      "vault/path",
+					HttpMethod:     string(MethodGet),
+					CredentialType: string(credential.SshPrivateKeyType),
 				},
 			},
 		},
@@ -264,6 +291,8 @@ func TestCredentialLibrary_New(t *testing.T) {
 			switch ct := tt.want.GetCredentialType(); ct {
 			case string(credential.UsernamePasswordType):
 				assert.Equal(credential.UsernamePasswordType, got.CredentialType())
+			case string(credential.SshPrivateKeyType):
+				assert.Equal(credential.SshPrivateKeyType, got.CredentialType())
 			case string(credential.UnspecifiedType), "":
 				assert.Equal(credential.UnspecifiedType, got.CredentialType())
 			default:

@@ -28,6 +28,7 @@ type Type string
 const (
 	UnspecifiedType      Type = "unspecified"
 	UsernamePasswordType Type = "username_password"
+	SshPrivateKeyType    Type = "ssh_private_key"
 )
 
 // A Library is a resource that provides credentials that are of the same
@@ -125,17 +126,9 @@ type UsernamePassword interface {
 	Password() Password
 }
 
-// KeyPair is a credential containing a username and a private key.
-type KeyPair interface {
+// SshPrivateKey is a credential containing a username and a SSH private key.
+type SshPrivateKey interface {
 	Credential
 	Username() string
-	Private() PrivateKey
-}
-
-// Certificate is a credential containing a certificate and the private key
-// for the certificate.
-type Certificate interface {
-	Credential
-	Certificate() []byte
-	Private() PrivateKey
+	PrivateKey() PrivateKey
 }

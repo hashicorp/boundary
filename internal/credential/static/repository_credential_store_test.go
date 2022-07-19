@@ -140,12 +140,14 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 
 		in2, err := NewCredentialStore(prj.GetPublicId(), WithName("my-name"), WithDescription("desc"))
+		require.NoError(err)
 		got2, err := repo.CreateCredentialStore(ctx, in2)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 
 		// Creating credential in different scope should not conflict
 		in3, err := NewCredentialStore(org.GetPublicId(), WithName("my-name"), WithDescription("desc"))
+		require.NoError(err)
 		got3, err := repo.CreateCredentialStore(ctx, in3)
 		require.NoError(err)
 		assert.Equal(in.Name, got3.Name)
