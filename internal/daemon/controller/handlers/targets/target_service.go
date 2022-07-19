@@ -1796,13 +1796,21 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credential.UsernamePasswordCredentialPrefix, credential.PreviousUsernamePasswordCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credential.UsernamePasswordCredentialPrefix, credential.PreviousUsernamePasswordCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1822,13 +1830,21 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credential.UsernamePasswordCredentialPrefix, credential.PreviousUsernamePasswordCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credential.UsernamePasswordCredentialPrefix, credential.PreviousUsernamePasswordCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1852,13 +1868,21 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
 	}
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credential.UsernamePasswordCredentialPrefix, credential.PreviousUsernamePasswordCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
 	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credential.UsernamePasswordCredentialPrefix, credential.PreviousUsernamePasswordCredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
