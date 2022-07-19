@@ -44,12 +44,12 @@ func (s *sshFlags) defaultExec() string {
 	return strings.ToLower(s.flagSshStyle)
 }
 
-func (s *sshFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []string, retErr error) {
+func (s *sshFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []string, consumedCreds bool, retErr error) {
 	var username, password, privateKey string
 	if c.sessionAuthz != nil {
 		creds, err := parseCredentials(c.sessionAuthz.Credentials)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Error interpreting secret: %w", err)
+			return nil, nil, false, fmt.Errorf("Error interpreting secret: %w", err)
 		}
 		if len(creds) > 0 {
 			// Just use first credential returned
@@ -76,8 +76,12 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []st
 
 	case "sshpass":
 		if password == "" {
-			return nil, nil, errors.New("Password is required when using sshpass")
+			return nil, nil, false, errors.New("Password is required when using sshpass")
 		}
+
+		// Set consumedCreds to true so they are not printed to user
+		consumedCreds = true
+
 		// sshpass requires that the password is passed as env-var "SSHPASS"
 		// when the using env-vars.
 		envs = append(envs, fmt.Sprintf("SSHPASS=%s", password))
@@ -93,9 +97,12 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []st
 	}
 
 	if privateKey != "" {
+		// Set consumedCreds to true so they are not printed to user
+		consumedCreds = true
+
 		pkFile, err := ioutil.TempFile("", "*")
 		if err != nil {
-			return nil, nil, fmt.Errorf("Error saving ssh private key to tmp file: %w", err)
+			return nil, nil, false, fmt.Errorf("Error saving ssh private key to tmp file: %w", err)
 		}
 		c.cleanupFuncs = append(c.cleanupFuncs, func() error {
 			if err := os.Remove(pkFile.Name()); err != nil {
@@ -105,12 +112,13 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []st
 		})
 		_, err = pkFile.WriteString(privateKey)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Error writing private key file to %s: %w", pkFile.Name(), err)
+			return nil, nil, false, fmt.Errorf("Error writing private key file to %s: %w", pkFile.Name(), err)
 		}
 		if err := pkFile.Close(); err != nil {
-			return nil, nil, fmt.Errorf("Error closing private key file after writing to %s: %w", pkFile.Name(), err)
+			return nil, nil, false, fmt.Errorf("Error closing private key file after writing to %s: %w", pkFile.Name(), err)
 		}
 		args = append(args, "-i", pkFile.Name())
+		consumedCreds = true
 	}
 
 	switch {
@@ -120,5 +128,5 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []st
 		args = append(args, "-l", c.flagUsername)
 	}
 
-	return args, envs, nil
+	return args, envs, consumedCreds, nil
 }
