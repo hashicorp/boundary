@@ -488,19 +488,6 @@ func (c *Command) Run(args []string) (retCode int) {
 		creds = c.sessionAuthz.Credentials
 	}
 	switch c.Func {
-	case "postgres":
-		// Credentials are brokered when connecting to the postgres db.
-		// TODO: Figure out how to handle cases where we don't automatically know how to
-		// broker the credentials like unrecognized or multiple credentials.
-	case "ssh":
-		if c.flagExec == "sshpass" {
-			// If we can broker ssh credentials using sshpass, skip displaying creds on client side.
-			// TODO: Figure out how to handle multiple credentials
-			break
-		}
-
-		// We cannot broker credentials print to user
-		fallthrough
 	case "connect":
 		// "connect" indicates there is no subcommand to the connect function.
 		// The only way a user will be able to connect to the session is by
@@ -525,6 +512,19 @@ func (c *Command) Run(args []string) (retCode int) {
 			}
 			c.UI.Output(string(out))
 		}
+	case "postgres":
+		// Credentials are brokered when connecting to the postgres db.
+		// TODO: Figure out how to handle cases where we don't automatically know how to
+		// broker the credentials like unrecognized or multiple credentials.
+	case "ssh":
+		if c.flagExec == "sshpass" {
+			// If we can broker ssh credentials using sshpass, skip displaying creds on client side.
+			// TODO: Figure out how to handle multiple credentials
+			break
+		}
+
+		// We cannot broker credentials print to user
+		fallthrough
 	default:
 		if len(creds) == 0 {
 			break
