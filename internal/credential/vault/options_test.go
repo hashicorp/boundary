@@ -102,6 +102,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withOverridePasswordAttribute = "test"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithOverridePrivateKeyAttribute", func(t *testing.T) {
+		opts := getOpts(WithOverridePrivateKeyAttribute("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withOverridePrivateKeyAttribute = "test"
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithMappingOverride", func(t *testing.T) {
 		opts := getOpts(WithMappingOverride(unknownMapper(1)))
 		testOpts := getDefaultOptions()
