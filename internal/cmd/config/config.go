@@ -546,12 +546,18 @@ func Parse(d string) (*Config, error) {
 			if !strutil.Printable(k) {
 				return nil, fmt.Errorf("Tag key %q contains non-printable characters", k)
 			}
+			if strings.Contains(k, ",") {
+				return nil, fmt.Errorf("Tag key %q cannot contain commas", k)
+			}
 			for _, val := range v {
 				if val != strings.ToLower(val) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q is not all lower-case letters", val, k)
 				}
 				if !strutil.Printable(k) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q contains non-printable characters", v, k)
+				}
+				if strings.Contains(val, ",") {
+					return nil, fmt.Errorf("Tag value %q for tag key %q cannot contain commas", val, k)
 				}
 			}
 		}

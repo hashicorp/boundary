@@ -724,12 +724,15 @@ func (s *stringSliceMapValue) Set(val string) error {
 		*s.target = make(map[string][]string)
 	}
 
-	split := strings.Split(kv, "=")
-	if len(split) < 2 {
+	split := strings.SplitN(kv, "=", 2)
+	if len(split) != 2 {
 		return fmt.Errorf("missing = in KV pair: %q", val)
 	}
 
 	key := split[0]
+
+	// this loop will never hit the else case if we use SplitN above (and only accept one key per "-tag" input)
+	// TODO: remove or keep extra code below before final merge
 	for i := 1; i <= len(split)-1; i++ {
 		var vals []string
 		var nextKey string
@@ -745,10 +748,18 @@ func (s *stringSliceMapValue) Set(val string) error {
 		}
 
 		// trim space and assign to map
+		// also check proto
 		key = strings.TrimSpace(key)
+		if !protoIdentifierRegex.Match([]byte(key)) {
+			return fmt.Errorf("key %q is invalid", key)
+		}
 		for i, v := range vals {
 			vals[i] = strings.TrimSpace(v)
+			if !protoIdentifierRegex.Match([]byte(vals[i])) {
+				return fmt.Errorf("value %q is invalid", vals[i])
+			}
 		}
+
 		(*s.target)[key] = vals
 		key = nextKey
 	}
