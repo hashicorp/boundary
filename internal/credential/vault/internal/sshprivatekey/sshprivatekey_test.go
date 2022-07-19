@@ -215,6 +215,52 @@ func TestExtract(t *testing.T) {
 			},
 			want: sshpk{user: "default-user", privateKey: rsaKey},
 		},
+		{
+			name: "default-user-json-pointer-pk",
+			given: args{
+				s: data{
+					"username": "default-user",
+					"testing": map[string]interface{}{
+						"private_key": string(edKey),
+					},
+				},
+				uAttr: "username",
+				pAttr: "/testing/private_key",
+			},
+			want: sshpk{user: "default-user", privateKey: edKey},
+		},
+		{
+			name: "default-pk-json-pointer-user",
+			given: args{
+				s: data{
+					"private_key": string(edKey),
+					"testing": map[string]interface{}{
+						"special": "not-so-special",
+					},
+				},
+				uAttr: "/testing/special",
+				pAttr: "private_key",
+			},
+			want: sshpk{user: "not-so-special", privateKey: edKey},
+		},
+		{
+			name: "both-json-pointer",
+			given: args{
+				s: data{
+					"first-path": map[string]interface{}{
+						"deeper-path": map[string]interface{}{
+							"my-special-user": "you-found-me",
+						},
+					},
+					"testing": map[string]interface{}{
+						"private_key": string(edKey),
+					},
+				},
+				uAttr: "/first-path/deeper-path/my-special-user",
+				pAttr: "/testing/private_key",
+			},
+			want: sshpk{user: "you-found-me", privateKey: edKey},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt

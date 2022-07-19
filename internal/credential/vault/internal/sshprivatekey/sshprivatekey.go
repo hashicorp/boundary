@@ -1,6 +1,11 @@
 package sshprivatekey
 
-import "github.com/hashicorp/boundary/internal/credential"
+import (
+	"strings"
+
+	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/mitchellh/pointerstructure"
+)
 
 type (
 	data map[string]any
@@ -33,15 +38,42 @@ func Extract(d data, usernameAttr, privateKeyAttr string) (string, credential.Pr
 
 // defaultExtract looks for the usernameAttr and privateKeyAttr in the data map
 func defaultExtract(sd data, usernameAttr, privateKeyAttr string) (username string, privateKey credential.PrivateKey) {
-	if u, ok := sd[usernameAttr]; ok {
-		if u, ok := u.(string); ok {
-			username = u
-		}
+	if sd == nil {
+		// nothing to do return early
+		return "", nil
 	}
-	if p, ok := sd[privateKeyAttr]; ok {
-		if p, ok := p.(string); ok {
-			privateKey = credential.PrivateKey(p)
+
+	var u any
+	switch {
+	case strings.HasPrefix(usernameAttr, "/"):
+		var err error
+		u, err = pointerstructure.Get(sd, usernameAttr)
+		if err != nil {
+			return "", nil
 		}
+
+	default:
+		u = sd[usernameAttr]
+	}
+	if u, ok := u.(string); ok {
+		username = u
+	}
+
+	var p any
+	switch {
+	case strings.HasPrefix(privateKeyAttr, "/"):
+		var err error
+		p, err = pointerstructure.Get(sd, privateKeyAttr)
+		if err != nil {
+			return "", nil
+		}
+
+	default:
+		p = sd[privateKeyAttr]
+	}
+
+	if p, ok := p.(string); ok {
+		privateKey = credential.PrivateKey(p)
 	}
 
 	return username, privateKey
@@ -57,9 +89,14 @@ func defaultExtract(sd data, usernameAttr, privateKeyAttr string) (username stri
 // }
 // If the format does not match, it returns ("", ""). See:
 // https://www.vaultproject.io/api/secret/kv/kv-v2#sample-response-1
-func kv2Extract(d data, usernameAttr, privateKeyAttr string) (username string, privateKey credential.PrivateKey) {
+func kv2Extract(sd data, usernameAttr, privateKeyAttr string) (username string, privateKey credential.PrivateKey) {
+	if sd == nil {
+		// nothing to do return early
+		return "", nil
+	}
+
 	var data, metadata map[string]any
-	for k, v := range d {
+	for k, v := range sd {
 		switch k {
 		case "data":
 			var ok bool
