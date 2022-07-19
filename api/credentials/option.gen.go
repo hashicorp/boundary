@@ -122,6 +122,30 @@ func WithUsernamePasswordCredentialPassword(inPassword string) Option {
 	}
 }
 
+func WithSshPrivateKeyCredentialPrivateKey(inPrivateKey string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["private_key"] = inPrivateKey
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithSshPrivateKeyCredentialUsername(inUsername string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["username"] = inUsername
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithUsernamePasswordCredentialUsername(inUsername string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
