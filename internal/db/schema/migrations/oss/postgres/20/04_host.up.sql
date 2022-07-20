@@ -23,8 +23,8 @@ begin;
   -- to include the name.
   -- insert_host_catalog_subtype() is a before insert trigger
   -- function for subtypes of host_catalog
-  create or replace function insert_host_catalog_subtype()
-    returns trigger
+  -- Replaced in 44/02_hosts.up.sql
+  create or replace function insert_host_catalog_subtype() returns trigger
   as $$
   begin
     insert into host_catalog

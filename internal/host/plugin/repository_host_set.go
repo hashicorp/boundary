@@ -32,7 +32,7 @@ import (
 //
 // Both s.Name and s.Description are optional. If s.Name is set, it must be
 // unique within s.CatalogId.
-func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, _ ...Option) (*HostSet, *hostplugin.Plugin, error) {
+func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet, _ ...Option) (*HostSet, *hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).CreateSet"
 	if s == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -46,8 +46,8 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if s.PublicId != "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
-	if scopeId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if s.SyncIntervalSeconds < -1 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "invalid sync interval")
@@ -104,7 +104,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -197,7 +197,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 // record written, but some plugins may perform some actions on this
 // call. Update of the record in the database is aborted if this call
 // fails.
-func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMask []string, opt ...Option) (*HostSet, []*Host, *hostplugin.Plugin, int, error) {
+func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet, version uint32, fieldMask []string, opt ...Option) (*HostSet, []*Host, *hostplugin.Plugin, int, error) {
 	const op = "plugin.(Repository).UpdateSet"
 	if s == nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -208,8 +208,8 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if s.PublicId == "" {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	if scopeId == "" {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if len(fieldMask) == 0 {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
@@ -308,9 +308,9 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("error looking up catalog with id %q", newSet.CatalogId)))
 	}
 
-	// Assert that the catalog scope ID and supplied scope ID match.
-	if catalog.ScopeId != scopeId {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("catalog id %q not in scope id %q", newSet.CatalogId, scopeId))
+	// Assert that the catalog project ID and supplied project ID match.
+	if catalog.ProjectId != projectId {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("catalog id %q not in project id %q", newSet.CatalogId, projectId))
 	}
 
 	// Get the plugin client.
@@ -347,7 +347,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -558,13 +558,13 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host
 // DeleteSet deletes the host set for the provided id from the repository
 // returning a count of the number of records deleted. All options are
 // ignored.
-func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId string, _ ...Option) (int, error) {
+func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId string, _ ...Option) (int, error) {
 	const op = "plugin.(Repository).DeleteSet"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 
 	sets, plg, err := r.getSets(ctx, publicId, "")
@@ -602,7 +602,7 @@ func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId str
 		// with deleting the set.
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}

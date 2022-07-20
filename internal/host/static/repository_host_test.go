@@ -722,7 +722,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, got2.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
 
-	t.Run("change-scope-id", func(t *testing.T) {
+	t.Run("change-project-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
@@ -1116,7 +1116,7 @@ func TestRepository_DeleteHost(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteHost(context.Background(), catalog.ScopeId, tt.in)
+			got, err := repo.DeleteHost(context.Background(), catalog.ProjectId, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)

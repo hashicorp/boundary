@@ -10,9 +10,9 @@ message Catalog {
   // @inject_tag: `gorm:"primary_key"`
   string public_id = 1;
 
-  // The scope_id of the owning scope and must be set.
+  // The project_id of the owning scope and must be set.
   // @inject_tag: `gorm:"not_null"`
-  string scope_id = 2;
+  string project_id = 2;
 }
 
 message Host {

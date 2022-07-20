@@ -10,7 +10,7 @@ begin;
 
   -- insert first session, should result in a new credentials dimension
   insert into session
-    ( scope_id,       target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bwidget',  't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's1____walter');
   insert into session_credential_dynamic
@@ -25,7 +25,7 @@ begin;
   --  * same host
   -- should not result in a new credential dimension
   insert into session
-    ( scope_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,     target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bwidget', 't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's2____walter');
   insert into session_credential_dynamic
@@ -39,7 +39,7 @@ begin;
 
   -- start another session, should result in a new credential dimension
   insert into session
-    ( scope_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,     target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bwidget', 't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's3____walter');
   insert into session_credential_dynamic
@@ -50,7 +50,7 @@ begin;
 
   -- start another session, should result in a one new credential dimensions
   insert into session
-    ( scope_id,       target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bwidget',  't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's4____walter');
   insert into session_credential_dynamic
@@ -65,7 +65,7 @@ begin;
 
   -- start another session, should result in a one new credential dimensions since one changed
   insert into session
-    ( scope_id,       target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bwidget',  't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's5____walter');
   insert into session_credential_dynamic
@@ -80,7 +80,7 @@ begin;
   -- then test creating a session
   delete from credential_vault_library;
   insert into session
-    ( scope_id,                   target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,                  target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bwidget',              't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's6____walter');
   select is(count(*),             4::bigint)        from wh_credential_dimension                 where organization_id = 'o_____widget';
@@ -93,7 +93,7 @@ begin;
 
   -- insert into a session for a target that never had any credentials associated with it.
   insert into session
-    ( scope_id,                   target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,                  target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bwidget',              't_________ws', 's___1ws-sths', 'h_____ws__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's7____walter');
   select is(count(*),             4::bigint)        from wh_credential_dimension                 where organization_id = 'o_____widget';

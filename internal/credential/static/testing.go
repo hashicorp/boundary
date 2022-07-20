@@ -65,24 +65,24 @@ do/lpv8N1+5Eb3lOB3DrqcEqRwXzSQcO2QcpikNSHyPquGR689I3xUm6kWmpKs49aacTUx
 )
 
 // TestCredentialStore creates a static credential store in the provided DB with
-// the provided scope and any values passed in through the Options vars.
+// the provided project id and any values passed in through the Options vars.
 // If any errors are encountered during the creation of the store, the test will fail.
-func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId string, opt ...Option) *CredentialStore {
+func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projectId string, opts ...Option) *CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	w := db.New(conn)
 
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
-	cs, err := NewCredentialStore(scopeId, opt...)
+	cs, err := NewCredentialStore(projectId, opts...)
 	assert.NoError(t, err)
 	require.NotNil(t, cs)
 
-	opts := getOpts(opt...)
-	id := opts.withPublicId
+	opt := getOpts(opts...)
+	id := opt.withPublicId
 	if id == "" {
 		id, err = newCredentialStoreId(ctx)
 		assert.NoError(t, err)
@@ -102,51 +102,51 @@ func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, sc
 }
 
 // TestCredentialStores creates count number of static credential stores in
-// the provided DB with the provided scope id. If any errors are
+// the provided DB with the provided project id. If any errors are
 // encountered during the creation of the credential stores, the test will
 // fail.
-func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*CredentialStore {
+func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projectId string, count int) []*CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
 	css := make([]*CredentialStore, 0, count)
 	for i := 0; i < count; i++ {
-		css = append(css, TestCredentialStore(t, conn, wrapper, scopeId))
+		css = append(css, TestCredentialStore(t, conn, wrapper, projectId))
 	}
 	return css
 }
 
 // TestUsernamePasswordCredential creates a username password credential in the provided DB with
-// the provided scope and any values passed in through.
+// the provided project id and any values passed in through.
 // If any errors are encountered during the creation of the store, the test will fail.
 func TestUsernamePasswordCredential(
 	t testing.TB,
 	conn *db.DB,
 	wrapper wrapping.Wrapper,
-	username, password, storeId, scopeId string,
-	opt ...Option,
+	username, password, storeId, projectId string,
+	opts ...Option,
 ) *UsernamePasswordCredential {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	w := db.New(conn)
 
-	opts := getOpts(opt...)
+	opt := getOpts(opts...)
 
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
-	cred, err := NewUsernamePasswordCredential(storeId, username, credential.Password(password), opt...)
+	cred, err := NewUsernamePasswordCredential(storeId, username, credential.Password(password), opts...)
 	require.NoError(t, err)
 	require.NotNil(t, cred)
 
-	id := opts.withPublicId
+	id := opt.withPublicId
 	if id == "" {
 		id, err = credential.NewUsernamePasswordCredentialId(ctx)
 		require.NoError(t, err)
@@ -168,38 +168,38 @@ func TestUsernamePasswordCredential(
 }
 
 // TestUsernamePasswordCredentials creates count number of username password credentials in
-// the provided DB with the provided scope id. If any errors are
+// the provided DB with the provided project id. If any errors are
 // encountered during the creation of the credentials, the test will fail.
 func TestUsernamePasswordCredentials(
 	t testing.TB,
 	conn *db.DB,
 	wrapper wrapping.Wrapper,
-	username, password, storeId, scopeId string,
+	username, password, storeId, projectId string,
 	count int,
 ) []*UsernamePasswordCredential {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
 	creds := make([]*UsernamePasswordCredential, 0, count)
 	for i := 0; i < count; i++ {
-		creds = append(creds, TestUsernamePasswordCredential(t, conn, wrapper, username, password, storeId, scopeId))
+		creds = append(creds, TestUsernamePasswordCredential(t, conn, wrapper, username, password, storeId, projectId))
 	}
 	return creds
 }
 
 // TestSshPrivateKeyCredential creates an ssh private key credential in the
-// provided DB with the provided scope and any values passed in through. If any
+// provided DB with the provided project and any values passed in through. If any
 // errors are encountered during the creation of the store, the test will fail.
 func TestSshPrivateKeyCredential(
 	t testing.TB,
 	conn *db.DB,
 	wrapper wrapping.Wrapper,
-	username, privateKey, storeId, scopeId string,
+	username, privateKey, storeId, projectId string,
 	opt ...Option,
 ) *SshPrivateKeyCredential {
 	t.Helper()
@@ -209,7 +209,7 @@ func TestSshPrivateKeyCredential(
 
 	opts := getOpts(opt...)
 
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
@@ -239,26 +239,26 @@ func TestSshPrivateKeyCredential(
 }
 
 // TestSshPrivateKeyCredentials creates count number of ssh private key
-// credentials in the provided DB with the provided scope id. If any errors are
+// credentials in the provided DB with the provided project id. If any errors are
 // encountered during the creation of the credentials, the test will fail.
 func TestSshPrivateKeyCredentials(
 	t testing.TB,
 	conn *db.DB,
 	wrapper wrapping.Wrapper,
-	username, privateKey, storeId, scopeId string,
+	username, privateKey, storeId, projectId string,
 	count int,
 ) []*SshPrivateKeyCredential {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
 	creds := make([]*SshPrivateKeyCredential, 0, count)
 	for i := 0; i < count; i++ {
-		creds = append(creds, TestSshPrivateKeyCredential(t, conn, wrapper, username, privateKey, storeId, scopeId))
+		creds = append(creds, TestSshPrivateKeyCredential(t, conn, wrapper, username, privateKey, storeId, projectId))
 	}
 	return creds
 }

@@ -53,13 +53,13 @@ func TestPluginCatalog_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"CreateTime"},
 		},
 		{
-			name: "scope id",
+			name: "project id",
 			update: func() *HostCatalog {
 				c := new.clone()
-				c.ScopeId = o.PublicId
+				c.ProjectId = o.PublicId
 				return c
 			}(),
-			fieldMask: []string{"ScopeId"},
+			fieldMask: []string{"ProjectId"},
 		},
 		{
 			name: "plugin id",

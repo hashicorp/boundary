@@ -49,6 +49,7 @@ create trigger immutable_columns
     for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint', 'worker_filter');
 
 -- Replaces the view created in 41 to include worker_filter
+-- Replaced in 44/03_targets.up.sql
 drop view target_all_subtypes;
 create view target_all_subtypes
 as

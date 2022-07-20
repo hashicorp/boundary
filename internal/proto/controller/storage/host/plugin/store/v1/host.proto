@@ -22,7 +22,7 @@ message HostCatalog {
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp update_time = 3;
 
-  // name is optional. If set, it must be unique within scope_id.
+  // name is optional. If set, it must be unique within project_id.
   // @inject_tag: `gorm:"default:null"`
   string name = 4 [(custom_options.v1.mask_mapping) = {
     this: "name"
@@ -36,9 +36,9 @@ message HostCatalog {
     that: "description"
   }];
 
-  // The scope_id of the owning scope and must be set.
+  // The project_id of the owning scope and must be set.
   // @inject_tag: `gorm:"not_null"`
-  string scope_id = 6;
+  string project_id = 6;
 
   // The public id of the plugin this catalog uses.
   // @inject_tag: `gorm:"not_null"`

@@ -33,7 +33,7 @@ type privateCredential struct {
 	TokenExpirationTime  *timestamp.Timestamp
 	TokenKeyId           string
 	TokenStatus          string
-	ScopeId              string
+	ProjectId            string
 	VaultAddress         string
 	Namespace            string
 	CaCert               []byte

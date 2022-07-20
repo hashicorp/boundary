@@ -11,8 +11,8 @@ import (
 
 const domain = "target"
 
-// NewFunc is a function that creates a Target with the provided scope and options.
-type NewFunc func(scopeId string, opt ...Option) (Target, error)
+// NewFunc is a function that creates a Target with the provided project and options.
+type NewFunc func(projectId string, opt ...Option) (Target, error)
 
 // AllocFunc is a function that creates an in-memory Target.
 type AllocFunc func() Target
@@ -33,7 +33,7 @@ type VetCredentialSourcesFunc func(context.Context, []*CredentialLibrary, []*Sta
 // managing target suptypes.
 type targetHooks interface {
 	// NewTarget creates a new in memory target.
-	NewTarget(scopeId string, opt ...Option) (Target, error)
+	NewTarget(projectId string, opt ...Option) (Target, error)
 	// AllocTarget will allocate an empty target.
 	AllocTarget() Target
 	// Vet validates that the given Target has the proper fields and values
@@ -156,14 +156,14 @@ func Prefixes() []string {
 	return subtypes.Prefixes(domain)
 }
 
-// New creates a Target of the given subtype and scopeId.
-func New(ctx context.Context, subtype subtypes.Subtype, scopeId string, opt ...Option) (Target, error) {
+// New creates a Target of the given subtype and projectId.
+func New(ctx context.Context, subtype subtypes.Subtype, projectId string, opt ...Option) (Target, error) {
 	const op = "target.New"
 	nf, ok := subtypeRegistry.newFunc(subtype)
 	if !ok {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "unsupported subtype")
 	}
-	return nf(scopeId, opt...)
+	return nf(projectId, opt...)
 }
 
 // Register registers repository hooks and the prefixes for a provided Subtype. Register

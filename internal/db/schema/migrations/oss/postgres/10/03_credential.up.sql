@@ -24,8 +24,8 @@ begin;
 
   -- insert_credential_store_subtype() is a before insert trigger
   -- function for subtypes of credential_store
-  create function insert_credential_store_subtype()
-    returns trigger
+  -- Replaced in 44/01_credentials.up.sql
+  create function insert_credential_store_subtype() returns trigger
   as $$
   begin
     insert into credential_store
@@ -159,8 +159,8 @@ begin;
 
   -- insert_credential_static_subtype() is a before insert trigger
   -- function for subtypes of credential_static
-  create function insert_credential_static_subtype()
-    returns trigger
+  -- Replaced in 46/01_credential.up.sql
+  create function insert_credential_static_subtype() returns trigger
   as $$
   begin
     insert into credential_static

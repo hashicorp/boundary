@@ -262,7 +262,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 		ci.plgCat = plgCat
 		ci.storeCat = c
 
-		per, err := toPluginPersistedData(ctx, r.kms, c.GetScopeId(), s)
+		per, err := toPluginPersistedData(ctx, r.kms, c.GetProjectId(), s)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -302,7 +302,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 
 // upsertAndCleanHosts inserts phs into the repository or updates its current
 // attributes/set memberships and returns Hosts. h is not changed. hc must
-// contain a valid public ID and scope ID. Each ph in phs must not contain a
+// contain a valid public ID and project ID. Each ph in phs must not contain a
 // PublicId but must contain an external ID. The PublicId is generated and
 // assigned by this method.
 //
@@ -328,14 +328,14 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 	if hc.GetPublicId() == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
 	}
-	if hc.GetScopeId() == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if hc.GetProjectId() == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if len(setIds) == 0 { // At least one must have been given to the plugin
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty sets")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, hc.GetScopeId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, hc.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}

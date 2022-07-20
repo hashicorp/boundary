@@ -6,25 +6,25 @@ begin;
   select is(count(*), 1::bigint)
     from credential_static cred
     join credential_store cs on cred.store_id = cs.public_id
-   where cs.scope_id  = 'p____bwidget'
+   where cs.project_id  = 'p____bwidget'
      and cs.public_id = 'cs______wup1'
      and cred.public_id = 'cred____wup1';
 
   insert into target
-    (scope_id,       public_id)
+    (project_id,     public_id)
   values
     ('p____bwidget', 'test______wb');
 
   prepare insert_valid_target_static_credential as
     insert into target_static_credential
-      (target_id,      credential_static_id, credential_purpose)
+      (project_id,     target_id,      credential_static_id, credential_purpose)
     values
-      ('test______wb', 'cred____wup1',       'application');
+      ('p____bwidget', 'test______wb', 'cred____wup1',       'brokered');
   select lives_ok('insert_valid_target_static_credential', 'insert valid target_static_credential failed');
 
   -- create a credential_static_store and target in a different project
   insert into credential_static_store
-      (scope_id,       public_id,      name,                  description)
+      (project_id,     public_id,      name,                description)
     values
       ('p____swidget', 'test______cs', 'test static store', 'None');
 
@@ -35,10 +35,10 @@ begin;
 
   prepare insert_invalid_target_static_credential as
     insert into target_static_credential
-      (target_id,      credential_static_id, credential_purpose)
+      (project_id,     target_id,      credential_static_id, credential_purpose)
     values
-      ('test______wb', 'test____cred',       'application');
-  select throws_ok('insert_invalid_target_static_credential', '23000', null, 'insert invalid target_credential_library succeeded');
+      ('p____bwidget', 'test______wb', 'test____cred',       'brokered');
+  select throws_ok('insert_invalid_target_static_credential', '23503', null, 'insert invalid target_credential_library succeeded');
 
   select * from finish();
 rollback;

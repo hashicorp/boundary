@@ -9,11 +9,11 @@ var (
 	DefaultTableName = defaultTableName
 )
 
-// NewTestTarget is a test helper that bypasses the scopeId checks
+// NewTestTarget is a test helper that bypasses the projectId checks
 // performed by NewTarget, allowing tests to create Targets with
-// nil scopeIds for more robust testing.
-func NewTestTarget(scopeId string, opt ...target.Option) target.Target {
+// nil projectIds for more robust testing.
+func NewTestTarget(projectId string, opt ...target.Option) target.Target {
 	t, _ := targetHooks{}.NewTarget("testScope", opt...)
-	t.SetScopeId(scopeId)
+	t.SetProjectId(projectId)
 	return t
 }

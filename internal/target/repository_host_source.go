@@ -52,7 +52,7 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
 	metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -149,7 +149,7 @@ func (r *Repository) DeleteTargetHostSources(ctx context.Context, targetId strin
 	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
 	metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_DELETE.String())
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -271,7 +271,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 	target.SetVersion(targetVersion + 1)
 	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetScopeId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}

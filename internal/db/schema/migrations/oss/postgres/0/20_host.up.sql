@@ -135,8 +135,8 @@ begin;
 
   -- insert_host_set_subtype() is a before insert trigger
   -- function for subtypes of host_set
-  create or replace function insert_host_set_subtype()
-    returns trigger
+  -- Replaced in 46/02_hosts.up.sql
+  create or replace function insert_host_set_subtype() returns trigger
   as $$
   begin
     insert into host_set

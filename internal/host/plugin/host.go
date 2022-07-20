@@ -114,7 +114,7 @@ func (h *Host) GetSetIds() []string {
 type hostAgg struct {
 	PublicId    string `gorm:"primary_key"`
 	CatalogId   string
-	ScopeId     string
+	ProjectId   string
 	ExternalId  string
 	PluginId    string
 	Name        string

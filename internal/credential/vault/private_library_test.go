@@ -277,7 +277,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				}
 				want, ok := libs[got.PublicId]
 				require.True(ok)
-				assert.Equal(prj.GetPublicId(), got.ScopeId)
+				assert.Equal(prj.GetPublicId(), got.ProjectId)
 				assert.Equal(want.StoreId, got.StoreId)
 				assert.Equal(want.VaultPath, got.VaultPath)
 				assert.Equal(want.HttpMethod, got.HttpMethod)

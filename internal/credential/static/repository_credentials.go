@@ -11,7 +11,7 @@ import (
 
 // Retrieve retrieves and returns static credentials from Boundary for all the provided
 // ids. All the returned static credentials will have their secret fields decrypted.
-func (r *Repository) Retrieve(ctx context.Context, scopeId string, ids []string) ([]credential.Static, error) {
+func (r *Repository) Retrieve(ctx context.Context, projectId string, ids []string) ([]credential.Static, error) {
 	const op = "static.(Repository).Retrieve"
 	if len(ids) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no ids")
@@ -36,7 +36,7 @@ func (r *Repository) Retrieve(ctx context.Context, scopeId string, ids []string)
 	out := make([]credential.Static, 0, len(ids))
 	for _, c := range upCreds {
 		// decrypt credential
-		databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+		databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}
@@ -49,7 +49,7 @@ func (r *Repository) Retrieve(ctx context.Context, scopeId string, ids []string)
 
 	for _, c := range spkCreds {
 		// decrypt credential
-		databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+		databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}

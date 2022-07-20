@@ -8,24 +8,24 @@ import (
 )
 
 // A HostCatalog contains static hosts and static host sets. It is owned by
-// a scope.
+// a project.
 type HostCatalog struct {
 	*store.HostCatalog
 	tableName string `gorm:"-"`
 }
 
-// NewHostCatalog creates a new in memory HostCatalog assigned to scopeId.
+// NewHostCatalog creates a new in memory HostCatalog assigned to projectId.
 // Name and description are the only valid options. All other options are
 // ignored.
-func NewHostCatalog(scopeId string, opt ...Option) (*HostCatalog, error) {
-	if scopeId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, "static.NewHostCatalog", "no scope id")
+func NewHostCatalog(projectId string, opt ...Option) (*HostCatalog, error) {
+	if projectId == "" {
+		return nil, errors.NewDeprecated(errors.InvalidParameter, "static.NewHostCatalog", "no project id")
 	}
 
 	opts := getOpts(opt...)
 	hc := &HostCatalog{
 		HostCatalog: &store.HostCatalog{
-			ScopeId:     scopeId,
+			ProjectId:   projectId,
 			Name:        opts.withName,
 			Description: opts.withDescription,
 		},
@@ -67,8 +67,8 @@ func newCatalogMetadata(c *HostCatalog, op oplog.OpType) oplog.Metadata {
 		"resource-type":      []string{"static host catalog"},
 		"op-type":            []string{op.String()},
 	}
-	if c.ScopeId != "" {
-		metadata["scope-id"] = []string{c.ScopeId}
+	if c.ProjectId != "" {
+		metadata["project-id"] = []string{c.ProjectId}
 	}
 	return metadata
 }

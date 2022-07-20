@@ -3,9 +3,8 @@ begin;
 
 -- insert_target_subtype() is a before insert trigger
 -- function for subtypes of target
-create or replace function
-  insert_target_subtype()
-  returns trigger
+-- Replaced in 44/03_targets.up.sql
+create or replace function insert_target_subtype() returns trigger
 as $$
 begin
   insert into target
@@ -30,9 +29,8 @@ end;
 $$ language plpgsql;
 
 -- target_scope_valid() is a before insert trigger function for target
-create or replace function
-  target_scope_valid()
-  returns trigger
+-- Replaced in 44/03_targets.up.sql
+create or replace function target_scope_valid() returns trigger
 as $$
 declare scope_type text;
 begin
@@ -46,9 +44,8 @@ end;
 $$ language plpgsql;
 
 -- target_host_set_scope_valid() is a before insert trigger function for target_host_set 
-create or replace function
-  target_host_set_scope_valid()
-  returns trigger
+-- Replaced in 44/02_hosts.up.sql
+create or replace function target_host_set_scope_valid() returns trigger
 as $$
 begin
     perform from
