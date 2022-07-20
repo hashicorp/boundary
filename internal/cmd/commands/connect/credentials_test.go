@@ -9,301 +9,276 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	typedUsernamePassword = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			CredentialType: string(credential.UsernamePasswordType),
+		},
+		Credential: map[string]interface{}{
+			"username": "user",
+			"password": "pass",
+		},
+	}
+
+	typedSshPrivateKey = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			CredentialType: string(credential.SshPrivateKeyType),
+		},
+		Credential: map[string]interface{}{
+			"username":    "user",
+			"private_key": "my-pk",
+		},
+	}
+
+	vaultUsernamePassword = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type: "vault",
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]interface{}{
+				"username": "vault-decoded-user",
+				"password": "vault-decoded-pass",
+			},
+		},
+	}
+
+	vaultSshPrivateKey = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type: "vault",
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]interface{}{
+				"username":    "vault-decoded-user",
+				"private_key": "vault-decoded-pk",
+			},
+		},
+	}
+
+	staticUsernamePassword = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type: "static",
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]interface{}{
+				"username": "static-decoded-user",
+				"password": "static-decoded-pass",
+			},
+		},
+	}
+
+	staticSshPrivateKey = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type: "static",
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]interface{}{
+				"username":    "static-decoded-user",
+				"private_key": "static-decoded-pk",
+			},
+		},
+	}
+
+	unspecifiedCred = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type: "static",
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]interface{}{
+				"username":   "decoded-user",
+				"some-value": "decoded-some-value",
+			},
+		},
+	}
+
+	unspecifiedCred1 = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type: "static",
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]interface{}{
+				"username":    "decoded-user",
+				"some-value1": "decoded-some-value1",
+			},
+		},
+	}
+)
+
 func Test_parseCredentials(t *testing.T) {
 	tests := []struct {
 		name      string
 		creds     []*targets.SessionCredential
-		wantCreds []any
+		wantCreds credentials
 		wantErr   bool
 	}{
 		{
-			name:      "no-creds",
-			wantCreds: nil,
-			wantErr:   false,
+			name:    "no-creds",
+			wantErr: false,
 		},
 		{
 			name: "no-credential-source",
 			creds: []*targets.SessionCredential{
 				{
-					Credential: map[string]interface{}{
-						"username": "user",
-						"password": "pass",
+					Secret: &targets.SessionSecret{
+						Decoded: map[string]interface{}{
+							"username":    "decoded-user",
+							"private_key": "decoded-pk",
+						},
 					},
 				},
 			},
-			wantCreds: nil,
-			wantErr:   true,
+			wantErr: true,
 		},
 		{
-			name: "valid-username-password-typed",
+			name: "username-password-typed",
 			creds: []*targets.SessionCredential{
-				{
-					CredentialSource: &targets.CredentialSource{
-						CredentialType: string(credential.UsernamePasswordType),
-					},
-					Credential: map[string]interface{}{
-						"username": "user",
-						"password": "pass",
-					},
-				},
+				typedUsernamePassword,
 			},
-			wantCreds: []any{
-				usernamePasswordCredential{
-					Username: "user",
-					Password: "pass",
+			wantCreds: credentials{
+				usernamePassword: []usernamePassword{
+					{
+						Username: "user",
+						Password: "pass",
+						raw:      typedUsernamePassword,
+					},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid-ssh-private-key-typed",
+			name: "ssh-private-key-typed",
 			creds: []*targets.SessionCredential{
-				{
-					CredentialSource: &targets.CredentialSource{
-						CredentialType: string(credential.SshPrivateKeyType),
-					},
-					Credential: map[string]interface{}{
-						"username":    "user",
-						"private_key": "my-pk",
-					},
-				},
+				typedSshPrivateKey,
 			},
-			wantCreds: []any{
-				sshPrivateKeyCredential{
-					Username:   "user",
-					PrivateKey: "my-pk",
+			wantCreds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						Username:   "user",
+						PrivateKey: "my-pk",
+						raw:        typedSshPrivateKey,
+					},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid-typed-instead-of-decoded",
+			name: "vault-username-password-decoded",
 			creds: []*targets.SessionCredential{
-				{
-					CredentialSource: &targets.CredentialSource{
-						CredentialType: string(credential.UsernamePasswordType),
-					},
-					Credential: map[string]interface{}{
-						"username": "user",
-						"password": "pass",
-					},
-					Secret: &targets.SessionSecret{
-						Decoded: map[string]interface{}{
-							"username": "secret-user",
-							"password": "secret-pass",
-						},
-					},
-				},
+				vaultUsernamePassword,
 			},
-			wantCreds: []any{
-				usernamePasswordCredential{
-					Username: "user",
-					Password: "pass",
+			wantCreds: credentials{
+				usernamePassword: []usernamePassword{
+					{
+						Username: "vault-decoded-user",
+						Password: "vault-decoded-pass",
+						raw:      vaultUsernamePassword,
+					},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid-vault-not-typed-username-password",
+			name: "vault-private-key-decoded",
 			creds: []*targets.SessionCredential{
-				{
-					CredentialSource: &targets.CredentialSource{
-						Type: "vault",
-					},
-					Secret: &targets.SessionSecret{
-						Decoded: map[string]interface{}{
-							"username": "user",
-							"password": "pass",
-						},
-					},
-				},
+				vaultSshPrivateKey,
 			},
-			wantCreds: []any{
-				usernamePasswordCredential{
-					Username: "user",
-					Password: "pass",
+			wantCreds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						Username:   "vault-decoded-user",
+						PrivateKey: "vault-decoded-pk",
+						raw:        vaultSshPrivateKey,
+					},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid-vault-not-typed-ssh-private-key",
+			name: "static-username-password-decoded",
 			creds: []*targets.SessionCredential{
-				{
-					CredentialSource: &targets.CredentialSource{
-						Type: "vault",
-					},
-					Secret: &targets.SessionSecret{
-						Decoded: map[string]interface{}{
-							"username":    "user",
-							"private_key": "my-pk",
-						},
-					},
-				},
+				staticUsernamePassword,
 			},
-			wantCreds: []any{
-				sshPrivateKeyCredential{
-					Username:   "user",
-					PrivateKey: "my-pk",
+			wantCreds: credentials{
+				usernamePassword: []usernamePassword{
+					{
+						Username: "static-decoded-user",
+						Password: "static-decoded-pass",
+						raw:      staticUsernamePassword,
+					},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid-static-not-typed-username-password",
+			name: "static-private-key-decoded",
 			creds: []*targets.SessionCredential{
-				{
-					CredentialSource: &targets.CredentialSource{
-						Type: "static",
-					},
-					Secret: &targets.SessionSecret{
-						Decoded: map[string]interface{}{
-							"username": "user",
-							"password": "pass",
-						},
-					},
-				},
+				staticSshPrivateKey,
 			},
-			wantCreds: []any{
-				usernamePasswordCredential{
-					Username: "user",
-					Password: "pass",
+			wantCreds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						Username:   "static-decoded-user",
+						PrivateKey: "static-decoded-pk",
+						raw:        staticSshPrivateKey,
+					},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid-static-not-typed-ssh-private-key",
+			name: "unspecified",
 			creds: []*targets.SessionCredential{
-				{
-					CredentialSource: &targets.CredentialSource{
-						Type: "static",
-					},
-					Secret: &targets.SessionSecret{
-						Decoded: map[string]interface{}{
-							"username":    "user",
-							"private_key": "my-pk",
-						},
-					},
-				},
+				unspecifiedCred,
 			},
-			wantCreds: []any{
-				sshPrivateKeyCredential{
-					Username:   "user",
-					PrivateKey: "my-pk",
+			wantCreds: credentials{
+				unspecified: []*targets.SessionCredential{
+					unspecifiedCred,
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "valid-multiple",
+			name: "mixed",
 			creds: []*targets.SessionCredential{
-				{
-					CredentialSource: &targets.CredentialSource{
-						CredentialType: string(credential.UsernamePasswordType),
-					},
-					Credential: map[string]interface{}{
-						"username": "user",
-						"password": "pass",
-					},
-				},
-				{
-					CredentialSource: &targets.CredentialSource{
-						CredentialType: string(credential.UsernamePasswordType),
-					},
-					Credential: map[string]interface{}{
-						"username": "user1",
-						"password": "pass1",
-					},
-				},
+				staticSshPrivateKey, unspecifiedCred1, vaultSshPrivateKey, typedUsernamePassword,
+				unspecifiedCred, vaultUsernamePassword, typedSshPrivateKey, staticUsernamePassword,
 			},
-			wantCreds: []any{
-				usernamePasswordCredential{
-					Username: "user",
-					Password: "pass",
-				},
-				usernamePasswordCredential{
-					Username: "user1",
-					Password: "pass1",
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "valid-multiple-mixed",
-			creds: []*targets.SessionCredential{
-				{
-					CredentialSource: &targets.CredentialSource{
-						CredentialType: string(credential.UsernamePasswordType),
+			wantCreds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						Username:   "static-decoded-user",
+						PrivateKey: "static-decoded-pk",
+						raw:        staticSshPrivateKey,
 					},
-					Credential: map[string]interface{}{
-						"username": "user",
-						"password": "pass",
+					{
+						Username:   "vault-decoded-user",
+						PrivateKey: "vault-decoded-pk",
+						raw:        vaultSshPrivateKey,
+					},
+					{
+						Username:   "user",
+						PrivateKey: "my-pk",
+						raw:        typedSshPrivateKey,
 					},
 				},
-				{
-					CredentialSource: &targets.CredentialSource{
-						CredentialType: string(credential.SshPrivateKeyType),
+				usernamePassword: []usernamePassword{
+					{
+						Username: "static-decoded-user",
+						Password: "static-decoded-pass",
+						raw:      staticUsernamePassword,
 					},
-					Credential: map[string]interface{}{
-						"username":    "user",
-						"private_key": "my-first-pk",
+					{
+						Username: "vault-decoded-user",
+						Password: "vault-decoded-pass",
+						raw:      vaultUsernamePassword,
 					},
-				},
-				{
-					CredentialSource: &targets.CredentialSource{
-						Type: "vault",
-					},
-					Secret: &targets.SessionSecret{
-						Decoded: map[string]interface{}{
-							"username": "user1",
-							"password": "pass1",
-						},
+					{
+						Username: "user",
+						Password: "pass",
+						raw:      typedUsernamePassword,
 					},
 				},
-				{
-					CredentialSource: &targets.CredentialSource{
-						Type: "static",
-					},
-					Secret: &targets.SessionSecret{
-						Decoded: map[string]interface{}{
-							"username":    "another-user",
-							"private_key": "my-pk",
-						},
-					},
-				},
-				{
-					CredentialSource: &targets.CredentialSource{
-						Type: "static",
-					},
-					Secret: &targets.SessionSecret{
-						Decoded: map[string]interface{}{
-							"username": "user2",
-							"password": "pass2",
-						},
-					},
-				},
-			},
-			wantCreds: []any{
-				usernamePasswordCredential{
-					Username: "user",
-					Password: "pass",
-				},
-				usernamePasswordCredential{
-					Username: "user1",
-					Password: "pass1",
-				},
-				usernamePasswordCredential{
-					Username: "user2",
-					Password: "pass2",
-				},
-				sshPrivateKeyCredential{
-					Username:   "another-user",
-					PrivateKey: "my-pk",
-				},
-				sshPrivateKeyCredential{
-					Username:   "user",
-					PrivateKey: "my-first-pk",
+				unspecified: []*targets.SessionCredential{
+					unspecifiedCred, unspecifiedCred1,
 				},
 			},
 			wantErr: false,
@@ -316,10 +291,190 @@ func Test_parseCredentials(t *testing.T) {
 			creds, err := parseCredentials(tt.creds)
 			if tt.wantErr {
 				require.Error(err)
-				assert.Nil(creds)
+				assert.Empty(creds)
 				return
 			}
 			require.NoError(err)
+
+			assert.ElementsMatch(tt.wantCreds.usernamePassword, creds.usernamePassword)
+			assert.ElementsMatch(tt.wantCreds.sshPrivateKey, creds.sshPrivateKey)
+			assert.ElementsMatch(tt.wantCreds.unspecified, creds.unspecified)
+		})
+	}
+}
+
+func Test_unconsumedSessionCredentials(t *testing.T) {
+	tests := []struct {
+		name      string
+		creds     credentials
+		wantCreds []*targets.SessionCredential
+	}{
+		{
+			name:      "no-creds",
+			wantCreds: nil,
+		},
+		{
+			name: "spk-consumed",
+			creds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						raw:      staticSshPrivateKey,
+						consumed: true,
+					},
+				},
+			},
+			wantCreds: nil,
+		},
+		{
+			name: "spk",
+			creds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						raw: staticSshPrivateKey,
+					},
+				},
+			},
+			wantCreds: []*targets.SessionCredential{staticSshPrivateKey},
+		},
+		{
+			name: "up",
+			creds: credentials{
+				usernamePassword: []usernamePassword{
+					{
+						raw: vaultUsernamePassword,
+					},
+				},
+			},
+			wantCreds: []*targets.SessionCredential{vaultUsernamePassword},
+		},
+		{
+			name: "up-consumed",
+			creds: credentials{
+				usernamePassword: []usernamePassword{
+					{
+						raw:      vaultUsernamePassword,
+						consumed: true,
+					},
+				},
+			},
+			wantCreds: nil,
+		},
+		{
+			name: "unspecified",
+			creds: credentials{
+				unspecified: []*targets.SessionCredential{unspecifiedCred},
+			},
+			wantCreds: []*targets.SessionCredential{unspecifiedCred},
+		},
+		{
+			name: "mixed",
+			creds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						raw:      staticSshPrivateKey,
+						consumed: true,
+					},
+					{
+						raw: vaultSshPrivateKey,
+					},
+					{
+						raw: typedSshPrivateKey,
+					},
+				},
+				usernamePassword: []usernamePassword{
+					{
+						raw:      staticUsernamePassword,
+						consumed: true,
+					},
+					{
+						raw: vaultUsernamePassword,
+					},
+					{
+						raw:      typedUsernamePassword,
+						consumed: true,
+					},
+				},
+				unspecified: []*targets.SessionCredential{unspecifiedCred, unspecifiedCred1},
+			},
+			wantCreds: []*targets.SessionCredential{
+				vaultSshPrivateKey, typedSshPrivateKey, vaultUsernamePassword, unspecifiedCred, unspecifiedCred1,
+			},
+		},
+		{
+			name: "mixed-all-consumed",
+			creds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						raw:      staticSshPrivateKey,
+						consumed: true,
+					},
+					{
+						raw:      vaultSshPrivateKey,
+						consumed: true,
+					},
+					{
+						raw:      typedSshPrivateKey,
+						consumed: true,
+					},
+				},
+				usernamePassword: []usernamePassword{
+					{
+						raw:      staticUsernamePassword,
+						consumed: true,
+					},
+					{
+						raw:      vaultUsernamePassword,
+						consumed: true,
+					},
+					{
+						raw:      typedUsernamePassword,
+						consumed: true,
+					},
+				},
+				unspecified: []*targets.SessionCredential{unspecifiedCred, unspecifiedCred1},
+			},
+			wantCreds: []*targets.SessionCredential{
+				unspecifiedCred1, unspecifiedCred,
+			},
+		},
+		{
+			name: "mixed-all-unconsumed",
+			creds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						raw: staticSshPrivateKey,
+					},
+					{
+						raw: vaultSshPrivateKey,
+					},
+					{
+						raw: typedSshPrivateKey,
+					},
+				},
+				usernamePassword: []usernamePassword{
+					{
+						raw: staticUsernamePassword,
+					},
+					{
+						raw: vaultUsernamePassword,
+					},
+					{
+						raw: typedUsernamePassword,
+					},
+				},
+				unspecified: []*targets.SessionCredential{unspecifiedCred, unspecifiedCred1},
+			},
+			wantCreds: []*targets.SessionCredential{
+				staticSshPrivateKey, unspecifiedCred1, vaultSshPrivateKey, typedUsernamePassword,
+				unspecifiedCred, vaultUsernamePassword, typedSshPrivateKey, staticUsernamePassword,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			creds := tt.creds.unconsumedSessionCredentials()
 			assert.ElementsMatch(tt.wantCreds, creds)
 		})
 	}

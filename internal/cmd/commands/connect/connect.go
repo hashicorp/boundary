@@ -483,15 +483,16 @@ func (c *Command) Run(args []string) (retCode int) {
 
 	c.listenerAddr = c.listener.Addr().(*net.TCPAddr)
 
-	var creds []*targets.SessionCredential
-	if c.sessionAuthz != nil && len(c.sessionAuthz.Credentials) > 0 {
-		creds = c.sessionAuthz.Credentials
-	}
-	switch c.Func {
-	case "connect":
+	if c.Func == "connect" {
 		// "connect" indicates there is no subcommand to the connect function.
 		// The only way a user will be able to connect to the session is by
 		// connecting directly to the port and address we report to them here.
+
+		var creds []*targets.SessionCredential
+		if c.sessionAuthz != nil && len(c.sessionAuthz.Credentials) > 0 {
+			creds = c.sessionAuthz.Credentials
+		}
+
 		sessInfo := SessionInfo{
 			Protocol:        c.sessionAuthzData.GetType(),
 			Address:         c.listenerAddr.IP.String(),
@@ -649,18 +650,18 @@ func (c *Command) Run(args []string) (retCode int) {
 	return
 }
 
-func (c *Command) printCredentials() error {
-	if c.sessionAuthz == nil || len(c.sessionAuthz.Credentials) == 0 {
+func (c *Command) printCredentials(creds []*targets.SessionCredential) error {
+	if len(creds) == 0 {
 		return nil
 	}
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateCredentialTableOutput(c.sessionAuthz.Credentials))
+		c.UI.Output(generateCredentialTableOutput(creds))
 	case "json":
 		out, err := json.Marshal(&struct {
 			Credentials []*targets.SessionCredential `json:"credentials"`
 		}{
-			Credentials: c.sessionAuthz.Credentials,
+			Credentials: creds,
 		})
 		if err != nil {
 			return fmt.Errorf("error marshaling credential information: %w", err)
@@ -812,7 +813,18 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	var args []string
 	var envs []string
 	var argsErr error
-	printCreds := true
+
+	var creds credentials
+	if c.sessionAuthz != nil {
+		var err error
+		creds, err = parseCredentials(c.sessionAuthz.Credentials)
+		if err != nil {
+			c.PrintCliError(fmt.Errorf("Error interpreting secret: %w", err))
+			c.execCmdReturnValue.Store(int32(3))
+			return
+		}
+	}
+
 	switch c.Func {
 	case "http":
 		httpArgs, err := c.httpFlags.buildArgs(c, port, ip, addr)
@@ -824,28 +836,27 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		args = append(args, httpArgs...)
 
 	case "postgres":
-		pgArgs, pgEnvs, pgErr := c.postgresFlags.buildArgs(c, port, ip, addr)
+		pgArgs, pgEnvs, pgCreds, pgErr := c.postgresFlags.buildArgs(c, port, ip, addr, creds)
 		if pgErr != nil {
 			argsErr = pgErr
 			break
 		}
 		args = append(args, pgArgs...)
 		envs = append(envs, pgEnvs...)
-		printCreds = false
+		creds = pgCreds
+
 	case "rdp":
 		args = append(args, c.rdpFlags.buildArgs(c, port, ip, addr)...)
 
 	case "ssh":
-		sshArgs, sshEnvs, consumedCreds, sshErr := c.sshFlags.buildArgs(c, port, ip, addr)
+		sshArgs, sshEnvs, sshCreds, sshErr := c.sshFlags.buildArgs(c, port, ip, addr, creds)
 		if sshErr != nil {
 			argsErr = sshErr
 			break
 		}
 		args = append(args, sshArgs...)
 		envs = append(envs, sshEnvs...)
-		if consumedCreds {
-			printCreds = false
-		}
+		creds = sshCreds
 
 	case "kube":
 		kubeArgs, err := c.kubeFlags.buildArgs(c, port, ip, addr)
@@ -863,12 +874,10 @@ func (c *Command) handleExec(passthroughArgs []string) {
 		return
 	}
 
-	if printCreds {
-		if err := c.printCredentials(); err != nil {
-			c.PrintCliError(fmt.Errorf("Failed to print credentials: %w", err))
-			c.execCmdReturnValue.Store(int32(2))
-			return
-		}
+	if err := c.printCredentials(creds.unconsumedSessionCredentials()); err != nil {
+		c.PrintCliError(fmt.Errorf("Failed to print credentials: %w", err))
+		c.execCmdReturnValue.Store(int32(2))
+		return
 	}
 
 	args = append(passthroughArgs, args...)
