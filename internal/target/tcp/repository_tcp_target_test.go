@@ -33,25 +33,10 @@ func TestRepository_CreateTarget(t *testing.T) {
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
-	hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 2)
-	var sets []string
-	for _, s := range hsets {
-		sets = append(sets, s.PublicId)
-	}
+	static.TestSets(t, conn, cats[0].GetPublicId(), 2)
 
 	cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
-	credSources := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 2)
-	var credLibraries []*target.CredentialLibrary
-	var credLibIds []string
-	for _, cl := range credSources {
-		credLibraries = append(credLibraries, &target.CredentialLibrary{
-			CredentialLibrary: &store.CredentialLibrary{
-				CredentialLibraryId: cl.PublicId,
-				CredentialPurpose:   string(credential.ApplicationPurpose),
-			},
-		})
-		credLibIds = append(credLibIds, cl.PublicId)
-	}
+	vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 2)
 
 	ctx := context.Background()
 
@@ -60,12 +45,10 @@ func TestRepository_CreateTarget(t *testing.T) {
 		opt    []target.Option
 	}
 	tests := []struct {
-		name            string
-		args            args
-		wantHostSources []string
-		wantCredLibs    []string
-		wantErr         bool
-		wantIsError     errors.Code
+		name        string
+		args        args
+		wantErr     bool
+		wantIsError errors.Code
 	}{
 		{
 			name: "valid-org",
@@ -79,9 +62,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 					return target
 				}(),
 			},
-			wantErr:         false,
-			wantCredLibs:    []string{},
-			wantHostSources: []string{},
+			wantErr: false,
 		},
 		{
 			name: "nil-target",
@@ -155,17 +136,6 @@ func TestRepository_CreateTarget(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(tar.GetPublicId())
-			hsIds := make([]string, 0, len(hostSources))
-			for _, s := range hostSources {
-				hsIds = append(hsIds, s.Id())
-			}
-			assert.Equal(tt.wantHostSources, hsIds)
-
-			clIds := make([]string, 0, len(credSources))
-			for _, cl := range credSources {
-				clIds = append(clIds, cl.Id())
-			}
-			assert.Equal(tt.wantCredLibs, clIds)
 
 			foundTarget, foundHostSources, foundCredLibs, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 			assert.NoError(err)
@@ -412,7 +382,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				testCredLibs = append(testCredLibs, &target.CredentialLibrary{
 					CredentialLibrary: &store.CredentialLibrary{
 						CredentialLibraryId: cl.PublicId,
-						CredentialPurpose:   string(credential.ApplicationPurpose),
+						CredentialPurpose:   string(credential.BrokeredPurpose),
 					},
 				})
 				testClIds = append(testClIds, cl.PublicId)

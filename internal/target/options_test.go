@@ -114,13 +114,13 @@ func Test_GetOpts(t *testing.T) {
 			{
 				CredentialLibrary: &store.CredentialLibrary{
 					CredentialLibraryId: "alice",
-					CredentialPurpose:   string(credential.ApplicationPurpose),
+					CredentialPurpose:   string(credential.BrokeredPurpose),
 				},
 			},
 			{
 				CredentialLibrary: &store.CredentialLibrary{
 					CredentialLibraryId: "bob",
-					CredentialPurpose:   string(credential.EgressPurpose),
+					CredentialPurpose:   string(credential.InjectedApplicationPurpose),
 				},
 			},
 		}))
@@ -129,13 +129,13 @@ func Test_GetOpts(t *testing.T) {
 			{
 				CredentialLibrary: &store.CredentialLibrary{
 					CredentialLibraryId: "alice",
-					CredentialPurpose:   string(credential.ApplicationPurpose),
+					CredentialPurpose:   string(credential.BrokeredPurpose),
 				},
 			},
 			{
 				CredentialLibrary: &store.CredentialLibrary{
 					CredentialLibraryId: "bob",
-					CredentialPurpose:   string(credential.EgressPurpose),
+					CredentialPurpose:   string(credential.InjectedApplicationPurpose),
 				},
 			},
 		}
@@ -147,13 +147,13 @@ func Test_GetOpts(t *testing.T) {
 			{
 				StaticCredential: &store.StaticCredential{
 					CredentialId:      "alice",
-					CredentialPurpose: string(credential.ApplicationPurpose),
+					CredentialPurpose: string(credential.BrokeredPurpose),
 				},
 			},
 			{
 				StaticCredential: &store.StaticCredential{
 					CredentialId:      "bob",
-					CredentialPurpose: string(credential.EgressPurpose),
+					CredentialPurpose: string(credential.InjectedApplicationPurpose),
 				},
 			},
 		}))
@@ -162,13 +162,13 @@ func Test_GetOpts(t *testing.T) {
 			{
 				StaticCredential: &store.StaticCredential{
 					CredentialId:      "alice",
-					CredentialPurpose: string(credential.ApplicationPurpose),
+					CredentialPurpose: string(credential.BrokeredPurpose),
 				},
 			},
 			{
 				StaticCredential: &store.StaticCredential{
 					CredentialId:      "bob",
-					CredentialPurpose: string(credential.EgressPurpose),
+					CredentialPurpose: string(credential.InjectedApplicationPurpose),
 				},
 			},
 		}

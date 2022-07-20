@@ -16,7 +16,7 @@ begin;
   insert into session_credential_dynamic
     ( session_id,    library_id,     credential_id,  credential_purpose)
   values
-    ('s1____walter', 'vl______wvl1', null,           'application');
+    ('s1____walter', 'vl______wvl1', null,           'brokered');
 
   select is(count(*), 1::bigint) from wh_credential_dimension where organization_id = 'o_____widget';
 
