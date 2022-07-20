@@ -106,17 +106,17 @@ func TestRepository_CreateTarget(t *testing.T) {
 			wantIsError: errors.InvalidParameter,
 		},
 		{
-			name: "empty-scope-id",
+			name: "empty-project-id",
 			args: args{
 				target: func() target.Target {
 					tar, err := target.New(
 						ctx,
 						tcp.Subtype,
 						proj.PublicId,
-						target.WithName("empty-scope-id"),
+						target.WithName("empty-project-id"),
 					)
 					require.NoError(t, err)
-					tar.SetScopeId("")
+					tar.SetProjectId("")
 					return tar
 				}(),
 			},
@@ -179,12 +179,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 		port           uint32
 		fieldMaskPaths []string
 		opt            []target.Option
-		ScopeId        string
+		ProjectId      string
 		PublicId       *string
 	}
 	tests := []struct {
 		name           string
-		newScopeId     string
+		newProjectId   string
 		newName        string
 		newTargetOpts  []target.Option
 		args           args
@@ -199,9 +199,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
@@ -210,9 +210,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid-no-op" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			newName:        "valid-no-op" + id,
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -222,10 +222,10 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "not-found" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 				PublicId:       func() *string { s := "1"; return &s }(),
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "record not found, search issue: error #1100",
@@ -236,9 +236,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "",
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			newName:        "null-name" + id,
 			wantErr:        true,
 			wantRowsUpdate: 0,
@@ -249,9 +249,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "null-description",
 				fieldMaskPaths: []string{"Description"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			newTargetOpts:  []target.Option{target.WithDescription("null-description" + id)},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -261,9 +261,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
@@ -274,9 +274,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: nil,
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
@@ -287,9 +287,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"CreateTime"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "target.(Repository).UpdateTarget: invalid field mask: CreateTime: parameter violation: error #103",
@@ -300,9 +300,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Alice"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			wantErr:        true,
 			wantRowsUpdate: 0,
 			wantErrMsg:     "target.(Repository).UpdateTarget: invalid field mask: Alice: parameter violation: error #103",
@@ -313,34 +313,34 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 				PublicId:       pubId(""),
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			wantErr:        true,
 			wantErrMsg:     "target.(Repository).UpdateTarget: missing target public id: parameter violation: error #100",
 			wantIsError:    errors.InvalidParameter,
 			wantRowsUpdate: 0,
 		},
 		{
-			name: "proj-scope-id-no-mask",
+			name: "project-id-no-mask",
 			args: args{
-				name:    "proj-scope-id" + id,
-				ScopeId: proj.PublicId,
+				name:      "project-id" + id,
+				ProjectId: proj.PublicId,
 			},
-			newScopeId:  proj.PublicId,
-			wantErr:     true,
-			wantErrMsg:  "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
-			wantIsError: errors.EmptyFieldMask,
+			newProjectId: proj.PublicId,
+			wantErr:      true,
+			wantErrMsg:   "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
+			wantIsError:  errors.EmptyFieldMask,
 		},
 		{
-			name: "empty-scope-id-with-name-mask",
+			name: "empty-project-id-with-name-mask",
 			args: args{
-				name:           "empty-scope-id" + id,
+				name:           "empty-project-id" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        "",
+				ProjectId:      "",
 			},
-			newScopeId:     proj.PublicId,
+			newProjectId:   proj.PublicId,
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
@@ -349,13 +349,13 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			args: args{
 				name:           "dup-name" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
-			newScopeId:  proj.PublicId,
-			wantErr:     true,
-			wantDup:     true,
-			wantErrMsg:  " already exists in scope " + proj.PublicId,
-			wantIsError: errors.NotUnique,
+			newProjectId: proj.PublicId,
+			wantErr:      true,
+			wantDup:      true,
+			wantErrMsg:   " already exists in project " + proj.PublicId,
+			wantIsError:  errors.NotUnique,
 		},
 	}
 	css := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), len(tests))
@@ -397,9 +397,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			if name == "" {
 				name = tcp.TestId(t)
 			}
-			tar := tcp.TestTarget(ctx, t, conn, tt.newScopeId, name, tt.newTargetOpts...)
+			tar := tcp.TestTarget(ctx, t, conn, tt.newProjectId, name, tt.newTargetOpts...)
 			updateTarget := tcp.NewTestTarget(
-				tt.args.ScopeId,
+				tt.args.ProjectId,
 				target.WithName(tt.args.name),
 				target.WithDescription(tt.args.description),
 				target.WithDefaultPort(tt.args.port),

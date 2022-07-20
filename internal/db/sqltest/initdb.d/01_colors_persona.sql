@@ -112,7 +112,7 @@ begin;
   update auth_account set iam_user_id = 'u______ciara' where public_id = 'apa____ciara';
 
   insert into static_host_catalog
-    (scope_id, public_id, name)
+    (project_id, public_id, name)
   values
     ('p____bcolors', 'c___cb-sthcl', 'Blue Color Static Catalog'),
     ('p____rcolors', 'c___cr-sthcl', 'Red Color Static Catalog');
@@ -211,22 +211,22 @@ begin;
    where h.catalog_id = s.catalog_id;
 
   insert into target_tcp
-    (scope_id, public_id, name)
+    (project_id, public_id, name)
   values
     ('p____bcolors', 't_________cb', 'Blue Color Target'),
     ('p____rcolors', 't_________cr', 'Red Color Target');
 
   insert into target_host_set
-    (target_id, host_set_id)
+    (project_id, target_id, host_set_id)
   values
-    ('t_________cb', 's___1cb-sths'),
-    ('t_________cb', 's___2cb-sths'),
-    ('t_________cr', 's___1cr-sths'),
-    ('t_________cr', 's___2cr-sths');
+    ('p____bcolors', 't_________cb', 's___1cb-sths'),
+    ('p____bcolors', 't_________cb', 's___2cb-sths'),
+    ('p____rcolors', 't_________cr', 's___1cr-sths'),
+    ('p____rcolors', 't_________cr', 's___2cr-sths');
 
 
   insert into credential_vault_store
-    (scope_id,       public_id,      name,                description, vault_address, namespace)
+    (project_id,     public_id,      name,                description, vault_address, namespace)
   values
     ('p____bcolors', 'vs_______cvs', 'color vault store', 'None',      'https://vault.color', 'blue');
 
@@ -236,12 +236,12 @@ begin;
     ('vs_______cvs', 'vl______cvl', 'color vault library', 'None',      '/secrets', 'GET');
 
   insert into target_credential_library
-    (target_id,      credential_library_id, credential_purpose)
+    (project_id,     target_id,      credential_library_id, credential_purpose)
   values
-    ('t_________cb', 'vl______cvl',         'brokered');
+    ('p____bcolors', 't_________cb', 'vl______cvl',         'brokered');
 
   insert into session
-    ( scope_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,     target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's1_____clare'),
     ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____cindy'),

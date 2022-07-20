@@ -58,7 +58,7 @@ func TestLookupSession(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -68,7 +68,7 @@ func TestLookupSession(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -117,7 +117,7 @@ func TestLookupSession(t *testing.T) {
 		require.NoError(t, err)
 		workerCreds = append(workerCreds, data)
 	}
-	err = repo.AddSessionCredentials(ctx, sessWithCreds.ScopeId, sessWithCreds.GetPublicId(), workerCreds)
+	err = repo.AddSessionCredentials(ctx, sessWithCreds.ProjectId, sessWithCreds.GetPublicId(), workerCreds)
 	require.NoError(t, err)
 
 	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms)

@@ -5,6 +5,7 @@ alter table host_plugin_catalog
     constraint secrets_hmac_null_or_not_empty
     check(secrets_hmac is null or length(secrets_hmac) > 0);
 
+-- Updated view in 44/02_hosts.up.sql
 -- host_plugin_catalog_with_secret is useful for reading a plugin catalog with
 -- its associated persisted data.
 drop view host_plugin_catalog_with_secret;

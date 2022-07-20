@@ -20,7 +20,7 @@ import (
 //
 // Both s.Name and s.Description are optional. If s.Name is set, it must be
 // unique within s.CatalogId.
-func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, opt ...Option) (*HostSet, error) {
+func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet, opt ...Option) (*HostSet, error) {
 	const op = "static.(Repository).CreateSet"
 	if s == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -34,8 +34,8 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if s.PublicId != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	s = s.clone()
 
@@ -58,7 +58,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 		s.PublicId = id
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -98,7 +98,7 @@ func (r *Repository) CreateSet(ctx context.Context, scopeId string, s *HostSet, 
 //
 // The WithLimit option can be used to limit the number of hosts returned.
 // All other options are ignored.
-func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, version uint32, fieldMaskPaths []string, opt ...Option) (*HostSet, []*Host, int, error) {
+func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet, version uint32, fieldMaskPaths []string, opt ...Option) (*HostSet, []*Host, int, error) {
 	const op = "static.(Repository).UpdateSet"
 	if s == nil {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -112,8 +112,8 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 	if version == 0 {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
-	if scopeId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -144,7 +144,7 @@ func (r *Repository) UpdateSet(ctx context.Context, scopeId string, s *HostSet, 
 		limit = opts.withLimit
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -268,18 +268,18 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Opti
 // DeleteSet deletes the host set for the provided id from the repository
 // returning a count of the number of records deleted. All options are
 // ignored.
-func (r *Repository) DeleteSet(ctx context.Context, scopeId string, publicId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId string, opt ...Option) (int, error) {
 	const op = "static.(Repository).DeleteSet"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	s := allocHostSet()
 	s.PublicId = publicId
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}

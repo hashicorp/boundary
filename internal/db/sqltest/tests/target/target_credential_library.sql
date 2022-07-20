@@ -6,39 +6,39 @@ begin;
   select is(count(*), 1::bigint)
     from credential_library cl
     join credential_store cs on cl.store_id = cs.public_id
-   where cs.scope_id  = 'p____bwidget'
+   where cs.project_id  = 'p____bwidget'
      and cs.public_id = 'vs_______wvs'
      and cl.public_id = 'vl______wvl1';
 
   insert into target
-    (scope_id, public_id)
+    (project_id,     public_id)
   values
     ('p____bwidget', 'test______wb');
 
   prepare insert_valid_target_credential_library as
     insert into target_credential_library
-      (target_id, credential_library_id, credential_purpose)
+      (project_id,     target_id,      credential_library_id, credential_purpose)
     values
-      ('test______wb', 'vl______wvl1', 'application');
+      ('p____bwidget', 'test______wb', 'vl______wvl1',        'brokered');
   select lives_ok('insert_valid_target_credential_library', 'insert valid target_credential_library failed');
 
   -- create a credential_store and credential_library in a different project
   insert into credential_store
-    (scope_id, public_id)
+    (project_id,     public_id)
   values
     ('p____swidget', 'test______cs');
 
   insert into credential_library
-    (store_id, public_id, credential_type)
+    (project_id,     store_id,       public_id,      credential_type)
   values
-    ('test______cs', 'test______cl', 'unspecified');
+    ('p____swidget', 'test______cs', 'test______cl', 'unspecified');
 
   prepare insert_invalid_target_credential_library as
     insert into target_credential_library
-      (target_id, credential_library_id, credential_purpose)
+      (project_id,     target_id,      credential_library_id, credential_purpose)
     values
-      ('test______wb', 'test______cl', 'application');
-  select throws_ok('insert_invalid_target_credential_library', '23000', null, 'insert invalid target_credential_library succeeded');
+      ('p____bwidget', 'test______wb', 'test______cl',        'brokered');
+  select throws_ok('insert_invalid_target_credential_library', '23503', null, 'insert invalid target_credential_library succeeded');
 
   select * from finish();
 rollback;

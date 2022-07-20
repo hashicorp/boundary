@@ -15,7 +15,7 @@ import (
 // Target is a commmon interface for all target subtypes
 type Target interface {
 	GetPublicId() string
-	GetScopeId() string
+	GetProjectId() string
 	GetDefaultPort() uint32
 	GetName() string
 	GetDescription() string
@@ -28,7 +28,7 @@ type Target interface {
 	GetWorkerFilter() string
 	Clone() Target
 	SetPublicId(context.Context, string) error
-	SetScopeId(string)
+	SetProjectId(string)
 	SetName(string)
 	SetDescription(string)
 	SetVersion(uint32)
@@ -85,9 +85,9 @@ func (t targetView) GetPublicId() string {
 	return t.PublicId
 }
 
-// GetScopeId satisfies boundary.AuthzProtectedEntity
-func (t targetView) GetScopeId() string {
-	return t.ScopeId
+// GetProjectId satisfies boundary.AuthzProtectedEntity
+func (t targetView) GetProjectId() string {
+	return t.ProjectId
 }
 
 // GetUserId satisfies boundary.AuthzProtectedEntity; targets are not associated
@@ -114,7 +114,7 @@ func (t *targetView) targetSubtype(ctx context.Context) (Target, error) {
 		return nil, err
 	}
 	tt.SetVersion(t.Version)
-	tt.SetScopeId(t.ScopeId)
+	tt.SetProjectId(t.ProjectId)
 	tt.SetName(t.Name)
 	tt.SetDescription(t.Description)
 	tt.SetDefaultPort(t.DefaultPort)

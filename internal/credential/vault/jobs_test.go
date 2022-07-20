@@ -50,7 +50,7 @@ func testVaultToken(t *testing.T,
 	require.NoError(err)
 	inToken.Status = string(status)
 
-	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), cs.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), cs.ProjectId, kms.KeyPurposeDatabase)
 	require.NoError(err)
 
 	require.NoError(inToken.encrypt(context.Background(), databaseWrapper))
@@ -362,7 +362,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 
 	currentToken := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &currentToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
-	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), cs.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), cs.ProjectId, kms.KeyPurposeDatabase)
 	require.NoError(err)
 	require.NoError(currentToken.decrypt(context.Background(), databaseWrapper))
 
@@ -839,7 +839,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -1038,7 +1038,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 	credsToken := testVaultToken(t, conn, wrapper, v, cs, CurrentToken, 5*time.Minute)
@@ -1150,7 +1150,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -1260,7 +1260,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -1338,7 +1338,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -1581,7 +1581,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -1695,7 +1695,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -1789,7 +1789,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -2181,7 +2181,7 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 	sess2 := session.TestSession(t, conn, wrapper, session.ComposedOf{
@@ -2190,7 +2190,7 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 

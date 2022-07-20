@@ -61,7 +61,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "no-scope",
+			name: "no-project",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					PluginId:   plg.GetPublicId(),
@@ -74,7 +74,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "no-plugin",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					Attributes: []byte{},
 				},
 			},
@@ -84,8 +84,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "no-attributes",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:  prj.GetPublicId(),
-					PluginId: plg.GetPublicId(),
+					ProjectId: prj.GetPublicId(),
+					PluginId:  plg.GetPublicId(),
 				},
 			},
 			wantIsErr: errors.InvalidParameter,
@@ -94,14 +94,14 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "valid-no-options",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
 					Attributes: []byte{},
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
 					Attributes: []byte{},
 				},
@@ -112,14 +112,14 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "valid-unimplemented-plugin",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					PluginId:   unimplementedPlugin.GetPublicId(),
 					Attributes: []byte{},
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					PluginId:   unimplementedPlugin.GetPublicId(),
 					Attributes: []byte{},
 				},
@@ -130,7 +130,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "not-found-plugin",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					PluginId:   "unknown_plugin",
 					Attributes: []byte{},
 				},
@@ -142,7 +142,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					Name:       "test-name-repo",
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
 					Attributes: []byte{},
 				},
@@ -150,7 +150,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					Name:       "test-name-repo",
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					PluginId:   plg.GetPublicId(),
 					Attributes: []byte{},
 				},
@@ -162,7 +162,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					Description: "test-description-repo",
-					ScopeId:     prj.GetPublicId(),
+					ProjectId:   prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
 					Attributes:  []byte{},
 				},
@@ -170,7 +170,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					Description: "test-description-repo",
-					ScopeId:     prj.GetPublicId(),
+					ProjectId:   prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
 					Attributes:  []byte{},
 				},
@@ -181,8 +181,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			name: "valid-with-attributes",
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:  prj.GetPublicId(),
-					PluginId: plg.GetPublicId(),
+					ProjectId: prj.GetPublicId(),
+					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
 						st, err := structpb.NewStruct(map[string]interface{}{
 							"k1":                "foo",
@@ -198,8 +198,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:  prj.GetPublicId(),
-					PluginId: plg.GetPublicId(),
+					ProjectId: prj.GetPublicId(),
+					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
 						st, err := structpb.NewStruct(map[string]interface{}{"k1": "foo"})
 						require.NoError(t, err)
@@ -216,7 +216,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			in: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					Description: "test-description-repo",
-					ScopeId:     prj.GetPublicId(),
+					ProjectId:   prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
 					Attributes:  []byte{},
 				},
@@ -233,7 +233,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					Description: "test-description-repo",
-					ScopeId:     prj.GetPublicId(),
+					ProjectId:   prj.GetPublicId(),
 					PluginId:    plg.GetPublicId(),
 					Attributes:  []byte{},
 				},
@@ -354,7 +354,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			require.Empty(cSecret.Secret)
 			require.NotEmpty(cSecret.CtSecret)
 
-			dbWrapper, err := kmsCache.GetWrapper(ctx, got.GetScopeId(), kms.KeyPurposeDatabase)
+			dbWrapper, err := kmsCache.GetWrapper(ctx, got.GetProjectId(), kms.KeyPurposeDatabase)
 			require.NoError(err)
 			require.NoError(cSecret.decrypt(ctx, dbWrapper))
 
@@ -384,7 +384,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
-				ScopeId:    prj.GetPublicId(),
+				ProjectId:  prj.GetPublicId(),
 				Name:       "test-name-repo",
 				PluginId:   plg.GetPublicId(),
 				Attributes: []byte{},
@@ -410,7 +410,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Nil(got2)
 	})
 
-	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
+	t.Run("valid-duplicate-names-diff-projects", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
 		var pluginCalled bool
@@ -428,6 +428,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.GetPublicId())
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
 				Name:       "test-name-repo",
@@ -437,7 +438,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		}
 		in2 := in.clone()
 
-		in.ScopeId = prj.GetPublicId()
+		in.ProjectId = prj.GetPublicId()
 		got, _, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
@@ -448,7 +449,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		in2.ScopeId = org.GetPublicId()
+		in2.ProjectId = prj2.GetPublicId()
 		pluginCalled = false // reset pluginCalled for this next call to Create
 		got2, _, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
@@ -549,9 +550,9 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	changeScopeId := func(s string) changeHostCatalogFunc {
+	changeProjectId := func(s string) changeHostCatalogFunc {
 		return func(c *HostCatalog) *HostCatalog {
-			c.ScopeId = s
+			c.ProjectId = s
 			return c
 		}
 	}
@@ -673,7 +674,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			require.Empty(cSecret.Secret)
 			require.NotEmpty(cSecret.CtSecret)
 
-			dbWrapper, err := dbKmsCache.GetWrapper(ctx, gotCatalog.GetScopeId(), kms.KeyPurposeDatabase)
+			dbWrapper, err := dbKmsCache.GetWrapper(ctx, gotCatalog.GetProjectId(), kms.KeyPurposeDatabase)
 			require.NoError(err)
 			require.NoError(cSecret.decrypt(ctx, dbWrapper))
 
@@ -828,8 +829,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			wantIsErr:   errors.InvalidParameter,
 		},
 		{
-			name:        "missing scope id",
-			changeFuncs: []changeHostCatalogFunc{changeScopeId("")},
+			name:        "missing project id",
+			changeFuncs: []changeHostCatalogFunc{changeProjectId("")},
 			wantIsErr:   errors.InvalidParameter,
 		},
 		{
@@ -865,7 +866,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			wantIsErr:       errors.Internal,
 		},
 		{
-			name:        "update name (duplicate, same scope)",
+			name:        "update name (duplicate, same project)",
 			changeFuncs: []changeHostCatalogFunc{changeName(testDuplicateCatalogNameProjectScope)},
 			version:     2,
 			fieldMask:   []string{"name"},
@@ -908,7 +909,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 		},
 		{
-			name:        "update name (duplicate, different scope)",
+			name:        "update name (duplicate, different project)",
 			changeFuncs: []changeHostCatalogFunc{changeName(testDuplicateCatalogNameAltScope)},
 			version:     2,
 			fieldMask:   []string{"name"},
@@ -1173,7 +1174,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		cat := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
 
 		// Set up some secrets
-		scopeWrapper, err := dbKmsCache.GetWrapper(ctx, cat.GetScopeId(), kms.KeyPurposeDatabase)
+		scopeWrapper, err := dbKmsCache.GetWrapper(ctx, cat.GetProjectId(), kms.KeyPurposeDatabase)
 		require.NoError(err)
 		cat.Secrets = mustStruct(map[string]interface{}{
 			"one": "two",

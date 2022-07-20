@@ -1621,7 +1621,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, got2.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
 
-	t.Run("change-scope-id", func(t *testing.T) {
+	t.Run("change-project-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)

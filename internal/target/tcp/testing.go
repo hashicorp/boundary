@@ -12,13 +12,13 @@ import (
 )
 
 // TestTarget is used to create a Target that can be used by tests in other packages.
-func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, scopeId, name string, opt ...target.Option) target.Target {
+func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name string, opt ...target.Option) target.Target {
 	t.Helper()
 	opt = append(opt, target.WithName(name))
 	opts := target.GetOpts(opt...)
 	require := require.New(t)
 	rw := db.New(conn)
-	tar, err := target.New(ctx, Subtype, scopeId, opt...)
+	tar, err := target.New(ctx, Subtype, projectId, opt...)
 	require.NoError(err)
 	id, err := db.NewPublicId(TargetPrefix)
 	require.NoError(err)
@@ -57,9 +57,9 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, scopeId, name st
 	return tar
 }
 
-func testTargetName(t testing.TB, scopeId string) string {
+func testTargetName(t testing.TB, projectId string) string {
 	t.Helper()
-	return fmt.Sprintf("%s-%s", scopeId, testId(t))
+	return fmt.Sprintf("%s-%s", projectId, testId(t))
 }
 
 func testId(t testing.TB) string {

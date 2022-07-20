@@ -17,7 +17,7 @@ import (
 func TestApplyMigrations(t *testing.T) {
 	dialect := dbtest.Postgres
 
-	c, u, _, err := dbtest.StartUsingTemplate(dialect)
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, c())

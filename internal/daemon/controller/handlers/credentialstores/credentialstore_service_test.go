@@ -779,8 +779,8 @@ func TestGet(t *testing.T) {
 			res: &pbs.GetCredentialStoreResponse{
 				Item: &pb.CredentialStore{
 					Id:                          vaultStore.GetPublicId(),
-					ScopeId:                     vaultStore.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: vaultStore.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					ScopeId:                     vaultStore.GetProjectId(),
+					Scope:                       &scopepb.ScopeInfo{Id: vaultStore.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:                        vault.Subtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: testAuthorizedVaultCollectionActions,
@@ -804,8 +804,8 @@ func TestGet(t *testing.T) {
 			res: &pbs.GetCredentialStoreResponse{
 				Item: &pb.CredentialStore{
 					Id:                          staticStore.GetPublicId(),
-					ScopeId:                     staticStore.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: staticStore.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					ScopeId:                     staticStore.GetProjectId(),
+					Scope:                       &scopepb.ScopeInfo{Id: staticStore.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:                        credstatic.Subtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
@@ -821,8 +821,8 @@ func TestGet(t *testing.T) {
 			res: &pbs.GetCredentialStoreResponse{
 				Item: &pb.CredentialStore{
 					Id:                          staticStorePrev.GetPublicId(),
-					ScopeId:                     staticStorePrev.GetScopeId(),
-					Scope:                       &scopepb.ScopeInfo{Id: staticStorePrev.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					ScopeId:                     staticStorePrev.GetProjectId(),
+					Scope:                       &scopepb.ScopeInfo{Id: staticStorePrev.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:                        credstatic.Subtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
 					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
