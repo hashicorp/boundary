@@ -57,6 +57,7 @@ const (
 	AddWorkerTags             Type = 46
 	SetWorkerTags             Type = 47
 	RemoveWorkerTags          Type = 48
+	StopJob                   Type = 49
 
 	// When adding new actions, be sure to update:
 	//
@@ -112,6 +113,7 @@ var Map = map[string]Type{
 	AddWorkerTags.String():             AddWorkerTags,
 	SetWorkerTags.String():             SetWorkerTags,
 	RemoveWorkerTags.String():          RemoveWorkerTags,
+	StopJob.String():                   StopJob,
 }
 
 func (a Type) String() string {
@@ -165,6 +167,7 @@ func (a Type) String() string {
 		"add-worker-tags",
 		"set-worker-tags",
 		"remove-worker-tags",
+		"stop",
 	}[a]
 }
 

@@ -99,6 +99,10 @@ func TestAction(t *testing.T) {
 			action: CreateWorkerLed,
 			want:   "create:worker-led",
 		},
+		{
+			action: StopJob,
+			want:   "stop",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

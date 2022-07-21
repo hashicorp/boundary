@@ -216,6 +216,7 @@ func topLevelType(typ resource.Type) bool {
 		resource.CredentialStore,
 		resource.Group,
 		resource.HostCatalog,
+		resource.Job,
 		resource.Role,
 		resource.Scope,
 		resource.Session,

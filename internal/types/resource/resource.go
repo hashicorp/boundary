@@ -26,6 +26,7 @@ const (
 	CredentialStore
 	CredentialLibrary
 	Credential
+	Job
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
@@ -60,6 +61,7 @@ func (r Type) String() string {
 		"credential-store",
 		"credential-library",
 		"credential",
+		"job",
 	}[r]
 }
 
@@ -93,4 +95,5 @@ var Map = map[string]Type{
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
 	Credential.String():        Credential,
+	Job.String():               Job,
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/credentialstores"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_catalogs"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/jobs"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
@@ -61,6 +62,7 @@ var (
 			resource.AuthMethod: authmethods.CollectionActions,
 			resource.AuthToken:  authtokens.CollectionActions,
 			resource.Group:      groups.CollectionActions,
+			resource.Job:        jobs.CollectionActions,
 			resource.Role:       roles.CollectionActions,
 			resource.Scope:      CollectionActions,
 			resource.User:       users.CollectionActions,
