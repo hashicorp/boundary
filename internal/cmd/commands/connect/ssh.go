@@ -111,6 +111,12 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 				}
 				return nil
 			})
+			// SSH requires the private key file to end with a newline.
+			// When injesting a ssh_private_key from a file:// Boundary calls strings.TrimSpace
+			// which will also trim newlines.
+			if !strings.HasSuffix(privateKey, "\n") {
+				privateKey = fmt.Sprintln(privateKey)
+			}
 			_, err = pkFile.WriteString(privateKey)
 			if err != nil {
 				return nil, nil, credentials{}, fmt.Errorf("Error writing private key file to %s: %w", pkFile.Name(), err)
