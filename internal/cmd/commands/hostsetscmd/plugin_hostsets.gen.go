@@ -211,19 +211,28 @@ func (c *PluginCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *hostsets.HostSet
+
+	var createResult *hostsets.HostSetCreateResult
+
+	var updateResult *hostsets.HostSetUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = hostsetsClient.Create(c.Context, c.FlagHostCatalogId, opts...)
+		createResult, err = hostsetsClient.Create(c.Context, c.FlagHostCatalogId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = hostsetsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = hostsetsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraPluginActions(c, result, err, hostsetsClient, version, opts)
+	resp, item, err = executeExtraPluginActions(c, resp, item, err, hostsetsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -251,10 +260,10 @@ func (c *PluginCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -267,8 +276,8 @@ var (
 	extraPluginSynopsisFunc        = func(*PluginCommand) string { return "" }
 	extraPluginFlagsFunc           = func(*PluginCommand, *base.FlagSets, *base.FlagSet) {}
 	extraPluginFlagsHandlingFunc   = func(*PluginCommand, *base.FlagSets, *[]hostsets.Option) bool { return true }
-	executeExtraPluginActions      = func(_ *PluginCommand, inResult api.GenericResult, inErr error, _ *hostsets.Client, _ uint32, _ []hostsets.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraPluginActions      = func(_ *PluginCommand, inResp *api.Response, inItem *hostsets.HostSet, inErr error, _ *hostsets.Client, _ uint32, _ []hostsets.Option) (*api.Response, *hostsets.HostSet, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomPluginActionOutput = func(*PluginCommand) (bool, error) { return false, nil }
 )

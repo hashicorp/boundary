@@ -38,7 +38,7 @@ type HostSetReadResult struct {
 	response *api.Response
 }
 
-func (n HostSetReadResult) GetItem() interface{} {
+func (n HostSetReadResult) GetItem() *HostSet {
 	return n.Item
 }
 
@@ -67,7 +67,7 @@ type HostSetListResult struct {
 	response *api.Response
 }
 
-func (n HostSetListResult) GetItems() interface{} {
+func (n HostSetListResult) GetItems() []*HostSet {
 	return n.Items
 }
 

@@ -113,8 +113,7 @@ func (c *Command) printListTable(items []*hosts.Host) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*hosts.Host)
+func printItemTable(item *hosts.Host, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id

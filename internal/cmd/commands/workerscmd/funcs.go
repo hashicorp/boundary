@@ -101,8 +101,7 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*workers.Worker)
+func printItemTable(item *workers.Worker, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
@@ -132,7 +131,7 @@ func printItemTable(result api.GenericResult) string {
 		nonAttributeMap["Last Status Time"] = item.LastStatusTime
 	}
 
-	resultMap := result.GetResponse().Map
+	resultMap := resp.Map
 	if count, ok := resultMap[globals.ActiveConnectionCountField]; ok {
 		nonAttributeMap["Active Connection Count"] = count
 	}

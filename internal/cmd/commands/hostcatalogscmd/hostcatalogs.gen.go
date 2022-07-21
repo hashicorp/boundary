@@ -184,24 +184,36 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *hostcatalogs.HostCatalog
 
-	var listResult api.GenericListResult
+	var items []*hostcatalogs.HostCatalog
+
+	var readResult *hostcatalogs.HostCatalogReadResult
+
+	var deleteResult *hostcatalogs.HostCatalogDeleteResult
+
+	var listResult *hostcatalogs.HostCatalogListResult
 
 	switch c.Func {
 
 	case "read":
-		result, err = hostcatalogsClient.Read(c.Context, c.FlagId, opts...)
+		readResult, err = hostcatalogsClient.Read(c.Context, c.FlagId, opts...)
+		resp = readResult.GetResponse()
+		item = readResult.GetItem()
 
 	case "delete":
-		result, err = hostcatalogsClient.Delete(c.Context, c.FlagId, opts...)
+		deleteResult, err = hostcatalogsClient.Delete(c.Context, c.FlagId, opts...)
+		resp = deleteResult.GetResponse()
 
 	case "list":
 		listResult, err = hostcatalogsClient.List(c.Context, c.FlagScopeId, opts...)
+		resp = listResult.GetResponse()
+		items = listResult.GetItems()
 
 	}
 
-	result, err = executeExtraActions(c, result, err, hostcatalogsClient, version, opts)
+	resp, item, items, err = executeExtraActions(c, resp, item, items, err, hostcatalogsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -228,7 +240,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItem(result); !ok {
+			if ok := c.PrintJsonItem(resp); !ok {
 				return base.CommandCliError
 			}
 
@@ -241,13 +253,12 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItems(listResult); !ok {
+			if ok := c.PrintJsonItems(resp); !ok {
 				return base.CommandCliError
 			}
 
 		case "table":
-			listedItems := listResult.GetItems().([]*hostcatalogs.HostCatalog)
-			c.UI.Output(c.printListTable(listedItems))
+			c.UI.Output(c.printListTable(items))
 		}
 
 		return base.CommandSuccess
@@ -256,10 +267,10 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -274,8 +285,8 @@ var (
 	extraSynopsisFunc        = func(*Command) string { return "" }
 	extraFlagsFunc           = func(*Command, *base.FlagSets, *base.FlagSet) {}
 	extraFlagsHandlingFunc   = func(*Command, *base.FlagSets, *[]hostcatalogs.Option) bool { return true }
-	executeExtraActions      = func(_ *Command, inResult api.GenericResult, inErr error, _ *hostcatalogs.Client, _ uint32, _ []hostcatalogs.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraActions      = func(_ *Command, inResp *api.Response, inItem *hostcatalogs.HostCatalog, inItems []*hostcatalogs.HostCatalog, inErr error, _ *hostcatalogs.Client, _ uint32, _ []hostcatalogs.Option) (*api.Response, *hostcatalogs.HostCatalog, []*hostcatalogs.HostCatalog, error) {
+		return inResp, inItem, inItems, inErr
 	}
 	printCustomActionOutput = func(*Command) (bool, error) { return false, nil }
 )

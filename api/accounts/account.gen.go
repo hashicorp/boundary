@@ -34,7 +34,7 @@ type AccountReadResult struct {
 	response *api.Response
 }
 
-func (n AccountReadResult) GetItem() interface{} {
+func (n AccountReadResult) GetItem() *Account {
 	return n.Item
 }
 
@@ -63,7 +63,7 @@ type AccountListResult struct {
 	response *api.Response
 }
 
-func (n AccountListResult) GetItems() interface{} {
+func (n AccountListResult) GetItems() []*Account {
 	return n.Items
 }
 

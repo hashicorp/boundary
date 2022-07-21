@@ -158,7 +158,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
-	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 3)
+	assert.Len(resp.GetItems(), 3)
 	items := resp.GetResponse().Map["items"].([]interface{})
 	require.NotNil(items)
 
@@ -199,7 +199,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
-	assert.Len(resp.GetItems().([]*authmethods.AuthMethod), 1)
+	assert.Len(resp.GetItems(), 1)
 	item := resp.GetResponse().Map["items"].([]interface{})[0].(map[string]interface{})
 	assert.NotContains(item, "created_time")
 	assert.NotContains(item, "attributes")

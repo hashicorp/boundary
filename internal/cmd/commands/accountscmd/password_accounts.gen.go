@@ -193,19 +193,28 @@ func (c *PasswordCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *accounts.Account
+
+	var createResult *accounts.AccountCreateResult
+
+	var updateResult *accounts.AccountUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = accountsClient.Create(c.Context, c.FlagAuthMethodId, opts...)
+		createResult, err = accountsClient.Create(c.Context, c.FlagAuthMethodId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = accountsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = accountsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraPasswordActions(c, result, err, accountsClient, version, opts)
+	resp, item, err = executeExtraPasswordActions(c, resp, item, err, accountsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -233,10 +242,10 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -249,8 +258,8 @@ var (
 	extraPasswordSynopsisFunc        = func(*PasswordCommand) string { return "" }
 	extraPasswordFlagsFunc           = func(*PasswordCommand, *base.FlagSets, *base.FlagSet) {}
 	extraPasswordFlagsHandlingFunc   = func(*PasswordCommand, *base.FlagSets, *[]accounts.Option) bool { return true }
-	executeExtraPasswordActions      = func(_ *PasswordCommand, inResult api.GenericResult, inErr error, _ *accounts.Client, _ uint32, _ []accounts.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraPasswordActions      = func(_ *PasswordCommand, inResp *api.Response, inItem *accounts.Account, inErr error, _ *accounts.Client, _ uint32, _ []accounts.Option) (*api.Response, *accounts.Account, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomPasswordActionOutput = func(*PasswordCommand) (bool, error) { return false, nil }
 )

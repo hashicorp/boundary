@@ -599,7 +599,7 @@ type {{ .Name }}ReadResult struct {
 	response *api.Response
 }
 
-func (n {{ .Name }}ReadResult) GetItem() interface{} {
+func (n {{ .Name }}ReadResult) GetItem() *{{ .Name }} {
 	return n.Item
 }
 
@@ -628,7 +628,7 @@ type {{ .Name }}ListResult struct {
 	response *api.Response
 }
 
-func (n {{ .Name }}ListResult) GetItems() interface{} {
+func (n {{ .Name }}ListResult) GetItems() []*{{ .Name }} {
 	return n.Items
 }
 

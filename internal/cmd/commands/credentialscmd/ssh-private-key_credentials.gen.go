@@ -193,19 +193,28 @@ func (c *SshPrivateKeyCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *credentials.Credential
+
+	var createResult *credentials.CredentialCreateResult
+
+	var updateResult *credentials.CredentialUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = credentialsClient.Create(c.Context, "ssh_private_key", c.FlagCredentialStoreId, opts...)
+		createResult, err = credentialsClient.Create(c.Context, "ssh_private_key", c.FlagCredentialStoreId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = credentialsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = credentialsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraSshPrivateKeyActions(c, result, err, credentialsClient, version, opts)
+	resp, item, err = executeExtraSshPrivateKeyActions(c, resp, item, err, credentialsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -235,10 +244,10 @@ func (c *SshPrivateKeyCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -251,8 +260,8 @@ var (
 	extraSshPrivateKeySynopsisFunc        = func(*SshPrivateKeyCommand) string { return "" }
 	extraSshPrivateKeyFlagsFunc           = func(*SshPrivateKeyCommand, *base.FlagSets, *base.FlagSet) {}
 	extraSshPrivateKeyFlagsHandlingFunc   = func(*SshPrivateKeyCommand, *base.FlagSets, *[]credentials.Option) bool { return true }
-	executeExtraSshPrivateKeyActions      = func(_ *SshPrivateKeyCommand, inResult api.GenericResult, inErr error, _ *credentials.Client, _ uint32, _ []credentials.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraSshPrivateKeyActions      = func(_ *SshPrivateKeyCommand, inResp *api.Response, inItem *credentials.Credential, inErr error, _ *credentials.Client, _ uint32, _ []credentials.Option) (*api.Response, *credentials.Credential, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomSshPrivateKeyActionOutput = func(*SshPrivateKeyCommand) (bool, error) { return false, nil }
 )

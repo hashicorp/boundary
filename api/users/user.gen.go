@@ -37,7 +37,7 @@ type UserReadResult struct {
 	response *api.Response
 }
 
-func (n UserReadResult) GetItem() interface{} {
+func (n UserReadResult) GetItem() *User {
 	return n.Item
 }
 
@@ -66,7 +66,7 @@ type UserListResult struct {
 	response *api.Response
 }
 
-func (n UserListResult) GetItems() interface{} {
+func (n UserListResult) GetItems() []*User {
 	return n.Items
 }
 

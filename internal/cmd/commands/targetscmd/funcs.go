@@ -462,33 +462,42 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 	return true
 }
 
-func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *targets.Target, origItems []*targets.Target, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (*api.Response, *targets.Target, []*targets.Target, error) {
 	switch c.Func {
 	case "add-host-sets":
-		return targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		result, err := targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-host-sets":
-		return targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		result, err := targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-host-sets":
-		return targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		result, err := targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-host-sources":
-		return targetClient.AddHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		result, err := targetClient.AddHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-host-sources":
-		return targetClient.RemoveHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		result, err := targetClient.RemoveHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-host-sources":
-		return targetClient.SetHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		result, err := targetClient.SetHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-credential-sources":
-		return targetClient.AddCredentialSources(c.Context, c.FlagId, version, opts...)
+		result, err := targetClient.AddCredentialSources(c.Context, c.FlagId, version, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-credential-sources":
-		return targetClient.RemoveCredentialSources(c.Context, c.FlagId, version, opts...)
+		result, err := targetClient.RemoveCredentialSources(c.Context, c.FlagId, version, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-credential-sources":
-		return targetClient.SetCredentialSources(c.Context, c.FlagId, version, opts...)
+		result, err := targetClient.SetCredentialSources(c.Context, c.FlagId, version, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "authorize-session":
 		var err error
 		c.plural = "a session against target"
 		c.sar, err = targetClient.AuthorizeSession(c.Context, c.FlagId, opts...)
-		return nil, err
+		return nil, nil, nil, err
 	}
-	return origResult, origError
+	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*targets.Target) string {
@@ -549,8 +558,7 @@ func (c *Command) printListTable(items []*targets.Target) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*targets.Target)
+func printItemTable(item *targets.Target, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
@@ -576,11 +584,11 @@ func printItemTable(result api.GenericResult) string {
 	if item.WorkerFilter != "" {
 		nonAttributeMap["Worker Filter"] = item.WorkerFilter
 	}
-	if result.GetResponse() != nil && result.GetResponse().Map != nil {
-		if result.GetResponse().Map[globals.SessionConnectionLimitField] != nil {
+	if resp != nil && resp.Map != nil {
+		if resp.Map[globals.SessionConnectionLimitField] != nil {
 			nonAttributeMap["Session Connection Limit"] = item.SessionConnectionLimit
 		}
-		if result.GetResponse().Map[globals.SessionMaxSecondsField] != nil {
+		if resp.Map[globals.SessionMaxSecondsField] != nil {
 			nonAttributeMap["Session Max Seconds"] = item.SessionMaxSeconds
 		}
 	}
@@ -830,7 +838,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 			return true, nil
 
 		case "json":
-			if ok := c.PrintJsonItem(c.sar); !ok {
+			if ok := c.PrintJsonItem(c.sar.GetResponse()); !ok {
 				return false, fmt.Errorf("Error formatting as JSON")
 			}
 			return true, nil
@@ -883,7 +891,5 @@ func exampleOutput() string {
 			"default_port": 22,
 		},
 	}
-	target := new(targets.TargetReadResult)
-	target.Item = item
-	return printItemTable(target)
+	return printItemTable(item, nil)
 }

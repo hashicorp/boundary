@@ -33,7 +33,7 @@ type ScopeReadResult struct {
 	response *api.Response
 }
 
-func (n ScopeReadResult) GetItem() interface{} {
+func (n ScopeReadResult) GetItem() *Scope {
 	return n.Item
 }
 
@@ -62,7 +62,7 @@ type ScopeListResult struct {
 	response *api.Response
 }
 
-func (n ScopeListResult) GetItems() interface{} {
+func (n ScopeListResult) GetItems() []*Scope {
 	return n.Items
 }
 

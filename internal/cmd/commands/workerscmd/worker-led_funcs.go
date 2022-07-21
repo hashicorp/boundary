@@ -54,10 +54,11 @@ func extraWorkerLedFlagsFuncImpl(c *WorkerLedCommand, set *base.FlagSets, f *bas
 	}
 }
 
-func executeExtraWorkerLedActionsImpl(c *WorkerLedCommand, origResult api.GenericResult, origError error, workerClient *workers.Client, version uint32, opts []workers.Option) (api.GenericResult, error) {
+func executeExtraWorkerLedActionsImpl(c *WorkerLedCommand, origResp *api.Response, origItem *workers.Worker, origError error, workerClient *workers.Client, version uint32, opts []workers.Option) (*api.Response, *workers.Worker, error) {
 	switch c.Func {
 	case "create":
-		return workerClient.CreateWorkerLed(c.Context, c.flagWorkerGeneratedAuthToken, c.FlagScopeId, opts...)
+		result, err := workerClient.CreateWorkerLed(c.Context, c.flagWorkerGeneratedAuthToken, c.FlagScopeId, opts...)
+		return result.GetResponse(), result.GetItem(), err
 	}
-	return origResult, origError
+	return origResp, origItem, origError
 }

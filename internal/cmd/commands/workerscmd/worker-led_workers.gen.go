@@ -187,13 +187,14 @@ func (c *WorkerLedCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *workers.Worker
 
 	switch c.Func {
 
 	}
 
-	result, err = executeExtraWorkerLedActions(c, result, err, workersClient, version, opts)
+	resp, item, err = executeExtraWorkerLedActions(c, resp, item, err, workersClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -221,10 +222,10 @@ func (c *WorkerLedCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -237,8 +238,8 @@ var (
 	extraWorkerLedSynopsisFunc        = func(*WorkerLedCommand) string { return "" }
 	extraWorkerLedFlagsFunc           = func(*WorkerLedCommand, *base.FlagSets, *base.FlagSet) {}
 	extraWorkerLedFlagsHandlingFunc   = func(*WorkerLedCommand, *base.FlagSets, *[]workers.Option) bool { return true }
-	executeExtraWorkerLedActions      = func(_ *WorkerLedCommand, inResult api.GenericResult, inErr error, _ *workers.Client, _ uint32, _ []workers.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraWorkerLedActions      = func(_ *WorkerLedCommand, inResp *api.Response, inItem *workers.Worker, inErr error, _ *workers.Client, _ uint32, _ []workers.Option) (*api.Response, *workers.Worker, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomWorkerLedActionOutput = func(*WorkerLedCommand) (bool, error) { return false, nil }
 )

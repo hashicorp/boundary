@@ -277,8 +277,7 @@ func (c *Command) PrintCliError(err error) {
 }
 
 // PrintJsonItem prints the given item to the UI in JSON format
-func (c *Command) PrintJsonItem(result api.GenericResult, opt ...Option) bool {
-	resp := result.GetResponse()
+func (c *Command) PrintJsonItem(resp *api.Response, opt ...Option) bool {
 	if resp == nil {
 		c.PrintCliError(errors.New("Error formatting as JSON: no response given to item formatter"))
 		return false
@@ -309,8 +308,7 @@ func (c *Command) PrintJson(input json.RawMessage, opt ...Option) bool {
 }
 
 // PrintJsonItems prints the given items to the UI in JSON format
-func (c *Command) PrintJsonItems(result api.GenericListResult) bool {
-	resp := result.GetResponse()
+func (c *Command) PrintJsonItems(resp *api.Response) bool {
 	if resp == nil {
 		c.PrintCliError(errors.New("Error formatting as JSON: no response given to items formatter"))
 		return false

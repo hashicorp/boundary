@@ -33,7 +33,7 @@ type GroupReadResult struct {
 	response *api.Response
 }
 
-func (n GroupReadResult) GetItem() interface{} {
+func (n GroupReadResult) GetItem() *Group {
 	return n.Item
 }
 
@@ -62,7 +62,7 @@ type GroupListResult struct {
 	response *api.Response
 }
 
-func (n GroupListResult) GetItems() interface{} {
+func (n GroupListResult) GetItems() []*Group {
 	return n.Items
 }
 

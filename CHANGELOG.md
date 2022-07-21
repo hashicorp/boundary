@@ -6,6 +6,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
+* API Module: Changed the return types that reference interfaces into their expected typed definition. Type casting is only allowed against interface types, therefore to mitigate compiler errors please remove any type casting done against the return values. ([Issue](https://github.com/hashicorp/boundary/issues/2122), [PR](https://github.com/hashicorp/boundary/pull/2238))
 * Targets: Rename Application credentials to Brokered credentials
   ([PR](https://github.com/hashicorp/boundary/pull/2260)).
 * Host plugins: Plugin-type host catalogs/sets/hosts now use typed prefixes for

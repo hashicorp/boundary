@@ -84,21 +84,6 @@ func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-type dummyGenericResponse struct {
-	item     interface{}
-	response *api.Response
-}
-
-var _ api.GenericResult = (*dummyGenericResponse)(nil)
-
-func (d *dummyGenericResponse) GetItem() interface{} {
-	return d.item
-}
-
-func (d *dummyGenericResponse) GetResponse() *api.Response {
-	return d.response
-}
-
 func (c *PasswordCommand) Run(args []string) int {
 	f := c.Flags()
 

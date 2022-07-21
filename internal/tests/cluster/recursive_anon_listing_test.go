@@ -33,25 +33,25 @@ func TestListAnonymousRecursing(t *testing.T) {
 	l, err := amClient.List(tc.Context(), scope.Global.String(), amapi.WithRecursive(true))
 	require.NoError(err)
 	require.NotNil(l)
-	require.Len(l.GetItems().([]*amapi.AuthMethod), 3)
+	require.Len(l.GetItems(), 3)
 
 	// Originally we also expect to see all three as anon user
 	amClient.ApiClient().SetToken("")
 	l, err = amClient.List(tc.Context(), scope.Global.String(), amapi.WithRecursive(true))
 	require.NoError(err)
 	require.NotNil(l)
-	require.Len(l.GetItems().([]*amapi.AuthMethod), 3)
+	require.Len(l.GetItems(), 3)
 
 	// Find the global roles and delete them
 	rl, err := rolesClient.List(tc.Context(), scope.Global.String())
 	require.NoError(err)
 	require.NotNil(rl)
-	require.Len(rl.GetItems().([]*rolesapi.Role), 2)
+	require.Len(rl.GetItems(), 2)
 
 	// Find the non-admin one and delete that first
 	adminIdx := 0
 	defaultIdx := 1
-	roles := rl.GetItems().([]*rolesapi.Role)
+	roles := rl.GetItems()
 	if strings.Contains(roles[0].Name, "Default") {
 		adminIdx, defaultIdx = 1, 0
 	}
@@ -68,7 +68,7 @@ func TestListAnonymousRecursing(t *testing.T) {
 	l, err = amClient.List(tc.Context(), scope.Global.String(), amapi.WithRecursive(true))
 	require.NoError(err)
 	require.NotNil(l)
-	ams := l.GetItems().([]*amapi.AuthMethod)
+	ams := l.GetItems()
 	require.Len(ams, 1)
 	require.Equal(orgScopeId, ams[0].ScopeId)
 }

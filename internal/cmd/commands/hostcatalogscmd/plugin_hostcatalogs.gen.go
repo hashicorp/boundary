@@ -243,19 +243,28 @@ func (c *PluginCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *hostcatalogs.HostCatalog
+
+	var createResult *hostcatalogs.HostCatalogCreateResult
+
+	var updateResult *hostcatalogs.HostCatalogUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = hostcatalogsClient.Create(c.Context, "plugin", c.FlagScopeId, opts...)
+		createResult, err = hostcatalogsClient.Create(c.Context, "plugin", c.FlagScopeId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = hostcatalogsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = hostcatalogsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraPluginActions(c, result, err, hostcatalogsClient, version, opts)
+	resp, item, err = executeExtraPluginActions(c, resp, item, err, hostcatalogsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -283,10 +292,10 @@ func (c *PluginCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -299,8 +308,8 @@ var (
 	extraPluginSynopsisFunc        = func(*PluginCommand) string { return "" }
 	extraPluginFlagsFunc           = func(*PluginCommand, *base.FlagSets, *base.FlagSet) {}
 	extraPluginFlagsHandlingFunc   = func(*PluginCommand, *base.FlagSets, *[]hostcatalogs.Option) bool { return true }
-	executeExtraPluginActions      = func(_ *PluginCommand, inResult api.GenericResult, inErr error, _ *hostcatalogs.Client, _ uint32, _ []hostcatalogs.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraPluginActions      = func(_ *PluginCommand, inResp *api.Response, inItem *hostcatalogs.HostCatalog, inErr error, _ *hostcatalogs.Client, _ uint32, _ []hostcatalogs.Option) (*api.Response, *hostcatalogs.HostCatalog, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomPluginActionOutput = func(*PluginCommand) (bool, error) { return false, nil }
 )

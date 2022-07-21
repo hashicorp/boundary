@@ -193,19 +193,28 @@ func (c *VaultCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *credentiallibraries.CredentialLibrary
+
+	var createResult *credentiallibraries.CredentialLibraryCreateResult
+
+	var updateResult *credentiallibraries.CredentialLibraryUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = credentiallibrariesClient.Create(c.Context, c.FlagCredentialStoreId, opts...)
+		createResult, err = credentiallibrariesClient.Create(c.Context, c.FlagCredentialStoreId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = credentiallibrariesClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = credentiallibrariesClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraVaultActions(c, result, err, credentiallibrariesClient, version, opts)
+	resp, item, err = executeExtraVaultActions(c, resp, item, err, credentiallibrariesClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -235,10 +244,10 @@ func (c *VaultCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -251,8 +260,8 @@ var (
 	extraVaultSynopsisFunc        = func(*VaultCommand) string { return "" }
 	extraVaultFlagsFunc           = func(*VaultCommand, *base.FlagSets, *base.FlagSet) {}
 	extraVaultFlagsHandlingFunc   = func(*VaultCommand, *base.FlagSets, *[]credentiallibraries.Option) bool { return true }
-	executeExtraVaultActions      = func(_ *VaultCommand, inResult api.GenericResult, inErr error, _ *credentiallibraries.Client, _ uint32, _ []credentiallibraries.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraVaultActions      = func(_ *VaultCommand, inResp *api.Response, inItem *credentiallibraries.CredentialLibrary, inErr error, _ *credentiallibraries.Client, _ uint32, _ []credentiallibraries.Option) (*api.Response, *credentiallibraries.CredentialLibrary, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomVaultActionOutput = func(*VaultCommand) (bool, error) { return false, nil }
 )

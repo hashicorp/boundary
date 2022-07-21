@@ -39,7 +39,7 @@ type HostCatalogReadResult struct {
 	response *api.Response
 }
 
-func (n HostCatalogReadResult) GetItem() interface{} {
+func (n HostCatalogReadResult) GetItem() *HostCatalog {
 	return n.Item
 }
 
@@ -68,7 +68,7 @@ type HostCatalogListResult struct {
 	response *api.Response
 }
 
-func (n HostCatalogListResult) GetItems() interface{} {
+func (n HostCatalogListResult) GetItems() []*HostCatalog {
 	return n.Items
 }
 

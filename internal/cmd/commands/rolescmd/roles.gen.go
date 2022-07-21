@@ -272,30 +272,50 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *roles.Role
 
-	var listResult api.GenericListResult
+	var items []*roles.Role
+
+	var createResult *roles.RoleCreateResult
+
+	var readResult *roles.RoleReadResult
+
+	var updateResult *roles.RoleUpdateResult
+
+	var deleteResult *roles.RoleDeleteResult
+
+	var listResult *roles.RoleListResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = rolesClient.Create(c.Context, c.FlagScopeId, opts...)
+		createResult, err = rolesClient.Create(c.Context, c.FlagScopeId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "read":
-		result, err = rolesClient.Read(c.Context, c.FlagId, opts...)
+		readResult, err = rolesClient.Read(c.Context, c.FlagId, opts...)
+		resp = readResult.GetResponse()
+		item = readResult.GetItem()
 
 	case "update":
-		result, err = rolesClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = rolesClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	case "delete":
-		result, err = rolesClient.Delete(c.Context, c.FlagId, opts...)
+		deleteResult, err = rolesClient.Delete(c.Context, c.FlagId, opts...)
+		resp = deleteResult.GetResponse()
 
 	case "list":
 		listResult, err = rolesClient.List(c.Context, c.FlagScopeId, opts...)
+		resp = listResult.GetResponse()
+		items = listResult.GetItems()
 
 	}
 
-	result, err = executeExtraActions(c, result, err, rolesClient, version, opts)
+	resp, item, items, err = executeExtraActions(c, resp, item, items, err, rolesClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -322,7 +342,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItem(result); !ok {
+			if ok := c.PrintJsonItem(resp); !ok {
 				return base.CommandCliError
 			}
 
@@ -335,13 +355,12 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItems(listResult); !ok {
+			if ok := c.PrintJsonItems(resp); !ok {
 				return base.CommandCliError
 			}
 
 		case "table":
-			listedItems := listResult.GetItems().([]*roles.Role)
-			c.UI.Output(c.printListTable(listedItems))
+			c.UI.Output(c.printListTable(items))
 		}
 
 		return base.CommandSuccess
@@ -350,10 +369,10 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -368,8 +387,8 @@ var (
 	extraSynopsisFunc        = func(*Command) string { return "" }
 	extraFlagsFunc           = func(*Command, *base.FlagSets, *base.FlagSet) {}
 	extraFlagsHandlingFunc   = func(*Command, *base.FlagSets, *[]roles.Option) bool { return true }
-	executeExtraActions      = func(_ *Command, inResult api.GenericResult, inErr error, _ *roles.Client, _ uint32, _ []roles.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraActions      = func(_ *Command, inResp *api.Response, inItem *roles.Role, inItems []*roles.Role, inErr error, _ *roles.Client, _ uint32, _ []roles.Option) (*api.Response, *roles.Role, []*roles.Role, error) {
+		return inResp, inItem, inItems, inErr
 	}
 	printCustomActionOutput = func(*Command) (bool, error) { return false, nil }
 )

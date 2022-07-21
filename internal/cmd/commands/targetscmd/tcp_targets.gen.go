@@ -198,19 +198,28 @@ func (c *TcpCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *targets.Target
+
+	var createResult *targets.TargetCreateResult
+
+	var updateResult *targets.TargetUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = targetsClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
+		createResult, err = targetsClient.Create(c.Context, "tcp", c.FlagScopeId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = targetsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = targetsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraTcpActions(c, result, err, targetsClient, version, opts)
+	resp, item, err = executeExtraTcpActions(c, resp, item, err, targetsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -238,10 +247,10 @@ func (c *TcpCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -254,8 +263,8 @@ var (
 	extraTcpSynopsisFunc        = func(*TcpCommand) string { return "" }
 	extraTcpFlagsFunc           = func(*TcpCommand, *base.FlagSets, *base.FlagSet) {}
 	extraTcpFlagsHandlingFunc   = func(*TcpCommand, *base.FlagSets, *[]targets.Option) bool { return true }
-	executeExtraTcpActions      = func(_ *TcpCommand, inResult api.GenericResult, inErr error, _ *targets.Client, _ uint32, _ []targets.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraTcpActions      = func(_ *TcpCommand, inResp *api.Response, inItem *targets.Target, inErr error, _ *targets.Client, _ uint32, _ []targets.Option) (*api.Response, *targets.Target, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomTcpActionOutput = func(*TcpCommand) (bool, error) { return false, nil }
 )
