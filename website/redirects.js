@@ -57,14 +57,12 @@ module.exports = [
   /////////////////////////////////
   {
     source: '/help/admin-ui/api-client/cli',
-    destination:
-      '/docs/api-clients/cli',
+    destination: '/docs/api-clients/cli',
     permanent: true,
   },
   {
     source: '/help/admin-ui/api-client/api',
-    destination:
-      '/docs/api-clients/api',
+    destination: '/docs/api-clients/api',
     permanent: true,
   },
 
@@ -149,6 +147,11 @@ module.exports = [
   {
     source: '/help/admin-ui/credential-libraries',
     destination: '/docs/concepts/domain-model/credential-libraries',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/credentials',
+    destination: '/docs/concepts/domain-model/credentials',
     permanent: false,
   },
   {
