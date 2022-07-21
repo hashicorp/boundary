@@ -125,6 +125,12 @@ update-ui-assets*
 # Test config file
 test*.hcl
 
+# Enos
+/enos/**/.enos
+/enos/terraform-plugin-cache
+/enos/*.zip
+/enos/support
+
 # vim: set filetype=conf :
 
 # CRT (Common Release Tooling)
