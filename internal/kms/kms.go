@@ -178,7 +178,7 @@ func (k *Kms) ReconcileKeys(ctx context.Context, randomReader io.Reader, opt ...
 	return nil
 }
 
-// CreateKeys creates the root key and DEKs returns a map of the new keys.
+// CreateKeys creates the root key and DEKs.
 // Supports the WithRandomReader(...) and WithReaderWriter(...) options.
 // When WithReaderWriter(...) is used the caller is responsible for managing the
 // transaction which allows this capability to be shared with the iam repo when
