@@ -153,6 +153,15 @@ func (w *Worker) GetConfigTags() map[string][]string {
 	return tags
 }
 
+// GetApiTags returns the api tags which have been set for this worker.
+func (w *Worker) GetApiTags() map[string][]string {
+	tags := make(map[string][]string)
+	for _, t := range w.apiTags {
+		tags[t.Key] = append(tags[t.Key], t.Value)
+	}
+	return tags
+}
+
 // GetLastStatusTime contains the last time the worker has reported to the
 // controller its connection status.  If the worker has never reported to a
 // controller then nil is returned.

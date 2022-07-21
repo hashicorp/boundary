@@ -111,6 +111,18 @@ func DefaultAttributes() Option {
 	}
 }
 
+func WithBrokeredCredentialSourceIds(inBrokeredCredentialSourceIds []string) Option {
+	return func(o *options) {
+		o.postMap["brokered_credential_source_ids"] = inBrokeredCredentialSourceIds
+	}
+}
+
+func DefaultBrokeredCredentialSourceIds() Option {
+	return func(o *options) {
+		o.postMap["brokered_credential_source_ids"] = nil
+	}
+}
+
 func WithTcpTargetDefaultPort(inDefaultPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -147,21 +159,21 @@ func DefaultDescription() Option {
 	}
 }
 
-func WithEgressCredentialSourceIds(inEgressCredentialSourceIds []string) Option {
-	return func(o *options) {
-		o.postMap["egress_credential_source_ids"] = inEgressCredentialSourceIds
-	}
-}
-
-func DefaultEgressCredentialSourceIds() Option {
-	return func(o *options) {
-		o.postMap["egress_credential_source_ids"] = nil
-	}
-}
-
 func WithHostId(inHostId string) Option {
 	return func(o *options) {
 		o.postMap["host_id"] = inHostId
+	}
+}
+
+func WithInjectedApplicationCredentialSourceIds(inInjectedApplicationCredentialSourceIds []string) Option {
+	return func(o *options) {
+		o.postMap["injected_application_credential_source_ids"] = inInjectedApplicationCredentialSourceIds
+	}
+}
+
+func DefaultInjectedApplicationCredentialSourceIds() Option {
+	return func(o *options) {
+		o.postMap["injected_application_credential_source_ids"] = nil
 	}
 }
 

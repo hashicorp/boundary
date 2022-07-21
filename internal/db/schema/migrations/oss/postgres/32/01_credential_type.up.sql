@@ -1,5 +1,6 @@
 begin;
 
+  -- updated in 39/01_static_ssh_private_key_creds
   -- drop constraint so we can migrate user_password to username_password
   alter table credential_type_enm
     drop constraint only_predefined_credential_types_allowed;

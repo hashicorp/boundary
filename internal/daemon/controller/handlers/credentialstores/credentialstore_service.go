@@ -759,7 +759,7 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 //  * All required parameters are set
 //  * There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetCredentialStoreRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, vault.CredentialStorePrefix, static.CredentialStorePrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, vault.CredentialStorePrefix, static.CredentialStorePrefix, static.PreviousCredentialStorePrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
@@ -845,11 +845,11 @@ func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 			}
 		}
 		return badFields
-	}, vault.CredentialStorePrefix, static.CredentialStorePrefix)
+	}, vault.CredentialStorePrefix, static.CredentialStorePrefix, static.PreviousCredentialStorePrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteCredentialStoreRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, vault.CredentialStorePrefix, static.CredentialStorePrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, vault.CredentialStorePrefix, static.CredentialStorePrefix, static.PreviousCredentialStorePrefix)
 }
 
 func validateListRequest(req *pbs.ListCredentialStoresRequest) error {

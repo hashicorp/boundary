@@ -170,10 +170,11 @@ func TestGet_Plugin(t *testing.T) {
 
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1))
+	hsPrev := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1), plugin.WithPublicId(fmt.Sprintf("%s_1234567890", plugin.PreviousHostSetPrefix)))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
-	pHost := &pb.HostSet{
+	pHostSet := &pb.HostSet{
 		HostCatalogId: hc.GetPublicId(),
 		Id:            hs.GetPublicId(),
 		CreatedTime:   hs.CreateTime.GetTimestamp(),
@@ -197,9 +198,20 @@ func TestGet_Plugin(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "Get an Existing Host",
+			name: "Get an Existing HostSet",
 			req:  &pbs.GetHostSetRequest{Id: hs.GetPublicId()},
-			res:  &pbs.GetHostSetResponse{Item: pHost},
+			res:  &pbs.GetHostSetResponse{Item: pHostSet},
+		},
+		{
+			name: "Get an Existing Previous-ID HostSet",
+			req:  &pbs.GetHostSetRequest{Id: hsPrev.GetPublicId()},
+			res: func() *pbs.GetHostSetResponse {
+				resp := proto.Clone(pHostSet).(*pb.HostSet)
+				resp.Id = hsPrev.PublicId
+				resp.CreatedTime = hsPrev.CreateTime.GetTimestamp()
+				resp.UpdatedTime = hsPrev.UpdateTime.GetTimestamp()
+				return &pbs.GetHostSetResponse{Item: resp}
+			}(),
 		},
 		{
 			name: "Get a non existing Host Set",

@@ -8,54 +8,115 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type usernamePasswordCredentials struct {
+type usernamePassword struct {
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
+
+	raw      *targets.SessionCredential
+	consumed bool
 }
 
-// TODO: this should support multiple types of credentials and return an interface instead
-// of only usernamepassword. Each subcommand can use the returned credentials as it needs.
-func parseCredentials(creds []*targets.SessionCredential) ([]usernamePasswordCredentials, error) {
-	if creds == nil {
-		return nil, nil
+type sshPrivateKey struct {
+	Username   string `mapstructure:"username"`
+	PrivateKey string `mapstructure:"private_key"`
+
+	raw      *targets.SessionCredential
+	consumed bool
+}
+
+type credentials struct {
+	usernamePassword []usernamePassword
+	sshPrivateKey    []sshPrivateKey
+	unspecified      []*targets.SessionCredential
+}
+
+func (c credentials) unconsumedSessionCredentials() []*targets.SessionCredential {
+	out := make([]*targets.SessionCredential, 0, len(c.sshPrivateKey)+len(c.usernamePassword)+len(c.unspecified))
+
+	// Unspecified credentials cannot be consumed
+	out = append(out, c.unspecified...)
+
+	for _, c := range c.sshPrivateKey {
+		if !c.consumed {
+			out = append(out, c.raw)
+		}
 	}
-	var out []usernamePasswordCredentials
+	for _, c := range c.usernamePassword {
+		if !c.consumed {
+			out = append(out, c.raw)
+		}
+	}
+	return out
+}
+
+func parseCredentials(creds []*targets.SessionCredential) (credentials, error) {
+	if creds == nil {
+		return credentials{}, nil
+	}
+	var out credentials
 	for _, cred := range creds {
 		if cred.CredentialSource == nil {
-			return nil, errors.New("missing credential source")
+			return credentials{}, errors.New("missing credential source")
 		}
 
-		var c usernamePasswordCredentials
-		if cred.CredentialSource.CredentialType == string(credential.UsernamePasswordType) {
+		var upCred usernamePassword
+		var spkCred sshPrivateKey
+		switch credential.Type(cred.CredentialSource.CredentialType) {
+		case credential.UsernamePasswordType:
 			// Decode attributes from credential struct
-			if err := mapstructure.Decode(cred.Credential, &c); err != nil {
-				return nil, err
+			if err := mapstructure.Decode(cred.Credential, &upCred); err != nil {
+				return credentials{}, err
 			}
 
-			if c.Username != "" && c.Password != "" {
-				out = append(out, c)
+			if upCred.Username != "" && upCred.Password != "" {
+				upCred.raw = cred
+				out.usernamePassword = append(out.usernamePassword, upCred)
+				continue
+			}
+
+		case credential.SshPrivateKeyType:
+			// Decode attributes from credential struct
+			if err := mapstructure.Decode(cred.Credential, &spkCred); err != nil {
+				return credentials{}, err
+			}
+
+			if spkCred.Username != "" && spkCred.PrivateKey != "" {
+				spkCred.raw = cred
+				out.sshPrivateKey = append(out.sshPrivateKey, spkCred)
 				continue
 			}
 		}
 
-		// Credential type is unspecified, make a best effort attempt to parse both username
-		// and password from Decoded field if it exists
-		if cred.Secret == nil || cred.Secret.Decoded == nil {
-			// No secret data continue to next credential
-			continue
-		}
+		// Credential type is unspecified, make a best effort attempt to parse
+		// a username_password credential from the Decoded field if it exists
+		if cred.Secret != nil && cred.Secret.Decoded != nil {
+			switch cred.CredentialSource.Type {
+			case "vault", "static":
+				// Attempt unmarshaling into username password creds
+				if err := mapstructure.Decode(cred.Secret.Decoded, &upCred); err != nil {
+					return credentials{}, err
+				}
+				if upCred.Username != "" && upCred.Password != "" {
+					upCred.raw = cred
+					out.usernamePassword = append(out.usernamePassword, upCred)
+					continue
+				}
 
-		switch cred.CredentialSource.Type {
-		case "vault", "static":
-			// Attempt unmarshaling into creds
-			if err := mapstructure.Decode(cred.Secret.Decoded, &c); err != nil {
-				return nil, err
+				// Attempt unmarshaling into ssh private key creds
+				if err := mapstructure.Decode(cred.Secret.Decoded, &spkCred); err != nil {
+					return credentials{}, err
+				}
+				if spkCred.Username != "" && spkCred.PrivateKey != "" {
+					spkCred.raw = cred
+					out.sshPrivateKey = append(out.sshPrivateKey, spkCred)
+					continue
+				}
 			}
 		}
 
-		if c.Username != "" && c.Password != "" {
-			out = append(out, c)
-		}
+		// We could not parse the credential
+		out.unspecified = append(out.unspecified, cred)
 	}
+
 	return out, nil
 }

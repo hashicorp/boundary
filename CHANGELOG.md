@@ -6,14 +6,22 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
-* api module: Changed the return types that reference interfaces into their expected typed definition. Type casting is only allowed against interface types, therefore to mitigate compiler errors please remove any type casting done against the return values. ([Issue](https://github.com/hashicorp/boundary/issues/2122), [PR](https://github.com/hashicorp/boundary/pull/2238))
+* API Module: Changed the return types that reference interfaces into their expected typed definition. Type casting is only allowed against interface types, therefore to mitigate compiler errors please remove any type casting done against the return values. ([Issue](https://github.com/hashicorp/boundary/issues/2122), [PR](https://github.com/hashicorp/boundary/pull/2238))
+* Targets: Rename Application credentials to Brokered credentials
+  ([PR](https://github.com/hashicorp/boundary/pull/2260)).
+* Host plugins: Plugin-type host catalogs/sets/hosts now use typed prefixes for
+  any newly-created resources. Existing resources will not be affected.
+  ([PR](https://github.com/hashicorp/boundary/pull/2256))
+* Credential stores: Static-type credential stores/credentials now use typed
+  prefixes for any newly-created resources. Existing resources will not be
+  affected. ([PR](https://github.com/hashicorp/boundary/pull/2256))
 
 ## 0.9.1 (2022/07/06)
 
 ### New and Improved
 
 * `azure` host plugin: Support multiple MSI identities
-  ([PR](https://github.com/hashicorp/go-kms-wrapping/pull/97)
+  ([PR](https://github.com/hashicorp/go-kms-wrapping/pull/97))
 
 ### Bug Fixes
 
@@ -24,7 +32,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   could result in sessions never moving from `canceling` state to terminated.
   ([PR](https://github.com/hashicorp/boundary/pull/2229))
 * The plugin execution_dir configuration parameter is now respected by kms plugins too
-  [PR](https://github.com/hashicorp/boundary/pull/2239).
+  ([PR](https://github.com/hashicorp/boundary/pull/2239)).
 
 ### Deprecations/Changes
 
@@ -52,31 +60,31 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   credentials of type `username_password`. These credentials can act as
   credential sources for targets, similar to credential libraries from the
   `vault` credential store, and thus can be brokered to users at session
-  authorization time. [PR](https://github.com/hashicorp/boundary/pull/2174)
+  authorization time. ([PR](https://github.com/hashicorp/boundary/pull/2174))
 * `boundary connect` Credential Brokering Integration: we have extended integration
   into the `boundary connect` helpers. A new `sshpass` style has been added to the 
   `ssh` helper, when used, if the credential contains a username/password and `sshpass` 
   is installed, the command will automatically pass the credentials to the `ssh` process.
   Additionally, the default `ssh` helper will now use the `username` of the brokered credential.
-  [PR](https://github.com/hashicorp/boundary/pull/2191).
+  ([PR](https://github.com/hashicorp/boundary/pull/2191)).
 * controller: Improve response time for listing sessions.
   This also creates a new periodic job that will delete terminated
   sessions after 1 hour.
   See Deprecations/Changes for some additional details.
-  [PR](https://github.com/hashicorp/boundary/pull/2160).
+  ([PR](https://github.com/hashicorp/boundary/pull/2160)).
 * event filtering: Change event filters to use lowercase and snake case for data
   elements like the rest of Boundary filters do. 
 * ui: Use include_terminated flag for listing sessions.
-  [PR](https://github.com/hashicorp/boundary-ui/pull/1126).
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1126)).
 * ui: Add Quick Setup onboarding guide.
-  [PR](https://github.com/hashicorp/boundary-ui/pull/1140).
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1140)).
 
 ### Bug Fixes
 
 * The plugin execution_dir configuration parameter is now respected.
-  [PR](https://github.com/hashicorp/boundary/pull/2183).
+  ([PR](https://github.com/hashicorp/boundary/pull/2183)).
 * ui: Fix Users page not updating fields correctly.
-  [PR](https://github.com/hashicorp/boundary-ui/pull/1105).
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1105)).
 
 ### Deprecations/Changes
 
@@ -92,7 +100,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   to no longer include sessions in a terminated state and introduces
   a new query parameter/cli flag to include the terminated sessions.
   This also removes the connection information from the list response.
-  [PR](https://github.com/hashicorp/boundary/pull/2160).
+  ([PR](https://github.com/hashicorp/boundary/pull/2160)).
 * Anonymous user permissions: In order to reduce the risk of accidental and
   unintended granting of permissions to anonymous users, the permissions system
   now only allows certain actions on certain resources to be assigned to the
@@ -119,10 +127,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * metrics: Provide metrics for controllers and workers
 * controller: Add health endpoint ([PR](https://github.com/hashicorp/boundary/pull/1882))
 * controller: Improve response time for listing sessions and targets.
-  [PR](https://github.com/hashicorp/boundary/pull/2049)
+  ([PR](https://github.com/hashicorp/boundary/pull/2049))
 * ui: Add support for worker filters in targets
 * ui: Add manual refresh button in sessions list
-* Audit events are no longer a WIP ([PR](https://github.com/hashicorp/boundary/pull/2031).
+* Audit events are no longer a WIP ([PR](https://github.com/hashicorp/boundary/pull/2031)).
 
 ### Bug Fixes
 
@@ -135,7 +143,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR](https://github.com/hashicorp/boundary/pull/1976))
 * controller: Fix for retrieving sessions that could result in incomplete
   results when there is a large number (10k+) of sessions.
-  [PR](https://github.com/hashicorp/boundary/pull/2049)
+  ([PR](https://github.com/hashicorp/boundary/pull/2049))
 * session: update session state trigger to prevent transitions to invalid states
   ([Issue](https://github.com/hashicorp/boundary/issues/2040),
   [PR](https://github.com/hashicorp/boundary/pull/2046))
@@ -329,7 +337,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
   validating even though it is correctly handled within the ACL code.
   ([PR](https://github.com/hashicorp/boundary/pull/1474))
 * targets: Fix panic when using `boundary targets authorize-session`
-  ([issue](https://github.com/hashicorp/boundary/issues/1488),
+  ([Issue](https://github.com/hashicorp/boundary/issues/1488),
   [PR](https://github.com/hashicorp/boundary/pull/1496))
 
 ## 0.5.1 (2021/08/16)
@@ -448,7 +456,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
 
 * config: Fix error when populating all `kms` purposes in separate blocks (as
   well as the error message)
-  ([issue](https://github.com/hashicorp/boundary/issues/1305),
+  ([Issue](https://github.com/hashicorp/boundary/issues/1305),
   [PR](https://github.com/hashicorp/boundary/pull/1384))
 * server: Fix panic on worker startup failure when the server was not also
   configured as a controller
@@ -499,7 +507,7 @@ Boundary) but it's worth repeating.
 
 * scheduler: removes a Postgres check constraint, on the length of the controller name,
   causing an error when the scheduler attempts to run jobs
-  ([issue](https://github.com/hashicorp/boundary/issues/1309),
+  ([Issue](https://github.com/hashicorp/boundary/issues/1309),
   [PR](https://github.com/hashicorp/boundary/pull/1310)).
 * Docker: update entrypoint script to handle more Boundary subcommands for
   better UX
@@ -569,7 +577,7 @@ Boundary) but it's worth repeating.
 
 * oidc: If provider returns an `aud` claim as a `string` or `[]string`,
   Boundary will properly parse the claims JSON.
-  ([issue](https://github.com/hashicorp/cap/issues/37),
+  ([Issue](https://github.com/hashicorp/cap/issues/37),
   [PR](https://github.com/hashicorp/boundary/pull/1231))
 * sessions: Clean up connections that are dangling after a worker dies (is
   restarted, powered off, etc.) This fixes some cases where a session never goes

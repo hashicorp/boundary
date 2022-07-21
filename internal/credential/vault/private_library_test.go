@@ -88,7 +88,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -99,7 +99,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -110,7 +110,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -124,7 +124,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -141,7 +141,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -158,7 +158,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 			{
@@ -176,7 +176,73 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				assert.NoError(err)
 				require.NotNil(lib)
 				libs[lib.GetPublicId()] = lib
-				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.ApplicationPurpose}
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(credential.SshPrivateKeyType),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(credential.SshPrivateKeyType),
+					WithMappingOverride(NewSshPrivateKeyOverride(
+						WithOverrideUsernameAttribute("test-username"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(credential.SshPrivateKeyType),
+					WithMappingOverride(NewSshPrivateKeyOverride(
+						WithOverridePrivateKeyAttribute("test-private-key"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(credential.SshPrivateKeyType),
+					WithMappingOverride(NewSshPrivateKeyOverride(
+						WithOverrideUsernameAttribute("test-username"),
+						WithOverridePrivateKeyAttribute("test-private-key"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
 				requests = append(requests, req)
 			}
 
@@ -204,6 +270,9 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 					case *UsernamePasswordOverride:
 						assert.Equal(w.UsernameAttribute, got.UsernameAttribute)
 						assert.Equal(w.PasswordAttribute, got.PasswordAttribute)
+					case *SshPrivateKeyOverride:
+						assert.Equal(w.UsernameAttribute, got.UsernameAttribute)
+						assert.Equal(w.PrivateKeyAttribute, got.PrivateKeyAttribute)
 					default:
 						assert.Fail("unknown mapping override type")
 					}
@@ -233,7 +302,7 @@ func TestRequestMap(t *testing.T) {
 				requests: []credential.Request{
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 				},
 			},
@@ -245,11 +314,11 @@ func TestRequestMap(t *testing.T) {
 				requests: []credential.Request{
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 					{
 						SourceId: "gary",
-						Purpose:  credential.EgressPurpose,
+						Purpose:  credential.InjectedApplicationPurpose,
 					},
 				},
 			},
@@ -261,11 +330,11 @@ func TestRequestMap(t *testing.T) {
 				requests: []credential.Request{
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 					{
 						SourceId: "kaz",
-						Purpose:  credential.EgressPurpose,
+						Purpose:  credential.InjectedApplicationPurpose,
 					},
 				},
 			},
@@ -277,11 +346,11 @@ func TestRequestMap(t *testing.T) {
 				requests: []credential.Request{
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 					{
 						SourceId: "kaz",
-						Purpose:  credential.ApplicationPurpose,
+						Purpose:  credential.BrokeredPurpose,
 					},
 				},
 			},
@@ -657,6 +726,371 @@ func TestBaseToUsrPass(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := baseToUsrPass(context.Background(), tt.given)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			want := tt.want
+			want.baseCred = tt.given
+			assert.Equal(want, got)
+		})
+	}
+}
+
+func TestBaseToSshPriKey(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		given   *baseCred
+		want    *sshPrivateKeyCred
+		wantErr errors.Code
+	}{
+		{
+			name:    "nil-input",
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name:    "nil-library",
+			given:   &baseCred{},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "library-not-ssh-private-key-type",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.UnspecifiedType),
+				},
+			},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "invalid-no-username-default-pk-attribute",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"private_key": "my-pk",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-no-pk-default-username-attribute",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"username": "my-username",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "valid-default-attributes",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"username":    "my-username",
+					"private_key": "my-pk",
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "my-username",
+				privateKey: credential.PrivateKey("my-pk"),
+			},
+		},
+		{
+			name: "valid-override-attributes",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:            string(credential.SshPrivateKeyType),
+					UsernameAttribute:   "test-username",
+					PrivateKeyAttribute: "test-pk",
+				},
+				secretData: map[string]interface{}{
+					"username":      "default-username",
+					"private_key":   "default-pk",
+					"test-username": "override-username",
+					"test-pk":       "override-pk",
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "override-username",
+				privateKey: credential.PrivateKey("override-pk"),
+			},
+		},
+		{
+			name: "valid-default-username-override-pk",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:            string(credential.SshPrivateKeyType),
+					PrivateKeyAttribute: "test-pk",
+				},
+				secretData: map[string]interface{}{
+					"username":      "default-username",
+					"private_key":   "default-pk",
+					"test-username": "override-username",
+					"test-pk":       "override-pk",
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "default-username",
+				privateKey: credential.PrivateKey("override-pk"),
+			},
+		},
+		{
+			name: "valid-override-username-default-pk",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:          string(credential.SshPrivateKeyType),
+					UsernameAttribute: "test-username",
+				},
+				secretData: map[string]interface{}{
+					"username":      "default-username",
+					"private_key":   "default-pk",
+					"test-username": "override-username",
+					"test-pk":       "override-pk",
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "override-username",
+				privateKey: credential.PrivateKey("default-pk"),
+			},
+		},
+		{
+			name: "invalid-username-override",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:          string(credential.SshPrivateKeyType),
+					UsernameAttribute: "missing-username",
+				},
+				secretData: map[string]interface{}{
+					"username":      "default-username",
+					"private_key":   "default-pk",
+					"test-username": "override-username",
+					"test-pk":       "override-pk",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-pk-override",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:          string(credential.SshPrivateKeyType),
+					UsernameAttribute: "missing-pk",
+				},
+				secretData: map[string]interface{}{
+					"username":      "default-username",
+					"private_key":   "default-pk",
+					"test-username": "override-username",
+					"test-pk":       "override-pk",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-metadata-field",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"data": map[string]interface{}{
+						"username":    "default-username",
+						"private_key": "default-pk",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-data-field",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-username-default-pk-attribute",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"private_key": "default-pk",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-no-pk-default-username-attribute",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username": "default-username",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-invalid-metadata-type",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": "hello",
+					"data": map[string]interface{}{
+						"username":    "default-username",
+						"private_key": "default-pk",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-invalid-data-type",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data":     "hello",
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "invalid-kv2-additional-field",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"bad-field": "hello",
+					"metadata":  map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":    "default-username",
+						"private_key": "default-pk",
+					},
+				},
+			},
+			wantErr: errors.VaultInvalidCredentialMapping,
+		},
+		{
+			name: "valid-kv2-default-attributes",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":    "default-username",
+						"private_key": "default-pk",
+					},
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "default-username",
+				privateKey: credential.PrivateKey("default-pk"),
+			},
+		},
+		{
+			name: "valid-kv2-override-attributes",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:            string(credential.SshPrivateKeyType),
+					UsernameAttribute:   "test-username",
+					PrivateKeyAttribute: "test-pk",
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":      "default-username",
+						"private_key":   "default-pk",
+						"test-username": "override-username",
+						"test-pk":       "override-pk",
+					},
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "override-username",
+				privateKey: credential.PrivateKey("override-pk"),
+			},
+		},
+		{
+			name: "valid-kv2-default-username-override-pk",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:            string(credential.SshPrivateKeyType),
+					PrivateKeyAttribute: "test-pk",
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":      "default-username",
+						"private_key":   "default-pk",
+						"test-username": "override-username",
+						"test-pk":       "override-pk",
+					},
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "default-username",
+				privateKey: credential.PrivateKey("override-pk"),
+			},
+		},
+		{
+			name: "valid-kv2-override-username-default-pk",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:          string(credential.SshPrivateKeyType),
+					UsernameAttribute: "test-username",
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":      "default-username",
+						"private_key":   "default-pk",
+						"test-username": "override-username",
+						"test-pk":       "override-pk",
+					},
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "override-username",
+				privateKey: credential.PrivateKey("default-pk"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := baseToSshPriKey(context.Background(), tt.given)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)

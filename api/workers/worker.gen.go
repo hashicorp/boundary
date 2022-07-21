@@ -28,6 +28,7 @@ type Worker struct {
 	WorkerGeneratedAuthToken string              `json:"worker_generated_auth_token,omitempty"`
 	ActiveConnectionCount    uint32              `json:"active_connection_count,omitempty"`
 	Type                     string              `json:"type,omitempty"`
+	ApiTags                  map[string][]string `json:"api_tags,omitempty"`
 	AuthorizedActions        []string            `json:"authorized_actions,omitempty"`
 
 	response *api.Response

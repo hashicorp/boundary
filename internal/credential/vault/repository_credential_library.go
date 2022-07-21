@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -344,19 +345,20 @@ func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId strin
 // mapping overrides. It does not include encrypted data and is safe to
 // return external to boundary.
 type publicLibrary struct {
-	PublicId          string `gorm:"primary_key"`
-	StoreId           string
-	Name              string
-	Description       string
-	CreateTime        *timestamp.Timestamp
-	UpdateTime        *timestamp.Timestamp
-	Version           uint32
-	VaultPath         string
-	HttpMethod        string
-	HttpRequestBody   []byte
-	CredentialType    string
-	UsernameAttribute string
-	PasswordAttribute string
+	PublicId            string `gorm:"primary_key"`
+	StoreId             string
+	Name                string
+	Description         string
+	CreateTime          *timestamp.Timestamp
+	UpdateTime          *timestamp.Timestamp
+	Version             uint32
+	VaultPath           string
+	HttpMethod          string
+	HttpRequestBody     []byte
+	CredentialType      string
+	UsernameAttribute   string
+	PasswordAttribute   string
+	PrivateKeyAttribute string
 }
 
 func allocPublicLibrary() *publicLibrary {
@@ -377,13 +379,25 @@ func (pl *publicLibrary) toCredentialLibrary() *CredentialLibrary {
 	cl.HttpRequestBody = pl.HttpRequestBody
 	cl.CredentialLibrary.CredentialType = pl.CredentialType
 
-	if pl.UsernameAttribute != "" || pl.PasswordAttribute != "" {
-		up := allocUsernamePasswordOverride()
-		up.LibraryId = pl.PublicId
-		up.UsernameAttribute = pl.UsernameAttribute
-		up.PasswordAttribute = pl.PasswordAttribute
-		up.sanitize()
-		cl.MappingOverride = up
+	switch pl.CredentialType {
+	case string(credential.UsernamePasswordType):
+		if pl.UsernameAttribute != "" || pl.PasswordAttribute != "" {
+			up := allocUsernamePasswordOverride()
+			up.LibraryId = pl.PublicId
+			up.UsernameAttribute = pl.UsernameAttribute
+			up.PasswordAttribute = pl.PasswordAttribute
+			up.sanitize()
+			cl.MappingOverride = up
+		}
+	case string(credential.SshPrivateKeyType):
+		if pl.UsernameAttribute != "" || pl.PrivateKeyAttribute != "" {
+			pk := allocSshPrivateKeyOverride()
+			pk.LibraryId = pl.PublicId
+			pk.UsernameAttribute = pl.UsernameAttribute
+			pk.PrivateKeyAttribute = pl.PrivateKeyAttribute
+			pk.sanitize()
+			cl.MappingOverride = pk
+		}
 	}
 	return cl
 }

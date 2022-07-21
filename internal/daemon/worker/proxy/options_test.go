@@ -10,7 +10,7 @@ import (
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 
-	t.Run("WithEgressCredentials", func(t *testing.T) {
+	t.Run("WithInjectedApplicationCredentials", func(t *testing.T) {
 		assert := assert.New(t)
 		c := &serverpb.Credential{
 			Credential: &serverpb.Credential_UsernamePassword{
@@ -20,10 +20,10 @@ func Test_GetOpts(t *testing.T) {
 				},
 			},
 		}
-		opts := GetOpts(WithEgressCredentials([]*serverpb.Credential{c}))
+		opts := GetOpts(WithInjectedApplicationCredentials([]*serverpb.Credential{c}))
 		testOpts := getDefaultOptions()
 		assert.NotEqual(opts, testOpts)
-		testOpts.WithEgressCredentials = []*serverpb.Credential{c}
+		testOpts.WithInjectedApplicationCredentials = []*serverpb.Credential{c}
 		assert.Equal(opts, testOpts)
 	})
 }

@@ -37,7 +37,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
+var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-worker-tags", "set-worker-tags", "remove-worker-tags"}
 
 func structListValue(t *testing.T, ss ...string) *structpb.ListValue {
 	t.Helper()
@@ -48,6 +48,26 @@ func structListValue(t *testing.T, ss ...string) *structpb.ListValue {
 	lv, err := structpb.NewList(val)
 	require.NoError(t, err)
 	return lv
+}
+
+func equalTags(t *testing.T, expected map[string]*structpb.ListValue, actual map[string]*structpb.ListValue) bool {
+	t.Helper()
+	if len(expected) != len(actual) {
+		return false
+	}
+	for eK, eValList := range expected {
+		found := false
+		for k, valList := range actual {
+			if eK == k && eValList.String() == valList.String() {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 func TestGet(t *testing.T) {
@@ -1292,6 +1312,482 @@ func TestCreateWorkerLed(t *testing.T) {
 				}
 			}
 			assert.Equal(tc.res, got)
+		})
+	}
+}
+
+func TestService_AddWorkerTags(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	_, proj := iam.TestScopes(t, iamRepo)
+	rw := db.New(conn)
+	testKms := kms.TestKms(t, conn, wrapper)
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, testKms)
+	}
+	s, err := NewService(context.Background(), repoFn, iamRepoFn)
+	require.NoError(err)
+	worker := server.TestKmsWorker(t, conn, wrapper)
+
+	tests := []struct {
+		name            string
+		req             *pbs.AddWorkerTagsRequest
+		wantTags        map[string]*structpb.ListValue
+		wantErrContains string
+	}{
+		{
+			name: "bad-id",
+			req: &pbs.AddWorkerTagsRequest{
+				Id:      "bad_id",
+				Version: worker.Version,
+				ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+			},
+			wantErrContains: "Incorrectly formatted identifier.",
+		},
+		{
+			name: "nil-version",
+			req: &pbs.AddWorkerTagsRequest{
+				Id:      worker.PublicId,
+				ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+			},
+			wantErrContains: "Required field.",
+		},
+		{
+			name: "nil-tags",
+			req: &pbs.AddWorkerTagsRequest{
+				Id:      worker.PublicId,
+				Version: worker.Version,
+			},
+			wantErrContains: "Must be non-empty.",
+		},
+		{
+			name: "valid-tags",
+			req: &pbs.AddWorkerTagsRequest{
+				Id:      worker.PublicId,
+				Version: worker.Version,
+				ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+			},
+			wantTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+		},
+		{
+			name: "many-valid-tags",
+			req: func() *pbs.AddWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value2")}},
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantTags: map[string]*structpb.ListValue{
+				"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value2")}},
+				"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+				"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+				"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+			},
+		},
+		{
+			name: "invalid-tag-value",
+			req: func() *pbs.AddWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewBoolValue(false)}}},
+				}
+			}(),
+			wantErrContains: "Tag values must be strings.",
+		},
+		{
+			name: "mixed-invalid-tags",
+			req: func() *pbs.AddWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"":     {Values: nil},
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{nil}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantErrContains: "Tag keys must be non-empty.",
+		},
+		{
+			name: "duplicate-tags",
+			req: func() *pbs.AddWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2"), structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantErrContains: "Unable to add worker tags in repo",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := s.AddWorkerTags(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if len(tc.wantErrContains) > 0 {
+				assert.Nil(got)
+				assert.Contains(err.Error(), tc.wantErrContains)
+			}
+			if tc.wantTags != nil {
+				assert.Nil(err)
+				assert.True(equalTags(t, tc.wantTags, got.GetItem().GetApiTags()), "want tags: %q got: %q", tc.wantTags, got.GetItem().GetApiTags())
+				assert.Equal(tc.req.Version+1, got.GetItem().GetVersion())
+			}
+		})
+	}
+}
+
+func TestService_SetWorkerTags(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	_, proj := iam.TestScopes(t, iamRepo)
+	rw := db.New(conn)
+	testKms := kms.TestKms(t, conn, wrapper)
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, testKms)
+	}
+	s, err := NewService(context.Background(), repoFn, iamRepoFn)
+	require.NoError(err)
+	worker := server.TestKmsWorker(t, conn, wrapper)
+
+	tests := []struct {
+		name            string
+		req             *pbs.SetWorkerTagsRequest
+		wantTags        map[string]*structpb.ListValue
+		wantErrContains string
+	}{
+		{
+			name: "bad-id",
+			req: &pbs.SetWorkerTagsRequest{
+				Id:      "bad_id",
+				Version: worker.Version,
+				ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+			},
+			wantErrContains: "Incorrectly formatted identifier.",
+		},
+		{
+			name: "nil-version",
+			req: &pbs.SetWorkerTagsRequest{
+				Id:      worker.PublicId,
+				ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+			},
+			wantErrContains: "Required field.",
+		},
+		{
+			name: "nil-tags",
+			req: &pbs.SetWorkerTagsRequest{
+				Id:      worker.PublicId,
+				Version: worker.Version,
+			},
+			wantTags: map[string]*structpb.ListValue{},
+		},
+		{
+			name: "valid-tags",
+			req: func() *pbs.SetWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.SetWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+				}
+			}(),
+			wantTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+		},
+		{
+			name: "many-valid-tags",
+			req: func() *pbs.SetWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.SetWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value2")}},
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantTags: map[string]*structpb.ListValue{
+				"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value2")}},
+				"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+				"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+				"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+			},
+		},
+		{
+			name: "invalid-tag-value",
+			req: func() *pbs.SetWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.SetWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewBoolValue(false)}}},
+				}
+			}(),
+			wantErrContains: "Tag values must be strings.",
+		},
+		{
+			name: "mixed-invalid-tags",
+			req: func() *pbs.SetWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.SetWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key":  {Values: nil},
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantErrContains: "Tag values must be non-empty.",
+		},
+		{
+			name: "duplicate-tags",
+			req: func() *pbs.SetWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.SetWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2"), structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantErrContains: "Unable to set worker tags in repo",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := s.SetWorkerTags(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if len(tc.wantErrContains) > 0 {
+				assert.Nil(got)
+				assert.Contains(err.Error(), tc.wantErrContains)
+			}
+			if tc.wantTags != nil {
+				assert.Nil(err)
+				assert.True(equalTags(t, tc.wantTags, got.GetItem().GetApiTags()))
+				assert.Equal(tc.req.Version+1, got.GetItem().GetVersion())
+			}
+		})
+	}
+}
+
+func TestService_RemoveWorkerTags(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	_, proj := iam.TestScopes(t, iamRepo)
+	rw := db.New(conn)
+	testKms := kms.TestKms(t, conn, wrapper)
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, testKms)
+	}
+	s, err := NewService(context.Background(), repoFn, iamRepoFn)
+	require.NoError(err)
+	worker := server.TestKmsWorker(t, conn, wrapper)
+
+	tests := []struct {
+		name            string
+		req             *pbs.RemoveWorkerTagsRequest
+		wantDeletedTags map[string]*structpb.ListValue
+		wantErrContains string
+	}{
+		{
+			name: "bad-id",
+			req: &pbs.RemoveWorkerTagsRequest{
+				Id:      "bad_id",
+				Version: worker.Version,
+				ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+			},
+			wantErrContains: "Incorrectly formatted identifier.",
+		},
+		{
+			name: "nil-version",
+			req: &pbs.RemoveWorkerTagsRequest{
+				Id:      worker.PublicId,
+				ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+			},
+			wantErrContains: "Required field.",
+		},
+		{
+			name: "nil-tags",
+			req: &pbs.RemoveWorkerTagsRequest{
+				Id:      worker.PublicId,
+				Version: worker.Version,
+			},
+			wantErrContains: "Must be non-empty.",
+		},
+		{
+			name: "remove-valid-tag",
+			req: func() *pbs.RemoveWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
+					worker.Version, map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}})
+				return &pbs.RemoveWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version + 1,
+					ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+				}
+			}(),
+			wantDeletedTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}},
+		},
+		{
+			name: "remove-many-valid-tags",
+			req: func() *pbs.RemoveWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
+					worker.Version, map[string]*structpb.ListValue{
+						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value1")}},
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+						"key5": {Values: []*structpb.Value{structpb.NewStringValue("value5")}},
+						"key6": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+					})
+				return &pbs.RemoveWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version + 1,
+					ApiTags: map[string]*structpb.ListValue{
+						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value1")}},
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+						"key5": {Values: []*structpb.Value{structpb.NewStringValue("value5")}},
+						"key6": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+					},
+				}
+			}(),
+			wantDeletedTags: map[string]*structpb.ListValue{
+				"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+				"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+				"key3": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+				"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+				"key5": {Values: []*structpb.Value{structpb.NewStringValue("value5")}},
+				"key6": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+			},
+		},
+		{
+			name: "invalid-tag-value",
+			req: func() *pbs.RemoveWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.RemoveWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewBoolValue(false)}}},
+				}
+			}(),
+			wantErrContains: "Tag values must be strings.",
+		},
+		{
+			name: "mixed-invalid-tags",
+			req: func() *pbs.RemoveWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.RemoveWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key":  {Values: nil},
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+					},
+				}
+			}(),
+			wantErrContains: "Tag values must be non-empty.",
+		},
+		{
+			name: "remove-nonexistent-tags",
+			req: func() *pbs.RemoveWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
+					worker.Version, map[string]*structpb.ListValue{
+						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+						"key5": {Values: []*structpb.Value{structpb.NewStringValue("value5")}},
+						"key6": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+					})
+				return &pbs.RemoveWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version + 1,
+					ApiTags: map[string]*structpb.ListValue{
+						"no-key": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+						"key2":   {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
+						"key":    {Values: []*structpb.Value{structpb.NewStringValue("value")}},
+					},
+				}
+			}(),
+			wantErrContains: "Unable to remove worker tags in repo:",
+		},
+		{
+			name: "duplicate-tags",
+			req: func() *pbs.RemoveWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.RemoveWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{
+						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2"), structpb.NewStringValue("value2")}},
+						"key3": {Values: []*structpb.Value{structpb.NewStringValue("value3")}},
+						"key4": {Values: []*structpb.Value{structpb.NewStringValue("value4")}},
+					},
+				}
+			}(),
+			wantErrContains: "Unable to remove worker tags in repo",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := s.RemoveWorkerTags(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			if len(tc.wantErrContains) > 0 {
+				assert.Nil(got)
+				assert.Contains(err.Error(), tc.wantErrContains)
+			}
+			if tc.wantDeletedTags != nil {
+				assert.Nil(err)
+				assert.False(equalTags(t, tc.wantDeletedTags, got.GetItem().GetApiTags()))
+				assert.Equal(tc.req.Version+1, got.GetItem().GetVersion())
+			}
 		})
 	}
 }

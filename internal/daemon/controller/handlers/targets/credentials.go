@@ -34,6 +34,16 @@ func dynamicToWorkerCredential(ctx context.Context, cred credential.Dynamic) (se
 			},
 		}
 
+	case credential.SshPrivateKey:
+		workerCred = &serverpb.Credential{
+			Credential: &serverpb.Credential_SshPrivateKey{
+				SshPrivateKey: &serverpb.SshPrivateKey{
+					Username:   c.Username(),
+					PrivateKey: string(c.PrivateKey()),
+				},
+			},
+		}
+
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
 	}
@@ -90,6 +100,17 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
 			}
 
+		case credential.SshPrivateKey:
+			credData, err = handlers.ProtoToStruct(
+				&pb.SshPrivateKeyCredential{
+					Username:   c.Username(),
+					PrivateKey: string(c.PrivateKey()),
+				},
+			)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for credential"))
+			}
+
 		default:
 			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
 		}
@@ -128,6 +149,16 @@ func staticToWorkerCredential(ctx context.Context, cred credential.Static) (sess
 			},
 		}
 
+	case *credstatic.SshPrivateKeyCredential:
+		workerCred = &serverpb.Credential{
+			Credential: &serverpb.Credential_SshPrivateKey{
+				SshPrivateKey: &serverpb.SshPrivateKey{
+					Username:   c.GetUsername(),
+					PrivateKey: string(c.GetPrivateKey()),
+				},
+			},
+		}
+
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))
 	}
@@ -160,7 +191,24 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 			"password": string(c.GetPassword()),
 		}
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for static credential"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for username password credential"))
+		}
+
+	case *credstatic.SshPrivateKeyCredential:
+		var err error
+		credType = string(credential.SshPrivateKeyType)
+		credData, err = handlers.ProtoToStruct(
+			&pb.SshPrivateKeyCredential{
+				Username:   c.GetUsername(),
+				PrivateKey: string(c.GetPrivateKey()),
+			},
+		)
+		secret = map[string]interface{}{
+			"username":    c.GetUsername(),
+			"private_key": string(c.GetPrivateKey()),
+		}
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for ssh private key credential"))
 		}
 
 	default:
@@ -172,6 +220,9 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling static secret to json"))
 	}
 	sSecret, err := structpb.NewStruct(secret)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for secret"))
+	}
 
 	return &pb.SessionCredential{
 		CredentialSource: &pb.CredentialSource{

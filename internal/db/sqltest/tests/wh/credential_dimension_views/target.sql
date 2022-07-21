@@ -18,7 +18,7 @@ begin;
   values
     (
       'wcd________1',
-      'application',
+      'brokered',
       'vl_______wvl',        'vault credential library',      'widget vault library',   'None',                         '/secrets',                       'GET',                                'None',
       'vs_______wvs',        'vault credential store',        'widget vault store',     'None',                         'blue',                           'https://vault.widget',
       't_________wb',        'tcp target',                    'Big Widget Target',      'None',                         0,                                28800,                                1,
@@ -29,7 +29,7 @@ begin;
 
   select is(t.*, row(
     'wcd________1',
-    'application',
+    'brokered',
     'vl_______wvl', 'vault credential library', 'widget vault library', 'None', '/secrets', 'GET',                  'None',
     'vs_______wvs', 'vault credential store',   'widget vault store',   'None', 'blue',     'https://vault.widget',
     't_________wb', 'tcp target',               'Big Widget Target',    'None', 0,          28800,                  1,

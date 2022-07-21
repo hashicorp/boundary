@@ -17,6 +17,7 @@ type options struct {
 	withName        string
 	withDescription string
 	withLimit       int
+	withPublicId    string
 }
 
 func getDefaultOptions() options {
@@ -43,5 +44,12 @@ func WithName(name string) Option {
 func WithLimit(l int) Option {
 	return func(o *options) {
 		o.withLimit = l
+	}
+}
+
+// WithPublicId provides an optional public ID to use.
+func WithPublicId(name string) Option {
+	return func(o *options) {
+		o.withPublicId = name
 	}
 }

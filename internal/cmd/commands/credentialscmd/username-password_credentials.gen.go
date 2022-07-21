@@ -55,7 +55,7 @@ func (c *UsernamePasswordCommand) Synopsis() string {
 
 	synopsisStr := "credential"
 
-	synopsisStr = fmt.Sprintf("%s %s", "username_password-type", synopsisStr)
+	synopsisStr = fmt.Sprintf("%s %s", "username-password-type", synopsisStr)
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
@@ -93,7 +93,7 @@ func (c *UsernamePasswordCommand) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "username_password-type credential", flagsUsernamePasswordMap, c.Func)
+	common.PopulateCommonFlags(c.Command, f, "username-password-type credential", flagsUsernamePasswordMap, c.Func)
 
 	extraUsernamePasswordFlagsFunc(c, set, f)
 
@@ -109,10 +109,10 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 
 	}
 
-	c.plural = "username_password-type credential"
+	c.plural = "username-password-type credential"
 	switch c.Func {
 	case "list":
-		c.plural = "username_password-type credentials"
+		c.plural = "username-password-type credentials"
 	}
 
 	f := c.Flags()

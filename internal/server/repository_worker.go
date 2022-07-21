@@ -711,7 +711,8 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete worker tags"))
 		}
 		if rowsDeleted != len(deleteTags) {
-			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("tags deleted %d did not match request for %d", rowsDeleted, len(tags)))
+			return errors.New(ctx, errors.MultipleRecords, op,
+				fmt.Sprintf("unable to delete specified tag: tags deleted %d did not match request for %d", rowsDeleted, len(tags)))
 		}
 		return nil
 	})

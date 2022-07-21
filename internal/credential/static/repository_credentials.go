@@ -17,18 +17,37 @@ func (r *Repository) Retrieve(ctx context.Context, scopeId string, ids []string)
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no ids")
 	}
 
-	var creds []*UsernamePasswordCredential
-	err := r.reader.SearchWhere(ctx, &creds, "public_id in (?)", []interface{}{ids})
+	var upCreds []*UsernamePasswordCredential
+	err := r.reader.SearchWhere(ctx, &upCreds, "public_id in (?)", []interface{}{ids})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if len(creds) != len(ids) {
+	var spkCreds []*SshPrivateKeyCredential
+	err = r.reader.SearchWhere(ctx, &spkCreds, "public_id in (?)", []interface{}{ids})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	if len(upCreds)+len(spkCreds) != len(ids) {
 		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
-			fmt.Sprintf("mismatch between creds and number of ids requested, expected %d got %d", len(ids), len(creds)))
+			fmt.Sprintf("mismatch between creds and number of ids requested, expected %d got %d", len(ids), len(upCreds)+len(spkCreds)))
 	}
 
 	out := make([]credential.Static, 0, len(ids))
-	for _, c := range creds {
+	for _, c := range upCreds {
+		// decrypt credential
+		databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+		}
+		if err := c.decrypt(ctx, databaseWrapper); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		out = append(out, c)
+	}
+
+	for _, c := range spkCreds {
 		// decrypt credential
 		databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 		if err != nil {

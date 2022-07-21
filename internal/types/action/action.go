@@ -54,6 +54,9 @@ const (
 	SetHostSources            Type = 43
 	RemoveHostSources         Type = 44
 	CreateWorkerLed           Type = 45
+	AddWorkerTags             Type = 46
+	SetWorkerTags             Type = 47
+	RemoveWorkerTags          Type = 48
 
 	// When adding new actions, be sure to update:
 	//
@@ -106,6 +109,9 @@ var Map = map[string]Type{
 	SetHostSources.String():            SetHostSources,
 	RemoveHostSources.String():         RemoveHostSources,
 	CreateWorkerLed.String():           CreateWorkerLed,
+	AddWorkerTags.String():             AddWorkerTags,
+	SetWorkerTags.String():             SetWorkerTags,
+	RemoveWorkerTags.String():          RemoveWorkerTags,
 }
 
 func (a Type) String() string {
@@ -156,6 +162,9 @@ func (a Type) String() string {
 		"set-host-sources",
 		"remove-host-sources",
 		"create:worker-led",
+		"add-worker-tags",
+		"set-worker-tags",
+		"remove-worker-tags",
 	}[a]
 }
 

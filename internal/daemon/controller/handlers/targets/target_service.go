@@ -12,7 +12,6 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
-	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -612,7 +611,9 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 			return nil, authResults.Error
 		}
 	}
-	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetEgressCredentialSourceIds(), req.GetVersion())
+
+	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
+	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), brokeredCredentialSources, req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -655,7 +656,9 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 			return nil, authResults.Error
 		}
 	}
-	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetEgressCredentialSourceIds(), req.GetVersion())
+
+	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
+	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), brokeredCredentialSources, req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -698,7 +701,9 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 			return nil, authResults.Error
 		}
 	}
-	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), req.GetApplicationCredentialSourceIds(), req.GetEgressCredentialSourceIds(), req.GetVersion())
+
+	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
+	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), brokeredCredentialSources, req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -983,14 +988,14 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	var workerCreds []session.Credential
 	for _, cred := range dynamic {
 		switch cred.Purpose() {
-		case credential.EgressPurpose:
+		case credential.InjectedApplicationPurpose:
 			c, err := dynamicToWorkerCredential(ctx, cred)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
 			workerCreds = append(workerCreds, c)
 
-		case credential.ApplicationPurpose:
+		case credential.BrokeredPurpose:
 			c, err := dynamicToSessionCredential(ctx, cred)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
@@ -1004,14 +1009,14 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 
 	for _, sc := range staticCreds {
 		switch sc.CredentialPurpose {
-		case string(credential.EgressPurpose):
+		case string(credential.InjectedApplicationPurpose):
 			c, err := staticToWorkerCredential(ctx, staticCredsById[sc.CredentialStaticId])
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
 			workerCreds = append(workerCreds, c)
 
-		case string(credential.ApplicationPurpose):
+		case string(credential.BrokeredPurpose):
 			c, err := staticToSessionCredential(ctx, staticCredsById[sc.CredentialStaticId])
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
@@ -1271,18 +1276,18 @@ func (s Service) removeHostSourcesInRepo(ctx context.Context, targetId string, h
 	return out, hs, cl, nil
 }
 
-func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string, applicationIds []string, egressIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
+func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string, brokeredIds []string, injectedAppIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	var creds target.CredentialSources
-	if len(applicationIds) > 0 {
-		creds.ApplicationCredentialIds = strutil.RemoveDuplicates(applicationIds, false)
+	if len(brokeredIds) > 0 {
+		creds.BrokeredCredentialIds = strutil.RemoveDuplicates(brokeredIds, false)
 	}
-	if len(egressIds) > 0 {
-		creds.EgressCredentialIds = strutil.RemoveDuplicates(egressIds, false)
+	if len(injectedAppIds) > 0 {
+		creds.InjectedApplicationCredentialIds = strutil.RemoveDuplicates(injectedAppIds, false)
 	}
 
 	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, creds)
@@ -1296,7 +1301,7 @@ func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string
 	return out, hs, credSources, nil
 }
 
-func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string, applicationIds []string, egressIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
+func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string, brokeredIds []string, injectedAppIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
 	const op = "targets.(Service).setCredentialSourcesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -1304,11 +1309,11 @@ func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string
 	}
 
 	var ids target.CredentialSources
-	if len(applicationIds) > 0 {
-		ids.ApplicationCredentialIds = strutil.RemoveDuplicates(applicationIds, false)
+	if len(brokeredIds) > 0 {
+		ids.BrokeredCredentialIds = strutil.RemoveDuplicates(brokeredIds, false)
 	}
-	if len(egressIds) > 0 {
-		ids.EgressCredentialIds = strutil.RemoveDuplicates(egressIds, false)
+	if len(injectedAppIds) > 0 {
+		ids.InjectedApplicationCredentialIds = strutil.RemoveDuplicates(injectedAppIds, false)
 	}
 
 	_, _, _, err = repo.SetTargetCredentialSources(ctx, targetId, version, ids)
@@ -1327,7 +1332,7 @@ func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string
 	return out, hs, credSources, nil
 }
 
-func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId string, applicationIds []string, egressIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
+func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId string, brokeredIds []string, injectedAppIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
 	const op = "targets.(Service).removeCredentialSourcesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -1335,11 +1340,11 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 	}
 
 	var ids target.CredentialSources
-	if len(applicationIds) > 0 {
-		ids.ApplicationCredentialIds = strutil.RemoveDuplicates(applicationIds, false)
+	if len(brokeredIds) > 0 {
+		ids.BrokeredCredentialIds = strutil.RemoveDuplicates(brokeredIds, false)
 	}
-	if len(egressIds) > 0 {
-		ids.EgressCredentialIds = strutil.RemoveDuplicates(egressIds, false)
+	if len(injectedAppIds) > 0 {
+		ids.InjectedApplicationCredentialIds = strutil.RemoveDuplicates(injectedAppIds, false)
 	}
 	_, err = repo.DeleteTargetCredentialSources(ctx, targetId, version, ids)
 	if err != nil {
@@ -1484,41 +1489,48 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 		}
 	}
 
-	var appCredSources, egressCredSources []*pb.CredentialSource
-	var appCredSourceIds, egressCredSourceIds []string
+	var brokeredSources, injectedAppSources []*pb.CredentialSource
+	var brokeredSourceIds, injectedAppSourceIds []string
 
 	for _, cs := range credSources {
 		switch cs.CredentialPurpose() {
-		case credential.ApplicationPurpose:
-			appCredSourceIds = append(appCredSourceIds, cs.Id())
-			appCredSources = append(appCredSources, &pb.CredentialSource{
+		case credential.BrokeredPurpose:
+			brokeredSourceIds = append(brokeredSourceIds, cs.Id())
+			brokeredSources = append(brokeredSources, &pb.CredentialSource{
 				Id:                cs.Id(),
 				CredentialStoreId: cs.CredentialStoreId(),
 			})
 
-		case credential.EgressPurpose:
-			egressCredSources = append(egressCredSources, &pb.CredentialSource{
+		case credential.InjectedApplicationPurpose:
+			injectedAppSources = append(injectedAppSources, &pb.CredentialSource{
 				Id:                cs.Id(),
 				CredentialStoreId: cs.CredentialStoreId(),
 			})
-			egressCredSourceIds = append(egressCredSourceIds, cs.Id())
+			injectedAppSourceIds = append(injectedAppSourceIds, cs.Id())
 
 		default:
 			return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unrecognized purpose %q for credential source on target", cs.CredentialPurpose()))
 		}
 	}
 
+	// TODO: Application Credentials are deprecated, remove when field removed.
 	if outputFields.Has(globals.ApplicationCredentialSourceIdsField) {
-		out.ApplicationCredentialSourceIds = appCredSourceIds
+		out.ApplicationCredentialSourceIds = brokeredSourceIds
 	}
 	if outputFields.Has(globals.ApplicationCredentialSourcesField) {
-		out.ApplicationCredentialSources = appCredSources
+		out.ApplicationCredentialSources = brokeredSources
 	}
-	if outputFields.Has(globals.EgressCredentialSourceIdsField) {
-		out.EgressCredentialSourceIds = egressCredSourceIds
+	if outputFields.Has(globals.BrokeredCredentialSourceIdsField) {
+		out.BrokeredCredentialSourceIds = brokeredSourceIds
 	}
-	if outputFields.Has(globals.EgressCredentialSourcesField) {
-		out.EgressCredentialSources = egressCredSources
+	if outputFields.Has(globals.BrokeredCredentialSourcesField) {
+		out.BrokeredCredentialSources = brokeredSources
+	}
+	if outputFields.Has(globals.InjectedApplicationCredentialSourceIdsField) {
+		out.InjectedApplicationCredentialSourceIds = injectedAppSourceIds
+	}
+	if outputFields.Has(globals.InjectedApplicationCredentialSourcesField) {
+		out.InjectedApplicationCredentialSources = injectedAppSources
 	}
 	if outputFields.Has(globals.AttributesField) {
 		if err := subtypeRegistry.setAttributes(in.GetType(), in, &out); err != nil {
@@ -1664,8 +1676,7 @@ func validateAddSetsRequest(req *pbs.AddTargetHostSetsRequest) error {
 		badFields[globals.HostSetIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1685,8 +1696,7 @@ func validateSetSetsRequest(req *pbs.SetTargetHostSetsRequest) error {
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1709,8 +1719,7 @@ func validateRemoveSetsRequest(req *pbs.RemoveTargetHostSetsRequest) error {
 		badFields[globals.HostSetIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
 			break
 		}
@@ -1733,8 +1742,7 @@ func validateAddHostSourcesRequest(req *pbs.AddTargetHostSourcesRequest) error {
 		badFields[globals.HostSourceIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSourceIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1754,8 +1762,7 @@ func validateSetHostSourcesRequest(req *pbs.SetTargetHostSourcesRequest) error {
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, id := range req.GetHostSourceIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1778,8 +1785,7 @@ func validateRemoveHostSourcesRequest(req *pbs.RemoveTargetHostSourcesRequest) e
 		badFields[globals.HostSourceIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostSourceIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix) &&
-			!strings.HasPrefix(id, fmt.Sprintf("%s_", plugin.HostSetPrefix)) {
+		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
 			badFields[globals.HostSourceIdsField] = fmt.Sprintf("Incorrectly formatted host source identifier %q.", id)
 			break
 		}
@@ -1798,19 +1804,38 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetApplicationCredentialSourceIds())+len(req.GetEgressCredentialSourceIds()) == 0 {
-		badFields[globals.ApplicationCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
-		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
+	if len(req.GetApplicationCredentialSourceIds())+len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
+		badFields[globals.BrokeredCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
+		badFields[globals.InjectedApplicationCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
 	}
+	// TODO: Application Credentials are deprecated, remove when field removed.
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
-	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
-			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
+	for _, cl := range req.GetBrokeredCredentialSourceIds() {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
+			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
+			break
+		}
+	}
+	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
+			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
@@ -1828,15 +1853,34 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
+	// TODO: Application Credentials are deprecated, remove when field removed.
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
-	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
-			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
+	for _, cl := range req.GetBrokeredCredentialSourceIds() {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
+			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
+			break
+		}
+	}
+	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
+			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
@@ -1854,19 +1898,38 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetApplicationCredentialSourceIds())+len(req.GetEgressCredentialSourceIds()) == 0 {
-		badFields[globals.ApplicationCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
-		badFields[globals.EgressCredentialSourceIdsField] = "Application or Egress Credential Source IDs must be provided."
+	if len(req.GetApplicationCredentialSourceIds())+len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
+		badFields[globals.BrokeredCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
+		badFields[globals.InjectedApplicationCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
 	}
+	// TODO: Application Credentials are deprecated, remove when field removed.
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
-	for _, cl := range req.GetEgressCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl), vault.CredentialLibraryPrefix, credstatic.CredentialPrefix) {
-			badFields[globals.EgressCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
+	for _, cl := range req.GetBrokeredCredentialSourceIds() {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
+			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
+			break
+		}
+	}
+	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
+		if !handlers.ValidId(handlers.Id(cl),
+			vault.CredentialLibraryPrefix,
+			credential.UsernamePasswordCredentialPrefix,
+			credential.PreviousUsernamePasswordCredentialPrefix,
+			credential.SshPrivateKeyCredentialPrefix) {
+			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
 	}
