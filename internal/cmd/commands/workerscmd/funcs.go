@@ -20,9 +20,9 @@ func init() {
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"add-worker-tags":    {"id", "tags", "version"},
-		"set-worker-tags":    {"id", "tags", "version"},
-		"remove-worker-tags": {"id", "tags", "version"},
+		"add-worker-tags":    {"id", "tag", "version"},
+		"set-worker-tags":    {"id", "tag", "version"},
+		"remove-worker-tags": {"id", "tag", "version"},
 	}
 }
 
@@ -254,7 +254,7 @@ func printItemTable(result api.GenericResult) string {
 		)
 	}
 
-	if len(item.CanonicalTags) > 0 || len(item.ConfigTags) > 0 {
+	if len(item.CanonicalTags) > 0 || len(item.ApiTags) > 0 || len(item.ConfigTags) > 0 {
 		ret = append(ret,
 			"",
 			"  Tags:",
@@ -265,7 +265,17 @@ func printItemTable(result api.GenericResult) string {
 				tagMap[k] = v
 			}
 			ret = append(ret,
-				"    Worker Configuration:",
+				"    Configuration:",
+				base.WrapMap(6, 2, tagMap),
+			)
+		}
+		if len(item.ApiTags) > 0 {
+			tagMap := make(map[string]any, len(item.ApiTags))
+			for k, v := range item.ApiTags {
+				tagMap[k] = v
+			}
+			ret = append(ret,
+				"    Api:",
 				base.WrapMap(6, 2, tagMap),
 			)
 		}

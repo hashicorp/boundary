@@ -330,13 +330,13 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Work
 	return target, nil
 }
 
-func (c *Client) AddWorkerTags(ctx context.Context, id string, version uint32, tags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
+func (c *Client) AddWorkerTags(ctx context.Context, id string, version uint32, apiTags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddWorkerTags request")
 	}
 
-	if len(tags) == 0 {
-		return nil, errors.New("empty tags passed into AddWorkerTags request")
+	if len(apiTags) == 0 {
+		return nil, errors.New("empty apiTags passed into AddWorkerTags request")
 	}
 
 	if c.client == nil {
@@ -367,7 +367,7 @@ func (c *Client) AddWorkerTags(ctx context.Context, id string, version uint32, t
 
 	opts.postMap["version"] = version
 
-	opts.postMap["tags"] = tags
+	opts.postMap["api_tags"] = apiTags
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("workers/%s:add-worker-tags", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
@@ -400,7 +400,7 @@ func (c *Client) AddWorkerTags(ctx context.Context, id string, version uint32, t
 	return target, nil
 }
 
-func (c *Client) SetWorkerTags(ctx context.Context, id string, version uint32, tags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
+func (c *Client) SetWorkerTags(ctx context.Context, id string, version uint32, apiTags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into SetWorkerTags request")
 	}
@@ -433,7 +433,7 @@ func (c *Client) SetWorkerTags(ctx context.Context, id string, version uint32, t
 
 	opts.postMap["version"] = version
 
-	opts.postMap["tags"] = tags
+	opts.postMap["api_tags"] = apiTags
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("workers/%s:set-worker-tags", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {
@@ -466,13 +466,13 @@ func (c *Client) SetWorkerTags(ctx context.Context, id string, version uint32, t
 	return target, nil
 }
 
-func (c *Client) RemoveWorkerTags(ctx context.Context, id string, version uint32, tags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
+func (c *Client) RemoveWorkerTags(ctx context.Context, id string, version uint32, apiTags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into RemoveWorkerTags request")
 	}
 
-	if len(tags) == 0 {
-		return nil, errors.New("empty tags passed into RemoveWorkerTags request")
+	if len(apiTags) == 0 {
+		return nil, errors.New("empty apiTags passed into RemoveWorkerTags request")
 	}
 
 	if c.client == nil {
@@ -503,7 +503,7 @@ func (c *Client) RemoveWorkerTags(ctx context.Context, id string, version uint32
 
 	opts.postMap["version"] = version
 
-	opts.postMap["tags"] = tags
+	opts.postMap["api_tags"] = apiTags
 
 	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("workers/%s:remove-worker-tags", url.PathEscape(id)), opts.postMap, apiOpts...)
 	if err != nil {

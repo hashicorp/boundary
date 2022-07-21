@@ -741,7 +741,7 @@ var inputStructs = []*structInfo{
 		sliceSubtypes: map[string]sliceSubtypeInfo{
 			"WorkerTags": {
 				SliceType: "map[string][]string",
-				VarName:   "tags",
+				VarName:   "apiTags",
 			},
 		},
 		createResponseTypes: true,
