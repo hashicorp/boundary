@@ -263,6 +263,22 @@ var inputStructs = map[string][]*cmdInfo{
 			NeedsSubtypeInCreate: true,
 			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
 		},
+		{
+			ResourceType:         resource.Credential.String(),
+			Pkg:                  "credentials",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "ssh_private_key",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "CredentialStore",
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
+		},
 	},
 	"groups": {
 		{

@@ -162,8 +162,9 @@ func TestGet_Plugin(t *testing.T) {
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test")
+	hPrev := plugin.TestHost(t, conn, hc.GetPublicId(), "test-prev", plugin.WithPublicId(fmt.Sprintf("%s_1234567890", plugin.PreviousHostPrefix)))
 	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
-	plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
+	plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h, hPrev})
 
 	pHost := &pb.Host{
 		HostCatalogId: hc.GetPublicId(),
@@ -192,6 +193,18 @@ func TestGet_Plugin(t *testing.T) {
 			name: "Get an Existing Host",
 			req:  &pbs.GetHostRequest{Id: h.GetPublicId()},
 			res:  &pbs.GetHostResponse{Item: pHost},
+		},
+		{
+			name: "Get an Existing Previous-ID Host",
+			req:  &pbs.GetHostRequest{Id: hPrev.GetPublicId()},
+			res: func() *pbs.GetHostResponse {
+				resp := proto.Clone(pHost).(*pb.Host)
+				resp.Id = hPrev.PublicId
+				resp.CreatedTime = hPrev.CreateTime.GetTimestamp()
+				resp.UpdatedTime = hPrev.UpdateTime.GetTimestamp()
+				resp.ExternalId = "test-prev"
+				return &pbs.GetHostResponse{Item: resp}
+			}(),
 		},
 		{
 			name: "non existing",

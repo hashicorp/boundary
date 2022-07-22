@@ -739,6 +739,7 @@ func TestGet(t *testing.T) {
 
 	vaultStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	staticStorePrev := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId(), credstatic.WithPublicId(fmt.Sprintf("%s_1234567890", credstatic.PreviousCredentialStorePrefix)))
 	s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
@@ -786,6 +787,23 @@ func TestGet(t *testing.T) {
 					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
 					CreatedTime:                 staticStore.CreateTime.GetTimestamp(),
 					UpdatedTime:                 staticStore.UpdateTime.GetTimestamp(),
+					Version:                     1,
+				},
+			},
+		},
+		{
+			name: "static prev prefix success",
+			id:   staticStorePrev.GetPublicId(),
+			res: &pbs.GetCredentialStoreResponse{
+				Item: &pb.CredentialStore{
+					Id:                          staticStorePrev.GetPublicId(),
+					ScopeId:                     staticStorePrev.GetScopeId(),
+					Scope:                       &scopepb.ScopeInfo{Id: staticStorePrev.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:                        credstatic.Subtype.String(),
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: testAuthorizedStaticCollectionActions,
+					CreatedTime:                 staticStorePrev.CreateTime.GetTimestamp(),
+					UpdatedTime:                 staticStorePrev.UpdateTime.GetTimestamp(),
 					Version:                     1,
 				},
 			},

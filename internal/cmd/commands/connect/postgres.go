@@ -51,18 +51,17 @@ func (p *postgresFlags) defaultExec() string {
 	return strings.ToLower(p.flagPostgresStyle)
 }
 
-func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs []string, retErr error) {
-	var cred usernamePasswordCredentials
-	if c.sessionAuthz != nil {
-		creds, err := parseCredentials(c.sessionAuthz.Credentials)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Error interpreting secret: %w", err)
-		}
-		if len(creds) > 0 {
-			// Just use first credentials returned
-			cred = creds[0]
-		}
+func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string, creds credentials) (args, envs []string, retCreds credentials, retErr error) {
+	var username, password string
 
+	retCreds = creds
+	if len(retCreds.usernamePassword) > 0 {
+		// Mark credential as consumed so it is not printed to user
+		retCreds.usernamePassword[0].consumed = true
+
+		// For now just grab the first username password credential brokered
+		username = retCreds.usernamePassword[0].Username
+		password = retCreds.usernamePassword[0].Password
 	}
 
 	switch p.flagPostgresStyle {
@@ -74,16 +73,16 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs
 		}
 
 		switch {
-		case cred.Username != "":
-			args = append(args, "-U", cred.Username)
+		case username != "":
+			args = append(args, "-U", username)
 		case c.flagUsername != "":
 			args = append(args, "-U", c.flagUsername)
 		}
 
-		if cred.Password != "" {
+		if password != "" {
 			passfile, err := ioutil.TempFile("", "*")
 			if err != nil {
-				return nil, nil, fmt.Errorf("Error saving postgres password to tmp file: %w", err)
+				return nil, nil, credentials{}, fmt.Errorf("Error saving postgres password to tmp file: %w", err)
 			}
 			c.cleanupFuncs = append(c.cleanupFuncs, func() error {
 				if err := os.Remove(passfile.Name()); err != nil {
@@ -91,12 +90,12 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string) (args, envs
 				}
 				return nil
 			})
-			_, err = passfile.WriteString(fmt.Sprintf("*:*:*:*:%s", cred.Password))
+			_, err = passfile.WriteString(fmt.Sprintf("*:*:*:*:%s", password))
 			if err != nil {
-				return nil, nil, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
+				return nil, nil, credentials{}, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
 			}
 			if err := passfile.Close(); err != nil {
-				return nil, nil, fmt.Errorf("Error closing password file after writing to %s: %w", passfile.Name(), err)
+				return nil, nil, credentials{}, fmt.Errorf("Error closing password file after writing to %s: %w", passfile.Name(), err)
 			}
 			envs = append(envs, fmt.Sprintf("PGPASSFILE=%s", passfile.Name()))
 

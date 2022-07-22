@@ -38,8 +38,9 @@ const (
 
 // Credential mapping override attributes
 const (
-	usernameAttribute string = "username_attribute"
-	passwordAttribute string = "password_attribute"
+	usernameAttribute   string = "username_attribute"
+	passwordAttribute   string = "password_attribute"
+	privateKeyAttribute string = "private_key_attribute"
 )
 
 var (
@@ -531,6 +532,14 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 					if mapping.PasswordAttribute != "" {
 						m[passwordAttribute] = mapping.PasswordAttribute
 					}
+
+				case *vault.SshPrivateKeyOverride:
+					if mapping.UsernameAttribute != "" {
+						m[usernameAttribute] = mapping.UsernameAttribute
+					}
+					if mapping.PrivateKeyAttribute != "" {
+						m[privateKeyAttribute] = mapping.PrivateKeyAttribute
+					}
 				}
 				if len(m) > 0 {
 					mp, err := structpb.NewStruct(m)
@@ -591,6 +600,20 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 		}
 		if len(mapOpts) > 0 {
 			opts = append(opts, vault.WithMappingOverride(vault.NewUsernamePasswordOverride(mapOpts...)))
+		}
+
+	case credential.SshPrivateKeyType:
+		opts = append(opts, vault.WithCredentialType(credentialType))
+		overrides := in.CredentialMappingOverrides.AsMap()
+		var mapOpts []vault.Option
+		if username := overrides[usernameAttribute]; username != nil {
+			mapOpts = append(mapOpts, vault.WithOverrideUsernameAttribute(username.(string)))
+		}
+		if pk := overrides[privateKeyAttribute]; pk != nil {
+			mapOpts = append(mapOpts, vault.WithOverridePrivateKeyAttribute(pk.(string)))
+		}
+		if len(mapOpts) > 0 {
+			opts = append(opts, vault.WithMappingOverride(vault.NewSshPrivateKeyOverride(mapOpts...)))
 		}
 	}
 
@@ -697,6 +720,9 @@ func validateMapping(badFields map[string]string, credentialType credential.Type
 	case credential.UsernamePasswordType:
 		validFields[usernameAttribute] = true
 		validFields[passwordAttribute] = true
+	case credential.SshPrivateKeyType:
+		validFields[usernameAttribute] = true
+		validFields[privateKeyAttribute] = true
 	default:
 		badFields[globals.CredentialTypeField] = fmt.Sprintf("Unknown credential type %q", credentialType)
 		return
@@ -753,6 +779,27 @@ func getMappingUpdates(credentialType credential.Type, current vault.MappingOver
 			ret[passwordAttribute] = new[passwordAttribute]
 		default:
 			ret[passwordAttribute] = currentPass
+		}
+
+	case credential.SshPrivateKeyType:
+		var currentUser, currentPk interface{}
+		if overrides, ok := current.(*vault.SshPrivateKeyOverride); ok {
+			currentUser = overrides.UsernameAttribute
+			currentPk = overrides.PrivateKeyAttribute
+		}
+
+		switch {
+		case masks[usernameAttribute]:
+			ret[usernameAttribute] = new[usernameAttribute]
+		default:
+			ret[usernameAttribute] = currentUser
+		}
+
+		switch {
+		case masks[privateKeyAttribute]:
+			ret[privateKeyAttribute] = new[privateKeyAttribute]
+		default:
+			ret[privateKeyAttribute] = currentPk
 		}
 	}
 

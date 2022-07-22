@@ -248,30 +248,50 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *groups.Group
 
-	var listResult api.GenericListResult
+	var items []*groups.Group
+
+	var createResult *groups.GroupCreateResult
+
+	var readResult *groups.GroupReadResult
+
+	var updateResult *groups.GroupUpdateResult
+
+	var deleteResult *groups.GroupDeleteResult
+
+	var listResult *groups.GroupListResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = groupsClient.Create(c.Context, c.FlagScopeId, opts...)
+		createResult, err = groupsClient.Create(c.Context, c.FlagScopeId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "read":
-		result, err = groupsClient.Read(c.Context, c.FlagId, opts...)
+		readResult, err = groupsClient.Read(c.Context, c.FlagId, opts...)
+		resp = readResult.GetResponse()
+		item = readResult.GetItem()
 
 	case "update":
-		result, err = groupsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = groupsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	case "delete":
-		result, err = groupsClient.Delete(c.Context, c.FlagId, opts...)
+		deleteResult, err = groupsClient.Delete(c.Context, c.FlagId, opts...)
+		resp = deleteResult.GetResponse()
 
 	case "list":
 		listResult, err = groupsClient.List(c.Context, c.FlagScopeId, opts...)
+		resp = listResult.GetResponse()
+		items = listResult.GetItems()
 
 	}
 
-	result, err = executeExtraActions(c, result, err, groupsClient, version, opts)
+	resp, item, items, err = executeExtraActions(c, resp, item, items, err, groupsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -298,7 +318,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItem(result); !ok {
+			if ok := c.PrintJsonItem(resp); !ok {
 				return base.CommandCliError
 			}
 
@@ -311,13 +331,12 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItems(listResult); !ok {
+			if ok := c.PrintJsonItems(resp); !ok {
 				return base.CommandCliError
 			}
 
 		case "table":
-			listedItems := listResult.GetItems().([]*groups.Group)
-			c.UI.Output(c.printListTable(listedItems))
+			c.UI.Output(c.printListTable(items))
 		}
 
 		return base.CommandSuccess
@@ -326,10 +345,10 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -344,8 +363,8 @@ var (
 	extraSynopsisFunc        = func(*Command) string { return "" }
 	extraFlagsFunc           = func(*Command, *base.FlagSets, *base.FlagSet) {}
 	extraFlagsHandlingFunc   = func(*Command, *base.FlagSets, *[]groups.Option) bool { return true }
-	executeExtraActions      = func(_ *Command, inResult api.GenericResult, inErr error, _ *groups.Client, _ uint32, _ []groups.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraActions      = func(_ *Command, inResp *api.Response, inItem *groups.Group, inItems []*groups.Group, inErr error, _ *groups.Client, _ uint32, _ []groups.Option) (*api.Response, *groups.Group, []*groups.Group, error) {
+		return inResp, inItem, inItems, inErr
 	}
 	printCustomActionOutput = func(*Command) (bool, error) { return false, nil }
 )

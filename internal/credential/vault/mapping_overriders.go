@@ -16,6 +16,8 @@ func validMappingOverride(m MappingOverride, ct credential.Type) bool {
 		return true // it is always valid to not specify a mapping override
 	case *UsernamePasswordOverride:
 		return ct == credential.UsernamePasswordType
+	case *SshPrivateKeyOverride:
+		return ct == credential.SshPrivateKeyType
 	default:
 		return false // an unknown mapping override type is never valid
 	}
@@ -94,5 +96,68 @@ func (o *UsernamePasswordOverride) TableName() string {
 
 // SetTableName sets the table name.
 func (o *UsernamePasswordOverride) SetTableName(n string) {
+	o.tableName = n
+}
+
+// A SshPrivateKeyOverride contains optional values for overriding the
+// default mappings used to map a Vault secret to a SshPrivateKey credential
+// type for the credential library that owns it.
+type SshPrivateKeyOverride struct {
+	*store.SshPrivateKeyOverride
+	tableName string `gorm:"-"`
+}
+
+var _ MappingOverride = (*SshPrivateKeyOverride)(nil)
+
+// NewSshPrivateKeyOverride creates a new in memory SshPrivateKeyOverride.
+// WithOverrideUsernameAttribute and WithOverridePasswordAttribute are the
+// only valid options. All other options are ignored.
+func NewSshPrivateKeyOverride(opt ...Option) *SshPrivateKeyOverride {
+	opts := getOpts(opt...)
+	o := &SshPrivateKeyOverride{
+		SshPrivateKeyOverride: &store.SshPrivateKeyOverride{
+			UsernameAttribute:   sanitize.String(opts.withOverrideUsernameAttribute),
+			PrivateKeyAttribute: sanitize.String(opts.withOverridePrivateKeyAttribute),
+		},
+	}
+	return o
+}
+
+func allocSshPrivateKeyOverride() *SshPrivateKeyOverride {
+	return &SshPrivateKeyOverride{
+		SshPrivateKeyOverride: &store.SshPrivateKeyOverride{},
+	}
+}
+
+func (o *SshPrivateKeyOverride) clone() MappingOverride {
+	cp := proto.Clone(o.SshPrivateKeyOverride)
+	return &SshPrivateKeyOverride{
+		SshPrivateKeyOverride: cp.(*store.SshPrivateKeyOverride),
+	}
+}
+
+func (o *SshPrivateKeyOverride) setLibraryId(i string) {
+	o.LibraryId = i
+}
+
+func (o *SshPrivateKeyOverride) sanitize() {
+	if sentinel.Is(o.UsernameAttribute) {
+		o.UsernameAttribute = ""
+	}
+	if sentinel.Is(o.PrivateKeyAttribute) {
+		o.PrivateKeyAttribute = ""
+	}
+}
+
+// TableName returns the table name.
+func (o *SshPrivateKeyOverride) TableName() string {
+	if o.tableName != "" {
+		return o.tableName
+	}
+	return "credential_vault_library_ssh_private_key_mapping_override"
+}
+
+// SetTableName sets the table name.
+func (o *SshPrivateKeyOverride) SetTableName(n string) {
 	o.tableName = n
 }

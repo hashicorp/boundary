@@ -24,7 +24,7 @@ func fillTemplates() {
 
 			fName := pkg
 			if data.SubActionPrefix != "" {
-				fName = fmt.Sprintf("%s_%s", data.SubActionPrefix, fName)
+				fName = fmt.Sprintf("%s_%s", strcase.ToKebab(data.SubActionPrefix), fName)
 			}
 			outFile, err := filepath.Abs(fmt.Sprintf("%s/%scmd/%s.gen.go", os.Getenv("CLI_GEN_BASEPATH"), pkg, fName))
 			if err != nil {
@@ -137,7 +137,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
 
 	synopsisStr := "{{ lowerSpaceCase .ResourceType }}"
 	{{ if .SubActionPrefix }}
-	synopsisStr = fmt.Sprintf("%s %s", "{{ .SubActionPrefix }}-type", synopsisStr)
+	synopsisStr = fmt.Sprintf("%s %s", "{{ kebabCase .SubActionPrefix }}-type", synopsisStr)
 	{{ end }}
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
@@ -199,7 +199,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map, c.Func)
+	common.PopulateCommonFlags(c.Command, f, "{{ if .SubActionPrefix }}{{ kebabCase .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}", flags{{ camelCase .SubActionPrefix }}Map, c.Func)
 
 	{{ if .HasGenericAttributes }}
 	f = set.NewFlagSet("Attribute Options")
@@ -239,10 +239,10 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ end }}
 	}
 
-	c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}"
+	c.plural = "{{ if .SubActionPrefix }}{{ kebabCase .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}"
 	switch c.Func {
 	case "list":
-		c.plural = "{{ if .SubActionPrefix }}{{ .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}s"		
+		c.plural = "{{ if .SubActionPrefix }}{{ kebabCase .SubActionPrefix }}-type {{ end }}{{ lowerSpaceCase .ResourceType }}s"
 	}
 
 	f := c.Flags()
@@ -399,9 +399,15 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}
 	{{ if hasAction .StdActions "list" }}
-	var listResult api.GenericListResult
+	var items []*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}
+	{{ end }}
+	{{ range $i, $action := $input.StdActions }}
+	{{ if ( not ( hasAction $input.SkipClientCallActions $action) ) }}
+	var {{ $action }}Result *{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}{{ camelCase $action }}Result
+	{{ end }}
 	{{ end }}
 
 	switch c.Func {
@@ -409,29 +415,38 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ if eq $action "create" }}
 	{{ if ( not ( hasAction $input.SkipClientCallActions "create") ) }}
 	case "create":
-		result, err = {{ $input.Pkg }}Client.Create(c.Context, {{ if (and $input.SubActionPrefix $input.NeedsSubtypeInCreate) }}"{{ $input.SubActionPrefix }}",{{ end }} c.Flag{{ $input.Container }}Id, opts...)
+		{{ $action }}Result, err = {{ $input.Pkg }}Client.Create(c.Context, {{ if (and $input.SubActionPrefix $input.NeedsSubtypeInCreate) }}"{{ $input.SubActionPrefix }}",{{ end }} c.Flag{{ $input.Container }}Id, opts...)
+		resp = {{ $action }}Result.GetResponse()
+		item = {{ $action }}Result.GetItem()
 	{{ end }}
 	{{ end }}
 	{{ if eq $action "read" }}
 	case "read":
-		result, err = {{ $input.Pkg }}Client.Read(c.Context, c.FlagId, opts...)
+		{{ $action }}Result, err = {{ $input.Pkg }}Client.Read(c.Context, c.FlagId, opts...)
+		resp = {{ $action }}Result.GetResponse()
+		item = {{ $action }}Result.GetItem()
 	{{ end }}
 	{{ if eq $action "update" }}
 	case "update":
-		result, err = {{ $input.Pkg }}Client.Update(c.Context, c.FlagId, version, opts...)
+		{{ $action }}Result, err = {{ $input.Pkg }}Client.Update(c.Context, c.FlagId, version, opts...)
+		resp = {{ $action }}Result.GetResponse()
+		item = {{ $action }}Result.GetItem()
 	{{ end }}
 	{{ if eq $action "delete" }}
 	case "delete":
-		result, err = {{ $input.Pkg }}Client.Delete(c.Context, c.FlagId, opts...)
+		{{ $action }}Result, err = {{ $input.Pkg }}Client.Delete(c.Context, c.FlagId, opts...)
+		resp = {{ $action }}Result.GetResponse()
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
-		listResult, err = {{ $input.Pkg}}Client.List(c.Context, c.Flag{{ $input.Container }}Id, opts...)
+		{{ $action }}Result, err = {{ $input.Pkg}}Client.List(c.Context, c.Flag{{ $input.Container }}Id, opts...)
+		resp = {{ $action }}Result.GetResponse()
+		items = {{ $action }}Result.GetItems()
 	{{ end }}
 	{{ end }}
 	}
 
-	result, err = executeExtra{{ camelCase .SubActionPrefix }}Actions(c, result, err, {{ .Pkg }}Client, version, opts)
+	resp, item, {{ if hasAction .StdActions "list" }}items, {{ end }}err = executeExtra{{ camelCase .SubActionPrefix }}Actions(c, resp, item,  {{ if hasAction .StdActions "list" }}items, {{ end }}err, {{ .Pkg }}Client, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -461,7 +476,7 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItem(result); !ok {
+			if ok := c.PrintJsonItem(resp); !ok {
 				return base.CommandCliError
 			}
 
@@ -475,13 +490,12 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItems(listResult); !ok {
+			if ok := c.PrintJsonItems(resp); !ok {
 				return base.CommandCliError
 			}
 
 		case "table":
-			listedItems := listResult.GetItems().([]*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }})
-			c.UI.Output(c.printListTable(listedItems))
+			c.UI.Output(c.printListTable(items))
 		}
 
 		return base.CommandSuccess
@@ -491,10 +505,10 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -510,8 +524,8 @@ var (
 	extra{{ camelCase .SubActionPrefix }}SynopsisFunc = func(*{{ camelCase .SubActionPrefix }}Command) string { return "" }
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *base.FlagSet) {}
 	extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc = func(*{{ camelCase .SubActionPrefix }}Command, *base.FlagSets, *[]{{ .Pkg }}.Option) bool { return true }
-	executeExtra{{ camelCase .SubActionPrefix }}Actions = func(_ *{{ camelCase .SubActionPrefix }}Command, inResult api.GenericResult, inErr error, _ *{{ .Pkg }}.Client, _ uint32, _ []{{ .Pkg }}.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtra{{ camelCase .SubActionPrefix }}Actions = func(_ *{{ camelCase .SubActionPrefix }}Command, inResp *api.Response, inItem *{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ if hasAction .StdActions "list" }}inItems []*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ end }}inErr error, _ *{{ .Pkg }}.Client, _ uint32, _ []{{ .Pkg }}.Option) (*api.Response, *{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ if hasAction .StdActions "list" }}[]*{{ $input.Pkg }}.{{ camelCase $input.ResourceType }}, {{ end }}error) {
+		return inResp, inItem, {{ if hasAction .StdActions "list" }}inItems, {{ end }}inErr
 	}
 	printCustom{{ camelCase .SubActionPrefix }}ActionOutput = func(*{{ camelCase .SubActionPrefix }}Command) (bool, error) { return false, nil }
 )

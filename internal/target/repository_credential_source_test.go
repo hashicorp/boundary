@@ -68,11 +68,11 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 		credLibs := vault.TestCredentialLibraries(t, conn, wrapper, storeVault.GetPublicId(), 5)
 		var ids target.CredentialSources
 		for _, cl := range credLibs {
-			ids.ApplicationCredentialIds = append(ids.ApplicationCredentialIds, cl.GetPublicId())
+			ids.BrokeredCredentialIds = append(ids.BrokeredCredentialIds, cl.GetPublicId())
 		}
 		creds := static.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", storeStatic.GetPublicId(), proj.GetPublicId(), 5)
 		for _, cred := range creds {
-			ids.ApplicationCredentialIds = append(ids.ApplicationCredentialIds, cred.GetPublicId())
+			ids.BrokeredCredentialIds = append(ids.BrokeredCredentialIds, cred.GetPublicId())
 		}
 
 		_, _, created, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, ids)
@@ -118,7 +118,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 2,
 				ids: target.CredentialSources{
-					ApplicationCredentialIds: []string{lib1.PublicId, lib2.PublicId},
+					BrokeredCredentialIds: []string{lib1.PublicId, lib2.PublicId},
 				},
 				addToOrigSources: true,
 			},
@@ -131,7 +131,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 2,
 				ids: target.CredentialSources{
-					ApplicationCredentialIds: []string{cred1.PublicId, cred2.PublicId},
+					BrokeredCredentialIds: []string{cred1.PublicId, cred2.PublicId},
 				},
 				addToOrigSources: true,
 			},
@@ -144,7 +144,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 2,
 				ids: target.CredentialSources{
-					ApplicationCredentialIds: []string{cred1.PublicId, lib1.PublicId, cred2.PublicId, lib2.PublicId},
+					BrokeredCredentialIds: []string{cred1.PublicId, lib1.PublicId, cred2.PublicId, lib2.PublicId},
 				},
 				addToOrigSources: true,
 			},
@@ -157,7 +157,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 0,
 				ids: target.CredentialSources{
-					ApplicationCredentialIds: []string{lib1.PublicId, lib2.PublicId},
+					BrokeredCredentialIds: []string{lib1.PublicId, lib2.PublicId},
 				},
 				addToOrigSources: true,
 			},
@@ -170,7 +170,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 1000,
 				ids: target.CredentialSources{
-					ApplicationCredentialIds: []string{lib1.PublicId, lib2.PublicId},
+					BrokeredCredentialIds: []string{lib1.PublicId, lib2.PublicId},
 				},
 				addToOrigSources: true,
 			},
@@ -183,7 +183,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 2,
 				ids: target.CredentialSources{
-					ApplicationCredentialIds: []string{lib1.PublicId, lib2.PublicId},
+					BrokeredCredentialIds: []string{lib1.PublicId, lib2.PublicId},
 				},
 				addToOrigSources: false,
 			},
@@ -196,7 +196,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 2,
 				ids: target.CredentialSources{
-					ApplicationCredentialIds: []string{cred1.PublicId, cred2.PublicId},
+					BrokeredCredentialIds: []string{cred1.PublicId, cred2.PublicId},
 				},
 				addToOrigSources: false,
 			},
@@ -209,7 +209,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			args: args{
 				targetVersion: 2,
 				ids: target.CredentialSources{
-					ApplicationCredentialIds: []string{cred1.PublicId, lib2.PublicId},
+					BrokeredCredentialIds: []string{cred1.PublicId, lib2.PublicId},
 				},
 				addToOrigSources: false,
 			},
@@ -217,12 +217,12 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			wantAffectedRows: 12,
 		},
 		{
-			name:  "egress-credential-purpose",
+			name:  "injected-application-credential-purpose",
 			setup: setupFn,
 			args: args{
 				targetVersion: 2,
 				ids: target.CredentialSources{
-					EgressCredentialIds: []string{lib1.PublicId},
+					InjectedApplicationCredentialIds: []string{lib1.PublicId},
 				},
 				addToOrigSources: true,
 			},
@@ -243,14 +243,14 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				origCredSources, origCredIds = tt.setup(tar)
 
 				if tt.args.addToOrigSources {
-					tt.args.ids.ApplicationCredentialIds = append(tt.args.ids.ApplicationCredentialIds, origCredIds.ApplicationCredentialIds...)
-					tt.args.ids.EgressCredentialIds = append(tt.args.ids.EgressCredentialIds, origCredIds.EgressCredentialIds...)
+					tt.args.ids.BrokeredCredentialIds = append(tt.args.ids.BrokeredCredentialIds, origCredIds.BrokeredCredentialIds...)
+					tt.args.ids.InjectedApplicationCredentialIds = append(tt.args.ids.InjectedApplicationCredentialIds, origCredIds.InjectedApplicationCredentialIds...)
 				}
 			}
 
 			byPurpose := map[credential.Purpose][]string{
-				credential.ApplicationPurpose: tt.args.ids.ApplicationCredentialIds,
-				credential.EgressPurpose:      tt.args.ids.EgressCredentialIds,
+				credential.BrokeredPurpose:            tt.args.ids.BrokeredCredentialIds,
+				credential.InjectedApplicationPurpose: tt.args.ids.InjectedApplicationCredentialIds,
 			}
 			for purpose, ids := range byPurpose {
 				for _, id := range ids {
@@ -297,7 +297,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		_, _, _, err := repo.SetTargetCredentialSources(context.Background(), "", 1,
-			target.CredentialSources{ApplicationCredentialIds: []string{lib1.PublicId}})
+			target.CredentialSources{BrokeredCredentialIds: []string{lib1.PublicId}})
 
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "unexpected error %s", err.Error())
@@ -306,7 +306,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		_, _, _, err := repo.SetTargetCredentialSources(context.Background(), "fake-target-id", 1,
-			target.CredentialSources{ApplicationCredentialIds: []string{lib1.PublicId}})
+			target.CredentialSources{BrokeredCredentialIds: []string{lib1.PublicId}})
 
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "unexpected error %s", err.Error())

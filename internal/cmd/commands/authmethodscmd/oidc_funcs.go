@@ -284,13 +284,14 @@ func extraOidcFlagHandlingFuncImpl(c *OidcCommand, f *base.FlagSets, opts *[]aut
 	return true
 }
 
-func executeExtraOidcActionsImpl(c *OidcCommand, origResult api.GenericResult, origError error, amClient *authmethods.Client, version uint32, opts []authmethods.Option) (api.GenericResult, error) {
+func executeExtraOidcActionsImpl(c *OidcCommand, origResp *api.Response, origItem *authmethods.AuthMethod, origError error, amClient *authmethods.Client, version uint32, opts []authmethods.Option) (*api.Response, *authmethods.AuthMethod, error) {
 	switch c.Func {
 	case "change-state":
 		if c.flagDisableDiscoveredConfigValidation {
 			opts = append(opts, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(true))
 		}
-		return amClient.ChangeState(c.Context, c.FlagId, version, c.flagState, opts...)
+		result, err := amClient.ChangeState(c.Context, c.FlagId, version, c.flagState, opts...)
+		return result.GetResponse(), result.GetItem(), err
 	}
-	return origResult, origError
+	return origResp, origItem, origError
 }

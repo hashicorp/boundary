@@ -159,14 +159,27 @@ message Target {
   ]; // @gotags: `class:"public"`
 
   // Output only. The IDs of the application credential source ids associated with this Target.
-  repeated string application_credential_source_ids = 400 [json_name = "application_credential_source_ids"]; // @gotags: `class:"public"`
+  // Deprecated use "brokered_credential_source_ids" instead.
+  repeated string application_credential_source_ids = 400 [
+    json_name = "application_credential_source_ids",
+    deprecated = true
+  ]; // @gotags: `class:"public"`
   // Output only. The application credential sources associated with this Target.
-  repeated CredentialSource application_credential_sources = 410 [json_name = "application_credential_sources"];
+  // Deprecated use "brokered_credential_sources" instead.
+  repeated CredentialSource application_credential_sources = 410 [
+    json_name = "application_credential_sources",
+    deprecated = true
+  ];
 
-  // Output only. The IDs of the egress credential source ids associated with this Target.
-  repeated string egress_credential_source_ids = 500 [json_name = "egress_credential_source_ids"]; // @gotags: `class:"public"`
-  // Output only. The egress credential sources associated with this Target.
-  repeated CredentialSource egress_credential_sources = 510 [json_name = "egress_credential_sources"];
+  // Output only. The IDs of the brokered credential source ids associated with this Target.
+  repeated string brokered_credential_source_ids = 440 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
+  // Output only. The brokered credential sources associated with this Target.
+  repeated CredentialSource brokered_credential_sources = 450 [json_name = "brokered_credential_sources"];
+
+  // Output only. The IDs of the injected application credential source ids associated with this Target.
+  repeated string injected_application_credential_source_ids = 520 [json_name = "injected_application_credential_source_ids"]; // @gotags: `class:"public"`
+  // Output only. The injected application credential sources associated with this Target.
+  repeated CredentialSource injected_application_credential_sources = 530 [json_name = "injected_application_credential_sources"];
 
   oneof attrs {
     // The attributes that are applicable for the specific Target.
@@ -187,6 +200,8 @@ message Target {
   // Deprecated fields
   reserved "application_credential_library_ids", "application_credential_libraries";
   reserved 150, 180;
+  reserved "egress_credential_source_ids", "egress_credential_sources";
+  reserved 500, 510;
 }
 
 // TcpTargetAttributes contains attributes relevant to Targets of type "tcp"
@@ -287,4 +302,13 @@ message UsernamePasswordCredential {
 
   // Password of the credential
   string password = 2; // @gotags: `class:"secret"`
+}
+
+// The layout of the struct for "credential" field in SessionCredential for a ssh_private_key credential type.
+message SshPrivateKeyCredential {
+  // Username of the credential
+  string username = 1; // @gotags: `class:"sensitive"`
+
+  // Private key of the credential
+  string private_key = 2; // @gotags: `class:"secret"`
 }

@@ -1,5 +1,11 @@
 package usernamepassword
 
+import (
+	"strings"
+
+	"github.com/mitchellh/pointerstructure"
+)
+
 type (
 	data map[string]interface{}
 
@@ -31,15 +37,42 @@ func Extract(d data, usernameAttr, passwordAttr string) (string, string) {
 
 // defaultExtract looks for the usernameAttr and passwordAttr in the data map
 func defaultExtract(sd data, usernameAttr, passwordAttr string) (username string, password string) {
-	if u, ok := sd[usernameAttr]; ok {
-		if u, ok := u.(string); ok {
-			username = u
-		}
+	if sd == nil {
+		// nothing to do return early
+		return "", ""
 	}
-	if p, ok := sd[passwordAttr]; ok {
-		if p, ok := p.(string); ok {
-			password = p
+
+	var u any
+	switch {
+	case strings.HasPrefix(usernameAttr, "/"):
+		var err error
+		u, err = pointerstructure.Get(sd, usernameAttr)
+		if err != nil {
+			return "", ""
 		}
+
+	default:
+		u = sd[usernameAttr]
+	}
+	if u, ok := u.(string); ok {
+		username = u
+	}
+
+	var p any
+	switch {
+	case strings.HasPrefix(passwordAttr, "/"):
+		var err error
+		p, err = pointerstructure.Get(sd, passwordAttr)
+		if err != nil {
+			return "", ""
+		}
+
+	default:
+		p = sd[passwordAttr]
+	}
+
+	if p, ok := p.(string); ok {
+		password = p
 	}
 
 	return username, password
@@ -55,9 +88,14 @@ func defaultExtract(sd data, usernameAttr, passwordAttr string) (username string
 // }
 // If the format does not match, it returns ("", ""). See:
 // https://www.vaultproject.io/api/secret/kv/kv-v2#sample-response-1
-func kv2Extract(d data, usernameAttr, passwordAttr string) (username string, password string) {
+func kv2Extract(sd data, usernameAttr, passwordAttr string) (username string, password string) {
+	if sd == nil {
+		// nothing to do return early
+		return "", ""
+	}
+
 	var data, metadata map[string]interface{}
-	for k, v := range d {
+	for k, v := range sd {
 		switch k {
 		case "data":
 			var ok bool

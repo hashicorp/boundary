@@ -35,7 +35,7 @@ type AuthMethodReadResult struct {
 	response *api.Response
 }
 
-func (n AuthMethodReadResult) GetItem() interface{} {
+func (n AuthMethodReadResult) GetItem() *AuthMethod {
 	return n.Item
 }
 
@@ -64,7 +64,7 @@ type AuthMethodListResult struct {
 	response *api.Response
 }
 
-func (n AuthMethodListResult) GetItems() interface{} {
+func (n AuthMethodListResult) GetItems() []*AuthMethod {
 	return n.Items
 }
 

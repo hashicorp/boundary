@@ -10,7 +10,7 @@ begin;
      organization_id,       organization_name,          organization_description,
      current_row_indicator, row_effective_time,         row_expiration_time
   ) values (
-     'application',
+     'brokered',
      'vl______wvl1',        'vault credential library', 'gidget vault library',   'None',                         '/secrets',                       'GET',                                '\x4e6f6e65',
      'vs_______wvs',        'vault credential store',   'widget vault store',     'None',                         'default',                        'https://vault.widget',
      't_________wb',        'tcp target',               'Big Widget Target',      'None',                         0,                                28800,                                1,
@@ -25,7 +25,7 @@ begin;
        where credential_library_id = 'vl______wvl1'
          and credential_store_id   = 'vs_______wvs'
          and target_id             = 't_________wb'
-         and credential_purpose    = 'application'
+         and credential_purpose    = 'brokered'
          and current_row_indicator = 'Current';
 
   insert into wh_credential_dimension (
@@ -37,7 +37,7 @@ begin;
      organization_id,       organization_name,          organization_description,
      current_row_indicator, row_effective_time,         row_expiration_time
   ) values (
-     'application',
+     'brokered',
      'vl______wvl1',        'vault credential library', 'gidget vault library',   'None',                         '/secrets',                       'GET',                                '\x4e6f6e65',
      'vs_______wvs',        'vault credential store',   'widget vault store',     'None',                         'default',                        'https://vault.widget',
      't_________wb',        'tcp target',               'Big Widget Target',      'None',                         0,                                28800,                                1,

@@ -121,8 +121,7 @@ func (c *Command) printListTable(items []*authtokens.AuthToken) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*authtokens.AuthToken)
+func printItemTable(item *authtokens.AuthToken, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{
 		"ID":                         item.Id,
 		"Auth Method ID":             item.AuthMethodId,

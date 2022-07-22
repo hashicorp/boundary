@@ -257,7 +257,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		credentials := sess.GetCredentials()
 		var proxyOpts []proxyHandlers.Option
 		if len(credentials) > 0 {
-			proxyOpts = append(proxyOpts, proxyHandlers.WithEgressCredentials(credentials))
+			proxyOpts = append(proxyOpts, proxyHandlers.WithInjectedApplicationCredentials(credentials))
 		}
 
 		if err = handleProxyFn(connCtx, conf, proxyOpts...); err != nil {

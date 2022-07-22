@@ -1,9 +1,9 @@
 begin;
 
--- Replaces view from 22/05_vault_private_library.up.sql
      drop view credential_vault_library_public;
      drop view credential_vault_library_private;
 
+     -- Replaced in 39/02_vault_ssh_private_key_override.up.sql
      create view credential_vault_library_private as
      with
      password_override (library_id, username_attribute, password_attribute) as (
@@ -47,6 +47,7 @@ begin;
     'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
+     -- Replaced in 39/02_vault_ssh_private_key_override.up.sql
      create view credential_vault_library_public as
      select public_id,
             store_id,

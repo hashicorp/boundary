@@ -206,19 +206,28 @@ func (c *OidcCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *authmethods.AuthMethod
+
+	var createResult *authmethods.AuthMethodCreateResult
+
+	var updateResult *authmethods.AuthMethodUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = authmethodsClient.Create(c.Context, "oidc", c.FlagScopeId, opts...)
+		createResult, err = authmethodsClient.Create(c.Context, "oidc", c.FlagScopeId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = authmethodsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = authmethodsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraOidcActions(c, result, err, authmethodsClient, version, opts)
+	resp, item, err = executeExtraOidcActions(c, resp, item, err, authmethodsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -246,10 +255,10 @@ func (c *OidcCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -262,8 +271,8 @@ var (
 	extraOidcSynopsisFunc        = func(*OidcCommand) string { return "" }
 	extraOidcFlagsFunc           = func(*OidcCommand, *base.FlagSets, *base.FlagSet) {}
 	extraOidcFlagsHandlingFunc   = func(*OidcCommand, *base.FlagSets, *[]authmethods.Option) bool { return true }
-	executeExtraOidcActions      = func(_ *OidcCommand, inResult api.GenericResult, inErr error, _ *authmethods.Client, _ uint32, _ []authmethods.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraOidcActions      = func(_ *OidcCommand, inResp *api.Response, inItem *authmethods.AuthMethod, inErr error, _ *authmethods.Client, _ uint32, _ []authmethods.Option) (*api.Response, *authmethods.AuthMethod, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomOidcActionOutput = func(*OidcCommand) (bool, error) { return false, nil }
 )

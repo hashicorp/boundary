@@ -470,6 +470,21 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &credentials.SshPrivateKeyAttributes{},
+		outFile:     "credentials/ssh_private_key_attributes.gen.go",
+		subtypeName: "SshPrivateKeyCredential",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Username",
+				SkipDefault: true,
+			},
+			{
+				Name:        "PrivateKey",
+				SkipDefault: true,
+			},
+		},
+	},
+	{
 		inProto: &credentials.Credential{},
 		outFile: "credentials/credential.gen.go",
 		templates: []*template.Template{
@@ -664,8 +679,13 @@ var inputStructs = []*structInfo{
 				FieldType: "[]string",
 			},
 			{
-				Name:      "EgressCredentialSourceIds",
-				ProtoName: "egress_credential_source_ids",
+				Name:      "BrokeredCredentialSourceIds",
+				ProtoName: "brokered_credential_source_ids",
+				FieldType: "[]string",
+			},
+			{
+				Name:      "InjectedApplicationCredentialSourceIds",
+				ProtoName: "injected_application_credential_source_ids",
 				FieldType: "[]string",
 			},
 		},

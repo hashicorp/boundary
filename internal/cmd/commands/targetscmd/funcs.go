@@ -30,12 +30,12 @@ func init() {
 }
 
 type extraCmdVars struct {
-	flagHostSets                     []string
-	flagHostSources                  []string
-	flagApplicationCredentialSources []string
-	flagEgressCredentialSources      []string
-	flagHostId                       string
-	sar                              *targets.SessionAuthorizationResult
+	flagHostSets                             []string
+	flagHostSources                          []string
+	flagBrokeredCredentialSources            []string
+	flagInjectedApplicationCredentialSources []string
+	flagHostId                               string
+	sar                                      *targets.SessionAuthorizationResult
 }
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
@@ -47,9 +47,9 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 		"add-host-sources":          {"id", "host-source", "version"},
 		"remove-host-sources":       {"id", "host-source", "version"},
 		"set-host-sources":          {"id", "host-source", "version"},
-		"add-credential-sources":    {"id", "application-credential-source", "egress-credential-source", "version"},
-		"remove-credential-sources": {"id", "application-credential-source", "egress-credential-source", "version"},
-		"set-credential-sources":    {"id", "application-credential-source", "egress-credential-source", "version"},
+		"add-credential-sources":    {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
+		"remove-credential-sources": {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
+		"set-credential-sources":    {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
 	}
 }
 
@@ -224,7 +224,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Add credential sources to a tcp-type target:",
 			"",
-			`      $ boundary targets add-credential-sources -id ttcp_1234567890 -application-credential-source clvlt_1234567890 -application-credential-source clvlt_0987654321`,
+			`      $ boundary targets add-credential-sources -id ttcp_1234567890 -brokered-credential-source clvlt_1234567890 -brokered-credential-source clvlt_0987654321`,
 			"",
 			"",
 		})
@@ -236,7 +236,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Remove credential sources from a tcp-type target:",
 			"",
-			`      $ boundary targets remove-credential-sources -id ttcp_1234567890 -application-credential-source clvlt_1234567890 -application-credential-source clvlt_0987654321`,
+			`      $ boundary targets remove-credential-sources -id ttcp_1234567890 -brokered-credential-source clvlt_1234567890 -brokered-credential-source clvlt_0987654321`,
 			"",
 			"",
 		})
@@ -248,7 +248,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Set credential sources on a tcp-type target:",
 			"",
-			`      $ boundary targets set-credential-sources -id ttcp_1234567890 -application-credential-source clvlt_1234567890`,
+			`      $ boundary targets set-credential-sources -id ttcp_1234567890 -brokered-credential-source clvlt_1234567890`,
 			"",
 			"",
 		})
@@ -293,17 +293,23 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 				Target: &c.flagHostId,
 				Usage:  "The ID of a specific host to connect to out of the hosts from the target's host sets. If not specified, one is chosen at random.",
 			})
+		case "brokered-credential-source":
+			f.StringSliceVar(&base.StringSliceVar{
+				Name:   "brokered-credential-source",
+				Target: &c.flagBrokeredCredentialSources,
+				Usage:  "The credential source to add, set, or remove that Boundary will return to the user when creating a connection. May be specified multiple times.",
+			})
 		case "application-credential-source":
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   "application-credential-source",
-				Target: &c.flagApplicationCredentialSources,
-				Usage:  "The credential source for application purpose to add, set, or remove.  May be specified multiple times.",
+				Target: &c.flagBrokeredCredentialSources,
+				Usage:  "Deprecated: use -brokered-credential-source instead",
 			})
-		case "egress-credential-source":
+		case "injected-application-credential-source":
 			f.StringSliceVar(&base.StringSliceVar{
-				Name:   "egress-credential-source",
-				Target: &c.flagEgressCredentialSources,
-				Usage:  "The credential source for egress purpose to add, set, or remove.  May be specified multiple times.",
+				Name:   "injected-application-credential-source",
+				Target: &c.flagInjectedApplicationCredentialSources,
+				Usage:  "The credential source to add, set, or remove that Boundary will inject when creating a connection. May be specified multiple times.",
 			})
 		}
 	}
@@ -404,49 +410,47 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 		}
 
 	case "add-credential-sources", "remove-credential-sources":
-		// TODO: As we add other purposes, add them to this check
-		if len(c.flagApplicationCredentialSources)+len(c.flagEgressCredentialSources) == 0 {
-			c.UI.Error("No credential sources supplied via -application-credential-source or -egress-credential-source")
+		if len(c.flagBrokeredCredentialSources)+len(c.flagInjectedApplicationCredentialSources) == 0 {
+			c.UI.Error("No credential sources supplied via -brokered-credential-source or -injected-application-credential-source")
 			return false
 		}
 
-		if len(c.flagApplicationCredentialSources) > 0 {
-			*opts = append(*opts, targets.WithApplicationCredentialSourceIds(c.flagApplicationCredentialSources))
+		if len(c.flagBrokeredCredentialSources) > 0 {
+			*opts = append(*opts, targets.WithBrokeredCredentialSourceIds(c.flagBrokeredCredentialSources))
 		}
-		if len(c.flagEgressCredentialSources) > 0 {
-			*opts = append(*opts, targets.WithEgressCredentialSourceIds(c.flagEgressCredentialSources))
+		if len(c.flagInjectedApplicationCredentialSources) > 0 {
+			*opts = append(*opts, targets.WithInjectedApplicationCredentialSourceIds(c.flagInjectedApplicationCredentialSources))
 		}
 
 	case "set-credential-sources":
-		// TODO: As we add other purposes, add them to this check
-		if len(c.flagApplicationCredentialSources)+len(c.flagEgressCredentialSources) == 0 {
-			c.UI.Error("No credential sources supplied via -application-credential-source or -egress-credential-source")
+		if len(c.flagBrokeredCredentialSources)+len(c.flagInjectedApplicationCredentialSources) == 0 {
+			c.UI.Error("No credential sources supplied via -brokered-credential-source or -injected-application-credential-source")
 			return false
 		}
 
-		switch len(c.flagApplicationCredentialSources) {
+		switch len(c.flagBrokeredCredentialSources) {
 		case 0:
 			// do nothing
 		case 1:
-			if c.flagApplicationCredentialSources[0] == "null" {
-				*opts = append(*opts, targets.DefaultApplicationCredentialSourceIds())
+			if c.flagBrokeredCredentialSources[0] == "null" {
+				*opts = append(*opts, targets.DefaultBrokeredCredentialSourceIds())
 				break
 			}
 			fallthrough
 		default:
-			*opts = append(*opts, targets.WithApplicationCredentialSourceIds(c.flagApplicationCredentialSources))
+			*opts = append(*opts, targets.WithBrokeredCredentialSourceIds(c.flagBrokeredCredentialSources))
 		}
-		switch len(c.flagEgressCredentialSources) {
+		switch len(c.flagInjectedApplicationCredentialSources) {
 		case 0:
 			// do nothing
 		case 1:
-			if c.flagEgressCredentialSources[0] == "null" {
-				*opts = append(*opts, targets.DefaultEgressCredentialSourceIds())
+			if c.flagInjectedApplicationCredentialSources[0] == "null" {
+				*opts = append(*opts, targets.DefaultInjectedApplicationCredentialSourceIds())
 				break
 			}
 			fallthrough
 		default:
-			*opts = append(*opts, targets.WithEgressCredentialSourceIds(c.flagEgressCredentialSources))
+			*opts = append(*opts, targets.WithInjectedApplicationCredentialSourceIds(c.flagInjectedApplicationCredentialSources))
 		}
 
 	case "authorize-session":
@@ -458,33 +462,42 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 	return true
 }
 
-func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *targets.Target, origItems []*targets.Target, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (*api.Response, *targets.Target, []*targets.Target, error) {
 	switch c.Func {
 	case "add-host-sets":
-		return targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		result, err := targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-host-sets":
-		return targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		result, err := targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-host-sets":
-		return targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		result, err := targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-host-sources":
-		return targetClient.AddHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		result, err := targetClient.AddHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-host-sources":
-		return targetClient.RemoveHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		result, err := targetClient.RemoveHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-host-sources":
-		return targetClient.SetHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		result, err := targetClient.SetHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-credential-sources":
-		return targetClient.AddCredentialSources(c.Context, c.FlagId, version, opts...)
+		result, err := targetClient.AddCredentialSources(c.Context, c.FlagId, version, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-credential-sources":
-		return targetClient.RemoveCredentialSources(c.Context, c.FlagId, version, opts...)
+		result, err := targetClient.RemoveCredentialSources(c.Context, c.FlagId, version, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-credential-sources":
-		return targetClient.SetCredentialSources(c.Context, c.FlagId, version, opts...)
+		result, err := targetClient.SetCredentialSources(c.Context, c.FlagId, version, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "authorize-session":
 		var err error
 		c.plural = "a session against target"
 		c.sar, err = targetClient.AuthorizeSession(c.Context, c.FlagId, opts...)
-		return nil, err
+		return nil, nil, nil, err
 	}
-	return origResult, origError
+	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*targets.Target) string {
@@ -545,8 +558,7 @@ func (c *Command) printListTable(items []*targets.Target) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*targets.Target)
+func printItemTable(item *targets.Target, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
@@ -572,11 +584,11 @@ func printItemTable(result api.GenericResult) string {
 	if item.WorkerFilter != "" {
 		nonAttributeMap["Worker Filter"] = item.WorkerFilter
 	}
-	if result.GetResponse() != nil && result.GetResponse().Map != nil {
-		if result.GetResponse().Map[globals.SessionConnectionLimitField] != nil {
+	if resp != nil && resp.Map != nil {
+		if resp.Map[globals.SessionConnectionLimitField] != nil {
 			nonAttributeMap["Session Connection Limit"] = item.SessionConnectionLimit
 		}
-		if result.GetResponse().Map[globals.SessionMaxSecondsField] != nil {
+		if resp.Map[globals.SessionMaxSecondsField] != nil {
 			nonAttributeMap["Session Max Seconds"] = item.SessionMaxSeconds
 		}
 	}
@@ -610,36 +622,36 @@ func printItemTable(result api.GenericResult) string {
 	}
 
 	var credentialSourceMaps map[credential.Purpose][]map[string]interface{}
-	if len(item.ApplicationCredentialSources) > 0 {
+	if len(item.BrokeredCredentialSources) > 0 {
 		if credentialSourceMaps == nil {
 			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
 		}
-		var applicationCredentialSourceMaps []map[string]interface{}
-		for _, source := range item.ApplicationCredentialSources {
+		var brokeredCredentialSourceMaps []map[string]interface{}
+		for _, source := range item.BrokeredCredentialSources {
 			m := map[string]interface{}{
 				"ID":                  source.Id,
 				"Credential Store ID": source.CredentialStoreId,
 			}
-			applicationCredentialSourceMaps = append(applicationCredentialSourceMaps, m)
+			brokeredCredentialSourceMaps = append(brokeredCredentialSourceMaps, m)
 		}
-		credentialSourceMaps[credential.ApplicationPurpose] = applicationCredentialSourceMaps
+		credentialSourceMaps[credential.BrokeredPurpose] = brokeredCredentialSourceMaps
 		if l := len("Credential Store ID"); l > maxLength {
 			maxLength = l
 		}
 	}
-	if len(item.EgressCredentialSources) > 0 {
+	if len(item.InjectedApplicationCredentialSources) > 0 {
 		if credentialSourceMaps == nil {
 			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
 		}
-		var egressCredentialSourceMaps []map[string]interface{}
-		for _, source := range item.EgressCredentialSources {
+		var injectedApplicationCredentialSourceMaps []map[string]interface{}
+		for _, source := range item.InjectedApplicationCredentialSources {
 			m := map[string]interface{}{
 				"ID":                  source.Id,
 				"Credential Store ID": source.CredentialStoreId,
 			}
-			egressCredentialSourceMaps = append(egressCredentialSourceMaps, m)
+			injectedApplicationCredentialSourceMaps = append(injectedApplicationCredentialSourceMaps, m)
 		}
-		credentialSourceMaps[credential.EgressPurpose] = egressCredentialSourceMaps
+		credentialSourceMaps[credential.InjectedApplicationPurpose] = injectedApplicationCredentialSourceMaps
 		if l := len("Credential Store ID"); l > maxLength {
 			maxLength = l
 		}
@@ -685,13 +697,13 @@ func printItemTable(result api.GenericResult) string {
 
 	for purpose, sources := range credentialSourceMaps {
 		switch purpose {
-		case credential.ApplicationPurpose:
+		case credential.BrokeredPurpose:
 			ret = append(ret,
-				"  Application Credential Sources:",
+				"  Brokered Credential Sources:",
 			)
-		case credential.EgressPurpose:
+		case credential.InjectedApplicationPurpose:
 			ret = append(ret,
-				"  Egress Credential Sources:",
+				"  Injected Application Credential Sources:",
 			)
 		}
 		for _, m := range sources {
@@ -826,7 +838,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 			return true, nil
 
 		case "json":
-			if ok := c.PrintJsonItem(c.sar); !ok {
+			if ok := c.PrintJsonItem(c.sar.GetResponse()); !ok {
 				return false, fmt.Errorf("Error formatting as JSON")
 			}
 			return true, nil
@@ -864,8 +876,8 @@ func exampleOutput() string {
 				HostCatalogId: "hcst_1234567890",
 			},
 		},
-		ApplicationCredentialSourceIds: []string{"clvlt_1234567890", "clvlt_0987654321"},
-		ApplicationCredentialSources: []*targets.CredentialSource{
+		BrokeredCredentialSourceIds: []string{"clvlt_1234567890", "clvlt_0987654321"},
+		BrokeredCredentialSources: []*targets.CredentialSource{
 			{
 				Id:                "clvlt_1234567890",
 				CredentialStoreId: "csvlt_1234567890",
@@ -879,7 +891,5 @@ func exampleOutput() string {
 			"default_port": 22,
 		},
 	}
-	target := new(targets.TargetReadResult)
-	target.Item = item
-	return printItemTable(target)
+	return printItemTable(item, nil)
 }

@@ -64,6 +64,7 @@ func Test_TestUsernamePasswordCredential(t *testing.T) {
 
 	// Validate hmac
 	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(err)
 	hm, err := crypto.HmacSha256(context.Background(), cred.Password, databaseWrapper, []byte(cred.StoreId), nil, crypto.WithEd25519())
 	require.NoError(err)
 	assert.Equal([]byte(hm), cred.PasswordHmac)

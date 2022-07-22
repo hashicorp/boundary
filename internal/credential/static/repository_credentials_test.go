@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh/testdata"
 )
 
 func TestRepository_Retrieve(t *testing.T) {
@@ -30,9 +31,10 @@ func TestRepository_Retrieve(t *testing.T) {
 
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	staticStore := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	cred1 := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", staticStore.GetPublicId(), prj.GetPublicId())
-	cred2 := TestUsernamePasswordCredential(t, conn, wrapper, "different user", "better password", staticStore.GetPublicId(), prj.GetPublicId())
-	cred3 := TestUsernamePasswordCredential(t, conn, wrapper, "final user", "horrible password", staticStore.GetPublicId(), prj.GetPublicId())
+	upCred1 := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", staticStore.GetPublicId(), prj.GetPublicId())
+	upCred2 := TestUsernamePasswordCredential(t, conn, wrapper, "different user", "better password", staticStore.GetPublicId(), prj.GetPublicId())
+	spkCred1 := TestSshPrivateKeyCredential(t, conn, wrapper, "final user", string(testdata.PEMBytes["ed25519"]), staticStore.GetPublicId(), prj.GetPublicId())
+	spkCred2 := TestSshPrivateKeyCredential(t, conn, wrapper, "last user", string(testdata.PEMBytes["rsa-openssh-format"]), staticStore.GetPublicId(), prj.GetPublicId())
 
 	type args struct {
 		credIds []string
@@ -47,7 +49,7 @@ func TestRepository_Retrieve(t *testing.T) {
 		{
 			name: "no-scope",
 			args: args{
-				credIds: []string{cred1.GetPublicId()},
+				credIds: []string{upCred1.GetPublicId()},
 			},
 			wantErr: true,
 		},
@@ -55,28 +57,58 @@ func TestRepository_Retrieve(t *testing.T) {
 			name: "invalid-scope",
 			args: args{
 				scopeId: org.GetPublicId(),
-				credIds: []string{cred1.GetPublicId()},
+				credIds: []string{upCred1.GetPublicId()},
 			},
 			wantErr: true,
 		},
 		{
-			name: "valid-one-cred",
+			name: "valid-one-up-cred",
 			args: args{
 				scopeId: prj.GetPublicId(),
-				credIds: []string{cred1.GetPublicId()},
+				credIds: []string{upCred1.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
-				cred1,
+				upCred1,
 			},
 		},
 		{
-			name: "valid-multiple-creds",
+			name: "valid-multiple-up-creds",
 			args: args{
 				scopeId: prj.GetPublicId(),
-				credIds: []string{cred1.GetPublicId(), cred2.GetPublicId(), cred3.GetPublicId()},
+				credIds: []string{upCred1.GetPublicId(), upCred2.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
-				cred1, cred2, cred3,
+				upCred1, upCred2,
+			},
+		},
+		{
+			name: "valid-ssh-pk-cred",
+			args: args{
+				scopeId: prj.GetPublicId(),
+				credIds: []string{spkCred1.GetPublicId()},
+			},
+			wantCreds: []credential.Static{
+				spkCred1,
+			},
+		},
+		{
+			name: "valid-multiple-ssh-pk-creds",
+			args: args{
+				scopeId: prj.GetPublicId(),
+				credIds: []string{spkCred1.GetPublicId(), spkCred2.GetPublicId()},
+			},
+			wantCreds: []credential.Static{
+				spkCred1, spkCred2,
+			},
+		},
+		{
+			name: "valid-mixed-creds",
+			args: args{
+				scopeId: prj.GetPublicId(),
+				credIds: []string{upCred1.GetPublicId(), spkCred1.GetPublicId(), spkCred2.GetPublicId(), upCred2.GetPublicId()},
+			},
+			wantCreds: []credential.Static{
+				upCred1, spkCred1, spkCred2, upCred2,
 			},
 		},
 	}
@@ -94,7 +126,9 @@ func TestRepository_Retrieve(t *testing.T) {
 				cmp.Diff(
 					tt.wantCreds,
 					gotCreds,
-					cmpopts.IgnoreUnexported(UsernamePasswordCredential{}, store.UsernamePasswordCredential{}),
+					cmpopts.IgnoreUnexported(
+						UsernamePasswordCredential{}, store.UsernamePasswordCredential{},
+						SshPrivateKeyCredential{}, store.SshPrivateKeyCredential{}),
 					cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
 					cmpopts.SortSlices(func(x, y credential.Static) bool {
 						return x.GetPublicId() < y.GetPublicId()

@@ -28,6 +28,7 @@ type Type string
 const (
 	UnspecifiedType      Type = "unspecified"
 	UsernamePasswordType Type = "username_password"
+	SshPrivateKeyType    Type = "ssh_private_key"
 )
 
 // A Library is a resource that provides credentials that are of the same
@@ -47,26 +48,20 @@ func (p Purpose) String() string {
 
 // Credential purpose values.
 const (
-	// ApplicationPurpose is a credential used for application specific
-	// purposes. Application credentials are returned to the user.
-	ApplicationPurpose Purpose = "application"
+	// BrokeredPurpose is a credential used for brokering specific
+	// purposes. Brokered credentials are returned to the user.
+	BrokeredPurpose Purpose = "brokered"
 
-	// IngressPurpose is a credential used by a boundary worker to secure
-	// the connection between the user and the worker. Ingress credentials
-	// are never returned to the user.
-	IngressPurpose Purpose = "ingress"
-
-	// EgressPurpose is a credential used by a boundary worker to secure
-	// the connection between the worker and the endpoint. Egress
-	// credentials are never returned to the user.
-	EgressPurpose Purpose = "egress"
+	// InjectedApplicationPurpose is a credential used by a boundary
+	// worker to secure the connection between the worker and the endpoint.
+	// Injected Application credentials are never returned to the user.
+	InjectedApplicationPurpose Purpose = "injected_application"
 )
 
 // ValidPurposes are the set of all credential Purposes.
 var ValidPurposes = []Purpose{
-	ApplicationPurpose,
-	IngressPurpose,
-	EgressPurpose,
+	BrokeredPurpose,
+	InjectedApplicationPurpose,
 }
 
 // SecretData represents secret data.
@@ -131,17 +126,9 @@ type UsernamePassword interface {
 	Password() Password
 }
 
-// KeyPair is a credential containing a username and a private key.
-type KeyPair interface {
+// SshPrivateKey is a credential containing a username and a SSH private key.
+type SshPrivateKey interface {
 	Credential
 	Username() string
-	Private() PrivateKey
-}
-
-// Certificate is a credential containing a certificate and the private key
-// for the certificate.
-type Certificate interface {
-	Credential
-	Certificate() []byte
-	Private() PrivateKey
+	PrivateKey() PrivateKey
 }

@@ -1,27 +1,27 @@
 load _authorized_actions
 
-function add_target_application_credential_sources() {
+function add_target_brokered_credential_sources() {
   for i in "${@:2}"
   do
-    cred+="-application-credential-source $i "
+    cred+="-brokered-credential-source $i "
   done
 
   boundary targets add-credential-sources -id $1 $cred
 }
 
-function remove_target_application_credential_sources() {
+function remove_target_brokered_credential_sources() {
   for i in "${@:2}"
   do
-    cred+="-application-credential-source $i "
+    cred+="-brokered-credential-source $i "
   done
 
   boundary targets remove-credential-sources -id $1 $cred
 }
 
-function set_target_application_credential_sources() {
+function set_target_brokered_credential_sources() {
   for i in "${@:2}"
   do
-    cred+="-application-credential-source $i "
+    cred+="-brokered-credential-source $i "
   done
 
   boundary targets set-credential-sources -id $1 $cred

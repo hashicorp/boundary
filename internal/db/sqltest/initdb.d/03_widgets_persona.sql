@@ -342,15 +342,20 @@ begin;
       ('vs_______wvs', 'kdkv___widget', 'current', 'hmac-value', 'token-value', now(),             now() + interval '1 hour');
 
     insert into credential_vault_library
-      (store_id,       public_id,      name,                    description, vault_path,           http_method, credential_type)
+      (store_id,       public_id,       name,                    description, vault_path,           http_method, credential_type)
     values
-      ('vs_______wvs', 'vl______wvl1', 'widget vault library',  'None',      '/secrets',           'GET',       'unspecified'),
-      ('vs_______wvs', 'vl______wvl2', 'widget vault ssh',      'None',      '/secrets/ssh/admin', 'GET',       'unspecified'),
-      ('vs_______wvs', 'vl______wvl3', 'widget vault kv one',   'None',      '/secrets/kv/one',    'GET',       'username_password'),
-      ('vs_______wvs', 'vl______wvl4', 'widget vault kv two',   'None',      '/secrets/kv/two',    'GET',       'username_password'),
-      ('vs_______wvs', 'vl______wvl5', 'widget vault kv three', 'None',      '/secrets/kv/three',  'GET',       'username_password'),
-      ('vs_______wvs', 'vl______wvl6', 'widget vault kv four',  'None',      '/secrets/kv/four',   'GET',       'username_password'),
-      ('vs_______wvs', 'vl______wvl7', 'widget vault kv five',  'None',      '/secrets/kv/five',   'GET',       'username_password');
+      ('vs_______wvs', 'vl______wvl1',  'widget vault library',  'None',      '/secrets',           'GET',       'unspecified'),
+      ('vs_______wvs', 'vl______wvl2',  'widget vault ssh',      'None',      '/secrets/ssh/admin', 'GET',       'unspecified'),
+      ('vs_______wvs', 'vl______wvl3',  'widget vault kv one',   'None',      '/secrets/kv/one',    'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl4',  'widget vault kv two',   'None',      '/secrets/kv/two',    'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl5',  'widget vault kv three', 'None',      '/secrets/kv/three',  'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl6',  'widget vault kv four',  'None',      '/secrets/kv/four',   'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl7',  'widget vault kv five',  'None',      '/secrets/kv/five',   'GET',       'username_password'),
+      ('vs_______wvs', 'vl______wvl8',  'widget vault kv six',   'None',      '/secrets/kv/six',    'GET',       'ssh_private_key'),
+      ('vs_______wvs', 'vl______wvl9',  'widget vault kv seven', 'None',      '/secrets/kv/seven',  'GET',       'ssh_private_key'),
+      ('vs_______wvs', 'vl______wvl10', 'widget vault kv eight', 'None',      '/secrets/kv/eight',  'GET',       'ssh_private_key'),
+      ('vs_______wvs', 'vl______wvl11', 'widget vault kv nine',  'None',      '/secrets/kv/nine',   'GET',       'ssh_private_key'),
+      ('vs_______wvs', 'vl______wvl12', 'widget vault kv ten',   'None',      '/secrets/kv/n',      'GET',       'ssh_private_key');
 
     insert into credential_vault_library_username_password_mapping_override
       (library_id)
@@ -372,13 +377,33 @@ begin;
     values
       ('vl______wvl7', 'my_username',      'my_password');
 
+    insert into credential_vault_library_ssh_private_key_mapping_override
+      (library_id)
+    values
+      ('vl______wvl9');
+
+    insert into credential_vault_library_ssh_private_key_mapping_override
+      (library_id,     username_attribute)
+    values
+      ('vl______wvl10', 'my_username');
+
+    insert into credential_vault_library_ssh_private_key_mapping_override
+      (library_id,     private_key_attribute)
+    values
+      ('vl______wvl11', 'my_private_key');
+
+    insert into credential_vault_library_ssh_private_key_mapping_override
+      (library_id,     username_attribute, private_key_attribute)
+    values
+      ('vl______wvl12', 'my_username',      'my_private_key');
+
     insert into target_credential_library
       (target_id,      credential_library_id, credential_purpose)
     values
-      ('t_________wb', 'vl______wvl1',        'application'),
-      ('t_________wb', 'vl______wvl2',        'application'),
-      ('t_________wb', 'vl______wvl3',        'application'),
-      ('t_________wb', 'vl______wvl3',        'egress');
+      ('t_________wb', 'vl______wvl1',        'brokered'),
+      ('t_________wb', 'vl______wvl2',        'brokered'),
+      ('t_________wb', 'vl______wvl3',        'brokered'),
+      ('t_________wb', 'vl______wvl3',        'injected_application');
   end;
   $$ language plpgsql;
 

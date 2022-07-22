@@ -10,11 +10,11 @@ begin;
   insert into session_credential_dynamic
     ( session_id,    library_id,     credential_id,  credential_purpose)
   values
-    ('s1____walter', 'vl______wvl1', null,           'application');
+    ('s1____walter', 'vl______wvl1', null,           'brokered');
 
   select is(s.*, row(
     's1____walter',
-    'application',              -- credential_purpose,
+    'brokered',                 -- credential_purpose,
     'vl______wvl1',             -- credential_library_id,
     'vault credential library', -- credential_library_type,
     'widget vault library',     -- credential_library_name,

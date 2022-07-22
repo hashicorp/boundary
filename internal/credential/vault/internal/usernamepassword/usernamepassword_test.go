@@ -183,6 +183,52 @@ func TestBaseToUsrPass(t *testing.T) {
 			},
 			want: usrPass{user: "default-user", pass: "default-pass"},
 		},
+		{
+			name: "default-user-json-pointer-password",
+			given: args{
+				s: data{
+					"username": "default-user",
+					"testing": map[string]interface{}{
+						"my-password": "secret",
+					},
+				},
+				uAttr: "username",
+				pAttr: "/testing/my-password",
+			},
+			want: usrPass{user: "default-user", pass: "secret"},
+		},
+		{
+			name: "default-pk-json-pointer-user",
+			given: args{
+				s: data{
+					"password": "default-pass",
+					"testing": map[string]interface{}{
+						"a-user-name": "me",
+					},
+				},
+				uAttr: "/testing/a-user-name",
+				pAttr: "password",
+			},
+			want: usrPass{user: "me", pass: "default-pass"},
+		},
+		{
+			name: "both-json-pointer",
+			given: args{
+				s: data{
+					"first-path": map[string]interface{}{
+						"deeper-path": map[string]interface{}{
+							"my-special-user": "you-found-me",
+						},
+					},
+					"testing": map[string]interface{}{
+						"password": "secret",
+					},
+				},
+				uAttr: "/first-path/deeper-path/my-special-user",
+				pAttr: "/testing/password",
+			},
+			want: usrPass{user: "you-found-me", pass: "secret"},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt

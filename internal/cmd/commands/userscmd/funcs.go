@@ -127,16 +127,19 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]users.Opti
 	return true
 }
 
-func executeExtraActionsImpl(c *Command, origResult api.GenericResult, origError error, userClient *users.Client, version uint32, opts []users.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *users.User, origItems []*users.User, origError error, userClient *users.Client, version uint32, opts []users.Option) (*api.Response, *users.User, []*users.User, error) {
 	switch c.Func {
 	case "add-accounts":
-		return userClient.AddAccounts(c.Context, c.FlagId, version, c.flagAccounts, opts...)
+		result, err := userClient.AddAccounts(c.Context, c.FlagId, version, c.flagAccounts, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-accounts":
-		return userClient.SetAccounts(c.Context, c.FlagId, version, c.flagAccounts, opts...)
+		result, err := userClient.SetAccounts(c.Context, c.FlagId, version, c.flagAccounts, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-accounts":
-		return userClient.RemoveAccounts(c.Context, c.FlagId, version, c.flagAccounts, opts...)
+		result, err := userClient.RemoveAccounts(c.Context, c.FlagId, version, c.flagAccounts, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	}
-	return origResult, origError
+	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*users.User) string {
@@ -215,8 +218,7 @@ func (c *Command) printListTable(items []*users.User) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*users.User)
+func printItemTable(item *users.User, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id

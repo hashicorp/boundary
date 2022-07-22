@@ -9,6 +9,12 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
 
+const (
+	usernameFlagName   = "username"
+	passwordFlagName   = "password"
+	privateKeyFlagName = "private-key"
+)
+
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
@@ -42,7 +48,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"  This command allows update operations on Boundary credential resources. Example:",
 			"",
-			"    Update a username password credential:",
+			"    Update a username/password credential:",
 			"",
 			`      $ boundary credentials update username-password -id cred_1234567890 -name devops -description "For DevOps usage"`,
 			"",
@@ -108,8 +114,7 @@ func (c *Command) printListTable(items []*credentials.Credential) string {
 	return base.WrapForHelpText(output)
 }
 
-func printItemTable(result api.GenericResult) string {
-	item := result.GetItem().(*credentials.Credential)
+func printItemTable(item *credentials.Credential, resp *api.Response) string {
 	nonAttributeMap := map[string]interface{}{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
@@ -172,6 +177,7 @@ func printItemTable(result api.GenericResult) string {
 }
 
 var keySubstMap = map[string]string{
-	"username":      "Username",
-	"password_hmac": "Password HMAC",
+	"username":         "Username",
+	"password_hmac":    "Password HMAC",
+	"private_key_hmac": "Private Key HMAC",
 }

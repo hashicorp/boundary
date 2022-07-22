@@ -55,7 +55,7 @@ func (c *UsernamePasswordCommand) Synopsis() string {
 
 	synopsisStr := "credential"
 
-	synopsisStr = fmt.Sprintf("%s %s", "username_password-type", synopsisStr)
+	synopsisStr = fmt.Sprintf("%s %s", "username-password-type", synopsisStr)
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
@@ -93,7 +93,7 @@ func (c *UsernamePasswordCommand) Flags() *base.FlagSets {
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "username_password-type credential", flagsUsernamePasswordMap, c.Func)
+	common.PopulateCommonFlags(c.Command, f, "username-password-type credential", flagsUsernamePasswordMap, c.Func)
 
 	extraUsernamePasswordFlagsFunc(c, set, f)
 
@@ -109,10 +109,10 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 
 	}
 
-	c.plural = "username_password-type credential"
+	c.plural = "username-password-type credential"
 	switch c.Func {
 	case "list":
-		c.plural = "username_password-type credentials"
+		c.plural = "username-password-type credentials"
 	}
 
 	f := c.Flags()
@@ -193,19 +193,28 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *credentials.Credential
+
+	var createResult *credentials.CredentialCreateResult
+
+	var updateResult *credentials.CredentialUpdateResult
 
 	switch c.Func {
 
 	case "create":
-		result, err = credentialsClient.Create(c.Context, "username_password", c.FlagCredentialStoreId, opts...)
+		createResult, err = credentialsClient.Create(c.Context, "username_password", c.FlagCredentialStoreId, opts...)
+		resp = createResult.GetResponse()
+		item = createResult.GetItem()
 
 	case "update":
-		result, err = credentialsClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = credentialsClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	}
 
-	result, err = executeExtraUsernamePasswordActions(c, result, err, credentialsClient, version, opts)
+	resp, item, err = executeExtraUsernamePasswordActions(c, resp, item, err, credentialsClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -235,10 +244,10 @@ func (c *UsernamePasswordCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -251,8 +260,8 @@ var (
 	extraUsernamePasswordSynopsisFunc        = func(*UsernamePasswordCommand) string { return "" }
 	extraUsernamePasswordFlagsFunc           = func(*UsernamePasswordCommand, *base.FlagSets, *base.FlagSet) {}
 	extraUsernamePasswordFlagsHandlingFunc   = func(*UsernamePasswordCommand, *base.FlagSets, *[]credentials.Option) bool { return true }
-	executeExtraUsernamePasswordActions      = func(_ *UsernamePasswordCommand, inResult api.GenericResult, inErr error, _ *credentials.Client, _ uint32, _ []credentials.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraUsernamePasswordActions      = func(_ *UsernamePasswordCommand, inResp *api.Response, inItem *credentials.Credential, inErr error, _ *credentials.Client, _ uint32, _ []credentials.Option) (*api.Response, *credentials.Credential, error) {
+		return inResp, inItem, inErr
 	}
 	printCustomUsernamePasswordActionOutput = func(*UsernamePasswordCommand) (bool, error) { return false, nil }
 )

@@ -238,27 +238,43 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	var result api.GenericResult
+	var resp *api.Response
+	var item *workers.Worker
 
-	var listResult api.GenericListResult
+	var items []*workers.Worker
+
+	var readResult *workers.WorkerReadResult
+
+	var updateResult *workers.WorkerUpdateResult
+
+	var deleteResult *workers.WorkerDeleteResult
+
+	var listResult *workers.WorkerListResult
 
 	switch c.Func {
 
 	case "read":
-		result, err = workersClient.Read(c.Context, c.FlagId, opts...)
+		readResult, err = workersClient.Read(c.Context, c.FlagId, opts...)
+		resp = readResult.GetResponse()
+		item = readResult.GetItem()
 
 	case "update":
-		result, err = workersClient.Update(c.Context, c.FlagId, version, opts...)
+		updateResult, err = workersClient.Update(c.Context, c.FlagId, version, opts...)
+		resp = updateResult.GetResponse()
+		item = updateResult.GetItem()
 
 	case "delete":
-		result, err = workersClient.Delete(c.Context, c.FlagId, opts...)
+		deleteResult, err = workersClient.Delete(c.Context, c.FlagId, opts...)
+		resp = deleteResult.GetResponse()
 
 	case "list":
 		listResult, err = workersClient.List(c.Context, c.FlagScopeId, opts...)
+		resp = listResult.GetResponse()
+		items = listResult.GetItems()
 
 	}
 
-	result, err = executeExtraActions(c, result, err, workersClient, version, opts)
+	resp, item, items, err = executeExtraActions(c, resp, item, items, err, workersClient, version, opts)
 
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
@@ -285,7 +301,7 @@ func (c *Command) Run(args []string) int {
 	case "delete":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItem(result); !ok {
+			if ok := c.PrintJsonItem(resp); !ok {
 				return base.CommandCliError
 			}
 
@@ -298,13 +314,12 @@ func (c *Command) Run(args []string) int {
 	case "list":
 		switch base.Format(c.UI) {
 		case "json":
-			if ok := c.PrintJsonItems(listResult); !ok {
+			if ok := c.PrintJsonItems(resp); !ok {
 				return base.CommandCliError
 			}
 
 		case "table":
-			listedItems := listResult.GetItems().([]*workers.Worker)
-			c.UI.Output(c.printListTable(listedItems))
+			c.UI.Output(c.printListTable(items))
 		}
 
 		return base.CommandSuccess
@@ -313,10 +328,10 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(printItemTable(result))
+		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
-		if ok := c.PrintJsonItem(result); !ok {
+		if ok := c.PrintJsonItem(resp); !ok {
 			return base.CommandCliError
 		}
 	}
@@ -331,8 +346,8 @@ var (
 	extraSynopsisFunc        = func(*Command) string { return "" }
 	extraFlagsFunc           = func(*Command, *base.FlagSets, *base.FlagSet) {}
 	extraFlagsHandlingFunc   = func(*Command, *base.FlagSets, *[]workers.Option) bool { return true }
-	executeExtraActions      = func(_ *Command, inResult api.GenericResult, inErr error, _ *workers.Client, _ uint32, _ []workers.Option) (api.GenericResult, error) {
-		return inResult, inErr
+	executeExtraActions      = func(_ *Command, inResp *api.Response, inItem *workers.Worker, inItems []*workers.Worker, inErr error, _ *workers.Client, _ uint32, _ []workers.Option) (*api.Response, *workers.Worker, []*workers.Worker, error) {
+		return inResp, inItem, inItems, inErr
 	}
 	printCustomActionOutput = func(*Command) (bool, error) { return false, nil }
 )

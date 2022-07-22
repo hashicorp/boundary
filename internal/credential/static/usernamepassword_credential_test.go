@@ -16,7 +16,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
-func TestCredential_New(t *testing.T) {
+func TestUsernamePasswordCredential_New(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -128,13 +128,14 @@ func TestCredential_New(t *testing.T) {
 			require.NotNil(got)
 			assert.Emptyf(got.PublicId, "PublicId set")
 
-			id, err := newCredentialId(ctx)
+			id, err := credential.NewUsernamePasswordCredentialId(ctx)
 			require.NoError(err)
 
 			tt.want.PublicId = id
 			got.PublicId = id
 
 			databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
+			require.NoError(err)
 
 			err = got.encrypt(ctx, databaseWrapper)
 			if tt.wantEncryptErr {

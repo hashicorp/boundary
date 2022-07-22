@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/api/credentialstores"
-	"github.com/hashicorp/boundary/internal/credential/static"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +35,7 @@ func TestList(t *testing.T) {
 	require.NoError(err)
 	assert.Empty(ul.Items)
 
-	cred, err := credClient.Create(tc.Context(), static.UsernamePasswordSubtype.String(), cs.Item.Id,
+	cred, err := credClient.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), cs.Item.Id,
 		credentials.WithName("0"),
 		credentials.WithDescription("description"),
 		credentials.WithUsernamePasswordCredentialUsername("user"),
@@ -50,7 +50,7 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableCatalogSlice(expected[:1]), comparableCatalogSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		cred, err := credClient.Create(tc.Context(), static.UsernamePasswordSubtype.String(), cs.Item.Id,
+		cred, err := credClient.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), cs.Item.Id,
 			credentials.WithName(fmt.Sprintf("%d", i)),
 			credentials.WithDescription("description"),
 			credentials.WithUsernamePasswordCredentialUsername("user"),
@@ -110,7 +110,7 @@ func TestCrud(t *testing.T) {
 	}
 	credClient := credentials.NewClient(client)
 
-	cred, err := credClient.Create(tc.Context(), static.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
+	cred, err := credClient.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
 		credentials.WithUsernamePasswordCredentialUsername("user"), credentials.WithUsernamePasswordCredentialPassword("pass"))
 	require.NoError(err)
 	require.NotNil(cs)
@@ -167,7 +167,7 @@ func TestErrors(t *testing.T) {
 
 	c := credentials.NewClient(client)
 
-	cred, err := c.Create(tc.Context(), static.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
+	cred, err := c.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), cs.Item.Id, credentials.WithName("foo"),
 		credentials.WithUsernamePasswordCredentialUsername("user"), credentials.WithUsernamePasswordCredentialPassword("pass"))
 	require.NoError(err)
 	require.NotNil(cred)
@@ -189,12 +189,12 @@ func TestErrors(t *testing.T) {
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
 	// Same name
-	_, err = c.Create(tc.Context(), static.UsernamePasswordSubtype.String(), proj.GetPublicId(), credentials.WithName("foo"))
+	_, err = c.Create(tc.Context(), credential.UsernamePasswordSubtype.String(), proj.GetPublicId(), credentials.WithName("foo"))
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 
-	_, err = c.Read(tc.Context(), static.CredentialPrefix+"_doesntexis")
+	_, err = c.Read(tc.Context(), credential.UsernamePasswordCredentialPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

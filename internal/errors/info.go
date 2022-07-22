@@ -252,4 +252,16 @@ var errorCodeInfo = map[Code]Info{
 		Message: "unexpected number of rows affected",
 		Kind:    Integrity,
 	},
+	NoPathFound: {
+		Message: "unexpected number of rows affected",
+		Kind:    State,
+	},
+	WorkerNotFound: {
+		Message: "worker not found",
+		Kind:    State,
+	},
+	CycleFound: {
+		Message: "cycle found",
+		Kind:    State,
+	},
 }
