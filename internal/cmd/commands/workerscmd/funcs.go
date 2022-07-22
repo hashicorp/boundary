@@ -120,16 +120,19 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]workers.Op
 	return true
 }
 
-func executeExtraActionsImpl(c *Command, inResult api.GenericResult, inError error, workerClient *workers.Client, version uint32, opts []workers.Option) (api.GenericResult, error) {
+func executeExtraActionsImpl(c *Command, inResp *api.Response, inItem *workers.Worker, inItems []*workers.Worker, inErr error, workerClient *workers.Client, version uint32, opts []workers.Option) (*api.Response, *workers.Worker, []*workers.Worker, error) {
 	switch c.Func {
 	case "add-worker-tags":
-		return workerClient.AddWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		result, err := workerClient.AddWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-worker-tags":
-		return workerClient.SetWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		result, err := workerClient.SetWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-worker-tags":
-		return workerClient.RemoveWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		result, err := workerClient.RemoveWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		return result.GetResponse(), result.GetItem(), nil, err
 	}
-	return inResult, inError
+	return inResp, inItem, inItems, inErr
 }
 
 func (c *Command) printListTable(items []*workers.Worker) string {
