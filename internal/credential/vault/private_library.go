@@ -150,6 +150,7 @@ type privateLibrary struct {
 	CaCert              []byte
 	TlsServerName       string
 	TlsSkipVerify       bool
+	WorkerFilter        string
 	TokenHmac           []byte
 	Token               TokenSecret
 	CtToken             []byte
@@ -185,6 +186,7 @@ func (pl *privateLibrary) clone() *privateLibrary {
 		CaCert:              append(pl.CaCert[:0:0], pl.CaCert...),
 		TlsServerName:       pl.TlsServerName,
 		TlsSkipVerify:       pl.TlsSkipVerify,
+		WorkerFilter:        pl.WorkerFilter,
 		TokenHmac:           append(pl.TokenHmac[:0:0], pl.TokenHmac...),
 		Token:               append(pl.Token[:0:0], pl.Token...),
 		CtToken:             append(pl.CtToken[:0:0], pl.CtToken...),

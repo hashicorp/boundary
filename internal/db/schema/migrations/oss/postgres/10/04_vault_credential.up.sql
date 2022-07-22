@@ -496,6 +496,7 @@ begin;
     ('credential_vault_library', 1),
     ('credential_vault_credential', 1) ;
 
+  -- Replaced in 41/01_worker_filter_vault_cred_store.up.sql
      create view credential_vault_store_private as
      with
      active_tokens as (
@@ -550,6 +551,7 @@ begin;
     'The view returns a separate row for each current, maintaining and revoke token; maintaining tokens should only be used for token/credential renewal and revocation. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
+  -- Replaced in 41/01_worker_filter_vault_cred_store.up.sql
      create view credential_vault_store_public as
      select public_id,
             scope_id,
@@ -609,6 +611,7 @@ begin;
     'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
+  -- Replaced in 41/01_worker_filter_vault_cred_store.up.sql
      create view credential_vault_credential_private as
      select credential.public_id         as public_id,
             credential.library_id        as library_id,

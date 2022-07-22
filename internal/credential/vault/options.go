@@ -23,6 +23,7 @@ type options struct {
 	withNamespace      string
 	withTlsServerName  string
 	withTlsSkipVerify  bool
+	withWorkerFilter   string
 	withClientCert     *ClientCertificate
 	withMethod         Method
 	withRequestBody    []byte
@@ -49,6 +50,13 @@ func WithDescription(desc string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithWorkerFilter provides an optional worker filter.
+func WithWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.withWorkerFilter = filter
 	}
 }
 

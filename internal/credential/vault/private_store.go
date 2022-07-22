@@ -78,6 +78,7 @@ type privateStore struct {
 	CaCert               []byte
 	TlsServerName        string
 	TlsSkipVerify        bool
+	WorkerFilter         string
 	StoreId              string
 	TokenHmac            []byte
 	Token                TokenSecret
@@ -115,6 +116,7 @@ func (ps *privateStore) toCredentialStore() *CredentialStore {
 	cs.CaCert = ps.CaCert
 	cs.TlsServerName = ps.TlsServerName
 	cs.TlsSkipVerify = ps.TlsSkipVerify
+	cs.WorkerFilter = ps.WorkerFilter
 	cs.privateToken = ps.token()
 	if ps.ClientCert != nil {
 		cert := allocClientCertificate()

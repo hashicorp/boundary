@@ -12,4 +12,5 @@ type VaultCredentialStoreAttributes struct {
 	ClientCertificate        string `json:"client_certificate,omitempty"`
 	ClientCertificateKey     string `json:"client_certificate_key,omitempty"`
 	ClientCertificateKeyHmac string `json:"client_certificate_key_hmac,omitempty"`
+	WorkerFilter             string `json:"worker_filter,omitempty"`
 }

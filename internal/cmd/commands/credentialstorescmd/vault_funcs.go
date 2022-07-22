@@ -1,8 +1,11 @@
 package credentialstorescmd
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
@@ -21,6 +24,7 @@ const (
 	vaultTokenFlagName           = "vault-token"
 	clientCertificateFlagName    = "vault-client-certificate"
 	clientCertificateKeyFlagName = "vault-client-certificate-key"
+	workerFilterFlagName         = "vault-worker-filter"
 )
 
 type extraVaultCmdVars struct {
@@ -32,6 +36,7 @@ type extraVaultCmdVars struct {
 	flagClientCertKey string
 	flagTlsServerName string
 	flagTlsSkipVerify bool
+	flagWorkerFilter  string
 }
 
 func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
@@ -45,6 +50,7 @@ func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
 			vaultTokenFlagName,
 			clientCertificateFlagName,
 			clientCertificateKeyFlagName,
+			workerFilterFlagName,
 		},
 	}
 	flags["update"] = flags["create"]
@@ -104,6 +110,12 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 				Target: &c.flagClientCertKey,
 				Usage:  `The client certificate's private key to use when boundary connects to vault for this store. This can be the value itself, refer to a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.`,
 			})
+		case workerFilterFlagName:
+			f.StringVar(&base.StringVar{
+				Name:   workerFilterFlagName,
+				Target: &c.flagWorkerFilter,
+				Usage:  `A boolean expression to filter which workers can handle Vault commands for this credential store.`,
+			})
 		}
 	}
 }
@@ -149,6 +161,17 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, f *base.FlagSets, opts *[]c
 	default:
 		cer, _ := parseutil.ParsePath(c.flagClientCert)
 		*opts = append(*opts, credentialstores.WithVaultCredentialStoreClientCertificateKey(cer))
+	}
+	switch c.flagWorkerFilter {
+	case "":
+	case "null":
+		*opts = append(*opts, credentialstores.DefaultVaultCredentialStoreWorkerFilter())
+	default:
+		if _, err := bexpr.CreateEvaluator(c.flagWorkerFilter); err != nil {
+			c.UI.Error(fmt.Sprintf("Unable to successfully parse filter expression: %s", err))
+			return false
+		}
+		*opts = append(*opts, credentialstores.WithVaultCredentialStoreWorkerFilter(c.flagWorkerFilter))
 	}
 	if c.flagTlsSkipVerify {
 		*opts = append(*opts, credentialstores.WithVaultCredentialStoreTlsSkipVerify(c.flagTlsSkipVerify))

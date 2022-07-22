@@ -207,4 +207,5 @@ var keySubstMap = map[string]string{
 	"token_hmac":                  "Token HMAC",
 	"client_certificate":          "Client Certificate",
 	"client_certificate_key_hmac": "Client Certificate Key HMAC",
+	"worker_filter":               "Worker Filter",
 }
