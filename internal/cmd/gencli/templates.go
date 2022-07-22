@@ -416,6 +416,9 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ if ( not ( hasAction $input.SkipClientCallActions "create") ) }}
 	case "create":
 		{{ $action }}Result, err = {{ $input.Pkg }}Client.Create(c.Context, {{ if (and $input.SubActionPrefix $input.NeedsSubtypeInCreate) }}"{{ $input.SubActionPrefix }}",{{ end }} c.Flag{{ $input.Container }}Id, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = {{ $action }}Result.GetResponse()
 		item = {{ $action }}Result.GetItem()
 	{{ end }}
@@ -423,23 +426,35 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	{{ if eq $action "read" }}
 	case "read":
 		{{ $action }}Result, err = {{ $input.Pkg }}Client.Read(c.Context, c.FlagId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = {{ $action }}Result.GetResponse()
 		item = {{ $action }}Result.GetItem()
 	{{ end }}
 	{{ if eq $action "update" }}
 	case "update":
 		{{ $action }}Result, err = {{ $input.Pkg }}Client.Update(c.Context, c.FlagId, version, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = {{ $action }}Result.GetResponse()
 		item = {{ $action }}Result.GetItem()
 	{{ end }}
 	{{ if eq $action "delete" }}
 	case "delete":
 		{{ $action }}Result, err = {{ $input.Pkg }}Client.Delete(c.Context, c.FlagId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = {{ $action }}Result.GetResponse()
 	{{ end }}
 	{{ if eq $action "list" }}
 	case "list":
 		{{ $action }}Result, err = {{ $input.Pkg}}Client.List(c.Context, c.Flag{{ $input.Container }}Id, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = {{ $action }}Result.GetResponse()
 		items = {{ $action }}Result.GetItems()
 	{{ end }}
@@ -447,18 +462,8 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 
 	resp, item, {{ if hasAction .StdActions "list" }}items, {{ end }}err = executeExtra{{ camelCase .SubActionPrefix }}Actions(c, resp, item,  {{ if hasAction .StdActions "list" }}items, {{ end }}err, {{ .Pkg }}Client, version, opts)
-
-	if err != nil {
-		if apiErr := api.AsServerError(err); apiErr != nil {
-			var opts []base.Option
-			{{ if (and $input.SubActionPrefix $input.PrefixAttributeFieldErrorsWithSubactionPrefix ) }}
-			opts = append(opts, base.WithAttributeFieldPrefix("{{ $input.SubActionPrefix }}"))
-			{{ end }}
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
-			return base.CommandApiError
-		}
-		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return base.CommandCliError
+	if exitCode := c.checkFuncError(err); exitCode > 0 {
+		return exitCode
 	}
 
 	output, err := printCustom{{ camelCase .SubActionPrefix }}ActionOutput(c)
@@ -514,6 +519,19 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 
 	return base.CommandSuccess
+}
+
+func (c *{{ camelCase .SubActionPrefix }}Command) checkFuncError(err error) int {
+	if err != nil {
+		if apiErr := api.AsServerError(err); apiErr != nil {
+			var opts []base.Option
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
+			return base.CommandApiError
+		}
+		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
+		return base.CommandCliError
+	}
+	return 0
 }
 
 var (

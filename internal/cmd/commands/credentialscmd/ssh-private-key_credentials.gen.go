@@ -204,29 +204,25 @@ func (c *SshPrivateKeyCommand) Run(args []string) int {
 
 	case "create":
 		createResult, err = credentialsClient.Create(c.Context, "ssh_private_key", c.FlagCredentialStoreId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = createResult.GetResponse()
 		item = createResult.GetItem()
 
 	case "update":
 		updateResult, err = credentialsClient.Update(c.Context, c.FlagId, version, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = updateResult.GetResponse()
 		item = updateResult.GetItem()
 
 	}
 
 	resp, item, err = executeExtraSshPrivateKeyActions(c, resp, item, err, credentialsClient, version, opts)
-
-	if err != nil {
-		if apiErr := api.AsServerError(err); apiErr != nil {
-			var opts []base.Option
-
-			opts = append(opts, base.WithAttributeFieldPrefix("ssh_private_key"))
-
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
-			return base.CommandApiError
-		}
-		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return base.CommandCliError
+	if exitCode := c.checkFuncError(err); exitCode > 0 {
+		return exitCode
 	}
 
 	output, err := printCustomSshPrivateKeyActionOutput(c)
@@ -253,6 +249,19 @@ func (c *SshPrivateKeyCommand) Run(args []string) int {
 	}
 
 	return base.CommandSuccess
+}
+
+func (c *SshPrivateKeyCommand) checkFuncError(err error) int {
+	if err != nil {
+		if apiErr := api.AsServerError(err); apiErr != nil {
+			var opts []base.Option
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
+			return base.CommandApiError
+		}
+		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
+		return base.CommandCliError
+	}
+	return 0
 }
 
 var (

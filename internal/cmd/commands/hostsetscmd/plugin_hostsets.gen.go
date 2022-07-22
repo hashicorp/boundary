@@ -222,27 +222,25 @@ func (c *PluginCommand) Run(args []string) int {
 
 	case "create":
 		createResult, err = hostsetsClient.Create(c.Context, c.FlagHostCatalogId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = createResult.GetResponse()
 		item = createResult.GetItem()
 
 	case "update":
 		updateResult, err = hostsetsClient.Update(c.Context, c.FlagId, version, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = updateResult.GetResponse()
 		item = updateResult.GetItem()
 
 	}
 
 	resp, item, err = executeExtraPluginActions(c, resp, item, err, hostsetsClient, version, opts)
-
-	if err != nil {
-		if apiErr := api.AsServerError(err); apiErr != nil {
-			var opts []base.Option
-
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
-			return base.CommandApiError
-		}
-		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return base.CommandCliError
+	if exitCode := c.checkFuncError(err); exitCode > 0 {
+		return exitCode
 	}
 
 	output, err := printCustomPluginActionOutput(c)
@@ -269,6 +267,19 @@ func (c *PluginCommand) Run(args []string) int {
 	}
 
 	return base.CommandSuccess
+}
+
+func (c *PluginCommand) checkFuncError(err error) int {
+	if err != nil {
+		if apiErr := api.AsServerError(err); apiErr != nil {
+			var opts []base.Option
+			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
+			return base.CommandApiError
+		}
+		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
+		return base.CommandCliError
+	}
+	return 0
 }
 
 var (
