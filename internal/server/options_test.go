@@ -170,4 +170,10 @@ func Test_GetOpts(t *testing.T) {
 		opts = getOpts(WithRoot("a"))
 		assert.Equal(t, "a", opts.withRoot)
 	})
+	t.Run("WithStopAfter", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.Empty(t, opts.withStopAfter)
+		opts = getOpts(WithStopAfter(10))
+		assert.Equal(t, uint(10), opts.withStopAfter)
+	})
 }
