@@ -164,4 +164,10 @@ func Test_GetOpts(t *testing.T) {
 		opts = getOpts(WithWorkerType(KmsWorkerType))
 		assert.Equal(t, KmsWorkerType, opts.withWorkerType)
 	})
+	t.Run("WithRoot", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.Empty(t, opts.withRoot)
+		opts = getOpts(WithRoot("a"))
+		assert.Equal(t, "a", opts.withRoot)
+	})
 }
