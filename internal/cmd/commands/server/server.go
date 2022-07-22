@@ -511,8 +511,10 @@ func (c *Command) Run(args []string) int {
 					retErr = fmt.Errorf("Error shutting down worker: %w", err)
 				}
 				c.UI.Error(retErr.Error())
-				if err := c.controller.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				if c.controller != nil {
+					if err := c.controller.Shutdown(); err != nil {
+						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+					}
 				}
 				return base.CommandCliError
 			}
@@ -525,13 +527,15 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
-	if err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandCliError
+	if c.controller != nil {
+		opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
+		if err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandCliError
+		}
+		c.opsServer = opsServer
+		c.opsServer.Start()
 	}
-	c.opsServer = opsServer
-	c.opsServer.Start()
 
 	// Inform any tests that the server is ready
 	if c.startedCh != nil {
@@ -560,16 +564,15 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	if out > 0 {
 		return out
 	}
-	c.Config = cfg
 
-	if c.Config.Controller == nil && c.Config.Worker == nil {
-		c.UI.Error("Neither worker nor controller specified in configuration file.")
-		return base.CommandUserError
+	if extraConfigValidationFunc != nil {
+		if err := extraConfigValidationFunc(cfg); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandUserError
+		}
 	}
-	if c.Config.Controller != nil && c.Config.Controller.Name == "" {
-		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
-		return base.CommandUserError
-	}
+
+	c.Config = cfg
 
 	return base.CommandSuccess
 }
@@ -724,7 +727,7 @@ func (c *Command) WaitForInterrupt() int {
 				}
 			}()
 
-			if c.Config.Controller != nil {
+			if c.Config.Controller != nil && c.opsServer != nil {
 				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
 			}
 
@@ -742,9 +745,11 @@ func (c *Command) WaitForInterrupt() int {
 				}
 			}
 
-			err := c.opsServer.Shutdown()
-			if err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down ops listeners: %w", err).Error())
+			if c.opsServer != nil {
+				err := c.opsServer.Shutdown()
+				if err != nil {
+					c.UI.Error(fmt.Errorf("Error shutting down ops listeners: %w", err).Error())
+				}
 			}
 
 			shutdownTriggered = true
@@ -848,6 +853,16 @@ func (c *Command) verifyKmsSetup() error {
 	}
 	if err := kmsCache.VerifyGlobalRoot(ctx); err != nil {
 		return err
+	}
+	return nil
+}
+
+var extraConfigValidationFunc = func(cfg *config.Config) error {
+	if cfg.Controller == nil && cfg.Worker == nil {
+		return stderrors.New("Neither worker nor controller specified in configuration file.")
+	}
+	if cfg.Controller != nil && cfg.Controller.Name == "" {
+		return stderrors.New("Controller has no name set. It must be the unique name of this instance.")
 	}
 	return nil
 }
