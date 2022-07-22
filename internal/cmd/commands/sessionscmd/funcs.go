@@ -90,6 +90,9 @@ func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *sessi
 	switch c.Func {
 	case "cancel":
 		result, err := sessionClient.Cancel(c.Context, c.FlagId, version, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	}
 	return origResp, origItem, origItems, origError
