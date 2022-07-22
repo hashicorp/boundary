@@ -1127,4 +1127,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 	}
+
+	for _, fn := range extraCommandsFuncs {
+		if fn != nil {
+			fn()
+		}
+	}
 }
+
+var extraCommandsFuncs []func()
