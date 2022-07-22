@@ -40,6 +40,7 @@ type options struct {
 	withTestPkiWorkerKeyId             *string
 	withWorkerType                     WorkerType
 	withRoot                           string
+	withStopAfter                      uint
 }
 
 func getDefaultOptions() options {
@@ -178,5 +179,12 @@ func WithWorkerType(with WorkerType) Option {
 func WithRoot(workerId string) Option {
 	return func(o *options) {
 		o.withRoot = workerId
+	}
+}
+
+// WithStopAfter provides an optional stop after count
+func WithStopAfter(stopAfter uint) Option {
+	return func(o *options) {
+		o.withStopAfter = stopAfter
 	}
 }
