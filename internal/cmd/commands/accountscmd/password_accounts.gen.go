@@ -256,8 +256,7 @@ func (c *PasswordCommand) checkFuncError(err error) int {
 		return 0
 	}
 	if apiErr := api.AsServerError(err); apiErr != nil {
-		var opts []base.Option
-		c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
+		c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
 		return base.CommandApiError
 	}
 	c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
