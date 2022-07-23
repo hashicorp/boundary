@@ -16,6 +16,8 @@ import (
 func TestEventer_retrySend(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
+	canceledCtx, cancel := context.WithCancel(ctx)
+	cancel()
 
 	testConfig := TestEventerConfig(t, "TestEventer_retrySend")
 
@@ -31,6 +33,7 @@ func TestEventer_retrySend(t *testing.T) {
 
 	tests := []struct {
 		name           string
+		ctx            context.Context
 		retries        uint
 		backOff        backoff
 		handler        sendHandler
@@ -39,6 +42,7 @@ func TestEventer_retrySend(t *testing.T) {
 	}{
 		{
 			name:    "missing-backoff",
+			ctx:     context.Background(),
 			retries: 1,
 			handler: func() (eventlogger.Status, error) {
 				return eventer.broker.Send(ctx, eventlogger.EventType(ErrorType), testEvent)
@@ -48,6 +52,7 @@ func TestEventer_retrySend(t *testing.T) {
 		},
 		{
 			name:           "missing-handler",
+			ctx:            context.Background(),
 			retries:        1,
 			backOff:        expBackoff{},
 			wantErrIs:      ErrInvalidParameter,
@@ -55,6 +60,7 @@ func TestEventer_retrySend(t *testing.T) {
 		},
 		{
 			name:    "too-many-retries",
+			ctx:     context.Background(),
 			retries: 3,
 			backOff: expBackoff{},
 			handler: func() (eventlogger.Status, error) {
@@ -64,7 +70,18 @@ func TestEventer_retrySend(t *testing.T) {
 			wantErrContain: "too many retries",
 		},
 		{
+			name:    "canceled",
+			ctx:     canceledCtx,
+			retries: 3,
+			backOff: expBackoff{},
+			handler: func() (eventlogger.Status, error) {
+				return eventlogger.Status{}, fmt.Errorf("%s: will never work: %w", "TestEventer_retrySend", ErrMaxRetries)
+			},
+			wantErrIs: context.Canceled,
+		},
+		{
 			name:    "success-with-warnings",
+			ctx:     context.Background(),
 			retries: 3,
 			backOff: expBackoff{},
 			handler: func() (eventlogger.Status, error) {
@@ -75,6 +92,7 @@ func TestEventer_retrySend(t *testing.T) {
 		},
 		{
 			name:    "success",
+			ctx:     context.Background(),
 			retries: 1,
 			backOff: expBackoff{},
 			handler: func() (eventlogger.Status, error) {
@@ -89,7 +107,7 @@ func TestEventer_retrySend(t *testing.T) {
 			defer os.Remove(testConfig.AllEvents.Name())
 			defer os.Remove(testConfig.ErrorEvents.Name())
 
-			err := eventer.retrySend(ctx, tt.retries, tt.backOff, tt.handler)
+			err := eventer.retrySend(tt.ctx, tt.retries, tt.backOff, tt.handler)
 			if tt.wantErrIs != nil {
 				require.Error(err)
 				multi, isMultiError := err.(*multierror.Error)
