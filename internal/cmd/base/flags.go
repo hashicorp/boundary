@@ -720,6 +720,11 @@ func newStringSliceMapValue(def map[string][]string, target *map[string][]string
 
 func (s *stringSliceMapValue) Set(val string) error {
 	kv := strings.TrimSpace(val)
+	if kv == "null" {
+		s.target = nil
+		return nil
+	}
+
 	if *s.target == nil {
 		*s.target = make(map[string][]string)
 	}
