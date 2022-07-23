@@ -206,27 +206,25 @@ func (c *Command) Run(args []string) int {
 
 	case "read":
 		readResult, err = sessionsClient.Read(c.Context, c.FlagId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = readResult.GetResponse()
 		item = readResult.GetItem()
 
 	case "list":
 		listResult, err = sessionsClient.List(c.Context, c.FlagScopeId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = listResult.GetResponse()
 		items = listResult.GetItems()
 
 	}
 
 	resp, item, items, err = executeExtraActions(c, resp, item, items, err, sessionsClient, version, opts)
-
-	if err != nil {
-		if apiErr := api.AsServerError(err); apiErr != nil {
-			var opts []base.Option
-
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
-			return base.CommandApiError
-		}
-		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return base.CommandCliError
+	if exitCode := c.checkFuncError(err); exitCode > 0 {
+		return exitCode
 	}
 
 	output, err := printCustomActionOutput(c)
@@ -266,6 +264,18 @@ func (c *Command) Run(args []string) int {
 	}
 
 	return base.CommandSuccess
+}
+
+func (c *Command) checkFuncError(err error) int {
+	if err == nil {
+		return 0
+	}
+	if apiErr := api.AsServerError(err); apiErr != nil {
+		c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
+		return base.CommandApiError
+	}
+	c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
+	return base.CommandCliError
 }
 
 var (

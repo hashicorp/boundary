@@ -207,29 +207,25 @@ func (c *StaticCommand) Run(args []string) int {
 
 	case "create":
 		createResult, err = credentialstoresClient.Create(c.Context, "static", c.FlagScopeId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = createResult.GetResponse()
 		item = createResult.GetItem()
 
 	case "update":
 		updateResult, err = credentialstoresClient.Update(c.Context, c.FlagId, version, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = updateResult.GetResponse()
 		item = updateResult.GetItem()
 
 	}
 
 	resp, item, err = executeExtraStaticActions(c, resp, item, err, credentialstoresClient, version, opts)
-
-	if err != nil {
-		if apiErr := api.AsServerError(err); apiErr != nil {
-			var opts []base.Option
-
-			opts = append(opts, base.WithAttributeFieldPrefix("static"))
-
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
-			return base.CommandApiError
-		}
-		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return base.CommandCliError
+	if exitCode := c.checkFuncError(err); exitCode > 0 {
+		return exitCode
 	}
 
 	output, err := printCustomStaticActionOutput(c)
@@ -256,6 +252,18 @@ func (c *StaticCommand) Run(args []string) int {
 	}
 
 	return base.CommandSuccess
+}
+
+func (c *StaticCommand) checkFuncError(err error) int {
+	if err == nil {
+		return 0
+	}
+	if apiErr := api.AsServerError(err); apiErr != nil {
+		c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
+		return base.CommandApiError
+	}
+	c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
+	return base.CommandCliError
 }
 
 var (
