@@ -76,6 +76,15 @@ func TestHandler_CORS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	var wildcardListenerNum int
+	for listenerNum, listener := range cfg.Listeners {
+		if len(listener.CorsAllowedOrigins) == 1 && listener.CorsAllowedOrigins[0] == "*" {
+			wildcardListenerNum = listenerNum
+			break
+		}
+	}
+
 	tc := NewTestController(t, &TestControllerOpts{
 		Config:                       cfg,
 		DisableAuthorizationFailures: true,
@@ -256,7 +265,11 @@ func TestHandler_CORS(t *testing.T) {
 
 			// If origin was set and we expect it to be successful, run some more checks
 			if c.origin != "" && c.code == http.StatusOK && c.listenerNum > 1 {
-				assert.Equal(t, c.origin, resp.HttpResponse().Header.Get("Access-Control-Allow-Origin"))
+				expOrigin := c.origin
+				if c.listenerNum == wildcardListenerNum {
+					expOrigin = "*"
+				}
+				assert.Equal(t, expOrigin, resp.HttpResponse().Header.Get("Access-Control-Allow-Origin"))
 				assert.Equal(t, "Origin", resp.HttpResponse().Header.Get("Vary"))
 			}
 		})
