@@ -102,4 +102,30 @@ func TestWorkerTagsASD(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(wcr)
 	assert.Empty(wcr.Item.ApiTags)
+
+	// Test adding the same tag twice
+	inputTags = map[string][]string{"keykey": {"valval"}}
+	wcr, err = workerClient.AddWorkerTags(tc.Context(), wcr.Item.Id, wcr.Item.Version, inputTags)
+	require.NoError(err)
+	require.NotNil(wcr)
+	for k, v := range wcr.Item.ApiTags {
+		for expK, expV := range inputTags {
+			assert.Equal(k, expK)
+			assert.ElementsMatch(v, expV)
+		}
+	}
+	inputTags = map[string][]string{"keykey": {"valval"}}
+	ewcr, err := workerClient.AddWorkerTags(tc.Context(), wcr.Item.Id, wcr.Item.Version, inputTags)
+	require.Error(err)
+	require.Nil(ewcr)
+
+	inputTags = map[string][]string{"invalid_tag": nil}
+	ewcr, err = workerClient.SetWorkerTags(tc.Context(), wcr.Item.Id, wcr.Item.Version, inputTags)
+	require.Error(err)
+	require.Nil(ewcr)
+
+	inputTags = map[string][]string{"non_extant": {"tag"}}
+	ewcr, err = workerClient.RemoveWorkerTags(tc.Context(), wcr.Item.Id, wcr.Item.Version, inputTags)
+	require.Error(err)
+	require.Nil(ewcr)
 }
