@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,10 +13,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
-
 	"github.com/hashicorp/nodeenrollment"
+	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/mr-tron/base58"
+	"google.golang.org/grpc/resolver/manual"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -29,14 +30,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/hashicorp/nodeenrollment/multihop"
-	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/resolver"
-	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -57,14 +54,15 @@ type Worker struct {
 	// This is exported for tests.
 	GrpcClientConn *grpc.ClientConn
 
+	// receives address updates and contains the grpc resolver.
+	addressReceivers []addressReceiver
+
 	sessionManager session.Manager
 
 	controllerStatusConn *atomic.Value
 	everAuthenticated    *ua.Bool
 	lastStatusSuccess    *atomic.Value
 	workerStartTime      time.Time
-
-	controllerResolver *atomic.Value
 
 	controllerMultihopConn *atomic.Value
 
@@ -94,6 +92,7 @@ type Worker struct {
 }
 
 func New(conf *Config) (*Worker, error) {
+	const op = "worker.New"
 	metric.InitializeHttpCollectors(conf.PrometheusRegisterer)
 	metric.InitializeWebsocketCollectors(conf.PrometheusRegisterer)
 	metric.InitializeClusterClientCollectors(conf.PrometheusRegisterer)
@@ -105,7 +104,6 @@ func New(conf *Config) (*Worker, error) {
 		controllerStatusConn:   new(atomic.Value),
 		everAuthenticated:      ua.NewBool(false),
 		lastStatusSuccess:      new(atomic.Value),
-		controllerResolver:     new(atomic.Value),
 		controllerMultihopConn: new(atomic.Value),
 		tags:                   new(atomic.Value),
 		updateTags:             ua.NewBool(false),
@@ -116,7 +114,7 @@ func New(conf *Config) (*Worker, error) {
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
-	w.controllerResolver.Store(controllerResolver)
+	w.addressReceivers = []addressReceiver{&grpcResolverReceiver{controllerResolver}}
 
 	if conf.RawConfig.Worker == nil {
 		conf.RawConfig.Worker = new(config.Worker)
@@ -178,6 +176,12 @@ func (w *Worker) Start() error {
 		return nil
 	}
 
+	extraAddrReceivers, err := extraAddressReceivers(w.baseContext, w)
+	if err != nil {
+		return errors.Wrap(w.baseContext, err, op)
+	}
+	w.addressReceivers = append(w.addressReceivers, extraAddrReceivers...)
+
 	if w.conf.WorkerAuthKms == nil || w.conf.DevUsePkiForUpstream {
 		// In this section, we look for existing worker credentials. The two
 		// variables below store whether to create new credentials and whether
@@ -191,7 +195,7 @@ func (w *Worker) Start() error {
 		w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
 			nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
 		if err != nil {
-			return fmt.Errorf("error loading worker auth storage directory: %w", err)
+			return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error loading worker auth storage directory"))
 		}
 
 		var createNodeAuthCreds bool
@@ -292,17 +296,16 @@ func (w *Worker) Start() error {
 	}
 
 	if err := w.StartControllerConnections(); err != nil {
-		return fmt.Errorf("error making controller connections: %w", err)
+		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error making controller connections"))
 	}
 
-	var err error
 	w.sessionManager, err = session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
 	if err != nil {
-		return fmt.Errorf("error creating session manager: %w", err)
+		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error creating session manager"))
 	}
 
 	if err := w.startListeners(w.sessionManager); err != nil {
-		return fmt.Errorf("error starting worker listeners: %w", err)
+		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error starting worker listeners"))
 	}
 
 	// Rather than deal with some of the potential error conditions for Add on
@@ -312,7 +315,7 @@ func (w *Worker) Start() error {
 	w.tickerWg.Add(2)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext, w.sessionManager)
+		w.startStatusTicking(w.baseContext, w.sessionManager, w.addressReceivers)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
@@ -339,9 +342,6 @@ func (w *Worker) Shutdown() error {
 	// Stop listeners first to prevent new connections to the
 	// controller.
 	defer w.started.Store(false)
-	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
-	w.baseCancel()
-
 	if err := w.stopServersAndListeners(); err != nil {
 		return fmt.Errorf("error stopping worker servers and listeners: %w", err)
 	}
@@ -370,7 +370,9 @@ func (w *Worker) Shutdown() error {
 
 	// Proceed with remainder of shutdown.
 	w.baseCancel()
-	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
+	for _, ar := range w.addressReceivers {
+		ar.SetAddresses(nil)
+	}
 
 	w.started.Store(false)
 	w.tickerWg.Wait()
@@ -381,14 +383,6 @@ func (w *Worker) Shutdown() error {
 	}
 
 	return nil
-}
-
-func (w *Worker) Resolver() *manual.Resolver {
-	raw := w.controllerResolver.Load()
-	if raw == nil {
-		panic("nil resolver")
-	}
-	return raw.(*manual.Resolver)
 }
 
 func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
@@ -407,40 +401,6 @@ func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	}
 	w.tags.Store(tags)
 	w.updateTags.Store(true)
-}
-
-// ControllerServerCoordinationServiceConn returns the underlying server coordination service client
-func (w *Worker) ControllerServerCoordinationServiceConn() (pbs.ServerCoordinationServiceClient, error) {
-	rawConn := w.controllerStatusConn.Load()
-	if rawConn == nil {
-		return nil, errors.New("unable to load controller service coordination service connection")
-	}
-	statusClient, ok := rawConn.(pbs.ServerCoordinationServiceClient)
-	if !ok {
-		return nil, fmt.Errorf("invalid service coordination service client %T", rawConn)
-	}
-	if statusClient == nil {
-		return nil, fmt.Errorf("service coordination service client is nil")
-	}
-
-	return statusClient, nil
-}
-
-// ControllerMultihopConn returns the underlying multihop service client
-func (w *Worker) ControllerMultihopConn() (multihop.MultihopServiceClient, error) {
-	rawConn := w.controllerMultihopConn.Load()
-	if rawConn == nil {
-		return nil, errors.New("unable to load controller multihop service connection")
-	}
-	multihopClient, ok := rawConn.(multihop.MultihopServiceClient)
-	if !ok {
-		return nil, fmt.Errorf("invalid multihop client %T", rawConn)
-	}
-	if multihopClient == nil {
-		return nil, fmt.Errorf("session multihop is nil")
-	}
-
-	return multihopClient, nil
 }
 
 func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
@@ -520,7 +480,7 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 			// Go will not run this without at least one peer certificate, but
 			// doesn't hurt to check
 			if len(cs.PeerCertificates) == 0 {
-				return errors.New("no peer certificates provided")
+				return errors.New(ctx, errors.InvalidParameter, op, "no peer certificates provided")
 			}
 			_, err := cs.PeerCertificates[0].Verify(verifyOpts)
 			return err

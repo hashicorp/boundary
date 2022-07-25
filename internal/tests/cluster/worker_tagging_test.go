@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -60,6 +59,7 @@ func TestWorkerTagging(t *testing.T) {
 	})
 	defer w1.Shutdown()
 	w1Addr := w1.ProxyAddrs()[0]
+	w1.Worker().WaitForNextSuccessfulStatusUpdate()
 
 	// Worker 2
 	conf, err = config.DevWorker()
@@ -77,6 +77,7 @@ func TestWorkerTagging(t *testing.T) {
 	})
 	defer w2.Shutdown()
 	w2Addr := w2.ProxyAddrs()[0]
+	w2.Worker().WaitForNextSuccessfulStatusUpdate()
 
 	// Worker 3
 	conf, err = config.DevWorker()
@@ -95,7 +96,8 @@ func TestWorkerTagging(t *testing.T) {
 	defer w3.Shutdown()
 	w3Addr := w3.ProxyAddrs()[0]
 
-	time.Sleep(10 * time.Second)
+	w3.Worker().WaitForNextSuccessfulStatusUpdate()
+
 	expectWorkers(t, c1, w1, w2, w3)
 
 	cases := []struct {
