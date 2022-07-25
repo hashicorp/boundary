@@ -49,6 +49,7 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 	var retryErrors error
 	var attemptStatus eventlogger.Status
 	info := retryInfo{}
+ATTEMPTS:
 	for attempts := uint(1); ; attempts++ {
 		if attempts > retries+1 {
 			retryErrors = multierror.Append(retryErrors, fmt.Errorf("%s: reached max of %d: %w", op, retries, ErrMaxRetries))
@@ -68,8 +69,13 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 			d := backOff.duration(attempts)
 			info.retries++
 			info.backoff = info.backoff + d
-			time.Sleep(d)
-			continue
+			select {
+			case <-ctx.Done():
+				retryErrors = multierror.Append(retryErrors, ctx.Err())
+				break ATTEMPTS
+			case <-time.After(d):
+				continue
+			}
 		}
 		success = true
 		break
