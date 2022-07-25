@@ -273,6 +273,7 @@ type publicStore struct {
 	CaCert               []byte
 	TlsServerName        string
 	TlsSkipVerify        bool
+	WorkerFilter         string
 	TokenHmac            []byte
 	TokenCreateTime      *timestamp.Timestamp
 	TokenUpdateTime      *timestamp.Timestamp
@@ -300,6 +301,7 @@ func (ps *publicStore) toCredentialStore() *CredentialStore {
 	cs.CaCert = ps.CaCert
 	cs.TlsServerName = ps.TlsServerName
 	cs.TlsSkipVerify = ps.TlsSkipVerify
+	cs.WorkerFilter = ps.WorkerFilter
 
 	if ps.TokenHmac != nil {
 		tk := allocToken()
@@ -333,7 +335,7 @@ func (ps *publicStore) GetPublicId() string { return ps.PublicId }
 //
 // cs must contain a valid PublicId. Only Name, Description, Namespace,
 // TlsServerName, TlsSkipVerify, CaCert, VaultAddress, ClientCertificate,
-// ClientCertificateKey, and Token can be changed. If cs.Name is set to a
+// ClientCertificateKey, workerFilter, and Token can be changed. If cs.Name is set to a
 // non-empty string, it must be unique within cs.ScopeId. If Token is changed,
 // the new token must have the same properties defined in CreateCredentialStore
 // and UpdateCredentialStore calls the same Vault endpoints described in
@@ -368,6 +370,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		case strings.EqualFold(namespaceField, f):
 		case strings.EqualFold(tlsServerNameField, f):
 		case strings.EqualFold(tlsSkipVerifyField, f):
+		case strings.EqualFold(workerFilterField, f):
 		case strings.EqualFold(caCertField, f):
 		case strings.EqualFold(vaultAddressField, f):
 			validateToken = true
@@ -389,6 +392,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			namespaceField:     cs.Namespace,
 			tlsServerNameField: cs.TlsServerName,
 			tlsSkipVerifyField: cs.TlsSkipVerify,
+			workerFilterField:  cs.WorkerFilter,
 			caCertField:        cs.CaCert,
 			vaultAddressField:  cs.VaultAddress,
 			tokenField:         cs.inputToken,

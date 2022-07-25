@@ -229,6 +229,10 @@ func TestCreateVault(t *testing.T) {
 		}
 	}
 
+	// Ensure we're testing the OSS version of this function
+	currentVaultWorkerFilterFn := validateVaultWorkerFilterFn
+	validateVaultWorkerFilterFn = vaultWorkerFilterUnsupported
+
 	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
 	newToken := func() string {
 		_, token := v.CreateToken(t)
@@ -372,6 +376,24 @@ func TestCreateVault(t *testing.T) {
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 						Address: wrapperspb.String(v.Addr),
 						Token:   wrapperspb.String(newToken()),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't specify worker filter",
+			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
+				ScopeId: prj.GetPublicId(),
+				Type:    vault.Subtype.String(),
+				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
+					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
+						Address:           wrapperspb.String(v.Addr),
+						Token:             wrapperspb.String(newToken()),
+						CaCert:            wrapperspb.String(string(v.CaCert)),
+						ClientCertificate: wrapperspb.String(string(v.ClientCert) + string(v.ClientKey)),
+						WorkerFilter:      wrapperspb.String(fmt.Sprintf(`"worker" in "/tags/name"`)),
 					},
 				},
 			}},
@@ -550,6 +572,8 @@ func TestCreateVault(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, cmpOptions...), "CreateCredentialStore(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
+	// Reset VaultWorkerFilterFn
+	validateVaultWorkerFilterFn = currentVaultWorkerFilterFn
 }
 
 func TestCreateStatic(t *testing.T) {
