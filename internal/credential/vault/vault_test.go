@@ -15,13 +15,53 @@ import (
 
 func Test_newClient(t *testing.T) {
 	t.Parallel()
-	t.Run("nilConfig", func(t *testing.T) {
-		assert := assert.New(t)
-		var c *clientConfig
-		client, err := newClient(c)
-		assert.Error(err)
-		assert.Nil(client)
-	})
+	v := NewTestVaultServer(t)
+
+	tests := []struct {
+		name         string
+		wantErr      bool
+		clientConfig *clientConfig
+	}{
+		{
+			name:    "nil-config",
+			wantErr: true,
+		},
+		{
+			name: "empty-addr",
+			clientConfig: &clientConfig{
+				Token: TokenSecret(v.RootToken),
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty-token",
+			clientConfig: &clientConfig{
+				Addr: v.Addr,
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid-config",
+			clientConfig: &clientConfig{
+				Addr:  v.Addr,
+				Token: TokenSecret(v.RootToken),
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			client, err := newClient(tt.clientConfig)
+			if tt.wantErr {
+				require.Error(err)
+				assert.Nil(client)
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(client)
+		})
+	}
 }
 
 func TestClient_RenewToken(t *testing.T) {
