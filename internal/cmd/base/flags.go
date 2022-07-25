@@ -737,7 +737,7 @@ func (s *stringSliceMapValue) Set(val string) error {
 	key := split[0]
 
 	// this loop will never hit the else case if we use SplitN above (and only accept one key per "-tag" input)
-	// TODO: remove or keep extra code below before final merge
+	// TODO: allow removing worker tags by key
 	for i := 1; i <= len(split)-1; i++ {
 		var vals []string
 		var nextKey string
@@ -764,8 +764,9 @@ func (s *stringSliceMapValue) Set(val string) error {
 				return fmt.Errorf("value %q is invalid", vals[i])
 			}
 		}
-
-		(*s.target)[key] = vals
+		for _, v := range vals {
+			(*s.target)[key] = append((*s.target)[key], v)
+		}
 		key = nextKey
 	}
 

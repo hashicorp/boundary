@@ -102,4 +102,7 @@ func TestWorkerTagsASD(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(wcr)
 	assert.Empty(wcr.Item.ApiTags)
+
+	inputTags = map[string][]string{"key": {"value1"}}
+
 }

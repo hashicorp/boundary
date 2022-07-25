@@ -124,12 +124,21 @@ func executeExtraActionsImpl(c *Command, inResp *api.Response, inItem *workers.W
 	switch c.Func {
 	case "add-worker-tags":
 		result, err := workerClient.AddWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-worker-tags":
 		result, err := workerClient.SetWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-worker-tags":
 		result, err := workerClient.RemoveWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	}
 	return inResp, inItem, inItems, inErr
