@@ -104,5 +104,4 @@ func TestWorkerTagsASD(t *testing.T) {
 	assert.Empty(wcr.Item.ApiTags)
 
 	inputTags = map[string][]string{"key": {"value1"}}
-
 }
