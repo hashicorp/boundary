@@ -14,7 +14,6 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"google.golang.org/grpc/resolver"
 )
 
 type LastStatusInformation struct {
@@ -23,7 +22,7 @@ type LastStatusInformation struct {
 	LastCalculatedUpstreams []string
 }
 
-func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager session.Manager) {
+func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager session.Manager, addrReceivers []addressReceiver) {
 	const op = "worker.(Worker).startStatusTicking"
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// This function exists to desynchronize calls to controllers from
@@ -55,7 +54,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager se
 				continue
 			}
 
-			w.sendWorkerStatus(cancelCtx, sessionManager)
+			w.sendWorkerStatus(cancelCtx, sessionManager, addrReceivers)
 			timer.Reset(getRandomInterval())
 		}
 	}
@@ -99,7 +98,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	return nil
 }
 
-func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager) {
+func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager, addressReceivers []addressReceiver) {
 	const op = "worker.(Worker).sendWorkerStatus"
 
 	// First send info as-is. We'll perform cleanup duties after we
@@ -193,15 +192,12 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		}
 	} else {
 		w.updateTags.Store(false)
-		var addrs []resolver.Address
-		var newUpstreams []string
+		var addrs []string
 		// This may be empty if we are in a multiple hop scenario
 		if len(result.CalculatedUpstreams) > 0 {
-			addrs = make([]resolver.Address, 0, len(result.CalculatedUpstreams))
-			newUpstreams = make([]string, 0, len(result.CalculatedUpstreams))
+			addrs = make([]string, 0, len(result.CalculatedUpstreams))
 			for _, v := range result.CalculatedUpstreams {
-				addrs = append(addrs, resolver.Address{Addr: v.Address})
-				newUpstreams = append(newUpstreams, v.Address)
+				addrs = append(addrs, v.Address)
 			}
 
 		} else if w.conf.RawConfig.HcpbClusterId != "" {
@@ -212,27 +208,29 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			if err != nil {
 				event.WriteError(hcpbWorkersCtx, op, err, event.WithInfoMsg("error fetching managed worker information"))
 			} else {
-				addrs = make([]resolver.Address, 0, len(workersResp.Workers))
-				newUpstreams = make([]string, 0, len(workersResp.Workers))
+				addrs = make([]string, 0, len(workersResp.Workers))
 				for _, v := range workersResp.Workers {
-					addrs = append(addrs, resolver.Address{Addr: v.Address})
-					newUpstreams = append(newUpstreams, v.Address)
+					addrs = append(addrs, v.Address)
 				}
 			}
 		}
 		if len(addrs) > 0 {
 			lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
 			// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
-			if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, newUpstreams) {
-				upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, newUpstreams)
+			if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
+				upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, addrs)
 				event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
-				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
+				for _, as := range addressReceivers {
+					as.SetAddresses(addrs)
+				}
 			} else if lastStatus == nil {
-				w.Resolver().UpdateState(resolver.State{Addresses: addrs})
-				event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", newUpstreams))
+				for _, as := range addressReceivers {
+					as.SetAddresses(addrs)
+				}
+				event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", addrs))
 			}
 		}
-		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: newUpstreams})
+		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: addrs})
 
 		for _, request := range result.GetJobsRequests() {
 			switch request.GetRequestType() {
