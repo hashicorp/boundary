@@ -190,7 +190,9 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	}
 
 	// Start routing KMS connections
-	startKmsConnRouter(c, nodeeUnauthedListener, multiplexingAuthedListener, multiplexingReverseGrpcListener)
+	if err := startKmsConnRouter(c.baseContext, c, nodeeUnauthedListener, multiplexingAuthedListener, multiplexingReverseGrpcListener); err != nil {
+		return nil, errors.Wrap(c.baseContext, err, op)
+	}
 
 	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
 	if err != nil {

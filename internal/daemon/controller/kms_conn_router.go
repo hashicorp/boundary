@@ -1,12 +1,14 @@
 package controller
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/daemon/common"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 )
@@ -41,13 +43,23 @@ func (t tempError) Temporary() bool {
 // KMS key. This means that KMS access is a requirement, and simple replay
 // itself is not sufficient.
 func startKmsConnRouter(
+	ctx context.Context,
 	c *Controller,
 	baseLn net.Listener,
 	authedListener,
 	reverseGrpcListener *nodeenet.MultiplexingListener,
-) {
+) error {
 	const op = "controller.startKmsAuthRouter"
-
+	switch {
+	case c == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "nil Controller")
+	case baseLn == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "nil baseLn")
+	case authedListener == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "nil authedListener")
+	case reverseGrpcListener == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "nil reverseGrpcListener")
+	}
 	go func() {
 		for {
 			conn, err := baseLn.Accept()
@@ -59,24 +71,24 @@ func startKmsConnRouter(
 				// Conn may already be closed but can't be sure, so just try anyways
 				if conn != nil {
 					if err := conn.Close(); err != nil {
-						event.WriteError(c.baseContext, op, err, event.WithInfoMsg("error closing worker connection"))
+						event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 					}
 				}
-				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("error accepting kms connection"))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error accepting kms connection"))
 				continue
 			}
 
 			if conn == nil {
 				// No idea why this would happen, but be safe before we operate
 				// on it below
-				event.WriteError(c.baseContext, op, fmt.Errorf("connection is nil"))
+				event.WriteError(ctx, op, fmt.Errorf("connection is nil"))
 				continue
 			}
 
 			tlsConn, ok := conn.(*tls.Conn)
 			if !ok {
 				// This should never happen, but is just to be safe
-				event.WriteError(c.baseContext, op, fmt.Errorf("connection is not a *tls.Conn"))
+				event.WriteError(ctx, op, fmt.Errorf("connection is not a *tls.Conn"))
 				_ = conn.Close()
 				continue
 			}
@@ -84,7 +96,7 @@ func startKmsConnRouter(
 			if !strings.HasPrefix(tlsConn.ConnectionState().NegotiatedProtocol, "v1workerauth") {
 				// If we're here it hasn't been handled by PKI and can't be
 				// handled here. We should never actually get here...
-				event.WriteError(c.baseContext, op, fmt.Errorf("connection is not a kms connection"))
+				event.WriteError(ctx, op, fmt.Errorf("connection is not a kms connection"))
 				_ = conn.Close()
 				continue
 			}
@@ -93,32 +105,32 @@ func startKmsConnRouter(
 			read, err := conn.Read(nonce)
 			if err != nil {
 				if err := conn.Close(); err != nil {
-					event.WriteError(c.baseContext, op, err, event.WithInfoMsg("error closing worker connection"))
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 				}
-				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("error reading nonce from connection"))
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error reading nonce from connection"))
 				continue
 			}
 			if read != len(nonce) {
 				if err := conn.Close(); err != nil {
-					event.WriteError(c.baseContext, op, err, event.WithInfoMsg("error closing worker connection"))
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 				}
-				event.WriteError(c.baseContext, op, fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read))
+				event.WriteError(ctx, op, fmt.Errorf("error reading nonce from worker, expected %d bytes, got %d", 20, read))
 				continue
 			}
 
 			workerInfoRaw, found := c.workerAuthCache.Load(string(nonce))
 			if !found {
 				if err := conn.Close(); err != nil {
-					event.WriteError(c.baseContext, op, err, event.WithInfoMsg("error closing worker connection"))
+					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing worker connection"))
 				}
-				event.WriteError(c.baseContext, op, fmt.Errorf("did not find valid nonce for incoming worker"))
+				event.WriteError(ctx, op, fmt.Errorf("did not find valid nonce for incoming worker"))
 				continue
 			}
 
 			workerInfo := workerInfoRaw.(*workerAuthEntry)
 			workerInfo.conn = tlsConn
 			c.workerAuthCache.Delete(string(nonce))
-			event.WriteSysEvent(c.baseContext, op, "worker successfully authed", "name", workerInfo.Name, "description", workerInfo.Description, "proxy_address", workerInfo.ProxyAddress)
+			event.WriteSysEvent(ctx, op, "worker successfully authed", "name", workerInfo.Name, "description", workerInfo.Description, "proxy_address", workerInfo.ProxyAddress)
 
 			found = false
 			for _, proto := range workerInfo.clientNextProtos {
@@ -136,4 +148,5 @@ func startKmsConnRouter(
 			authedListener.IngressConn(tlsConn, nil)
 		}
 	}()
+	return nil
 }
