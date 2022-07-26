@@ -28,7 +28,8 @@ func TestApplyMigrations(t *testing.T) {
 	ctx := context.Background()
 	m, err := schema.NewManager(ctx, schema.Dialect(dialect), d)
 	require.NoError(t, err)
-	assert.NoError(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	assert.NoError(t, err)
 }
 
 func TestApplyMigrations_NotFromFresh(t *testing.T) {
@@ -48,7 +49,8 @@ func TestApplyMigrations_NotFromFresh(t *testing.T) {
 		schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": 1}),
 	))
 	require.NoError(t, err)
-	assert.NoError(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	assert.NoError(t, err)
 
 	state, err := m.CurrentState(ctx)
 	require.NoError(t, err)
@@ -69,7 +71,8 @@ func TestApplyMigrations_NotFromFresh(t *testing.T) {
 		schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": 3}),
 	))
 	require.NoError(t, err)
-	assert.NoError(t, newM.ApplyMigrations(ctx))
+	_, err = newM.ApplyMigrations(ctx)
+	assert.NoError(t, err)
 	state, err = newM.CurrentState(ctx)
 	require.NoError(t, err)
 	want = &schema.State{

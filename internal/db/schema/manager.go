@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema/internal/log"
 	"github.com/hashicorp/boundary/internal/db/schema/internal/postgres"
 	"github.com/hashicorp/boundary/internal/db/schema/internal/provider"
+	"github.com/hashicorp/boundary/internal/db/schema/migration"
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
@@ -25,10 +26,16 @@ type driver interface {
 	StartRun(context.Context) error
 	// CommitRun commits a transaction, if there is an error it should rollback the transaction.
 	CommitRun(context.Context) error
-	// Run will apply a migration. The io.Reader should provide the SQL
+	// CheckHook is a hook that runs prior to a migration's statements.
+	// It should run in the same transaction a corresponding Run call.
+	CheckHook(context.Context, migration.CheckFunc) (migration.Problems, error)
+	// RepairHook is a hook that runs prior to a migration's statements.
+	// It should run in the same transaction a corresponding Run call.
+	RepairHook(context.Context, migration.RepairFunc) (migration.Repairs, error)
+	// Run will apply a migrations statements. The io.Reader should provide the SQL
 	// statements to execute, and the int is the version for that set of
 	// statements. This should always be wrapped by StartRun and CommitRun.
-	Run(ctx context.Context, migration io.Reader, version int, edition string) error
+	Run(ctx context.Context, statements io.Reader, version int, edition string) error
 	// CurrentState returns the state of the given edition.
 	// ver is the current migration version number as recorded in the database.
 	// A version of -1 indicates no version is set.
@@ -51,10 +58,11 @@ type driver interface {
 // the underlying boundary database schema.
 // Manager is not thread safe.
 type Manager struct {
-	db       *sql.DB
-	driver   driver
-	dialect  string
-	editions edition.Editions
+	db              *sql.DB
+	driver          driver
+	dialect         string
+	editions        edition.Editions
+	selectedRepairs RepairMigrations
 }
 
 // NewManager creates a new schema manager. An error is returned
@@ -65,8 +73,12 @@ func NewManager(ctx context.Context, dialect Dialect, db *sql.DB, opt ...Option)
 	editions.Lock()
 	defer editions.Unlock()
 
-	dbM := Manager{db: db, dialect: string(dialect)}
 	opts := getOpts(opt...)
+	dbM := Manager{
+		db:              db,
+		dialect:         string(dialect),
+		selectedRepairs: opts.withRepairMigrations,
+	}
 	if opts.withEditions != nil {
 		dbM.editions = opts.withEditions
 	} else {
@@ -75,6 +87,7 @@ func NewManager(ctx context.Context, dialect Dialect, db *sql.DB, opt ...Option)
 			dbM.editions = append(dbM.editions, e)
 		}
 	}
+
 	switch dialect {
 	case "postgres":
 		var err error
@@ -156,12 +169,12 @@ func (b *Manager) ExclusiveUnlock(ctx context.Context) error {
 // ApplyMigrations updates the database schema to match the latest version known by
 // the boundary binary.  An error is not returned if the database is already at
 // the most recent version.
-func (b *Manager) ApplyMigrations(ctx context.Context) error {
+func (b *Manager) ApplyMigrations(ctx context.Context) ([]RepairLog, error) {
 	const op = "schema.(Manager).ApplyMigrations"
 
 	// Capturing a lock that this session to the db already possesses is okay.
 	if err := b.driver.Lock(ctx); err != nil {
-		return errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer func() {
 		if err := b.driver.Unlock(ctx); err != nil {
@@ -173,24 +186,28 @@ func (b *Manager) ApplyMigrations(ctx context.Context) error {
 
 	state, err := b.CurrentState(ctx)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	if err = b.runMigrations(ctx, provider.New(state.databaseState(), b.editions)); err != nil {
-		return errors.Wrap(ctx, err, op)
+	logs, err := b.runMigrations(ctx, provider.New(state.databaseState(), b.editions))
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return logs, nil
 }
 
 // runMigrations passes migration queries to a database driver and manages
 // the version and dirty bit. Cancellation or deadline/timeout is managed
 // through the passed in context.
-func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) (err error) {
+func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) ([]RepairLog, error) {
 	const op = "schema.(Manager).runMigrations"
+
+	var logEntries []RepairLog
+	var err error
 
 	if startErr := b.driver.StartRun(ctx); startErr != nil {
 		err = errors.Wrap(ctx, startErr, op)
-		return err
+		return nil, err
 	}
 
 	defer func() {
@@ -201,27 +218,55 @@ func (b *Manager) runMigrations(ctx context.Context, p *provider.Provider) (err 
 
 	if ensureErr := b.driver.EnsureVersionTable(ctx); ensureErr != nil {
 		err = errors.Wrap(ctx, ensureErr, op)
-		return err
+		return nil, err
 	}
 
 	if ensureErr := b.driver.EnsureMigrationLogTable(ctx); ensureErr != nil {
 		err = errors.Wrap(ctx, ensureErr, op)
-		return err
+		return nil, err
 	}
 
 	for p.Next() {
 		select {
 		case <-ctx.Done():
 			err = errors.Wrap(ctx, ctx.Err(), op)
-			return err
+			return nil, err
 		default:
 			// context is not done yet. Continue on to the next query to execute.
 		}
-		if runErr := b.driver.Run(ctx, bytes.NewReader(p.Statements()), p.Version(), p.Edition()); err != nil {
+
+		if h := p.PreHook(); h != nil {
+			problems, err := b.driver.CheckHook(ctx, h.CheckFunc)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+
+			if len(problems) > 0 {
+				if !b.selectedRepairs.IsSet(p.Edition(), p.Version()) {
+					return nil, MigrationCheckError{
+						Version:           p.Version(),
+						Edition:           p.Edition(),
+						Problems:          problems,
+						RepairDescription: h.RepairDescription,
+					}
+				}
+
+				repairs, err := b.driver.RepairHook(ctx, h.RepairFunc)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op)
+				}
+				logEntries = append(logEntries, RepairLog{
+					Version: p.Version(),
+					Edition: p.Edition(),
+					Entry:   repairs,
+				})
+			}
+		}
+		if runErr := b.driver.Run(ctx, bytes.NewReader(p.Statements()), p.Version(), p.Edition()); runErr != nil {
 			err = errors.Wrap(ctx, runErr, op)
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return logEntries, nil
 }

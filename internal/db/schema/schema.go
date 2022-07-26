@@ -32,7 +32,7 @@ func MigrateStore(ctx context.Context, dialect Dialect, url string, opt ...Optio
 		return false, nil
 	}
 
-	if err := sMan.ApplyMigrations(ctx); err != nil {
+	if _, err := sMan.ApplyMigrations(ctx); err != nil {
 		return false, errors.Wrap(ctx, err, op)
 	}
 
