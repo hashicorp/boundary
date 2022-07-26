@@ -16,7 +16,7 @@ import (
 // We expect the database already to be initialized iff initialized is set to true.
 // Returns a cleanup function which must be called even if an error is returned and
 // an error code where a non-zero value indicates an error happened.
-func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initialized bool, maxOpenConns int) (func(), int) {
+func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initialized bool, maxOpenConns int, selectedRepairs schema.RepairMigrations) (func(), int) {
 	noop := func() {}
 	// This database is used to keep an exclusive lock on the database for the
 	// remainder of the command
@@ -30,7 +30,7 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initiali
 		ui.Error(fmt.Sprintf("Unable to connect to the database at %q", u))
 		return noop, 2
 	}
-	man, err := schema.NewManager(ctx, schema.Dialect(dialect), dBase)
+	man, err := schema.NewManager(ctx, schema.Dialect(dialect), dBase, schema.WithRepairMigrations(selectedRepairs))
 	if err != nil {
 		if errors.Match(errors.T(errors.MigrationLock), err) {
 			ui.Error("Unable to capture a lock on the database.")
@@ -62,21 +62,33 @@ func migrateDatabase(ctx context.Context, ui cli.Ui, dialect, u string, initiali
 		ui.Output(base.WrapAtLength("Database has already been initialized. Please use 'boundary database migrate' for any upgrade needs."))
 		return unlock, -1
 	}
-	if err := man.ApplyMigrations(ctx); err != nil {
+	repairLogs, err := man.ApplyMigrations(ctx)
+	if err != nil {
 		ui.Error(fmt.Errorf("Error running database migrations: %w", err).Error())
+		if checkErr, ok := err.(schema.MigrationCheckError); ok {
+			ui.Error(fmt.Sprintf("To automatically repair, use 'boundary database migrate -repair=%s:%d'. This will: %s", checkErr.Edition, checkErr.Version, checkErr.RepairDescription))
+		}
 		return unlock, 2
 	}
 	if base.Format(ui) == "table" {
 		ui.Info("Migrations successfully run.")
 	}
-	migrationLogs, err := man.GetMigrationLog(ctx)
+	if len(repairLogs) > 0 && base.Format(ui) == "table" {
+		ui.Info("Migration Repair logs...")
+		for _, e := range repairLogs {
+			ui.Info(fmt.Sprintf("%s:%d:", e.Edition, e.Version))
+			ui.Info(e.Entry)
+		}
+	}
+
+	logs, err := man.GetMigrationLog(ctx)
 	if err != nil {
 		ui.Error(fmt.Errorf("Error retrieving database migration logs: %w", err).Error())
 		return unlock, 2
 	}
-	if len(migrationLogs) > 0 && base.Format(ui) == "table" {
+	if len(logs) > 0 && base.Format(ui) == "table" {
 		ui.Info("Migration Logs...")
-		for _, e := range migrationLogs {
+		for _, e := range logs {
 			ui.Info(e.Entry)
 		}
 	}

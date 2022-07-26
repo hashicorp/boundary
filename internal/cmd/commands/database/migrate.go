@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
@@ -44,11 +47,14 @@ type MigrateCommand struct {
 	// deferred function on the Run method.
 	configWrapperCleanupFunc func() error
 
+	selectedRepairs schema.RepairMigrations
+
 	flagConfig             string
 	flagConfigKms          string
 	flagLogLevel           string
 	flagLogFormat          string
 	flagMigrationUrl       string
+	flagRepairMigations    []string
 	flagAllowDevMigrations bool
 }
 
@@ -115,6 +121,12 @@ func (c *MigrateCommand) Flags() *base.FlagSets {
 		Name:   "migration-url",
 		Target: &c.flagMigrationUrl,
 		Usage:  `If set, overrides a migration URL set in config, and specifies the URL used to connect to the database for migration. This can allow different permissions for the user running initialization or migration vs. normal operation. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
+	})
+
+	f.StringSliceVar(&base.StringSliceVar{
+		Name:   "repair",
+		Target: &c.flagRepairMigations,
+		Usage:  `Run the repair function for the provided migration version.`,
 	})
 
 	return set
@@ -256,7 +268,15 @@ plugins {
 		return base.CommandUserError
 	}
 
-	clean, errCode := migrateDatabase(c.Context, c.UI, dialect, migrationUrl, true, c.Config.Controller.Database.MaxOpenConnections)
+	clean, errCode := migrateDatabase(
+		c.Context,
+		c.UI,
+		dialect,
+		migrationUrl,
+		true,
+		c.Config.Controller.Database.MaxOpenConnections,
+		c.selectedRepairs,
+	)
 	defer clean()
 	if errCode != 0 {
 		return errCode
@@ -273,6 +293,24 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 	if err = f.Parse(args); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
+	}
+
+	c.selectedRepairs = make(schema.RepairMigrations)
+	for _, r := range c.flagRepairMigations {
+		parts := strings.SplitN(r, ":", 2)
+		if len(parts) != 2 {
+			c.UI.Error(fmt.Sprintf("Error parsing repair option, invalid format: %s", r))
+			return base.CommandUserError
+		}
+
+		edition := parts[0]
+		version, err := strconv.Atoi(parts[1])
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error parsing repair option %s, %s", r, err.Error()))
+			return base.CommandUserError
+		}
+
+		c.selectedRepairs.Add(edition, version)
 	}
 
 	// Validation
