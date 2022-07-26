@@ -1,10 +1,14 @@
 package schema_test
 
 import (
+	"context"
+	"database/sql"
 	"embed"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/db/schema/internal/edition"
+	"github.com/hashicorp/boundary/internal/db/schema/migration"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,12 +28,19 @@ var (
 
 	//go:embed testdata/three
 	three embed.FS
+
+	//go:embed testdata/hooks/initial
+	hooksInitial embed.FS
+
+	//go:embed testdata/hooks/updated
+	hooksUpdated embed.FS
 )
 
 func TestRegisterEditionPanics(t *testing.T) {
 	tests := []struct {
 		name     string
 		editions []testEdition
+		opts     []edition.Option
 	}{
 		{
 			"unsupportedDialect",
@@ -41,6 +52,7 @@ func TestRegisterEditionPanics(t *testing.T) {
 					0,
 				},
 			},
+			nil,
 		},
 		{
 			"duplicateName",
@@ -58,6 +70,7 @@ func TestRegisterEditionPanics(t *testing.T) {
 					1,
 				},
 			},
+			nil,
 		},
 		{
 			"duplicatePriority",
@@ -75,6 +88,29 @@ func TestRegisterEditionPanics(t *testing.T) {
 					0,
 				},
 			},
+			nil,
+		},
+		{
+			"hookWithNoMigration",
+			[]testEdition{
+				{
+					"one",
+					schema.Postgres,
+					one,
+					0,
+				},
+			},
+			[]edition.Option{
+				edition.WithPreHooks(
+					map[int]*migration.Hook{
+						1099: {
+							CheckFunc: func(ctx context.Context, tx *sql.Tx) (migration.Problems, error) {
+								return nil, nil
+							},
+						},
+					},
+				),
+			},
 		},
 	}
 
@@ -82,7 +118,7 @@ func TestRegisterEditionPanics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Panics(t, func() {
 				for _, e := range tt.editions {
-					schema.RegisterEdition(e.name, e.dialect, e.fs, e.priority)
+					schema.RegisterEdition(e.name, e.dialect, e.fs, e.priority, tt.opts...)
 				}
 			}, tt.name)
 		})
