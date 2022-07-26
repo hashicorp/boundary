@@ -16,8 +16,9 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withEditions  edition.Editions
-	withDeleteLog bool
+	withEditions         edition.Editions
+	withDeleteLog        bool
+	withRepairMigrations map[string]map[int]bool
 }
 
 func getDefaultOptions() options {
@@ -35,5 +36,13 @@ func WithEditions(editions edition.Editions) Option {
 func WithDeleteLog(del bool) Option {
 	return func(o *options) {
 		o.withDeleteLog = del
+	}
+}
+
+// WithRepairMigrations provides an option to specify the set of migrations
+// that should run their repair functions if there is a failure on a prehook check.
+func WithRepairMigrations(r RepairMigrations) Option {
+	return func(o *options) {
+		o.withRepairMigrations = r
 	}
 }

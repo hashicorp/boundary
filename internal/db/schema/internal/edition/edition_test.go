@@ -52,7 +52,7 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := edition.New(tt.name, edition.Dialect("postgres"), tt.fs, tt.priority)
+			e := edition.New(tt.name, edition.Dialect("postgres"), tt.fs, tt.priority, nil)
 			assert.Equal(t, e.Name, tt.name, "Name")
 			assert.Equal(t, e.Dialect, edition.Dialect("postgres"), "Dialect")
 			assert.Equal(t, e.LatestVersion, tt.expectedVersion, "Version")
@@ -113,7 +113,7 @@ func TestNewPanics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Panics(t, func() {
-				edition.New(tt.name, edition.Dialect("postgres"), tt.fs, 0)
+				edition.New(tt.name, edition.Dialect("postgres"), tt.fs, 0, nil)
 			}, tt.name)
 		})
 	}

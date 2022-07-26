@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/hashicorp/boundary/internal/db/schema/internal/migration"
 )
 
 // Dialect is a specific SQL language variant. This generally is the same as
@@ -34,7 +36,7 @@ type Edition struct {
 
 	// The set of migrations that should be applied to a database to reach the latest version.
 	// This is a map of schema versions to sql.
-	Migrations map[int][]byte
+	Migrations migration.Migrations
 
 	// Priority is used to determine the order that multiple Editions should be applied.
 	Priority int
@@ -72,9 +74,9 @@ func (e Editions) Sort() {
 //    2/
 //      01_add_new_table.up.sql
 //      02_refactor_views.up.sql
-func New(name string, dialect Dialect, m embed.FS, priority int) Edition {
+func New(name string, dialect Dialect, m embed.FS, priority int, prehook map[int]*migration.Hook) Edition {
 	var largestSchemaVersion int
-	migrations := make(map[int][]byte)
+	migrations := make(migration.Migrations)
 
 	fs.WalkDir(m, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -124,7 +126,12 @@ func New(name string, dialect Dialect, m embed.FS, priority int) Edition {
 		if _, exists := migrations[fullV]; exists {
 			panic(fmt.Sprintf("migration file for version %d already exists", fullV))
 		}
-		migrations[fullV] = []byte(contents)
+		migrations[fullV] = migration.Migration{
+			Edition:    name,
+			Statements: []byte(contents),
+			Version:    fullV,
+			PreHook:    prehook[fullV],
+		}
 
 		return nil
 	})

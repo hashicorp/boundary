@@ -2,12 +2,15 @@ package schema_test
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"sort"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/db/schema/internal/edition"
+	"github.com/hashicorp/boundary/internal/db/schema/internal/migration"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/testing/dbtest"
@@ -57,8 +60,12 @@ func TestCurrentState(t *testing.T) {
 				Name:          "oss",
 				Dialect:       schema.Postgres,
 				LatestVersion: 2,
-				Migrations: map[int][]byte{
-					2: []byte(`select 1`),
+				Migrations: migration.Migrations{
+					2: migration.Migration{
+						Statements: []byte(`select 1`),
+						Edition:    "oss",
+						Version:    2,
+					},
 				},
 				Priority: 0,
 			},
@@ -79,7 +86,8 @@ func TestCurrentState(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, want, s)
 
-	assert.NoError(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	assert.NoError(t, err)
 
 	want = &schema.State{
 		Initialized: true,
@@ -108,7 +116,7 @@ func TestApplyMigration(t *testing.T) {
 		{
 			"oneEdition",
 			edition.Editions{
-				edition.New("one", schema.Postgres, one, 0),
+				edition.New("one", schema.Postgres, one, 0, nil),
 			},
 			false,
 			&schema.State{
@@ -126,8 +134,8 @@ func TestApplyMigration(t *testing.T) {
 		{
 			"twoEditions",
 			edition.Editions{
-				edition.New("one", schema.Postgres, one, 0),
-				edition.New("two", schema.Postgres, two, 1),
+				edition.New("one", schema.Postgres, one, 0, nil),
+				edition.New("two", schema.Postgres, two, 1, nil),
 			},
 			false,
 			&schema.State{
@@ -151,8 +159,8 @@ func TestApplyMigration(t *testing.T) {
 		{
 			"twoEditionsIncorrectPriority",
 			edition.Editions{
-				edition.New("one", schema.Postgres, one, 1),
-				edition.New("two", schema.Postgres, two, 0),
+				edition.New("one", schema.Postgres, one, 1, nil),
+				edition.New("two", schema.Postgres, two, 0, nil),
 			},
 			true,
 			&schema.State{
@@ -176,9 +184,9 @@ func TestApplyMigration(t *testing.T) {
 		{
 			"threeEditions",
 			edition.Editions{
-				edition.New("one", schema.Postgres, one, 0),
-				edition.New("two", schema.Postgres, two, 1),
-				edition.New("three", schema.Postgres, three, 2),
+				edition.New("one", schema.Postgres, one, 0, nil),
+				edition.New("two", schema.Postgres, two, 1, nil),
+				edition.New("three", schema.Postgres, three, 2, nil),
 			},
 			false,
 			&schema.State{
@@ -208,9 +216,9 @@ func TestApplyMigration(t *testing.T) {
 		{
 			"threeEditionsIncorrectPriority",
 			edition.Editions{
-				edition.New("one", schema.Postgres, one, 0),
-				edition.New("two", schema.Postgres, two, 2),
-				edition.New("three", schema.Postgres, three, 1),
+				edition.New("one", schema.Postgres, one, 0, nil),
+				edition.New("two", schema.Postgres, two, 2, nil),
+				edition.New("three", schema.Postgres, three, 1, nil),
 			},
 			true,
 			&schema.State{
@@ -257,9 +265,11 @@ func TestApplyMigration(t *testing.T) {
 			m, err := schema.NewManager(ctx, schema.Dialect(dialect), d, schema.WithEditions(tt.editions))
 			require.NoError(t, err)
 			if tt.expectErr {
-				assert.Error(t, m.ApplyMigrations(ctx))
+				_, err = m.ApplyMigrations(ctx)
+				assert.Error(t, err)
 			} else {
-				assert.NoError(t, m.ApplyMigrations(ctx))
+				_, err = m.ApplyMigrations(ctx)
+				assert.NoError(t, err)
 			}
 
 			s, err := m.CurrentState(ctx)
@@ -268,6 +278,240 @@ func TestApplyMigration(t *testing.T) {
 			assert.ElementsMatch(t, tt.state.Editions, s.Editions)
 
 			if tt.expectErr {
+				assert.False(t, s.MigrationsApplied())
+			} else {
+				assert.True(t, s.MigrationsApplied())
+			}
+		})
+	}
+}
+
+func TestApplyMigrationWithHooks(t *testing.T) {
+	tests := []struct {
+		name       string
+		editions   edition.Editions
+		repairs    schema.RepairMigrations
+		expectErr  error
+		state      *schema.State
+		repairLogs []schema.RepairLog
+	}{
+		{
+			"checkPass",
+			edition.Editions{
+				edition.New(
+					"hooks",
+					schema.Postgres,
+					hooksUpdated,
+					0,
+					map[int]*migration.Hook{
+						1001: {
+							CheckFunc: func(ctx context.Context, tx *sql.Tx) error {
+								return nil
+							},
+						},
+					},
+				),
+			},
+			nil,
+			nil,
+			&schema.State{
+				Initialized: true,
+				Editions: []schema.EditionState{
+					{
+						Name:                  "hooks",
+						BinarySchemaVersion:   1001,
+						DatabaseSchemaVersion: 1001,
+						DatabaseSchemaState:   schema.Equal,
+					},
+				},
+			},
+			nil,
+		},
+		{
+			"checkFailure",
+			edition.Editions{
+				edition.New(
+					"hooks",
+					schema.Postgres,
+					hooksUpdated,
+					0,
+					map[int]*migration.Hook{
+						1001: {
+							CheckFunc: func(ctx context.Context, tx *sql.Tx) error {
+								return fmt.Errorf("failed")
+							},
+							RepairDescription: "repair all the things",
+						},
+					},
+				),
+			},
+			nil,
+			schema.MigrationCheckError{
+				Version:           1001,
+				Edition:           "hooks",
+				Err:               fmt.Errorf("failed"),
+				RepairDescription: "repair all the things",
+			},
+			&schema.State{
+				Initialized: true,
+				Editions: []schema.EditionState{
+					{
+						Name:                  "hooks",
+						BinarySchemaVersion:   1001,
+						DatabaseSchemaVersion: 1,
+						DatabaseSchemaState:   schema.Behind,
+					},
+				},
+			},
+			nil,
+		},
+		{
+			"repair",
+			edition.Editions{
+				edition.New(
+					"hooks",
+					schema.Postgres,
+					hooksUpdated,
+					0,
+					map[int]*migration.Hook{
+						1001: {
+							CheckFunc: func(ctx context.Context, tx *sql.Tx) error {
+								return fmt.Errorf("failed")
+							},
+							RepairFunc: func(ctx context.Context, tx *sql.Tx) (string, error) {
+								return "repaired all the things", nil
+							},
+						},
+					},
+				),
+			},
+			schema.RepairMigrations{
+				"hooks": map[int]bool{
+					1001: true,
+				},
+			},
+			nil,
+			&schema.State{
+				Initialized: true,
+				Editions: []schema.EditionState{
+					{
+						Name:                  "hooks",
+						BinarySchemaVersion:   1001,
+						DatabaseSchemaVersion: 1001,
+						DatabaseSchemaState:   schema.Equal,
+					},
+				},
+			},
+			[]schema.RepairLog{
+				{
+					Edition: "hooks",
+					Version: 1001,
+					Entry:   "repaired all the things",
+				},
+			},
+		},
+		{
+			"repairRequestNoRepairFunc",
+			edition.Editions{
+				edition.New(
+					"hooks",
+					schema.Postgres,
+					hooksUpdated,
+					0,
+					map[int]*migration.Hook{
+						1001: {
+							CheckFunc: func(ctx context.Context, tx *sql.Tx) error {
+								return fmt.Errorf("failed")
+							},
+						},
+					},
+				),
+			},
+			schema.RepairMigrations{
+				"hooks": map[int]bool{
+					1001: true,
+				},
+			},
+			fmt.Errorf("schema.(Manager).runMigrations: postgres.(Postgres).RepairHook: no repair function: integrity violation: error #2000"),
+			&schema.State{
+				Initialized: true,
+				Editions: []schema.EditionState{
+					{
+						Name:                  "hooks",
+						BinarySchemaVersion:   1001,
+						DatabaseSchemaVersion: 1,
+						DatabaseSchemaState:   schema.Behind,
+					},
+				},
+			},
+			nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dialect := dbtest.Postgres
+
+			c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
+			t.Cleanup(func() {
+				if err := c(); err != nil {
+					t.Fatalf("Got error at cleanup: %v", err)
+				}
+			})
+			require.NoError(t, err)
+			ctx := context.Background()
+			d, err := common.SqlOpen(dialect, u)
+			require.NoError(t, err)
+
+			m, err := schema.NewManager(
+				ctx,
+				schema.Dialect(dialect),
+				d,
+				schema.WithEditions(
+					edition.Editions{
+						edition.New(
+							"hooks",
+							schema.Postgres,
+							hooksInitial,
+							0,
+							nil,
+						),
+					},
+				),
+			)
+			require.NoError(t, err)
+			logs, err := m.ApplyMigrations(ctx)
+			assert.NoError(t, err)
+			assert.Empty(t, logs)
+
+			m, err = schema.NewManager(
+				ctx,
+				schema.Dialect(dialect),
+				d,
+				schema.WithEditions(tt.editions),
+				schema.WithRepairMigrations(tt.repairs),
+			)
+			require.NoError(t, err)
+
+			logs, err = m.ApplyMigrations(ctx)
+			if tt.expectErr != nil {
+				assert.EqualError(t, tt.expectErr, err.Error())
+				if want, ok := tt.expectErr.(schema.MigrationCheckError); ok {
+					got, ok := err.(schema.MigrationCheckError)
+					assert.True(t, ok, "not a schema.MigrationCheckError")
+					assert.Equal(t, want, got)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.ElementsMatch(t, tt.repairLogs, logs)
+
+			s, err := m.CurrentState(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, tt.state.Initialized, s.Initialized)
+			assert.ElementsMatch(t, tt.state.Editions, s.Editions)
+
+			if tt.expectErr != nil {
 				assert.False(t, s.MigrationsApplied())
 			} else {
 				assert.True(t, s.MigrationsApplied())
@@ -293,7 +537,8 @@ func TestApplyMigration_canceledContext(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	cancel()
-	assert.Error(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	assert.Error(t, err)
 }
 
 func TestApplyMigrations_BadSQL(t *testing.T) {
@@ -315,15 +560,20 @@ func TestApplyMigrations_BadSQL(t *testing.T) {
 				Name:          "oss",
 				Dialect:       schema.Postgres,
 				LatestVersion: 1,
-				Migrations: map[int][]byte{
-					1: []byte(`select 1 from nonexistanttable;`),
+				Migrations: migration.Migrations{
+					2: migration.Migration{
+						Statements: []byte(`select 1 from nonexistanttable;`),
+						Edition:    "oss",
+						Version:    2,
+					},
 				},
 				Priority: 0,
 			},
 		},
 	))
 	require.NoError(t, err)
-	assert.Error(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	assert.Error(t, err)
 
 	state, err := m.CurrentState(ctx)
 	require.NoError(t, err)
@@ -409,7 +659,8 @@ func Test_GetMigrationLog(t *testing.T) {
 	require.NoError(t, err)
 	m, err := schema.NewManager(ctx, schema.Dialect(dialect), d)
 	require.NoError(t, err)
-	require.NoError(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(t, err)
 
 	const insert = `insert into log_migration(entry, edition) values ($1, $2)`
 	createEntries := func(entries ...string) {

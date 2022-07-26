@@ -37,6 +37,7 @@ import (
 	"io/ioutil"
 
 	"github.com/hashicorp/boundary/internal/db/schema/internal/log"
+	"github.com/hashicorp/boundary/internal/db/schema/internal/migration"
 	"github.com/hashicorp/boundary/internal/db/schema/migrations"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-multierror"
@@ -157,6 +158,34 @@ func (p *Postgres) StartRun(ctx context.Context) error {
 	return nil
 }
 
+// CheckHook is a hook that runs prior to a migration's statements.
+// It should run in the same transaction a corresponding Run call.
+func (p *Postgres) CheckHook(ctx context.Context, f migration.CheckFunc) error {
+	const op = "postgres.(Postgres).CheckHook"
+	if p.tx == nil {
+		return errors.New(ctx, errors.MigrationIntegrity, op, "no pending transaction")
+	}
+	if f == nil {
+		return errors.New(ctx, errors.MigrationIntegrity, op, "no check function")
+	}
+	return f(ctx, p.tx)
+}
+
+// RepairHook is a hook that runs prior to a migration's statments.
+// It should run in the same transaction a corresponding Run call.
+func (p *Postgres) RepairHook(ctx context.Context, f migration.RepairFunc) (string, error) {
+	const op = "postgres.(Postgres).RepairHook"
+
+	if p.tx == nil {
+		return "", errors.New(ctx, errors.MigrationIntegrity, op, "no pending transaction")
+	}
+
+	if f == nil {
+		return "", errors.New(ctx, errors.MigrationIntegrity, op, "no repair function")
+	}
+	return f(ctx, p.tx)
+}
+
 // CommitRun commits a transaction, if there is an error it should rollback the transaction.
 func (p *Postgres) CommitRun(ctx context.Context) error {
 	const op = "postgres.(Postgres).CommitRun"
@@ -198,7 +227,7 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int, ed
 		return errors.Wrap(ctx, err, op)
 	}
 
-	if _, err := p.conn.ExecContext(ctx, query); err != nil {
+	if _, err := p.tx.ExecContext(ctx, query); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			var line uint
 			var col uint

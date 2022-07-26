@@ -7,20 +7,15 @@ import (
 	"sort"
 
 	"github.com/hashicorp/boundary/internal/db/schema/internal/edition"
+	"github.com/hashicorp/boundary/internal/db/schema/internal/migration"
 )
 
 const nilVersion = -1
 
-type migration struct {
-	version    int
-	edition    string
-	statements []byte
-}
-
 // Provider provides the migrations to the schema.Manager in the correct order.
 type Provider struct {
 	pos        int
-	migrations []migration
+	migrations []migration.Migration
 }
 
 // DatabaseState is a map of edition names to versions.
@@ -37,7 +32,7 @@ func New(dbState DatabaseState, editions edition.Editions) *Provider {
 	// ensure editions in priority order
 	editions.Sort()
 
-	allMigrations := make([]migration, 0)
+	allMigrations := make([]migration.Migration, 0)
 
 	for _, e := range editions {
 		dbVer, ok := dbState[e.Name]
@@ -45,19 +40,15 @@ func New(dbState DatabaseState, editions edition.Editions) *Provider {
 			dbVer = nilVersion
 		}
 
-		migrations := make([]migration, 0, len(e.Migrations))
-		for ver, statements := range e.Migrations {
+		migrations := make([]migration.Migration, 0, len(e.Migrations))
+		for ver, m := range e.Migrations {
 			if ver > dbVer {
-				migrations = append(migrations, migration{
-					version:    ver,
-					edition:    e.Name,
-					statements: statements,
-				})
+				migrations = append(migrations, m)
 			}
 		}
 
 		sort.SliceStable(migrations, func(i, j int) bool {
-			return migrations[i].version < migrations[j].version
+			return migrations[i].Version < migrations[j].Version
 		})
 
 		allMigrations = append(allMigrations, migrations...)
@@ -80,7 +71,7 @@ func (p *Provider) Version() int {
 	if p.pos < 0 || p.pos >= len(p.migrations) {
 		return -1
 	}
-	return p.migrations[p.pos].version
+	return p.migrations[p.pos].Version
 }
 
 // Edition returns the edition name for the current migration.
@@ -88,7 +79,7 @@ func (p *Provider) Edition() string {
 	if p.pos < 0 || p.pos >= len(p.migrations) {
 		return ""
 	}
-	return p.migrations[p.pos].edition
+	return p.migrations[p.pos].Edition
 }
 
 // Statements returns the sql statements name for the current migration.
@@ -96,5 +87,13 @@ func (p *Provider) Statements() []byte {
 	if p.pos < 0 || p.pos >= len(p.migrations) {
 		return nil
 	}
-	return p.migrations[p.pos].statements
+	return p.migrations[p.pos].Statements
+}
+
+// PreHook returns the hooks that should be run prior to the current migration.
+func (p *Provider) PreHook() *migration.Hook {
+	if p.pos < 0 || p.pos >= len(p.migrations) {
+		return nil
+	}
+	return p.migrations[p.pos].PreHook
 }

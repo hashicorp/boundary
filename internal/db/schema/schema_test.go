@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/db/schema/internal/edition"
+	"github.com/hashicorp/boundary/internal/db/schema/internal/migration"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,8 +28,12 @@ func TestMigrateStore(t *testing.T) {
 				Name:          "oss",
 				Dialect:       schema.Postgres,
 				LatestVersion: 1,
-				Migrations: map[int][]byte{
-					1: []byte(`select 1`),
+				Migrations: migration.Migrations{
+					1: migration.Migration{
+						Statements: []byte(`select 1`),
+						Version:    1,
+						Edition:    "oss",
+					},
 				},
 				Priority: 0,
 			},
@@ -43,8 +48,12 @@ func TestMigrateStore(t *testing.T) {
 				Name:          "oss",
 				Dialect:       schema.Postgres,
 				LatestVersion: 1,
-				Migrations: map[int][]byte{
-					2: []byte(`select 1`),
+				Migrations: migration.Migrations{
+					2: migration.Migration{
+						Statements: []byte(`select 1`),
+						Version:    2,
+						Edition:    "oss",
+					},
 				},
 				Priority: 0,
 			},
@@ -59,9 +68,17 @@ func TestMigrateStore(t *testing.T) {
 				Name:          "oss",
 				Dialect:       schema.Postgres,
 				LatestVersion: 2,
-				Migrations: map[int][]byte{
-					1: []byte(`select 1`),
-					2: []byte(`select 1`),
+				Migrations: migration.Migrations{
+					1: migration.Migration{
+						Statements: []byte(`select 1`),
+						Version:    1,
+						Edition:    "oss",
+					},
+					2: migration.Migration{
+						Statements: []byte(`select 1`),
+						Version:    2,
+						Edition:    "oss",
+					},
 				},
 				Priority: 0,
 			},
@@ -75,9 +92,17 @@ func TestMigrateStore(t *testing.T) {
 				Name:          "oss",
 				Dialect:       schema.Postgres,
 				LatestVersion: 2,
-				Migrations: map[int][]byte{
-					1: []byte(`select 1`),
-					2: []byte(`select 1`),
+				Migrations: migration.Migrations{
+					1: migration.Migration{
+						Statements: []byte(`select 1`),
+						Version:    1,
+						Edition:    "oss",
+					},
+					2: migration.Migration{
+						Statements: []byte(`select 1`),
+						Version:    2,
+						Edition:    "oss",
+					},
 				},
 				Priority: 0,
 			},

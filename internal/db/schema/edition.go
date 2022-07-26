@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/db/schema/internal/edition"
+	"github.com/hashicorp/boundary/internal/db/schema/internal/migration"
 )
 
 // Dialect is same as edition.Dialect
@@ -36,7 +37,7 @@ var editions = dialects{
 // - An unsupported dialect is provided.
 // - The same (dialect, name) is registered.
 // - The same (dialect, priority) is registered.
-func RegisterEdition(name string, dialect Dialect, fs embed.FS, priority int) {
+func RegisterEdition(name string, dialect Dialect, fs embed.FS, priority int, prehook map[int]*migration.Hook) {
 	editions.Lock()
 	defer editions.Unlock()
 
@@ -61,7 +62,7 @@ func RegisterEdition(name string, dialect Dialect, fs embed.FS, priority int) {
 		}
 	}
 
-	e = append(e, edition.New(name, dialect, fs, priority))
+	e = append(e, edition.New(name, dialect, fs, priority, prehook))
 	e.Sort()
 
 	editions.m[dialect] = e

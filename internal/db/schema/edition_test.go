@@ -24,6 +24,12 @@ var (
 
 	//go:embed testdata/three
 	three embed.FS
+
+	//go:embed testdata/hooks/initial
+	hooksInitial embed.FS
+
+	//go:embed testdata/hooks/updated
+	hooksUpdated embed.FS
 )
 
 func TestRegisterEditionPanics(t *testing.T) {
@@ -82,7 +88,7 @@ func TestRegisterEditionPanics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Panics(t, func() {
 				for _, e := range tt.editions {
-					schema.RegisterEdition(e.name, e.dialect, e.fs, e.priority)
+					schema.RegisterEdition(e.name, e.dialect, e.fs, e.priority, nil)
 				}
 			}, tt.name)
 		})
@@ -152,7 +158,7 @@ func TestRegisterEdition(t *testing.T) {
 			assert.NotPanics(t, func() {
 				schema.TestClearEditions(t)
 				for _, e := range tt.editions {
-					schema.RegisterEdition(e.name, e.dialect, e.fs, e.priority)
+					schema.RegisterEdition(e.name, e.dialect, e.fs, e.priority, nil)
 				}
 			}, tt.name)
 		})
