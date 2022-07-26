@@ -164,12 +164,21 @@ func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *hosts
 	switch c.Func {
 	case "add-hosts":
 		result, err := hostsetClient.AddHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-hosts":
 		result, err := hostsetClient.RemoveHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-hosts":
 		result, err := hostsetClient.SetHosts(c.Context, c.FlagId, version, c.flagHosts, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	}
 	return origResp, origItem, origItems, origError
