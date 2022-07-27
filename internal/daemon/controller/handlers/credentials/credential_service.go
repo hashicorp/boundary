@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
@@ -24,6 +25,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -32,12 +34,14 @@ const (
 	passwordField             = "attributes.password"
 	privateKeyField           = "attributes.private_key"
 	privateKeyPassphraseField = "attributes.private_key_passphrase"
+	objectField               = "attributes.object"
 	domain                    = "credential"
 )
 
 var (
-	upMaskManager  handlers.MaskManager
-	spkMaskManager handlers.MaskManager
+	upMaskManager   handlers.MaskManager
+	spkMaskManager  handlers.MaskManager
+	jsonMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -64,6 +68,10 @@ func init() {
 	}
 	if spkMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.SshPrivateKeyCredential{}},
 		handlers.MaskSource{&pb.Credential{}, &pb.SshPrivateKeyAttributes{}}); err != nil {
+		panic(err)
+	}
+	if jsonMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.JsonCredential{}},
+		handlers.MaskSource{&pb.Credential{}, &pb.JsonAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -360,6 +368,23 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
+	case credential.JsonSubtype.String():
+		cred, err := toJsonStorageCredential(ctx, item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, err := repo.CreateJsonCredential(ctx, scopeId, cred)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential"))
+		}
+		if out == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
+		}
+		return out, nil
 	default:
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, fmt.Sprintf("Unsupported credential type %q", item.GetType()))
 	}
@@ -427,6 +452,30 @@ func (s Service) updateInRepo(
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		out, rowsUpdated, err := repo.UpdateSshPrivateKeyCredential(ctx, scopeId, cred, item.GetVersion(), dbMasks)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential"))
+		}
+		if rowsUpdated == 0 {
+			return nil, handlers.NotFoundErrorf("Credential %q doesn't exist or incorrect version provided.", id)
+		}
+		return out, nil
+
+	case credential.JsonSubtype:
+		dbMasks = append(dbMasks, jsonMaskManager.Translate(masks, "attributes", "object")...)
+		if len(dbMasks) == 0 {
+			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		}
+
+		cred, err := toJsonStorageCredential(ctx, storeId, in)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert to json storage credential"))
+		}
+		cred.PublicId = id
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		out, rowsUpdated, err := repo.UpdateJsonCredential(ctx, scopeId, cred, item.GetVersion(), dbMasks)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential"))
 		}
@@ -527,6 +576,8 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 			out.Type = credential.UsernamePasswordSubtype.String()
 		case *static.SshPrivateKeyCredential:
 			out.Type = credential.SshPrivateKeySubtype.String()
+		case *static.JsonCredential:
+			out.Type = credential.JsonSubtype.String()
 		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -568,6 +619,14 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 					Username:                 wrapperspb.String(cred.GetUsername()),
 					PrivateKeyHmac:           base64.RawURLEncoding.EncodeToString(cred.GetPrivateKeyHmac()),
 					PrivateKeyPassphraseHmac: base64.RawURLEncoding.EncodeToString(cred.GetPrivateKeyPassphraseHmac()),
+				},
+			}
+		}
+	case *static.JsonCredential:
+		if outputFields.Has(globals.AttributesField) {
+			out.Attrs = &pb.Credential_JsonAttributes{
+				JsonAttributes: &pb.JsonAttributes{
+					ObjectHmac: base64.RawURLEncoding.EncodeToString(cred.GetObjectHmac()),
 				},
 			}
 		}
@@ -625,6 +684,38 @@ func toSshPrivateKeyStorageCredential(ctx context.Context, storeId string, in *p
 	return cs, err
 }
 
+func toJsonStorageCredential(ctx context.Context, storeId string, in *pb.Credential) (out *static.JsonCredential, err error) {
+	const op = "credentials.toJsonStorageCredential"
+	var opts []static.Option
+	if in.GetName() != nil {
+		opts = append(opts, static.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, static.WithDescription(in.GetDescription().GetValue()))
+	}
+
+	attrs := in.GetJsonAttributes()
+	object := attrs.GetObject()
+	if object == nil {
+		object, err = structpb.NewStruct(map[string]interface{}{})
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential"))
+		}
+	}
+	cs, err := static.NewJsonCredential(
+		ctx,
+		storeId,
+		credential.JsonObject{
+			*object,
+		},
+		opts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential"))
+	}
+
+	return cs, err
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //   - The path passed in is correctly formatted
@@ -637,6 +728,7 @@ func validateGetRequest(req *pbs.GetCredentialRequest) error {
 		credential.UsernamePasswordCredentialPrefix,
 		credential.PreviousUsernamePasswordCredentialPrefix,
 		credential.SshPrivateKeyCredentialPrefix,
+		credential.JsonCredentialPrefix,
 	)
 }
 
@@ -683,6 +775,18 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 						}
 					}
 				}
+			}
+
+		case credential.JsonSubtype.String():
+			object := req.GetItem().GetJsonAttributes().GetObject()
+			if object == nil && len(object.AsMap()) <= 0 {
+				badFields[objectField] = "Field required for creating a json credential."
+			}
+			objectBytes, err := json.Marshal(object)
+			if err != nil {
+				badFields[objectField] = "Unable to parse given json value"
+			} else if len(objectBytes) <= 0 {
+				badFields[objectField] = "Field required for creating a json credential."
 			}
 
 		default:
@@ -738,6 +842,21 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 				}
 			}
 
+		case credential.JsonSubtype:
+			object := req.GetItem().GetJsonAttributes().GetObject()
+			if object != nil {
+				objectBytes, err := json.Marshal(object.AsMap())
+				if err != nil {
+					badFields[objectField] = "Unable to parse given json value"
+				}
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), objectField) && len(objectBytes) <= 0 {
+					badFields[objectField] = "This is a required field and cannot be set to empty."
+				}
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), objectField) && object == nil {
+				badFields[objectField] = "This is a required field and cannot be set to empty."
+			}
+
 		default:
 			badFields[globals.IdField] = "Unknown credential type."
 		}
@@ -747,6 +866,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 		credential.UsernamePasswordCredentialPrefix,
 		credential.PreviousUsernamePasswordCredentialPrefix,
 		credential.SshPrivateKeyCredentialPrefix,
+		credential.JsonCredentialPrefix,
 	)
 }
 
@@ -757,6 +877,7 @@ func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
 		credential.UsernamePasswordCredentialPrefix,
 		credential.PreviousUsernamePasswordCredentialPrefix,
 		credential.SshPrivateKeyCredentialPrefix,
+		credential.JsonCredentialPrefix,
 	)
 }
 

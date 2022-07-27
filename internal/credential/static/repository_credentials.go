@@ -27,10 +27,15 @@ func (r *Repository) Retrieve(ctx context.Context, projectId string, ids []strin
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+	var jsonCreds []*JsonCredential
+	err = r.reader.SearchWhere(ctx, &jsonCreds, "public_id in (?)", []interface{}{ids})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 
-	if len(upCreds)+len(spkCreds) != len(ids) {
+	if len(upCreds)+len(spkCreds)+len(jsonCreds) != len(ids) {
 		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
-			fmt.Sprintf("mismatch between creds and number of ids requested, expected %d got %d", len(ids), len(upCreds)+len(spkCreds)))
+			fmt.Sprintf("mismatch between creds and number of ids requested, expected %d got %d", len(ids), len(upCreds)+len(spkCreds)+len(jsonCreds)))
 	}
 
 	out := make([]credential.Static, 0, len(ids))
@@ -48,6 +53,19 @@ func (r *Repository) Retrieve(ctx context.Context, projectId string, ids []strin
 	}
 
 	for _, c := range spkCreds {
+		// decrypt credential
+		databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+		}
+		if err := c.decrypt(ctx, databaseWrapper); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		out = append(out, c)
+	}
+
+	for _, c := range jsonCreds {
 		// decrypt credential
 		databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 		if err != nil {

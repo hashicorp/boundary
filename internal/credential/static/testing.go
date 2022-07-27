@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/credential"
@@ -10,6 +11,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -63,6 +65,21 @@ do/lpv8N1+5Eb3lOB3DrqcEqRwXzSQcO2QcpikNSHyPquGR689I3xUm6kWmpKs49aacTUx
 -----END OPENSSH PRIVATE KEY-----
 `
 )
+
+// TestJsonObject returns a json object and it's marshalled format to be used for testing
+func TestJsonObject() (credential.JsonObject, []byte, error) {
+	object := credential.JsonObject{
+		structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"username": structpb.NewStringValue("user"),
+				"password": structpb.NewStringValue("password"),
+				"hash":     structpb.NewStringValue("1234567890"),
+			},
+		},
+	}
+	b, err := json.Marshal(object.AsMap())
+	return object, b, err
+}
 
 // TestCredentialStore creates a static credential store in the provided DB with
 // the provided project id and any values passed in through the Options vars.
@@ -259,6 +276,79 @@ func TestSshPrivateKeyCredentials(
 	creds := make([]*SshPrivateKeyCredential, 0, count)
 	for i := 0; i < count; i++ {
 		creds = append(creds, TestSshPrivateKeyCredential(t, conn, wrapper, username, privateKey, storeId, projectId))
+	}
+	return creds
+}
+
+// TestJsonCredential creates a json credential in the
+// provided DB with the provided scope and any values passed in. If any
+// errors are encountered during the creation of the store, the test will fail.
+func TestJsonCredential(
+	t testing.TB,
+	conn *db.DB,
+	wrapper wrapping.Wrapper,
+	storeId, scopeId string,
+	object credential.JsonObject,
+	opt ...Option,
+) *JsonCredential {
+	t.Helper()
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	w := db.New(conn)
+
+	opts := getOpts(opt...)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	assert.NoError(t, err)
+	require.NotNil(t, databaseWrapper)
+
+	cred, err := NewJsonCredential(ctx, storeId, object, opt...)
+	require.NoError(t, err)
+	require.NotNil(t, cred)
+
+	id := opts.withPublicId
+	if id == "" {
+		id, err = credential.NewJsonCredentialId(ctx)
+		require.NoError(t, err)
+	}
+	cred.PublicId = id
+
+	err = cred.encrypt(ctx, databaseWrapper)
+	require.NoError(t, err)
+
+	_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, iw db.Writer) error {
+			require.NoError(t, iw.Create(ctx, cred))
+			return nil
+		},
+	)
+	require.NoError(t, err2)
+
+	return cred
+}
+
+// TestJsonCredentials creates count number of json
+// credentials in the provided DB with the provided scope id. If any errors are
+// encountered during the creation of the credentials, the test will fail.
+func TestJsonCredentials(
+	t testing.TB,
+	conn *db.DB,
+	wrapper wrapping.Wrapper,
+	storeId, scopeId string,
+	object credential.JsonObject,
+	count int,
+) []*JsonCredential {
+	t.Helper()
+	ctx := context.Background()
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	assert.NoError(t, err)
+	require.NotNil(t, databaseWrapper)
+
+	creds := make([]*JsonCredential, 0, count)
+	for i := 0; i < count; i++ {
+		creds = append(creds, TestJsonCredential(t, conn, wrapper, storeId, scopeId, object))
 	}
 	return creds
 }

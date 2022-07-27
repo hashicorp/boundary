@@ -416,6 +416,11 @@ begin;
     values
       ('cs______wup1', 'cred____wup1', 'widget static username password credential', 'None',      'b_user', 'encrypted_password', 'hmac-value', 'kdkv___widget'),
       ('cs______wup2', 'cred____wup2', 'widget static username password credential', 'None',      's_user', 'encrypted_password', 'hmac-value', 'kdkv___widget');
+
+    insert into credential_static_json_credential
+      (store_id,       public_id,      name,                          description, object_encrypted,   object_hmac,  key_id)
+    values
+      ('cs______wup1', 'cred____wjson1', 'widget static json credential', 'None',      'json_value'::bytea, 'hmac-value', 'kdkv___widget');
   end;
   $$ language plpgsql;
 
