@@ -736,8 +736,9 @@ func (s *stringSliceMapValue) Set(val string) error {
 
 	key := split[0]
 
-	// this loop will never hit the else case if we use SplitN above (and only accept one key per "-tag" input)
-	// TODO: allow removing worker tags by key
+	// This loop does not hit the else case because `split` is always returned as a tuple by `SplitN`.
+	// Regardless, the code below is useful to have in the case where we ever need to enter multiple tags
+	// with different key values (e.g. "t1=v1, t2=v2,v3, t3=v4") in one string as an input
 	for i := 1; i <= len(split)-1; i++ {
 		var vals []string
 		var nextKey string
