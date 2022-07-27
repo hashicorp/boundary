@@ -13,6 +13,7 @@ project "boundary" {
 
     release_branches = [
       "main",
+      "release-mods"
     ]
   }
 }
