@@ -178,9 +178,15 @@ func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *accou
 	switch c.Func {
 	case "set-password":
 		result, err := accountClient.SetPassword(c.Context, c.FlagId, c.flagPassword, version, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "change-password":
 		result, err := accountClient.ChangePassword(c.Context, c.FlagId, c.flagCurrentPassword, c.flagNewPassword, version, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	}
 	return origResp, origItem, origItems, origError

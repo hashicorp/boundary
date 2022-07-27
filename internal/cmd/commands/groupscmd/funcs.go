@@ -132,12 +132,21 @@ func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *group
 	switch c.Func {
 	case "add-members":
 		result, err := groupClient.AddMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-members":
 		result, err := groupClient.SetMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-members":
 		result, err := groupClient.RemoveMembers(c.Context, c.FlagId, version, c.flagMembers, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	}
 	return origResp, origItem, origItems, origError
