@@ -336,24 +336,24 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 		prjCs := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 		orgCs := TestCredentialStore(t, conn, wrapper, org.GetPublicId())
 
-		in, err := NewUsernamePasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("original"))
+		in, err := NewSshPrivateKeyCredential(ctx, prjCs.GetPublicId(), "user", credential.PrivateKey(TestSshPrivateKeyPem), WithName("my-name"), WithDescription("original"))
 		assert.NoError(err)
 
-		got, err := repo.CreateUsernamePasswordCredential(ctx, prj.PublicId, in)
+		got, err := repo.CreateSshPrivateKeyCredential(ctx, prj.PublicId, in)
 		require.NoError(err)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 
-		in2, err := NewUsernamePasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		in2, err := NewSshPrivateKeyCredential(ctx, prjCs.GetPublicId(), "user", credential.PrivateKey(TestSshPrivateKeyPem), WithName("my-name"), WithDescription("different"))
 		require.NoError(err)
-		got2, err := repo.CreateUsernamePasswordCredential(ctx, prj.GetPublicId(), in2)
+		got2, err := repo.CreateSshPrivateKeyCredential(ctx, prj.GetPublicId(), in2)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 
 		// Creating credential in different scope should not conflict
-		in3, err := NewUsernamePasswordCredential(orgCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		in3, err := NewSshPrivateKeyCredential(ctx, orgCs.GetPublicId(), "user", credential.PrivateKey(TestSshPrivateKeyPem), WithName("my-name"), WithDescription("different"))
 		require.NoError(err)
-		got3, err := repo.CreateUsernamePasswordCredential(ctx, org.GetPublicId(), in3)
+		got3, err := repo.CreateSshPrivateKeyCredential(ctx, org.GetPublicId(), in3)
 		require.NoError(err)
 		assert.Equal(in3.Name, got3.Name)
 		assert.Equal(in3.Description, got3.Description)
