@@ -792,6 +792,38 @@ func Default{{ $subtypeName }}{{ $field.Name }}() Option {
 {{ end }}
 `))
 
+var mapstructureConversionTemplate = template.Must(template.New("").Funcs(
+	template.FuncMap{
+		"typeFromSubtype": typeFromSubtype,
+		"kebabCase":       kebabCase,
+	},
+).Parse(`
+func AttributesMapTo{{ .Name }}(in map[string]interface{}) (*{{ .Name }}, error) {
+	if in == nil {
+		return nil, fmt.Errorf("nil input map")
+	}
+	var out {{ .Name }}
+	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result: &out,
+		TagName: "json",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error creating mapstructure decoder: %w", err)
+	}
+	if err := dec.Decode(in); err != nil {
+		return nil, fmt.Errorf("error decoding: %w", err)
+	}
+	return &out, nil
+}
+
+func (pt *{{ .ParentTypeName }}) Get{{ .Name }}() (*{{ .Name }}, error) {
+	if pt.Type != "{{ typeFromSubtype .Name .ParentTypeName "Attributes"}}" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but {{ kebabCase .ParentTypeName }} is of type %s", "{{ typeFromSubtype .Name .ParentTypeName "Attributes"}}", pt.Type)
+	}
+	return AttributesMapTo{{ .Name }}(pt.Attributes)
+}
+`))
+
 func makeSlice(strs ...string) []string {
 	return strs
 }
@@ -828,4 +860,8 @@ func removeDups(in []string) []string {
 	sort.Strings(ret)
 
 	return ret
+}
+
+func typeFromSubtype(in, parent, extraSuffix string) string {
+	return strings.ToLower(strings.TrimSuffix(strings.TrimSuffix(in, extraSuffix), parent))
 }
