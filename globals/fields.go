@@ -84,4 +84,5 @@ const (
 	WorkerGeneratedAuthTokenField               = "worker_generated_auth_token"
 	WorkerProvidedConfigurationField            = "worker_provided_configuration"
 	ActiveConnectionCountField                  = "active_connection_count"
+	KeyPurposeField                             = "purpose"
 )
