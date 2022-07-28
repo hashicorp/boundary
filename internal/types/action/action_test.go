@@ -99,6 +99,18 @@ func TestAction(t *testing.T) {
 			action: CreateWorkerLed,
 			want:   "create:worker-led",
 		},
+		{
+			action: ListScopeKeys,
+			want:   "list-keys",
+		},
+		{
+			action: RotateScopeKeys,
+			want:   "rotate-keys",
+		},
+		{
+			action: RevokeScopeKeys,
+			want:   "revoke-keys",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
