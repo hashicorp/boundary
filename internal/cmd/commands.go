@@ -898,6 +898,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
+		"scopes list-keys": func() (cli.Command, error) {
+			return &scopescmd.ListKeysCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"sessions": func() (cli.Command, error) {
 			return &sessionscmd.Command{
