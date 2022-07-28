@@ -792,6 +792,30 @@ func Default{{ $subtypeName }}{{ $field.Name }}() Option {
 {{ end }}
 `))
 
+var mapstructureConversionTemplate = template.Must(template.New("").Parse(`
+func AttributesMapTo{{ .Name }}(in map[string]interface{}) (*{{ .Name }}, error) {
+	if in == nil {
+		return nil, fmt.Errorf("nil input map")
+	}
+	var out {{ .Name }}
+	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result: &out,
+		TagName: "json",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error creating mapstructure decoder: %w", err)
+	}
+	if err := dec.Decode(in); err != nil {
+		return nil, fmt.Errorf("error decoding: %w", err)
+	}
+	return &out, nil
+}
+
+func (pt *{{ .ParentTypeName }}) Get{{ .Name }}() (*{{ .Name }}, error) {
+	return AttributesMapTo{{ .Name }}(pt.Attributes)
+}
+`))
+
 func makeSlice(strs ...string) []string {
 	return strs
 }
