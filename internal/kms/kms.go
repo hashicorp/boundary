@@ -228,6 +228,20 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	return nil
 }
 
+// ListKeys lists all keys in the scope.
+// Options are ignored.
+func (k *Kms) ListKeys(ctx context.Context, scopeId string, _ ...Option) ([]wrappingKms.Key, error) {
+	const op = "kms.(Kms).ListKeys"
+	keys, err := k.underlying.ListKeys(ctx, scopeId)
+	if err != nil {
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return nil, errors.E(ctx, errors.WithCode(errors.RecordNotFound), errors.WithOp(op))
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return keys, nil
+}
+
 // VerifyGlobalRoot will verify that the global root wrapper is reasonable.
 func (k *Kms) VerifyGlobalRoot(ctx context.Context) error {
 	const op = "kms.(Kms).VerifyGlobalRoot"
