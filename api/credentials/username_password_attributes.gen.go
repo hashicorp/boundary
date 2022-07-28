@@ -32,5 +32,8 @@ func AttributesMapToUsernamePasswordAttributes(in map[string]interface{}) (*User
 }
 
 func (pt *Credential) GetUsernamePasswordAttributes() (*UsernamePasswordAttributes, error) {
+	if pt.Type != "usernamepassword" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but credential is of type %s", "usernamepassword", pt.Type)
+	}
 	return AttributesMapToUsernamePasswordAttributes(pt.Attributes)
 }

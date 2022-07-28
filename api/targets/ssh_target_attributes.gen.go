@@ -30,5 +30,8 @@ func AttributesMapToSshTargetAttributes(in map[string]interface{}) (*SshTargetAt
 }
 
 func (pt *Target) GetSshTargetAttributes() (*SshTargetAttributes, error) {
+	if pt.Type != "ssh" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but target is of type %s", "ssh", pt.Type)
+	}
 	return AttributesMapToSshTargetAttributes(pt.Attributes)
 }

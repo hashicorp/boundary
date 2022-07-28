@@ -30,5 +30,8 @@ func AttributesMapToTcpTargetAttributes(in map[string]interface{}) (*TcpTargetAt
 }
 
 func (pt *Target) GetTcpTargetAttributes() (*TcpTargetAttributes, error) {
+	if pt.Type != "tcp" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but target is of type %s", "tcp", pt.Type)
+	}
 	return AttributesMapToTcpTargetAttributes(pt.Attributes)
 }

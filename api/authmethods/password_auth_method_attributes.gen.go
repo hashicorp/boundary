@@ -31,5 +31,8 @@ func AttributesMapToPasswordAuthMethodAttributes(in map[string]interface{}) (*Pa
 }
 
 func (pt *AuthMethod) GetPasswordAuthMethodAttributes() (*PasswordAuthMethodAttributes, error) {
+	if pt.Type != "password" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but auth-method is of type %s", "password", pt.Type)
+	}
 	return AttributesMapToPasswordAuthMethodAttributes(pt.Attributes)
 }

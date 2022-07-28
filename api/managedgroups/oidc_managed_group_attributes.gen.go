@@ -30,5 +30,8 @@ func AttributesMapToOidcManagedGroupAttributes(in map[string]interface{}) (*Oidc
 }
 
 func (pt *ManagedGroup) GetOidcManagedGroupAttributes() (*OidcManagedGroupAttributes, error) {
+	if pt.Type != "oidc" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but managed-group is of type %s", "oidc", pt.Type)
+	}
 	return AttributesMapToOidcManagedGroupAttributes(pt.Attributes)
 }

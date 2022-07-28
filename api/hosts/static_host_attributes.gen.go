@@ -30,5 +30,8 @@ func AttributesMapToStaticHostAttributes(in map[string]interface{}) (*StaticHost
 }
 
 func (pt *Host) GetStaticHostAttributes() (*StaticHostAttributes, error) {
+	if pt.Type != "static" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but host is of type %s", "static", pt.Type)
+	}
 	return AttributesMapToStaticHostAttributes(pt.Attributes)
 }

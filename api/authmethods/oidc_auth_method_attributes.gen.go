@@ -44,5 +44,8 @@ func AttributesMapToOidcAuthMethodAttributes(in map[string]interface{}) (*OidcAu
 }
 
 func (pt *AuthMethod) GetOidcAuthMethodAttributes() (*OidcAuthMethodAttributes, error) {
+	if pt.Type != "oidc" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but auth-method is of type %s", "oidc", pt.Type)
+	}
 	return AttributesMapToOidcAuthMethodAttributes(pt.Attributes)
 }

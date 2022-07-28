@@ -35,5 +35,8 @@ func AttributesMapToOidcAccountAttributes(in map[string]interface{}) (*OidcAccou
 }
 
 func (pt *Account) GetOidcAccountAttributes() (*OidcAccountAttributes, error) {
+	if pt.Type != "oidc" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but account is of type %s", "oidc", pt.Type)
+	}
 	return AttributesMapToOidcAccountAttributes(pt.Attributes)
 }

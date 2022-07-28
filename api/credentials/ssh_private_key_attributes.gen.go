@@ -32,5 +32,8 @@ func AttributesMapToSshPrivateKeyAttributes(in map[string]interface{}) (*SshPriv
 }
 
 func (pt *Credential) GetSshPrivateKeyAttributes() (*SshPrivateKeyAttributes, error) {
+	if pt.Type != "sshprivatekey" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but credential is of type %s", "sshprivatekey", pt.Type)
+	}
 	return AttributesMapToSshPrivateKeyAttributes(pt.Attributes)
 }

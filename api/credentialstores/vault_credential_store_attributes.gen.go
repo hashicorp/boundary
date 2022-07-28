@@ -40,5 +40,8 @@ func AttributesMapToVaultCredentialStoreAttributes(in map[string]interface{}) (*
 }
 
 func (pt *CredentialStore) GetVaultCredentialStoreAttributes() (*VaultCredentialStoreAttributes, error) {
+	if pt.Type != "vault" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but credential-store is of type %s", "vault", pt.Type)
+	}
 	return AttributesMapToVaultCredentialStoreAttributes(pt.Attributes)
 }
