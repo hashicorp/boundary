@@ -938,60 +938,58 @@ func TestUpdate(t *testing.T) {
 			assert.Empty(cmp.Diff(got, want, protocmp.Transform()))
 		})
 	}
-	/*
 
-		// cant update read only fields
-		cred, cleanup := freshCred("user", "pass")
-		defer cleanup()
+	// cant update read only fields
+	cred, cleanupKv := freshCredUp("user", "pass")
+	defer cleanupKv()
 
-		newStore := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	newStore := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
-		roCases := []struct {
-			path    string
-			item    *pb.Credential
-			matcher func(t *testing.T, e error) // When not set defaults to checking against InvalidArgument Error
-		}{
-			{
-				path: "type",
-				item: &pb.Credential{Type: "something"},
-			},
-			{
-				path: "store_id",
-				item: &pb.Credential{CredentialStoreId: newStore.GetPublicId()},
-			},
-			{
-				path: "updated_time",
-				item: &pb.Credential{UpdatedTime: timestamppb.Now()},
-			},
-			{
-				path: "created_time",
-				item: &pb.Credential{UpdatedTime: timestamppb.Now()},
-			},
-			{
-				path: "authorized_actions",
-				item: &pb.Credential{AuthorizedActions: append(testAuthorizedActions, "another")},
-			},
-		}
-		for _, tc := range roCases {
-			t.Run(fmt.Sprintf("ReadOnlyField/%s", tc.path), func(t *testing.T) {
-				req := &pbs.UpdateCredentialRequest{
-					Id:         cred.GetPublicId(),
-					Item:       tc.item,
-					UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{tc.path}},
+	roCases := []struct {
+		path    string
+		item    *pb.Credential
+		matcher func(t *testing.T, e error) // When not set defaults to checking against InvalidArgument Error
+	}{
+		{
+			path: "type",
+			item: &pb.Credential{Type: "something"},
+		},
+		{
+			path: "store_id",
+			item: &pb.Credential{CredentialStoreId: newStore.GetPublicId()},
+		},
+		{
+			path: "updated_time",
+			item: &pb.Credential{UpdatedTime: timestamppb.Now()},
+		},
+		{
+			path: "created_time",
+			item: &pb.Credential{UpdatedTime: timestamppb.Now()},
+		},
+		{
+			path: "authorized_actions",
+			item: &pb.Credential{AuthorizedActions: append(testAuthorizedActions, "another")},
+		},
+	}
+	for _, tc := range roCases {
+		t.Run(fmt.Sprintf("ReadOnlyField/%s", tc.path), func(t *testing.T) {
+			req := &pbs.UpdateCredentialRequest{
+				Id:         cred.GetPublicId(),
+				Item:       tc.item,
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{tc.path}},
+			}
+			req.Item.Version = cred.Version
+
+			got, gErr := s.UpdateCredential(ctx, req)
+			assert.Error(t, gErr)
+			matcher := tc.matcher
+			if matcher == nil {
+				matcher = func(t *testing.T, e error) {
+					assert.Truef(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)), "got error %v, wanted invalid argument", gErr)
 				}
-				req.Item.Version = cred.Version
-
-				got, gErr := s.UpdateCredential(ctx, req)
-				assert.Error(t, gErr)
-				matcher := tc.matcher
-				if matcher == nil {
-					matcher = func(t *testing.T, e error) {
-						assert.Truef(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)), "got error %v, wanted invalid argument", gErr)
-					}
-				}
-				matcher(t, gErr)
-				assert.Nil(t, got)
-			})
-		}
-	*/
+			}
+			matcher(t, gErr)
+			assert.Nil(t, got)
+		})
+	}
 }
