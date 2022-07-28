@@ -1,0 +1,176 @@
+---
+name: enos
+
+on:
+  # Only trigger this working using workflow_call. It assumes that secrets are
+  # being inherited from the caller.
+  workflow_call:
+    inputs:
+      artifact-name:
+        required: true
+        type: string
+      go-version:
+        required: true
+        type: string
+
+env:
+  PKG_NAME: boundary
+
+jobs:
+  enos:
+    name: Integration
+    strategy:
+      matrix:
+        include:
+          - test: smoke
+          - test: cli_ui
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ inputs.go-version }}
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          # the terraform wrapper will break Terraform execution in enos because
+          # it changes the output to text when we expect it to be JSON.
+          terraform_wrapper: false
+      - name: Import GPG key for Boundary pass keystore
+        if: matrix.test == 'cli_ui'
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
+      - name: Trust the pass keystore GPG key
+        if: matrix.test == 'cli_ui'
+        id: trust_gpg
+        run: |
+          gpg -a --encrypt -r ${{ secrets.ENOS_GPG_UID }} --trust-model always
+          echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
+          cat ~/.gnupg/gpg.conf
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          role-duration-seconds: 3600
+      - name: Set up Enos
+        uses: hashicorp/action-setup-enos@v1
+        with:
+          github-token: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
+      - name: Set up AWS SSH private key
+        run: |
+          mkdir -p ./enos/support
+          echo "${{ secrets.ENOS_CI_SSH_KEYPAIR }}" > ./enos/support/private_key.pem
+          chmod 600 ./enos/support/private_key.pem
+      - name: Set up Bats CLI UI tests dependency cache
+        if: matrix.test == 'cli_ui'
+        id: dep-cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/bats-cli-ui-deps
+          key: enos-bats-cli-ui-deps-jq-1.6-password-store-1.7.4
+      - name: Set up Node for Bats install
+        if: matrix.test == 'cli_ui'
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Install Bats via NPM
+        if: matrix.test == 'cli_ui'
+        # Use npm so this workflow is portable on multiple runner distros
+        run: npm install --location=global bats
+      - name: Download jq for Bats CLI UI tests
+        if: matrix.test == 'cli_ui' && steps.dep-cache.outputs.cache-hit != 'true'
+        # NOTE: if you update the jq version make sure to update the dep cache key
+        run: |
+          mkdir -p /tmp/bats-cli-ui-deps
+          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/bats-cli-ui-deps/jq-bin
+      - name: Install jq for Bats CLI UI tests
+        if: matrix.test == 'cli_ui'
+        run: |
+          chmod +x /tmp/bats-cli-ui-deps/jq-bin
+          sudo cp /tmp/bats-cli-ui-deps/jq-bin /usr/local/bin/jq
+      - name: Download and unzip pass for Boundary keyring
+        if: matrix.test == 'cli_ui' && steps.dep-cache.outputs.cache-hit != 'true'
+        # NOTE: if you update the password store version make sure to update the dep cache key
+        run: |
+          mkdir -p /tmp/bats-cli-ui-deps/pass
+          wget https://git.zx2c4.com/password-store/snapshot/password-store-1.7.4.tar.xz -O /tmp/bats-cli-ui-deps/pass/pass.tar.xz
+          cd /tmp/bats-cli-ui-deps/pass
+          tar -xvf pass.tar.xz
+      - name: Install pass for Boundary keyring
+        if: matrix.test == 'cli_ui'
+        run: |
+          cd /tmp/bats-cli-ui-deps/pass/password-store-1.7.4
+          sudo make install
+          pass init ${{ secrets.ENOS_GPG_UID }}
+      - name: Download Linux AMD64 Boundary bundle
+        id: download
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ./enos/support/downloads
+      - name: Unzip and rename Boundary bundle
+        run: |
+          unzip ${{steps.download.outputs.download-path}}/*.zip -d enos/support
+          mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
+      - name: Run Enos scenario
+        id: run
+        # Continue once and retry
+        continue-on-error: true
+        env:
+          ENOS_VAR_aws_region: us-east-1
+          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-keypair
+          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
+          ENOS_VAR_local_boundary_dir: ./support/
+          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
+          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
+          # Skip a few known failing bats tests
+          ENOS_VAR_skip_failing_bats_tests: "true"
+        run: |
+          mkdir -p ./enos/terraform-plugin-cache
+          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
+          enos scenario run --timeout 60m0s --chdir ./enos integration test:${{ matrix.test}} builder:crt
+      - name: Retry Enos scenario
+        id: run_retry
+        if: steps.run.outcome == 'failure'
+        env:
+          ENOS_VAR_aws_region: us-east-1
+          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-keypair
+          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
+          ENOS_VAR_local_boundary_dir: ./support/
+          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
+          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
+          # Skip a few known failing bats tests
+          ENOS_VAR_skip_failing_bats_tests: "true"
+        run: |
+          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
+          enos scenario run --timeout 60m0s --chdir ./enos integration test:${{ matrix.test}} builder:crt
+      - name: Destroy Enos scenario
+        if: ${{ always() }}
+        env:
+          ENOS_VAR_aws_region: us-east-1
+          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-keypair
+          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
+          ENOS_VAR_local_boundary_dir: ./support/
+          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
+          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
+          # Skip a few known failing bats tests
+          ENOS_VAR_skip_failing_bats_tests: "true"
+        run: |
+          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
+          enos scenario destroy --timeout 60m0s --chdir ./enos integration test:${{ matrix.test}} builder:crt
+      - name: Output debug information on failure
+        if: ${{ failure() }}
+        run: |
+          env
+          find ./enos -name "scenario.tf" -exec cat {} \;
