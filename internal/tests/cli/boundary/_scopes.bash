@@ -23,6 +23,10 @@ function list_scopes() {
   boundary scopes list -scope-id $1 -format json
 }
 
+function list_scope_keys() {
+  boundary scopes list-keys -scope-id $1 -format json
+}
+
 function scope_id() {
   local name=$1
   local sid=$2
