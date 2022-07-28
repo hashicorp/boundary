@@ -87,6 +87,18 @@ service ScopeService {
       summary: "Deletes a Scope."
     };
   }
+
+  // ListKeys lists all the keys found in the scope specified. If the scope
+  // is not found an error is returned. If the scope is empty, the global
+  // scope is used.
+  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {
+    option (google.api.http) = {
+      get: "/v1/scopes/{id}:list-keys"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "List all keys in a Scope."
+    };
+  }
 }
 
 message GetScopeRequest {
@@ -133,3 +145,11 @@ message DeleteScopeRequest {
 }
 
 message DeleteScopeResponse {}
+
+message ListKeysRequest {
+  string id = 1;
+}
+
+message ListKeysResponse {
+  repeated resources.scopes.v1.Key items = 1;
+}
