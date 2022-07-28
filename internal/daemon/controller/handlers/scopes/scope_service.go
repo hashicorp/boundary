@@ -27,13 +27,16 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -54,6 +57,9 @@ var (
 	CollectionActions = action.ActionSet{
 		action.Create,
 		action.List,
+		action.ListScopeKeys,
+		action.RotateScopeKeys,
+		action.RevokeScopeKeys,
 	}
 
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
@@ -81,6 +87,7 @@ var (
 			resource.Group:           groups.CollectionActions,
 			resource.HostCatalog:     host_catalogs.CollectionActions,
 			resource.Role:            roles.CollectionActions,
+			resource.Scope:           CollectionActions[2:], // Only Scope key actions are allowed on the project level
 			resource.Session:         sessions.CollectionActions,
 			resource.Target:          targets.CollectionActions,
 		},
@@ -98,16 +105,20 @@ func init() {
 type Service struct {
 	pbs.UnimplementedScopeServiceServer
 
-	repoFn common.IamRepoFactory
+	repoFn  common.IamRepoFactory
+	kmsRepo *kms.Kms
 }
 
 // NewService returns a project service which handles project related requests to boundary.
-func NewService(repo common.IamRepoFactory) (Service, error) {
+func NewService(repo common.IamRepoFactory, kmsRepo *kms.Kms) (Service, error) {
 	const op = "scopes.(Service).NewService"
 	if repo == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
-	return Service{repoFn: repo}, nil
+	if kmsRepo == nil {
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
+	}
+	return Service{repoFn: repo, kmsRepo: kmsRepo}, nil
 }
 
 var _ pbs.ScopeServiceServer = Service{}
@@ -355,6 +366,52 @@ func (s Service) DeleteScope(ctx context.Context, req *pbs.DeleteScopeRequest) (
 	return nil, nil
 }
 
+// ListKeys implements the interface pbs.ScopeServiceServer.
+func (s Service) ListKeys(ctx context.Context, req *pbs.ListKeysRequest) (*pbs.ListKeysResponse, error) {
+	if req.GetId() == "" {
+		req.Id = scope.Global.String()
+	}
+	if err := validateListKeysRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.ListScopeKeys)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	items, err := s.kmsRepo.ListKeys(ctx, req.GetId())
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, handlers.NotFoundErrorf("unknown scope_id %q", req.Id)
+		}
+		return nil, err
+	}
+
+	finalItems := make([]*pb.Key, 0, len(items))
+	res := perms.Resource{
+		Type: resource.Scope,
+	}
+	for _, item := range items {
+		res.Id = item.Id
+		res.ScopeId = item.Scope
+
+		outputFields := authResults.FetchOutputFields(res, action.ListScopeKeys).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+		}
+
+		protoItem, err := keyToProto(ctx, item, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+		finalItems = append(finalItems, protoItem)
+	}
+	sortKeys(finalItems)
+	return &pbs.ListKeysResponse{Items: finalItems}, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -490,6 +547,14 @@ func SortScopes(scps []*pb.Scope) {
 	})
 }
 
+func sortKeys(keys []*pb.Key) {
+	// We stable sort here even though the database may not return things in
+	// sorted order, still nice to have them as consistent as possible.
+	sort.SliceStable(keys, func(i, j int) bool {
+		return keys[i].GetId() < keys[j].GetId()
+	})
+}
+
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -513,7 +578,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Scope), auth.WithAction(a)}
 	switch a {
-	case action.List, action.Create:
+	case action.List, action.Create, action.ListScopeKeys:
 		parentId = id
 		s, err := repo.LookupScope(ctx, parentId)
 		if err != nil {
@@ -584,6 +649,39 @@ func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Sc
 	}
 	if outputFields.Has(globals.PrimaryAuthMethodIdField) && in.GetPrimaryAuthMethodId() != "" {
 		out.PrimaryAuthMethodId = &wrapperspb.StringValue{Value: in.GetPrimaryAuthMethodId()}
+	}
+
+	return &out, nil
+}
+
+func keyToProto(ctx context.Context, in wrappingKms.Key, opt ...handlers.Option) (*pb.Key, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building scope proto")
+	}
+	outputFields := *opts.WithOutputFields
+
+	out := pb.Key{}
+	if outputFields.Has(globals.IdField) {
+		out.Id = in.Id
+	}
+	if outputFields.Has(globals.ScopeIdField) {
+		out.ScopeId = in.Scope
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.KeyPurposeField) {
+		out.Purpose = string(in.Purpose)
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
+		out.CreatedTime = timestamppb.New(in.CreateTime)
+	}
+	if outputFields.Has(globals.VersionField) {
+		out.Version = uint32(in.Version)
+	}
+	if outputFields.Has(globals.TypeField) {
+		out.Type = string(in.Type)
 	}
 
 	return &out, nil
@@ -739,6 +837,17 @@ func validateListRequest(req *pbs.ListScopesRequest) error {
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
+	}
+	return nil
+}
+
+func validateListKeysRequest(req *pbs.ListKeysRequest) error {
+	badFields := map[string]string{}
+	if req.GetId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetId()), scope.Project.Prefix()) {
+		badFields["id"] = "Must be 'global', a valid org scope id or a valid project scope id when listing keys."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
