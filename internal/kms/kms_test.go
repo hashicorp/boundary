@@ -168,6 +168,27 @@ func Test_NewUsingReaderWriter(t *testing.T) {
 	}
 }
 
+func Test_ListKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	extWrapper := db.TestWrapper(t)
+	kmsCache := TestKms(t, conn, extWrapper)
+	err := kmsCache.CreateKeys(testCtx, "global")
+	require.NoError(t, err)
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		keys, err := kmsCache.ListKeys(testCtx, "global")
+		require.NoError(t, err)
+		require.Len(t, keys, 7)
+	})
+	t.Run("unknown-scope", func(t *testing.T) {
+		t.Parallel()
+		_, err := kmsCache.ListKeys(testCtx, "myscope")
+		assert.True(t, errors.IsNotFoundError(err))
+	})
+}
+
 type invalidReader struct {
 	db.Reader
 }
