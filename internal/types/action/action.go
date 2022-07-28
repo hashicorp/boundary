@@ -60,6 +60,9 @@ const (
 	CreateControllerLed              Type = 49
 	ReinitializeCertificateAuthority Type = 50
 	ReadCertificateAuthority         Type = 51
+	ListScopeKeys                    Type = 52
+	RotateScopeKeys                  Type = 53
+	RevokeScopeKeys                  Type = 54
 
 	// When adding new actions, be sure to update:
 	//
@@ -119,6 +122,9 @@ var Map = map[string]Type{
 	CreateControllerLed.String():              CreateControllerLed,
 	ReinitializeCertificateAuthority.String(): ReinitializeCertificateAuthority,
 	ReadCertificateAuthority.String():         ReadCertificateAuthority,
+	ListScopeKeys.String():                    ListScopeKeys,
+	RotateScopeKeys.String():                  RotateScopeKeys,
+	RevokeScopeKeys.String():                  RevokeScopeKeys,
 }
 
 var DeprecatedMap = map[string]Type{
@@ -184,6 +190,9 @@ func (a Type) String() string {
 		"create:controller-led",
 		"reinitialize-certificate-authority",
 		"read-certificate-authority",
+		"list-keys",
+		"rotate-keys",
+		"revoke-keys",
 	}[a]
 }
 
