@@ -58,6 +58,9 @@ const (
 	SetWorkerTags             Type = 47
 	RemoveWorkerTags          Type = 48
 	CreateControllerLed       Type = 49
+	ListScopeKeys             Type = 50
+	RotateScopeKeys           Type = 51
+	RevokeScopeKeys           Type = 52
 
 	// When adding new actions, be sure to update:
 	//
@@ -114,6 +117,9 @@ var Map = map[string]Type{
 	SetWorkerTags.String():             SetWorkerTags,
 	RemoveWorkerTags.String():          RemoveWorkerTags,
 	CreateControllerLed.String():       CreateControllerLed,
+	ListScopeKeys.String():             ListScopeKeys,
+	RotateScopeKeys.String():           RotateScopeKeys,
+	RevokeScopeKeys.String():           RevokeScopeKeys,
 }
 
 func (a Type) String() string {
@@ -168,6 +174,9 @@ func (a Type) String() string {
 		"set-worker-tags",
 		"remove-worker-tags",
 		"create:controller-led",
+		"list-keys",
+		"rotate-keys",
+		"revoke-keys",
 	}[a]
 }
 
