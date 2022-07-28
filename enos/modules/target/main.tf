@@ -1,14 +1,3 @@
-/*
-terraform {
-  required_version = ">= 1.0"
-
-  required_providers {
-    aws = {
-      version = ">= 3.62.0"
-    }
-  }
-}
-*/
 variable "vpc_id" {}
 variable "ami_id" {}
 variable "target_count" {}
