@@ -86,4 +86,5 @@ const (
 	ActiveConnectionCountField                  = "active_connection_count"
 	ControllerGeneratedActivationToken          = "controller_generated_activation_token"
 	ReleaseVersionField                         = "release_version"
+	KeyPurposeField                             = "purpose"
 )
