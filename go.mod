@@ -87,7 +87,7 @@ require (
 	nhooyr.io/websocket v1.8.7
 )
 
-require github.com/hashicorp/go-dbw v0.0.0-20220725170111-b7cb3aa3d628 // this is a branch and should be updated before merging
+require github.com/hashicorp/go-dbw v0.0.0-20220725170111-b7cb3aa3d628
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
