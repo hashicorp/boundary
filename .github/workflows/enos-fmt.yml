@@ -10,7 +10,7 @@ jobs:
   fmt_check:
     # Only run this workflow on pull requests from hashicorp/boundary branches
     # as we need secrets to install enos.
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'}}
+    if: "! github.event.pull_request.head.repo.fork"
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}

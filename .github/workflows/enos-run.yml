@@ -108,7 +108,7 @@ jobs:
           cd /tmp/bats-cli-ui-deps/pass
           tar -xvf pass.tar.xz
       - name: Install pass for Boundary keyring
-        if: matrix.test == 'cli_ui' && steps.dep-cache.outputs.cache-hit != 'true'
+        if: matrix.test == 'cli_ui'
         run: |
           cd /tmp/bats-cli-ui-deps/pass/password-store-1.7.4
           sudo make install
