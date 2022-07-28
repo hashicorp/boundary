@@ -9,15 +9,22 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -25,14 +32,11 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
-func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error)) {
+func createDefaultScopesRepoAndKms(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error), *kms.Kms) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -40,6 +44,7 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	kms := kms.TestKms(t, conn, wrap)
 
 	oRes, pRes := iam.TestScopes(t, iamRepo)
 
@@ -56,7 +61,7 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 	require.NoError(t, err)
 	pRes, _, err = repo.UpdateScope(context.Background(), pRes, 1, []string{"Name", "Description"})
 	require.NoError(t, err)
-	return oRes, pRes, repoFn
+	return oRes, pRes, repoFn, kms
 }
 
 var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
@@ -87,6 +92,9 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
 			structpb.NewStringValue("list"),
+			structpb.NewStringValue("list-keys"),
+			structpb.NewStringValue("rotate-keys"),
+			structpb.NewStringValue("revoke-keys"),
 		},
 	},
 	"users": {
@@ -132,6 +140,9 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
 			structpb.NewStringValue("list"),
+			structpb.NewStringValue("list-keys"),
+			structpb.NewStringValue("rotate-keys"),
+			structpb.NewStringValue("revoke-keys"),
 		},
 	},
 	"users": {
@@ -172,6 +183,13 @@ var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list"),
 		},
 	},
+	"scopes": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list-keys"),
+			structpb.NewStringValue("rotate-keys"),
+			structpb.NewStringValue("revoke-keys"),
+		},
+	},
 	"targets": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
@@ -181,7 +199,7 @@ var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
 }
 
 func TestGet(t *testing.T) {
-	org, proj, repoFn := createDefaultScopesAndRepo(t)
+	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 	toMerge := &pbs.GetScopeRequest{
 		Id: proj.GetPublicId(),
 	}
@@ -269,7 +287,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetScopeRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := scopes.NewService(repoFn)
+			s, err := scopes.NewService(repoFn, kms)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -291,6 +309,7 @@ func TestList(t *testing.T) {
 	}
 	repo, err := repoFn()
 	require.NoError(t, err)
+	kms := kms.TestKms(t, conn, wrap)
 
 	oNoProjects, p1 := iam.TestScopes(t, repo)
 	_, err = repo.DeleteScope(context.Background(), p1.GetPublicId())
@@ -350,7 +369,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(repoFn)
+			s, err := scopes.NewService(repoFn, kms)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
@@ -464,7 +483,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(repoFn)
+			s, err := scopes.NewService(repoFn, kms)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
@@ -491,9 +510,9 @@ func TestList(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	org, proj, repoFn := createDefaultScopesAndRepo(t)
+	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(repoFn)
+	s, err := scopes.NewService(repoFn, kms)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	cases := []struct {
@@ -565,9 +584,9 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	org, proj, repoFn := createDefaultScopesAndRepo(t)
+	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(repoFn)
+	s, err := scopes.NewService(repoFn, kms)
 	require.NoError(err, "Error when getting new scopes service")
 	ctx := auth.DisabledAuthTestContext(repoFn, org.GetPublicId())
 	req := &pbs.DeleteScopeRequest{
@@ -592,7 +611,7 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	ctx := context.Background()
-	defaultOrg, defaultProj, repoFn := createDefaultScopesAndRepo(t)
+	defaultOrg, defaultProj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 	defaultProjCreated := defaultProj.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.CreateScopeRequest{}
 
@@ -775,7 +794,7 @@ func TestCreate(t *testing.T) {
 				req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
 				proto.Merge(req, tc.req)
 
-				s, err := scopes.NewService(repoFn)
+				s, err := scopes.NewService(repoFn, kms)
 				require.NoError(err, "Error when getting new project service.")
 
 				if name != "" {
@@ -849,8 +868,8 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	org, proj, repoFn := createDefaultScopesAndRepo(t)
-	tested, err := scopes.NewService(repoFn)
+	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
+	tested, err := scopes.NewService(repoFn, kms)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	iamRepo, err := repoFn()
@@ -1279,6 +1298,433 @@ func TestUpdate(t *testing.T) {
 				tc.res.Item.Version = ver + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+		})
+	}
+}
+
+func TestListKeys(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	aToken := tc.Token()
+	uToken := tc.UnprivilegedToken()
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return tc.IamRepo(), nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return tc.ServersRepo(), nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return tc.AuthTokenRepo(), nil
+	}
+
+	privCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       aToken.Id,
+			EncryptedToken: strings.Split(aToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	unprivCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       uToken.Id,
+			EncryptedToken: strings.Split(uToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	org, proj := iam.TestScopes(t, tc.IamRepo())
+
+	org.Name = "defaultOrg"
+	org.Description = "defaultOrg"
+	org, _, err := tc.IamRepo().UpdateScope(context.Background(), org, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing keys in org
+	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"id=*;type=*;actions=list-keys"})
+	require.NoError(t, err)
+	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), listKeysRole.PublicId, 2, []string{aToken.UserId})
+	require.NoError(t, err)
+
+	proj.Name = "defaultProj"
+	proj.Description = "defaultProj"
+	proj, _, err = tc.IamRepo().UpdateScope(context.Background(), proj, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing keys in project
+	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"id=*;type=*;actions=list-keys"})
+	require.NoError(t, err)
+	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), listKeysRole.PublicId, 2, []string{aToken.UserId})
+	require.NoError(t, err)
+
+	cases := []struct {
+		name    string
+		req     *pbs.ListKeysRequest
+		res     *pbs.ListKeysResponse
+		authCtx context.Context
+		err     error
+	}{
+		{
+			name: "List keys in the global scope",
+			req:  &pbs.ListKeysRequest{Id: "global"},
+			res: &pbs.ListKeysResponse{
+				Items: []*pb.Key{
+					{
+						ScopeId: "global",
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "tokens",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: "global",
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "oplog",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: "global",
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "database",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: "global",
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "audit",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: "global",
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "oidc",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: "global",
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "sessions",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: "global",
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "rootKey",
+						Version: 1,
+						Type:    "kek",
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "List keys in an existing org",
+			req:  &pbs.ListKeysRequest{Id: org.GetPublicId()},
+			res: &pbs.ListKeysResponse{
+				Items: []*pb.Key{
+					{
+						ScopeId: org.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "tokens",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: org.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "oplog",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: org.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "database",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: org.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "audit",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: org.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "oidc",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: org.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "sessions",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: org.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "rootKey",
+						Version: 1,
+						Type:    "kek",
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name:    "List keys in a non existing org",
+			req:     &pbs.ListKeysRequest{Id: "o_DoesntExis"},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "List keys in an existing project",
+			req:  &pbs.ListKeysRequest{Id: proj.GetPublicId()},
+			res: &pbs.ListKeysResponse{
+				Items: []*pb.Key{
+					{
+						ScopeId: proj.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "tokens",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: proj.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "oplog",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: proj.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "database",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: proj.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "audit",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: proj.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "oidc",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: proj.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "sessions",
+						Version: 1,
+						Type:    "dek",
+					},
+					{
+						ScopeId: proj.PublicId,
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "rootKey",
+						Version: 1,
+						Type:    "kek",
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name:    "List keys in a non existing project",
+			req:     &pbs.ListKeysRequest{Id: "p_DoesntExis"},
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+			authCtx: privCtx,
+		},
+		{
+			name:    "Wrong id prefix",
+			req:     &pbs.ListKeysRequest{Id: "j_1234567890"},
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+			authCtx: privCtx,
+		},
+		{
+			name:    "space in id",
+			req:     &pbs.ListKeysRequest{Id: "p_1 23456789"},
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+			authCtx: privCtx,
+		},
+		{
+			name:    "unauthorized",
+			req:     &pbs.ListKeysRequest{Id: "global"},
+			err:     handlers.ApiErrorWithCode(codes.PermissionDenied),
+			authCtx: unprivCtx,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := scopes.NewService(iamRepoFn, tc.Kms())
+			require.NoError(err, "Couldn't create new project service.")
+
+			got, gErr := s.ListKeys(tt.authCtx, tt.req)
+			if tt.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tt.err), "ListKeys(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
+			} else {
+				require.NoError(gErr)
+			}
+			assert.Empty(
+				cmp.Diff(
+					tt.res,
+					got,
+					protocmp.Transform(),
+					// Sort by purpose for comparison since it is the only unique and predictable field
+					protocmp.SortRepeated(func(i, j *pb.Key) bool { return i.GetPurpose() < j.GetPurpose() }),
+					protocmp.IgnoreFields(&pb.Key{}, "id", "created_time"),
+				),
+				"ListKeys(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res,
+			)
 		})
 	}
 }
