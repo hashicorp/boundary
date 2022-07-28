@@ -115,6 +115,18 @@ func TestAction(t *testing.T) {
 			action: CreateControllerLed,
 			want:   "create:controller-led",
 		},
+		{
+			action: ListScopeKeys,
+			want:   "list-keys",
+		},
+		{
+			action: RotateScopeKeys,
+			want:   "rotate-keys",
+		},
+		{
+			action: RevokeScopeKeys,
+			want:   "revoke-keys",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
