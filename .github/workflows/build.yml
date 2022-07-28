@@ -1,18 +1,27 @@
 name: build
 
-on:
-  pull_request:
-  push:
-    # Sequence of patterns matched against refs/heads
-    branches:
-      # Push events on main branch
-      - 'main'
+on: [ workflow_dispatch, push, workflow_call ]
 
 env:
   PKG_NAME: "boundary"
 
 jobs:
+  get-go-version:
+    runs-on: ubuntu-latest
+    outputs:
+      go-version: ${{ steps.get-go-version.outputs.go-version }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: 'Determine Go version'
+        id: get-go-version
+        # We use .go-version as our source of truth for current Go
+        # version, because "goenv" can react to it automatically.
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "::set-output name=go-version::$(cat .go-version)"
+
   get-product-version:
+    needs: get-go-version
     runs-on: ubuntu-latest
     outputs:
       product-version: ${{ steps.get-product-version.outputs.product-version }}
@@ -22,12 +31,12 @@ jobs:
       - name: Setup go
         uses: actions/setup-go@v3
         with:
-          go-version: "1.18.4"
+          go-version: "${{ needs.get-go-version.outputs.go-version }}"
       - name: get product version
         id: get-product-version
         run: |
           VERSION=$(make version)
-          MINOR_VERSION=${VERSION%.*}
+          MINOR_VERSION=$(echo $VERSION | cut -d. -f-2)
           echo "::set-output name=product-version::$VERSION"
           echo "::set-output name=product-minor-version::$MINOR_VERSION"
 
@@ -60,20 +69,6 @@ jobs:
           name: metadata.json
           path: ${{ steps.generate-metadata-file.outputs.filepath }}
 
-  set-ld-flags:
-    needs: get-product-version
-    runs-on: ubuntu-latest
-    outputs:
-      ldflags: ${{ steps.generate-ld-flags.outputs.ldflags }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: 'Generate ld flags'
-        id: generate-ld-flags
-        run: |
-          project="$(go list -m)"
-          sha="$(git rev-parse HEAD)"
-          echo "::set-output name=ldflags::"-s -w -X \'$project/version.GitCommit=$sha\'""
-
   get-product-edition:
     runs-on: ubuntu-latest
     outputs:
@@ -90,18 +85,17 @@ jobs:
           make edition
           echo "::set-output name=product-edition::$(make edition)"
 
-
   build-other:
     needs:
       - get-product-version
       - get-product-edition
-      - set-ld-flags
+      - get-go-version
     runs-on: ubuntu-latest
     strategy:
       matrix:
         goos: [ freebsd, windows, netbsd, openbsd, solaris ]
         goarch: [ "386", "amd64", "arm" ]
-        go: [ "1.18.4" ]
+        go: [ "${{ needs.get-go-version.outputs.go-version }}" ]
         exclude:
           - goos: solaris
             goarch: 386
@@ -115,7 +109,6 @@ jobs:
     env:
       GOPRIVATE: "github.com/hashicorp"
       GO111MODULE: on
-      LD_FLAGS: ${{ needs.set-ld-flags.outputs.ldflags }}
     steps:
       - uses: actions/checkout@v3
       - name: Setup go
@@ -141,12 +134,9 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          mkdir -p dist out
-          unset GOPATH;
-          # Build plugins
-          ./scripts/plugins.sh
-          go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
+          mkdir out
+          make build
+          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip bin/
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
@@ -156,13 +146,13 @@ jobs:
     needs:
       - get-product-version
       - get-product-edition
-      - set-ld-flags
+      - get-go-version
     runs-on: ubuntu-latest
     strategy:
       matrix:
         goos: [linux]
         goarch: ["arm", "arm64", "386", "amd64"]
-        go: [ "1.18.4" ]
+        go: [ "${{ needs.get-go-version.outputs.go-version }}" ]
       fail-fast: true
 
     name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
@@ -170,7 +160,6 @@ jobs:
     env:
       GOPRIVATE: "github.com/hashicorp"
       GO111MODULE: on
-      LD_FLAGS: ${{ needs.set-ld-flags.outputs.ldflags }}
 
     steps:
       - uses: actions/checkout@v3
@@ -197,12 +186,9 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          mkdir -p dist out
-          unset GOPATH;
-          # Build plugins
-          ./scripts/plugins.sh
-          go build -v -tags "ui" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
+          mkdir out
+          make build
+          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip bin/
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
@@ -218,7 +204,7 @@ jobs:
           maintainer: "HashiCorp"
           homepage: "https://github.com/hashicorp/boundary"
           license: "MPL-2.0"
-          binary: "dist/${{ env.PKG_NAME }}"
+          binary: "bin/${{ env.PKG_NAME }}"
           deb_depends: "openssl"
           rpm_depends: "openssl"
           config_dir: ".release/linux/package/"
@@ -237,18 +223,17 @@ jobs:
           name: ${{ env.DEB_PACKAGE }}
           path: out/${{ env.DEB_PACKAGE }}
 
-
   build-darwin:
     needs:
       - get-product-version
       - get-product-edition
-      - set-ld-flags
+      - get-go-version
     runs-on: macos-latest
     strategy:
       matrix:
         goos: [ darwin ]
         goarch: [ "amd64", "arm64" ]
-        go: [ "1.18.4" ]
+        go: [ "${{ needs.get-go-version.outputs.go-version }}" ]
       fail-fast: true
     name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
 
@@ -280,12 +265,9 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          mkdir -p dist out
-          unset GOPATH;
-          # Build plugins
-          ./scripts/plugins.sh
-          go build -v -tags "ui netcgo" -ldflags "${{ env.LD_FLAGS }}" -o dist/ ./cmd/boundary
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip dist/
+          mkdir out
+          make build
+          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip bin/
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.PKG_NAME }}_${{ needs.get-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
