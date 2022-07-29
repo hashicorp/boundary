@@ -74,7 +74,7 @@ func (tw *TestWorker) ProxyAddrs() []string {
 			if !ok {
 				tw.t.Fatal("could not parse address as a TCP addr")
 			}
-			addr := fmt.Sprintf("%s:%d", tcpAddr.IP.String(), tcpAddr.Port)
+			addr := net.JoinHostPort(tcpAddr.IP.String(), fmt.Sprintf("%d", tcpAddr.Port))
 			tw.addrs = append(tw.addrs, addr)
 		}
 	}
