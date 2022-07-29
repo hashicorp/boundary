@@ -58,7 +58,7 @@ jobs:
           echo "::set-output name=product-minor-version::$MINOR_VERSION"
 
   generate-metadata-file:
-    needs: get-product-version
+    needs: product-metadata
     runs-on: ubuntu-latest
     outputs:
       filepath: ${{ steps.generate-metadata-file.outputs.filepath }}
@@ -69,7 +69,7 @@ jobs:
         id: generate-metadata-file
         uses: hashicorp/actions-generate-metadata@main
         with:
-          version: ${{ needs.get-product-version.outputs.product-version }}
+          version: ${{ needs.product-metadata.outputs.product-version }}
           product: ${{ env.PKG_NAME }}
 
       - uses: actions/upload-artifact@v3
