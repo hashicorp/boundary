@@ -109,12 +109,24 @@ func TestGet(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
 	o, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
@@ -179,7 +191,14 @@ func TestGet(t *testing.T) {
 			s, err := testService(t, context.Background(), conn, kms, wrapper)
 			require.NoError(err, "Couldn't create a new host set service.")
 
-			got, gErr := s.GetTarget(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, gErr := s.GetTarget(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "GetTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -198,14 +217,34 @@ func TestList(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
 	_, projNoTar := iam.TestScopes(t, iamRepo)
 	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+
+	ar := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), auth.AnonymousUserId)
+	_ = iam.TestRoleGrant(t, conn, ar.GetPublicId(), "id=*;type=target;actions=*")
+
 	otherOrg, otherProj := iam.TestScopes(t, iamRepo)
+	r = iam.TestRole(t, conn, otherProj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	otherHc := static.TestCatalogs(t, conn, otherProj.GetPublicId(), 1)[0]
 	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
@@ -292,8 +331,14 @@ func TestList(t *testing.T) {
 			s, err := testService(t, context.Background(), conn, kms, wrapper)
 			require.NoError(err, "Couldn't create new host set service.")
 
-			// Test with non-anon user
-			got, gErr := s.ListTargets(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, gErr := s.ListTargets(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "ListTargets(%q) got error %v, wanted %v", tc.req.GetScopeId(), gErr, tc.err)
@@ -312,17 +357,20 @@ func TestList(t *testing.T) {
 			}
 
 			// Test with anon user
-			got, gErr = s.ListTargets(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
-			require.NoError(gErr)
-			assert.Len(got.Items, len(tc.res.Items))
-			for _, item := range got.GetItems() {
-				require.Empty(item.Version)
-				require.Nil(item.CreatedTime)
-				require.Nil(item.UpdatedTime)
-				require.Nil(item.SessionMaxSeconds)
-				require.Nil(item.SessionConnectionLimit)
-				require.Empty(item.WorkerFilter)
-				require.Nil(item.Attrs)
+			requestInfo = authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeUnknown),
+			}
+			requestContext = context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr = s.ListTargets(ctx, tc.req)
+			require.Error(gErr)
+
+			// For now, due to how recursive checks the additional scopes,
+			// it gets a 403 while a non-recursive expects a 401
+			if tc.req.GetRecursive() {
+				assert.ErrorIs(gErr, handlers.ForbiddenError())
+			} else {
+				assert.ErrorIs(gErr, handlers.UnauthenticatedError())
 			}
 		})
 	}
@@ -334,13 +382,26 @@ func TestDelete(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
 	ctx := context.Background()
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
@@ -380,7 +441,14 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteTarget(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, gErr := s.DeleteTarget(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -397,13 +465,25 @@ func TestDelete_twice(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	ctx := context.Background()
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
@@ -412,7 +492,13 @@ func TestDelete_twice(t *testing.T) {
 	req := &pbs.DeleteTargetRequest{
 		Id: tar.GetPublicId(),
 	}
-	ctx = auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 	_, gErr := s.DeleteTarget(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteTarget(ctx, req)
@@ -426,12 +512,24 @@ func TestCreate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	cases := []struct {
 		name string
@@ -555,7 +653,15 @@ func TestCreate(t *testing.T) {
 			s, err := testService(t, context.Background(), conn, kms, wrapper)
 			require.NoError(err, "Failed to create a new host set service.")
 
-			got, gErr := s.CreateTarget(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+			got, gErr := s.CreateTarget(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -586,14 +692,24 @@ func TestUpdate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	rw := db.New(conn)
 	repoFn := func() (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
@@ -960,7 +1076,14 @@ func TestUpdate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.UpdateTargetRequest)
 			proto.Merge(req, tc.req)
 
-			got, gErr := tested.UpdateTarget(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, gErr := tested.UpdateTarget(ctx, req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "UpdateTarget(%+v) got error %v, wanted %v", req, gErr, tc.err)
@@ -992,14 +1115,25 @@ func TestUpdate_BadVersion(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	rw := db.New(conn)
 	repoFn := func() (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
@@ -1017,7 +1151,14 @@ func TestUpdate_BadVersion(t *testing.T) {
 	tested, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
-	upTar, err := tested.UpdateTarget(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), &pbs.UpdateTargetRequest{
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+	upTar, err := tested.UpdateTarget(ctx, &pbs.UpdateTargetRequest{
 		Id: gtar.GetPublicId(),
 		Item: &pb.Target{
 			Description: wrapperspb.String("updated"),
@@ -1036,12 +1177,24 @@ func TestAddTargetHostSets(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -1102,7 +1255,14 @@ func TestAddTargetHostSets(t *testing.T) {
 				HostSetIds: tc.addHostSets,
 			}
 
-			got, err := s.AddTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, err := s.AddTargetHostSets(ctx, req)
 			s, ok := status.FromError(err)
 			require.True(t, ok)
 			require.NoError(t, err, "Got error: %v", s)
@@ -1157,7 +1317,14 @@ func TestAddTargetHostSets(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr := s.AddTargetHostSets(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1172,12 +1339,24 @@ func TestSetTargetHostSets(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1243,7 +1422,14 @@ func TestSetTargetHostSets(t *testing.T) {
 				HostSetIds: tc.setHostSets,
 			}
 
-			got, err := s.SetTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, err := s.SetTargetHostSets(ctx, req)
 			require.NoError(t, err, "Got error: %v", s)
 			assert.ElementsMatch(t, tc.resultHostSets, got.GetItem().GetHostSetIds())
 		})
@@ -1287,7 +1473,14 @@ func TestSetTargetHostSets(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr := s.SetTargetHostSets(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1302,12 +1495,24 @@ func TestRemoveTargetHostSets(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1369,7 +1574,14 @@ func TestRemoveTargetHostSets(t *testing.T) {
 				HostSetIds: tc.removeHosts,
 			}
 
-			got, err := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, err := s.RemoveTargetHostSets(ctx, req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -1429,7 +1641,14 @@ func TestRemoveTargetHostSets(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveTargetHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr := s.RemoveTargetHostSets(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1444,12 +1663,24 @@ func TestAddTargetHostSources(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -1510,7 +1741,14 @@ func TestAddTargetHostSources(t *testing.T) {
 				HostSourceIds: tc.addHostSources,
 			}
 
-			got, err := s.AddTargetHostSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, err := s.AddTargetHostSources(ctx, req)
 			s, ok := status.FromError(err)
 			require.True(t, ok)
 			require.NoError(t, err, "Got error: %v", s)
@@ -1565,7 +1803,14 @@ func TestAddTargetHostSources(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddTargetHostSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr := s.AddTargetHostSources(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddTargetHostSources(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1580,12 +1825,24 @@ func TestSetTargetHostSources(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1645,7 +1902,14 @@ func TestSetTargetHostSources(t *testing.T) {
 				HostSourceIds: tc.setHostSources,
 			}
 
-			got, err := s.SetTargetHostSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, err := s.SetTargetHostSources(ctx, req)
 			require.NoError(t, err, "Got error: %v", s)
 			assert.ElementsMatch(t, tc.resultHostSources, got.GetItem().GetHostSourceIds())
 		})
@@ -1689,7 +1953,14 @@ func TestSetTargetHostSources(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetTargetHostSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr := s.SetTargetHostSources(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetTargetHostSources(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1704,12 +1975,24 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1771,7 +2054,14 @@ func TestRemoveTargetHostSources(t *testing.T) {
 				HostSourceIds: tc.removeHostSources,
 			}
 
-			got, err := s.RemoveTargetHostSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, err := s.RemoveTargetHostSources(ctx, req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -1831,7 +2121,14 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveTargetHostSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr := s.RemoveTargetHostSources(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveTargetHostSets(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -1845,12 +2142,24 @@ func TestAddTargetCredentialSources(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -1926,7 +2235,14 @@ func TestAddTargetCredentialSources(t *testing.T) {
 				BrokeredCredentialSourceIds: tc.addSources,
 			}
 
-			got, err := s.AddTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, err := s.AddTargetCredentialSources(ctx, req)
 			require.NoError(t, err, "Got error: %v", s)
 
 			assert.ElementsMatch(t, tc.resultSourceIds, got.GetItem().GetBrokeredCredentialSourceIds())
@@ -1987,7 +2303,14 @@ func TestAddTargetCredentialSources(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.AddTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr := s.AddTargetCredentialSources(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "AddTargetCredentialSources(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -2001,12 +2324,24 @@ func TestSetTargetCredentialSources(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -2089,7 +2424,14 @@ func TestSetTargetCredentialSources(t *testing.T) {
 				BrokeredCredentialSourceIds: tc.setCredentialSources,
 			}
 
-			got, err := s.SetTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, err := s.SetTargetCredentialSources(ctx, req)
 			require.NoError(t, err, "Got error: %v", s)
 			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetBrokeredCredentialSourceIds())
 			assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetBrokeredCredentialSources()))
@@ -2137,7 +2479,14 @@ func TestSetTargetCredentialSources(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.SetTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr := s.SetTargetCredentialSources(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "SetTargetCredentialSources(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -2151,12 +2500,24 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	rw := db.New(conn)
+
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
 
-	_, proj := iam.TestScopes(t, iamRepo)
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
@@ -2276,7 +2637,14 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 				BrokeredCredentialSourceIds: tc.removeCredentialSources,
 			}
 
-			got, err := s.RemoveTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			got, err := s.RemoveTargetCredentialSources(ctx, req)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -2344,7 +2712,14 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 	for _, tc := range failCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, gErr := s.RemoveTargetCredentialSources(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
+			requestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeBearer),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			_, gErr := s.RemoveTargetCredentialSources(ctx, tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "RemoveTargetCredentialSources(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
