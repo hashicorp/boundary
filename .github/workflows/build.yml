@@ -59,7 +59,7 @@ jobs:
 
   verify-product-metadata:
     needs: product-metadata
-    runs-on: ['self-hosted', 'linux', 'large']
+    runs-on: ubuntu-latest
     steps:
       - name: 'Checkout directory'
         uses: actions/checkout@v3
