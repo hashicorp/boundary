@@ -8,7 +8,7 @@ var (
 	// Whether cgo is enabled or not; set at build time
 	CgoEnabled bool
 
-	Version = "0.9.2"
+	Version = "0.10.0"
 
 	// VersionPrerelease is also set at compile time, similarly to Version.
 	VersionPrerelease = ""
