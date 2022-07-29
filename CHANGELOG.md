@@ -6,7 +6,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
-* API Module: Changed the return types that reference interfaces into their expected typed definition. Type casting is only allowed against interface types, therefore to mitigate compiler errors please remove any type casting done against the return values. ([Issue](https://github.com/hashicorp/boundary/issues/2122), [PR](https://github.com/hashicorp/boundary/pull/2238))
+* API Module: Changed the return types that reference interfaces into their
+  expected typed definition. Type casting is only allowed against interface
+  types, therefore to mitigate compiler errors please remove any type casting
+  done against the return values.
+  ([Issue](https://github.com/hashicorp/boundary/issues/2122),
+  [PR](https://github.com/hashicorp/boundary/pull/2238))
 * Targets: Rename Application credentials to Brokered credentials
   ([PR](https://github.com/hashicorp/boundary/pull/2260)).
 * Host plugins: Plugin-type host catalogs/sets/hosts now use typed prefixes for
@@ -15,6 +20,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Credential stores: Static-type credential stores/credentials now use typed
   prefixes for any newly-created resources. Existing resources will not be
   affected. ([PR](https://github.com/hashicorp/boundary/pull/2256))
+* Removal of `-token` flag from CLI: Passing a token this way can reveal the
+  token to any user or service that can look at process information. CLI users
+  can use the keyring integration or `BOUNDARY_TOKEN` env var.
+  ([PR](https://github.com/hashicorp/boundary/pull/2303))
 
 ## 0.9.1 (2022/07/06)
 
