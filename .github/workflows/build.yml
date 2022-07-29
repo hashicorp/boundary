@@ -57,6 +57,17 @@ jobs:
           echo "::set-output name=product-version::$VERSION"
           echo "::set-output name=product-minor-version::$MINOR_VERSION"
 
+  verify-product-metadata:
+    needs: product-metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout directory'
+        uses: actions/checkout@v3
+      - run: |
+          echo "Product Version - ${{ needs.product-metadata.outputs.product-version }}"
+          echo "Product Minor Version - ${{ needs.product-metadata.outputs.product-minor-version }}"
+          echo "Product Edition - ${{ needs.product-metadata.outputs.product-edition }}"
+
   generate-metadata-file:
     needs: product-metadata
     runs-on: ubuntu-latest
@@ -209,7 +220,8 @@ jobs:
         with:
           name: ${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
           path: out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-      - name: Linux Packaging
+
+      - name: Package
         uses: hashicorp/actions-packaging-linux@v1
         with:
           name: ${{ github.event.repository.name }}
