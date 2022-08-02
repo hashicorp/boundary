@@ -30,6 +30,11 @@ terraform "default" {
     aws = {
       source = "hashicorp/aws"
     }
+
+    random = {
+      source  = "hashicorp/random"
+      version = "3.3.2"
+    }
   }
 }
 
@@ -46,8 +51,27 @@ provider "enos" "default" {
   }
 }
 
+provider "random" "default" {}
+
 module "az_finder" {
   source = "./modules/az_finder"
+}
+
+module "nomad_cluster" {
+  source = "./modules/aws_nomad"
+
+  project_name = var.project_name
+  environment  = var.environment
+  common_tags = {
+    "Project Name" : var.project_name,
+    "Environment" : var.environment
+  }
+  ssh_aws_keypair   = var.aws_ssh_keypair_name
+  nomad_cluster_tag = "manthonynomad"
+  nomad_release = {
+    version = var.nomad_version
+    edition = "oss"
+  }
 }
 
 module "boundary" {
@@ -252,6 +276,45 @@ scenario "integration" {
       org_scope_id          = step.create_boundary_cluster.org_scope_id
       skip_failing_tests    = var.skip_failing_bats_tests
       target_id             = step.create_boundary_cluster.target_id
+    }
+  }
+}
+
+scenario "make_nomad_cluster" {
+  providers = [
+    provider.enos.default,
+    provider.aws.default,
+    provider.random.default,
+  ]
+
+  step "find_azs" {
+    module = module.az_finder
+
+    variables {
+      instance_type = [
+        var.worker_instance_type,
+        var.controller_instance_type
+      ]
+    }
+  }
+
+  step "create_base_infra" {
+    module = module.infra
+
+    variables {
+      availability_zones = step.find_azs.availability_zones
+    }
+  }
+
+
+  step "provision_nomad_cluster" {
+    module     = module.nomad_cluster
+    depends_on = [step.create_base_infra]
+    variables {
+      ami_id           = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      vpc_id           = step.create_base_infra.vpc_id
+      kms_key_arn      = step.create_base_infra.kms_key_arn
+      private_key_path = var.aws_ssh_private_key_path
     }
   }
 }

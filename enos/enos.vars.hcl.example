@@ -24,7 +24,7 @@
 // The directory that contains the copy of boundary you want to local execution
 // from. `make install` should install it into the $GOBIN, which is usually
 // similar to what is listed below.
-// local_boundary_dir = "/Users/<user>/.go/bin"
+local_boundary_dir = "/Users/michaelanthony/.go/bin"
 
 // The path to the installation bundle for the target machines. The existing
 // scenarios all use linux/amd64 architecture so bundle ought to match that
@@ -37,3 +37,9 @@
 // The port the ALB will listen on to proxy controller API requests. This defaults
 // to 9200
 // alb_listener_api_port = 9200
+
+
+// project_name     = "nomadtest"
+// environment      = "dev"
+// nomad_version    = "1.3.2"
+// architecture = "arm64"

@@ -1,0 +1,40 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+*.terraform.lock.hcl
+
+# Crash log files
+crash.log
+
+# Exclude all .tfvars files
+*.tfvars
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Don't include keys and licenses
+*.hclic
+*.pem
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Enos vars files
+enos*.vars.hcl
