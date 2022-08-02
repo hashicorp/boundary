@@ -12,8 +12,8 @@ import (
 )
 
 // The CertificateAuthority id will always be set to "roots".
-// The const ca_id contains this value
-const ca_id = "roots"
+// The const CaId contains this value
+const CaId = "roots"
 
 // CertificateAuthority is a versioned entity used to lock the database when rotation RootCertificates
 type CertificateAuthority struct {
@@ -24,7 +24,7 @@ type CertificateAuthority struct {
 func newCertificateAuthority() *CertificateAuthority {
 	ca := &CertificateAuthority{
 		CertificateAuthority: &store.CertificateAuthority{
-			PrivateId: ca_id,
+			PrivateId: CaId,
 		},
 	}
 	return ca
@@ -96,7 +96,7 @@ func newRootCertificate(ctx context.Context, serialNumber uint64, certificate []
 			PrivateKey:     rootCertificateKeys.privateKey,
 			KeyId:          keyId,
 			State:          string(state),
-			IssuingCa:      ca_id,
+			IssuingCa:      CaId,
 		},
 	}
 	return l, nil

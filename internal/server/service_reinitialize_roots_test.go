@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRotateRoots(t *testing.T) {
+func TestReinitializeRoots(t *testing.T) {
 	require, assert := require.New(t), assert.New(t)
 	ctx := context.Background()
 	wrapper := db.TestWrapper(t)
@@ -34,7 +34,7 @@ func TestRotateRoots(t *testing.T) {
 	assert.Len(rootIds, 0)
 
 	// Generate roots
-	roots, err := RotateRoots(ctx, workerAuthRepo, nodeenrollment.WithCertificateLifetime(time.Second*5))
+	_, err = RotateRoots(ctx, workerAuthRepo, nodeenrollment.WithCertificateLifetime(time.Second*5))
 	require.NoError(err)
 
 	// Check that we have roots now
@@ -47,27 +47,26 @@ func TestRotateRoots(t *testing.T) {
 	require.NotNil(certAuthority.GetNext())
 	require.NotNil(certAuthority.GetCurrent())
 
-	initialNext := roots.GetNext()
-	initialCurrent := roots.GetCurrent()
+	initialNext := certAuthority.GetNext()
+	initialCurrent := certAuthority.GetCurrent()
 
-	// Rotate roots and assert that they've rotated
-	newRoots, err := RotateRoots(ctx, workerAuthRepo, nodeenrollment.WithCertificateLifetime(time.Second*5))
+	// Reinitialize roots and assert that they're entirely new
+	newCerts, err := ReinitializeRoots(ctx, workerAuthRepo, nodeenrollment.WithCertificateLifetime(time.Second*5))
 	require.NoError(err)
 
-	require.NotNil(newRoots.GetNext())
-	require.NotNil(newRoots.GetCurrent())
-	rotatedNext := newRoots.GetNext()
-	rotatedCurrent := newRoots.GetCurrent()
+	require.NotNil(newCerts.GetNext())
+	require.NotNil(newCerts.GetCurrent())
+	reinitNext := newCerts.GetNext()
+	reinitCurrent := newCerts.GetCurrent()
 
 	// Next and current should have changed
-	assert.NotEqual(initialNext.PublicKeyPkix, rotatedNext.PublicKeyPkix)
-	assert.NotEqual(initialCurrent.PublicKeyPkix, rotatedCurrent.PublicKeyPkix)
-
-	// And the old next root should now be current
-	assert.Equal(initialNext.PublicKeyPkix, rotatedCurrent.PublicKeyPkix)
+	assert.NotEqual(initialNext.PublicKeyPkix, reinitNext.PublicKeyPkix)
+	assert.NotEqual(initialCurrent.PublicKeyPkix, reinitCurrent.PublicKeyPkix)
+	assert.NotEqual(initialNext.PublicKeyPkix, reinitCurrent.PublicKeyPkix)
+	assert.NotEqual(initialCurrent.PublicKeyPkix, reinitNext.PublicKeyPkix)
 }
 
-func TestRotateRootsFailure(t *testing.T) {
+func TestReinitializeFailure(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 	wrapper := db.TestWrapper(t)
@@ -80,6 +79,6 @@ func TestRotateRootsFailure(t *testing.T) {
 	workerAuthRepo, err := NewRepositoryStorage(ctx, &db.Db{}, &db.Db{}, kmsCache)
 	require.NoError(err)
 
-	_, err = RotateRoots(ctx, workerAuthRepo)
+	_, err = ReinitializeRoots(ctx, workerAuthRepo)
 	require.Error(err)
 }

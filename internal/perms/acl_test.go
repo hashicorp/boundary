@@ -423,11 +423,11 @@ func Test_AnonRestrictions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
-			for i := resource.Type(1); i <= resource.CredentialLibrary; i++ {
+			for i := resource.Type(1); i <= resource.Credential; i++ {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
-				for j := action.Type(1); j <= action.RemoveHostSources; j++ {
+				for j := action.Type(1); j <= action.ReadCertificateAuthority; j++ {
 					res := Resource{
 						ScopeId: scope.Global.String(),
 						Id:      "foobar",
