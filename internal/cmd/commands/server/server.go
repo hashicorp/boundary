@@ -527,15 +527,13 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	if c.controller != nil {
-		opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
-		if err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandCliError
-		}
-		c.opsServer = opsServer
-		c.opsServer.Start()
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandCliError
 	}
+	c.opsServer = opsServer
+	c.opsServer.Start()
 
 	// Inform any tests that the server is ready
 	if c.startedCh != nil {
