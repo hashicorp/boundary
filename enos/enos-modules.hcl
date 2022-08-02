@@ -33,6 +33,8 @@ module "build_crt" {
 
 module "build_local" {
   source = "./modules/build_local"
+
+  build_target = var.local_build_target
 }
 
 module "generate_aws_host_tag_vars" {

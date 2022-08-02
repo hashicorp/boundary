@@ -10,8 +10,7 @@ npm install --global yarn || true
 root_dir="$(git rev-parse --show-toplevel)"
 pushd "${root_dir}" > /dev/null
 
-make build-ui
-make build
+make ${BUILD_TARGET}
 zip -j ${ARTIFACT_PATH}/boundary.zip bin/boundary
 
 popd > /dev/null
