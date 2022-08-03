@@ -94,10 +94,10 @@ variable "skip_failing_bats_tests" {
 
 variable "project_name" {
   description = "The name of the project for tags in AWS"
-  type = string
+  type        = string
 }
 
 variable "nomad_version" {
   description = "The version of Nomad to pull from the public releases page"
-  type = string
+  type        = string
 }

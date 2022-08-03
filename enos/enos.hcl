@@ -322,11 +322,11 @@ scenario "make_nomad_cluster" {
   }
 
   step "deploy_controller" {
-    module = module.nomad_job
+    module     = module.nomad_job
     depends_on = [step.provision_nomad_cluster]
     variables {
       private_key_path = var.aws_ssh_private_key_path
-      nomad_instances = step.provision_nomad_cluster.instance_public_ips
+      nomad_instances  = step.provision_nomad_cluster.instance_public_ips
     }
   }
 }
