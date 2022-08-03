@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -24,10 +25,12 @@ func TestController_New(t *testing.T) {
 		testCtx := context.Background()
 		ctx, cancel := context.WithCancel(context.Background())
 		tc := &TestController{
-			t:      t,
-			ctx:    ctx,
-			cancel: cancel,
-			opts:   nil,
+			t:              t,
+			ctx:            ctx,
+			cancel:         cancel,
+			opts:           nil,
+			shutdownDoneCh: make(chan struct{}),
+			shutdownOnce:   new(sync.Once),
 		}
 
 		// TestControllerConfig(...) will create initial scopes
@@ -207,10 +210,12 @@ func TestControllerNewListenerConfig(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 
 			tc := &TestController{
-				t:      t,
-				ctx:    ctx,
-				cancel: cancel,
-				opts:   nil,
+				t:              t,
+				ctx:            ctx,
+				cancel:         cancel,
+				opts:           nil,
+				shutdownDoneCh: make(chan struct{}),
+				shutdownOnce:   new(sync.Once),
 			}
 			conf := TestControllerConfig(t, ctx, tc, nil)
 			conf.Listeners = tt.listeners
@@ -234,10 +239,12 @@ func TestController_NewPluginsConfig(t *testing.T) {
 	testCtx := context.Background()
 	ctx, cancel := context.WithCancel(context.Background())
 	tc := &TestController{
-		t:      t,
-		ctx:    ctx,
-		cancel: cancel,
-		opts:   nil,
+		t:              t,
+		ctx:            ctx,
+		cancel:         cancel,
+		opts:           nil,
+		shutdownDoneCh: make(chan struct{}),
+		shutdownOnce:   new(sync.Once),
 	}
 
 	initialConfig, err := config.DevController()

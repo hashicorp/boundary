@@ -74,6 +74,8 @@ func init() {
 type Server struct {
 	*Command
 
+	ServerSideShutdownCh chan struct{}
+
 	InfoKeys []string
 	Info     map[string]string
 
@@ -153,6 +155,7 @@ type Server struct {
 func NewServer(cmd *Command) *Server {
 	return &Server{
 		Command:              cmd,
+		ServerSideShutdownCh: make(chan struct{}),
 		InfoKeys:             make([]string, 0, 20),
 		Info:                 make(map[string]string),
 		SecureRandomReader:   rand.Reader,

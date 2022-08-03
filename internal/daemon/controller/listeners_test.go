@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -235,7 +236,14 @@ func TestStartListeners(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(context.Background())
 
-			tc := &TestController{t: t, ctx: ctx, cancel: cancel, opts: &TestControllerOpts{}}
+			tc := &TestController{
+				t:              t,
+				ctx:            ctx,
+				cancel:         cancel,
+				shutdownDoneCh: make(chan struct{}),
+				shutdownOnce:   new(sync.Once),
+				opts:           new(TestControllerOpts),
+			}
 			t.Cleanup(func() { tc.Shutdown() })
 
 			conf := TestControllerConfig(t, ctx, tc, nil)

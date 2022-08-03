@@ -39,6 +39,12 @@ import (
 
 type randFn func(length int) (string, error)
 
+const (
+	authenticationStatusNeverAuthenticated uint32 = iota
+	authenticationStatusFirstAuthentication
+	authenticationStatusFirstStatusRpcSuccessful
+)
+
 type Worker struct {
 	conf   *Config
 	logger hclog.Logger
@@ -60,7 +66,7 @@ type Worker struct {
 	sessionManager session.Manager
 
 	controllerStatusConn *atomic.Value
-	everAuthenticated    *ua.Bool
+	everAuthenticated    *ua.Uint32
 	lastStatusSuccess    *atomic.Value
 	workerStartTime      time.Time
 
@@ -102,7 +108,7 @@ func New(conf *Config) (*Worker, error) {
 		logger:                 conf.Logger.Named("worker"),
 		started:                ua.NewBool(false),
 		controllerStatusConn:   new(atomic.Value),
-		everAuthenticated:      ua.NewBool(false),
+		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
 		lastStatusSuccess:      new(atomic.Value),
 		controllerMultihopConn: new(atomic.Value),
 		tags:                   new(atomic.Value),

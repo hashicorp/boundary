@@ -753,7 +753,7 @@ func TestWorkerTags(t *testing.T) {
 			`,
 			expWorkerTags: nil,
 			expErr:        true,
-			expErrStr:     "Error unmarshalling env var/file contents: json: cannot unmarshal object into Go value of type []string",
+			expErrStr:     "Error unmarshaling env var/file contents: json: cannot unmarshal object into Go value of type []string",
 		},
 		{
 			name: "no clean mapping to internal structures",

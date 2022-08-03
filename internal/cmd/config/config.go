@@ -501,7 +501,7 @@ func Parse(d string) (*Config, error) {
 						var tags []string
 						err = json.Unmarshal([]byte(parsed), &tags)
 						if err != nil {
-							return nil, fmt.Errorf("Error unmarshalling env var/file contents: %w", err)
+							return nil, fmt.Errorf("Error unmarshaling env var/file contents: %w", err)
 						}
 						m[k] = tags
 					}

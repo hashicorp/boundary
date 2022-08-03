@@ -16,6 +16,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
+var firstStatusCheckPostHooks []func(context.Context, *Worker) error
+
 type LastStatusInformation struct {
 	*pbs.StatusResponse
 	StatusTime              time.Time
@@ -49,7 +51,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager se
 			// If we've never managed to successfully authenticate then we won't have
 			// any session information anyways and this will produce a ton of noise in
 			// observability, so skip calling the function and retry in a short duration
-			if !w.everAuthenticated.Load() {
+			if w.everAuthenticated.Load() == authenticationStatusNeverAuthenticated {
 				timer.Reset(10 * time.Millisecond)
 				continue
 			}
@@ -190,68 +192,74 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			// Exit out of status function; our work here is done and we don't need to create closeConnection requests
 			return
 		}
-	} else {
-		w.updateTags.Store(false)
-		var addrs []string
-		// This may be empty if we are in a multiple hop scenario
-		if len(result.CalculatedUpstreams) > 0 {
-			addrs = make([]string, 0, len(result.CalculatedUpstreams))
-			for _, v := range result.CalculatedUpstreams {
+
+		// Standard cleanup: Run through current jobs. Cancel connections
+		// for any canceling session or any session that is expired.
+		w.cleanupConnections(cancelCtx, false, sessionManager)
+		return
+	}
+
+	w.updateTags.Store(false)
+	var addrs []string
+	// This may be empty if we are in a multiple hop scenario
+	if len(result.CalculatedUpstreams) > 0 {
+		addrs = make([]string, 0, len(result.CalculatedUpstreams))
+		for _, v := range result.CalculatedUpstreams {
+			addrs = append(addrs, v.Address)
+		}
+	} else if w.conf.RawConfig.HcpbClusterId != "" {
+		// This is a worker that is one hop away from managed workers, so attempt to get that list
+		hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
+		defer hcpbWorkersCancel()
+		workersResp, err := client.ListHcpbWorkers(hcpbWorkersCtx, &pbs.ListHcpbWorkersRequest{})
+		if err != nil {
+			event.WriteError(hcpbWorkersCtx, op, err, event.WithInfoMsg("error fetching managed worker information"))
+		} else {
+			addrs = make([]string, 0, len(workersResp.Workers))
+			for _, v := range workersResp.Workers {
 				addrs = append(addrs, v.Address)
 			}
-
-		} else if w.conf.RawConfig.HcpbClusterId != "" {
-			// This is a worker that is one hop away from managed workers, so attempt to get that list
-			hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
-			defer hcpbWorkersCancel()
-			workersResp, err := client.ListHcpbWorkers(hcpbWorkersCtx, &pbs.ListHcpbWorkersRequest{})
-			if err != nil {
-				event.WriteError(hcpbWorkersCtx, op, err, event.WithInfoMsg("error fetching managed worker information"))
-			} else {
-				addrs = make([]string, 0, len(workersResp.Workers))
-				for _, v := range workersResp.Workers {
-					addrs = append(addrs, v.Address)
-				}
-			}
 		}
-		if len(addrs) > 0 {
-			lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
-			// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
-			if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
-				upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, addrs)
-				event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
-				for _, as := range addressReceivers {
-					as.SetAddresses(addrs)
-				}
-			} else if lastStatus == nil {
-				for _, as := range addressReceivers {
-					as.SetAddresses(addrs)
-				}
-				event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", addrs))
+	}
+
+	if len(addrs) > 0 {
+		lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
+		// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
+		if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
+			upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, addrs)
+			event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
+			for _, as := range addressReceivers {
+				as.SetAddresses(addrs)
 			}
+		} else if lastStatus == nil {
+			for _, as := range addressReceivers {
+				as.SetAddresses(addrs)
+			}
+			event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", addrs))
 		}
-		w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: addrs})
+	}
 
-		for _, request := range result.GetJobsRequests() {
-			switch request.GetRequestType() {
-			case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
-				switch request.GetJob().GetType() {
-				case pbs.JOBTYPE_JOBTYPE_SESSION:
-					sessInfo := request.GetJob().GetSessionInfo()
-					sessionId := sessInfo.GetSessionId()
-					si := sessionManager.Get(sessionId)
-					if si == nil {
-						event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
-						continue
-					}
-					si.ApplyLocalStatus(sessInfo.GetStatus())
+	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: addrs})
 
-					// Update connection state if there are any connections in
-					// the request.
-					for _, conn := range sessInfo.GetConnections() {
-						if err := si.ApplyLocalConnectionStatus(conn.GetConnectionId(), conn.GetStatus()); err != nil {
-							event.WriteError(statusCtx, op, err, event.WithInfo("connection_id", conn.GetConnectionId()))
-						}
+	for _, request := range result.GetJobsRequests() {
+		switch request.GetRequestType() {
+		case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
+			switch request.GetJob().GetType() {
+			case pbs.JOBTYPE_JOBTYPE_SESSION:
+				sessInfo := request.GetJob().GetSessionInfo()
+				sessionId := sessInfo.GetSessionId()
+				si := sessionManager.Get(sessionId)
+				if si == nil {
+					event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
+					continue
+				}
+				si.ApplyLocalStatus(sessInfo.GetStatus())
+
+				// Update connection state if there are any connections in
+				// the request.
+				for _, conn := range sessInfo.GetConnections() {
+					if err := si.ApplyLocalConnectionStatus(conn.GetConnectionId(), conn.GetStatus()); err != nil {
+						event.WriteError(statusCtx, op, err, event.WithInfo("connection_id", conn.GetConnectionId()))
 					}
 				}
 			}
@@ -261,6 +269,22 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	// Standard cleanup: Run through current jobs. Cancel connections
 	// for any canceling session or any session that is expired.
 	w.cleanupConnections(cancelCtx, false, sessionManager)
+
+	// If we have post hooks for after the first status check, run them now
+	if w.everAuthenticated.CAS(authenticationStatusFirstAuthentication, authenticationStatusFirstStatusRpcSuccessful) {
+		for _, fn := range firstStatusCheckPostHooks {
+			if err := fn(cancelCtx, w); err != nil {
+				// If we can't verify status we can't be expected to behave
+				// properly so error and trigger shutdown
+				event.WriteError(cancelCtx, op, fmt.Errorf("error running first status check post hook: %w", err))
+				// We don't use a non-blocking select here to ensure that it
+				// happens; we should catch blocks in tests but we want to
+				// ensure the signal is being listened to
+				w.conf.ServerSideShutdownCh <- struct{}{}
+				return
+			}
+		}
+	}
 }
 
 // cleanupConnections walks all sessions and shuts down all proxy connections.

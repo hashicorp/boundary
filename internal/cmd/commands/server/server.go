@@ -705,52 +705,67 @@ func (c *Command) WaitForInterrupt() int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
-	for !shutdownTriggered {
-		select {
-		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
+	// Add a force-shutdown goroutine to consume another interrupt
+	abortForceShutdownCh := make(chan struct{})
+	defer close(abortForceShutdownCh)
 
-			// Add a force-shutdown goroutine to consume another interrupt
-			abortForceShutdownCh := make(chan struct{})
-			defer close(abortForceShutdownCh)
-			go func() {
-				shutdownCh := make(chan os.Signal, 4)
-				signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+	runShutdownLogic := func() {
+		go func() {
+			shutdownCh := make(chan os.Signal, 4)
+			signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+			for {
 				select {
 				case <-shutdownCh:
-					c.UI.Error("Second interrupt received, forcing shutdown")
+					c.UI.Error("Forcing shutdown")
 					os.Exit(base.CommandUserError)
+
+				case <-c.ServerSideShutdownCh:
+					// Drain connections in case this is hit more than once
+
 				case <-abortForceShutdownCh:
 					// No-op, we just use this to shut down the goroutine
-				}
-			}()
-
-			if c.Config.Controller != nil && c.opsServer != nil {
-				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
-			}
-
-			// Do worker shutdown
-			if c.Config.Worker != nil {
-				if err := c.worker.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+					return
 				}
 			}
+		}()
 
-			// Do controller shutdown
-			if c.Config.Controller != nil {
-				if err := c.controller.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
-				}
+		if c.Config.Controller != nil && c.opsServer != nil {
+			c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+		}
+
+		// Do worker shutdown
+		if c.Config.Worker != nil {
+			if err := c.worker.Shutdown(); err != nil {
+				c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 			}
+		}
 
-			if c.opsServer != nil {
-				err := c.opsServer.Shutdown()
-				if err != nil {
-					c.UI.Error(fmt.Errorf("Error shutting down ops listeners: %w", err).Error())
-				}
+		// Do controller shutdown
+		if c.Config.Controller != nil {
+			if err := c.controller.Shutdown(); err != nil {
+				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
 			}
+		}
 
-			shutdownTriggered = true
+		if c.opsServer != nil {
+			err := c.opsServer.Shutdown()
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error shutting down ops listeners: %w", err).Error())
+			}
+		}
+
+		shutdownTriggered = true
+	}
+
+	for !shutdownTriggered {
+		select {
+		case <-c.ServerSideShutdownCh:
+			c.UI.Output("==> Boundary server self-terminating")
+			runShutdownLogic()
+
+		case <-c.ShutdownCh:
+			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
+			runShutdownLogic()
 
 		case <-c.SighupCh:
 			c.UI.Output("==> Boundary server reload triggered")
@@ -847,7 +862,7 @@ func (c *Command) verifyKmsSetup() error {
 	ctx := context.Background()
 	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
-		return fmt.Errorf("error creating kms: %w", err)
+		return fmt.Errorf("%s: error creating kms: %w", op, err)
 	}
 	if err := kmsCache.VerifyGlobalRoot(ctx); err != nil {
 		return err

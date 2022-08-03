@@ -13,11 +13,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
@@ -110,7 +108,6 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		if !ok {
 			return nil, temperror.New(stderrers.New("client could not be understood as a multihop service client"))
 		}
-		// log.Println("proxying fetch node credentials request")
 		return multihopClient.FetchNodeCredentials(ctx, req)
 	}
 
@@ -128,7 +125,6 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		if !ok {
 			return nil, temperror.New(stderrers.New("client could not be understood as a multihop service client"))
 		}
-		// log.Println("proxying generate server cert request")
 		return multihopClient.GenerateServerCertificates(ctx, req)
 	}
 
@@ -179,18 +175,12 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 	)
-	multihopService, err := handlers.NewMultihopServiceServer(
-		w.WorkerAuthStorage,
-		false,
-		w.controllerMultihopConn,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
+
+	for _, fn := range workerGrpcServiceRegistrationFunctions {
+		if err := fn(cancelCtx, w, downstreamServer); err != nil {
+			return nil, err
+		}
 	}
-	multihop.RegisterMultihopServiceServer(downstreamServer, multihopService)
-	statusSessionService := NewWorkerProxyServiceServer(w.GrpcClientConn, w.controllerStatusConn)
-	pbs.RegisterServerCoordinationServiceServer(downstreamServer, statusSessionService)
-	pbs.RegisterSessionServiceServer(downstreamServer, statusSessionService)
 
 	ln.GrpcServer = downstreamServer
 
