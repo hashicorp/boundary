@@ -4,6 +4,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* `boundary connect` Credential Brokering Integration: we have extended integration
+  into the `boundary connect` helpers. When using the `ssh` helper if the brokered 
+  credentials contain a `ssh_private_key` type the command will automatically pass the 
+  credentials to the `ssh` process
+  ([PR](https://github.com/hashicorp/boundary/pull/2267)).
+
 ### Deprecations/Changes
 
 * API Module: Changed the return types that reference interfaces into their
