@@ -357,5 +357,4 @@ jobs:
     uses: ./.github/workflows/enos-run.yml
     with:
       artifact-name: "boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip"
-      go-version: ${{ needs.product-metadata.outputs.go-version }}
     secrets: inherit
