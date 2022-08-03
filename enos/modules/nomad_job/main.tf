@@ -24,13 +24,22 @@ resource "enos_file" "boundary_controller_job" {
 
 
 resource "enos_remote_exec" "deploy_job" {
-  depends_on = [
-    enos_file.boundary_controller_job
-  ]
+
+  environment = {
+    NOMAD_VAR_db_username = var.db_username
+    NOMAD_VAR_db_password = var.db_password
+    NOMAD_VAR_db_address  = var.db_address
+  }
+
   inline = ["nomad job run /tmp/controller.nomad"]
+
   transport = {
     ssh = {
       host = var.nomad_instances[0]
     }
   }
+
+  depends_on = [
+    enos_file.boundary_controller_job
+  ]
 }
