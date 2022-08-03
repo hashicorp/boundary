@@ -67,7 +67,7 @@ module "nomad_cluster" {
     "Environment" : var.environment
   }
   ssh_aws_keypair   = var.aws_ssh_keypair_name
-  nomad_cluster_tag = "manthonynomad"
+  nomad_cluster_tag = "nomad"
   nomad_release = {
     version = var.nomad_version
     edition = "oss"
