@@ -109,9 +109,10 @@ func (w *Worker) controllerDialerFunc(extraAlpnProtos ...string) func(context.Co
 		}
 
 		if err == nil && conn != nil {
-			if !w.everAuthenticated.Load() {
-				w.everAuthenticated.Store(true)
+			if w.everAuthenticated.Load() == authenticationStatusNeverAuthenticated {
+				w.everAuthenticated.Store(authenticationStatusFirstAuthentication)
 			}
+
 			event.WriteSysEvent(ctx, op, "worker has successfully authenticated")
 		}
 
@@ -204,10 +205,11 @@ func (w *Worker) createClientConn(addr string) error {
 	if err != nil {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
 	}
-	w.GrpcClientConn = cc
 
+	w.GrpcClientConn = cc
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerMultihopConn.Store(multihop.NewMultihopServiceClient(cc))
+
 	return nil
 }
 

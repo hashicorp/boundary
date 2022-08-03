@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -58,16 +59,18 @@ const (
 // fully-programmatic controller for tests. Error checking (for instance, for
 // valid config) is not stringent at the moment.
 type TestController struct {
-	b            *base.Server
-	c            *Controller
-	t            testing.TB
-	apiAddrs     []string // The address the Controller API is listening on
-	clusterAddrs []string
-	client       *api.Client
-	ctx          context.Context
-	cancel       context.CancelFunc
-	name         string
-	opts         *TestControllerOpts
+	b              *base.Server
+	c              *Controller
+	t              testing.TB
+	apiAddrs       []string // The address the Controller API is listening on
+	clusterAddrs   []string
+	client         *api.Client
+	ctx            context.Context
+	cancel         context.CancelFunc
+	name           string
+	opts           *TestControllerOpts
+	shutdownDoneCh chan struct{}
+	shutdownOnce   *sync.Once
 }
 
 // Server returns the underlying base server
@@ -282,29 +285,33 @@ func (tc *TestController) buildClient() {
 // Shutdown runs any cleanup functions; be sure to run this after your test is
 // done
 func (tc *TestController) Shutdown() {
-	if tc.b != nil {
-		close(tc.b.ShutdownCh)
-	}
-
-	tc.cancel()
-
-	if tc.c != nil {
-		if err := tc.c.Shutdown(); err != nil {
-			tc.t.Error(err)
+	tc.shutdownOnce.Do(func() {
+		if tc.b != nil {
+			close(tc.b.ShutdownCh)
 		}
-	}
-	if tc.b != nil {
-		if err := tc.b.RunShutdownFuncs(); err != nil {
-			tc.t.Error(err)
+
+		tc.cancel()
+
+		if tc.c != nil {
+			if err := tc.c.Shutdown(); err != nil {
+				tc.t.Error(err)
+			}
 		}
-		if !tc.opts.DisableDatabaseDestruction {
-			if tc.b.DestroyDevDatabase(tc.ctx) != nil {
-				if err := tc.b.DestroyDevDatabase(tc.ctx); err != nil {
-					tc.t.Error(err)
+		if tc.b != nil {
+			if err := tc.b.RunShutdownFuncs(); err != nil {
+				tc.t.Error(err)
+			}
+			if !tc.opts.DisableDatabaseDestruction {
+				if tc.b.DestroyDevDatabase(tc.ctx) != nil {
+					if err := tc.b.DestroyDevDatabase(tc.ctx); err != nil {
+						tc.t.Error(err)
+					}
 				}
 			}
 		}
-	}
+
+		close(tc.shutdownDoneCh)
+	})
 }
 
 type TestControllerOpts struct {
@@ -434,10 +441,12 @@ func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 	}
 
 	tc := &TestController{
-		t:      t,
-		ctx:    ctx,
-		cancel: cancel,
-		opts:   opts,
+		t:              t,
+		ctx:            ctx,
+		cancel:         cancel,
+		opts:           opts,
+		shutdownDoneCh: make(chan struct{}),
+		shutdownOnce:   new(sync.Once),
 	}
 
 	conf := TestControllerConfig(t, ctx, tc, opts)
@@ -449,6 +458,21 @@ func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 	}
 
 	tc.buildClient()
+
+	// The real server functions will listen for shutdown cues and act so mimic
+	// that here, and ensure that channels get drained
+	go func() {
+		for {
+			select {
+			case <-tc.b.ShutdownCh:
+				tc.Shutdown()
+			case <-tc.b.ServerSideShutdownCh:
+				tc.Shutdown()
+			case <-tc.shutdownDoneCh:
+				return
+			}
+		}
+	}()
 
 	if !opts.DisableAutoStart {
 		if err := tc.c.Start(); err != nil {
