@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 )
 
 const AnonymousUserId = "u_anon"
@@ -25,6 +26,18 @@ type ACLResults struct {
 
 	// This is included but unexported for testing/debugging
 	scopeMap map[string][]Grant
+}
+
+// Permission provides information about the specific
+// resources that a user has been granted access to for a given scope, resource, and action.
+type Permission struct {
+	ScopeId  string // The scope id for which the permission applies.
+	Resource resource.Type
+	Action   action.Type
+
+	ResourceIds []string // Any specific resource ids that have been referred in the grant's `id` field, if applicable.
+	OnlySelf    bool     // The grant only allows actions against the user's own resources.
+	All         bool     // We got a wildcard in the grant string's `id` field.
 }
 
 // Resource defines something within boundary that requires authorization
@@ -207,6 +220,68 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 		}
 	}
 	return
+}
+
+// ListPermissions builds a set of Permissions based on the grants in the ACL for the List action, for the requested scopes and resource type.
+func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, requestedType resource.Type, requestedActions action.ActionSet) []Permission {
+	perms := make([]Permission, 0, len(requestedScopes))
+	for scopeId := range requestedScopes {
+		p := Permission{
+			ScopeId:  scopeId,
+			Resource: requestedType,
+			Action:   action.List,
+		}
+
+		// Get grants for a specific scope id from the source of truth.
+		grants := a.scopeMap[scopeId]
+		for _, grant := range grants {
+			// This grant doesn't match what we're looking for, ignore.
+			if grant.typ != requestedType && grant.typ != resource.All {
+				continue
+			}
+
+			// We found a grant that matches the requested resource type:
+			// Search to see if one or all actions in the action set have been granted.
+			found := false
+			if ok := grant.actions[action.All]; ok {
+				found = true
+			} else {
+				for _, a := range requestedActions {
+					if ok := grant.actions[a]; ok {
+						found = true
+						break
+					}
+				}
+			}
+			if !found { // In this case, none of the requested actions were granted for the given scope id.
+				continue
+			}
+
+			actions, _ := grant.Actions()
+			excludeList := make(action.ActionSet, 0, len(actions))
+			for _, aa := range actions {
+				if aa != action.List {
+					excludeList = append(excludeList, aa)
+				}
+			}
+			p.OnlySelf = excludeList.OnlySelf()
+
+			switch grant.id {
+			case "*":
+				p.All = true
+			case "":
+				continue
+			default:
+				p.ResourceIds = append(p.ResourceIds, grant.id)
+			}
+		}
+
+		if p.All || len(p.ResourceIds) > 0 {
+			perms = append(perms, p)
+		}
+	}
+
+	return perms
 }
 
 func topLevelType(typ resource.Type) bool {
