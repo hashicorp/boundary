@@ -338,9 +338,9 @@ scenario "make_nomad_cluster" {
     module = module.alb_boundary
 
     variables {
-      vpc_subnets = step.create_base_infra.vpc_subnets
-      vpc_id = step.create_base_infra.vpc_id
-      cidr_blocks = step.provision_nomad_cluster.cidr_blocks
+      vpc_subnets  = step.create_base_infra.vpc_subnets
+      vpc_id       = step.create_base_infra.vpc_id
+      cidr_blocks  = step.provision_nomad_cluster.cidr_blocks
       instance_ids = step.provision_nomad_cluster.instance_ids
     }
   }

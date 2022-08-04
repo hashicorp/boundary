@@ -18,20 +18,12 @@ resource "aws_security_group" "boundary_ingress_sg" {
   }
 }
 
-# data "aws_subnets" "default_subnets" {
-#   filter {
-#     name   = "vpc-id"
-#     values = [var.vpc_id]
-#   }
-# }
-
 resource "aws_lb" "boundary_clients_ingress" {
   name               = "boundary-ingress-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.boundary_ingress_sg.id]
-  # subnets            = data.aws_subnets.default_subnets.ids
-  subnets = [for k, _ in var.vpc_subnets : k]
+  subnets            = [for k, _ in var.vpc_subnets : k]
 }
 
 resource "aws_lb_listener" "boundary_listener" {
