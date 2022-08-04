@@ -140,6 +140,39 @@ resource "enos_file" "nomad_server_config" {
   }
 }
 
+resource "enos_file" "nomad_client_config" {
+  for_each = aws_instance.nomad_instance
+
+  source      = abspath("${path.module}/configs/client.hcl")
+  destination = "/etc/nomad.d/client.hcl"
+
+  transport = {
+    ssh = {
+      user             = "ubuntu"
+      host             = aws_instance.nomad_instance[each.key].public_ip
+      private_key_path = var.private_key_path
+    }
+  }
+}
+
+
+resource "enos_remote_exec" "install_docker" {
+  for_each = aws_instance.nomad_instance
+
+  scripts = [abspath("${path.module}/../../templates/install-docker.sh")]
+  environment = {
+    INSTANCE_COUNT = var.instance_count
+  }
+
+  transport = {
+    ssh = {
+      user             = "ubuntu"
+      host             = aws_instance.nomad_instance[each.key].public_ip
+      private_key_path = var.private_key_path
+    }
+  }
+}
+
 resource "enos_remote_exec" "start_nomad" {
   for_each = aws_instance.nomad_instance
 
@@ -162,5 +195,6 @@ resource "enos_remote_exec" "start_nomad" {
     enos_file.nomad_service,
     enos_file.nomad_common_config,
     enos_file.nomad_server_config,
+    enos_remote_exec.install_docker
   ]
 }

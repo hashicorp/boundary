@@ -140,6 +140,10 @@ module "test_cli_ui" {
   source = "./modules/test_cli_ui"
 }
 
+module "nomad_job" {
+  source = "./modules/nomad_job"
+}
+
 scenario "integration" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
@@ -306,7 +310,6 @@ scenario "make_nomad_cluster" {
     }
   }
 
-
   step "provision_nomad_cluster" {
     module     = module.nomad_cluster
     depends_on = [step.create_base_infra]
@@ -315,6 +318,15 @@ scenario "make_nomad_cluster" {
       vpc_id           = step.create_base_infra.vpc_id
       kms_key_arn      = step.create_base_infra.kms_key_arn
       private_key_path = var.aws_ssh_private_key_path
+    }
+  }
+
+  step "deploy_controller" {
+    module     = module.nomad_job
+    depends_on = [step.provision_nomad_cluster]
+    variables {
+      private_key_path = var.aws_ssh_private_key_path
+      nomad_instances  = step.provision_nomad_cluster.instance_public_ips
     }
   }
 }

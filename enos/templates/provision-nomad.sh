@@ -24,11 +24,11 @@ function retry {
 
 # Create a unique, non-privileged system user to run Nomad
 getent passwd nomad \
-|| sudo useradd --system --home /etc/nomad.d --shell /bin/false nomad
+|| sudo useradd --system --home /etc/nomad.d -G docker --shell /bin/false nomad
 
 # Create a data directory for Nomad
 sudo mkdir --parents /opt/nomad
-sudo chown nomad /opt/nomad 
+sudo chown nomad /opt/nomad
 
 # Start the Nomad service
 sudo systemctl enable nomad
