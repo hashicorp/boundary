@@ -21,5 +21,5 @@ variable "instance_ids" {
 
 variable "vpc_subnets" {
   description = "A map of subnet IDs to CIDR blocks for use with the ALB"
-  type        = any
+  type        = map(string)
 }
