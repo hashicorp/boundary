@@ -263,7 +263,6 @@ func DevKeyGeneration() string {
 func DevController() (*Config, error) {
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
-	workerAuthStorageKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
 
 	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
@@ -274,7 +273,6 @@ func DevController() (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
-	parsed.DevWorkerAuthStorageKey = workerAuthStorageKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
