@@ -6,11 +6,20 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* `boundary connect` Credential Brokering Integration: we have extended integration
-  into the `boundary connect` helpers. When using the `ssh` helper if the brokered 
-  credentials contain a `ssh_private_key` type the command will automatically pass the 
-  credentials to the `ssh` process
+* `boundary connect` Credential Brokering Integration: we have extended
+  integration into the `boundary connect` helpers. When using the `ssh` helper
+  if the brokered credentials contain a `ssh_private_key` type the command will
+  automatically pass the credentials to the `ssh` process
   ([PR](https://github.com/hashicorp/boundary/pull/2267)).
+* `boundary authenticate`, `boundary accounts`: Enables use of `env://` and
+  `file://` syntax to specify location of a password
+  ([PR](https://github.com/hashicorp/boundary/pull/2325))
+
+### Bug Fixes
+
+* `boundary accounts change-password`: Fixed being prompted for confirmation of
+  the current password instead of the new one
+  ([PR](https://github.com/hashicorp/boundary/pull/2325))
 
 ### Deprecations/Changes
 
