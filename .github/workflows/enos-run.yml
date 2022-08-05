@@ -70,7 +70,7 @@ jobs:
       - name: Set up AWS SSH private key
         run: |
           mkdir -p ./enos/support
-          echo "${{ secrets.ENOS_CI_SSH_KEYPAIR }}" > ./enos/support/private_key.pem
+          echo "${{ secrets.ENOS_CI_SSH_KEY }}" > ./enos/support/private_key.pem
           chmod 600 ./enos/support/private_key.pem
       - name: Set up Bats CLI UI tests dependency cache
         if: matrix.test == 'cli_ui'
@@ -129,7 +129,7 @@ jobs:
         continue-on-error: true
         env:
           ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-keypair
+          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
           ENOS_VAR_local_boundary_dir: ./support/
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
@@ -145,7 +145,7 @@ jobs:
         if: steps.run.outcome == 'failure'
         env:
           ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-keypair
+          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
           ENOS_VAR_local_boundary_dir: ./support/
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
@@ -159,7 +159,7 @@ jobs:
         if: ${{ always() }}
         env:
           ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-keypair
+          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
           ENOS_VAR_local_boundary_dir: ./support/
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
