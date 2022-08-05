@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
@@ -275,7 +276,21 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		c.client.SetRecoveryKmsWrapper(wrapper)
 
 	case c.FlagToken != "":
-		c.client.SetToken(c.FlagToken)
+		token, err := parseutil.ParsePath(c.FlagToken)
+		switch {
+		case err == nil:
+		case err.Error() == parseutil.ErrNotAUrl.Error():
+			return nil, errors.New("Token flag must be used with env:// or file:// syntax")
+
+		default:
+			return nil, fmt.Errorf("error parsing token flag: %w", err)
+		}
+		c.client.SetToken(token)
+
+	case c.FlagToken == "" && os.Getenv(envToken) != "":
+		// Backwards compat: allow reading from existing BOUNDARY_TOKEN env var
+		c.UI.Warn(`Direct usage of BOUNDARY_TOKEN env var is deprecated; please use "-token env://<env var nameL>" format, e.g. "-token env://BOUNDARY_TOKEN" to specify an env var to use.`)
+		c.client.SetToken(os.Getenv(envToken))
 
 	case c.client.Token() == "" && strings.ToLower(c.FlagKeyringType) != "none":
 		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
@@ -401,7 +416,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:   "token",
 				Target: &c.FlagToken,
 				EnvVar: envToken,
-				Usage:  `If specified, the given value will be used as the token for the call. Overrides the "token-name" parameter.`,
+				Usage:  `A URL pointing to a file on disk (file://) from which a token will be read or an env var (env://) from which the token will be read. Overrides the "token-name" parameter.`,
 			})
 
 			f.StringVar(&StringVar{
