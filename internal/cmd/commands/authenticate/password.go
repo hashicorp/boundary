@@ -64,7 +64,7 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 		Name:   "password",
 		Target: &c.flagPassword,
 		EnvVar: envPassword,
-		Usage:  "The password associated with the login name. If blank, the command will prompt for the password to be entered interactively in a non-echoing way. Otherwise, this can refer to a file on disk (file://) from which a password will be read; an env var (env://) from which the password will be read; or a string containing the password.",
+		Usage:  "The password associated with the login name. If blank, the command will prompt for the password to be entered interactively in a non-echoing way. Otherwise, this can refer to a file on disk (file://) from which a password will be read or an env var (env://) from which the password will be read.",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -114,8 +114,13 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.flagPassword = strings.TrimSpace(value)
 
 	default:
-		password, err := parseutil.ParsePath(c.flagPassword)
-		if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
+		password, err := parseutil.MustParsePath(c.flagPassword)
+		switch {
+		case err == nil:
+		case err.Error() == parseutil.ErrNotParsed.Error():
+			c.UI.Error("Password flag must be used with env:// or file:// syntax or left empty for an interactive prompt")
+			return base.CommandUserError
+		default:
 			c.UI.Error(fmt.Sprintf("Error parsing password flag: %v", err))
 			return base.CommandUserError
 		}

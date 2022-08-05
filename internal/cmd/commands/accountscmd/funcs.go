@@ -141,8 +141,13 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 			c.flagPassword = strings.TrimSpace(value)
 
 		default:
-			password, err := parseutil.ParsePath(c.flagPassword)
-			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
+			password, err := parseutil.MustParsePath(c.flagPassword)
+			switch {
+			case err == nil:
+			case err.Error() == parseutil.ErrNotParsed.Error():
+				c.UI.Error("Password flag must be used with env:// or file:// syntax or left empty for an interactive prompt")
+				return false
+			default:
 				c.UI.Error(fmt.Sprintf("Error parsing password flag: %v", err))
 				return false
 			}
@@ -164,8 +169,13 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 			c.flagCurrentPassword = strings.TrimSpace(value)
 
 		default:
-			password, err := parseutil.ParsePath(c.flagCurrentPassword)
-			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
+			password, err := parseutil.MustParsePath(c.flagCurrentPassword)
+			switch {
+			case err == nil:
+			case err.Error() == parseutil.ErrNotParsed.Error():
+				c.UI.Error("Current password flag must be used with env:// or file:// syntax or left empty for an interactive prompt")
+				return false
+			default:
 				c.UI.Error(fmt.Sprintf("Error parsing current password flag: %v", err))
 				return false
 			}
@@ -196,8 +206,13 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 			c.flagNewPassword = strings.TrimSpace(value)
 
 		default:
-			password, err := parseutil.ParsePath(c.flagNewPassword)
-			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
+			password, err := parseutil.MustParsePath(c.flagNewPassword)
+			switch {
+			case err == nil:
+			case err.Error() == parseutil.ErrNotParsed.Error():
+				c.UI.Error("New password flag must be used with env:// or file:// syntax or left empty for an interactive prompt")
+				return false
+			default:
 				c.UI.Error(fmt.Sprintf("Error parsing new password flag: %v", err))
 				return false
 			}

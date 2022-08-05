@@ -276,12 +276,11 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		c.client.SetRecoveryKmsWrapper(wrapper)
 
 	case c.FlagToken != "":
-		token, err := parseutil.ParsePath(c.FlagToken)
+		token, err := parseutil.MustParsePath(c.FlagToken)
 		switch {
 		case err == nil:
-		case err.Error() == parseutil.ErrNotAUrl.Error():
+		case err.Error() == parseutil.ErrNotParsed.Error():
 			return nil, errors.New("Token flag must be used with env:// or file:// syntax")
-
 		default:
 			return nil, fmt.Errorf("error parsing token flag: %w", err)
 		}

@@ -1,6 +1,8 @@
 package credentialscmd
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -58,9 +60,14 @@ func extraSshPrivateKeyFlagHandlingFuncImpl(c *SshPrivateKeyCommand, _ *base.Fla
 	switch c.flagPrivateKey {
 	case "":
 	default:
-		privateKey, err := parseutil.ParsePath(c.flagPrivateKey)
-		if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
-			c.UI.Error("Error parsing private key flag: " + err.Error())
+		privateKey, err := parseutil.MustParsePath(c.flagPrivateKey)
+		switch {
+		case err == nil:
+		case err.Error() == parseutil.ErrNotParsed.Error():
+			c.UI.Error("Private key flag must be used with env:// or file:// syntax")
+			return false
+		default:
+			c.UI.Error(fmt.Sprintf("Error parsing private key flag: %v", err))
 			return false
 		}
 		*opts = append(*opts, credentials.WithSshPrivateKeyCredentialPrivateKey(privateKey))
