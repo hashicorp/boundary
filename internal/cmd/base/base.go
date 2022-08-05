@@ -278,11 +278,6 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 
 		c.client.SetRecoveryKmsWrapper(wrapper)
 
-	case os.Getenv(envToken) != "":
-		// Backwards compat: allow reading from existing BOUNDARY_TOKEN env var
-		c.UI.Warn(`Direct usage of BOUNDARY_TOKEN env var is deprecated; please use "-token env://<env var name>" format, e.g. "-token env://BOUNDARY_TOKEN" to specify an env var to use.`)
-		c.client.SetToken(os.Getenv(envToken))
-
 	case c.FlagToken != "":
 		token, err := parseutil.MustParsePath(c.FlagToken)
 		switch {
@@ -293,6 +288,11 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			return nil, fmt.Errorf("error parsing token flag: %w", err)
 		}
 		c.client.SetToken(token)
+
+	case os.Getenv(envToken) != "":
+		// Backwards compat: allow reading from existing BOUNDARY_TOKEN env var
+		c.UI.Warn(`Direct usage of BOUNDARY_TOKEN env var is deprecated; please use "-token env://<env var name>" format, e.g. "-token env://BOUNDARY_TOKEN" to specify an env var to use.`)
+		c.client.SetToken(os.Getenv(envToken))
 
 	case c.client.Token() == "" && strings.ToLower(c.FlagKeyringType) != "none":
 		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
