@@ -184,6 +184,87 @@ func Test_ListKeys(t *testing.T) {
 	})
 }
 
+func Test_RotateKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	extWrapper := db.TestWrapper(t)
+	kmsCache := TestKms(t, conn, extWrapper)
+	err := kmsCache.CreateKeys(testCtx, "global")
+	require.NoError(t, err)
+	rw := db.New(conn)
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		// arrange
+		// we're not trying to test the ListKeys function, although we need to use it to validate the rotation
+		keys, err := kmsCache.ListKeys(testCtx, "global")
+		require.NoError(t, err)
+		require.Len(t, keys, 7)
+
+		// act
+		err = kmsCache.RotateKeys(testCtx, "global")
+		require.NoError(t, err)
+
+		// assert
+		keys, err = kmsCache.ListKeys(testCtx, "global")
+		require.NoError(t, err)
+		require.Len(t, keys, 14)
+	})
+
+	t.Run("reader provided, missing writer", func(t *testing.T) {
+		t.Parallel()
+		// arrange
+		WithReader := func(reader db.Reader) Option {
+			return func(o *options) {
+				o.withReader = reader
+			}
+		}
+
+		// act
+		err := kmsCache.RotateKeys(testCtx, "global", WithReader(rw))
+
+		// assert
+		assert.ErrorContains(t, err, "missing writer")
+	})
+
+	t.Run("writer provided, missing reader", func(t *testing.T) {
+		t.Parallel()
+		// arrange
+		WithWriter := func(writer db.Writer) Option {
+			return func(o *options) {
+				o.withWriter = writer
+			}
+		}
+
+		// act
+		err := kmsCache.RotateKeys(testCtx, "global", WithWriter(rw))
+
+		// assert
+		assert.ErrorContains(t, err, "missing reader")
+	})
+
+	t.Run("invalid reader", func(t *testing.T) {
+		t.Parallel()
+		// act
+		err := kmsCache.RotateKeys(testCtx, "global", WithReaderWriter(&invalidReader{}, rw))
+
+		// assert
+		assert.ErrorContains(t, err, "unable to convert reader")
+	})
+
+	t.Run("invalid writer", func(t *testing.T) {
+		t.Parallel()
+		// act
+		err := kmsCache.RotateKeys(testCtx, "global", WithReaderWriter(rw, &invalidWriter{}))
+
+		// assert
+		assert.ErrorContains(t, err, "unable to convert writer")
+	})
+
+	// other options are passed directly and shouldn't need to be tested
+}
+
 type invalidReader struct {
 	db.Reader
 }
