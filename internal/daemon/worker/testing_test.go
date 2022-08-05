@@ -112,7 +112,12 @@ func TestTestWorker_WorkerAuthStorageKms(t *testing.T) {
 			tw := NewTestWorker(t, &TestWorkerOpts{
 				WorkerAuthStorageKms: tt.wrapper,
 			})
-			require.Equal(tt.wrapper, tw.Config().WorkerAuthStorageKms)
+			if tt.wrapper == nil {
+				// DevWorker config will create one
+				require.NotNil(tw.Config().WorkerAuthStorageKms)
+			} else {
+				require.Equal(tt.wrapper, tw.Config().WorkerAuthStorageKms)
+			}
 		})
 	}
 }
