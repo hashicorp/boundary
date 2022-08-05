@@ -40,7 +40,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.4
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.1
-	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.2
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7
 	github.com/hashicorp/go-secure-stdlib/password v0.1.1
 	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.1
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1
