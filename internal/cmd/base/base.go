@@ -277,7 +277,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 
 	case os.Getenv(envToken) != "":
 		// Backwards compat: allow reading from existing BOUNDARY_TOKEN env var
-		c.UI.Warn(`Direct usage of BOUNDARY_TOKEN env var is deprecated; please use "-token env://<env var nameL>" format, e.g. "-token env://BOUNDARY_TOKEN" to specify an env var to use.`)
+		c.UI.Warn(`Direct usage of BOUNDARY_TOKEN env var is deprecated; please use "-token env://<env var name>" format, e.g. "-token env://BOUNDARY_TOKEN" to specify an env var to use.`)
 		c.client.SetToken(os.Getenv(envToken))
 
 	case c.FlagToken != "":
