@@ -371,6 +371,7 @@ scenario "make_nomad_cluster" {
       db_username = step.database.db_username
       db_password = step.database.db_password
       db_address = step.database.db_address
+      db_name = step.database.db_name
     }
   }
 

@@ -43,7 +43,7 @@ job "boundary-controller" {
       }
 
       env {
-        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@$%s:5432/dbname?sslmode=disable", var.db_username, var.db_password, var.db_address)
+        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@%s:5432/postgres?sslmode=disable", var.db_username, var.db_password, var.db_address)
       }
 
       lifecycle {
@@ -62,7 +62,7 @@ job "boundary-controller" {
       }
 
       env {
-        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@$%s:5432/dbname?sslmode=disable", var.db_username, var.db_password, var.db_address)
+        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@%s:5432/postgres?sslmode=disable", var.db_username, var.db_password, var.db_address)
       }
 
       resources {
