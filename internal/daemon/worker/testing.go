@@ -225,6 +225,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	// Base server
 	tw.b = base.NewServer(nil)
 	tw.b.Command = &base.Command{
+		Context:    ctx,
 		ShutdownCh: make(chan struct{}),
 	}
 
