@@ -61,8 +61,8 @@ locals {
 resource "enos_local_exec" "create_account" {
   environment = {
     BOUNDARY_ADDR  = var.alb_boundary_api_addr,
-    BOUNDARY_TOKEN = local.auth_token
-    BP = ${local.test_password}
+    BOUNDARY_TOKEN = local.auth_token,
+    BP = local.test_password
   }
   inline      = ["${var.local_boundary_dir}/boundary accounts create password -auth-method-id ${var.auth_method_id} -login-name ${local.test_user} -name ${local.test_user} -password env://BP -description 'test user' -format json"]
 }
