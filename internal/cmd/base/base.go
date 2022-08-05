@@ -231,6 +231,9 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	}
 
 	switch {
+	case opts.withNoTokenValue:
+		c.client.SetToken("")
+
 	case c.FlagRecoveryConfig != "":
 		wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
 			c.Context,
@@ -301,10 +304,6 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		if authToken != nil {
 			c.client.SetToken(authToken.Token)
 		}
-	}
-
-	if opts.withNoTokenValue {
-		c.client.SetToken("")
 	}
 
 	return c.client, nil
