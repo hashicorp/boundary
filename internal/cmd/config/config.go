@@ -58,13 +58,6 @@ kms "aead" {
 }
 
 kms "aead" {
-    purpose = "worker-auth-storage"
-	aead_type = "aes-gcm"
-	key = "%s"
-	key_id = "global_worker-auth-storage"
-}
-
-kms "aead" {
 	purpose = "recovery"
 	aead_type = "aes-gcm"
 	key = "%s"
@@ -100,6 +93,13 @@ worker {
 	tags {
 		type = ["dev", "local"]
 	}
+}
+
+kms "aead" {
+    purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "worker-auth-storage"
 }
 `
 )
@@ -232,7 +232,9 @@ type Plugins struct {
 // DevWorker is a Config that is used for dev mode of Boundary
 // workers
 func DevWorker() (*Config, error) {
-	parsed, err := Parse(devConfig + devWorkerExtraConfig)
+	workerAuthStorageKey := DevKeyGeneration()
+	hclStr := fmt.Sprintf(devConfig+devWorkerExtraConfig, workerAuthStorageKey)
+	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
@@ -261,10 +263,9 @@ func DevKeyGeneration() string {
 func DevController() (*Config, error) {
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
-	workerAuthStorageKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
 
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, workerAuthStorageKey, recoveryKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -272,7 +273,6 @@ func DevController() (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
-	parsed.DevWorkerAuthStorageKey = workerAuthStorageKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
@@ -282,7 +282,7 @@ func DevCombined() (*Config, error) {
 	workerAuthKey := DevKeyGeneration()
 	workerAuthStorageKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, workerAuthStorageKey, recoveryKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, recoveryKey, workerAuthStorageKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
