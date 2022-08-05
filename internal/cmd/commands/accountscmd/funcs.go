@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
@@ -116,59 +117,92 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 }
 
 func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.Option) bool {
-	if strutil.StrListContains(flagsMap[c.Func], "password") && c.flagPassword == "" {
-		fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
-		value, err := password.Read(os.Stdin)
-		fmt.Print("\n")
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return false
+	if strutil.StrListContains(flagsMap[c.Func], "password") {
+		switch c.flagPassword {
+		case "":
+			fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
+			value, err := password.Read(os.Stdin)
+			fmt.Print("\n")
+			if err != nil {
+				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
+				return false
+			}
+			fmt.Print("Please enter it one more time for confirmation: ")
+			confirmation, err := password.Read(os.Stdin)
+			fmt.Print("\n")
+			if err != nil {
+				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
+				return false
+			}
+			if strings.TrimSpace(value) != strings.TrimSpace(confirmation) {
+				c.UI.Error("Entered password and confirmation value did not match.")
+				return false
+			}
+			c.flagPassword = strings.TrimSpace(value)
+
+		default:
+			password, err := parseutil.ParsePath(c.flagPassword)
+			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
+				c.UI.Error("Error parsing password flag: " + err.Error())
+				return false
+			}
+			c.flagPassword = password
 		}
-		fmt.Print("Please enter it one more time for confirmation: ")
-		confirmation, err := password.Read(os.Stdin)
-		fmt.Print("\n")
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return false
-		}
-		if strings.TrimSpace(value) != strings.TrimSpace(confirmation) {
-			c.UI.Error("Entered password and confirmation value did not match.")
-			return false
-		}
-		c.flagPassword = strings.TrimSpace(value)
 	}
 
-	if strutil.StrListContains(flagsMap[c.Func], "current-password") && c.flagCurrentPassword == "" {
-		fmt.Print("Current password is not set as flag, please enter it now (will be hidden): ")
-		value, err := password.Read(os.Stdin)
-		fmt.Print("\n")
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return false
+	if strutil.StrListContains(flagsMap[c.Func], "current-password") {
+		switch c.flagCurrentPassword {
+		case "":
+			fmt.Print("Current password is not set as flag, please enter it now (will be hidden): ")
+			value, err := password.Read(os.Stdin)
+			fmt.Print("\n")
+			if err != nil {
+				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
+				return false
+			}
+			fmt.Print("Please enter it one more time for confirmation: ")
+			c.flagCurrentPassword = strings.TrimSpace(value)
+
+		default:
+			password, err := parseutil.ParsePath(c.flagCurrentPassword)
+			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
+				c.UI.Error("Error parsing current password flag: " + err.Error())
+				return false
+			}
+			c.flagCurrentPassword = password
 		}
-		fmt.Print("Please enter it one more time for confirmation: ")
-		confirmation, err := password.Read(os.Stdin)
-		fmt.Print("\n")
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return false
-		}
-		if strings.TrimSpace(value) != strings.TrimSpace(confirmation) {
-			c.UI.Error("Entered password and confirmation value did not match.")
-			return false
-		}
-		c.flagCurrentPassword = strings.TrimSpace(value)
 	}
 
-	if strutil.StrListContains(flagsMap[c.Func], "new-password") && c.flagNewPassword == "" {
-		fmt.Print("New password is not set as flag, please enter it now (will be hidden): ")
-		value, err := password.Read(os.Stdin)
-		fmt.Print("\n")
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
-			return false
+	if strutil.StrListContains(flagsMap[c.Func], "new-password") {
+		switch c.flagNewPassword {
+		case "":
+			fmt.Print("New password is not set as flag, please enter it now (will be hidden): ")
+			value, err := password.Read(os.Stdin)
+			fmt.Print("\n")
+			if err != nil {
+				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
+				return false
+			}
+			confirmation, err := password.Read(os.Stdin)
+			fmt.Print("\n")
+			if err != nil {
+				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
+				return false
+			}
+			if strings.TrimSpace(value) != strings.TrimSpace(confirmation) {
+				c.UI.Error("Entered password and confirmation value did not match.")
+				return false
+			}
+			c.flagNewPassword = strings.TrimSpace(value)
+
+		default:
+			password, err := parseutil.ParsePath(c.flagNewPassword)
+			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
+				c.UI.Error("Error parsing new password flag: " + err.Error())
+				return false
+			}
+			c.flagNewPassword = password
 		}
-		c.flagNewPassword = strings.TrimSpace(value)
 	}
 
 	return true
