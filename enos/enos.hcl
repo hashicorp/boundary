@@ -348,7 +348,7 @@ scenario "make_nomad_cluster" {
       vpc_id       = step.create_base_infra.vpc_id
     }
 
-    depends_on = [ step.create_base_infra ]
+    depends_on = [step.create_base_infra]
   }
 
   step "provision_nomad_cluster" {
@@ -368,10 +368,10 @@ scenario "make_nomad_cluster" {
     variables {
       private_key_path = var.aws_ssh_private_key_path
       nomad_instances  = step.provision_nomad_cluster.instance_public_ips
-      db_username = step.database.db_username
-      db_password = step.database.db_password
-      db_address = step.database.db_address
-      db_name = step.database.db_name
+      db_username      = step.database.db_username
+      db_password      = step.database.db_password
+      db_address       = step.database.db_address
+      db_name          = step.database.db_name
     }
   }
 
