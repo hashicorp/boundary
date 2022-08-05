@@ -275,6 +275,11 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 
 		c.client.SetRecoveryKmsWrapper(wrapper)
 
+	case os.Getenv(envToken) != "":
+		// Backwards compat: allow reading from existing BOUNDARY_TOKEN env var
+		c.UI.Warn(`Direct usage of BOUNDARY_TOKEN env var is deprecated; please use "-token env://<env var nameL>" format, e.g. "-token env://BOUNDARY_TOKEN" to specify an env var to use.`)
+		c.client.SetToken(os.Getenv(envToken))
+
 	case c.FlagToken != "":
 		token, err := parseutil.MustParsePath(c.FlagToken)
 		switch {
@@ -285,11 +290,6 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 			return nil, fmt.Errorf("error parsing token flag: %w", err)
 		}
 		c.client.SetToken(token)
-
-	case c.FlagToken == "" && os.Getenv(envToken) != "":
-		// Backwards compat: allow reading from existing BOUNDARY_TOKEN env var
-		c.UI.Warn(`Direct usage of BOUNDARY_TOKEN env var is deprecated; please use "-token env://<env var nameL>" format, e.g. "-token env://BOUNDARY_TOKEN" to specify an env var to use.`)
-		c.client.SetToken(os.Getenv(envToken))
 
 	case c.client.Token() == "" && strings.ToLower(c.FlagKeyringType) != "none":
 		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
@@ -414,7 +414,6 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:   "token",
 				Target: &c.FlagToken,
-				EnvVar: envToken,
 				Usage:  `A URL pointing to a file on disk (file://) from which a token will be read or an env var (env://) from which the token will be read. Overrides the "token-name" parameter.`,
 			})
 
