@@ -231,6 +231,9 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 	}
 
 	switch {
+	case opts.withNoTokenValue:
+		c.client.SetToken("")
+
 	case c.FlagRecoveryConfig != "":
 		wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
 			c.Context,
@@ -286,9 +289,9 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		}
 		c.client.SetToken(token)
 
-	case c.FlagToken == "" && os.Getenv(envToken) != "":
+	case os.Getenv(envToken) != "":
 		// Backwards compat: allow reading from existing BOUNDARY_TOKEN env var
-		c.UI.Warn(`Direct usage of BOUNDARY_TOKEN env var is deprecated; please use "-token env://<env var nameL>" format, e.g. "-token env://BOUNDARY_TOKEN" to specify an env var to use.`)
+		c.UI.Warn(`Direct usage of BOUNDARY_TOKEN env var is deprecated; please use "-token env://<env var name>" format, e.g. "-token env://BOUNDARY_TOKEN" to specify an env var to use.`)
 		c.client.SetToken(os.Getenv(envToken))
 
 	case c.client.Token() == "" && strings.ToLower(c.FlagKeyringType) != "none":
@@ -301,10 +304,6 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		if authToken != nil {
 			c.client.SetToken(authToken.Token)
 		}
-	}
-
-	if opts.withNoTokenValue {
-		c.client.SetToken("")
 	}
 
 	return c.client, nil
@@ -414,7 +413,6 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:   "token",
 				Target: &c.FlagToken,
-				EnvVar: envToken,
 				Usage:  `A URL pointing to a file on disk (file://) from which a token will be read or an env var (env://) from which the token will be read. Overrides the "token-name" parameter.`,
 			})
 

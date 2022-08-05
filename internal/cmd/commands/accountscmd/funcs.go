@@ -121,7 +121,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 	if strutil.StrListContains(flagsMap[c.Func], "password") {
 		switch c.flagPassword {
 		case "":
-			fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
+			fmt.Print("Please enter the password (it will be hidden): ")
 			value, err := password.Read(os.Stdin)
 			fmt.Print("\n")
 			if err != nil {
@@ -159,14 +159,13 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 	if strutil.StrListContains(flagsMap[c.Func], "current-password") {
 		switch c.flagCurrentPassword {
 		case "":
-			fmt.Print("Current password is not set as flag, please enter it now (will be hidden): ")
+			fmt.Print("Please enter the current password (it will be hidden): ")
 			value, err := password.Read(os.Stdin)
 			fmt.Print("\n")
 			if err != nil {
 				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
 				return false
 			}
-			fmt.Print("Please enter it one more time for confirmation: ")
 			c.flagCurrentPassword = strings.TrimSpace(value)
 
 		default:
@@ -187,13 +186,14 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 	if strutil.StrListContains(flagsMap[c.Func], "new-password") {
 		switch c.flagNewPassword {
 		case "":
-			fmt.Print("New password is not set as flag, please enter it now (will be hidden): ")
+			fmt.Print("Please enter the new password (it will be hidden): ")
 			value, err := password.Read(os.Stdin)
 			fmt.Print("\n")
 			if err != nil {
 				c.UI.Error(fmt.Sprintf("An error occurred attempting to read the password. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
 				return false
 			}
+			fmt.Print("Please enter it one more time for confirmation: ")
 			confirmation, err := password.Read(os.Stdin)
 			fmt.Print("\n")
 			if err != nil {

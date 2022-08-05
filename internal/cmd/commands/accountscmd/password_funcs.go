@@ -97,7 +97,7 @@ func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, _ *base.FlagSets, op
 	if strutil.StrListContains(flagsPasswordMap[c.Func], "password") {
 		switch c.flagPassword {
 		case "":
-			fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
+			fmt.Print("Please enter the password (it will be hidden): ")
 			value, err := password.Read(os.Stdin)
 			fmt.Print("\n")
 			if err != nil {
