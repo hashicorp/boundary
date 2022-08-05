@@ -93,6 +93,7 @@ type Command struct {
 	flagTLSInsecure   bool
 
 	flagFormat           string
+	FlagToken            string
 	FlagTokenName        string
 	FlagKeyringType      string
 	FlagRecoveryConfig   string
@@ -273,6 +274,9 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 
 		c.client.SetRecoveryKmsWrapper(wrapper)
 
+	case c.FlagToken != "":
+		c.client.SetToken(c.FlagToken)
+
 	case c.client.Token() == "" && strings.ToLower(c.FlagKeyringType) != "none":
 		keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 		if err != nil {
@@ -391,6 +395,13 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Default: "auto",
 				EnvVar:  EnvKeyringType,
 				Usage:   `The type of keyring to use. Defaults to "auto" which will use the Windows credential manager, OSX keychain, or cross-platform password store depending on platform. Set to "none" to disable keyring functionality. Available types, depending on platform, are: "wincred", "keychain", "pass", and "secret-service".`,
+			})
+
+			f.StringVar(&StringVar{
+				Name:   "token",
+				Target: &c.FlagToken,
+				EnvVar: envToken,
+				Usage:  `If specified, the given value will be used as the token for the call. Overrides the "token-name" parameter.`,
 			})
 
 			f.StringVar(&StringVar{
