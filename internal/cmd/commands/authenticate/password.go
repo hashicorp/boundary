@@ -104,7 +104,7 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	switch c.flagPassword {
 	case "":
-		fmt.Print("Password is not set as flag or in env, please enter it now (will be hidden): ")
+		fmt.Print("Please enter the password (it will be hidden): ")
 		value, err := password.Read(os.Stdin)
 		fmt.Print("\n")
 		if err != nil {
