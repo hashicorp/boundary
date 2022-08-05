@@ -242,6 +242,44 @@ func (k *Kms) ListKeys(ctx context.Context, scopeId string, _ ...Option) ([]wrap
 	return keys, nil
 }
 
+// RotateKeys rotates all keys in a given scope.
+// Options supported: withRandomReader, withTx, withRewrap, withReader, withWriter
+// When withReader or withWriter is used, both must be passed and the caller will
+// be responsible for managing the underlying db transactions.
+func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) error {
+	const op = "kms.(Kms).RotateKeys"
+
+	opts := getOpts(opt...)
+	kmsOpts := []wrappingKms.Option{
+		wrappingKms.WithRandomReader(opts.withRandomReader),
+		wrappingKms.WithTx(opts.withTx),
+		wrappingKms.WithRewrap(opts.withRewrap),
+	}
+
+	switch {
+	case !isNil(opts.withReader) && isNil(opts.withWriter):
+		return errors.New(ctx, errors.InvalidParameter, op, "missing writer")
+	case isNil(opts.withReader) && !isNil(opts.withWriter):
+		return errors.New(ctx, errors.InvalidParameter, op, "missing reader")
+	case !isNil(opts.withReader) && !isNil(opts.withWriter):
+		r, err := convertToRW(ctx, opts.withReader)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert reader"))
+		}
+		w, err := convertToRW(ctx, opts.withWriter)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert writer"))
+		}
+		kmsOpts = append(kmsOpts, wrappingKms.WithReaderWriter(r, w))
+	}
+
+	err := k.underlying.RotateKeys(ctx, scopeId, kmsOpts...)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
+}
+
 // VerifyGlobalRoot will verify that the global root wrapper is reasonable.
 func (k *Kms) VerifyGlobalRoot(ctx context.Context) error {
 	const op = "kms.(Kms).VerifyGlobalRoot"
