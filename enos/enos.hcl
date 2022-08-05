@@ -144,6 +144,10 @@ module "nomad_job" {
   source = "./modules/nomad_job"
 }
 
+module "alb_boundary" {
+  source = "./modules/alb_boundary"
+}
+
 scenario "integration" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
@@ -327,6 +331,18 @@ scenario "make_nomad_cluster" {
     variables {
       private_key_path = var.aws_ssh_private_key_path
       nomad_instances  = step.provision_nomad_cluster.instance_public_ips
+    }
+  }
+
+  step "provision_alb" {
+    module = module.alb_boundary
+
+    variables {
+      vpc_subnets  = step.create_base_infra.vpc_subnets
+      vpc_id       = step.create_base_infra.vpc_id
+      cidr_blocks  = step.provision_nomad_cluster.cidr_blocks
+      instance_ids = step.provision_nomad_cluster.instance_ids
+      cluster_name = step.provision_nomad_cluster.nomad_cluster_tag
     }
   }
 }

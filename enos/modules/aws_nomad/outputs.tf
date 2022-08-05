@@ -21,3 +21,8 @@ output "nomad_cluster_tag" {
   description = "The Nomad cluster's cluster tag"
   value       = local.nomad_cluster_tag
 }
+
+output "cidr_blocks" {
+  description = "The CIDR blocks allowed for access over the internet"
+  value       = local.cidr_blocks
+}
