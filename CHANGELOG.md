@@ -37,12 +37,16 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Credential stores: Static-type credential stores/credentials now use typed
   prefixes for any newly-created resources. Existing resources will not be
   affected. ([PR](https://github.com/hashicorp/boundary/pull/2256))
-* Change of behavior `-token` flag from CLI: Passing a token this way can reveal
-  the token to any user or service that can look at process information. This
-  flag must now reference a file on disk or an env var. Direct usage of the
+* Change of behavior on `-token` flag in CLI: Passing a token this way can
+  reveal the token to any user or service that can look at process information.
+  This flag must now reference a file on disk or an env var. Direct usage of the
   `BOUNDARY_TOKEN` env var is also deprecated as it can show up in environment
   information; the `env://` format now supported by the `-token` flag causes the
   Boundary process to read it instead of the shell so is safer.
+  ([PR](https://github.com/hashicorp/boundary/pull/2327))
+* Change of behavior on `-password` flag in CLI: The same change made above for
+  `-token` has also been applied to `-password` or, for supporting resource
+  types, `-current-password` and `-new-password`.
   ([PR](https://github.com/hashicorp/boundary/pull/2327))
 
 ## 0.9.1 (2022/07/06)
