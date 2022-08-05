@@ -327,6 +327,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    WorkerNotFound,
 			want: WorkerNotFound,
 		},
+		{
+			name: "WorkerConnNotFound",
+			c:    WorkerConnNotFound,
+			want: WorkerConnNotFound,
+		},
+		{
+			name: "KmsWorkerUnsupportedOperation",
+			c:    KmsWorkerUnsupportedOperation,
+			want: KmsWorkerUnsupportedOperation,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
