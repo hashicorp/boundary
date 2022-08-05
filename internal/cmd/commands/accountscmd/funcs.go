@@ -143,7 +143,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 		default:
 			password, err := parseutil.ParsePath(c.flagPassword)
 			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
-				c.UI.Error("Error parsing password flag: " + err.Error())
+				c.UI.Error(fmt.Sprintf("Error parsing password flag: %v", err))
 				return false
 			}
 			c.flagPassword = password
@@ -166,7 +166,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 		default:
 			password, err := parseutil.ParsePath(c.flagCurrentPassword)
 			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
-				c.UI.Error("Error parsing current password flag: " + err.Error())
+				c.UI.Error(fmt.Sprintf("Error parsing current password flag: %v", err))
 				return false
 			}
 			c.flagCurrentPassword = password
@@ -198,7 +198,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 		default:
 			password, err := parseutil.ParsePath(c.flagNewPassword)
 			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
-				c.UI.Error("Error parsing new password flag: " + err.Error())
+				c.UI.Error(fmt.Sprintf("Error parsing new password flag: %v", err))
 				return false
 			}
 			c.flagNewPassword = password

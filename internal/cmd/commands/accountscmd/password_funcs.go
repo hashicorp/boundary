@@ -119,7 +119,7 @@ func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, _ *base.FlagSets, op
 		default:
 			password, err := parseutil.ParsePath(c.flagPassword)
 			if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
-				c.UI.Error("Error parsing password flag: " + err.Error())
+				c.UI.Error(fmt.Sprintf("Error parsing password flag: %v", err))
 				return false
 			}
 			*opts = append(*opts, accounts.WithPasswordAccountPassword(password))
