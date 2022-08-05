@@ -1,6 +1,7 @@
 package accountscmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -144,7 +145,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 			password, err := parseutil.MustParsePath(c.flagPassword)
 			switch {
 			case err == nil:
-			case err.Error() == parseutil.ErrNotParsed.Error():
+			case errors.Is(err, parseutil.ErrNotParsed):
 				c.UI.Error("Password flag must be used with env:// or file:// syntax or left empty for an interactive prompt")
 				return false
 			default:
@@ -172,7 +173,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 			password, err := parseutil.MustParsePath(c.flagCurrentPassword)
 			switch {
 			case err == nil:
-			case err.Error() == parseutil.ErrNotParsed.Error():
+			case errors.Is(err, parseutil.ErrNotParsed):
 				c.UI.Error("Current password flag must be used with env:// or file:// syntax or left empty for an interactive prompt")
 				return false
 			default:
@@ -209,7 +210,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]accounts.O
 			password, err := parseutil.MustParsePath(c.flagNewPassword)
 			switch {
 			case err == nil:
-			case err.Error() == parseutil.ErrNotParsed.Error():
+			case errors.Is(err, parseutil.ErrNotParsed):
 				c.UI.Error("New password flag must be used with env:// or file:// syntax or left empty for an interactive prompt")
 				return false
 			default:

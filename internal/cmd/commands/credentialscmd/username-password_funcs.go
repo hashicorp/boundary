@@ -1,6 +1,7 @@
 package credentialscmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/api/credentials"
@@ -63,7 +64,7 @@ func extraUsernamePasswordFlagHandlingFuncImpl(c *UsernamePasswordCommand, _ *ba
 		password, err := parseutil.MustParsePath(c.flagPassword)
 		switch {
 		case err == nil:
-		case err.Error() == parseutil.ErrNotParsed.Error():
+		case errors.Is(err, parseutil.ErrNotParsed):
 			c.UI.Error("Password flag must be used with env:// or file:// syntax")
 			return false
 		default:

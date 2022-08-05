@@ -117,7 +117,7 @@ func (c *PasswordCommand) Run(args []string) int {
 		password, err := parseutil.MustParsePath(c.flagPassword)
 		switch {
 		case err == nil:
-		case err.Error() == parseutil.ErrNotParsed.Error():
+		case errors.Is(err, parseutil.ErrNotParsed):
 			c.UI.Error("Password flag must be used with env:// or file:// syntax or left empty for an interactive prompt")
 			return base.CommandUserError
 		default:

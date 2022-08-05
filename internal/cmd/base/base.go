@@ -279,7 +279,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		token, err := parseutil.MustParsePath(c.FlagToken)
 		switch {
 		case err == nil:
-		case err.Error() == parseutil.ErrNotParsed.Error():
+		case errors.Is(err, parseutil.ErrNotParsed):
 			return nil, errors.New("Token flag must be used with env:// or file:// syntax")
 		default:
 			return nil, fmt.Errorf("error parsing token flag: %w", err)
