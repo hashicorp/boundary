@@ -23,3 +23,8 @@ variable "vpc_subnets" {
   description = "A map of subnet IDs to CIDR blocks for use with the ALB"
   type        = map(string)
 }
+
+variable "cluster_name" {
+  description = "The unique Name tag of the cluster that the ALB will forward to"
+  type        = string
+}

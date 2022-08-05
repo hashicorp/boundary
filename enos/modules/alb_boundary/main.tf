@@ -16,6 +16,10 @@ resource "aws_security_group" "boundary_ingress_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name = var.cluster_name
+  }
 }
 
 resource "aws_lb" "boundary_clients_ingress" {
@@ -24,6 +28,9 @@ resource "aws_lb" "boundary_clients_ingress" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.boundary_ingress_sg.id]
   subnets            = [for k, _ in var.vpc_subnets : k]
+  tags = {
+    Name = var.cluster_name
+  }
 }
 
 resource "aws_lb_listener" "boundary_listener" {
@@ -38,6 +45,10 @@ resource "aws_lb_listener" "boundary_listener" {
         arn = aws_lb_target_group.boundary_clients.arn
       }
     }
+  }
+
+  tags = {
+    Name = var.cluster_name
   }
 }
 
@@ -54,6 +65,10 @@ resource "aws_lb_target_group" "boundary_clients" {
     # Mark healthy if redirected
     matcher = "200,301,302"
   }
+
+  tags = {
+    Name = var.cluster_name
+  }
 }
 
 resource "aws_lb_target_group_attachment" "boundary_clients" {
@@ -66,4 +81,8 @@ resource "aws_lb_target_group_attachment" "boundary_clients" {
 
 output "alb_address" {
   value = "http://${aws_lb.boundary_clients_ingress.dns_name}:${local.boundary_port}"
+}
+
+output "cluster_name_tag" {
+  value = var.cluster_name
 }

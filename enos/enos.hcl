@@ -342,6 +342,7 @@ scenario "make_nomad_cluster" {
       vpc_id       = step.create_base_infra.vpc_id
       cidr_blocks  = step.provision_nomad_cluster.cidr_blocks
       instance_ids = step.provision_nomad_cluster.instance_ids
+      cluster_name = step.provision_nomad_cluster.nomad_cluster_tag
     }
   }
 }
