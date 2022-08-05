@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
@@ -56,21 +57,21 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 		Name:   "login-name",
 		Target: &c.flagLoginName,
 		EnvVar: envLoginName,
-		Usage:  "The login name corresponding to an account within the given auth method",
+		Usage:  "The login name corresponding to an account within the given auth method.",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "password",
 		Target: &c.flagPassword,
 		EnvVar: envPassword,
-		Usage:  "The password associated with the login name",
+		Usage:  "The password associated with the login name. If blank, the command will prompt for the password to be entered interactively in a non-echoing way. Otherwise, this can refer to a file on disk (file://) from which a password will be read; an env var (env://) from which the password will be read; or a string containing the password.",
 	})
 
 	f.StringVar(&base.StringVar{
 		Name:   "auth-method-id",
 		EnvVar: "BOUNDARY_AUTH_METHOD_ID",
 		Target: &c.FlagAuthMethodId,
-		Usage:  "The auth-method resource to use for the operation",
+		Usage:  "The auth-method resource to use for the operation.",
 	})
 
 	return set
@@ -101,7 +102,8 @@ func (c *PasswordCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if c.flagPassword == "" {
+	switch c.flagPassword {
+	case "":
 		fmt.Print("Password is not set as flag or in env, please enter it now (will be hidden): ")
 		value, err := password.Read(os.Stdin)
 		fmt.Print("\n")
@@ -110,6 +112,14 @@ func (c *PasswordCommand) Run(args []string) int {
 			return base.CommandUserError
 		}
 		c.flagPassword = strings.TrimSpace(value)
+
+	default:
+		password, err := parseutil.ParsePath(c.flagPassword)
+		if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
+			c.UI.Error(fmt.Sprintf("Error parsing password flag: %v", err))
+			return base.CommandUserError
+		}
+		c.flagPassword = password
 	}
 
 	client, err := c.Client(base.WithNoTokenScope(), base.WithNoTokenValue())
