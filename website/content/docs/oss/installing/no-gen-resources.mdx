@@ -232,8 +232,8 @@ Create a login account for the auth method.
 $ boundary accounts create password \
   -recovery-config /tmp/recovery.hcl \
   -login-name "myuser" \
-  -password "foofoofoo" \
   -auth-method-id <auth_method_id_from_last_step>
+Please enter the password (it will be hidden): <password>
 ```
 
 </Tab>
@@ -484,6 +484,6 @@ resource "boundary_role" "project_admin" {
 ```bash
 boundary authenticate password \
   -auth-method-id <auth_method_id> \
-  -login-name myuser \
-  -password foofoofoo
+  -login-name myuser
+Please enter the password (it will be hidden): <password>
 ```

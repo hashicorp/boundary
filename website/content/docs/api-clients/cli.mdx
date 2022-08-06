@@ -34,8 +34,8 @@ The following shows use of the [`-addr`](/docs/api-clients/cli#addr) flag to spe
 $ boundary authenticate password \
     -addr=https://boundary.example.com:9200
     -auth-method-id=ampw_1234567890 \
-    -login-name=admin \
-    -password=password
+    -login-name=admin
+Please enter the password (it will be hidden): <password>
 ```
 
 Instead of specifying the `-addr` flag for every command, you can set an environment variable `BOUNDARY_ADDR=https://boundary.controller.com:9200`.

@@ -116,7 +116,9 @@ the attributes for the auth method, if desired.)
 
 
 ```bash
-boundary accounts create password -auth-method-id ampw_PbE6nNT72a -login-name 'myuser' -password supersecure -name my_account -description 'My password account'
+boundary accounts create password -auth-method-id ampw_PbE6nNT72a -login-name 'myuser' -name my_account -description 'My password account'
+Please enter the password (it will be hidden): <password>
+Please enter it one more time for confirmation: <password>  
 
 Account information:
   Auth Method ID:      ampw_PbE6nNT72a
@@ -283,7 +285,8 @@ Now you can test logging in.
 
 
 ```bash
-$ boundary authenticate password -login-name myuser -password supersecure -auth-method-id ampw_PbE6nNT72a
+$ boundary authenticate password -login-name myuser -auth-method-id ampw_PbE6nNT72a
+Please enter the password (it will be hidden): <password>
 ```
 
 </Tab>
