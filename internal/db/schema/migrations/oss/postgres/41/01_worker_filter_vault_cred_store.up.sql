@@ -95,6 +95,7 @@ comment on view credential_vault_store_public is
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
 -- Replaces view from 39/02_vault_ssh_private_key_override.up.sql
+-- Replaced in 42/01_ssh_private_key_passphrase.up.sql
 create view credential_vault_library_private as
 with
   password_override (library_id, username_attribute, password_attribute) as (
@@ -151,6 +152,7 @@ comment on view credential_vault_library_private is
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
 -- Replaces view from 39/02_vault_ssh_private_key_override.up.sql
+-- Replaced in 42/01_ssh_private_key_passphrase.up.sql
 create view credential_vault_library_public as
 select public_id,
        store_id,

@@ -106,8 +106,10 @@ func (r *Repository) CreateUsernamePasswordCredential(
 // assigned by this method. c must contain a valid StoreId.
 //
 // The private key is encrypted and a HmacSha256 of the private key is
-// calculated. Only the PrivateKeyHmac is returned, the plain-text and encrypted
-// private key is not returned.
+// calculated. If a password is supplied, it is also encrypted and an HmacSha256
+// of passphrase is calculated. Only the PrivateKeyHmac (and
+// PrivateKeyPassphraseHmac) is returned, the plain-text and encrypted private
+// key and passphrase are not returned.
 //
 // Both c.Name and c.Description are optional. If c.Name is set, it must be
 // unique within c.ScopeId. Both c.CreateTime and c.UpdateTime are ignored.
@@ -182,6 +184,8 @@ func (r *Repository) CreateSshPrivateKeyCredential(
 	// Clear private key fields, only PrivateKeyHmac should be returned
 	newCred.PrivateKeyEncrypted = nil
 	newCred.PrivateKey = nil
+	newCred.PrivateKeyPassphraseEncrypted = nil
+	newCred.PrivateKeyPassphrase = nil
 
 	return newCred, nil
 }

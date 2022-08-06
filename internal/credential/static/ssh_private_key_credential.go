@@ -35,8 +35,15 @@ func NewSshPrivateKeyCredential(
 ) (*SshPrivateKeyCredential, error) {
 	const op = "static.NewSshPrivateKeyCredential"
 
+	opts := getOpts(opt...)
+
 	if len(privateKey) != 0 {
-		_, err := ssh.ParsePrivateKey(privateKey)
+		var err error
+		if len(opts.withPrivateKeyPassphrase) == 0 {
+			_, err = ssh.ParsePrivateKey(privateKey)
+		} else {
+			_, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, opts.withPrivateKeyPassphrase)
+		}
 		switch {
 		case err == nil:
 		case err.Error() == (&ssh.PassphraseMissingError{}).Error():
@@ -46,14 +53,14 @@ func NewSshPrivateKeyCredential(
 		}
 	}
 
-	opts := getOpts(opt...)
 	l := &SshPrivateKeyCredential{
 		SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
-			StoreId:     storeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			Username:    username,
-			PrivateKey:  privateKey,
+			StoreId:              storeId,
+			Name:                 opts.withName,
+			Description:          opts.withDescription,
+			Username:             username,
+			PrivateKey:           privateKey,
+			PrivateKeyPassphrase: opts.withPrivateKeyPassphrase,
 		},
 	}
 	return l, nil
@@ -113,6 +120,9 @@ func (c *SshPrivateKeyCredential) encrypt(ctx context.Context, cipher wrapping.W
 	if err := c.hmacPrivateKey(ctx, cipher); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
+	if err := c.hmacPrivateKeyPassphrase(ctx, cipher); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 	return nil
 }
 
@@ -134,5 +144,18 @@ func (c *SshPrivateKeyCredential) hmacPrivateKey(ctx context.Context, cipher wra
 		return errors.Wrap(ctx, err, op)
 	}
 	c.PrivateKeyHmac = []byte(hm)
+	return nil
+}
+
+func (c *SshPrivateKeyCredential) hmacPrivateKeyPassphrase(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "static.(SshPrivateKeyCredential).hmacPrivateKeyPassphrase"
+	if cipher == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
+	}
+	hm, err := crypto.HmacSha256(ctx, c.PrivateKeyPassphrase, cipher, []byte(c.StoreId), nil)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	c.PrivateKeyPassphraseHmac = []byte(hm)
 	return nil
 }

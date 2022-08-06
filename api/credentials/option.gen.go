@@ -134,6 +134,30 @@ func WithSshPrivateKeyCredentialPrivateKey(inPrivateKey string) Option {
 	}
 }
 
+func WithSshPrivateKeyCredentialPrivateKeyPassphrase(inPrivateKeyPassphrase string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["private_key_passphrase"] = inPrivateKeyPassphrase
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultSshPrivateKeyCredentialPrivateKeyPassphrase() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["private_key_passphrase"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithSshPrivateKeyCredentialUsername(inUsername string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]

@@ -14,10 +14,11 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName        string
-	withDescription string
-	withLimit       int
-	withPublicId    string
+	withName                 string
+	withDescription          string
+	withLimit                int
+	withPublicId             string
+	withPrivateKeyPassphrase []byte
 }
 
 func getDefaultOptions() options {
@@ -51,5 +52,12 @@ func WithLimit(l int) Option {
 func WithPublicId(name string) Option {
 	return func(o *options) {
 		o.withPublicId = name
+	}
+}
+
+// WithPrivateKeyPassphrase provides an optional SSH private key passphrase to use.
+func WithPrivateKeyPassphrase(with []byte) Option {
+	return func(o *options) {
+		o.withPrivateKeyPassphrase = with
 	}
 }
