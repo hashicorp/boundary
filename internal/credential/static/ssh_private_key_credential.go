@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/proto"
 )
@@ -36,7 +35,6 @@ func NewSshPrivateKeyCredential(
 	const op = "static.NewSshPrivateKeyCredential"
 
 	opts := getOpts(opt...)
-
 	if len(privateKey) != 0 {
 		var err error
 		if len(opts.withPrivateKeyPassphrase) == 0 {
@@ -109,9 +107,18 @@ func (c *SshPrivateKeyCredential) encrypt(ctx context.Context, cipher wrapping.W
 	if len(c.PrivateKey) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "no private key defined")
 	}
-	if err := structwrapping.WrapStruct(ctx, cipher, c.SshPrivateKeyCredential, nil); err != nil {
+
+	// Encrypt private key
+	blobInfo, err := cipher.Encrypt(ctx, c.PrivateKey)
+	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
+	protoBytes, err := proto.Marshal(blobInfo)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encode))
+	}
+	c.PrivateKeyEncrypted = protoBytes
+
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
@@ -120,17 +127,52 @@ func (c *SshPrivateKeyCredential) encrypt(ctx context.Context, cipher wrapping.W
 	if err := c.hmacPrivateKey(ctx, cipher); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := c.hmacPrivateKeyPassphrase(ctx, cipher); err != nil {
-		return errors.Wrap(ctx, err, op)
+
+	if len(c.PrivateKeyPassphrase) > 0 {
+		// Encrypt passphrase
+		blobInfo, err = cipher.Encrypt(ctx, c.PrivateKeyPassphrase)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+		}
+		protoBytes, err = proto.Marshal(blobInfo)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encode))
+		}
+		c.PrivateKeyPassphraseEncrypted = protoBytes
+		if err := c.hmacPrivateKeyPassphrase(ctx, cipher); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
 	}
+
 	return nil
 }
 
 func (c *SshPrivateKeyCredential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "static.(SshPrivateKeyCredential).decrypt"
-	if err := structwrapping.UnwrapStruct(ctx, cipher, c.SshPrivateKeyCredential, nil); err != nil {
+
+	// Decrypt private key
+	dec := new(wrapping.BlobInfo)
+	if err := proto.Unmarshal(c.PrivateKeyEncrypted, dec); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decode))
+	}
+	pt, err := cipher.Decrypt(ctx, dec)
+	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
+	c.PrivateKey = pt
+
+	if len(c.PrivateKeyPassphraseEncrypted) > 0 {
+		// Decrypt passphrase
+		if err := proto.Unmarshal(c.PrivateKeyPassphraseEncrypted, dec); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decode))
+		}
+		pt, err = cipher.Decrypt(ctx, dec)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+		}
+		c.PrivateKeyPassphrase = pt
+	}
+
 	return nil
 }
 

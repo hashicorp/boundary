@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh/testdata"
 )
 
 func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
@@ -276,6 +277,18 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:    "valid-with-passphrase",
+			scopeId: prj.PublicId,
+			cred: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:             "my-user",
+					PrivateKey:           []byte(TestSshPrivateKeyPem),
+					StoreId:              cs.PublicId,
+					PrivateKeyPassphrase: []byte("passphrase"),
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -298,8 +311,10 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			assert.Equal(tt.cred.Username, got.Username)
 			assert.Nil(got.PrivateKey)
 			assert.Nil(got.PrivateKeyEncrypted)
+			assert.Nil(got.PrivateKeyPassphrase)
+			assert.Nil(got.PrivateKeyPassphraseEncrypted)
 
-			// Validate password
+			// Validate private key and passphrase
 			lookupCred := allocSshPrivateKeyCredential()
 			lookupCred.PublicId = got.PublicId
 			require.NoError(rw.LookupById(ctx, lookupCred))
@@ -317,6 +332,15 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			hm, err := crypto.HmacSha256(ctx, tt.cred.PrivateKey, databaseWrapper, []byte(tt.cred.StoreId), nil)
 			require.NoError(err)
 			assert.Equal([]byte(hm), got.PrivateKeyHmac)
+
+			// Validate passphrase
+			assert.Equal(tt.cred.PrivateKeyPassphrase, lookupCred.PrivateKeyPassphrase)
+			if len(tt.cred.PrivateKeyPassphrase) > 0 {
+				assert.NotEmpty(got.PrivateKeyPassphraseHmac)
+				hm, err := crypto.HmacSha256(ctx, tt.cred.PrivateKeyPassphrase, databaseWrapper, []byte(tt.cred.StoreId), nil)
+				require.NoError(err)
+				assert.Equal([]byte(hm), got.PrivateKeyPassphraseHmac)
+			}
 
 			// Validate oplog
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
@@ -372,6 +396,8 @@ func TestRepository_LookupCredential(t *testing.T) {
 	store := TestCredentialStore(t, conn, wrapper, prj.PublicId)
 	upCred := TestUsernamePasswordCredential(t, conn, wrapper, "username", "password", store.PublicId, prj.PublicId)
 	spkCred := TestSshPrivateKeyCredential(t, conn, wrapper, "username", TestSshPrivateKeyPem, store.PublicId, prj.PublicId)
+	spkCredWithPass := TestSshPrivateKeyCredential(t, conn, wrapper, "username", string(testdata.PEMEncryptedKeys[0].PEMBytes),
+		store.PublicId, prj.PublicId, WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
 
 	tests := []struct {
 		name    string
@@ -388,6 +414,11 @@ func TestRepository_LookupCredential(t *testing.T) {
 			name: "spk-valid",
 			id:   spkCred.GetPublicId(),
 			want: spkCred,
+		},
+		{
+			name: "spk-valid-with-passphrase",
+			id:   spkCredWithPass.GetPublicId(),
+			want: spkCredWithPass,
 		},
 		{
 			name:    "empty-public-id",
@@ -433,6 +464,14 @@ func TestRepository_LookupCredential(t *testing.T) {
 				assert.Empty(v.PrivateKey)
 				assert.Empty(v.PrivateKeyEncrypted)
 				assert.NotEmpty(v.PrivateKeyHmac)
+
+				want, ok := tt.want.(*SshPrivateKeyCredential)
+				require.True(ok)
+				assert.Empty(v.PrivateKeyPassphrase)
+				assert.Empty(v.PrivateKeyPassphraseEncrypted)
+				if len(want.PrivateKeyPassphrase) > 0 {
+					assert.NotEmpty(v.PrivateKeyPassphraseHmac)
+				}
 			default:
 				require.Fail("unknown type")
 			}

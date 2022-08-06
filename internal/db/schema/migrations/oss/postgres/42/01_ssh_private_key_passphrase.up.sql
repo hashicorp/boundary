@@ -12,8 +12,8 @@ alter table credential_vault_library_ssh_private_key_mapping_override
     not null;
 
 -- Replaces view from 41/01_worker_filter_vault_cred_store.up.sql
-drop view credential_vault_library_private;
 drop view credential_vault_library_public;
+drop view credential_vault_library_private;
 
 -- Replaces view from 41/01_worker_filter_vault_cred_store.up.sql
 create view credential_vault_library_private as
@@ -28,10 +28,10 @@ with
     select library_id,
            nullif(username_attribute, wt_to_sentinel('no override')),
            nullif(private_key_attribute, wt_to_sentinel('no override')),
-           nullif(private_key_passphrase_attribute, wt_to_sentinel('no override')),
+           nullif(private_key_passphrase_attribute, wt_to_sentinel('no override'))
     from credential_vault_library_ssh_private_key_mapping_override
   )
-select library.public_id         as public_id,
+  select library.public_id         as public_id,
        library.store_id          as store_id,
        library.name              as name,
        library.description       as description,
@@ -57,10 +57,10 @@ select library.public_id         as public_id,
        store.client_key_id       as client_key_id,
        coalesce(upasso.username_attribute,sshpk.username_attribute)
                                  as username_attribute,
-       upasso.password_attribute            as password_attribute,
-       sshpk.private_key_attribute          as private_key_attribute,
+       upasso.password_attribute              as password_attribute,
+       sshpk.private_key_attribute            as private_key_attribute,
        sshpk.private_key_passphrase_attribute as private_key_passphrase_attribute
-from credential_vault_library library
+    from credential_vault_library library
        join credential_vault_store_private store
             on library.store_id = store.public_id
        left join password_override upasso
@@ -92,7 +92,7 @@ select public_id,
        username_attribute,
        password_attribute,
        private_key_attribute,
-       private_key_passphrase_attribute,
+       private_key_passphrase_attribute
 from credential_vault_library_private;
 comment on view credential_vault_library_public is
   'credential_vault_library_public is a view where each row contains a credential library and any of library''s credential mapping overrides. '

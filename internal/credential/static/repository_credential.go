@@ -184,6 +184,8 @@ func (r *Repository) CreateSshPrivateKeyCredential(
 	// Clear private key fields, only PrivateKeyHmac should be returned
 	newCred.PrivateKeyEncrypted = nil
 	newCred.PrivateKey = nil
+
+	// Clear passphrase fields, only PrivateKeyPassphraseHmac should be returned if it exists
 	newCred.PrivateKeyPassphraseEncrypted = nil
 	newCred.PrivateKeyPassphrase = nil
 
@@ -228,6 +230,10 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 		// Clear private key fields, only privateKeyHmac should be returned
 		spkCred.PrivateKeyEncrypted = nil
 		spkCred.PrivateKey = nil
+
+		// Clear passphrase fields, only PrivateKeyPassphraseHmac should be returned if it exists
+		spkCred.PrivateKeyPassphraseEncrypted = nil
+		spkCred.PrivateKeyPassphrase = nil
 		cred = spkCred
 	}
 
@@ -353,9 +359,9 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 // new SshPrivateKeyCredential containing the updated values and a count of the
 // number of records updated. c is not changed.
 //
-// c must contain a valid PublicId. Only Name, Description, Username and
-// PrivateKey can be changed. If c.Name is set to a non-empty string, it must be
-// unique within c.ScopeId.
+// c must contain a valid PublicId. Only Name, Description, Username,
+// PrivateKey and PrivateKeyPassphrase can be changed. If c.Name is set to a non-empty string, it
+// must be unique within c.ScopeId.
 //
 // An attribute of c will be set to NULL in the database if the attribute in c
 // is the zero value and it is included in fieldMaskPaths.
@@ -393,6 +399,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 		case strings.EqualFold(descriptionField, f):
 		case strings.EqualFold(usernameField, f):
 		case strings.EqualFold(privateKeyField, f):
+		case strings.EqualFold(passphraseField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
@@ -403,6 +410,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 			descriptionField: c.Description,
 			usernameField:    c.Username,
 			privateKeyField:  c.PrivateKey,
+			passphraseField:  c.PrivateKeyPassphrase,
 		},
 		fieldMaskPaths,
 		nil,
@@ -424,6 +432,19 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 
 			// Set PrivateKeyHmac and PrivateKeyEncrypted masks for update.
 			dbMask = append(dbMask, "PrivateKeyHmac", "PrivateKeyEncrypted")
+		}
+		if strings.EqualFold(passphraseField, f) {
+			// Passphrase has been updated, re-encrypt and recalculate hmac
+			databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+			}
+			if err := c.encrypt(ctx, databaseWrapper); err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+
+			// Set PassphraseHmac and PassphraseEncrypted masks for update.
+			dbMask = append(dbMask, "PrivateKeyPassphraseHmac", "PrivateKeyPassphraseEncrypted")
 		}
 	}
 
@@ -459,6 +480,10 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 	// Clear private key fields, only PrivateKeyHmac should be returned
 	returnedCredential.PrivateKeyEncrypted = nil
 	returnedCredential.PrivateKey = nil
+
+	// Clear passphrase fields, only PrivateKeyPassphraseHmac should be returned if it exists
+	returnedCredential.PrivateKeyPassphraseEncrypted = nil
+	returnedCredential.PrivateKeyPassphrase = nil
 
 	return returnedCredential, rowsUpdated, nil
 }
@@ -503,6 +528,10 @@ func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ..
 		// Clear private key fields, only PrivateKeyHmac should be returned
 		c.PrivateKeyEncrypted = nil
 		c.PrivateKey = nil
+
+		// Clear passphrase fields, only PrivateKeyPassphraseHmac should be returned if it exists
+		c.PrivateKeyPassphraseEncrypted = nil
+		c.PrivateKeyPassphrase = nil
 		ret = append(ret, c)
 	}
 

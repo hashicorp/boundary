@@ -7,4 +7,5 @@ const (
 	usernameField    = "Username"
 	passwordField    = "Password"
 	privateKeyField  = "PrivateKey"
+	passphraseField  = "PrivateKeyPassphrase"
 )

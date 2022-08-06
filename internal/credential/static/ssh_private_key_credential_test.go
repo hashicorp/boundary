@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh/testdata"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -24,6 +25,8 @@ func TestSshPrivateKeyCredential_New(t *testing.T) {
 	rw := db.New(conn)
 
 	privKey := []byte(TestSshPrivateKeyPem)
+	ePrivKey := testdata.PEMEncryptedKeys[0].PEMBytes
+	ePrivKeyPass := testdata.PEMEncryptedKeys[0].EncryptionKey
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
@@ -129,6 +132,33 @@ func TestSshPrivateKeyCredential_New(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "invalid-passphrase",
+			args: args{
+				username:      "test-user",
+				sshPrivateKey: privKey,
+				storeId:       cs.PublicId,
+				options:       []Option{WithPrivateKeyPassphrase([]byte(ePrivKeyPass))},
+			},
+			wantAllocError: true,
+		},
+		{
+			name: "valid-with-passphrase",
+			args: args{
+				username:      "test-user",
+				sshPrivateKey: ePrivKey,
+				storeId:       cs.PublicId,
+				options:       []Option{WithPrivateKeyPassphrase([]byte(ePrivKeyPass))},
+			},
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:             "test-user",
+					PrivateKey:           ePrivKey,
+					StoreId:              cs.PublicId,
+					PrivateKeyPassphrase: []byte(ePrivKeyPass),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -184,11 +214,19 @@ func TestSshPrivateKeyCredential_New(t *testing.T) {
 			// KeyId is allocated via kms no need to validate in this test
 			tt.want.KeyId = got2.KeyId
 			got2.PrivateKeyEncrypted = nil
+			got2.PrivateKeyPassphraseEncrypted = nil
 
 			// encrypt also calculates the hmac, validate it is correct
 			hm, err := crypto.HmacSha256(ctx, got.PrivateKey, databaseWrapper, []byte(got.StoreId), nil)
 			require.NoError(err)
 			tt.want.PrivateKeyHmac = []byte(hm)
+
+			if len(got.PrivateKeyPassphrase) > 0 {
+				// encrypt also calculates the hmac, validate it is correct
+				hm, err = crypto.HmacSha256(ctx, got.PrivateKeyPassphrase, databaseWrapper, []byte(got.StoreId), nil)
+				require.NoError(err)
+				tt.want.PrivateKeyPassphraseHmac = []byte(hm)
+			}
 
 			assert.Empty(cmp.Diff(tt.want, got2.clone(), protocmp.Transform()))
 		})

@@ -27,10 +27,11 @@ import (
 )
 
 const (
-	usernameField   = "attributes.username"
-	passwordField   = "attributes.password"
-	privateKeyField = "attributes.private_key"
-	domain          = "credential"
+	usernameField             = "attributes.username"
+	passwordField             = "attributes.password"
+	privateKeyField           = "attributes.private_key"
+	privateKeyPassphraseField = "attributes.private_key_passphrase"
+	domain                    = "credential"
 )
 
 var (
@@ -553,8 +554,9 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 		if outputFields.Has(globals.AttributesField) {
 			out.Attrs = &pb.Credential_SshPrivateKeyAttributes{
 				SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
-					Username:       wrapperspb.String(cred.GetUsername()),
-					PrivateKeyHmac: base64.RawURLEncoding.EncodeToString(cred.GetPrivateKeyHmac()),
+					Username:                 wrapperspb.String(cred.GetUsername()),
+					PrivateKeyHmac:           base64.RawURLEncoding.EncodeToString(cred.GetPrivateKeyHmac()),
+					PrivateKeyPassphraseHmac: base64.RawURLEncoding.EncodeToString(cred.GetPrivateKeyPassphraseHmac()),
 				},
 			}
 		}
@@ -596,6 +598,9 @@ func toSshPrivateKeyStorageCredential(ctx context.Context, storeId string, in *p
 	}
 
 	attrs := in.GetSshPrivateKeyAttributes()
+	if attrs.GetPrivateKeyPassphrase() != nil {
+		opts = append(opts, static.WithPrivateKeyPassphrase([]byte(attrs.GetPrivateKeyPassphrase().GetValue())))
+	}
 	cs, err := static.NewSshPrivateKeyCredential(
 		ctx,
 		storeId,
@@ -645,16 +650,20 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 				badFields[usernameField] = "Field required for creating an SSH private key credential."
 			}
 			privateKey := req.Item.GetSshPrivateKeyAttributes().GetPrivateKey().GetValue()
+			passphrase := req.Item.GetSshPrivateKeyAttributes().GetPrivateKeyPassphrase().GetValue()
 			if privateKey == "" {
 				badFields[privateKeyField] = "Field required for creating an SSH private key credential."
 			} else {
-				_, err := ssh.ParsePrivateKey([]byte(privateKey))
-				switch {
-				case err == nil:
-				case err.Error() == (&ssh.PassphraseMissingError{}).Error():
-					// This is okay, if it's brokered and the client can use it, no worries
+				switch passphrase {
+				case "":
+					if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err != nil {
+						badFields[privateKeyField] = "Unable to parse given private key value."
+					}
 				default:
-					badFields[privateKeyField] = "Unable to parse given private key value."
+					if _, err := ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase)); err != nil {
+						badFields[privateKeyField] = "Unable to parse given private key value."
+						badFields[privateKeyPassphraseField] = "Unable to parse private key with passphrase value."
+					}
 				}
 			}
 
@@ -686,16 +695,20 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 				badFields[usernameField] = "This is a required field and cannot be set to empty."
 			}
 			privateKey := attrs.GetPrivateKey().GetValue()
+			passphrase := attrs.GetPrivateKeyPassphrase().GetValue()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), privateKeyField) && privateKey == "" {
 				badFields[privateKeyField] = "This is a required field and cannot be set to empty."
 			} else {
-				_, err := ssh.ParsePrivateKey([]byte(privateKey))
-				switch {
-				case err == nil:
-				case err.Error() == (&ssh.PassphraseMissingError{}).Error():
-					// This is okay, if it's brokered and the client can use it, no worries
+				switch passphrase {
+				case "":
+					if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err != nil {
+						badFields[privateKeyField] = "Unable to parse given private key value."
+					}
 				default:
-					badFields[privateKeyField] = "Unable to parse given private key value."
+					if _, err := ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase)); err != nil {
+						badFields[privateKeyField] = "Unable to parse given private key value."
+						badFields[privateKeyPassphraseField] = "Unable to parse private key with passphrase value."
+					}
 				}
 			}
 

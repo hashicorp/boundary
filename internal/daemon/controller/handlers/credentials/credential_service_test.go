@@ -205,6 +205,10 @@ func TestGet(t *testing.T) {
 	spkHm, err := crypto.HmacSha256(context.Background(), []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
 	require.NoError(t, err)
 
+	spkCredWithPass := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), static.WithPrivateKeyPassphrase([]byte("my-pass")))
+	passHm, err := crypto.HmacSha256(context.Background(), []byte("my-pass"), databaseWrapper, []byte(store.GetPublicId()), nil)
+	require.NoError(t, err)
+
 	cases := []struct {
 		name string
 		id   string
@@ -272,6 +276,29 @@ func TestGet(t *testing.T) {
 						SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
 							Username:       wrapperspb.String("user"),
 							PrivateKeyHmac: base64.RawURLEncoding.EncodeToString([]byte(spkHm)),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "success-spk-with-pass",
+			id:   spkCredWithPass.GetPublicId(),
+			res: &pbs.GetCredentialResponse{
+				Item: &pb.Credential{
+					Id:                spkCredWithPass.GetPublicId(),
+					CredentialStoreId: spkCredWithPass.GetStoreId(),
+					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:              credential.SshPrivateKeySubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+					CreatedTime:       spkCredWithPass.CreateTime.GetTimestamp(),
+					UpdatedTime:       spkCredWithPass.UpdateTime.GetTimestamp(),
+					Version:           1,
+					Attrs: &pb.Credential_SshPrivateKeyAttributes{
+						SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+							Username:                 wrapperspb.String("user"),
+							PrivateKeyHmac:           base64.RawURLEncoding.EncodeToString([]byte(spkHm)),
+							PrivateKeyPassphraseHmac: base64.RawURLEncoding.EncodeToString([]byte(passHm)),
 						},
 					},
 				},
