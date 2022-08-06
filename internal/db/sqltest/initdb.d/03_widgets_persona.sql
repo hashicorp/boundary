@@ -393,9 +393,9 @@ begin;
       ('vl______wvl11', 'my_private_key');
 
     insert into credential_vault_library_ssh_private_key_mapping_override
-      (library_id,     username_attribute, private_key_attribute)
+      (library_id,     username_attribute, private_key_attribute, private_key_passphrase_attribute)
     values
-      ('vl______wvl12', 'my_username',      'my_private_key');
+      ('vl______wvl12', 'my_username',      'my_private_key',     'my_passphrase');
 
     insert into target_credential_library
       (target_id,      credential_library_id, credential_purpose)

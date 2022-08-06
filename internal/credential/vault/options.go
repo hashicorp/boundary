@@ -29,10 +29,11 @@ type options struct {
 	withRequestBody    []byte
 	withCredentialType credential.Type
 
-	withOverrideUsernameAttribute   string
-	withOverridePasswordAttribute   string
-	withOverridePrivateKeyAttribute string
-	withMappingOverride             MappingOverride
+	withOverrideUsernameAttribute             string
+	withOverridePasswordAttribute             string
+	withOverridePrivateKeyAttribute           string
+	withOverridePrivateKeyPassphraseAttribute string
+	withMappingOverride                       MappingOverride
 }
 
 func getDefaultOptions() options {
@@ -155,6 +156,14 @@ func WithOverridePasswordAttribute(s string) Option {
 func WithOverridePrivateKeyAttribute(s string) Option {
 	return func(o *options) {
 		o.withOverridePrivateKeyAttribute = s
+	}
+}
+
+// WithOverridePrivateKeyPassphraseAttribute provides the name of an attribute in the
+// Data field of a Vault api.Secret that maps to a passphrase value.
+func WithOverridePrivateKeyPassphraseAttribute(s string) Option {
+	return func(o *options) {
+		o.withOverridePrivateKeyPassphraseAttribute = s
 	}
 }
 

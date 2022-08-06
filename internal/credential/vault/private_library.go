@@ -91,10 +91,12 @@ type sshPrivateKeyCred struct {
 	*baseCred
 	username   string
 	privateKey credential.PrivateKey
+	passphrase []byte
 }
 
 func (c *sshPrivateKeyCred) Username() string                  { return c.username }
 func (c *sshPrivateKeyCred) PrivateKey() credential.PrivateKey { return c.privateKey }
+func (c *sshPrivateKeyCred) PrivateKeyPassphrase() []byte      { return c.passphrase }
 
 func baseToSshPriKey(ctx context.Context, bc *baseCred) (*sshPrivateKeyCred, error) {
 	switch {
@@ -106,14 +108,17 @@ func baseToSshPriKey(ctx context.Context, bc *baseCred) (*sshPrivateKeyCred, err
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
 	}
 
-	uAttr, pAttr := bc.lib.UsernameAttribute, bc.lib.PrivateKeyAttribute
+	uAttr, pkAttr, pAttr := bc.lib.UsernameAttribute, bc.lib.PrivateKeyAttribute, bc.lib.PrivateKeyPassphraseAttribute
 	if uAttr == "" {
 		uAttr = "username"
 	}
-	if pAttr == "" {
-		pAttr = "private_key"
+	if pkAttr == "" {
+		pkAttr = "private_key"
 	}
-	username, pk := sshprivatekey.Extract(bc.secretData, uAttr, pAttr)
+	if pAttr == "" {
+		pAttr = "private_key_passphrase"
+	}
+	username, pk, pass := sshprivatekey.Extract(bc.secretData, uAttr, pkAttr, pAttr)
 	if username == "" || pk == nil {
 		return nil, errors.E(ctx, errors.WithCode(errors.VaultInvalidCredentialMapping))
 	}
@@ -122,6 +127,7 @@ func baseToSshPriKey(ctx context.Context, bc *baseCred) (*sshPrivateKeyCred, err
 		baseCred:   bc,
 		username:   username,
 		privateKey: pk,
+		passphrase: pass,
 	}, nil
 }
 
@@ -130,72 +136,74 @@ var _ credential.Library = (*privateLibrary)(nil)
 // A privateLibrary contains all the values needed to connect to Vault and
 // retrieve credentials.
 type privateLibrary struct {
-	PublicId            string `gorm:"primary_key"`
-	StoreId             string
-	CredType            string `gorm:"column:credential_type"`
-	UsernameAttribute   string
-	PasswordAttribute   string
-	PrivateKeyAttribute string
-	Name                string
-	Description         string
-	CreateTime          *timestamp.Timestamp
-	UpdateTime          *timestamp.Timestamp
-	Version             uint32
-	ScopeId             string
-	VaultPath           string
-	HttpMethod          string
-	HttpRequestBody     []byte
-	VaultAddress        string
-	Namespace           string
-	CaCert              []byte
-	TlsServerName       string
-	TlsSkipVerify       bool
-	WorkerFilter        string
-	TokenHmac           []byte
-	Token               TokenSecret
-	CtToken             []byte
-	TokenKeyId          string
-	ClientCert          []byte
-	ClientKey           KeySecret
-	CtClientKey         []byte
-	ClientKeyId         string
-	Purpose             credential.Purpose `gorm:"-"`
+	PublicId                      string `gorm:"primary_key"`
+	StoreId                       string
+	CredType                      string `gorm:"column:credential_type"`
+	UsernameAttribute             string
+	PasswordAttribute             string
+	PrivateKeyAttribute           string
+	PrivateKeyPassphraseAttribute string
+	Name                          string
+	Description                   string
+	CreateTime                    *timestamp.Timestamp
+	UpdateTime                    *timestamp.Timestamp
+	Version                       uint32
+	ScopeId                       string
+	VaultPath                     string
+	HttpMethod                    string
+	HttpRequestBody               []byte
+	VaultAddress                  string
+	Namespace                     string
+	CaCert                        []byte
+	TlsServerName                 string
+	TlsSkipVerify                 bool
+	WorkerFilter                  string
+	TokenHmac                     []byte
+	Token                         TokenSecret
+	CtToken                       []byte
+	TokenKeyId                    string
+	ClientCert                    []byte
+	ClientKey                     KeySecret
+	CtClientKey                   []byte
+	ClientKeyId                   string
+	Purpose                       credential.Purpose `gorm:"-"`
 }
 
 func (pl *privateLibrary) clone() *privateLibrary {
 	// The 'append(a[:0:0], a...)' comes from
 	// https://github.com/go101/go101/wiki/How-to-perfectly-clone-a-slice%3F
 	return &privateLibrary{
-		PublicId:            pl.PublicId,
-		StoreId:             pl.StoreId,
-		CredType:            pl.CredType,
-		UsernameAttribute:   pl.UsernameAttribute,
-		PasswordAttribute:   pl.PasswordAttribute,
-		PrivateKeyAttribute: pl.PrivateKeyAttribute,
-		Name:                pl.Name,
-		Description:         pl.Description,
-		CreateTime:          proto.Clone(pl.CreateTime).(*timestamp.Timestamp),
-		UpdateTime:          proto.Clone(pl.UpdateTime).(*timestamp.Timestamp),
-		Version:             pl.Version,
-		ScopeId:             pl.ScopeId,
-		VaultPath:           pl.VaultPath,
-		HttpMethod:          pl.HttpMethod,
-		HttpRequestBody:     append(pl.HttpRequestBody[:0:0], pl.HttpRequestBody...),
-		VaultAddress:        pl.VaultAddress,
-		Namespace:           pl.Namespace,
-		CaCert:              append(pl.CaCert[:0:0], pl.CaCert...),
-		TlsServerName:       pl.TlsServerName,
-		TlsSkipVerify:       pl.TlsSkipVerify,
-		WorkerFilter:        pl.WorkerFilter,
-		TokenHmac:           append(pl.TokenHmac[:0:0], pl.TokenHmac...),
-		Token:               append(pl.Token[:0:0], pl.Token...),
-		CtToken:             append(pl.CtToken[:0:0], pl.CtToken...),
-		TokenKeyId:          pl.TokenKeyId,
-		ClientCert:          append(pl.ClientCert[:0:0], pl.ClientCert...),
-		ClientKey:           append(pl.ClientKey[:0:0], pl.ClientKey...),
-		CtClientKey:         append(pl.CtClientKey[:0:0], pl.CtClientKey...),
-		ClientKeyId:         pl.ClientKeyId,
-		Purpose:             pl.Purpose,
+		PublicId:                      pl.PublicId,
+		StoreId:                       pl.StoreId,
+		CredType:                      pl.CredType,
+		UsernameAttribute:             pl.UsernameAttribute,
+		PasswordAttribute:             pl.PasswordAttribute,
+		PrivateKeyAttribute:           pl.PrivateKeyAttribute,
+		PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
+		Name:                          pl.Name,
+		Description:                   pl.Description,
+		CreateTime:                    proto.Clone(pl.CreateTime).(*timestamp.Timestamp),
+		UpdateTime:                    proto.Clone(pl.UpdateTime).(*timestamp.Timestamp),
+		Version:                       pl.Version,
+		ScopeId:                       pl.ScopeId,
+		VaultPath:                     pl.VaultPath,
+		HttpMethod:                    pl.HttpMethod,
+		HttpRequestBody:               append(pl.HttpRequestBody[:0:0], pl.HttpRequestBody...),
+		VaultAddress:                  pl.VaultAddress,
+		Namespace:                     pl.Namespace,
+		CaCert:                        append(pl.CaCert[:0:0], pl.CaCert...),
+		TlsServerName:                 pl.TlsServerName,
+		TlsSkipVerify:                 pl.TlsSkipVerify,
+		WorkerFilter:                  pl.WorkerFilter,
+		TokenHmac:                     append(pl.TokenHmac[:0:0], pl.TokenHmac...),
+		Token:                         append(pl.Token[:0:0], pl.Token...),
+		CtToken:                       append(pl.CtToken[:0:0], pl.CtToken...),
+		TokenKeyId:                    pl.TokenKeyId,
+		ClientCert:                    append(pl.ClientCert[:0:0], pl.ClientCert...),
+		ClientKey:                     append(pl.ClientKey[:0:0], pl.ClientKey...),
+		CtClientKey:                   append(pl.CtClientKey[:0:0], pl.CtClientKey...),
+		ClientKeyId:                   pl.ClientKeyId,
+		Purpose:                       pl.Purpose,
 	}
 }
 
