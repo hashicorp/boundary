@@ -25,6 +25,7 @@ import (
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh/testdata"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -205,8 +206,13 @@ func TestGet(t *testing.T) {
 	spkHm, err := crypto.HmacSha256(context.Background(), []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
 	require.NoError(t, err)
 
-	spkCredWithPass := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), static.WithPrivateKeyPassphrase([]byte("my-pass")))
-	passHm, err := crypto.HmacSha256(context.Background(), []byte("my-pass"), databaseWrapper, []byte(store.GetPublicId()), nil)
+	spkCredWithPass := static.TestSshPrivateKeyCredential(t, conn, wrapper,
+		"user", string(testdata.PEMEncryptedKeys[0].PEMBytes),
+		store.GetPublicId(), prj.GetPublicId(),
+		static.WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
+	spkWithPassHm, err := crypto.HmacSha256(context.Background(), []byte(testdata.PEMEncryptedKeys[0].PEMBytes), databaseWrapper, []byte(store.GetPublicId()), nil)
+	require.NoError(t, err)
+	passHm, err := crypto.HmacSha256(context.Background(), []byte(testdata.PEMEncryptedKeys[0].EncryptionKey), databaseWrapper, []byte(store.GetPublicId()), nil)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -297,7 +303,7 @@ func TestGet(t *testing.T) {
 					Attrs: &pb.Credential_SshPrivateKeyAttributes{
 						SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
 							Username:                 wrapperspb.String("user"),
-							PrivateKeyHmac:           base64.RawURLEncoding.EncodeToString([]byte(spkHm)),
+							PrivateKeyHmac:           base64.RawURLEncoding.EncodeToString([]byte(spkWithPassHm)),
 							PrivateKeyPassphraseHmac: base64.RawURLEncoding.EncodeToString([]byte(passHm)),
 						},
 					},
