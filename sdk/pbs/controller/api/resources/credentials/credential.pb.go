@@ -292,9 +292,9 @@ type SshPrivateKeyAttributes struct {
 	PrivateKey *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=private_key,proto3" json:"private_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The hmac value of the SSH private key.
 	PrivateKeyHmac string `protobuf:"bytes,30,opt,name=private_key_hmac,proto3" json:"private_key_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
-	// Input only. The password for the SSH private key associated with the credential.
+	// Input only. The passphrase for the SSH private key associated with the credential.
 	PrivateKeyPassphrase *wrapperspb.StringValue `protobuf:"bytes,40,opt,name=private_key_passphrase,proto3" json:"private_key_passphrase,omitempty" class:"secret"` // @gotags: `class:"secret"`
-	// Output only. The hmac value of the SSH private key password.
+	// Output only. The hmac value of the SSH private key passphrase.
 	PrivateKeyPassphraseHmac string `protobuf:"bytes,50,opt,name=private_key_passphrase_hmac,proto3" json:"private_key_passphrase_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 

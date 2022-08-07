@@ -106,7 +106,7 @@ func (r *Repository) CreateUsernamePasswordCredential(
 // assigned by this method. c must contain a valid StoreId.
 //
 // The private key is encrypted and a HmacSha256 of the private key is
-// calculated. If a password is supplied, it is also encrypted and an HmacSha256
+// calculated. If a passphrase is supplied, it is also encrypted and an HmacSha256
 // of passphrase is calculated. Only the PrivateKeyHmac (and
 // PrivateKeyPassphraseHmac) is returned, the plain-text and encrypted private
 // key and passphrase are not returned.

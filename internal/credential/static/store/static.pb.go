@@ -357,7 +357,7 @@ type SshPrivateKeyCredential struct {
 	// @inject_tag: `gorm:"column:private_key_passphrase_encrypted;not_null"`
 	PrivateKeyPassphraseEncrypted []byte `protobuf:"bytes,14,opt,name=private_key_passphrase_encrypted,json=privateKeyPassphraseEncrypted,proto3" json:"private_key_passphrase_encrypted,omitempty" gorm:"column:private_key_passphrase_encrypted;not_null"`
 	// private_key_passphrase_hmac is a sha256-hmac of the unencrypted private key passphrase.  It is recalculated
-	// everytime the private key is updated.
+	// everytime the private key passphrase is updated.
 	// @inject_tag: `gorm:"not_null"`
 	PrivateKeyPassphraseHmac []byte `protobuf:"bytes,15,opt,name=private_key_passphrase_hmac,json=privateKeyPassphraseHmac,proto3" json:"private_key_passphrase_hmac,omitempty" gorm:"not_null"`
 }
