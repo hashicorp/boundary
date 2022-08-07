@@ -418,15 +418,20 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "missing field mask")
 	}
 
+	var performedEncryption bool
 	for _, f := range fieldMaskPaths {
 		if strings.EqualFold(privateKeyField, f) || strings.EqualFold(PrivateKeyPassphraseField, f) {
-			// Private key has been updated, re-encrypt and recalculate hmac
-			databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
-			if err != nil {
-				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-			}
-			if err := c.encrypt(ctx, databaseWrapper); err != nil {
-				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			if !performedEncryption {
+				// We don't need to encrypt twice so keep track
+				performedEncryption = true
+
+				databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+				if err != nil {
+					return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+				}
+				if err := c.encrypt(ctx, databaseWrapper); err != nil {
+					return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+				}
 			}
 
 			if strings.EqualFold(privateKeyField, f) {

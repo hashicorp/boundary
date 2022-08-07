@@ -307,13 +307,13 @@ func (s Service) listFromRepo(ctx context.Context, storeId string) ([]credential
 	return creds, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string, opt ...static.Option) (credential.Static, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (credential.Static, error) {
 	const op = "credentials.(Service).getFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	cred, err := repo.LookupCredential(ctx, id, opt...)
+	cred, err := repo.LookupCredential(ctx, id)
 	if err != nil && !errors.IsNotFoundError(err) {
 		return nil, errors.Wrap(ctx, err, op)
 	}
