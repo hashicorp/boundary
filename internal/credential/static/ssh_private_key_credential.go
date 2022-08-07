@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/proto"
 )
@@ -108,16 +109,9 @@ func (c *SshPrivateKeyCredential) encrypt(ctx context.Context, cipher wrapping.W
 		return errors.New(ctx, errors.InvalidParameter, op, "no private key defined")
 	}
 
-	// Encrypt private key
-	blobInfo, err := cipher.Encrypt(ctx, c.PrivateKey)
-	if err != nil {
+	if err := structwrapping.WrapStruct(ctx, cipher, c.SshPrivateKeyCredential); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	protoBytes, err := proto.Marshal(blobInfo)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encode))
-	}
-	c.PrivateKeyEncrypted = protoBytes
 
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
@@ -130,11 +124,11 @@ func (c *SshPrivateKeyCredential) encrypt(ctx context.Context, cipher wrapping.W
 
 	if len(c.PrivateKeyPassphrase) > 0 {
 		// Encrypt passphrase
-		blobInfo, err = cipher.Encrypt(ctx, c.PrivateKeyPassphrase)
+		blobInfo, err := cipher.Encrypt(ctx, c.PrivateKeyPassphrase)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 		}
-		protoBytes, err = proto.Marshal(blobInfo)
+		protoBytes, err := proto.Marshal(blobInfo)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encode))
 		}
@@ -150,23 +144,16 @@ func (c *SshPrivateKeyCredential) encrypt(ctx context.Context, cipher wrapping.W
 func (c *SshPrivateKeyCredential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "static.(SshPrivateKeyCredential).decrypt"
 
-	// Decrypt private key
-	dec := new(wrapping.BlobInfo)
-	if err := proto.Unmarshal(c.PrivateKeyEncrypted, dec); err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decode))
-	}
-	pt, err := cipher.Decrypt(ctx, dec)
-	if err != nil {
+	if err := structwrapping.UnwrapStruct(ctx, cipher, c.SshPrivateKeyCredential, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
-	c.PrivateKey = pt
 
 	if len(c.PrivateKeyPassphraseEncrypted) > 0 {
-		// Decrypt passphrase
+		dec := new(wrapping.BlobInfo)
 		if err := proto.Unmarshal(c.PrivateKeyPassphraseEncrypted, dec); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decode))
 		}
-		pt, err = cipher.Decrypt(ctx, dec)
+		pt, err := cipher.Decrypt(ctx, dec)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 		}

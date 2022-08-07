@@ -350,12 +350,12 @@ type SshPrivateKeyCredential struct {
 	// private_key_passphrase is the plain-text of the passphrase of the SSH private
 	// key associated with the credential. We are not storing this plain-text
 	// private key passphrase in the database.
-	// @inject_tag: `gorm:"-" wrapping:"pt,private_key_passphrase"`
-	PrivateKeyPassphrase []byte `protobuf:"bytes,13,opt,name=private_key_passphrase,json=privateKeyPassphrase,proto3" json:"private_key_passphrase,omitempty" gorm:"-" wrapping:"pt,private_key_passphrase"`
+	// @inject_tag: `gorm:"-"`
+	PrivateKeyPassphrase []byte `protobuf:"bytes,13,opt,name=private_key_passphrase,json=privateKeyPassphrase,proto3" json:"private_key_passphrase,omitempty" gorm:"-"`
 	// private_key_passphrase_encrypted is the ciphertext of the private key passphrase. It is stored in
 	// the database.
-	// @inject_tag: `gorm:"column:private_key_passphrase_encrypted;not_null" wrapping:"ct,private_key_passphrase"`
-	PrivateKeyPassphraseEncrypted []byte `protobuf:"bytes,14,opt,name=private_key_passphrase_encrypted,json=privateKeyPassphraseEncrypted,proto3" json:"private_key_passphrase_encrypted,omitempty" gorm:"column:private_key_passphrase_encrypted;not_null" wrapping:"ct,private_key_passphrase"`
+	// @inject_tag: `gorm:"column:private_key_passphrase_encrypted;not_null"`
+	PrivateKeyPassphraseEncrypted []byte `protobuf:"bytes,14,opt,name=private_key_passphrase_encrypted,json=privateKeyPassphraseEncrypted,proto3" json:"private_key_passphrase_encrypted,omitempty" gorm:"column:private_key_passphrase_encrypted;not_null"`
 	// private_key_passphrase_hmac is a sha256-hmac of the unencrypted private key passphrase.  It is recalculated
 	// everytime the private key is updated.
 	// @inject_tag: `gorm:"not_null"`
