@@ -20,7 +20,8 @@ var _ credential.Static = (*SshPrivateKeyCredential)(nil)
 // It is owned by a credential store.
 type SshPrivateKeyCredential struct {
 	*store.SshPrivateKeyCredential
-	tableName string `gorm:"-"`
+	tableName          string `gorm:"-"`
+	PassphraseUnneeded bool   `gorm:"-"`
 }
 
 // NewSshPrivateKeyCredential creates a new in memory static Credential containing a
@@ -62,6 +63,15 @@ func NewSshPrivateKeyCredential(
 			PrivateKeyPassphrase: opts.withPrivateKeyPassphrase,
 		},
 	}
+
+	// If a private key was given and no passphrase was given and everything is
+	// okay, we can nil out any passphrase we have, so set this as a hint
+	if len(privateKey) != 0 && len(opts.withPrivateKeyPassphrase) == 0 {
+		l.PassphraseUnneeded = true
+		// This shouldn't happen, but safety
+		l.PrivateKeyPassphrase = nil
+	}
+
 	return l, nil
 }
 

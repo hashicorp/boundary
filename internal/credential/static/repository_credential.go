@@ -399,18 +399,18 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 		case strings.EqualFold(descriptionField, f):
 		case strings.EqualFold(usernameField, f):
 		case strings.EqualFold(privateKeyField, f):
-		case strings.EqualFold(passphraseField, f):
+		case strings.EqualFold(PrivateKeyPassphraseField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
 	dbMask, nullFields := dbcommon.BuildUpdatePaths(
 		map[string]interface{}{
-			nameField:        c.Name,
-			descriptionField: c.Description,
-			usernameField:    c.Username,
-			privateKeyField:  c.PrivateKey,
-			passphraseField:  c.PrivateKeyPassphrase,
+			nameField:                 c.Name,
+			descriptionField:          c.Description,
+			usernameField:             c.Username,
+			privateKeyField:           c.PrivateKey,
+			PrivateKeyPassphraseField: c.PrivateKeyPassphrase,
 		},
 		fieldMaskPaths,
 		nil,
@@ -433,7 +433,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 			// Set PrivateKeyHmac and PrivateKeyEncrypted masks for update.
 			dbMask = append(dbMask, "PrivateKeyHmac", "PrivateKeyEncrypted")
 		}
-		if strings.EqualFold(passphraseField, f) {
+		if strings.EqualFold(PrivateKeyPassphraseField, f) {
 			// Passphrase has been updated, re-encrypt and recalculate hmac
 			databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 			if err != nil {

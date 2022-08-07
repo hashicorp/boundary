@@ -410,6 +410,9 @@ func (s Service) updateInRepo(
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert to ssh private key storage credential"))
 		}
+		if cred.PassphraseUnneeded {
+			dbMasks = append(dbMasks, static.PrivateKeyPassphraseField)
+		}
 		cred.PublicId = id
 		repo, err := s.repoFn()
 		if err != nil {
