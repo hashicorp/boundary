@@ -67,8 +67,10 @@ func NewSshPrivateKeyCredential(
 	// okay, we can nil out any passphrase we have, so set this as a hint
 	if len(privateKey) != 0 && len(opts.withPrivateKeyPassphrase) == 0 {
 		l.PassphraseUnneeded = true
-		// This shouldn't happen, but safety
+		// These shouldn't be set, but safety
 		l.PrivateKeyPassphrase = nil
+		l.PrivateKeyPassphraseEncrypted = nil
+		l.PrivateKeyPassphraseHmac = nil
 	}
 
 	return l, nil

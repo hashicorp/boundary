@@ -412,7 +412,17 @@ func (s Service) updateInRepo(
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert to ssh private key storage credential"))
 		}
 		if cred.PassphraseUnneeded {
-			dbMasks = append(dbMasks, static.PrivateKeyPassphraseField)
+			// This happens when we have a private key given and no passphrase
+			// given and everything parses correctly. In that case we want to
+			// ensure that if a passphrase was in the database for the previous
+			// key that we get rid of it. We'll have nilled out several values;
+			// add them to the masks to ensure they are nilled out in the
+			// database.
+			dbMasks = append(dbMasks,
+				static.PrivateKeyPassphraseField,
+				static.PrivateKeyPassphraseEncryptedField,
+				static.PrivateKeyPassphraseHmacField,
+			)
 		}
 		cred.PublicId = id
 		repo, err := s.repoFn()
