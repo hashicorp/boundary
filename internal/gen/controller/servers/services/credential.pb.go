@@ -158,7 +158,8 @@ func (x *UsernamePassword) GetPassword() string {
 	return ""
 }
 
-// SshPrivateKey is a credential containing a username and a private key.
+// SshPrivateKey is a credential containing a username a private key and an optional
+// private key passphrase.
 type SshPrivateKey struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

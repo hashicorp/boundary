@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh/testdata"
 )
 
 func TestList(t *testing.T) {
@@ -141,6 +142,87 @@ func TestCrud(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(cs)
 	checkResource("update", cred.Item, "newuser", "neweruser", 5)
+
+	_, err = credClient.Delete(tc.Context(), cred.Item.Id)
+	assert.NoError(err)
+
+	_, err = credClient.Delete(tc.Context(), cred.Item.Id)
+	require.Error(err)
+	apiErr := api.AsServerError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+}
+
+func TestCrudSpk(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	cs, err := credentialstores.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
+	require.NoError(err)
+	require.NotNil(cs)
+
+	checkResource := func(step string, c *credentials.Credential, wantedName, wantedUser string, wantVersion uint32) {
+		assert.NotNil(c, "returned no resource", step)
+		assert.Equal(wantedName, c.Name, step)
+		gotUser, ok := c.Attributes["username"]
+		require.True(ok)
+		assert.Equal(wantedUser, gotUser, step)
+		assert.Equal(wantVersion, c.Version)
+	}
+	credClient := credentials.NewClient(client)
+
+	spk := string(testdata.PEMBytes["rsa"])
+	spkWithPass := string(testdata.PEMEncryptedKeys[0].PEMBytes)
+	pass := testdata.PEMEncryptedKeys[0].EncryptionKey
+
+	cred, err := credClient.Create(tc.Context(), credential.SshPrivateKeySubtype.String(), cs.Item.Id, credentials.WithName("foo"),
+		credentials.WithSshPrivateKeyCredentialUsername("user"),
+		credentials.WithSshPrivateKeyCredentialPrivateKey(spkWithPass),
+		credentials.WithSshPrivateKeyCredentialPrivateKeyPassphrase(pass))
+	require.NoError(err)
+	require.NotNil(cs)
+	checkResource("create", cred.Item, "foo", "user", 1)
+
+	// Validate passphrase hmac was set and passpharse is not set
+	passHmac, ok := cred.GetItem().Attributes["private_key_passphrase_hmac"].(string)
+	require.True(ok)
+	require.NotNil(passHmac)
+
+	cred, err = credClient.Read(tc.Context(), cred.Item.Id)
+	require.NoError(err)
+	require.NotNil(cs)
+	checkResource("read", cred.Item, "foo", "user", 1)
+
+	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.WithName("bar"))
+	require.NoError(err)
+	require.NotNil(cs)
+	checkResource("update", cred.Item, "bar", "user", 2)
+
+	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.WithSshPrivateKeyCredentialUsername("newuser"))
+	require.NoError(err)
+	require.NotNil(cs)
+	checkResource("update", cred.Item, "bar", "newuser", 3)
+
+	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.DefaultName())
+	require.NoError(err)
+	require.NotNil(cs)
+	checkResource("update", cred.Item, "", "newuser", 4)
+
+	// Update to non-encrypted key
+	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.WithSshPrivateKeyCredentialPrivateKey(spk))
+	require.NoError(err)
+	require.NotNil(cs)
+	checkResource("update", cred.Item, "", "newuser", 5)
+
+	// Validate passphrase hmac is no longer set
+	_, ok = cred.GetItem().Attributes["private_key_passphrase_hmac"].(string)
+	require.False(ok)
 
 	_, err = credClient.Delete(tc.Context(), cred.Item.Id)
 	assert.NoError(err)

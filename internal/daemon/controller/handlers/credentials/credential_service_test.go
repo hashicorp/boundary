@@ -609,6 +609,34 @@ func TestCreate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-spk-with-passphrase",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              credential.SshPrivateKeySubtype.String(),
+				Attrs: &pb.Credential_SshPrivateKeyAttributes{
+					SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+						Username:             wrapperspb.String("username"),
+						PrivateKey:           wrapperspb.String(string(testdata.PEMEncryptedKeys[0].PEMBytes)),
+						PrivateKeyPassphrase: wrapperspb.String(testdata.PEMEncryptedKeys[0].EncryptionKey),
+					},
+				},
+			}},
+			idPrefix: credential.SshPrivateKeyCredentialPrefix + "_",
+			res: &pbs.CreateCredentialResponse{
+				Uri: fmt.Sprintf("credentials/%s_", credential.SshPrivateKeyCredentialPrefix),
+				Item: &pb.Credential{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              credential.SshPrivateKeySubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -656,7 +684,8 @@ func TestCreate(t *testing.T) {
 					assert.Empty(got.GetItem().GetUsernamePasswordAttributes().GetPassword())
 
 				case credential.SshPrivateKeySubtype.String():
-					hm, err := crypto.HmacSha256(context.Background(), []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
+					pk := tc.req.GetItem().GetSshPrivateKeyAttributes().GetPrivateKey().GetValue()
+					hm, err := crypto.HmacSha256(context.Background(), []byte(pk), databaseWrapper, []byte(store.GetPublicId()), nil)
 					require.NoError(err)
 
 					// Validate attributes equal
@@ -664,6 +693,14 @@ func TestCreate(t *testing.T) {
 						got.GetItem().GetSshPrivateKeyAttributes().GetUsername().GetValue())
 					assert.Equal(base64.RawURLEncoding.EncodeToString([]byte(hm)), got.GetItem().GetSshPrivateKeyAttributes().GetPrivateKeyHmac())
 					assert.Empty(got.GetItem().GetSshPrivateKeyAttributes().GetPrivateKey())
+
+					if pass := tc.req.GetItem().GetSshPrivateKeyAttributes().GetPrivateKeyPassphrase().GetValue(); pass != "" {
+						hm, err := crypto.HmacSha256(context.Background(), []byte(pass), databaseWrapper, []byte(store.GetPublicId()), nil)
+						require.NoError(err)
+
+						assert.Equal(base64.RawURLEncoding.EncodeToString([]byte(hm)), got.GetItem().GetSshPrivateKeyAttributes().GetPrivateKeyPassphraseHmac())
+						assert.Empty(got.GetItem().GetSshPrivateKeyAttributes().GetPrivateKeyPassphrase())
+					}
 
 				default:
 					require.Fail("unknown type")
@@ -927,6 +964,32 @@ func TestUpdate(t *testing.T) {
 				hm, err := crypto.HmacSha256(context.Background(), []byte(TestSecondarySshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
 				require.NoError(t, err)
 				out.GetSshPrivateKeyAttributes().PrivateKeyHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+				return out
+			},
+		},
+		{
+			name: "update-spk-with-passphrase",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.private_key", "attributes.private_key_passphrase"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_SshPrivateKeyAttributes{
+						SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+							PrivateKey:           wrapperspb.String(string(testdata.PEMEncryptedKeys[0].PEMBytes)),
+							PrivateKeyPassphrase: wrapperspb.String(testdata.PEMEncryptedKeys[0].EncryptionKey),
+						},
+					},
+				},
+			},
+			res: func(in *pb.Credential) *pb.Credential {
+				out := proto.Clone(in).(*pb.Credential)
+
+				hm, err := crypto.HmacSha256(context.Background(), testdata.PEMEncryptedKeys[0].PEMBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
+				require.NoError(t, err)
+				out.GetSshPrivateKeyAttributes().PrivateKeyHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+
+				hm, err = crypto.HmacSha256(context.Background(), []byte(testdata.PEMEncryptedKeys[0].EncryptionKey), databaseWrapper, []byte(store.GetPublicId()), nil)
+				require.NoError(t, err)
+				out.GetSshPrivateKeyAttributes().PrivateKeyPassphraseHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
 				return out
 			},
 		},
