@@ -2,6 +2,7 @@ package credentials
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 
@@ -660,12 +661,19 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 				switch passphrase {
 				case "":
 					if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err != nil {
-						badFields[privateKeyField] = "Unable to parse given private key value."
+						badFields[privateKeyField] = fmt.Sprintf("Unable to parse given private key value: %v.", err)
 					}
 				default:
 					if _, err := ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase)); err != nil {
-						badFields[privateKeyField] = "Unable to parse given private key value."
-						badFields[privateKeyPassphraseField] = "Unable to parse private key with passphrase value."
+						if errors.Is(err, x509.IncorrectPasswordError) {
+							badFields[privateKeyPassphraseField] = "Incorrect private key passphrase."
+						} else {
+							if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err == nil {
+								badFields[privateKeyPassphraseField] = "Passphrase supplied for unencrypted key."
+							} else {
+								badFields[privateKeyField] = fmt.Sprintf("Unable to parse given private key value: %v.", err)
+							}
+						}
 					}
 				}
 			}
@@ -681,9 +689,8 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch req.GetItem().GetType() {
-		case "":
-		case credential.UsernamePasswordSubtype.String():
+		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		case credential.UsernamePasswordSubtype:
 			attrs := req.GetItem().GetUsernamePasswordAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
 				badFields[usernameField] = "This is a required field and cannot be set to empty."
@@ -692,31 +699,40 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 				badFields[passwordField] = "This is a required field and cannot be set to empty."
 			}
 
-		case credential.SshPrivateKeySubtype.String():
+		case credential.SshPrivateKeySubtype:
 			attrs := req.GetItem().GetSshPrivateKeyAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
 				badFields[usernameField] = "This is a required field and cannot be set to empty."
 			}
 			privateKey := attrs.GetPrivateKey().GetValue()
 			passphrase := attrs.GetPrivateKeyPassphrase().GetValue()
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), privateKeyField) && privateKey == "" {
-				badFields[privateKeyField] = "This is a required field and cannot be set to empty."
-			} else {
-				switch passphrase {
-				case "":
-					if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err != nil {
-						badFields[privateKeyField] = "Unable to parse given private key value."
-					}
-				default:
-					if _, err := ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase)); err != nil {
-						badFields[privateKeyField] = "Unable to parse given private key value."
-						badFields[privateKeyPassphraseField] = "Unable to parse private key with passphrase value."
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), privateKeyField) {
+				if privateKey == "" {
+					badFields[privateKeyField] = "This is a required field and cannot be set to empty."
+				} else {
+					switch passphrase {
+					case "":
+						if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err != nil {
+							badFields[privateKeyField] = fmt.Sprintf("Unable to parse given private key value: %v.", err)
+						}
+					default:
+						if _, err := ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase)); err != nil {
+							if errors.Is(err, x509.IncorrectPasswordError) {
+								badFields[privateKeyPassphraseField] = "Incorrect private key passphrase."
+							} else {
+								if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err == nil {
+									badFields[privateKeyPassphraseField] = "Passphrase supplied for unencrypted key."
+								} else {
+									badFields[privateKeyField] = fmt.Sprintf("Unable to parse given private key value: %v.", err)
+								}
+							}
+						}
 					}
 				}
 			}
 
 		default:
-			badFields[globals.TypeField] = "Cannot modify resource type."
+			badFields[globals.IdField] = "Unknown credential type."
 		}
 
 		return badFields

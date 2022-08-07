@@ -132,6 +132,8 @@ func (c *SshPrivateKeyCredential) encrypt(ctx context.Context, cipher wrapping.W
 		return errors.Wrap(ctx, err, op)
 	}
 
+	// This is done separately because structwrapping doesn't really deal well
+	// with optional values
 	if len(c.PrivateKeyPassphrase) > 0 {
 		// Encrypt passphrase
 		blobInfo, err := cipher.Encrypt(ctx, c.PrivateKeyPassphrase)
@@ -158,6 +160,8 @@ func (c *SshPrivateKeyCredential) decrypt(ctx context.Context, cipher wrapping.W
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 
+	// This is done separately because structwrapping doesn't really deal well
+	// with optional values
 	if len(c.PrivateKeyPassphraseEncrypted) > 0 {
 		dec := new(wrapping.BlobInfo)
 		if err := proto.Unmarshal(c.PrivateKeyPassphraseEncrypted, dec); err != nil {

@@ -778,10 +778,11 @@ func TestUpdate(t *testing.T) {
 	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	successCases := []struct {
-		name string
-		req  *pbs.UpdateCredentialRequest
-		res  func(cred *pb.Credential) *pb.Credential
+	successFailCases := []struct {
+		name             string
+		req              *pbs.UpdateCredentialRequest
+		res              func(cred *pb.Credential) *pb.Credential
+		expErrorContains string
 	}{
 		{
 			name: "name",
@@ -993,9 +994,61 @@ func TestUpdate(t *testing.T) {
 				return out
 			},
 		},
+		{
+			name: "update-spk-with-bad-passphrase",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.private_key", "attributes.private_key_passphrase"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_SshPrivateKeyAttributes{
+						SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+							PrivateKey:           wrapperspb.String(string(testdata.PEMEncryptedKeys[0].PEMBytes)),
+							PrivateKeyPassphrase: wrapperspb.String(strings.ToLower(testdata.PEMEncryptedKeys[0].EncryptionKey)),
+						},
+					},
+				},
+			},
+			expErrorContains: "Incorrect private key passphrase",
+		},
+		{
+			name: "update-non-passphrase-spk-with-passphrase",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.private_key"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_SshPrivateKeyAttributes{
+						SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+							PrivateKey:           wrapperspb.String(static.TestSshPrivateKeyPem),
+							PrivateKeyPassphrase: wrapperspb.String(testdata.PEMEncryptedKeys[0].EncryptionKey),
+						},
+					},
+				},
+			},
+			expErrorContains: "Passphrase supplied for unencrypted key",
+		},
+		{
+			name: "update-non-passphrase-spk-with-no-passphrase",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.private_key"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_SshPrivateKeyAttributes{
+						SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
+							PrivateKey: wrapperspb.String(static.TestSshPrivateKeyPem),
+						},
+					},
+				},
+			},
+			res: func(in *pb.Credential) *pb.Credential {
+				out := proto.Clone(in).(*pb.Credential)
+
+				hm, err := crypto.HmacSha256(context.Background(), []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
+				require.NoError(t, err)
+				out.GetSshPrivateKeyAttributes().PrivateKeyHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+				out.GetSshPrivateKeyAttributes().PrivateKeyPassphraseHmac = ""
+				return out
+			},
+		},
 	}
 
-	for _, tc := range successCases {
+	for _, tc := range successFailCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var cred credential.Static
@@ -1016,11 +1069,17 @@ func TestUpdate(t *testing.T) {
 			}
 			resToChange, err := s.GetCredential(ctx, &pbs.GetCredentialRequest{Id: cred.GetPublicId()})
 			require.NoError(err)
-			want := &pbs.UpdateCredentialResponse{Item: tc.res(resToChange.GetItem())}
 
 			got, gErr := s.UpdateCredential(ctx, tc.req)
+			if tc.expErrorContains != "" {
+				require.NotNil(gErr)
+				assert.Contains(gErr.Error(), tc.expErrorContains)
+				return
+			}
 			require.NoError(gErr)
 			require.NotNil(got)
+
+			want := &pbs.UpdateCredentialResponse{Item: tc.res(resToChange.GetItem())}
 
 			gotUpdateTime := got.GetItem().GetUpdatedTime()
 			created := cred.GetCreateTime().GetTimestamp()
