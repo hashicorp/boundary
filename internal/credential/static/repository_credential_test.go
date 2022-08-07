@@ -1449,26 +1449,6 @@ Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
 			wantCount: 1,
 		},
 		{
-			name: "change-private-key-passphrase",
-			orig: &SshPrivateKeyCredential{
-				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
-					Username:             "user",
-					PrivateKey:           []byte(TestSshPrivateKeyPem),
-					PrivateKeyPassphrase: []byte("foobar"),
-				},
-			},
-			chgFn: changePrivateKeyPassphrase("barfoo"),
-			masks: []string{"PrivateKeyPassphrase"},
-			want: &SshPrivateKeyCredential{
-				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
-					Username:             "user",
-					PrivateKey:           []byte(TestSshPrivateKeyPem),
-					PrivateKeyPassphrase: []byte("barfoo"),
-				},
-			},
-			wantCount: 1,
-		},
-		{
 			name: "change-private-key-and-passphrase",
 			orig: &SshPrivateKeyCredential{
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{

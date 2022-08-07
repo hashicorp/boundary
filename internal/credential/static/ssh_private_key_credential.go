@@ -117,26 +117,28 @@ func (c *SshPrivateKeyCredential) oplog(op oplog.OpType) oplog.Metadata {
 func (c *SshPrivateKeyCredential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "static.(SshPrivateKeyCredential).encrypt"
 
+	if len(c.PrivateKey) == 0 {
+		return errors.New(ctx, errors.InvalidParameter, op, "no private key defined")
+	}
+
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
 	}
 	c.KeyId = keyId
 
-	if len(c.PrivateKey) > 0 {
-		// Encrypt private key
-		blobInfo, err := cipher.Encrypt(ctx, c.PrivateKey)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
-		}
-		protoBytes, err := proto.Marshal(blobInfo)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encode))
-		}
-		c.PrivateKeyEncrypted = protoBytes
-		if err := c.hmacPrivateKey(ctx, cipher); err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
+	// Encrypt private key
+	blobInfo, err := cipher.Encrypt(ctx, c.PrivateKey)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+	}
+	protoBytes, err := proto.Marshal(blobInfo)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encode))
+	}
+	c.PrivateKeyEncrypted = protoBytes
+	if err := c.hmacPrivateKey(ctx, cipher); err != nil {
+		return errors.Wrap(ctx, err, op)
 	}
 
 	if len(c.PrivateKeyPassphrase) > 0 {
