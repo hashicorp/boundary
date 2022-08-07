@@ -1214,6 +1214,13 @@ Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
 		}
 	}
 
+	changePrivateKeyPassphrase := func(d string) func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
+		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
+			c.PrivateKeyPassphrase = []byte(d)
+			return c
+		}
+	}
+
 	combine := func(fns ...func(cs *SshPrivateKeyCredential) *SshPrivateKeyCredential) func(*SshPrivateKeyCredential) *SshPrivateKeyCredential {
 		return func(c *SshPrivateKeyCredential) *SshPrivateKeyCredential {
 			for _, fn := range fns {
@@ -1424,7 +1431,7 @@ Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
 			wantCount: 1,
 		},
 		{
-			name: "change-private-keyu",
+			name: "change-private-key",
 			orig: &SshPrivateKeyCredential{
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					Username:   "user",
@@ -1437,6 +1444,46 @@ Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					Username:   "user",
 					PrivateKey: []byte(testSecondarySshPrivateKeyPem),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-private-key-passphrase",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:             "user",
+					PrivateKey:           []byte(TestSshPrivateKeyPem),
+					PrivateKeyPassphrase: []byte("foobar"),
+				},
+			},
+			chgFn: changePrivateKeyPassphrase("barfoo"),
+			masks: []string{"PrivateKeyPassphrase"},
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:             "user",
+					PrivateKey:           []byte(TestSshPrivateKeyPem),
+					PrivateKeyPassphrase: []byte("barfoo"),
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-private-key-and-passphrase",
+			orig: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:             "user",
+					PrivateKey:           []byte(TestSshPrivateKeyPem),
+					PrivateKeyPassphrase: []byte("foobar"),
+				},
+			},
+			chgFn: combine(changePrivateKey(testSecondarySshPrivateKeyPem), changePrivateKeyPassphrase("barfoo")),
+			masks: []string{"PrivateKeyPassphrase"},
+			want: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:             "user",
+					PrivateKey:           []byte(testSecondarySshPrivateKeyPem),
+					PrivateKeyPassphrase: []byte("barfoo"),
 				},
 			},
 			wantCount: 1,

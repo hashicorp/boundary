@@ -230,7 +230,6 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 		// Clear private key fields, only privateKeyHmac should be returned
 		spkCred.PrivateKeyEncrypted = nil
 		spkCred.PrivateKey = nil
-
 		// Clear passphrase fields, only PrivateKeyPassphraseHmac should be returned if it exists
 		spkCred.PrivateKeyPassphraseEncrypted = nil
 		spkCred.PrivateKeyPassphrase = nil
@@ -420,7 +419,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 	}
 
 	for _, f := range fieldMaskPaths {
-		if strings.EqualFold(privateKeyField, f) {
+		if strings.EqualFold(privateKeyField, f) || strings.EqualFold(PrivateKeyPassphraseField, f) {
 			// Private key has been updated, re-encrypt and recalculate hmac
 			databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 			if err != nil {
@@ -430,21 +429,14 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 
-			// Set PrivateKeyHmac and PrivateKeyEncrypted masks for update.
-			dbMask = append(dbMask, "PrivateKeyHmac", "PrivateKeyEncrypted")
-		}
-		if strings.EqualFold(PrivateKeyPassphraseField, f) {
-			// Passphrase has been updated, re-encrypt and recalculate hmac
-			databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
-			if err != nil {
-				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+			if strings.EqualFold(privateKeyField, f) {
+				// Set PrivateKeyHmac and PrivateKeyEncrypted masks for update.
+				dbMask = append(dbMask, "PrivateKeyHmac", "PrivateKeyEncrypted")
 			}
-			if err := c.encrypt(ctx, databaseWrapper); err != nil {
-				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			if strings.EqualFold(PrivateKeyPassphraseField, f) {
+				// Set PassphraseHmac and PassphraseEncrypted masks for update.
+				dbMask = append(dbMask, "PrivateKeyPassphraseHmac", "PrivateKeyPassphraseEncrypted")
 			}
-
-			// Set PassphraseHmac and PassphraseEncrypted masks for update.
-			dbMask = append(dbMask, "PrivateKeyPassphraseHmac", "PrivateKeyPassphraseEncrypted")
 		}
 	}
 
