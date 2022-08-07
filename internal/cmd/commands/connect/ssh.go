@@ -111,14 +111,15 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 			// For now just grab the first ssh private key credential brokered
 			cred := retCreds.sshPrivateKey[0]
 
-			if cred.Passphrase == "" {
-				// Credential does not contain a passphrase, mark it as consumed so that it
-				// is not printed to user.
-				retCreds.sshPrivateKey[0].consumed = true
-			}
-
 			username = cred.Username
 			privateKey := cred.PrivateKey
+			cred.consumed = true
+			if cred.Passphrase != "" {
+				// Don't re-print everything, but print the passphrase they'll need
+				cred.consumed = false
+				delete(cred.raw.Credential, "username")
+				delete(cred.raw.Credential, "private_key")
+			}
 
 			pkFile, err := ioutil.TempFile("", "*")
 			if err != nil {
