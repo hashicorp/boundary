@@ -44,21 +44,13 @@ create table target (
   create_time wt_timestamp
 );
 
-create trigger 
-  immutable_columns
-before
-update on target
+create trigger immutable_columns before update on target
   for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on target
+create trigger default_create_time_column before insert on target
   for each row execute procedure default_create_time();
 
-create trigger 
-  target_scope_valid
-before insert on target
+create trigger target_scope_valid before insert on target
   for each row execute procedure target_scope_valid();
 
 
@@ -75,16 +67,10 @@ create table target_host_set(
   create_time wt_timestamp
 );
 
-create trigger 
-  immutable_columns
-before
-update on target_host_set
+create trigger immutable_columns before update on target_host_set
   for each row execute procedure immutable_columns('target_id', 'host_set_id', 'create_time');
 
-create trigger 
-  target_host_set_scope_valid
-before
-insert on target_host_set
+create trigger target_host_set_scope_valid before insert on target_host_set
   for each row execute procedure target_host_set_scope_valid();
 
 create table target_tcp (
@@ -115,42 +101,26 @@ create table target_tcp (
   unique(scope_id, name) -- name must be unique within a scope
 );
 
-create trigger
-  insert_target_subtype
-before insert on target_tcp
+create trigger insert_target_subtype before insert on target_tcp
   for each row execute procedure insert_target_subtype();
 
-create trigger
-  delete_target_subtype
-after delete on target_tcp
+create trigger delete_target_subtype after delete on target_tcp
   for each row execute procedure delete_target_subtype();
 
  -- define the immutable fields for target 
-create trigger 
-  immutable_columns
-before
-update on target_tcp
+create trigger immutable_columns before update on target_tcp
   for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
 
-create trigger
-  update_version_column
-after update on target_tcp
+create trigger update_version_column after update on target_tcp
   for each row execute procedure update_version_column();
 
-create trigger
-  update_time_column
-before update on target_tcp
+create trigger update_time_column before update on target_tcp
   for each row execute procedure update_time_column();
 
-create trigger 
-  default_create_time_column
-before
-insert on target_tcp
+create trigger default_create_time_column before insert on target_tcp
   for each row execute procedure default_create_time();
 
-create trigger 
-  target_scope_valid
-before insert on target_tcp
+create trigger target_scope_valid before insert on target_tcp
   for each row execute procedure target_scope_valid();
 
 

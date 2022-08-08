@@ -95,8 +95,7 @@ begin;
 
   -- replaces function from 14/01_wh_user_dimension_oidc.up.sql
   drop function wh_upsert_user;
-  create function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id)
-    returns wh_dim_key
+  create function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id) returns wh_dim_key
   as $$
   declare
     src     whx_user_dimension_target%rowtype;
@@ -193,8 +192,7 @@ begin;
 
   -- replaces function from 0/66_wh_session_dimensions.up.sql
   drop function wh_upsert_host;
-  create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
-    returns wh_dim_key
+  create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id) returns wh_dim_key
   as $$
   declare
     src     whx_host_dimension_target%rowtype;
@@ -259,8 +257,8 @@ begin;
   -- replaces function from 0/69_wh_session_facts.up.sql
   drop trigger wh_insert_session on session;
   drop function wh_insert_session;
-  create function wh_insert_session()
-    returns trigger
+
+  create function wh_insert_session() returns trigger
   as $$
   declare
     new_row wh_session_accumulating_fact%rowtype;
@@ -293,16 +291,15 @@ begin;
     return null;
   end;
   $$ language plpgsql;
-  create trigger wh_insert_session
-    after insert on session
-    for each row
-    execute function wh_insert_session();
+
+  create trigger wh_insert_session after insert on session
+    for each row execute function wh_insert_session();
 
   -- replaces function from 0/69_wh_session_facts.up.sql
   drop trigger wh_insert_session_connection on session_connection;
   drop function wh_insert_session_connection;
-  create function wh_insert_session_connection()
-    returns trigger
+
+  create function wh_insert_session_connection() returns trigger
   as $$
   declare
     new_row wh_session_connection_accumulating_fact%rowtype;
@@ -355,16 +352,14 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger wh_insert_session_connection
-    after insert on session_connection
-    for each row
-    execute function wh_insert_session_connection();
+  create trigger wh_insert_session_connection after insert on session_connection
+    for each row execute function wh_insert_session_connection();
 
   -- replaces function from 0/69_wh_session_facts.up.sql
   drop trigger wh_insert_session_state on session_state;
   drop function wh_insert_session_state;
-  create function wh_insert_session_state()
-    returns trigger
+
+  create function wh_insert_session_state() returns trigger
   as $$
   declare
     date_col text;
@@ -398,16 +393,14 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger wh_insert_session_state
-    after insert on session_state
-    for each row
-    execute function wh_insert_session_state();
+  create trigger wh_insert_session_state after insert on session_state
+    for each row execute function wh_insert_session_state();
 
   -- replaces function from 0/69_wh_session_facts.up.sql
   drop trigger wh_insert_session_connection_state on session_connection_state;
   drop function wh_insert_session_connection_state;
-  create function wh_insert_session_connection_state()
-    returns trigger
+
+  create function wh_insert_session_connection_state() returns trigger
   as $$
   declare
     date_col text;
@@ -442,8 +435,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger wh_insert_session_connection_state
-    after insert on session_connection_state
-    for each row
-    execute function wh_insert_session_connection_state();
+  create trigger wh_insert_session_connection_state after insert on session_connection_state
+    for each row execute function wh_insert_session_connection_state();
+
 commit;

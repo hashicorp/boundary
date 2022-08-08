@@ -14,10 +14,7 @@ values
   ('project');
 
  -- define the immutable fields of iam_scope_type_enm
-create trigger 
-  immutable_columns
-before
-update on iam_scope_type_enm
+create trigger immutable_columns before update on iam_scope_type_enm
   for each row execute procedure immutable_columns('string');
 
 create table iam_scope (
@@ -44,7 +41,10 @@ create table iam_scope (
         )
       ),
     description text,
-    parent_id text references iam_scope(public_id) on delete cascade on update cascade,
+    parent_id text
+      references iam_scope(public_id)
+      on delete cascade
+      on update cascade,
 
     -- version allows optimistic locking of the role when modifying the role
     -- itself and when modifying dependent items like principal roles.
@@ -68,8 +68,7 @@ create table iam_scope_org (
     references iam_scope(public_id)
     on delete cascade
     on update cascade,
-  parent_id wt_scope_id
-    not null
+  parent_id wt_scope_id not null
     references iam_scope_global(scope_id)
     on delete cascade
     on update cascade,
@@ -78,21 +77,21 @@ create table iam_scope_org (
 );
 
 create table iam_scope_project (
-    scope_id wt_scope_id
-      not null
+    scope_id wt_scope_id not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
-    parent_id wt_public_id not null references iam_scope_org(scope_id) on delete cascade on update cascade,
+    parent_id wt_public_id not null
+      references iam_scope_org(scope_id)
+      on delete cascade
+      on update cascade,
     name text,
     unique(parent_id, name),
     unique(scope_id),
     primary key(scope_id, parent_id)
   );
 
-create or replace function 
-  iam_sub_scopes_func() 
-  returns trigger
+create or replace function iam_sub_scopes_func() returns trigger
 as $$ 
 declare parent_type int;
 begin
@@ -118,15 +117,10 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger 
-  iam_scope_insert
-after
-insert on iam_scope 
+create trigger iam_scope_insert after insert on iam_scope
   for each row execute procedure iam_sub_scopes_func();
 
-create or replace function
-  disallow_global_scope_deletion()
-  returns trigger
+create or replace function disallow_global_scope_deletion() returns trigger
 as $$
 begin
   if old.type = 'global' then
@@ -136,63 +130,39 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger
-  iam_scope_disallow_global_deletion
-before
-delete on iam_scope
+create trigger iam_scope_disallow_global_deletion before delete on iam_scope
   for each row execute procedure disallow_global_scope_deletion();
 
-create trigger 
-  update_time_column 
-before update on iam_scope 
+create trigger update_time_column before update on iam_scope
   for each row execute procedure update_time_column();
   
-create trigger 
-  default_create_time_column
-before
-insert on iam_scope
+create trigger default_create_time_column before insert on iam_scope
   for each row execute procedure default_create_time();
 
-create trigger
-  update_version_column
-after update on iam_scope
+create trigger update_version_column after update on iam_scope
   for each row execute procedure update_version_column();
 
  -- define the immutable fields for iam_scope
-create trigger 
-  immutable_columns
-before
-update on iam_scope
+create trigger immutable_columns before update on iam_scope
   for each row execute procedure immutable_columns('public_id', 'create_time', 'type', 'parent_id');
 
  -- define the immutable fields of iam_scope_global
-create trigger 
-  immutable_columns
-before
-update on iam_scope_global
+create trigger immutable_columns before update on iam_scope_global
   for each row execute procedure immutable_columns('scope_id');
 
  -- define the immutable fields of iam_scope_org
-create trigger 
-  immutable_columns
-before
-update on iam_scope_org
+create trigger immutable_columns before update on iam_scope_org
   for each row execute procedure immutable_columns('scope_id');
 
  -- define the immutable fields of iam_scope_project
-create trigger 
-  immutable_columns
-before
-update on iam_scope_project
+create trigger immutable_columns before update on iam_scope_project
   for each row execute procedure immutable_columns('scope_id');
 
 
 -- iam_sub_names will allow us to enforce the different name constraints for
 -- orgs and projects via a before update trigger on the iam_scope
 -- table. 
-create or replace function 
-  iam_sub_names() 
-  returns trigger
+create or replace function iam_sub_names() returns trigger
 as $$ 
 begin
   if new.name != old.name then
@@ -214,25 +184,19 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger 
-  iam_sub_names 
-before 
-update on iam_scope
+create trigger iam_sub_names before update on iam_scope
   for each row execute procedure iam_sub_names();
 
 insert into iam_scope (public_id, name, type, description)
   values ('global', 'global', 'global', 'Global Scope');
 
-
 create table iam_user (
-    public_id wt_user_id
-      primary key,
+    public_id wt_user_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id
-      not null
+    scope_id wt_scope_id not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -245,9 +209,7 @@ create table iam_user (
     unique(scope_id, public_id)
   );
 
-create or replace function
-  user_scope_id_valid()
-  returns trigger
+create or replace function user_scope_id_valid() returns trigger
 as $$
 begin
   perform from iam_scope where public_id = new.scope_id and type in ('global', 'org');
@@ -258,9 +220,7 @@ begin
 end;
 $$ language plpgsql;
 
-create or replace function
-  grant_scope_id_valid()
-  returns trigger
+create or replace function grant_scope_id_valid() returns trigger
 as $$
 declare parent_scope_id text;
 declare role_scope_type text;
@@ -300,9 +260,7 @@ begin
 end;
 $$ language plpgsql;
 
-create or replace function
-  disallow_iam_predefined_user_deletion()
-  returns trigger
+create or replace function disallow_iam_predefined_user_deletion() returns trigger
 as $$
 begin
   if old.public_id = 'u_anon' then
@@ -318,32 +276,19 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger
-  update_version_column
-after update on iam_user
+create trigger update_version_column after update on iam_user
   for each row execute procedure update_version_column();
 
-create trigger
-  ensure_user_scope_id_valid
-before
-insert or update on iam_user
+create trigger ensure_user_scope_id_valid before insert or update on iam_user
   for each row execute procedure user_scope_id_valid();
 
-create trigger 
-  update_time_column 
-before update on iam_user 
+create trigger update_time_column before update on iam_user
   for each row execute procedure update_time_column();
   
-create trigger 
-  default_create_time_column
-before
-insert on iam_user
+create trigger default_create_time_column before insert on iam_user
   for each row execute procedure default_create_time();
 
-create trigger
-  iam_user_disallow_predefined_user_deletion
-before
-delete on iam_user
+create trigger iam_user_disallow_predefined_user_deletion before delete on iam_user
   for each row execute procedure disallow_iam_predefined_user_deletion();
 
 -- TODO: Do we want to disallow changing the name or description?
@@ -357,10 +302,7 @@ insert into iam_user (public_id, name, description, scope_id)
   values ('u_recovery', 'recovery', 'The recovery user is used for any request that was performed with the recovery KMS workflow', 'global');
 
  -- define the immutable fields for iam_user
-create trigger
-  immutable_columns
-before
-update on iam_user
+create trigger immutable_columns before update on iam_user
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
   
 create table iam_role (
@@ -369,13 +311,11 @@ create table iam_role (
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id
-      not null
+    scope_id wt_scope_id not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
-    grant_scope_id wt_scope_id
-      not null
+    grant_scope_id wt_scope_id not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -407,59 +347,37 @@ create table iam_role (
   );
 
 -- iam_immutable_role_grant() ensures that grants assigned to roles are immutable. 
-create or replace function
-  iam_immutable_role_grant()
-  returns trigger
+create or replace function iam_immutable_role_grant() returns trigger
 as $$
 begin
   raise exception 'role grants are immutable';
 end;
 $$ language plpgsql;
 
-create trigger immutable_role_grant
-before
-update on iam_role_grant
+create trigger immutable_role_grant before update on iam_role_grant
   for each row execute procedure iam_immutable_role_grant();
   
-create trigger
-  default_create_time_column
-before
-insert on iam_role_grant
+create trigger default_create_time_column before insert on iam_role_grant
   for each row execute procedure default_create_time();
 
-create trigger 
-  update_version_column
-after update on iam_role
+create trigger update_version_column after update on iam_role
   for each row execute procedure update_version_column();
 
-create trigger
-  update_time_column 
-before update on iam_role
+create trigger update_time_column before update on iam_role
   for each row execute procedure update_time_column();
   
-create trigger 
-  default_create_time_column
-before
-insert on iam_role
+create trigger default_create_time_column before insert on iam_role
   for each row execute procedure default_create_time();
 
-create trigger
-  ensure_grant_scope_id_valid
-before
-insert or update on iam_role
+create trigger ensure_grant_scope_id_valid before insert or update on iam_role
   for each row execute procedure grant_scope_id_valid();
 
 -- define the immutable fields for iam_role (started trigger name with "a_" so
 -- it will run first)
-create trigger 
-  a_immutable_columns
-before
-update on iam_role
+create trigger a_immutable_columns before update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
-create or replace function
-  recovery_user_not_allowed()
-  returns trigger
+create or replace function recovery_user_not_allowed() returns trigger
 as $$
 declare
   new_value text;
@@ -473,14 +391,12 @@ end;
 $$ language plpgsql;
 
 create table iam_group (
-    public_id wt_public_id
-      primary key,
+    public_id wt_public_id primary key,
     create_time wt_timestamp,
     update_time wt_timestamp,
     name text,
     description text,
-    scope_id wt_scope_id
-      not null
+    scope_id wt_scope_id not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -493,27 +409,17 @@ create table iam_group (
     unique(scope_id, public_id)
   );
   
-create trigger 
-  update_version_column
-after update on iam_group
+create trigger update_version_column after update on iam_group
   for each row execute procedure update_version_column();
 
-create trigger 
-  update_time_column 
-before update on iam_group
+create trigger update_time_column before update on iam_group
   for each row execute procedure update_time_column();
   
-create trigger 
-  default_create_time_column
-before
-insert on iam_group
+create trigger default_create_time_column before insert on iam_group
   for each row execute procedure default_create_time();
 
 -- define the immutable fields for iam_group
-create trigger 
-  immutable_columns
-before
-update on iam_group
+create trigger immutable_columns before update on iam_group
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
 -- iam_user_role contains roles that have been assigned to users. Users can be
@@ -600,77 +506,58 @@ where
 	g.public_id = gr.principal_id;
 
 -- iam_immutable_role_principal() ensures that roles assigned to principals are immutable. 
-create or replace function
-  iam_immutable_role_principal()
-  returns trigger
+create or replace function iam_immutable_role_principal() returns trigger
 as $$
 begin
     raise exception 'roles are immutable';
 end;
 $$ language plpgsql;
 
-create trigger immutable_role_principal
-before
-update on iam_user_role
+create trigger immutable_role_principal before update on iam_user_role
   for each row execute procedure iam_immutable_role_principal();
 
-create trigger 
-  recovery_user_not_allowed_user_role
-before
-insert on iam_user_role
+create trigger recovery_user_not_allowed_user_role before insert on iam_user_role
   for each row execute procedure recovery_user_not_allowed('principal_id');
 
-create trigger 
-  default_create_time_column
-before
-insert on iam_user_role
+create trigger default_create_time_column before insert on iam_user_role
   for each row execute procedure default_create_time();
 
-create trigger immutable_role_principal
-before
-update on iam_group_role
+create trigger immutable_role_principal before update on iam_group_role
   for each row execute procedure iam_immutable_role_principal();
   
-create trigger 
-  default_create_time_column
-before
-insert on iam_group_role
+create trigger default_create_time_column before insert on iam_group_role
   for each row execute procedure default_create_time();
 
 -- iam_group_member_user is an association table that represents groups with
 -- associated users.
 create table iam_group_member_user (
   create_time wt_timestamp,
-  group_id wt_public_id references iam_group(public_id) on delete cascade on update cascade,
-  member_id wt_user_id references iam_user(public_id) on delete cascade on update cascade,
+  group_id wt_public_id
+    references iam_group(public_id)
+    on delete cascade
+    on update cascade,
+  member_id wt_user_id
+    references iam_user(public_id)
+    on delete cascade
+    on update cascade,
   primary key (group_id, member_id)
 );
 
 -- iam_immutable_group_member() ensures that group members are immutable. 
-create or replace function
-  iam_immutable_group_member()
-  returns trigger
+create or replace function iam_immutable_group_member() returns trigger
 as $$
 begin
     raise exception 'group members are immutable';
 end;
 $$ language plpgsql;
 
-create trigger 
-  default_create_time_column
-before
-insert on iam_group_member_user
+create trigger default_create_time_column before insert on iam_group_member_user
   for each row execute procedure default_create_time();
 
-create trigger iam_immutable_group_member
-before
-update on iam_group_member_user
+create trigger iam_immutable_group_member before update on iam_group_member_user
   for each row execute procedure iam_immutable_group_member();
 
-create trigger 
-  recovery_user_not_allowed_group_member
-before
-insert on iam_group_member_user
+create trigger recovery_user_not_allowed_group_member before insert on iam_group_member_user
   for each row execute procedure recovery_user_not_allowed('member_id');
 
 -- get_scoped_member_id is used by the iam_group_member view as a convient

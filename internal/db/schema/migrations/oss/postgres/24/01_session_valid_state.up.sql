@@ -66,9 +66,7 @@ alter table session_state
 alter table session_state
     add unique (session_id, state);
 
-create function
-    update_prior_session_state()
-    returns trigger
+create function update_prior_session_state() returns trigger
 as $$
 begin
     -- Prior state is the most recent valid prior state entry for this session_id

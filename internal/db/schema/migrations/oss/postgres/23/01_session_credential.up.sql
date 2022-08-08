@@ -26,8 +26,7 @@ begin;
 
   -- delete_credentials deletes all credentials for a session when the
   -- session enters the canceling or terminated states.
-  create function delete_session_credentials()
-    returns trigger
+  create function delete_session_credentials() returns trigger
   as $$
   begin
     if new.state in ('canceling', 'terminated') then

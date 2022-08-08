@@ -38,10 +38,8 @@ begin;
 
   -- host_catalog
   create table host_catalog (
-    public_id wt_public_id
-      primary key,
-    scope_id wt_scope_id
-      not null
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,
@@ -57,8 +55,7 @@ begin;
 
   -- insert_host_catalog_subtype() is a before insert trigger
   -- function for subtypes of host_catalog
-  create or replace function insert_host_catalog_subtype()
-    returns trigger
+  create or replace function insert_host_catalog_subtype() returns trigger
   as $$
   begin
     insert into host_catalog
@@ -71,8 +68,7 @@ begin;
 
   -- delete_host_catalog_subtype() is an after delete trigger
   -- function for subtypes of host_catalog
-  create or replace function delete_host_catalog_subtype()
-    returns trigger
+  create or replace function delete_host_catalog_subtype() returns trigger
   as $$
   begin
     delete from host_catalog
@@ -96,8 +92,7 @@ begin;
 
   -- insert_host_subtype() is a before insert trigger
   -- function for subtypes of host
-  create or replace function insert_host_subtype()
-    returns trigger
+  create or replace function insert_host_subtype() returns trigger
   as $$
   begin
     insert into host
@@ -110,8 +105,7 @@ begin;
 
   -- delete_host_subtype() is an after delete trigger
   -- function for subtypes of host
-  create or replace function delete_host_subtype()
-    returns trigger
+  create or replace function delete_host_subtype() returns trigger
   as $$
   begin
     delete from host
@@ -135,8 +129,7 @@ begin;
 
   -- insert_host_set_subtype() is a before insert trigger
   -- function for subtypes of host_set
-  create or replace function insert_host_set_subtype()
-    returns trigger
+  create or replace function insert_host_set_subtype() returns trigger
   as $$
   begin
     insert into host_set
@@ -149,8 +142,7 @@ begin;
 
   -- delete_host_set_subtype() is an after delete trigger
   -- function for subtypes of host_set
-  create or replace function delete_host_set_subtype()
-    returns trigger
+  create or replace function delete_host_set_subtype() returns trigger
   as $$
   begin
     delete from host_set
