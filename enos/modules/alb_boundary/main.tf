@@ -1,5 +1,4 @@
 resource "aws_security_group" "boundary_ingress_sg" {
-  name   = "${var.lb_name_suffix}-server-lb"
   vpc_id = var.vpc_id
 
   # Boundary
@@ -23,11 +22,8 @@ resource "aws_security_group" "boundary_ingress_sg" {
 }
 
 resource "aws_lb" "boundary_clients_ingress" {
-  name               = "boundary-ingress-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.boundary_ingress_sg.id]
-  subnets            = [for k, _ in var.vpc_subnets : k]
+  security_groups = [aws_security_group.boundary_ingress_sg.id]
+  subnets         = [for k, _ in var.vpc_subnets : k]
   tags = {
     Name = var.cluster_name
   }
@@ -53,7 +49,6 @@ resource "aws_lb_listener" "boundary_listener" {
 }
 
 resource "aws_lb_target_group" "boundary_clients" {
-  name     = "nomad-clients"
   port     = local.boundary_port
   protocol = "HTTP"
   vpc_id   = var.vpc_id
