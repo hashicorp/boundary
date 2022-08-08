@@ -24,3 +24,8 @@ variable "db_address" {
   description = "The address of the boundary database"
   type        = string
 }
+
+variable "db_name" {
+  description = "The name of the boundary database to connect to when initializing boundary"
+  type        = string
+}

@@ -33,6 +33,7 @@ resource "enos_remote_exec" "deploy_job" {
     NOMAD_VAR_db_username    = var.db_username
     NOMAD_VAR_db_password    = var.db_password
     NOMAD_VAR_db_address     = var.db_address
+    NOMAD_VAR_db_name        = var.db_name
     CONTROLLER_JOB_SPEC_PATH = local.controller_job_spec_path
   }
 

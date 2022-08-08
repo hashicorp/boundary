@@ -14,6 +14,11 @@ variable "db_address" {
   type = string
 }
 
+variable "db_name" {
+  description = "The name of the boundary database to connect to when initializing boundary"
+  type = string
+}
+
 job "boundary-controller" {
   datacenters = ["dc1"]
 
@@ -43,7 +48,7 @@ job "boundary-controller" {
       }
 
       env {
-        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@%s:5432/postgres?sslmode=disable", var.db_username, var.db_password, var.db_address)
+        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@%s:5432/%s?sslmode=disable", var.db_username, var.db_password, var.db_address, var.db_name)
       }
 
       lifecycle {
@@ -62,7 +67,7 @@ job "boundary-controller" {
       }
 
       env {
-        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@%s:5432/postgres?sslmode=disable", var.db_username, var.db_password, var.db_address)
+        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@%s:5432/%s?sslmode=disable", var.db_username, var.db_password, var.db_address, var.db_name)
       }
 
       resources {
