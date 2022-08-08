@@ -1686,3 +1686,76 @@ Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
 		})
 	}
 }
+
+func TestSshPrivateKeyConstraints(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	kkms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kkms)
+	assert.NoError(err)
+	require.NotNil(repo)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+
+	// Base case: should work fine
+	cred, err := NewSshPrivateKeyCredential(
+		ctx,
+		store.PublicId,
+		"foobar",
+		credential.PrivateKey(testdata.PEMEncryptedKeys[0].PEMBytes),
+		WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
+	require.NoError(err)
+	cred.PublicId, err = credential.NewSshPrivateKeyCredentialId(ctx)
+	require.NoError(err)
+	databaseWrapper, err := kkms.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(cred.encrypt(ctx, databaseWrapper))
+
+	tests := []struct {
+		name         string
+		nilEncrypted bool
+		nilHmac      bool
+	}{
+		{
+			name: "valid",
+		},
+		{
+			name:         "nil-encrypted",
+			nilEncrypted: true,
+		},
+		{
+			name:    "nil-hmac",
+			nilHmac: true,
+		},
+		{
+			name:         "valid-both-nil",
+			nilEncrypted: true,
+			nilHmac:      true,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			c := cred.clone()
+			if tt.nilEncrypted {
+				c.PrivateKeyPassphraseEncrypted = nil
+			}
+			if tt.nilHmac {
+				c.PrivateKeyPassphraseHmac = nil
+			}
+			c.PublicId, err = credential.NewSshPrivateKeyCredentialId(ctx)
+			require.NoError(err)
+			err := rw.Create(ctx, c)
+			switch {
+			case !tt.nilEncrypted && !tt.nilHmac, tt.nilEncrypted && tt.nilHmac:
+				assert.NoError(err)
+			default:
+				assert.Error(err)
+			}
+		})
+	}
+}
