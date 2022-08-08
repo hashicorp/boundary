@@ -138,6 +138,12 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 func (c *Command) Run(args []string) int {
 	c.CombineLogs = c.flagCombineLogs
 
+	defer func() {
+		if err := c.RunShutdownFuncs(); err != nil {
+			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
+		}
+	}()
+
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
 		return result
 	}
@@ -470,12 +476,6 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 	}
-
-	defer func() {
-		if err := c.RunShutdownFuncs(); err != nil {
-			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
-		}
-	}()
 
 	if c.Config.Controller != nil {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
