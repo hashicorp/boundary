@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh/testdata"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -60,7 +62,7 @@ func TestLookupSession(t *testing.T) {
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
-	egressSess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+	sessWithCreds := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
 		TargetId:    tar.GetPublicId(),
@@ -83,10 +85,27 @@ func TestLookupSession(t *testing.T) {
 			},
 		},
 		{
-			Credential: &pbs.Credential_UsernamePassword{
-				UsernamePassword: &pbs.UsernamePassword{
-					Username: "another-username",
-					Password: "a different password",
+			Credential: &pbs.Credential_SshPrivateKey{
+				SshPrivateKey: &pbs.SshPrivateKey{
+					Username:   "another-username",
+					PrivateKey: credstatic.TestLargeSshPrivateKeyPem,
+				},
+			},
+		},
+		{
+			Credential: &pbs.Credential_SshPrivateKey{
+				SshPrivateKey: &pbs.SshPrivateKey{
+					Username:   "another-username",
+					PrivateKey: string(testdata.PEMBytes["ed25519"]),
+				},
+			},
+		},
+		{
+			Credential: &pbs.Credential_SshPrivateKey{
+				SshPrivateKey: &pbs.SshPrivateKey{
+					Username:             "another-username",
+					PrivateKey:           string(testdata.PEMEncryptedKeys[0].PEMBytes),
+					PrivateKeyPassphrase: testdata.PEMEncryptedKeys[0].EncryptionKey,
 				},
 			},
 		},
@@ -98,7 +117,7 @@ func TestLookupSession(t *testing.T) {
 		require.NoError(t, err)
 		workerCreds = append(workerCreds, data)
 	}
-	err = repo.AddSessionCredentials(ctx, egressSess.ScopeId, egressSess.GetPublicId(), workerCreds)
+	err = repo.AddSessionCredentials(ctx, sessWithCreds.ScopeId, sessWithCreds.GetPublicId(), workerCreds)
 	require.NoError(t, err)
 
 	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms)
@@ -133,17 +152,17 @@ func TestLookupSession(t *testing.T) {
 			},
 		},
 		{
-			name:      "Valid-with-egress-creds",
-			sessionId: egressSess.PublicId,
+			name:      "Valid-with-worker-creds",
+			sessionId: sessWithCreds.PublicId,
 			want: &pbs.LookupSessionResponse{
 				ConnectionLimit: 1,
 				ConnectionsLeft: 1,
 				Version:         1,
-				Endpoint:        egressSess.Endpoint,
-				HostId:          egressSess.HostId,
-				HostSetId:       egressSess.HostSetId,
-				TargetId:        egressSess.TargetId,
-				UserId:          egressSess.UserId,
+				Endpoint:        sessWithCreds.Endpoint,
+				HostId:          sessWithCreds.HostId,
+				HostSetId:       sessWithCreds.HostSetId,
+				TargetId:        sessWithCreds.TargetId,
+				UserId:          sessWithCreds.UserId,
 				Status:          pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
 				Credentials:     creds,
 			},
@@ -168,7 +187,8 @@ func TestLookupSession(t *testing.T) {
 				cmp.Diff(
 					tc.want,
 					got,
-					cmpopts.IgnoreUnexported(pbs.LookupSessionResponse{}, pbs.Credential{}, pbs.UsernamePassword{}),
+					cmpopts.IgnoreUnexported(pbs.LookupSessionResponse{},
+						pbs.Credential{}, pbs.UsernamePassword{}, pbs.SshPrivateKey{}),
 					cmpopts.IgnoreFields(pbs.LookupSessionResponse{}, "Expiration", "Authorization"),
 				),
 			)
