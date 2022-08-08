@@ -207,7 +207,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		for _, v := range result.CalculatedUpstreams {
 			addrs = append(addrs, v.Address)
 		}
-	} else if w.conf.RawConfig.HcpbClusterId != "" {
+	} else if w.conf.RawConfig.HcpbClusterId != "" && len(w.conf.RawConfig.Worker.InitialUpstreams) == 0 {
 		// This is a worker that is one hop away from managed workers, so attempt to get that list
 		hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
 		defer hcpbWorkersCancel()
