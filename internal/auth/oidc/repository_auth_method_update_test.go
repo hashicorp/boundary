@@ -1219,7 +1219,7 @@ func Test_applyUpdate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			got := applyUpdate(tt.new, tt.orig, tt.fieldMask)
-			assert.Equal(got, tt.want)
+			assert.Empty(cmp.Diff(got, tt.want, protocmp.Transform()))
 		})
 	}
 }
