@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -22,6 +23,7 @@ const (
 	labelGrpcMethod  = "grpc_method"
 
 	clusterClientSubsystem = "cluster_client"
+	workerClusterSubsystem = "worker_cluster"
 )
 
 // grpcRequestLatency collects measurements of how long a gRPC
@@ -32,6 +34,17 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 		Subsystem: clusterClientSubsystem,
 		Name:      "grpc_request_duration_seconds",
 		Help:      "Histogram of latencies for gRPC requests between the cluster and any of its clients.",
+		Buckets:   prometheus.DefBuckets,
+	},
+	[]string{labelGrpcCode, labelGrpcService, labelGrpcMethod},
+)
+
+var grpcServerRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: workerClusterSubsystem,
+		Name:      "grpc_request_duration_seconds",
+		Help:      "Histogram of latencies for gRPC requests between the a worker server and a worker client.",
 		Buckets:   prometheus.DefBuckets,
 	},
 	[]string{labelGrpcCode, labelGrpcService, labelGrpcMethod},
@@ -101,6 +114,44 @@ func InstrumentClusterClient() grpc.UnaryClientInterceptor {
 	}
 }
 
+type metricMethodNameContextKey struct{}
+
+type statsHandler struct{}
+
+func (sh statsHandler) TagRPC(ctx context.Context, i *stats.RPCTagInfo) context.Context {
+	return context.WithValue(ctx, metricMethodNameContextKey{}, i.FullMethodName)
+}
+
+func (sh statsHandler) TagConn(ctx context.Context, _ *stats.ConnTagInfo) context.Context {
+	return ctx
+}
+
+func (sh statsHandler) HandleConn(context.Context, stats.ConnStats) {
+}
+
+func (sh statsHandler) HandleRPC(ctx context.Context, s stats.RPCStats) {
+	switch v := s.(type) {
+	case *stats.End:
+		// Accept the ok, but ignore it. This code doesn't need to panic
+		// and if "fullName" is an empty string splitMethodName will
+		// set service and method to "unknown".
+		fullName, _ := ctx.Value(metricMethodNameContextKey{}).(string)
+		service, method := splitMethodName(fullName)
+		l := prometheus.Labels{
+			labelGrpcMethod:  method,
+			labelGrpcService: service,
+			labelGrpcCode:    statusFromError(v.Error).Code().String(),
+		}
+		grpcServerRequestLatency.With(l).Observe(v.EndTime.Sub(v.BeginTime).Seconds())
+	}
+}
+
+// InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
+// cluster specific metrics. Use with the cluster gRPC server.
+func InstrumentClusterStatsHandler() statsHandler {
+	return statsHandler{}
+}
+
 var allCodes = []codes.Code{
 	codes.OK, codes.Canceled, codes.Unknown, codes.InvalidArgument, codes.DeadlineExceeded, codes.NotFound,
 	codes.AlreadyExists, codes.PermissionDenied, codes.Unauthenticated, codes.ResourceExhausted,
@@ -128,6 +179,26 @@ func InitializeClusterClientCollectors(r prometheus.Registerer) {
 					labelGrpcMethod:  sm,
 					labelGrpcService: serviceName,
 				})
+			}
+		}
+	}
+}
+
+func InitializeClusterServerCollectors(r prometheus.Registerer, server *grpc.Server) {
+	if r == nil {
+		return
+	}
+	r.MustRegister(grpcServerRequestLatency)
+
+	for serviceName, info := range server.GetServiceInfo() {
+		for _, mInfo := range info.Methods {
+			for _, c := range allCodes {
+				l := prometheus.Labels{
+					labelGrpcCode:    c.String(),
+					labelGrpcMethod:  mInfo.Name,
+					labelGrpcService: serviceName,
+				}
+				grpcServerRequestLatency.With(l)
 			}
 		}
 	}

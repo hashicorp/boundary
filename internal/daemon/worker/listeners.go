@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/common"
+	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -176,6 +177,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	}
 
 	downstreamServer := grpc.NewServer(
+		grpc.StatsHandler(metric.InstrumentClusterStatsHandler()),
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 	)
@@ -188,6 +190,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		return nil, fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
 	}
 	multihop.RegisterMultihopServiceServer(downstreamServer, multihopService)
+	metric.InitializeClusterServerCollectors(w.conf.PrometheusRegisterer, downstreamServer)
 	statusSessionService := NewWorkerProxyServiceServer(w.GrpcClientConn, w.controllerStatusConn)
 	pbs.RegisterServerCoordinationServiceServer(downstreamServer, statusSessionService)
 	pbs.RegisterSessionServiceServer(downstreamServer, statusSessionService)
