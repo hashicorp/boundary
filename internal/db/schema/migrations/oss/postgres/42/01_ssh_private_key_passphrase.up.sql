@@ -1,10 +1,15 @@
 begin;
 
 alter table credential_static_ssh_private_key_credential
-  add column private_key_passphrase_encrypted bytea;
-
-alter table credential_static_ssh_private_key_credential
-  add column private_key_passphrase_hmac bytea;
+  add column private_key_passphrase_encrypted bytea,
+  add column private_key_passphrase_hmac bytea,
+  add constraint private_key_passphrase_both_null_or_not_null
+    check (
+      (private_key_passphrase_encrypted is null and private_key_passphrase_hmac is null)
+      or
+      (private_key_passphrase_encrypted is not null and private_key_passphrase_hmac is not null)
+    )
+  ;
 
 alter table credential_vault_library_ssh_private_key_mapping_override
   add column private_key_passphrase_attribute wt_sentinel
