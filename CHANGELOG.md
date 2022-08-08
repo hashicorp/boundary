@@ -17,6 +17,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* cli: Correctly cleanup plugins after exiting `boundary dev`, `boundary server`
+  and `boundary database init`
+  ([Issue](https://github.com/hashicorp/boundary/issues/2332),
+  [PR](https://github.com/hashicorp/boundary/pull/2333)).
 * `boundary accounts change-password`: Fixed being prompted for confirmation of
   the current password instead of the new one
   ([PR](https://github.com/hashicorp/boundary/pull/2325))

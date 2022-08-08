@@ -382,6 +382,12 @@ func (c *Command) Run(args []string) int {
 	const op = "dev.(Command).Run"
 	c.CombineLogs = c.flagCombineLogs
 
+	defer func() {
+		if err := c.RunShutdownFuncs(); err != nil {
+			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
+		}
+	}()
+
 	var err error
 
 	f := c.Flags()
@@ -614,12 +620,6 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(fmt.Errorf("Error storing PID: %w", err).Error())
 		return base.CommandUserError
 	}
-
-	defer func() {
-		if err := c.RunShutdownFuncs(); err != nil {
-			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
-		}
-	}()
 
 	var opts []base.Option
 	if c.flagCreateLoopbackHostPlugin {

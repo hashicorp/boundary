@@ -177,6 +177,12 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return result
 	}
 
+	defer func() {
+		if err := c.RunShutdownFuncs(); err != nil {
+			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
+		}
+	}()
+
 	if c.configWrapperCleanupFunc != nil {
 		defer func() {
 			if err := c.configWrapperCleanupFunc(); err != nil {
