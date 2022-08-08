@@ -8,9 +8,11 @@ import (
 )
 
 type SshPrivateKeyAttributes struct {
-	Username       string `json:"username,omitempty"`
-	PrivateKey     string `json:"private_key,omitempty"`
-	PrivateKeyHmac string `json:"private_key_hmac,omitempty"`
+	Username                 string `json:"username,omitempty"`
+	PrivateKey               string `json:"private_key,omitempty"`
+	PrivateKeyHmac           string `json:"private_key_hmac,omitempty"`
+	PrivateKeyPassphrase     string `json:"private_key_passphrase,omitempty"`
+	PrivateKeyPassphraseHmac string `json:"private_key_passphrase_hmac,omitempty"`
 }
 
 func AttributesMapToSshPrivateKeyAttributes(in map[string]interface{}) (*SshPrivateKeyAttributes, error) {

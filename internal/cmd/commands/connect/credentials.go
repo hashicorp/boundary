@@ -19,6 +19,7 @@ type usernamePassword struct {
 type sshPrivateKey struct {
 	Username   string `mapstructure:"username"`
 	PrivateKey string `mapstructure:"private_key"`
+	Passphrase string `mapstructure:"private_key_passphrase"`
 
 	raw      *targets.SessionCredential
 	consumed bool

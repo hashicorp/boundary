@@ -330,4 +330,7 @@ message SshPrivateKeyCredential {
 
   // Private key of the credential
   string private_key = 2; // @gotags: `class:"secret"`
+
+  // The optional passphrase of the private_key
+  string private_key_passphrase = 3; // @gotags: `class:"secret"`
 }

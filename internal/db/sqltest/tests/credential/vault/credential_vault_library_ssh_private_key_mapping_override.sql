@@ -17,7 +17,7 @@ begin;
    where library_id in ('vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12');
 
   prepare select_private_libraries as
-   select public_id::text, credential_type::text, username_attribute::text, private_key_attribute::text
+   select public_id::text, credential_type::text, username_attribute::text, private_key_attribute::text, private_key_passphrase_attribute::text
      from credential_vault_library_private
     where public_id in ('vl______wvl2', 'vl______wvl8', 'vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12')
  order by public_id;
@@ -25,12 +25,12 @@ begin;
   select results_eq(
       'select_private_libraries',
       $$VALUES
-      ('vl______wvl10', 'ssh_private_key', 'my_username', null),
-      ('vl______wvl11', 'ssh_private_key', null,          'my_private_key'),
-      ('vl______wvl12', 'ssh_private_key', 'my_username', 'my_private_key'),
-      ('vl______wvl2',  'unspecified',     null,          null),
-      ('vl______wvl8',  'ssh_private_key', null,          null),
-      ('vl______wvl9',  'ssh_private_key', null,          null)$$
+      ('vl______wvl10', 'ssh_private_key', 'my_username', null, null),
+      ('vl______wvl11', 'ssh_private_key', null,          'my_private_key', null),
+      ('vl______wvl12', 'ssh_private_key', 'my_username', 'my_private_key', 'my_passphrase'),
+      ('vl______wvl2',  'unspecified',     null,          null,             null),
+      ('vl______wvl8',  'ssh_private_key', null,          null,             null),
+      ('vl______wvl9',  'ssh_private_key', null,          null,             null)$$
   );
 
   -- validate the insert triggers

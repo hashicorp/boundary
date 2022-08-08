@@ -231,8 +231,26 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				opts := []Option{
 					WithCredentialType(credential.SshPrivateKeyType),
 					WithMappingOverride(NewSshPrivateKeyOverride(
+						WithOverridePrivateKeyPassphraseAttribute("test-passphrase"),
+					)),
+				}
+				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
+				assert.NoError(err)
+				require.NotNil(libIn)
+				lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+				assert.NoError(err)
+				require.NotNil(lib)
+				libs[lib.GetPublicId()] = lib
+				req := credential.Request{SourceId: lib.GetPublicId(), Purpose: credential.BrokeredPurpose}
+				requests = append(requests, req)
+			}
+			{
+				opts := []Option{
+					WithCredentialType(credential.SshPrivateKeyType),
+					WithMappingOverride(NewSshPrivateKeyOverride(
 						WithOverrideUsernameAttribute("test-username"),
 						WithOverridePrivateKeyAttribute("test-private-key"),
+						WithOverridePrivateKeyPassphraseAttribute("test-passphrase"),
 					)),
 				}
 				libIn, err := NewCredentialLibrary(origStore.GetPublicId(), "/vault/path", opts...)
@@ -273,6 +291,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 					case *SshPrivateKeyOverride:
 						assert.Equal(w.UsernameAttribute, got.UsernameAttribute)
 						assert.Equal(w.PrivateKeyAttribute, got.PrivateKeyAttribute)
+						assert.Equal(w.PrivateKeyPassphraseAttribute, got.PrivateKeyPassphraseAttribute)
 					default:
 						assert.Fail("unknown mapping override type")
 					}
@@ -807,6 +826,24 @@ func TestBaseToSshPriKey(t *testing.T) {
 			},
 		},
 		{
+			name: "valid-default-attributes-with-passphrase",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"username":               "my-username",
+					"private_key":            "my-pk",
+					"private_key_passphrase": "my-pass",
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "my-username",
+				privateKey: credential.PrivateKey("my-pk"),
+				passphrase: []byte("my-pass"),
+			},
+		},
+		{
 			name: "valid-override-attributes",
 			given: &baseCred{
 				lib: &privateLibrary{
@@ -824,6 +861,30 @@ func TestBaseToSshPriKey(t *testing.T) {
 			want: &sshPrivateKeyCred{
 				username:   "override-username",
 				privateKey: credential.PrivateKey("override-pk"),
+			},
+		},
+		{
+			name: "valid-override-attributes-with-passphrase",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:                      string(credential.SshPrivateKeyType),
+					UsernameAttribute:             "test-username",
+					PrivateKeyAttribute:           "test-pk",
+					PrivateKeyPassphraseAttribute: "test-pass",
+				},
+				secretData: map[string]interface{}{
+					"username":      "default-username",
+					"private_key":   "default-pk",
+					"passphrase":    "default-pass",
+					"test-username": "override-username",
+					"test-pk":       "override-pk",
+					"test-pass":     "override-pass",
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "override-username",
+				privateKey: credential.PrivateKey("override-pk"),
+				passphrase: []byte("override-pass"),
 			},
 		},
 		{
@@ -1019,6 +1080,27 @@ func TestBaseToSshPriKey(t *testing.T) {
 			},
 		},
 		{
+			name: "valid-kv2-default-attributes-with-passphrase",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType: string(credential.SshPrivateKeyType),
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":               "default-username",
+						"private_key":            "default-pk",
+						"private_key_passphrase": "default-pass",
+					},
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "default-username",
+				privateKey: credential.PrivateKey("default-pk"),
+				passphrase: []byte("default-pass"),
+			},
+		},
+		{
 			name: "valid-kv2-override-attributes",
 			given: &baseCred{
 				lib: &privateLibrary{
@@ -1039,6 +1121,33 @@ func TestBaseToSshPriKey(t *testing.T) {
 			want: &sshPrivateKeyCred{
 				username:   "override-username",
 				privateKey: credential.PrivateKey("override-pk"),
+			},
+		},
+		{
+			name: "valid-kv2-override-attributes-with-passphrase",
+			given: &baseCred{
+				lib: &privateLibrary{
+					CredType:                      string(credential.SshPrivateKeyType),
+					UsernameAttribute:             "test-username",
+					PrivateKeyAttribute:           "test-pk",
+					PrivateKeyPassphraseAttribute: "test-pass",
+				},
+				secretData: map[string]interface{}{
+					"metadata": map[string]interface{}{},
+					"data": map[string]interface{}{
+						"username":      "default-username",
+						"private_key":   "default-pk",
+						"passphrase":    "default-pass",
+						"test-username": "override-username",
+						"test-pk":       "override-pk",
+						"test-pass":     "override-pass",
+					},
+				},
+			},
+			want: &sshPrivateKeyCred{
+				username:   "override-username",
+				privateKey: credential.PrivateKey("override-pk"),
+				passphrase: []byte("override-pass"),
 			},
 		},
 		{
