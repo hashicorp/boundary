@@ -278,6 +278,17 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			},
 		},
 		{
+			name:    "valid-large-pk",
+			scopeId: prj.PublicId,
+			cred: &SshPrivateKeyCredential{
+				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
+					Username:   "my-user",
+					PrivateKey: []byte(TestLargeSshPrivateKeyPem),
+					StoreId:    cs.PublicId,
+				},
+			},
+		},
+		{
 			name:    "valid-with-passphrase",
 			scopeId: prj.PublicId,
 			cred: &SshPrivateKeyCredential{
