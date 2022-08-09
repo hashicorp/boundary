@@ -641,6 +641,15 @@ func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) p
 	return r.v.acl.Allowed(res, act, r.UserId).OutputFields
 }
 
+// ACL returns the perms.ACL of the verifier.
+func (r *VerifyResults) ACL() perms.ACL {
+	if r.v == nil {
+		return perms.ACL{}
+	}
+
+	return r.v.acl
+}
+
 // GetTokenFromRequest pulls the token from either the Authorization header or
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.
