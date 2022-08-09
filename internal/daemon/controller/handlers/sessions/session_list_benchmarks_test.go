@@ -84,9 +84,6 @@ func BenchmarkSessionList(b *testing.B) {
 			iamRepo, err := iam.NewRepository(rw, rw, kmsThing)
 			require.NoError(b, err)
 
-			sessRepo, err := session.NewRepository(rw, rw, kmsThing)
-			require.NoError(b, err)
-
 			authTokenRepo, err := authtoken.NewRepository(rw, rw, kmsThing)
 			require.NoError(b, err)
 
@@ -99,8 +96,8 @@ func BenchmarkSessionList(b *testing.B) {
 			iamRepoFn := func() (*iam.Repository, error) {
 				return iamRepo, nil
 			}
-			sessRepoFn := func() (*session.Repository, error) {
-				return sessRepo, nil
+			sessRepoFn := func(opt ...session.Option) (*session.Repository, error) {
+				return session.NewRepository(rw, rw, kmsThing, opt...)
 			}
 			authTokenRepoFn := func() (*authtoken.Repository, error) {
 				return authTokenRepo, nil
