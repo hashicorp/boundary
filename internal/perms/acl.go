@@ -40,6 +40,12 @@ type Permission struct {
 	All         bool     // We got a wildcard in the grant string's `id` field.
 }
 
+// UserPermissions is a set of Permissions for a User.
+type UserPermissions struct {
+	UserId      string
+	Permissions []Permission
+}
+
 // Resource defines something within boundary that requires authorization
 // capabilities. Resources must have a ScopeId.
 type Resource struct {
