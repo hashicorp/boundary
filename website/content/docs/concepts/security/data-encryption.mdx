@@ -18,7 +18,14 @@ will be supported in a future version. External keys can be rotated so long as
 the original keys remain available for decryption; full support for rotating
 these will come in a future version as well.
 
-## The `root` KMS Key and Per-Scope KEK/DEKs
+## The `worker-auth-storage` KMS Key
+
+The `worker-auth-storage` KMS key is used by a [PKI
+Worker](/docs/configuration/worker/pki-worker) for storage of authentication
+keys. It is optional for PKI workers; if not specified the authentication keys
+will not be encrypted on disk. This is not used by KMS workers.
+
+## The `root` KMS Key and Per-Scope KEK/DEKs <sup>OSS Only</sup>
 
 Following best practices of using different encryption keys for different
 purposes, Boundary has a number of encryption keys generated within each scope.
@@ -48,13 +55,15 @@ provided in this section is purely for informational purposes.
 - `sessions`: This is used as a base key against which to derive
   session-specific encryption keys.
 
-## The `worker-auth` KMS Key
+## The `worker-auth` KMS Key <sup>OSS Only</sup>
 
 The `worker-auth` KMS key is a key shared by the Controller and Worker in order
 to authenticate a Worker to the Controller. Specifics of this mechanism can be
-found on the [Connections/TLS page](/docs/concepts/security/connections-tls).
+found on the [Connections/TLS page](/docs/concepts/security/connections-tls). If
+a worker is used with [PKI
+authentication](/docs/configuration/worker/pki-worker) this is unnecessary.
 
-## The `recovery` KMS Key
+## The `recovery` KMS Key <sup>OSS Only</sup>
 
 The `recovery` KMS key is used for rescue/recovery operations that can be used
 by a client to authenticate almost any operation within Boundary. Its mechanism
@@ -90,7 +99,7 @@ with the options to skip creating default resources, Terraform can be used to
 create the specific resources needed instead, with the `recovery` KMS used to
 authenticate setting up the initial auth method(s).
 
-## The `config` KMS Key
+## The `config` KMS Key <sup>OSS Only</sup>
 
 This key can be used to encrypt values within Boundary's configuration file. By
 sharing this block between Boundary and an operator, the operator can put
