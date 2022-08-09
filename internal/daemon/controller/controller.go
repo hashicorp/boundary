@@ -335,8 +335,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.TargetRepoFn = func() (*target.Repository, error) {
 		return target.NewRepository(dbase, dbase, c.kms)
 	}
-	c.SessionRepoFn = func() (*session.Repository, error) {
-		return session.NewRepository(dbase, dbase, c.kms)
+	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(dbase, dbase, c.kms, opt...)
 	}
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)

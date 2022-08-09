@@ -85,8 +85,8 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kms)
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(rw, rw, kms, opts...)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -2749,8 +2749,8 @@ func TestAuthorizeSession(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kms)
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(rw, rw, kms, opts...)
 	}
 	staticRepo, err := static.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
@@ -3009,8 +3009,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kms)
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(rw, rw, kms, opts...)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -3588,8 +3588,8 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kms)
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(rw, rw, kms, opts...)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
