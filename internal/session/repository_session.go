@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -229,89 +228,28 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	return &session, authzSummary, nil
 }
 
-// fetchAuthzProtectedSessionsByProject fetches sessions for the given projects.
-// Note that the sessions are not fully populated, and only contain the
-// necessary information to implement the boundary.AuthzProtectedEntity
-// interface. Supports the WithTerminated option.
-func (r *Repository) fetchAuthzProtectedSessionsByProject(
-	ctx context.Context, projectIds []string, opt ...Option,
-) (map[string][]boundary.AuthzProtectedEntity, error) {
-	const op = "session.(Repository).fetchAuthzProtectedSessionsByProject"
-
-	opts := getOpts(opt...)
-
-	if len(projectIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project ids given")
-	}
-
-	args := []interface{}{
-		sql.Named("project_ids", "{"+strings.Join(projectIds, ",")+"}"),
-	}
-
-	var query string
-	if opts.withTerminated {
-		query = sessionPublicIdList
-	} else {
-		query = nonTerminatedSessionPublicIdList
-	}
-
-	rows, err := r.reader.Query(ctx, query, args)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	defer rows.Close()
-
-	sessionsMap := map[string][]boundary.AuthzProtectedEntity{}
-	for rows.Next() {
-		var ses Session
-		if err := r.reader.ScanRows(ctx, rows, &ses); err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
-		}
-		sessionsMap[ses.GetProjectId()] = append(sessionsMap[ses.GetProjectId()], ses)
-	}
-
-	return sessionsMap, nil
-}
-
-// ListSessions lists sessions.  Supports the WithLimit, WithProjectId, and WithSessionIds options.
+// ListSessions lists sessions. Sessions returned will be limited by the list
+// permissions of the repository. Supports the WithTerminated, WithLimit,
+// WithOrderByCreateTime options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).ListSessions"
 	opts := getOpts(opt...)
-	var where []string
-	var args []interface{}
 
-	inClauseCnt := 0
-	switch len(opts.withProjectIds) {
-	case 0:
-	case 1:
-		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("project_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withProjectIds[0]))
-	default:
-		idsInClause := make([]string, 0, len(opts.withProjectIds))
-		for _, id := range opts.withProjectIds {
-			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
-		}
-		where = append(where, fmt.Sprintf("project_id in (%s)", strings.Join(idsInClause, ",")))
+	where, args := r.listPermissionWhereClauses()
+	if len(where) == 0 {
+		return nil, nil
 	}
 
-	if opts.withUserId != "" {
-		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("user_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withUserId))
-	}
-
-	switch len(opts.withSessionIds) {
-	case 0:
-	case 1:
-		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("s.public_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withSessionIds[0]))
-	default:
-		idsInClause := make([]string, 0, len(opts.withSessionIds))
-		for _, id := range opts.withSessionIds {
-			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
+	var whereClause string
+	if len(where) > 0 {
+		whereClause = " where (" + strings.Join(where, " or ") + ")"
+		if !opts.withTerminated {
+			whereClause += "and termination_reason is null"
 		}
-		where = append(where, fmt.Sprintf("s.public_id in (%s)", strings.Join(idsInClause, ",")))
+	} else {
+		if !opts.withTerminated {
+			whereClause = "where termination_reason is null"
+		}
 	}
 
 	var limit string
@@ -323,7 +261,6 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		// non-zero signals an override of the default limit for the repo.
 		limit = fmt.Sprintf("limit %d", opts.withLimit)
 	}
-
 	var withOrder string
 	switch opts.withOrderByCreateTime {
 	case db.AscendingOrderBy:
@@ -334,10 +271,6 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		withOrder = "order by create_time"
 	}
 
-	var whereClause string
-	if len(where) > 0 {
-		whereClause = " where " + strings.Join(where, " and ")
-	}
 	q := sessionList
 	query := fmt.Sprintf(q, whereClause, withOrder, limit, withOrder)
 

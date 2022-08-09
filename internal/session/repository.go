@@ -2,12 +2,18 @@ package session
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // Clonable provides a cloning interface
@@ -23,7 +29,12 @@ type Repository struct {
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
+
+	permissions *perms.UserPermissions
 }
+
+// RepositoryFactory is a function that creates a Repository.
+type RepositoryFactory func(opt ...Option) (*Repository, error)
 
 // NewRepository creates a new session Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
@@ -43,12 +54,58 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
 	}
+
+	if opts.withPermissions != nil {
+		for _, p := range opts.withPermissions.Permissions {
+			if p.Resource != resource.Session {
+				return nil, errors.NewDeprecated(errors.InvalidParameter, op, "permission for incorrect resource")
+			}
+		}
+	}
+
 	return &Repository{
 		reader:       r,
 		writer:       w,
 		kms:          kms,
 		defaultLimit: opts.withLimit,
+		permissions:  opts.withPermissions,
 	}, nil
+}
+
+func (r *Repository) listPermissionWhereClauses() ([]string, []interface{}) {
+	var where []string
+	var args []interface{}
+
+	if r.permissions == nil {
+		return where, args
+	}
+
+	inClauseCnt := 0
+	for _, p := range r.permissions.Permissions {
+		if p.Action != action.List {
+			continue
+		}
+
+		inClauseCnt++
+
+		var clauses []string
+		clauses = append(clauses, fmt.Sprintf("project_id = @project_id_%d", inClauseCnt))
+		args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.ScopeId))
+
+		if len(p.ResourceIds) > 0 {
+			clauses = append(clauses, fmt.Sprintf("public_id = any(@public_id_%d)", inClauseCnt))
+			args = append(args, sql.Named(fmt.Sprintf("public_id_%d", inClauseCnt), "{"+strings.Join(p.ResourceIds, ",")+"}"))
+		}
+
+		if p.OnlySelf {
+			inClauseCnt++
+			clauses = append(clauses, fmt.Sprintf("user_id = @user_id_%d", inClauseCnt))
+			args = append(args, sql.Named(fmt.Sprintf("user_id_%d", inClauseCnt), r.permissions.UserId))
+		}
+
+		where = append(where, fmt.Sprintf("(%s)", strings.Join(clauses, " and ")))
+	}
+	return where, args
 }
 
 // list will return a listing of resources and honor the WithLimit option or the
