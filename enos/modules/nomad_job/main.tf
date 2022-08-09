@@ -9,9 +9,13 @@ terraform {
   }
 }
 
+locals {
+  controller_job_spec_path = "/tmp/controller.nomad"
+}
+
 resource "enos_file" "boundary_controller_job" {
   source      = abspath("${path.module}/configs/controller.nomad")
-  destination = "/tmp/controller.nomad"
+  destination = local.controller_job_spec_path
 
   transport = {
     ssh = {
@@ -24,13 +28,24 @@ resource "enos_file" "boundary_controller_job" {
 
 
 resource "enos_remote_exec" "deploy_job" {
-  depends_on = [
-    enos_file.boundary_controller_job
-  ]
-  inline = ["nomad job run /tmp/controller.nomad"]
+
+  environment = {
+    NOMAD_VAR_db_username    = var.db_username
+    NOMAD_VAR_db_password    = var.db_password
+    NOMAD_VAR_db_address     = var.db_address
+    NOMAD_VAR_db_name        = var.db_name
+    CONTROLLER_JOB_SPEC_PATH = local.controller_job_spec_path
+  }
+
+  scripts = [abspath("${path.module}/scripts/deploy-boundary.sh")]
+
   transport = {
     ssh = {
       host = var.nomad_instances[0]
     }
   }
+
+  depends_on = [
+    enos_file.boundary_controller_job
+  ]
 }

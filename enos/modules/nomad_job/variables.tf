@@ -8,3 +8,24 @@ variable "nomad_instances" {
   description = "Public IPs of Nomad instances"
   type        = list(string)
 }
+
+variable "db_username" {
+  description = "The username to use when connecting to the boundary database"
+  type        = string
+}
+
+variable "db_password" {
+  description = "The password to use when connecting to the boundary database"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_address" {
+  description = "The address of the boundary database"
+  type        = string
+}
+
+variable "db_name" {
+  description = "The name of the boundary database to connect to when initializing boundary"
+  type        = string
+}
