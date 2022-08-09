@@ -19,16 +19,16 @@ variable "db_name" {
 }
 
 job "boundary-controller" {
-  count = 3
-
-  restart {
-    attempts = 3
-    delay    = "30s"
-  }
-
   datacenters = ["dc1"]
 
   group "controller-docker" {
+    count = 3
+
+    restart {
+      attempts = 3
+      delay    = "30s"
+    }
+    
     network {
       port "api" {
         static = 9200
