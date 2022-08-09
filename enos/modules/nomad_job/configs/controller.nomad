@@ -1,4 +1,3 @@
-
 variable "db_username" {
   description = "The boundary database username"
   type = string
@@ -23,6 +22,13 @@ job "boundary-controller" {
   datacenters = ["dc1"]
 
   group "controller-docker" {
+    count = 3
+
+    restart {
+      attempts = 3
+      delay    = "30s"
+    }
+    
     network {
       port "api" {
         static = 9200
@@ -77,4 +83,3 @@ job "boundary-controller" {
     }
   }
 }
-
