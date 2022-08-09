@@ -3,12 +3,6 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "lb_name_suffix" {
-  description = "The suffix for the load balancer's name"
-  type        = string
-  default     = "boundary"
-}
-
 variable "cidr_blocks" {
   description = "The allowed external CIDR blocks for the Security Group"
   type        = list(string)

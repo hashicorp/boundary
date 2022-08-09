@@ -1,5 +1,3 @@
-
-
 job "boundary-controller" {
   datacenters = ["dc1"]
 
@@ -58,4 +56,3 @@ job "boundary-controller" {
     }
   }
 }
-
