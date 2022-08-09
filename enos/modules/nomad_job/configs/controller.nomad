@@ -1,4 +1,31 @@
+variable "db_username" {
+  description = "The boundary database username"
+  type = string
+}
+
+variable "db_password" {
+  description = "The boundary database password"
+  type = string
+}
+
+variable "db_address" {
+  description = "The boundary database address"
+  type = string
+}
+
+variable "db_name" {
+  description = "The name of the boundary database to connect to when initializing boundary"
+  type = string
+}
+
 job "boundary-controller" {
+  count = 3
+
+  restart {
+    attempts = 3
+    delay    = "30s"
+  }
+
   datacenters = ["dc1"]
 
   group "controller-docker" {
@@ -27,7 +54,7 @@ job "boundary-controller" {
       }
 
       env {
-        BOUNDARY_POSTGRES_URL = "postgresql://username:password@fqdn:5432/dbname?sslmode=disable"
+        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@%s:5432/%s?sslmode=disable", var.db_username, var.db_password, var.db_address, var.db_name)
       }
 
       lifecycle {
@@ -46,7 +73,7 @@ job "boundary-controller" {
       }
 
       env {
-        BOUNDARY_POSTGRES_URL = "postgresql://postgres:hunter2!@joshb-test.cybzv9aeiqzg.us-east-1.rds.amazonaws.com:5432/postgres?sslmode=disable"
+        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@%s:5432/%s?sslmode=disable", var.db_username, var.db_password, var.db_address, var.db_name)
       }
 
       resources {

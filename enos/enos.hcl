@@ -140,6 +140,17 @@ module "test_cli_ui" {
   source = "./modules/test_cli_ui"
 }
 
+module "rds" {
+  source = "./modules/boundary_db"
+
+  common_tags = {
+    "Project" : "Enos",
+    "Project Name" : var.project_name,
+    "Enos User" : var.enos_user,
+    "Environment" : var.environment
+  }
+}
+
 module "nomad_job" {
   source = "./modules/nomad_job"
 }
@@ -314,6 +325,32 @@ scenario "make_nomad_cluster" {
     }
   }
 
+  step "create_db_password" {
+    module = module.random_stringifier
+  }
+
+  step "create_cluster_id" {
+    module = module.random_stringifier
+
+    variables {
+      upper = "false"
+    }
+  }
+
+  step "database" {
+    module = module.rds
+
+    variables {
+      project_name = var.project_name
+      environment  = var.environment
+      cluster_id   = step.create_cluster_id.string
+      db_pass      = step.create_db_password.string
+      vpc_id       = step.create_base_infra.vpc_id
+    }
+
+    depends_on = [step.create_base_infra]
+  }
+
   step "provision_nomad_cluster" {
     module     = module.nomad_cluster
     depends_on = [step.create_base_infra]
@@ -331,6 +368,10 @@ scenario "make_nomad_cluster" {
     variables {
       private_key_path = var.aws_ssh_private_key_path
       nomad_instances  = step.provision_nomad_cluster.instance_public_ips
+      db_username      = step.database.db_username
+      db_password      = step.database.db_password
+      db_address       = step.database.db_address
+      db_name          = step.database.db_name
     }
   }
 
