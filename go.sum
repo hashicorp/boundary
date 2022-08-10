@@ -700,8 +700,8 @@ github.com/hashicorp/go-rootcerts v1.0.2/go.mod h1:pqUvnprVnM5bf7AOirdbb01K4ccR3
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.1/go.mod h1:EdWO6czbmthiwZ3/PUsDV+UD1D5IRU4ActiaWGwt0Yw=
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 h1:ET4pqyjiGmY09R5y+rSd70J2w45CtbWDNvGqWp/R3Ng=
 github.com/hashicorp/go-secure-stdlib/base62 v0.1.2/go.mod h1:EdWO6czbmthiwZ3/PUsDV+UD1D5IRU4ActiaWGwt0Yw=
-github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.4 h1:WSluQBp6dNGdqeciGwTWeYDUVbq0Hiw/SigGQPAeOQc=
-github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.4/go.mod h1:QBMYnRoWszJPLWzQvS3KsvyTsS7upY4dIbagkp4N7iY=
+github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.5 h1:o1rvQfjcXq9XYaeU9xqrI0wGtxNdAm3cEtt6G6/tiHw=
+github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.5/go.mod h1:xhbcgyAifqiPhd37Acws2dEBPc7Kel77GexmIKW+Ehw=
 github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1 h1:9um9R8i0+HbRHS9d64kdvWR0/LJvo12sIonvR9zr1+U=
 github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1/go.mod h1:6RoRTSMDK2H/rKh3P/JIsk1tK8aatKTt3JyvIopi3GQ=
 github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1 h1:IJgULbAXuvWxzKFfu+Au1FUmHIJulS6N4F7Hkn+Kck0=
@@ -715,8 +715,8 @@ github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7 h1:UpiO20jno/eV1eVZcxqWnU
 github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7/go.mod h1:QmrqtbKuxxSWTN3ETMPuB+VtEiBJ/A9XhoYGv8E1uD8=
 github.com/hashicorp/go-secure-stdlib/password v0.1.1 h1:6JzmBqXprakgFEHwBgdchsjaA9x3GyjdI568bXKxa60=
 github.com/hashicorp/go-secure-stdlib/password v0.1.1/go.mod h1:9hH302QllNwu1o2TGYtSk8I8kTAN0ca1EHpwhm5Mmzo=
-github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.1 h1:s47ax4xEIStj1YV7TRz6zS8LlNrTU86aEhL8pfSOG4U=
-github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.1/go.mod h1:Mh8pP9IH9qnBQSSH3PYtSkGq3+KlIuw5kAS9W8++BLc=
+github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.2 h1:4I1pot2HFhZmXbZL6X2dS0EGR6flsxd+FpaL/BpTXF0=
+github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.2/go.mod h1:M+NBT0f9tDBLuhZFAwUwQjAcxMLmwEyHiPQm1O2pBVs=
 github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1 h1:SMGUnbpAcat8rIKHkBPjfv81yC46a8eCNZ2hsR2l1EI=
 github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1/go.mod h1:Ch/bf00Qnx77MZd49JRgHYqHQjtEmTgGU2faufpVZb0=
 github.com/hashicorp/go-secure-stdlib/strutil v0.1.1/go.mod h1:gKOamz3EwoIoJq7mlMIRBpVTAUn8qPCrEclOKKWhD3U=

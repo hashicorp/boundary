@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/host/mains/aws
 go 1.17
 
 require (
-	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20220309215152-639383654a2e
+	github.com/hashicorp/boundary-plugin-host-aws v0.0.0-20220310190057-5ebf2fa5d010
 	github.com/hashicorp/boundary/sdk v0.0.14
 )
 
@@ -21,7 +21,9 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.6 // indirect
-	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0 // indirect
+	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.5 // indirect
+	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
