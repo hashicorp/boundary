@@ -7,7 +7,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -264,10 +263,15 @@ func TestController_NewPluginsConfig(t *testing.T) {
 	files, err := os.ReadDir(tmpDir)
 	require.NoError(err)
 	require.Len(files, 2)
-	var pluginNames []string
 	for _, file := range files {
-		pluginNames = append(pluginNames, filepath.Base(file.Name()))
+		name := filepath.Base(file.Name())
+		// Remove random chars and hyphen
+		name = name[0 : len(name)-6]
+		switch name {
+		case host_plugin_assets.HostPluginPrefix + "aws",
+			host_plugin_assets.HostPluginPrefix + "azure":
+		default:
+			require.Fail("unexpected name", name)
+		}
 	}
-	expectedPluginNames := []string{host_plugin_assets.HostPluginPrefix + "aws.gz", host_plugin_assets.HostPluginPrefix + "azure.gz"}
-	require.Empty(cmp.Diff(expectedPluginNames, pluginNames))
 }
