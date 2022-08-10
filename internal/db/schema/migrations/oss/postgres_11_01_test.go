@@ -38,7 +38,8 @@ type testServer struct {
 // 4) asserting some bits about the state of the db.
 //
 // Tests migration:
-//   migrations/oss/11/01_server_type_enum.up.sql
+//
+//	migrations/oss/11/01_server_type_enum.up.sql
 func Test_ServerEnumChanges(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)

@@ -57,6 +57,7 @@ type Host struct {
 	// Output only. A list of Host Sets containing this Host.
 	HostSetIds []string `protobuf:"bytes,100,rep,name=host_set_ids,proto3" json:"host_set_ids,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
+	//
 	//	*Host_Attributes
 	//	*Host_StaticHostAttributes
 	Attrs isHost_Attrs `protobuf_oneof:"attrs"`

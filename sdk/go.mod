@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/sdk
 
-go 1.18
+go 1.19
 
 require (
 	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c

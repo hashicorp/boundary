@@ -6,7 +6,6 @@
 // belonging to the same project scope.
 //
 // The repair functionality removes all illegal associations and returns a report.
-//
 package hook46001
 
 import (

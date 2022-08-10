@@ -261,7 +261,7 @@ func (s *sess) RequestConnectConnection(ctx context.Context, info *pbs.ConnectCo
 }
 
 // CancelOpenLocalConnections closes the local connections in this session
-//based on the connection's state by calling the connections context cancel
+// based on the connection's state by calling the connections context cancel
 // function.
 //
 // The returned slice are connection ids that were closed.

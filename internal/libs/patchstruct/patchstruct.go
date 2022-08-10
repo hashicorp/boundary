@@ -15,21 +15,21 @@ import (
 //
 // The following rules apply:
 //
-// * The source (src) map is merged into the destination map (dst). If the
-// source map is nil, the destination will be a valid, but empty, map.
+//   - The source (src) map is merged into the destination map (dst). If the
+//     source map is nil, the destination will be a valid, but empty, map.
 //
-// * Values are overwritten by the source map if they exist in both.
+//   - Values are overwritten by the source map if they exist in both.
 //
-// * Values are deleted from the destination if they are set to null in the
-//   source.
+//   - Values are deleted from the destination if they are set to null in the
+//     source.
 //
-// * Maps are recursively applied, meaning that a nested map at key "foo" in
-//   the destination would be patched with a map at key "foo" in the
-//   source.
+//   - Maps are recursively applied, meaning that a nested map at key "foo" in
+//     the destination would be patched with a map at key "foo" in the
+//     source.
 //
-// * A map in the destination is overwritten by a non-map in the source,
-//   and a non-map in the destination is overwritten by a map in the
-//   source.
+//   - A map in the destination is overwritten by a non-map in the source,
+//     and a non-map in the destination is overwritten by a map in the
+//     source.
 //
 // PatchStruct returns the updated map as a copy, dst and src are not altered.
 func PatchStruct(dst, src *structpb.Struct) *structpb.Struct {

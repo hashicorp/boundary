@@ -12,6 +12,7 @@ import (
 )
 
 // postgres contains the migrations sql files for postgres oss edition
+//
 //go:embed postgres
 var postgres embed.FS
 

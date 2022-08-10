@@ -86,7 +86,7 @@ for permanent installations, are detailed in our [Installation Guide](https://ww
 ### Build and Start Boundary in Dev Mode
 
 If you have the following requirements met locally:
-- Golang v1.18 or greater
+- Golang v1.19 or greater
 - Docker
 - [Boundary UI Dependencies](https://github.com/hashicorp/boundary-ui#prerequisites)
 
