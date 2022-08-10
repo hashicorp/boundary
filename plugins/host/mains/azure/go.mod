@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/host/mains/azure
 go 1.17
 
 require (
-	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20220309215318-f3b6d46e87d8
+	github.com/hashicorp/boundary-plugin-host-azure v0.0.0-20211123155708-bb02a6d0db3a
 	github.com/hashicorp/boundary/sdk v0.0.14
 )
 
@@ -33,7 +33,9 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.0 // indirect
-	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.0 // indirect
+	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.5 // indirect
+	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/go-version v1.3.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
@@ -48,6 +50,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20220313003712-b769efc7c000 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
