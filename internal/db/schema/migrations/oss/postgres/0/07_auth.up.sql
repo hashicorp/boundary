@@ -49,10 +49,8 @@ begin;
 
   -- base table for auth methods
   create table auth_method (
-    public_id wt_public_id
-      primary key,
-    scope_id wt_scope_id
-      not null
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null
       references iam_scope(public_id)
       on delete cascade
       on update cascade,
@@ -66,12 +64,9 @@ begin;
 
   -- base table for auth accounts
   create table auth_account (
-    public_id wt_public_id
-      primary key,
-    auth_method_id wt_public_id
-      not null,
-    scope_id wt_scope_id
-      not null,
+    public_id wt_public_id primary key,
+    auth_method_id wt_public_id not null,
+    scope_id wt_scope_id not null,
     iam_user_id wt_public_id,
     -- The auth_account can only be assigned to an iam_user in the same scope as
     -- the auth_method the auth_account belongs to. A separate column for
@@ -99,9 +94,7 @@ begin;
     unique(scope_id, auth_method_id, public_id)
   );
 
-  create or replace function
-    insert_auth_method_subtype()
-    returns trigger
+  create or replace function insert_auth_method_subtype() returns trigger
   as $$
   begin
     insert into auth_method
@@ -112,9 +105,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  create or replace function
-    insert_auth_account_subtype()
-    returns trigger
+  create or replace function insert_auth_account_subtype() returns trigger
   as $$
   begin
 
@@ -139,9 +130,7 @@ begin;
   -- and sets new.iam_user_scope_id to that value. If the new.iam_user_id column
   -- is null and the old.iam_user_id column is not null,
   -- update_iam_user_auth_account sets the iam_user_scope_id to null.
-  create or replace function
-    update_iam_user_auth_account()
-    returns trigger
+  create or replace function update_iam_user_auth_account() returns trigger
   as $$
   begin
     if new.iam_user_id is distinct from old.iam_user_id then
@@ -157,10 +146,7 @@ begin;
   end;
   $$ language plpgsql;
 
-
-  create trigger update_iam_user_auth_account
-    before update of iam_user_id on auth_account
-    for each row
+  create trigger update_iam_user_auth_account before update of iam_user_id on auth_account for each row
     execute procedure update_iam_user_auth_account();
 
 commit;

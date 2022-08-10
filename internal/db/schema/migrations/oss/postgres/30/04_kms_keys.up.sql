@@ -21,9 +21,7 @@ comment on table kms_root_key is
   'kms_root_key defines a root key for a scope';
 
 -- define the immutable fields for kms_root_key (all of them)
-create trigger kms_immutable_columns
-before
-update on kms_root_key
+create trigger kms_immutable_columns before update on kms_root_key
   for each row execute procedure kms_immutable_columns('private_id', 'scope_id', 'create_time');
 
 -- not adding the kms_default_create_time_column trigger until after we've
@@ -50,9 +48,7 @@ comment on table kms_root_key_version is
   'kms_root_key_version contains versions of a kms_root_key';
   
  -- define the immutable fields for kms_root_key_version (all of them)
-create trigger kms_immutable_columns
-before
-update on kms_root_key_version
+create trigger kms_immutable_columns before update on kms_root_key_version
   for each row execute procedure kms_immutable_columns('private_id', 'root_key_id', 'version', 'key', 'create_time');
 
 -- not adding the kms_default_create_time_column or kms_version_column triggers
@@ -77,9 +73,7 @@ comment on table kms_data_key is
   'kms_data_key contains deks (data keys) for specific purposes';
 
  -- define the immutable fields for kms_data_key (all of them)
-create trigger kms_immutable_columns
-before
-update on kms_data_key
+create trigger kms_immutable_columns before update on kms_data_key
   for each row execute procedure kms_immutable_columns('private_id', 'root_key_id', 'purpose', 'create_time');
 
 -- not adding the kms_default_create_time_column trigger until after we've
@@ -111,9 +105,7 @@ comment on table kms_data_key is
   'kms_data_key_version contains versions of a kms_data_key (dek aka data keys)';
 
  -- define the immutable fields for kms_data_key_version (all of them)
-create trigger kms_immutable_columns
-before
-update on kms_data_key_version
+create trigger kms_immutable_columns before update on kms_data_key_version
   for each row execute procedure immutable_columns('private_id', 'data_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
 
 -- not adding the kms_default_create_time_column or kms_version_column triggers
@@ -190,32 +182,22 @@ from kms_session_key_version;
 
 -- ############################################################################
 -- post conversion, we add the required triggers
-create trigger kms_default_create_time_column
-before
-insert on kms_root_key
+create trigger kms_default_create_time_column before insert on kms_root_key
   for each row execute procedure kms_default_create_time();
 
-create trigger kms_default_create_time_column
-before
-insert on kms_root_key_version
+create trigger kms_default_create_time_column before insert on kms_root_key_version
   for each row execute procedure kms_default_create_time();
 
-create trigger kms_version_column
-before insert on kms_root_key_version
+create trigger kms_version_column before insert on kms_root_key_version
   for each row execute procedure kms_version_column('root_key_id');
 
-create trigger default_create_time_column
-before
-insert on kms_data_key
+create trigger default_create_time_column before insert on kms_data_key
   for each row execute procedure kms_default_create_time();
 
-create trigger default_create_time
-before
-insert on kms_data_key_version
+create trigger default_create_time before insert on kms_data_key_version
   for each row execute procedure kms_default_create_time();
 
-create trigger kms_version_column
-before insert on kms_data_key_version
+create trigger kms_version_column before insert on kms_data_key_version
 	for each row execute procedure kms_version_column('data_key_id');
 
 -- Next: we will convert all the existing DEKs FKs to the new model

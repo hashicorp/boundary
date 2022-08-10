@@ -14,12 +14,8 @@ begin;
         references credential_vault_library_mapping_override (library_id)
         on delete cascade
         on update cascade,
-    username_attribute wt_sentinel
-      default wt_to_sentinel('no override')
-      not null,
-    private_key_attribute wt_sentinel
-      default wt_to_sentinel('no override')
-      not null
+    username_attribute wt_sentinel default wt_to_sentinel('no override') not null,
+    private_key_attribute wt_sentinel default wt_to_sentinel('no override') not null
   );
   comment on table credential_vault_library_ssh_private_key_mapping_override is
     'credential_vault_library_ssh_private_key_mapping_override is a table '

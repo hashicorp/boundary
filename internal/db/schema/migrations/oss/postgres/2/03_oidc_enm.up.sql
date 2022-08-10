@@ -18,10 +18,7 @@ insert into auth_oidc_method_state_enm(name)
     ('active-public');
 
  -- define the immutable fields for auth_oidc_method_state_enm (all of them)
-create trigger 
-  immutable_columns
-before
-update on auth_oidc_method_state_enm
+create trigger immutable_columns before update on auth_oidc_method_state_enm
   for each row execute procedure immutable_columns('name');
 
 
@@ -61,10 +58,7 @@ insert into auth_oidc_signing_alg_enm (name)
     ; 
 
  -- define the immutable fields for auth_oidc_signing_alg (all of them)
-create trigger 
-  immutable_columns
-before
-update on auth_oidc_signing_alg_enm
+create trigger immutable_columns before update on auth_oidc_signing_alg_enm
   for each row execute procedure immutable_columns('name');
 
 commit;

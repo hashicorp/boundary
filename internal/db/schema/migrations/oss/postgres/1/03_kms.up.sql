@@ -11,17 +11,11 @@ create table kms_oidc_key (
 );
 
  -- define the immutable fields for kms_oidc_key (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_oidc_key
+create trigger immutable_columns before update on kms_oidc_key
   for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
 
 -- define the value of kms_oidc_key's create_time
-create trigger 
-  default_create_time_column
-before
-insert on kms_oidc_key
+create trigger default_create_time_column before insert on kms_oidc_key
   for each row execute procedure default_create_time();
 
 -- kms_oidc_key_version entries are version of DEK keys used to encrypt oidc
@@ -43,23 +37,15 @@ create table kms_oidc_key_version (
 );
 
  -- define the immutable fields for kms_oidc_key_version (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_oidc_key_version
+create trigger immutable_columns before update on kms_oidc_key_version
   for each row execute procedure immutable_columns('private_id', 'oidc_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
   
 -- define the value of kms_oidc_key_version's create_time
-create trigger 
-  default_create_time_column
-before
-insert on kms_oidc_key_version
+create trigger default_create_time_column before insert on kms_oidc_key_version
   for each row execute procedure default_create_time();
 
 -- define the value of kms_oidc_key_version's version column
-create trigger
-	kms_version_column
-before insert on kms_oidc_key_version
+create trigger kms_version_column before insert on kms_oidc_key_version
 	for each row execute procedure kms_version_column('oidc_key_id');
 
 commit;

@@ -11,7 +11,6 @@ begin;
          next_scheduled_run timestamp with time zone not null,
          primary key (plugin_id, name)
     );
-
     comment on table job is
         'job is a table where each row represents a unique job that can only have one running instance at any specific time.';
 
@@ -23,7 +22,6 @@ begin;
             constraint only_predefined_job_status_allowed
                 check(name in ('running', 'completed', 'failed', 'interrupted'))
     );
-
     comment on table job_run_status_enm is
         'job_run_status_enm is an enumeration table where each row contains a valid job run state.';
 
@@ -35,8 +33,7 @@ begin;
         ('interrupted');
 
     create table job_run (
-         private_id wh_dim_id primary key
-             default wh_dim_id(),
+         private_id wh_dim_id primary key default wh_dim_id(),
          job_plugin_id wt_plugin_id not null,
          job_name wt_name not null,
          server_id wt_private_id
@@ -47,16 +44,13 @@ begin;
          create_time wt_timestamp,
          update_time wt_timestamp,
          end_time timestamp with time zone,
-         completed_count int not null
-             default 0
+         completed_count int not null default 0
              constraint completed_count_can_not_be_negative
                  check(completed_count >= 0),
-         total_count int not null
-             default 0
+         total_count int not null default 0
              constraint total_count_can_not_be_negative
                  check(total_count >= 0),
-         status text not null
-             default 'running'
+         status text not null default 'running'
              constraint job_run_status_enm_fkey
                  references job_run_status_enm (name)
                  on delete restrict
@@ -71,7 +65,6 @@ begin;
              on delete cascade
              on update cascade
     );
-
     comment on table job_run is
         'job_run is a table where each row represents an instance of a job run that is either actively running or has already completed.';
 

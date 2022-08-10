@@ -133,34 +133,22 @@ begin;
     update_time wt_timestamp
   );
 
-  create trigger 
-    immutable_columns
-  before
-  update on session_connection
+  create trigger immutable_columns before update on session_connection
     for each row execute procedure immutable_columns('public_id', 'session_id', 'create_time');
 
-  create trigger 
-    update_version_column 
-  after update on session_connection
+  create trigger update_version_column after update on session_connection
     for each row execute procedure update_version_column();
     
-  create trigger 
-    update_time_column 
-  before update on session_connection 
+  create trigger update_time_column before update on session_connection
     for each row execute procedure update_time_column();
     
-  create trigger 
-    default_create_time_column
-  before
-  insert on session_connection
+  create trigger default_create_time_column before insert on session_connection
     for each row execute procedure default_create_time();
 
   -- insert_new_connection_state() is used in an after insert trigger on the
   -- session_connection table.  it will insert a state of "authorized" in
   -- session_connection_state for the new session connection. 
-  create or replace function 
-    insert_new_connection_state()
-    returns trigger
+  create or replace function insert_new_connection_state() returns trigger
   as $$
   begin
     insert into session_connection_state (connection_id, state)
@@ -170,18 +158,14 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger 
-    insert_new_connection_state
-  after insert on session_connection
+  create trigger insert_new_connection_state after insert on session_connection
     for each row execute procedure insert_new_connection_state();
 
 -- Replaced in 27/01_disable_terminate_session.up.sql
   -- update_connection_state_on_closed_reason() is used in an update trigger on the
   -- session_connection table.  it will insert a state of "closed" in
   -- session_connection_state for the closed session connection. 
-  create or replace function 
-    update_connection_state_on_closed_reason()
-    returns trigger
+  create or replace function update_connection_state_on_closed_reason() returns trigger
   as $$
   begin
     if new.closed_reason is not null then
@@ -205,9 +189,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger 
-    update_connection_state_on_closed_reason
-  after update of closed_reason on session_connection
+  create trigger update_connection_state_on_closed_reason after update of closed_reason on session_connection
     for each row execute procedure update_connection_state_on_closed_reason();
 
   create table session_connection_state_enm (
@@ -223,7 +205,6 @@ begin;
     ('authorized'),
     ('connected'),
     ('closed');
-
 
   create table session_connection_state (
     connection_id wt_public_id not null
@@ -250,15 +231,10 @@ begin;
       references session_connection_state (connection_id, end_time)
   );
 
-  create trigger 
-    immutable_columns
-  before
-  update on session_connection_state
+  create trigger immutable_columns before update on session_connection_state
     for each row execute procedure immutable_columns('connection_id', 'state', 'start_time', 'previous_end_time');
 
-  create or replace function
-    insert_session_connection_state()
-    returns trigger
+  create or replace function insert_session_connection_state() returns trigger
   as $$
   begin
 
@@ -295,9 +271,7 @@ begin;
 --
 --      Note: this function should align closely with the domain function
 --      TerminateCompletedSessions 
-create or replace function 
-    terminate_session_if_possible(terminate_session_id text)
-    returns void
+create or replace function terminate_session_if_possible(terminate_session_id text) returns void
   as $$
   begin 
     -- is terminate_session_id in a canceling state
@@ -376,6 +350,5 @@ create or replace function
     );
  end;
   $$ language plpgsql;
-
 
 commit;

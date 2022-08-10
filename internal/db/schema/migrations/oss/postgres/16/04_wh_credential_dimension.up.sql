@@ -1,18 +1,19 @@
 begin;
+
   alter table wh_session_accumulating_fact
-    add column credential_group_key wh_dim_key not null
-    default 'Unknown'
+    add column credential_group_key wh_dim_key not null default 'Unknown'
     references wh_credential_group (key)
     on delete restrict
     on update cascade;
+
   alter table wh_session_accumulating_fact
     alter column credential_group_key drop default;
 
   -- replaces function from 15/01_wh_rename_key_columns.up.sql
   drop trigger wh_insert_session on session;
   drop function wh_insert_session;
-  create function wh_insert_session()
-    returns trigger
+
+  create function wh_insert_session() returns trigger
   as $$
   declare
     new_row wh_session_accumulating_fact%rowtype;
@@ -47,8 +48,8 @@ begin;
     return null;
   end;
   $$ language plpgsql;
-  create trigger wh_insert_session
-    after insert on session
-    for each row
-    execute function wh_insert_session();
+
+  create trigger wh_insert_session after insert on session
+    for each row execute function wh_insert_session();
+
 commit;

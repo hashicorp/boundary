@@ -53,8 +53,7 @@ begin;
   -- Allow the host dimension to reference a group of addresses as referenced
   -- above.
   alter table wh_host_dimension
-    add column network_address_group_key wh_dim_key not null
-      default 'Unknown'
+    add column network_address_group_key wh_dim_key not null default 'Unknown'
       constraint wh_network_address_group_fkey
         references wh_network_address_group(key)
         on delete restrict
@@ -64,8 +63,7 @@ begin;
     alter column network_address_group_key drop default;
 
   -- wh_try_cast_inet returns either the provided text cast into inet or a null.
-  create function wh_try_cast_inet(text)
-    returns inet
+  create function wh_try_cast_inet(text) returns inet
   as $$
   begin
     return cast($1 as inet);
