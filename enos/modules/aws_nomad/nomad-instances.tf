@@ -157,6 +157,10 @@ resource "enos_file" "nomad_client_config" {
 
 
 resource "enos_remote_exec" "install_docker" {
+  # This uses apt so we need to block until deps are done
+  depends_on = [
+    enos_remote_exec.install_dependencies
+  ]
   for_each = aws_instance.nomad_instance
 
   scripts = [abspath("${path.module}/../../templates/install-docker.sh")]

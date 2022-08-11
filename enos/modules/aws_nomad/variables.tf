@@ -117,7 +117,7 @@ variable "consul_log_dir" {
 variable "dependencies_to_install" {
   type        = list(string)
   description = "A list of dependencies to install"
-  default     = []
+  default     = ["jq"]
 }
 
 variable "nomad_cluster_tag" {
