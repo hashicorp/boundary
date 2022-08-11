@@ -104,6 +104,12 @@ func TestSession(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, c Composed
 		require.NoError(err)
 	}
 
+	for _, cred := range s.StaticCredentials {
+		cred.SessionId = s.PublicId
+		err := rw.Create(ctx, cred)
+		require.NoError(err)
+	}
+
 	ss, err := fetchStates(ctx, rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
 	require.NoError(err)
 	s.States = ss
