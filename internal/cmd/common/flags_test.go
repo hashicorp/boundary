@@ -121,6 +121,17 @@ func TestPopulateAttrFlags(t *testing.T) {
 			args:        []string{"-num-attr", "fo.oo-o.o=5"},
 			expectedErr: "invalid value",
 		},
+		{
+			name: "colon-in-segment",
+			args: []string{"-attr", "filter=tagName eq 'application:south-seas'"},
+			expected: []base.CombinedSliceFlagValue{
+				{
+					Name:  "attr",
+					Keys:  []string{"filter"},
+					Value: "tagName eq 'application:south-seas'",
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

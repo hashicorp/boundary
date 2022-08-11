@@ -1,6 +1,7 @@
 package base
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -854,7 +855,7 @@ func (c *combinedSliceValue) Set(val string) error {
 	}
 
 	var err error
-	if ret.Value, err = parseutil.ParsePath(ret.Value); err != nil && err != parseutil.ErrNotAUrl {
+	if ret.Value, err = parseutil.ParsePath(ret.Value); err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 		return fmt.Errorf("error checking if value is a path: %w", err)
 	}
 
