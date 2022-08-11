@@ -110,14 +110,15 @@ type SshPrivateKeyOverride struct {
 var _ MappingOverride = (*SshPrivateKeyOverride)(nil)
 
 // NewSshPrivateKeyOverride creates a new in memory SshPrivateKeyOverride.
-// WithOverrideUsernameAttribute and WithOverridePasswordAttribute are the
-// only valid options. All other options are ignored.
+// WithOverrideUsernameAttribute, WithOverridePrivateKeyAttribute and WithOverridePrivateKeyPassphraseAttribute
+// are the only valid options. All other options are ignored.
 func NewSshPrivateKeyOverride(opt ...Option) *SshPrivateKeyOverride {
 	opts := getOpts(opt...)
 	o := &SshPrivateKeyOverride{
 		SshPrivateKeyOverride: &store.SshPrivateKeyOverride{
-			UsernameAttribute:   sanitize.String(opts.withOverrideUsernameAttribute),
-			PrivateKeyAttribute: sanitize.String(opts.withOverridePrivateKeyAttribute),
+			UsernameAttribute:             sanitize.String(opts.withOverrideUsernameAttribute),
+			PrivateKeyAttribute:           sanitize.String(opts.withOverridePrivateKeyAttribute),
+			PrivateKeyPassphraseAttribute: sanitize.String(opts.withOverridePrivateKeyPassphraseAttribute),
 		},
 	}
 	return o
@@ -146,6 +147,9 @@ func (o *SshPrivateKeyOverride) sanitize() {
 	}
 	if sentinel.Is(o.PrivateKeyAttribute) {
 		o.PrivateKeyAttribute = ""
+	}
+	if sentinel.Is(o.PrivateKeyPassphraseAttribute) {
+		o.PrivateKeyPassphraseAttribute = ""
 	}
 }
 

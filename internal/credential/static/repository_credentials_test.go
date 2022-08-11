@@ -35,6 +35,9 @@ func TestRepository_Retrieve(t *testing.T) {
 	upCred2 := TestUsernamePasswordCredential(t, conn, wrapper, "different user", "better password", staticStore.GetPublicId(), prj.GetPublicId())
 	spkCred1 := TestSshPrivateKeyCredential(t, conn, wrapper, "final user", string(testdata.PEMBytes["ed25519"]), staticStore.GetPublicId(), prj.GetPublicId())
 	spkCred2 := TestSshPrivateKeyCredential(t, conn, wrapper, "last user", string(testdata.PEMBytes["rsa-openssh-format"]), staticStore.GetPublicId(), prj.GetPublicId())
+	spkCredWithPass := TestSshPrivateKeyCredential(t, conn, wrapper, "another last user",
+		string(testdata.PEMEncryptedKeys[0].PEMBytes), staticStore.GetPublicId(), prj.GetPublicId(),
+		WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
 
 	type args struct {
 		credIds []string
@@ -95,20 +98,20 @@ func TestRepository_Retrieve(t *testing.T) {
 			name: "valid-multiple-ssh-pk-creds",
 			args: args{
 				scopeId: prj.GetPublicId(),
-				credIds: []string{spkCred1.GetPublicId(), spkCred2.GetPublicId()},
+				credIds: []string{spkCred1.GetPublicId(), spkCred2.GetPublicId(), spkCredWithPass.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
-				spkCred1, spkCred2,
+				spkCred1, spkCred2, spkCredWithPass,
 			},
 		},
 		{
 			name: "valid-mixed-creds",
 			args: args{
 				scopeId: prj.GetPublicId(),
-				credIds: []string{upCred1.GetPublicId(), spkCred1.GetPublicId(), spkCred2.GetPublicId(), upCred2.GetPublicId()},
+				credIds: []string{upCred1.GetPublicId(), spkCred1.GetPublicId(), spkCredWithPass.GetPublicId(), spkCred2.GetPublicId(), upCred2.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
-				upCred1, spkCred1, spkCred2, upCred2,
+				upCred1, spkCred1, spkCred2, upCred2, spkCredWithPass,
 			},
 		},
 	}
@@ -130,6 +133,7 @@ func TestRepository_Retrieve(t *testing.T) {
 						UsernamePasswordCredential{}, store.UsernamePasswordCredential{},
 						SshPrivateKeyCredential{}, store.SshPrivateKeyCredential{}),
 					cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
+					cmpopts.IgnoreFields(SshPrivateKeyCredential{}, "PassphraseUnneeded"),
 					cmpopts.SortSlices(func(x, y credential.Static) bool {
 						return x.GetPublicId() < y.GetPublicId()
 					}),

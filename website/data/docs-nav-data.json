@@ -50,7 +50,7 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "configuration/worker/overview"
+            "path": "configuration/worker"
           },
           {
             "title": "PKI Workers",
@@ -121,7 +121,7 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "configuration/events/overview"
+            "path": "configuration/events"
           },
           {
             "title": "Common Sink Parameters",

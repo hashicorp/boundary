@@ -126,9 +126,11 @@ type UsernamePassword interface {
 	Password() Password
 }
 
-// SshPrivateKey is a credential containing a username and a SSH private key.
+// SshPrivateKey is a credential containing a username an SSH private key and
+// an optional private key passphrase.
 type SshPrivateKey interface {
 	Credential
 	Username() string
 	PrivateKey() PrivateKey
+	PrivateKeyPassphrase() []byte
 }

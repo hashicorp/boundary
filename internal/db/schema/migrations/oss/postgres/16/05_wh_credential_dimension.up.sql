@@ -1,10 +1,11 @@
 begin;
+
   alter table wh_session_connection_accumulating_fact
-    add column credential_group_key wh_dim_key not null
-    default 'Unknown'
+    add column credential_group_key wh_dim_key not null default 'Unknown'
     references wh_credential_group (key)
     on delete restrict
     on update cascade;
+
   alter table wh_session_connection_accumulating_fact
     alter column credential_group_key drop default;
 
@@ -12,8 +13,8 @@ begin;
   -- replaces function from 15/01_wh_rename_key_columns.up.sql
   drop trigger wh_insert_session_connection on session_connection;
   drop function wh_insert_session_connection;
-  create function wh_insert_session_connection()
-    returns trigger
+
+  create function wh_insert_session_connection() returns trigger
   as $$
   declare
     new_row wh_session_connection_accumulating_fact%rowtype;
@@ -68,9 +69,8 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger wh_insert_session_connection
-    after insert on session_connection
-    for each row
-    execute function wh_insert_session_connection();
+  create trigger wh_insert_session_connection after insert on session_connection
+    for each row execute function wh_insert_session_connection();
+
 commit;
 

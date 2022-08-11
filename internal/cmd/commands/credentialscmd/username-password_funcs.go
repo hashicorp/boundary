@@ -1,6 +1,9 @@
 package credentialscmd
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -43,7 +46,7 @@ func extraUsernamePasswordFlagsFuncImpl(c *UsernamePasswordCommand, set *base.Fl
 			f.StringVar(&base.StringVar{
 				Name:   passwordFlagName,
 				Target: &c.flagPassword,
-				Usage:  "The password associated with the credential. This can be the value itself, refer to a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.",
+				Usage:  "The password associated with the credential. This can be a file on disk (file://) from which the value will be read, or an env var (env://) from which the value will be read.",
 			})
 		}
 	}
@@ -58,9 +61,14 @@ func extraUsernamePasswordFlagHandlingFuncImpl(c *UsernamePasswordCommand, _ *ba
 	switch c.flagPassword {
 	case "":
 	default:
-		password, err := parseutil.ParsePath(c.flagPassword)
-		if err != nil && err.Error() != parseutil.ErrNotAUrl.Error() {
-			c.UI.Error("Error parsing password flag: " + err.Error())
+		password, err := parseutil.MustParsePath(c.flagPassword)
+		switch {
+		case err == nil:
+		case errors.Is(err, parseutil.ErrNotParsed):
+			c.UI.Error("Password flag must be used with env:// or file:// syntax")
+			return false
+		default:
+			c.UI.Error(fmt.Sprintf("Error parsing password flag: %v", err))
 			return false
 		}
 		*opts = append(*opts, credentials.WithUsernamePasswordCredentialPassword(password))

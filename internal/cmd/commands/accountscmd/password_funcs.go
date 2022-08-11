@@ -1,12 +1,14 @@
 package accountscmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
@@ -72,7 +74,7 @@ func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.
 			f.StringVar(&base.StringVar{
 				Name:   "password",
 				Target: &c.flagPassword,
-				Usage:  "The password for the account. If not specified, the command will prompt for the password to be entered in a non-echoing way.",
+				Usage:  "The password for the account. If blank, the command will prompt for the password to be entered interactively in a non-echoing way. Otherwise, this can refer to a file on disk (file://) from which a password will be read or an env var (env://) from which the password will be read.",
 			})
 		}
 	}
@@ -95,7 +97,7 @@ func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, _ *base.FlagSets, op
 	if strutil.StrListContains(flagsPasswordMap[c.Func], "password") {
 		switch c.flagPassword {
 		case "":
-			fmt.Print("Password is not set as flag, please enter it now (will be hidden): ")
+			fmt.Print("Please enter the password (it will be hidden): ")
 			value, err := password.Read(os.Stdin)
 			fmt.Print("\n")
 			if err != nil {
@@ -114,8 +116,19 @@ func extraPasswordFlagsHandlingFuncImpl(c *PasswordCommand, _ *base.FlagSets, op
 				return false
 			}
 			*opts = append(*opts, accounts.WithPasswordAccountPassword(strings.TrimSpace(value)))
+
 		default:
-			*opts = append(*opts, accounts.WithPasswordAccountPassword(c.flagPassword))
+			password, err := parseutil.MustParsePath(c.flagPassword)
+			switch {
+			case err == nil:
+			case errors.Is(err, parseutil.ErrNotParsed):
+				c.UI.Error("Password flag must be used with env:// or file:// syntax or left empty for an interactive prompt")
+				return false
+			default:
+				c.UI.Error(fmt.Sprintf("Error parsing password flag: %v", err))
+				return false
+			}
+			*opts = append(*opts, accounts.WithPasswordAccountPassword(password))
 		}
 	}
 

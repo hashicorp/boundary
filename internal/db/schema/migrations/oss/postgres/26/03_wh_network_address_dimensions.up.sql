@@ -5,8 +5,7 @@ begin;
   -- a network address group which contains only the addresses for the
   -- provided host if one doesn't exist and returns the group key which contains
   -- exactly the set of addresses which the provided host contains.
-  create function wh_upsert_network_address_dimension(p_host_id wt_public_id)
-    returns wh_dim_key
+  create function wh_upsert_network_address_dimension(p_host_id wt_public_id) returns wh_dim_key
   as $$
   declare
     nag_key wh_dim_key;
@@ -73,8 +72,7 @@ begin;
   -- replaces function from 15/02_wh_rename_key_columns.up.sql
   -- adds the network address key to the host dimension table.
   drop function wh_upsert_host;
-  create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
-    returns wh_dim_key
+  create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id) returns wh_dim_key
   as $$
   declare
     src     whx_host_dimension_target%rowtype;

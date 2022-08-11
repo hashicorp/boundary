@@ -8,8 +8,7 @@ begin;
   -- wh_host_dimension to match the current values in the operational tables and
   -- the new id is returned. If the values do not differ, the current id is
   -- returned.
-  create or replace function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id)
-    returns wh_dim_id
+  create or replace function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id) returns wh_dim_id
   as $$
   declare
     src     whx_host_dimension_target%rowtype;
@@ -78,8 +77,7 @@ begin;
   -- wh_user_dimension differ, a new row is inserted in the wh_user_dimension to
   -- match the current values in the operational tables and the new id is
   -- returned. If the values do not differ, the current id is returned.
-  create or replace function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id)
-    returns wh_dim_id
+  create or replace function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id) returns wh_dim_id
   as $$
   declare
     src     whx_user_dimension_target%rowtype;

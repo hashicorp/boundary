@@ -12,13 +12,10 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/errors"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/nodeenrollment/multihop"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
 	"google.golang.org/grpc"
@@ -212,20 +209,11 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		),
 	)
 
-	workerService := handlers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
-		c.workerStatusUpdateTimes, c.kms)
-	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
-	pbs.RegisterSessionServiceServer(workerServer, workerService)
-
-	multihopService, err := handlers.NewMultihopServiceServer(
-		workerAuthStorage,
-		true,
-		nil,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
+	for _, fn := range controllerGrpcServiceRegistrationFunctions {
+		if err := fn(c.baseContext, c, workerServer); err != nil {
+			return nil, err
+		}
 	}
-	multihop.RegisterMultihopServiceServer(workerServer, multihopService)
 
 	metric.InitializeClusterCollectors(c.conf.PrometheusRegisterer, workerServer)
 

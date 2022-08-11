@@ -63,14 +63,6 @@ func TestDevController(t *testing.T) {
 				},
 				{
 					Type:    "aead",
-					Purpose: []string{"worker-auth-storage"},
-					Config: map[string]string{
-						"aead_type": "aes-gcm",
-						"key_id":    "global_worker-auth-storage",
-					},
-				},
-				{
-					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
@@ -92,11 +84,9 @@ func TestDevController(t *testing.T) {
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
-	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevWorkerAuthStorageKey = actual.Seals[2].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
 
 	assert.Equal(t, exp, actual)
 
@@ -188,6 +178,16 @@ func TestDevWorker(t *testing.T) {
 					Purpose: []string{"proxy"},
 				},
 			},
+			Seals: []*configutil.KMS{
+				{
+					Type:    "aead",
+					Purpose: []string{"worker-auth-storage"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "worker-auth-storage",
+					},
+				},
+			},
 		},
 		Worker: &Worker{
 			Name:                "w_1234567890",
@@ -201,6 +201,7 @@ func TestDevWorker(t *testing.T) {
 	}
 
 	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
+	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Worker.TagsRaw = actual.Worker.TagsRaw
 	assert.Equal(t, exp, actual)
 
@@ -221,6 +222,7 @@ func TestDevWorker(t *testing.T) {
 	actual, err = Parse(devConfig + devWorkerKeyValueConfig)
 	assert.NoError(t, err)
 	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
+	exp.Seals = nil
 	exp.Worker.TagsRaw = actual.Worker.TagsRaw
 	assert.Equal(t, exp, actual)
 
@@ -354,18 +356,18 @@ func TestDevCombined(t *testing.T) {
 				},
 				{
 					Type:    "aead",
-					Purpose: []string{"worker-auth-storage"},
-					Config: map[string]string{
-						"aead_type": "aes-gcm",
-						"key_id":    "global_worker-auth-storage",
-					},
-				},
-				{
-					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
 						"key_id":    "global_recovery",
+					},
+				},
+				{
+					Type:    "aead",
+					Purpose: []string{"worker-auth-storage"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "worker-auth-storage",
 					},
 				},
 			},
@@ -396,8 +398,8 @@ func TestDevCombined(t *testing.T) {
 	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevWorkerAuthStorageKey = actual.Seals[2].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
+	exp.DevWorkerAuthStorageKey = actual.Seals[3].Config["key"]
 	exp.Worker.TagsRaw = actual.Worker.TagsRaw
 	assert.Equal(t, exp, actual)
 }
@@ -753,7 +755,7 @@ func TestWorkerTags(t *testing.T) {
 			`,
 			expWorkerTags: nil,
 			expErr:        true,
-			expErrStr:     "Error unmarshalling env var/file contents: json: cannot unmarshal object into Go value of type []string",
+			expErrStr:     "Error unmarshaling env var/file contents: json: cannot unmarshal object into Go value of type []string",
 		},
 		{
 			name: "no clean mapping to internal structures",

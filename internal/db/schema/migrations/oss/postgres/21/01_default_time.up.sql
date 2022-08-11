@@ -1,8 +1,7 @@
 begin;
 
 -- Replaces function from 0/01_domain_types.up.sql
-create or replace function default_create_time()
-  returns trigger
+create or replace function default_create_time() returns trigger
 as $$
 begin
   if new.create_time is distinct from now() then

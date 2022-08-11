@@ -396,7 +396,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 
 			r := TestRole(t, conn, tt.newScopeId, tt.newRoleOpts...)
 			ur := TestUserRole(t, conn, r.GetPublicId(), u.GetPublicId())
-			princRole := PrincipalRole{PrincipalRoleView: &store.PrincipalRoleView{
+			princRole := &PrincipalRole{PrincipalRoleView: &store.PrincipalRoleView{
 				Type:              UserRoleType.String(),
 				CreateTime:        ur.CreateTime,
 				RoleId:            ur.RoleId,
@@ -437,7 +437,7 @@ func TestRepository_UpdateRole(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(roleAfterUpdate)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
-			assert.Equal([]PrincipalRole{princRole}, principals)
+			assert.Equal([]*PrincipalRole{princRole}, principals)
 			assert.Equal([]*RoleGrant{rGrant}, grants)
 			switch tt.name {
 			case "valid-no-op":

@@ -10,7 +10,7 @@ create table server_controller (
   create_time wt_timestamp,
   update_time wt_timestamp
 );
-comment on table server_controller  is
+comment on table server_controller is
   'server_controller is a table where each row represents a Boundary controller.';
 
 create trigger immutable_columns before update on server_controller
@@ -90,7 +90,7 @@ create table server_worker (
   constraint server_worker_scope_id_name_uq
     unique(scope_id, name)
 );
-comment on table server_worker  is
+comment on table server_worker is
   'server_worker is a table where each row represents a Boundary worker.';
 
 create trigger immutable_columns before update on server_worker
@@ -110,8 +110,7 @@ create trigger worker_update_time_column before update on server_worker
 create trigger update_version_column after update of version, description, name on server_worker
   for each row execute procedure update_version_column();
 
-create function immutable_kms_name()
-  returns trigger
+create function immutable_kms_name() returns trigger
 as $$
 begin
   if old.type = 'kms' and new.name is distinct from old.name then
@@ -130,8 +129,7 @@ comment on function immutable_kms_name is
 create trigger immutable_kms_name before update on server_worker
   for each row execute procedure immutable_kms_name();
 
-create function update_kms_server_worker_update_last_status_time_column()
-  returns trigger
+create function update_kms_server_worker_update_last_status_time_column() returns trigger
 as $$
 begin
   if new.type = 'kms' then 
@@ -146,8 +144,7 @@ comment on function update_kms_server_worker_update_last_status_time_column is
 create trigger update_kms_server_worker_last_status_time_column before update of address, name, description on server_worker
   for each row execute procedure update_kms_server_worker_update_last_status_time_column();
 
-create function update_pki_server_worker_update_last_status_time_column()
-  returns trigger
+create function update_pki_server_worker_update_last_status_time_column() returns trigger
 as $$
 begin
   if new.type = 'pki' then
@@ -162,8 +159,7 @@ comment on function update_pki_server_worker_update_last_status_time_column is
 create trigger update_pki_server_worker_last_status_time_column before update of address on server_worker
   for each row execute procedure update_pki_server_worker_update_last_status_time_column();
 
-create function insert_kms_server_worker_update_last_status_time_column()
-  returns trigger
+create function insert_kms_server_worker_update_last_status_time_column() returns trigger
 as $$
 begin
   if new.type = 'kms' then
@@ -217,15 +213,14 @@ drop view session_list;
 
 -- Update session table to use worker_id instead of server_id
 -- Updating the session table modified in 01/01_server_tags_migrations.up.sql
-drop trigger update_version_column
-  on session;
+drop trigger update_version_column on session;
+
 alter table session
   drop constraint session_server_id_fkey,
   drop column server_type,
   drop column server_id;
-create trigger
-  update_version_column
-  after update of version, termination_reason, key_id, tofu_token on session
+
+create trigger update_version_column after update of version, termination_reason, key_id, tofu_token on session
   for each row execute procedure update_version_column();
 
 -- Update session_connection table to use worker_id instead of server_id
@@ -252,6 +247,7 @@ alter table job_run
   -- Column updated in 35/01_job_migrations.up.sql 
   add column controller_id text,
   drop column server_id;
+
 alter table job_run
   add constraint controller_id_must_be_at_least_10_characters
     check(

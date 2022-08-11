@@ -24,11 +24,7 @@ create table auth_oidc_scope (
 comment on table auth_oidc_scope is
 'auth_oidc_scope entries are the optional scopes for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any scopes, they will be added to provider requests along with the openid default.';
 
-
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_scope
+create trigger default_create_time_column before insert on auth_oidc_scope
   for each row execute procedure default_create_time();
 
 

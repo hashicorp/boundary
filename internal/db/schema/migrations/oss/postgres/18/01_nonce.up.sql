@@ -30,8 +30,7 @@ alter table recovery_nonces rename to nonce;
 
 -- Add purpose field
 alter table nonce
-  add column purpose text not null
-    default 'recovery'
+  add column purpose text not null default 'recovery'
     constraint nonce_type_enm_fkey
       references nonce_type_enm(name)
       on update cascade
@@ -42,16 +41,10 @@ alter table nonce
 
 
 -- Recreate triggers
-create trigger 
-  default_create_time_column
-before
-insert on nonce
+create trigger default_create_time_column before insert on nonce
   for each row execute procedure default_create_time();
 
-create trigger 
-  immutable_columns
-before
-update on nonce
+create trigger immutable_columns before update on nonce
   for each row execute procedure immutable_columns('nonce', 'create_time', 'purpose');
 
 commit;

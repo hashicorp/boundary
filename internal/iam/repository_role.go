@@ -48,7 +48,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*
 // included in fieldMask. Name, Description, and GrantScopeId are the only
 // updatable fields, If no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
-func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32, fieldMaskPaths []string, _ ...Option) (*Role, []PrincipalRole, []*RoleGrant, int, error) {
+func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32, fieldMaskPaths []string, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, int, error) {
 	const op = "iam.(Repository).UpdateRole"
 	if role == nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role")
@@ -83,7 +83,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	}
 	var resource Resource
 	var rowsUpdated int
-	var pr []PrincipalRole
+	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	_, err := r.writer.DoTx(
 		ctx,
@@ -122,14 +122,14 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 
 // LookupRole will look up a role in the repository.  If the role is not
 // found, it will return nil, nil.
-func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...Option) (*Role, []PrincipalRole, []*RoleGrant, error) {
+func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, error) {
 	const op = "iam.(Repository).LookupRole"
 	if withPublicId == "" {
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	role := allocRole()
 	role.PublicId = withPublicId
-	var pr []PrincipalRole
+	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	_, err := r.writer.DoTx(
 		ctx,

@@ -1,5 +1,6 @@
 function create_account() {
-  boundary accounts create password -login-name $1 -password $DEFAULT_PASSWORD -auth-method-id $DEFAULT_AMPW
+  export BP="${DEFAULT_PASSWORD}"
+  boundary accounts create password -login-name $1 -password env://BP -auth-method-id $DEFAULT_AMPW
 }
 
 function read_account() {

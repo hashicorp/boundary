@@ -13,8 +13,7 @@ begin;
 
   -- insert_credential_vault_library_mapping_override_subtype() is a before insert trigger
   -- function for subtypes of credential_vault_library_mapping_override
-  create function insert_credential_vault_library_mapping_override_subtype()
-    returns trigger
+  create function insert_credential_vault_library_mapping_override_subtype() returns trigger
   as $$
   begin
     insert into credential_vault_library_mapping_override
@@ -27,8 +26,7 @@ begin;
 
   -- delete_credential_vault_library_mapping_override_subtype() is an after delete trigger
   -- function for subtypes of credential_vault_library_mapping_override
-  create function delete_credential_vault_library_mapping_override_subtype()
-    returns trigger
+  create function delete_credential_vault_library_mapping_override_subtype() returns trigger
   as $$
   begin
     delete from credential_vault_library_mapping_override

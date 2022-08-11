@@ -85,7 +85,7 @@ func TestRotationTicking(t *testing.T) {
 	require.NoError(err)
 	assert.Len(auths, 1)
 	// Fetch creds and store current key
-	currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId)
+	currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.Config().WorkerAuthStorageKms))
 	require.NoError(err)
 	currKey := currNodeCreds.CertificatePublicKeyPkix
 
@@ -101,7 +101,7 @@ func TestRotationTicking(t *testing.T) {
 		assert.Len(auths, i)
 
 		// Fetch creds and compare current key
-		currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId)
+		currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.Config().WorkerAuthStorageKms))
 		require.NoError(err)
 		assert.NotEqual(currKey, currNodeCreds.CertificatePublicKeyPkix)
 		currKey = currNodeCreds.CertificatePublicKeyPkix

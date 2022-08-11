@@ -16,14 +16,10 @@ create table kms_collection_version (
 create unique index kms_collection_version_one_row
 ON kms_collection_version((version is not null));
 
-create trigger kms_immutable_columns
-before
-update on kms_collection_version
+create trigger kms_immutable_columns before update on kms_collection_version
   for each row execute procedure kms_immutable_columns('create_time');
 
-create trigger kms_update_time_column 
-before 
-update on kms_collection_version 
+create trigger kms_update_time_column before update on kms_collection_version
 	for each row execute procedure kms_update_time_column();
 
 

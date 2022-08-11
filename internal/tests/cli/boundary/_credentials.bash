@@ -6,12 +6,13 @@ function create_username_password_credential() {
   local user=$3
   local pass=$4
   
+  export BP="${pass}"
   boundary credentials create username-password \
     -name $name \
     -description 'test username password credential' \
     -credential-store-id $sid \
     -username $user \
-    -password $pass
+    -password env://BP
 }
 
 function read_credential() {

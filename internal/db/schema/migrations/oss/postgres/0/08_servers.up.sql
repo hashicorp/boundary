@@ -17,35 +17,22 @@ create table server (
     primary key (private_id, type)
   );
   
-create trigger 
-  immutable_columns
-before
-update on server
+create trigger immutable_columns before update on server
   for each row execute procedure immutable_columns('create_time');
   
-create trigger 
-  default_create_time_column
-before
-insert on server
+create trigger default_create_time_column before insert on server
   for each row execute procedure default_create_time();
 
 -- UPDATED in 18/01_nonce
 create table recovery_nonces (
-    nonce text
-      primary key,
+    nonce text primary key,
     create_time wt_timestamp
   );
 
-create trigger 
-  default_create_time_column
-before
-insert on recovery_nonces
+create trigger default_create_time_column before insert on recovery_nonces
   for each row execute procedure default_create_time();
 
-create trigger 
-  immutable_columns
-before
-update on recovery_nonces
+create trigger immutable_columns before update on recovery_nonces
   for each row execute procedure immutable_columns('nonce', 'create_time');
 
 commit;
