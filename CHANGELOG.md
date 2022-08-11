@@ -12,6 +12,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2351)).
 * Managed Groups: Fix an issue where the `filter` field is not sent by
   admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
+* Host Sets: Fix an issue causing host sets to not display in UI when using the aws plugin 
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1251))
 * Plugins: Fixes regression from 0.9.0 causing a failure to start when using
   multiple KMS blocks of the same type
   ([PR1](https://github.com/hashicorp/go-secure-stdlib/pull/43),
