@@ -29,5 +29,5 @@ type KeyRevocation struct {
 }
 
 func (k *KeyRevocation) TableName() string {
-	return "kms_key_revocations"
+	return "kms_key_revocation"
 }

@@ -319,7 +319,7 @@ func (k *Kms) QueueKeyRevocation(ctx context.Context, scopeId string, keyId stri
 			if err != nil {
 				errors.Wrap(ctx, err, op)
 			}
-			if _, err := w.Exec(ctx, "insert into kms_key_revocations(private_id, key_id, status) values (?, ?, ?)", []interface{}{privateId, keyId, KeyRevocationStatusPending.String()}); err != nil {
+			if _, err := w.Exec(ctx, "insert into kms_key_revocation(private_id, key_id, status) values (?, ?, ?)", []interface{}{privateId, keyId, KeyRevocationStatusPending.String()}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			return nil
@@ -346,7 +346,7 @@ func (k *Kms) RunKeyRevocation(ctx context.Context, keyRevocation *KeyRevocation
 					// If the operation failed, set the status to failed.
 					status = KeyRevocationStatusFailed
 				}
-				if _, err := w.Exec(failedCtx, "update kms_key_revocations set status=?, end_time=current_timestamp where private_id=?", []interface{}{status.String(), keyRevocation.PrivateId}); err != nil {
+				if _, err := w.Exec(failedCtx, "update kms_key_revocation set status=?, end_time=current_timestamp where private_id=?", []interface{}{status.String(), keyRevocation.PrivateId}); err != nil {
 					return err
 				}
 				return nil
@@ -381,7 +381,7 @@ func (k *Kms) RunKeyRevocation(ctx context.Context, keyRevocation *KeyRevocation
 			if kr.Status != KeyRevocationStatusPending.String() {
 				return errors.E(ctx, errors.WithCode(errors.InvalidKeyRevocationRunState), errors.WithMsg("key revocation is not pending"), errors.WithoutEvent())
 			}
-			if _, err := w.Exec(ctx, "update kms_key_revocations set status=? where private_id=?", []interface{}{KeyRevocationStatusRunning.String(), kr.PrivateId}); err != nil {
+			if _, err := w.Exec(ctx, "update kms_key_revocation set status=? where private_id=?", []interface{}{KeyRevocationStatusRunning.String(), kr.PrivateId}); err != nil {
 				return err
 			}
 			return nil
