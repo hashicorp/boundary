@@ -2,6 +2,9 @@
 
 set -eux -o pipefail
 
+# accept either a JOB_PATH env var or script
+JOB="${JOB_PATH:=$1}"
+
 function retry {
   local retries=$1
   shift
@@ -24,9 +27,6 @@ function retry {
   return 0
 }
 
-sudo apt-get update
-sudo apt-get install -y jq
-
 function wait_for_eval_complete {
   nomad eval status -json "$1" | jq -e '(.Status == "complete")' > /dev/null
 }
@@ -35,8 +35,12 @@ function wait_for_deploy_success {
   nomad deployment status -json "$1" | jq -e '(.Status == "successful")' > /dev/null
 }
 
-echo "registering controller job: controller.nomad"
-result=$(nomad job run -detach "${CONTROLLER_JOB_SPEC_PATH}")
+function is_batch {
+  nomad eval status -json "$1" | jq -e '(.Type == "batch")' > /dev/null
+}
+
+echo "registering controller job: $JOB"
+result=$(nomad job run -detach "${JOB}")
 
 if test $?
 then
@@ -46,15 +50,20 @@ then
   retry 5 wait_for_eval_complete "$eval_id"
   echo "eval: [$eval_id] complete"
 
+  if is_batch "$eval_id"
+  then
+    echo "Batch jobs don't deploy, skipping status"
+    exit 0
+  fi
+
   deployment_id=$(nomad eval status -json "$eval_id" | jq -r .DeploymentID)
 
   echo "waiting for deployment: [$deployment_id] to be successful"
-  retry 7 wait_for_deploy_success "$deployment_id"
+  retry 10 wait_for_deploy_success "$deployment_id"
   echo "deployment: [$deployment_id] successful"
 
   exit 0
 fi
-
 
 echo "deployment failed"
 exit 1
