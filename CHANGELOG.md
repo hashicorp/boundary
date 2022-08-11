@@ -2,6 +2,14 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## 0.10.1 ()
+
+### Bug Fixes
+
+* Managed Groups:  fixes an issue where the `filter` field is not sent by
+  admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238))
+
+
 ## 0.10.0 (2022/08/10)
 
 ### Known Issues
@@ -112,8 +120,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   `vault` credential store, and thus can be brokered to users at session
   authorization time. ([PR](https://github.com/hashicorp/boundary/pull/2174))
 * `boundary connect` Credential Brokering Integration: we have extended integration
-  into the `boundary connect` helpers. A new `sshpass` style has been added to the 
-  `ssh` helper, when used, if the credential contains a username/password and `sshpass` 
+  into the `boundary connect` helpers. A new `sshpass` style has been added to the
+  `ssh` helper, when used, if the credential contains a username/password and `sshpass`
   is installed, the command will automatically pass the credentials to the `ssh` process.
   Additionally, the default `ssh` helper will now use the `username` of the brokered credential.
   ([PR](https://github.com/hashicorp/boundary/pull/2191)).
@@ -123,7 +131,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   See Deprecations/Changes for some additional details.
   ([PR](https://github.com/hashicorp/boundary/pull/2160)).
 * event filtering: Change event filters to use lowercase and snake case for data
-  elements like the rest of Boundary filters do. 
+  elements like the rest of Boundary filters do.
 * ui: Use include_terminated flag for listing sessions.
   ([PR](https://github.com/hashicorp/boundary-ui/pull/1126)).
 * ui: Add Quick Setup onboarding guide.
@@ -138,9 +146,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
-* Targets: Removes support for `credential libraries` with respect to Target resources. 
-  The `library` `fields` and `actions` were deprecated in [Boundary 0.5.0](#050-20210802), 
-  please use `credential sources` instead. See changelog referenced above for 
+* Targets: Removes support for `credential libraries` with respect to Target resources.
+  The `library` `fields` and `actions` were deprecated in [Boundary 0.5.0](#050-20210802),
+  please use `credential sources` instead. See changelog referenced above for
   more details ([PR](https://github.com/hashicorp/boundary/pull/1533)).
 * Credential Libraries: The `user_password` credential type has been renamed to
   `username_password` to remove any inconsistency over what the credential type is.
@@ -339,15 +347,15 @@ isolate transactions and prevent resource contention that caused deadlocks.
 ### Deprecations/Changes
 
 * permissions: Fix bug in _Host Sets_ service that authenticated requests  
-  againist incorrect grant actions. This bug affects the _SetHosts_, _AddHosts_ 
-  and _RemoveHosts_ paths that do not have wildcard (`*`) action grants. 
+  againist incorrect grant actions. This bug affects the _SetHosts_, _AddHosts_
+  and _RemoveHosts_ paths that do not have wildcard (`*`) action grants.
   If affected, please update grant actions as follows:
 * * `set-host-sets` -> `set-hosts`
 * * `add-host-sets` -> `add-hosts`
-* * `remove-host-sets` -> `remove-hosts` 
+* * `remove-host-sets` -> `remove-hosts`
   ([PR](https://github.com/hashicorp/boundary/pull/1549)).
-* Removes support for the `auth-methods/<id>:authenticate:login` action that was 
-  deprecated in [Boundary 0.2.0](#020-20210414), please use 
+* Removes support for the `auth-methods/<id>:authenticate:login` action that was
+  deprecated in [Boundary 0.2.0](#020-20210414), please use
   `auth-methods/<id>:authenticate` instead.
   ([PR](https://github.com/hashicorp/boundary/pull/1534)).
 * Removes support for the `credential` field within `auth-methods/<id>:authenticate`
