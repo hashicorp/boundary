@@ -85,14 +85,13 @@ func TestMigrations_Credential_Purpose_Refactor(t *testing.T) {
 	tar := targettest.TestNewTestTarget(ctx, t, conn, proj.PublicId, "my-credential-sources", target.WithHostSources([]string{hs.GetPublicId()}))
 
 	vaultStoreId := "csvlt_vaultid123"
-	num, err := rw.Exec(ctx, `
+	_, err = d.ExecContext(ctx, `
 insert into credential_vault_store
   (public_id, scope_id, vault_address)
 values
   ($1, $2, $3);
-`, []interface{}{vaultStoreId, proj.GetPublicId(), "http://vault"})
+`, vaultStoreId, proj.GetPublicId(), "http://vault")
 	require.NoError(t, err)
-	assert.Equal(t, 1, num)
 
 	credLibs := vault.TestCredentialLibraries(t, conn, wrapper, vaultStoreId, 2)
 	lib1 := credLibs[0]
