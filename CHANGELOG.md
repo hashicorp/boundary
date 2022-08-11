@@ -6,12 +6,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* db: Fix an issue with migrations affecting clusters that contain 
+* db: Fix an issue with migrations affecting clusters that contain
   credential libraries or static credentials.
   ([Issue](https://github.com/hashicorp/boundary/issues/2349)),
   ([PR](https://github.com/hashicorp/boundary/pull/2351)).
-* Managed Groups: Fix an issue where the `filter` field is not sent by
+* Managed Groups: Fixes an issue where the `filter` field is not sent by
   admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
+* Host Sets UI:  Fixes an issue where the `filters` field was only supported
+  if it is an array, though it may also be a string
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1251)).
 * Plugins: Fixes regression from 0.9.0 causing a failure to start when using
   multiple KMS blocks of the same type
   ([PR1](https://github.com/hashicorp/go-secure-stdlib/pull/43),
