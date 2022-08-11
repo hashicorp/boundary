@@ -4,6 +4,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.10.0 (2022/08/10)
 
+### Known Issues
+
+* Migration to this version may fail if the cluster contains credential
+  libraries. This will be fixed shortly in 0.10.1.
+
 ### New and Improved
 
 * `ssh` Target Type With Credential Injection (HCP Boundary only): Boundary has
