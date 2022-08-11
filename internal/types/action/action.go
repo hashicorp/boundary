@@ -60,6 +60,7 @@ const (
 	ListScopeKeys             Type = 49
 	RotateScopeKeys           Type = 50
 	RevokeScopeKeys           Type = 51
+	ListKeyRevocations        Type = 52
 
 	// When adding new actions, be sure to update:
 	//
@@ -118,6 +119,7 @@ var Map = map[string]Type{
 	ListScopeKeys.String():             ListScopeKeys,
 	RotateScopeKeys.String():           RotateScopeKeys,
 	RevokeScopeKeys.String():           RevokeScopeKeys,
+	ListKeyRevocations.String():        ListKeyRevocations,
 }
 
 func (a Type) String() string {
@@ -173,7 +175,8 @@ func (a Type) String() string {
 		"remove-worker-tags",
 		"list-keys",
 		"rotate-keys",
-		"revoke-keys",
+		"revoke-key",
+		"list-key-revocations",
 	}[a]
 }
 

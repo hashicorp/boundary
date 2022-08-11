@@ -24,6 +24,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// KeyRevocationStatus holds the states a key revocation can take
+type KeyRevocationStatus int32
+
+const (
+	KeyRevocationStatus_KEY_REVOCATION_STATUS_UNSPECIFIED KeyRevocationStatus = 0
+	KeyRevocationStatus_KEY_REVOCATION_STATUS_PENDING     KeyRevocationStatus = 1
+	KeyRevocationStatus_KEY_REVOCATION_STATUS_RUNNING     KeyRevocationStatus = 2
+	KeyRevocationStatus_KEY_REVOCATION_STATUS_COMPLETED   KeyRevocationStatus = 3
+	KeyRevocationStatus_KEY_REVOCATION_STATUS_FAILED      KeyRevocationStatus = 4
+)
+
+// Enum value maps for KeyRevocationStatus.
+var (
+	KeyRevocationStatus_name = map[int32]string{
+		0: "KEY_REVOCATION_STATUS_UNSPECIFIED",
+		1: "KEY_REVOCATION_STATUS_PENDING",
+		2: "KEY_REVOCATION_STATUS_RUNNING",
+		3: "KEY_REVOCATION_STATUS_COMPLETED",
+		4: "KEY_REVOCATION_STATUS_FAILED",
+	}
+	KeyRevocationStatus_value = map[string]int32{
+		"KEY_REVOCATION_STATUS_UNSPECIFIED": 0,
+		"KEY_REVOCATION_STATUS_PENDING":     1,
+		"KEY_REVOCATION_STATUS_RUNNING":     2,
+		"KEY_REVOCATION_STATUS_COMPLETED":   3,
+		"KEY_REVOCATION_STATUS_FAILED":      4,
+	}
+)
+
+func (x KeyRevocationStatus) Enum() *KeyRevocationStatus {
+	p := new(KeyRevocationStatus)
+	*p = x
+	return p
+}
+
+func (x KeyRevocationStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (KeyRevocationStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_controller_api_resources_scopes_v1_scope_proto_enumTypes[0].Descriptor()
+}
+
+func (KeyRevocationStatus) Type() protoreflect.EnumType {
+	return &file_controller_api_resources_scopes_v1_scope_proto_enumTypes[0]
+}
+
+func (x KeyRevocationStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use KeyRevocationStatus.Descriptor instead.
+func (KeyRevocationStatus) EnumDescriptor() ([]byte, []int) {
+	return file_controller_api_resources_scopes_v1_scope_proto_rawDescGZIP(), []int{0}
+}
+
 type ScopeInfo struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -362,6 +418,81 @@ func (x *Key) GetType() string {
 	return ""
 }
 
+type KeyRevocation struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Output only. The ID of the Key.
+	KeyId string `protobuf:"bytes,10,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	// Output only. The current status of the key revocation.
+	Status KeyRevocationStatus `protobuf:"varint,20,opt,name=status,proto3,enum=controller.api.resources.scopes.v1.KeyRevocationStatus" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
+	// Output only. The time this key revocation was created.
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,30,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	// Output only. The time this key revocation ended.
+	EndTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=end_time,proto3" json:"end_time,omitempty" class:"public"` // @gotags: `class:"public"`
+}
+
+func (x *KeyRevocation) Reset() {
+	*x = KeyRevocation{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_resources_scopes_v1_scope_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *KeyRevocation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyRevocation) ProtoMessage() {}
+
+func (x *KeyRevocation) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_scopes_v1_scope_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyRevocation.ProtoReflect.Descriptor instead.
+func (*KeyRevocation) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_scopes_v1_scope_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KeyRevocation) GetKeyId() string {
+	if x != nil {
+		return x.KeyId
+	}
+	return ""
+}
+
+func (x *KeyRevocation) GetStatus() KeyRevocationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return KeyRevocationStatus_KEY_REVOCATION_STATUS_UNSPECIFIED
+}
+
+func (x *KeyRevocation) GetCreatedTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedTime
+	}
+	return nil
+}
+
+func (x *KeyRevocation) GetEndTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndTime
+	}
+	return nil
+}
+
 var File_controller_api_resources_scopes_v1_scope_proto protoreflect.FileDescriptor
 
 var file_controller_api_resources_scopes_v1_scope_proto_rawDesc = []byte{
@@ -461,12 +592,40 @@ var file_controller_api_resources_scopes_v1_scope_proto_rawDesc = []byte{
 	0x74, 0x65, 0x64, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65, 0x72, 0x73,
 	0x69, 0x6f, 0x6e, 0x18, 0x3c, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x07, 0x76, 0x65, 0x72, 0x73, 0x69,
 	0x6f, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x46, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x42, 0x4e, 0x5a, 0x4c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
-	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62,
-	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x73, 0x64, 0x6b, 0x2f, 0x70, 0x62, 0x73, 0x2f,
-	0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72,
-	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x3b,
-	0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x22, 0xef, 0x01, 0x0a, 0x0d, 0x4b, 0x65, 0x79, 0x52, 0x65,
+	0x76, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x15, 0x0a, 0x06, 0x6b, 0x65, 0x79, 0x5f,
+	0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6b, 0x65, 0x79, 0x49, 0x64, 0x12,
+	0x4f, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x14, 0x20, 0x01, 0x28, 0x0e, 0x32,
+	0x37, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69,
+	0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2e, 0x73, 0x63, 0x6f, 0x70, 0x65,
+	0x73, 0x2e, 0x76, 0x31, 0x2e, 0x4b, 0x65, 0x79, 0x52, 0x65, 0x76, 0x6f, 0x63, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73,
+	0x12, 0x3e, 0x0a, 0x0c, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x74, 0x69, 0x6d, 0x65,
+	0x18, 0x1e, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61,
+	0x6d, 0x70, 0x52, 0x0c, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x74, 0x69, 0x6d, 0x65,
+	0x12, 0x36, 0x0a, 0x08, 0x65, 0x6e, 0x64, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x28, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x08,
+	0x65, 0x6e, 0x64, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x2a, 0xc9, 0x01, 0x0a, 0x13, 0x4b, 0x65, 0x79,
+	0x52, 0x65, 0x76, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73,
+	0x12, 0x25, 0x0a, 0x21, 0x4b, 0x45, 0x59, 0x5f, 0x52, 0x45, 0x56, 0x4f, 0x43, 0x41, 0x54, 0x49,
+	0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43,
+	0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x21, 0x0a, 0x1d, 0x4b, 0x45, 0x59, 0x5f, 0x52,
+	0x45, 0x56, 0x4f, 0x43, 0x41, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53,
+	0x5f, 0x50, 0x45, 0x4e, 0x44, 0x49, 0x4e, 0x47, 0x10, 0x01, 0x12, 0x21, 0x0a, 0x1d, 0x4b, 0x45,
+	0x59, 0x5f, 0x52, 0x45, 0x56, 0x4f, 0x43, 0x41, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41,
+	0x54, 0x55, 0x53, 0x5f, 0x52, 0x55, 0x4e, 0x4e, 0x49, 0x4e, 0x47, 0x10, 0x02, 0x12, 0x23, 0x0a,
+	0x1f, 0x4b, 0x45, 0x59, 0x5f, 0x52, 0x45, 0x56, 0x4f, 0x43, 0x41, 0x54, 0x49, 0x4f, 0x4e, 0x5f,
+	0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x43, 0x4f, 0x4d, 0x50, 0x4c, 0x45, 0x54, 0x45, 0x44,
+	0x10, 0x03, 0x12, 0x20, 0x0a, 0x1c, 0x4b, 0x45, 0x59, 0x5f, 0x52, 0x45, 0x56, 0x4f, 0x43, 0x41,
+	0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x46, 0x41, 0x49, 0x4c,
+	0x45, 0x44, 0x10, 0x04, 0x42, 0x4e, 0x5a, 0x4c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75,
+	0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x73, 0x64, 0x6b, 0x2f, 0x70, 0x62, 0x73, 0x2f, 0x63, 0x6f,
+	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73,
+	0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x3b, 0x73, 0x63,
+	0x6f, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -481,32 +640,38 @@ func file_controller_api_resources_scopes_v1_scope_proto_rawDescGZIP() []byte {
 	return file_controller_api_resources_scopes_v1_scope_proto_rawDescData
 }
 
-var file_controller_api_resources_scopes_v1_scope_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_controller_api_resources_scopes_v1_scope_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_controller_api_resources_scopes_v1_scope_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_controller_api_resources_scopes_v1_scope_proto_goTypes = []interface{}{
-	(*ScopeInfo)(nil),              // 0: controller.api.resources.scopes.v1.ScopeInfo
-	(*Scope)(nil),                  // 1: controller.api.resources.scopes.v1.Scope
-	(*Key)(nil),                    // 2: controller.api.resources.scopes.v1.Key
-	nil,                            // 3: controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry
-	(*wrapperspb.StringValue)(nil), // 4: google.protobuf.StringValue
-	(*timestamppb.Timestamp)(nil),  // 5: google.protobuf.Timestamp
-	(*structpb.ListValue)(nil),     // 6: google.protobuf.ListValue
+	(KeyRevocationStatus)(0),       // 0: controller.api.resources.scopes.v1.KeyRevocationStatus
+	(*ScopeInfo)(nil),              // 1: controller.api.resources.scopes.v1.ScopeInfo
+	(*Scope)(nil),                  // 2: controller.api.resources.scopes.v1.Scope
+	(*Key)(nil),                    // 3: controller.api.resources.scopes.v1.Key
+	(*KeyRevocation)(nil),          // 4: controller.api.resources.scopes.v1.KeyRevocation
+	nil,                            // 5: controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry
+	(*wrapperspb.StringValue)(nil), // 6: google.protobuf.StringValue
+	(*timestamppb.Timestamp)(nil),  // 7: google.protobuf.Timestamp
+	(*structpb.ListValue)(nil),     // 8: google.protobuf.ListValue
 }
 var file_controller_api_resources_scopes_v1_scope_proto_depIdxs = []int32{
-	0,  // 0: controller.api.resources.scopes.v1.Scope.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	4,  // 1: controller.api.resources.scopes.v1.Scope.name:type_name -> google.protobuf.StringValue
-	4,  // 2: controller.api.resources.scopes.v1.Scope.description:type_name -> google.protobuf.StringValue
-	5,  // 3: controller.api.resources.scopes.v1.Scope.created_time:type_name -> google.protobuf.Timestamp
-	5,  // 4: controller.api.resources.scopes.v1.Scope.updated_time:type_name -> google.protobuf.Timestamp
-	4,  // 5: controller.api.resources.scopes.v1.Scope.primary_auth_method_id:type_name -> google.protobuf.StringValue
-	3,  // 6: controller.api.resources.scopes.v1.Scope.authorized_collection_actions:type_name -> controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry
-	0,  // 7: controller.api.resources.scopes.v1.Key.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	5,  // 8: controller.api.resources.scopes.v1.Key.created_time:type_name -> google.protobuf.Timestamp
-	6,  // 9: controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	1,  // 0: controller.api.resources.scopes.v1.Scope.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	6,  // 1: controller.api.resources.scopes.v1.Scope.name:type_name -> google.protobuf.StringValue
+	6,  // 2: controller.api.resources.scopes.v1.Scope.description:type_name -> google.protobuf.StringValue
+	7,  // 3: controller.api.resources.scopes.v1.Scope.created_time:type_name -> google.protobuf.Timestamp
+	7,  // 4: controller.api.resources.scopes.v1.Scope.updated_time:type_name -> google.protobuf.Timestamp
+	6,  // 5: controller.api.resources.scopes.v1.Scope.primary_auth_method_id:type_name -> google.protobuf.StringValue
+	5,  // 6: controller.api.resources.scopes.v1.Scope.authorized_collection_actions:type_name -> controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry
+	1,  // 7: controller.api.resources.scopes.v1.Key.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	7,  // 8: controller.api.resources.scopes.v1.Key.created_time:type_name -> google.protobuf.Timestamp
+	0,  // 9: controller.api.resources.scopes.v1.KeyRevocation.status:type_name -> controller.api.resources.scopes.v1.KeyRevocationStatus
+	7,  // 10: controller.api.resources.scopes.v1.KeyRevocation.created_time:type_name -> google.protobuf.Timestamp
+	7,  // 11: controller.api.resources.scopes.v1.KeyRevocation.end_time:type_name -> google.protobuf.Timestamp
+	8,  // 12: controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_scopes_v1_scope_proto_init() }
@@ -551,19 +716,32 @@ func file_controller_api_resources_scopes_v1_scope_proto_init() {
 				return nil
 			}
 		}
+		file_controller_api_resources_scopes_v1_scope_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*KeyRevocation); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_api_resources_scopes_v1_scope_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   4,
+			NumEnums:      1,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_controller_api_resources_scopes_v1_scope_proto_goTypes,
 		DependencyIndexes: file_controller_api_resources_scopes_v1_scope_proto_depIdxs,
+		EnumInfos:         file_controller_api_resources_scopes_v1_scope_proto_enumTypes,
 		MessageInfos:      file_controller_api_resources_scopes_v1_scope_proto_msgTypes,
 	}.Build()
 	File_controller_api_resources_scopes_v1_scope_proto = out.File

@@ -109,7 +109,11 @@ func TestAction(t *testing.T) {
 		},
 		{
 			action: RevokeScopeKeys,
-			want:   "revoke-keys",
+			want:   "revoke-key",
+		},
+		{
+			action: ListKeyRevocations,
+			want:   "list-key-revocations",
 		},
 	}
 	for _, tt := range tests {

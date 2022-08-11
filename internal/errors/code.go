@@ -45,6 +45,9 @@ const (
 	CycleFound                         = 121 // CycleFound represents an error when a cycle is found between a parent and child worker
 	WorkerConnNotFound                 = 122 // WorkerConnNotFound represents an error when a connection to a worker is not found
 	KmsWorkerUnsupportedOperation      = 123 // KmsWorkerUnsupportedOperation represents an error when a KMS worker is not supported for an operation
+	KeyAlreadyRevoked                  = 124 // KeyAlreadyRevoked is returned if the key was already revoked
+	KeyRevocationAlreadyRunning   Code = 125 // KeyRevocationAlreadyRunning represents that a key revocation is already running when an attempt to run again was made
+	InvalidKeyRevocationRunState  Code = 126 // InvalidKeyRevocationRunState represents that a key revocation was in an invalid state for the action
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.

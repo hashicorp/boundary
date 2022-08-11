@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
@@ -22,6 +23,7 @@ import (
 type Kms struct {
 	underlying          *wrappingKms.Kms
 	reader              db.Reader
+	writer              db.Writer
 	derivedPurposeCache sync.Map
 }
 
@@ -46,6 +48,7 @@ func New(ctx context.Context, reader *db.Db, writer *db.Db, _ ...Option) (*Kms, 
 	return &Kms{
 		underlying: k,
 		reader:     reader,
+		writer:     writer,
 	}, nil
 }
 
@@ -278,6 +281,158 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
+}
+
+// QueueKeyRevocation revokes a key in the scope.
+// Options are ignored.
+func (k *Kms) QueueKeyRevocation(ctx context.Context, scopeId string, keyId string, _ ...Option) error {
+	const op = "kms.(Kms).QueueKeyRevocation"
+
+	scopeKeys, err := k.underlying.ListKeys(ctx, scopeId)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	found := false
+	for _, key := range scopeKeys {
+		if key.Id == keyId {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return errors.New(ctx, errors.KeyNotFound, op, "key was not found in the scope")
+	}
+
+	_, err = k.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(r db.Reader, w db.Writer) error {
+			// Check that we haven't already tried revoking this key.
+			// Allow retries if a previous attempt failed
+			var krs []*KeyRevocation
+			if err := r.SearchWhere(ctx, &krs, "key_id=? and status!=?", []interface{}{keyId, KeyRevocationStatusFailed.String()}, db.WithLimit(1)); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if len(krs) != 0 {
+				return errors.New(ctx, errors.KeyAlreadyRevoked, op, "key was already revoked")
+			}
+
+			privateId, err := db.NewPrivateId("kr")
+			if err != nil {
+				errors.Wrap(ctx, err, op)
+			}
+			if _, err := w.Exec(ctx, "insert into kms_key_revocations(private_id, key_id, status) values (?, ?, ?)", []interface{}{privateId, keyId, KeyRevocationStatusPending.String()}); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			return nil
+		},
+	)
+	return err
+}
+
+// RunKeyRevocation revokes a key in the scope. This may be a long running operation
+// and should not be invoked directly in handlers. Instead, prefer the
+// QueueKeyRevocation method, which will queue a key revocation and return.
+// Options are ignored.
+func (k *Kms) RunKeyRevocation(ctx context.Context, keyRevocation *KeyRevocation, _ ...Option) (retErr error) {
+	const op = "kms.(Kms).RevokeKey"
+
+	defer func() {
+		// Create new context in case the context is canceled
+		failedCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if _, err := k.writer.DoTx(failedCtx, db.StdRetryCnt, db.ExpBackoff{},
+			func(r db.Reader, w db.Writer) error {
+				status := KeyRevocationStatusCompleted
+				if retErr != nil {
+					// If the operation failed, set the status to failed.
+					status = KeyRevocationStatusFailed
+				}
+				if _, err := w.Exec(failedCtx, "update kms_key_revocations set status=?, end_time=current_timestamp where private_id=?", []interface{}{status.String(), keyRevocation.PrivateId}); err != nil {
+					return err
+				}
+				return nil
+			},
+		); err != nil {
+			// Just emit an error, don't mutate the returned error
+			_ = errors.E(failedCtx, errors.WithWrap(err))
+		}
+	}()
+
+	// Check if there are any other running jobs,
+	// Find the requested key revocation,
+	// Check that it is pending and
+	// Update it to be running
+	if _, err := k.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(r db.Reader, w db.Writer) error {
+			var krs []*KeyRevocation
+			if err := r.SearchWhere(ctx, &krs, "status=?", []interface{}{KeyRevocationStatusRunning.String()}, db.WithLimit(1)); err != nil {
+				return err
+			}
+			if len(krs) > 0 {
+				return errors.E(ctx, errors.WithCode(errors.KeyRevocationAlreadyRunning), errors.WithMsg("another key revocation is already running"), errors.WithoutEvent())
+			}
+			kr := &KeyRevocation{
+				KeyRevocation: &store.KeyRevocation{
+					PrivateId: keyRevocation.PrivateId,
+				},
+			}
+			if err := r.LookupById(ctx, kr); err != nil {
+				return err
+			}
+			if kr.Status != KeyRevocationStatusPending.String() {
+				return errors.E(ctx, errors.WithCode(errors.InvalidKeyRevocationRunState), errors.WithMsg("key revocation is not pending"), errors.WithoutEvent())
+			}
+			if _, err := w.Exec(ctx, "update kms_key_revocations set status=? where private_id=?", []interface{}{KeyRevocationStatusRunning.String(), kr.PrivateId}); err != nil {
+				return err
+			}
+			return nil
+		},
+	); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	fmt.Println("Get rows affected by revocation")
+	select {
+	case <-time.After(3 * time.Second):
+	case <-ctx.Done():
+		fmt.Println("canceled")
+		return ctx.Err()
+	}
+
+	fmt.Println("Update progress for each row revoked")
+	select {
+	case <-time.After(3 * time.Second):
+	case <-ctx.Done():
+		fmt.Println("canceled")
+		return ctx.Err()
+	}
+
+	fmt.Println("Revoke key")
+	select {
+	case <-time.After(3 * time.Second):
+	case <-ctx.Done():
+		fmt.Println("canceled")
+		return ctx.Err()
+	}
+
+	fmt.Println("Done")
+
+	/*
+		if err := k.underlying.RevokeKey(ctx, keyRevocation.KeyId); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	*/
+
+	return nil
+}
+
+// ListKeyRevocations lists any key revocations
+// Options are ignored.
+func (k *Kms) ListKeyRevocations(ctx context.Context, _ ...Option) ([]*KeyRevocation, error) {
+	var kr []*KeyRevocation
+	if err := k.reader.SearchWhere(ctx, &kr, "1=1", nil); err != nil {
+		return nil, err
+	}
+	return kr, nil
 }
 
 // VerifyGlobalRoot will verify that the global root wrapper is reasonable.

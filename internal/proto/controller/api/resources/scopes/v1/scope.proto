@@ -110,3 +110,26 @@ message Key {
   // Output only. The type of the Key.
   string type = 70; // @gotags: `class:"public"`
 }
+
+// KeyRevocationStatus holds the states a key revocation can take
+enum KeyRevocationStatus {
+  KEY_REVOCATION_STATUS_UNSPECIFIED = 0;
+  KEY_REVOCATION_STATUS_PENDING = 1;
+  KEY_REVOCATION_STATUS_RUNNING = 2;
+  KEY_REVOCATION_STATUS_COMPLETED = 3;
+  KEY_REVOCATION_STATUS_FAILED = 4;
+}
+
+message KeyRevocation {
+  // Output only. The ID of the Key.
+  string key_id = 10; // @gotags: `class:"public"`
+
+  // Output only. The current status of the key revocation.
+  KeyRevocationStatus status = 20; // @gotags: `class:"public"`
+
+  // Output only. The time this key revocation was created.
+  google.protobuf.Timestamp created_time = 30 [json_name = "created_time"]; // @gotags: `class:"public"`
+
+  // Output only. The time this key revocation ended.
+  google.protobuf.Timestamp end_time = 40 [json_name = "end_time"]; // @gotags: `class:"public"`
+}

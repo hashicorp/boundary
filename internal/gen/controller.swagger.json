@@ -2665,6 +2665,50 @@
         ]
       }
     },
+    "/v1/scopes:list-key-revocations": {
+      "get": {
+        "summary": "Lists all key revocations, past, present and pending.",
+        "operationId": "ScopeService_ListKeyRevocations",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListKeyRevocationsResponse"
+            }
+          }
+        },
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
+    "/v1/scopes:revoke-key": {
+      "post": {
+        "summary": "Revoke the specified key in the scope. Reencrypts all data encrypted with the key.",
+        "operationId": "ScopeService_RevokeKey",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RevokeKeyResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RevokeKeyRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
     "/v1/scopes:rotate-keys": {
       "post": {
         "summary": "Rotate all keys in a Scope.",
@@ -5100,6 +5144,45 @@
       },
       "description": "Key contains all fields related to a Key in a Scope."
     },
+    "controller.api.resources.scopes.v1.KeyRevocation": {
+      "type": "object",
+      "properties": {
+        "key_id": {
+          "type": "string",
+          "description": "Output only. The ID of the Key.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyRevocationStatus",
+          "description": "Output only. The current status of the key revocation.",
+          "readOnly": true
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this key revocation was created.",
+          "readOnly": true
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this key revocation ended.",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.scopes.v1.KeyRevocationStatus": {
+      "type": "string",
+      "enum": [
+        "KEY_REVOCATION_STATUS_UNSPECIFIED",
+        "KEY_REVOCATION_STATUS_PENDING",
+        "KEY_REVOCATION_STATUS_RUNNING",
+        "KEY_REVOCATION_STATUS_COMPLETED",
+        "KEY_REVOCATION_STATUS_FAILED"
+      ],
+      "default": "KEY_REVOCATION_STATUS_UNSPECIFIED",
+      "title": "KeyRevocationStatus holds the states a key revocation can take"
+    },
     "controller.api.resources.scopes.v1.Scope": {
       "type": "object",
       "properties": {
@@ -6497,6 +6580,17 @@
         }
       }
     },
+    "controller.api.services.v1.ListKeyRevocationsResponse": {
+      "type": "object",
+      "properties": {
+        "key_revocations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyRevocation"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.ListKeysResponse": {
       "type": "object",
       "properties": {
@@ -6656,6 +6750,20 @@
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
+    },
+    "controller.api.services.v1.RevokeKeyRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "key_id": {
+          "type": "string"
+        }
+      }
+    },
+    "controller.api.services.v1.RevokeKeyResponse": {
+      "type": "object"
     },
     "controller.api.services.v1.RotateKeysRequest": {
       "type": "object",

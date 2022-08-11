@@ -35,6 +35,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -432,6 +433,72 @@ func (s Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*p
 	return nil, nil
 }
 
+// RevokeKey implements the interface pbs.ScopeServiceServer.
+func (s Service) RevokeKey(ctx context.Context, req *pbs.RevokeKeyRequest) (*pbs.RevokeKeyResponse, error) {
+	const op = "scopes.(Service).RevokeKey"
+	if req.GetId() == "" {
+		req.Id = scope.Global.String()
+	}
+	if err := validateRevokeKeyRequest(req); err != nil {
+		return nil, err
+	}
+
+	authResults := s.authResult(ctx, req.GetId(), action.RevokeScopeKeys)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	if err := s.kmsRepo.QueueKeyRevocation(ctx, req.Id, req.KeyId); err != nil {
+		if errors.Match(errors.T(errors.KeyNotFound), err) {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "key not found in scope")
+		}
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke key"))
+	}
+
+	return &pbs.RevokeKeyResponse{}, nil
+}
+
+// ListKeyRevocations implements the interface pbs.ScopeServiceServer.
+func (s Service) ListKeyRevocations(ctx context.Context, _ *pbs.ListKeyRevocationsRequest) (*pbs.ListKeyRevocationsResponse, error) {
+	const op = "scopes.(Service).RevokeKey"
+
+	authResults := s.authResult(ctx, "global", action.RevokeScopeKeys)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	items, err := s.kmsRepo.ListKeyRevocations(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke key"))
+	}
+
+	res := perms.Resource{
+		Type: resource.Scope,
+	}
+	var finalItems []*pb.KeyRevocation
+	for _, item := range items {
+		res.Id = item.KeyId
+
+		outputFields := authResults.FetchOutputFields(res, action.RevokeScopeKeys).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+		}
+
+		protoItem, err := keyRevocationToProto(ctx, item, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+		finalItems = append(finalItems, protoItem)
+	}
+	sortKeyRevocations(finalItems)
+
+	return &pbs.ListKeyRevocationsResponse{
+		KeyRevocations: finalItems,
+	}, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -575,6 +642,18 @@ func sortKeys(keys []*pb.Key) {
 	})
 }
 
+func sortKeyRevocations(keyRevocations []*pb.KeyRevocation) {
+	// We stable sort here even though the database may not return things in
+	// sorted order, still nice to have them as consistent as possible.
+	slices.SortStableFunc(keyRevocations, func(i *pb.KeyRevocation, j *pb.KeyRevocation) bool {
+		// Sort by status first
+		if i.GetStatus() != j.GetStatus() {
+			return i.GetStatus() < j.GetStatus()
+		}
+		return i.GetKeyId() < j.GetKeyId()
+	})
+}
+
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -677,7 +756,7 @@ func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Sc
 func keyToProto(ctx context.Context, in wrappingKms.Key, opt ...handlers.Option) (*pb.Key, error) {
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building scope proto")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building key proto")
 	}
 	outputFields := *opts.WithOutputFields
 
@@ -702,6 +781,39 @@ func keyToProto(ctx context.Context, in wrappingKms.Key, opt ...handlers.Option)
 	}
 	if outputFields.Has(globals.TypeField) {
 		out.Type = string(in.Type)
+	}
+
+	return &out, nil
+}
+
+func keyRevocationToProto(ctx context.Context, in *kms.KeyRevocation, opt ...handlers.Option) (*pb.KeyRevocation, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building key revocation proto")
+	}
+	outputFields := *opts.WithOutputFields
+
+	out := pb.KeyRevocation{}
+	if outputFields.Has(globals.KeyIdField) {
+		out.KeyId = in.KeyId
+	}
+	if outputFields.Has(globals.StatusField) {
+		switch in.Status {
+		case kms.KeyRevocationStatusPending.String():
+			out.Status = pb.KeyRevocationStatus_KEY_REVOCATION_STATUS_PENDING
+		case kms.KeyRevocationStatusRunning.String():
+			out.Status = pb.KeyRevocationStatus_KEY_REVOCATION_STATUS_RUNNING
+		case kms.KeyRevocationStatusCompleted.String():
+			out.Status = pb.KeyRevocationStatus_KEY_REVOCATION_STATUS_COMPLETED
+		case kms.KeyRevocationStatusFailed.String():
+			out.Status = pb.KeyRevocationStatus_KEY_REVOCATION_STATUS_FAILED
+		}
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
+		out.CreatedTime = in.CreateTime.Timestamp
+	}
+	if outputFields.Has(globals.EndTimeField) && in.EndTime != nil {
+		out.EndTime = in.EndTime.Timestamp
 	}
 
 	return &out, nil
@@ -881,6 +993,20 @@ func validateRotateKeysRequest(req *pbs.RotateKeysRequest) error {
 		badFields["id"] = "Must be 'global', a valid org scope id or a valid project scope id when listing keys."
 	}
 	// other field is just a bool so can't be validated
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
+	}
+	return nil
+}
+
+func validateRevokeKeyRequest(req *pbs.RevokeKeyRequest) error {
+	badFields := map[string]string{}
+	if req.GetId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetId()), scope.Project.Prefix()) {
+		badFields["id"] = "Must be 'global', a valid org scope id or a valid project scope id when revoking a key."
+	}
+	if !handlers.ValidId(handlers.Id(req.GetKeyId()), "kdkv", "krkv") {
+		badFields["key_id"] = "Must be a valid root key or data key id."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}

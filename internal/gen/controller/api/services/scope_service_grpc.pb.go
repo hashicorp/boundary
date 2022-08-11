@@ -52,6 +52,10 @@ type ScopeServiceClient interface {
 	// scope specified. If the scope is not found an error is returned. If
 	// the scope is empty, the global scope is used.
 	RotateKeys(ctx context.Context, in *RotateKeysRequest, opts ...grpc.CallOption) (*RotateKeysResponse, error)
+	// RevokeKey revokes the specified key
+	RevokeKey(ctx context.Context, in *RevokeKeyRequest, opts ...grpc.CallOption) (*RevokeKeyResponse, error)
+	// ListKeyRevocations lists any key revocations that have been requested.
+	ListKeyRevocations(ctx context.Context, in *ListKeyRevocationsRequest, opts ...grpc.CallOption) (*ListKeyRevocationsResponse, error)
 }
 
 type scopeServiceClient struct {
@@ -125,6 +129,24 @@ func (c *scopeServiceClient) RotateKeys(ctx context.Context, in *RotateKeysReque
 	return out, nil
 }
 
+func (c *scopeServiceClient) RevokeKey(ctx context.Context, in *RevokeKeyRequest, opts ...grpc.CallOption) (*RevokeKeyResponse, error) {
+	out := new(RevokeKeyResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.ScopeService/RevokeKey", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *scopeServiceClient) ListKeyRevocations(ctx context.Context, in *ListKeyRevocationsRequest, opts ...grpc.CallOption) (*ListKeyRevocationsResponse, error) {
+	out := new(ListKeyRevocationsResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.ScopeService/ListKeyRevocations", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ScopeServiceServer is the server API for ScopeService service.
 // All implementations must embed UnimplementedScopeServiceServer
 // for forward compatibility
@@ -163,6 +185,10 @@ type ScopeServiceServer interface {
 	// scope specified. If the scope is not found an error is returned. If
 	// the scope is empty, the global scope is used.
 	RotateKeys(context.Context, *RotateKeysRequest) (*RotateKeysResponse, error)
+	// RevokeKey revokes the specified key
+	RevokeKey(context.Context, *RevokeKeyRequest) (*RevokeKeyResponse, error)
+	// ListKeyRevocations lists any key revocations that have been requested.
+	ListKeyRevocations(context.Context, *ListKeyRevocationsRequest) (*ListKeyRevocationsResponse, error)
 	mustEmbedUnimplementedScopeServiceServer()
 }
 
@@ -190,6 +216,12 @@ func (UnimplementedScopeServiceServer) ListKeys(context.Context, *ListKeysReques
 }
 func (UnimplementedScopeServiceServer) RotateKeys(context.Context, *RotateKeysRequest) (*RotateKeysResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RotateKeys not implemented")
+}
+func (UnimplementedScopeServiceServer) RevokeKey(context.Context, *RevokeKeyRequest) (*RevokeKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RevokeKey not implemented")
+}
+func (UnimplementedScopeServiceServer) ListKeyRevocations(context.Context, *ListKeyRevocationsRequest) (*ListKeyRevocationsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListKeyRevocations not implemented")
 }
 func (UnimplementedScopeServiceServer) mustEmbedUnimplementedScopeServiceServer() {}
 
@@ -330,6 +362,42 @@ func _ScopeService_RotateKeys_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScopeService_RevokeKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScopeServiceServer).RevokeKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.ScopeService/RevokeKey",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScopeServiceServer).RevokeKey(ctx, req.(*RevokeKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ScopeService_ListKeyRevocations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListKeyRevocationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScopeServiceServer).ListKeyRevocations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.ScopeService/ListKeyRevocations",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScopeServiceServer).ListKeyRevocations(ctx, req.(*ListKeyRevocationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ScopeService_ServiceDesc is the grpc.ServiceDesc for ScopeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -364,6 +432,14 @@ var ScopeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RotateKeys",
 			Handler:    _ScopeService_RotateKeys_Handler,
+		},
+		{
+			MethodName: "RevokeKey",
+			Handler:    _ScopeService_RevokeKey_Handler,
+		},
+		{
+			MethodName: "ListKeyRevocations",
+			Handler:    _ScopeService_ListKeyRevocations_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

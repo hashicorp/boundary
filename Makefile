@@ -148,6 +148,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/key_revocation.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/controller.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/worker.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/root_certificate.pb.go

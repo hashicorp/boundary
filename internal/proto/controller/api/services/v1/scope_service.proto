@@ -112,6 +112,27 @@ service ScopeService {
       summary: "Rotate all keys in a Scope."
     };
   }
+
+  // RevokeKey revokes the specified key
+  rpc RevokeKey(RevokeKeyRequest) returns (RevokeKeyResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes:revoke-key"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Revoke the specified key in the scope. Reencrypts all data encrypted with the key."
+    };
+  }
+
+  // ListKeyRevocations lists any key revocations that have been requested.
+  rpc ListKeyRevocations(ListKeyRevocationsRequest) returns (ListKeyRevocationsResponse) {
+    option (google.api.http) = {
+      get: "/v1/scopes:list-key-revocations"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Lists all key revocations, past, present and pending."
+    };
+  }
 }
 
 message GetScopeRequest {
@@ -173,3 +194,16 @@ message RotateKeysRequest {
 }
 
 message RotateKeysResponse {}
+
+message RevokeKeyRequest {
+  string id = 1;
+  string key_id = 2;
+}
+
+message RevokeKeyResponse {}
+
+message ListKeyRevocationsRequest {}
+
+message ListKeyRevocationsResponse {
+  repeated resources.scopes.v1.KeyRevocation key_revocations = 1;
+}
