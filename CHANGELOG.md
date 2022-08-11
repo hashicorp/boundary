@@ -4,13 +4,26 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.10.0 (2022/08/10)
 
+### Known Issues
+
+* Migration to this version may fail if the cluster contains credential
+  libraries. This will be fixed shortly in 0.10.1.
+
 ### New and Improved
 
-* `boundary connect` Credential Brokering Integration: we have extended
-  integration into the `boundary connect` helpers. When using the `ssh` helper
-  if the brokered credentials contain a `ssh_private_key` type the command will
-  automatically pass the credentials to the `ssh` process
-  ([PR](https://github.com/hashicorp/boundary/pull/2267)).
+* `ssh` Target Type With Credential Injection (HCP Boundary only): Boundary has
+  gained a new `ssh` target type. Using this type, username/password or SSH
+  private key credentials can be sourced from `vault` credential libraries or
+  `static` credentials and injected into the SSH session between a client and
+  end host. This allows users to securely SSH to remote hosts while never being
+  in possession of a valid credential for that target host.
+* SSH Private Key Credentials: There is now an `ssh_private_key` credential type
+  that allows submitting a username/private key (and optional passphrase) to
+  Boundary for use with credential injection or brokering workflows.
+* `boundary connect ssh` Credential Brokering Enhancements: we have extended
+  support into the `boundary connect ssh` helper for brokered credentials of
+  `ssh_private_key` type; the command will automatically pass the credentials to
+  the `ssh` process ([PR](https://github.com/hashicorp/boundary/pull/2267)).
 * `boundary authenticate`, `boundary accounts`: Enables use of `env://` and
   `file://` syntax to specify location of a password
   ([PR](https://github.com/hashicorp/boundary/pull/2325))

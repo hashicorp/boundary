@@ -60,8 +60,7 @@ begin;
 
   -- insert_credential_library_subtype() is a before insert trigger
   -- function for subtypes of credential_library
-  create function insert_credential_library_subtype()
-    returns trigger
+  create function insert_credential_library_subtype() returns trigger
   as $$
   begin
     insert into credential_library

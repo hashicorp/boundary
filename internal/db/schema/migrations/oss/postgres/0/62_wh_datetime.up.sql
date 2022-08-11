@@ -29,8 +29,7 @@ begin;
     'None'
   );
 
-  insert
-    into wh_date_dimension
+  insert into wh_date_dimension
   select to_char(t.day, 'YYYYMMDD')::integer as id,
          t.day::date                         as date,
          'Q' || to_char(t.day, 'Q')          as calendar_quarter,
@@ -77,8 +76,7 @@ begin;
     'None', 'None', 'None'
   );
 
-  insert
-    into wh_time_of_day_dimension
+  insert into wh_time_of_day_dimension
   select to_char(t.second, 'SSSS')::integer as id,
          t.second::time                     as time_no_zone,
          t.second::time                     as time_at_utc,

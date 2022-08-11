@@ -135,8 +135,7 @@ begin;
   ;
 
   drop function wh_upsert_user;
-  create function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id)
-    returns wh_dim_id
+  create function wh_upsert_user(p_user_id wt_user_id, p_auth_token_id wt_public_id) returns wh_dim_id
   as $$
   declare
     src     whx_user_dimension_target%rowtype;

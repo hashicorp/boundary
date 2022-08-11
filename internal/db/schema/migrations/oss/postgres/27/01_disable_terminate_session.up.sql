@@ -3,9 +3,8 @@ begin;
 -- Remove call to terminate_session_if_possible
 drop trigger update_connection_state_on_closed_reason on session_connection;
 drop function update_connection_state_on_closed_reason();
-create function
-    update_connection_state_on_closed_reason()
-    returns trigger
+
+create function update_connection_state_on_closed_reason() returns trigger
 as $$
     begin
         if new.closed_reason is not null then
@@ -25,9 +24,7 @@ as $$
     end;
 $$ language plpgsql;
 
-create trigger
-    update_connection_state_on_closed_reason
-    after update of closed_reason on session_connection
+create trigger update_connection_state_on_closed_reason after update of closed_reason on session_connection
     for each row execute procedure update_connection_state_on_closed_reason();
 
 -- Remove function, defined in 0/51_connection.up.sql

@@ -10,23 +10,14 @@ create table if not exists oplog_entry (
   "data" bytea not null
 );
 
-create trigger 
-  update_time_column 
-before 
-update on oplog_entry 
+create trigger update_time_column before update on oplog_entry
   for each row execute procedure update_time_column();
 
-create trigger 
-  default_create_time_column
-before
-insert on oplog_entry
+create trigger default_create_time_column before insert on oplog_entry
   for each row execute procedure default_create_time();
 
 -- oplog_entry is immutable.
-create trigger 
-  immutable_columns
-before
-update on oplog_entry
+create trigger immutable_columns before update on oplog_entry
   for each row execute procedure immutable_columns('id','update_time','create_time','version','aggregate_name', 'data');
 
 create table if not exists oplog_ticket (
@@ -37,23 +28,14 @@ create table if not exists oplog_ticket (
   "version" bigint not null
 );
 
-create trigger 
-  update_time_column 
-before 
-update on oplog_ticket 
+create trigger update_time_column before update on oplog_ticket
   for each row execute procedure update_time_column();
 
-create trigger 
-  default_create_time_column
-before
-insert on oplog_ticket
+create trigger default_create_time_column before insert on oplog_ticket
   for each row execute procedure default_create_time();
 
 -- oplog_ticket: only allow updates to: version and update_time
-create trigger 
-  immutable_columns
-before
-update on oplog_ticket
+create trigger immutable_columns before update on oplog_ticket
   for each row execute procedure immutable_columns('id','create_time','name');
   
 -- TODO (jimlambrt 7/2020) remove update_time
@@ -61,28 +43,22 @@ create table if not exists oplog_metadata (
   id bigint generated always as identity primary key,
   create_time wt_timestamp,
   update_time wt_timestamp,
-  entry_id bigint not null references oplog_entry(id) on delete cascade on update cascade,
+  entry_id bigint not null
+    references oplog_entry(id)
+    on delete cascade
+    on update cascade,
   "key" text not null,
   value text null
 );
 
-create trigger 
-  update_time_column 
-before 
-update on oplog_metadata 
+create trigger update_time_column before update on oplog_metadata
   for each row execute procedure update_time_column();
 
-create trigger 
-  default_create_time_column
-before
-insert on oplog_metadata 
+create trigger default_create_time_column before insert on oplog_metadata
   for each row execute procedure default_create_time();
 
  -- oplog_metadata is immutable
-create trigger 
-  immutable_columns
-before
-update on oplog_metadata
+create trigger immutable_columns before update on oplog_metadata
   for each row execute procedure immutable_columns('id','create_time','update_time','entry_id','key','value');
 
 create index if not exists idx_oplog_metatadata_key on oplog_metadata(key);

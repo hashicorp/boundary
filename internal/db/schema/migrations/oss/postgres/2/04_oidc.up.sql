@@ -3,10 +3,8 @@ begin;
 -- auth_oidc_method entries are the current oidc auth methods configured for
 -- existing scopes. 
 create table auth_oidc_method (
-  public_id wt_public_id
-    primary key,
-  scope_id wt_scope_id
-    not null,
+  public_id wt_public_id primary key,
+  scope_id wt_scope_id not null,
   name wt_name,
   description wt_description,
   create_time wt_timestamp,
@@ -116,10 +114,8 @@ comment on table auth_oidc_certificate is
 -- auth_oidc_account entries are subtypes of auth_account and represent an
 -- oidc account.
 create table auth_oidc_account (
-    public_id wt_public_id
-      primary key,
-    auth_method_id wt_public_id
-      not null,
+    public_id wt_public_id primary key,
+    auth_method_id wt_public_id not null,
     -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
     -- check is executed before the insert trigger which retrieves the scope_id
     -- causing an insert to fail.
@@ -166,40 +162,25 @@ comment on table auth_oidc_method is
 'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
 
 -- auth_oidc_method column triggers
-create trigger
-  insert_auth_method_subtype
-before insert on auth_oidc_method
+create trigger insert_auth_method_subtype before insert on auth_oidc_method
   for each row execute procedure insert_auth_method_subtype();
 
-create trigger
-  update_time_column
-before
-update on auth_oidc_method
+create trigger update_time_column before update on auth_oidc_method
   for each row execute procedure update_time_column();
 
-create trigger
-  immutable_columns
-before
-update on auth_oidc_method
+create trigger immutable_columns before update on auth_oidc_method
   for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time');
 
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_method
+create trigger default_create_time_column before insert on auth_oidc_method
   for each row execute procedure default_create_time();
 
-create trigger
-  update_version_column
-after update on auth_oidc_method
+create trigger update_version_column after update on auth_oidc_method
   for each row execute procedure update_version_column();
 
 -- active_auth_oidc_method_must_be_complete() defines a function to be used in 
 -- a "before update" trigger for auth_oidc_method entries.  Its intent: prevent
 -- incomplete oidc methods from transitioning out of the "inactive" state.
-create or replace function
-  active_auth_oidc_method_must_be_complete()
-  returns trigger
+create or replace function active_auth_oidc_method_must_be_complete() returns trigger
 as $$
   begin
     -- validate signing alg
@@ -258,10 +239,7 @@ $$ language plpgsql;
 comment on function active_auth_oidc_method_must_be_complete() is
 'active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete';
 
-create trigger 
-  update_active_auth_oidc_method_must_be_complete
-before
-update on auth_oidc_method
+create trigger update_active_auth_oidc_method_must_be_complete before update on auth_oidc_method
   for each row execute procedure active_auth_oidc_method_must_be_complete();
 
 -- new_auth_oidc_method_must_be_inactive() defines a function to be used in 
@@ -270,9 +248,7 @@ update on auth_oidc_method
 -- you can insert an entry that's anything but incomplete, since we have a 
 -- chicken/egg problem: you need the auth method id to create the required
 -- signing algs value objects.
-create or replace function
-  new_auth_oidc_method_must_be_inactive()
-  returns trigger 
+create or replace function new_auth_oidc_method_must_be_inactive() returns trigger
 as $$
   begin
     if new.state != 'inactive' then
@@ -283,34 +259,20 @@ $$ language plpgsql;
 comment on function new_auth_oidc_method_must_be_inactive() is
 'new_auth_oidc_method_must_be_inactive ensures that new incomplete oidc auth methods must remain inactive';
 
-create trigger 
-  new_auth_oidc_method_must_be_inactive
-before
-insert on auth_oidc_method
+create trigger new_auth_oidc_method_must_be_inactive before insert on auth_oidc_method
   for each row execute procedure active_auth_oidc_method_must_be_complete();
 
 -- auth_oidc_account column triggers
-create trigger
-  update_time_column
-before
-update on auth_oidc_account
+create trigger update_time_column before update on auth_oidc_account
   for each row execute procedure update_time_column();
 
-create trigger
-  immutable_columns
-before
-update on auth_oidc_account
+create trigger immutable_columns before update on auth_oidc_account
   for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'scope_id', 'create_time', 'issuer', 'subject');
 
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_account
+create trigger default_create_time_column before insert on auth_oidc_account
   for each row execute procedure default_create_time();
 
-create trigger
-  update_version_column
-after update on auth_oidc_account
+create trigger update_version_column after update on auth_oidc_account
   for each row execute procedure update_version_column();
 
 
@@ -322,9 +284,7 @@ after update on auth_oidc_account
 -- raising on an error to insert into the auth_oidc_account table.
 -- this is all necessary because of we're using predictable public ids
 -- for oidc accounts.
-create or replace function
-  insert_auth_oidc_account_subtype()
-  returns trigger
+create or replace function insert_auth_oidc_account_subtype() returns trigger
 as $$
 begin
   select auth_method.scope_id
@@ -342,9 +302,7 @@ begin
 end;
   $$ language plpgsql;
 
-create trigger
-  insert_auth_oidc_account_subtype
-before insert on auth_oidc_account
+create trigger insert_auth_oidc_account_subtype before insert on auth_oidc_account
   for each row execute procedure insert_auth_oidc_account_subtype();
 
 -- triggers for auth_oidc_method children tables: auth_oidc_aud_claim,
@@ -355,9 +313,7 @@ before insert on auth_oidc_account
 -- to be used in an "after delete" trigger for auth_oidc_signing_alg
 -- Its intent: prevent deletes that would result in an "active" oidc
 -- auth method which is incomplete.
-create or replace function
-  on_delete_active_auth_oidc_method_must_be_complete()
-  returns trigger
+create or replace function on_delete_active_auth_oidc_method_must_be_complete() returns trigger
 as $$
 declare am_state text;
 declare alg_cnt int;
@@ -408,10 +364,7 @@ before
 insert on auth_oidc_signing_alg
   for each row execute procedure default_create_time();
 
-create trigger 
-  on_delete_active_auth_oidc_method_must_be_complete
-after
-delete on auth_oidc_signing_alg
+create trigger on_delete_active_auth_oidc_method_must_be_complete after delete on auth_oidc_signing_alg
   for each row execute procedure on_delete_active_auth_oidc_method_must_be_complete();
     
 insert into oplog_ticket (name, version)

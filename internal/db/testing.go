@@ -25,7 +25,7 @@ import (
 	pgDriver "gorm.io/driver/postgres"
 )
 
-// setup the tests (initialize the database one-time and intialized
+// setup the tests (initialize the database one-time and initialized
 // testDatabaseURL). Do not close the returned db. Supported options:
 // WithTestLogLevel, WithTestDatabaseUrl
 func TestSetup(t testing.TB, dialect string, opt ...TestOption) (*DB, string) {
@@ -148,7 +148,7 @@ func TestDeleteWhere(t testing.TB, conn *DB, i interface{}, whereClause string, 
 		TableName() string
 	})
 	require.True(ok)
-	_, err := dbw.New(conn.wrapped).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
+	_, err := dbw.New(conn.wrapped).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), args)
 	require.NoError(err)
 }
 

@@ -23,18 +23,10 @@ create table auth_oidc_account_claim_map (
 comment on table auth_oidc_account_claim_map is
 'auth_oidc_account_claim_map entries are the optional claim maps from custom claims to the standard claims of sub, name and email.  There can be 0 or more for each parent oidc auth method.';
 
-
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_account_claim_map
+create trigger default_create_time_column before insert on auth_oidc_account_claim_map
   for each row execute procedure default_create_time();
 
-
-create trigger
-  immutable_columns
-before
-update on auth_oidc_account_claim_map
+create trigger immutable_columns before update on auth_oidc_account_claim_map
   for each row execute procedure immutable_columns('oidc_method_id', 'from_claim', 'to_claim', 'create_time');
   
 
@@ -91,4 +83,4 @@ comment on view oidc_auth_method_with_value_obj is
 'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
 
   
-  commit;
+commit;

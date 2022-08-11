@@ -58,21 +58,15 @@ begin;
 */
 
   create table auth_password_method (
-    public_id wt_public_id
-      primary key,
-    scope_id wt_scope_id
-      not null,
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null,
     password_conf_id wt_private_id, -- FK to auth_password_conf added below
     name text,
     description text,
     create_time wt_timestamp,
     update_time wt_timestamp,
-    min_login_name_length int
-      not null
-      default 3,
-    min_password_length int
-      not null
-      default 8,
+    min_login_name_length int not null default 3,
+    min_password_length int not null default 8,
     version wt_version,
     foreign key (scope_id, public_id)
       references auth_method (scope_id, public_id)
@@ -82,21 +76,15 @@ begin;
     unique(scope_id, public_id)
   );
 
-  create trigger
-    update_version_column
-  after update on auth_password_method
+  create trigger update_version_column after update on auth_password_method
     for each row execute procedure update_version_column();
 
-  create trigger
-    insert_auth_method_subtype
-  before insert on auth_password_method
+  create trigger insert_auth_method_subtype before insert on auth_password_method
     for each row execute procedure insert_auth_method_subtype();
 
   create table auth_password_account (
-    public_id wt_public_id
-      primary key,
-    auth_method_id wt_public_id
-      not null,
+    public_id wt_public_id primary key,
+    auth_method_id wt_public_id not null,
     -- NOTE(mgaffney): The scope_id type is not wt_scope_id because the domain
     -- check is executed before the insert trigger which retrieves the scope_id
     -- causing an insert to fail.
@@ -107,9 +95,9 @@ begin;
     update_time wt_timestamp,
     login_name text not null
       constraint login_name_must_be_lowercase
-      check(lower(trim(login_name)) = login_name)
+        check(lower(trim(login_name)) = login_name)
       constraint login_name_must_not_be_empty
-      check(length(trim(login_name)) > 0),
+        check(length(trim(login_name)) > 0),
     version wt_version,
     foreign key (scope_id, auth_method_id)
       references auth_password_method (scope_id, public_id)
@@ -124,21 +112,15 @@ begin;
     unique(auth_method_id, public_id)
   );
 
-  create trigger
-    update_version_column
-  after update on auth_password_account
+  create trigger update_version_column after update on auth_password_account
     for each row execute procedure update_version_column();
 
-  create trigger
-    insert_auth_account_subtype
-  before insert on auth_password_account
+  create trigger insert_auth_account_subtype before insert on auth_password_account
     for each row execute procedure insert_auth_account_subtype();
 
   create table auth_password_conf (
-    private_id wt_private_id
-      primary key,
-    password_method_id wt_public_id
-      not null
+    private_id wt_private_id primary key,
+    password_method_id wt_public_id not null
       references auth_password_method (public_id)
       on delete cascade
       on update cascade
@@ -156,9 +138,7 @@ begin;
 
   -- insert_auth_password_conf_subtype() is a trigger function for subtypes of
   -- auth_password_conf
-  create or replace function
-    insert_auth_password_conf_subtype()
-    returns trigger
+  create or replace function insert_auth_password_conf_subtype() returns trigger
   as $$
   begin
     insert into auth_password_conf
@@ -170,14 +150,10 @@ begin;
   $$ language plpgsql;
 
   create table auth_password_credential (
-    private_id wt_private_id
-      primary key,
-    password_account_id wt_public_id
-      not null
-      unique,
+    private_id wt_private_id primary key,
+    password_account_id wt_public_id not null unique,
     password_conf_id wt_private_id,
-    password_method_id wt_public_id
-      not null,
+    password_method_id wt_public_id not null,
     foreign key (password_method_id, password_conf_id)
       references auth_password_conf (password_method_id, private_id)
       on delete cascade
@@ -191,9 +167,7 @@ begin;
 
   -- insert_auth_password_credential_subtype() is a trigger function for
   -- subtypes of auth_password_credential
-  create or replace function
-    insert_auth_password_credential_subtype()
-    returns trigger
+  create or replace function insert_auth_password_credential_subtype() returns trigger
   as $$
   begin
 
@@ -212,9 +186,7 @@ begin;
 
   -- update_auth_password_credential_subtype() is an after update trigger
   -- function for subtypes of auth_password_credential
-  create or replace function
-    update_auth_password_credential_subtype()
-    returns trigger
+  create or replace function update_auth_password_credential_subtype() returns trigger
   as $$
   begin
     /*
@@ -232,9 +204,7 @@ begin;
 
   -- delete_auth_password_credential_subtype() is an after delete trigger
   -- function for subtypes of auth_password_credential
-  create or replace function
-    delete_auth_password_credential_subtype()
-    returns trigger
+  create or replace function delete_auth_password_credential_subtype() returns trigger
   as $$
   begin
     delete
@@ -248,40 +218,22 @@ begin;
   -- triggers for time columns
   --
 
-  create trigger
-    update_time_column
-  before
-  update on auth_password_method
+  create trigger update_time_column before update on auth_password_method
     for each row execute procedure update_time_column();
 
-  create trigger
-    immutable_columns
-  before
-  update on auth_password_method
+  create trigger immutable_columns before update on auth_password_method
     for each row execute procedure immutable_columns('create_time');
 
-  create trigger
-    default_create_time_column
-  before
-  insert on auth_password_method
+  create trigger default_create_time_column before insert on auth_password_method
     for each row execute procedure default_create_time();
 
-  create trigger
-    update_time_column
-  before
-  update on auth_password_account
+  create trigger update_time_column before update on auth_password_account
     for each row execute procedure update_time_column();
 
-  create trigger
-    immutable_columns
-  before
-  update on auth_password_account
+  create trigger immutable_columns before update on auth_password_account
     for each row execute procedure immutable_columns('create_time');
 
-  create trigger
-    default_create_time_column
-  before
-  insert on auth_password_account
+  create trigger default_create_time_column before insert on auth_password_account
     for each row execute procedure default_create_time();
 
   -- The tickets for oplog are the subtypes not the base types because no updates

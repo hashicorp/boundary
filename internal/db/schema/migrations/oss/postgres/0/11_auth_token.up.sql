@@ -45,9 +45,7 @@ begin;
     inner join auth_account as aa
             on at.auth_account_id = aa.public_id;
 
-  create or replace function
-    update_last_access_time()
-    returns trigger
+  create or replace function update_last_access_time() returns trigger
   as $$
   begin
     if new.approximate_last_access_time is distinct from old.approximate_last_access_time then
@@ -56,15 +54,10 @@ begin;
     return new;
   end;
   $$ language plpgsql;
-
-  comment on function
-    update_last_access_time()
-  is
+  comment on function update_last_access_time() is
     'function used in before update triggers to properly set last_access_time columns';
 
-  create or replace function
-    immutable_auth_token_columns()
-    returns trigger
+  create or replace function immutable_auth_token_columns() returns trigger
   as $$
   begin
     if new.auth_account_id is distinct from old.auth_account_id then
@@ -76,17 +69,12 @@ begin;
     return new;
   end;
   $$ language plpgsql;
-
-  comment on function
-    immutable_auth_token_columns()
-  is
+  comment on function immutable_auth_token_columns() is
     'function used in before update triggers to make specific columns immutable';
 
   -- This allows the expiration to be calculated on the server side and still hold the constraint that
   -- the expiration time cant be before the creation time of the auth token.
-  create or replace function
-    expire_time_not_older_than_token()
-    returns trigger
+  create or replace function expire_time_not_older_than_token() returns trigger
   as $$
   begin
     if new.expiration_time < new.create_time then
@@ -95,42 +83,25 @@ begin;
     return new;
   end;
   $$ language plpgsql;
-
-  comment on function
-      expire_time_not_older_than_token()
-  is
+  comment on function expire_time_not_older_than_token() is
     'function used in before insert triggers to ensure expiration time is not older than create time';
 
-  create trigger
-    default_create_time_column
-  before insert on auth_token
+  create trigger default_create_time_column before insert on auth_token
     for each row execute procedure default_create_time();
 
-  create trigger
-    expire_time_not_older_than_token
-  before insert on auth_token
+  create trigger expire_time_not_older_than_token before insert on auth_token
     for each row execute procedure expire_time_not_older_than_token();
 
-  create trigger
-    update_time_column
-  before update on auth_token
+  create trigger update_time_column before update on auth_token
     for each row execute procedure update_time_column();
 
-  create trigger
-    update_last_access_time
-  before update on auth_token
+  create trigger update_last_access_time before update on auth_token
     for each row execute procedure update_last_access_time();
 
-
-  create trigger
-    immutable_auth_token_columns
-  before update on auth_token
+  create trigger immutable_auth_token_columns before update on auth_token
     for each row execute procedure immutable_auth_token_columns();
 
-  create trigger 
-    immutable_columns
-  before
-  update on auth_token
+  create trigger immutable_columns before update on auth_token
     for each row execute procedure immutable_columns('public_id', 'auth_account_id', 'create_time');
 
 commit;

@@ -1,12 +1,12 @@
 begin;
 
 drop function cancel_session(in sessionId text);
+
 -- Updates cancel_session() from 0/50_session to check if a session is either terminated or canceling
 -- Sessions can progress directly to terminated without going through the canceling state
 -- cancel_session will insert a cancel state for the session, if there's isn't
 -- a canceled or terminated state already.  It's used by cancel_session_with_null_fk.
-create function
-  cancel_session(in sessionId text) returns void
+create function cancel_session(in sessionId text) returns void
 as $$
 declare
   rows_affected numeric;
