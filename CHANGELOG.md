@@ -2,12 +2,16 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## 0.10.1 ()
+## 0.10.1 (2022/08/11)
 
 ### Bug Fixes
 
-* Managed Groups:  fixes an issue where the `filter` field is not sent by
-  admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238))
+* db: Fix an issue with migrations affecting clusters that contain 
+  credential libraries or static credentials.
+  ([Issue](https://github.com/hashicorp/boundary/issues/2349)),
+  ([PR](https://github.com/hashicorp/boundary/pull/2351)).
+* Managed Groups: Fix an issue where the `filter` field is not sent by
+  admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
 
 
 ## 0.10.0 (2022/08/10)
