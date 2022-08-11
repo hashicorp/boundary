@@ -12,7 +12,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2351)).
 * Managed Groups: Fix an issue where the `filter` field is not sent by
   admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
-
+* Plugins: Fixes regression from 0.9.0 causing a failure to start when using
+  multiple KMS blocks of the same type
+  ([PR1](https://github.com/hashicorp/go-secure-stdlib/pull/43),
+  [PR2](https://github.com/hashicorp/boundary/pull/2346))
+* CLI: Fixed errors related to URL detection when passing in `-attr` or
+  `-secret` values that contained colons
+  ([PR](https://github.com/hashicorp/boundary/pull/2353))
 
 ## 0.10.0 (2022/08/10)
 
