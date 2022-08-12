@@ -7,10 +7,9 @@ import (
 	"math/rand"
 	"time"
 
-	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
-
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -18,13 +17,15 @@ import (
 
 var firstStatusCheckPostHooks []func(context.Context, *Worker) error
 
+var downstreamWorkersFactory func(ctx context.Context, workerId string) (downstreamers, error)
+
 type LastStatusInformation struct {
 	*pbs.StatusResponse
 	StatusTime              time.Time
 	LastCalculatedUpstreams []string
 }
 
-func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager session.Manager, addrReceivers []addressReceiver) {
+func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager session.Manager, addrReceivers *[]addressReceiver) {
 	const op = "worker.(Worker).startStatusTicking"
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// This function exists to desynchronize calls to controllers from
@@ -65,7 +66,11 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager se
 // LastStatusSuccess reports the last time we sent a successful
 // status request.
 func (w *Worker) LastStatusSuccess() *LastStatusInformation {
-	return w.lastStatusSuccess.Load().(*LastStatusInformation)
+	s, ok := w.lastStatusSuccess.Load().(*LastStatusInformation)
+	if !ok {
+		return nil
+	}
+	return s
 }
 
 // WaitForNextSuccessfulStatusUpdate waits for the next successful status. It's
@@ -100,7 +105,7 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	return nil
 }
 
-func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager, addressReceivers []addressReceiver) {
+func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager, addressReceivers *[]addressReceiver) {
 	const op = "worker.(Worker).sendWorkerStatus"
 
 	// First send info as-is. We'll perform cleanup duties after we
@@ -228,14 +233,28 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
 			upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, addrs)
 			event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
-			for _, as := range addressReceivers {
+			for _, as := range *addressReceivers {
 				as.SetAddresses(addrs)
 			}
 		} else if lastStatus == nil {
-			for _, as := range addressReceivers {
+			for _, as := range *addressReceivers {
 				as.SetAddresses(addrs)
 			}
 			event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", addrs))
+		}
+	}
+
+	// regardless of whether or not it's a new address, we need to set
+	// them for dialingListeners
+	for _, as := range *addressReceivers {
+		switch {
+		case as.Type() == dialingListenerReceiverType:
+			tmpAddrs := make([]string, len(addrs))
+			copy(tmpAddrs, addrs)
+			if len(tmpAddrs) == 0 {
+				tmpAddrs = append(tmpAddrs, w.conf.RawConfig.Worker.InitialUpstreams...)
+			}
+			as.SetAddresses(tmpAddrs)
 		}
 	}
 
@@ -272,6 +291,14 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 
 	// If we have post hooks for after the first status check, run them now
 	if w.everAuthenticated.CAS(authenticationStatusFirstAuthentication, authenticationStatusFirstStatusRpcSuccessful) {
+		if downstreamWorkersFactory != nil {
+			w.downstreamWorkers, err = downstreamWorkersFactory(cancelCtx, w.LastStatusSuccess().WorkerId)
+			if err != nil {
+				event.WriteError(cancelCtx, op, err)
+				w.conf.ServerSideShutdownCh <- struct{}{}
+				return
+			}
+		}
 		for _, fn := range firstStatusCheckPostHooks {
 			if err := fn(cancelCtx, w); err != nil {
 				// If we can't verify status we can't be expected to behave
