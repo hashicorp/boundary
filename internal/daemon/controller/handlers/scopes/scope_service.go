@@ -61,6 +61,7 @@ var (
 		action.ListScopeKeys,
 		action.RotateScopeKeys,
 		action.RevokeScopeKey,
+		action.ListKeyRevocations,
 	}
 
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
@@ -462,7 +463,7 @@ func (s Service) RevokeKey(ctx context.Context, req *pbs.RevokeKeyRequest) (*pbs
 func (s Service) ListKeyRevocations(ctx context.Context, _ *pbs.ListKeyRevocationsRequest) (*pbs.ListKeyRevocationsResponse, error) {
 	const op = "scopes.(Service).RevokeKey"
 
-	authResults := s.authResult(ctx, "global", action.RevokeScopeKey)
+	authResults := s.authResult(ctx, "global", action.ListKeyRevocations)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -479,7 +480,7 @@ func (s Service) ListKeyRevocations(ctx context.Context, _ *pbs.ListKeyRevocatio
 	for _, item := range items {
 		res.Id = item.KeyId
 
-		outputFields := authResults.FetchOutputFields(res, action.RevokeScopeKey).SelfOrDefaults(authResults.UserId)
+		outputFields := authResults.FetchOutputFields(res, action.ListKeyRevocations).SelfOrDefaults(authResults.UserId)
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
