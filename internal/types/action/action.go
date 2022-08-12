@@ -59,7 +59,7 @@ const (
 	RemoveWorkerTags          Type = 48
 	ListScopeKeys             Type = 49
 	RotateScopeKeys           Type = 50
-	RevokeScopeKeys           Type = 51
+	RevokeScopeKey            Type = 51
 	ListKeyRevocations        Type = 52
 
 	// When adding new actions, be sure to update:
@@ -118,7 +118,7 @@ var Map = map[string]Type{
 	RemoveWorkerTags.String():          RemoveWorkerTags,
 	ListScopeKeys.String():             ListScopeKeys,
 	RotateScopeKeys.String():           RotateScopeKeys,
-	RevokeScopeKeys.String():           RevokeScopeKeys,
+	RevokeScopeKey.String():            RevokeScopeKey,
 	ListKeyRevocations.String():        ListKeyRevocations,
 }
 
