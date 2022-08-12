@@ -96,7 +96,7 @@ var (
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
-	pbs.UnimplementedTargetServiceServer
+	pbs.UnsafeTargetServiceServer
 
 	repoFn           common.TargetRepoFactory
 	iamRepoFn        common.IamRepoFactory
@@ -108,6 +108,8 @@ type Service struct {
 	staticCredRepoFn common.StaticCredentialRepoFactory
 	kmsCache         *kms.Kms
 }
+
+var _ pbs.TargetServiceServer = (*Service)(nil)
 
 // NewService returns a target service which handles target related requests to boundary.
 func NewService(
@@ -159,8 +161,6 @@ func NewService(
 		kmsCache:         kmsCache,
 	}, nil
 }
-
-var _ pbs.TargetServiceServer = Service{}
 
 // ListTargets implements the interface pbs.TargetServiceServer.
 func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (*pbs.ListTargetsResponse, error) {
@@ -1570,9 +1570,9 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetTargetRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, target.Prefixes()...)
 }

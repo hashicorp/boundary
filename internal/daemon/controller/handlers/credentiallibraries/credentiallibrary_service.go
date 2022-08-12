@@ -74,11 +74,13 @@ func init() {
 
 // Service handles request as described by the pbs.CredentialLibraryServiceServer interface.
 type Service struct {
-	pbs.UnimplementedCredentialLibraryServiceServer
+	pbs.UnsafeCredentialLibraryServiceServer
 
 	iamRepoFn common.IamRepoFactory
 	repoFn    common.VaultCredentialRepoFactory
 }
+
+var _ pbs.CredentialLibraryServiceServer = (*Service)(nil)
 
 // NewService returns a credential library service which handles credential library related requests to boundary.
 func NewService(repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
@@ -91,8 +93,6 @@ func NewService(repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFa
 	}
 	return Service{iamRepoFn: iamRepo, repoFn: repo}, nil
 }
-
-var _ pbs.CredentialLibraryServiceServer = Service{}
 
 // ListCredentialLibraries implements the interface pbs.CredentialLibraryServiceServer
 func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCredentialLibrariesRequest) (*pbs.ListCredentialLibrariesResponse, error) {
@@ -633,9 +633,9 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetCredentialLibraryRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, vault.CredentialLibraryPrefix)
 }

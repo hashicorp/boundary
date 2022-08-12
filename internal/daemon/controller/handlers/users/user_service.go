@@ -58,10 +58,12 @@ func init() {
 
 // Service handles request as described by the pbs.UserServiceServer interface.
 type Service struct {
-	pbs.UnimplementedUserServiceServer
+	pbs.UnsafeUserServiceServer
 
 	repoFn common.IamRepoFactory
 }
+
+var _ pbs.UserServiceServer = (*Service)(nil)
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
@@ -71,8 +73,6 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	}
 	return Service{repoFn: repo}, nil
 }
-
-var _ pbs.UserServiceServer = Service{}
 
 // ListUsers implements the interface pbs.UserServiceServer.
 func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs.ListUsersResponse, error) {
@@ -661,9 +661,9 @@ func toProto(ctx context.Context, in *iam.User, accts []string, opt ...handlers.
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetUserRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
 }

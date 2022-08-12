@@ -66,11 +66,13 @@ func init() {
 
 // Service handles request as described by the pbs.WorkerServiceServer interface.
 type Service struct {
-	pbs.UnimplementedWorkerServiceServer
+	pbs.UnsafeWorkerServiceServer
 
 	repoFn    common.ServersRepoFactory
 	iamRepoFn common.IamRepoFactory
 }
+
+var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
 func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
@@ -83,8 +85,6 @@ func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn c
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
-
-var _ pbs.WorkerServiceServer = Service{}
 
 // ListWorkers implements the interface pbs.WorkerServiceServer.
 func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (*pbs.ListWorkersResponse, error) {
@@ -717,9 +717,9 @@ func tagsToMapProto(in map[string][]string) (map[string]*structpb.ListValue, err
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetWorkerRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
 }
