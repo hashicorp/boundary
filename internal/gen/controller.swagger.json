@@ -2665,6 +2665,33 @@
         ]
       }
     },
+    "/v1/scopes:rotate-keys": {
+      "post": {
+        "summary": "Rotate all keys in a Scope.",
+        "operationId": "ScopeService_RotateKeys",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RotateKeysResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RotateKeysRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
     "/v1/sessions": {
       "get": {
         "summary": "Lists all Sessions.",
@@ -6629,6 +6656,20 @@
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
+    },
+    "controller.api.services.v1.RotateKeysRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "rewrap": {
+          "type": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.RotateKeysResponse": {
+      "type": "object"
     },
     "controller.api.services.v1.SetGroupMembersResponse": {
       "type": "object",

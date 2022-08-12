@@ -412,6 +412,26 @@ func (s Service) ListKeys(ctx context.Context, req *pbs.ListKeysRequest) (*pbs.L
 	return &pbs.ListKeysResponse{Items: finalItems}, nil
 }
 
+// RotateKeys implements the interface pbs.ScopeServiceServer.
+func (s Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*pbs.RotateKeysResponse, error) {
+	if req.GetId() == "" {
+		req.Id = scope.Global.String()
+	}
+	if err := validateRotateKeysRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.RotateScopeKeys)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	if err := s.kmsRepo.RotateKeys(ctx, req.GetId(), kms.WithRewrap(req.GetRewrap())); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -849,6 +869,18 @@ func validateListKeysRequest(req *pbs.ListKeysRequest) error {
 	if req.GetId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetId()), scope.Project.Prefix()) {
 		badFields["id"] = "Must be 'global', a valid org scope id or a valid project scope id when listing keys."
 	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
+	}
+	return nil
+}
+
+func validateRotateKeysRequest(req *pbs.RotateKeysRequest) error {
+	badFields := map[string]string{}
+	if req.GetId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetId()), scope.Project.Prefix()) {
+		badFields["id"] = "Must be 'global', a valid org scope id or a valid project scope id when listing keys."
+	}
+	// other field is just a bool so can't be validated
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}

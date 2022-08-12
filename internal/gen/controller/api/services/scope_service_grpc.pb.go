@@ -48,6 +48,10 @@ type ScopeServiceClient interface {
 	// is not found an error is returned. If the scope is empty, the global
 	// scope is used.
 	ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysResponse, error)
+	// RotateKeys rotates and optionally rewraps all the keys found in the
+	// scope specified. If the scope is not found an error is returned. If
+	// the scope is empty, the global scope is used.
+	RotateKeys(ctx context.Context, in *RotateKeysRequest, opts ...grpc.CallOption) (*RotateKeysResponse, error)
 }
 
 type scopeServiceClient struct {
@@ -112,6 +116,15 @@ func (c *scopeServiceClient) ListKeys(ctx context.Context, in *ListKeysRequest, 
 	return out, nil
 }
 
+func (c *scopeServiceClient) RotateKeys(ctx context.Context, in *RotateKeysRequest, opts ...grpc.CallOption) (*RotateKeysResponse, error) {
+	out := new(RotateKeysResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.ScopeService/RotateKeys", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ScopeServiceServer is the server API for ScopeService service.
 // All implementations must embed UnimplementedScopeServiceServer
 // for forward compatibility
@@ -146,6 +159,10 @@ type ScopeServiceServer interface {
 	// is not found an error is returned. If the scope is empty, the global
 	// scope is used.
 	ListKeys(context.Context, *ListKeysRequest) (*ListKeysResponse, error)
+	// RotateKeys rotates and optionally rewraps all the keys found in the
+	// scope specified. If the scope is not found an error is returned. If
+	// the scope is empty, the global scope is used.
+	RotateKeys(context.Context, *RotateKeysRequest) (*RotateKeysResponse, error)
 	mustEmbedUnimplementedScopeServiceServer()
 }
 
@@ -170,6 +187,9 @@ func (UnimplementedScopeServiceServer) DeleteScope(context.Context, *DeleteScope
 }
 func (UnimplementedScopeServiceServer) ListKeys(context.Context, *ListKeysRequest) (*ListKeysResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListKeys not implemented")
+}
+func (UnimplementedScopeServiceServer) RotateKeys(context.Context, *RotateKeysRequest) (*RotateKeysResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RotateKeys not implemented")
 }
 func (UnimplementedScopeServiceServer) mustEmbedUnimplementedScopeServiceServer() {}
 
@@ -292,6 +312,24 @@ func _ScopeService_ListKeys_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScopeService_RotateKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RotateKeysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScopeServiceServer).RotateKeys(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.ScopeService/RotateKeys",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScopeServiceServer).RotateKeys(ctx, req.(*RotateKeysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ScopeService_ServiceDesc is the grpc.ServiceDesc for ScopeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -322,6 +360,10 @@ var ScopeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListKeys",
 			Handler:    _ScopeService_ListKeys_Handler,
+		},
+		{
+			MethodName: "RotateKeys",
+			Handler:    _ScopeService_RotateKeys_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
