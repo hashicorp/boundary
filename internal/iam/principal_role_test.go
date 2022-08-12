@@ -4,12 +4,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestNewUserRole(t *testing.T) {
@@ -265,7 +267,7 @@ func TestUserRole_Create(t *testing.T) {
 			found := allocUserRole()
 			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{r.RoleId, r.PrincipalId})
 			require.NoError(err)
-			assert.Equal(r, &found)
+			assert.Empty(cmp.Diff(r, &found, protocmp.Transform()))
 		})
 	}
 }
@@ -641,7 +643,7 @@ func TestGroupRole_Create(t *testing.T) {
 			found := allocGroupRole()
 			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{r.RoleId, r.PrincipalId})
 			require.NoError(err)
-			assert.Equal(r, &found)
+			assert.Empty(cmp.Diff(r, &found, protocmp.Transform()))
 		})
 	}
 }

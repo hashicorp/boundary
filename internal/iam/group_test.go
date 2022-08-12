@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestNewGroup(t *testing.T) {
@@ -199,7 +201,7 @@ func Test_GroupCreate(t *testing.T) {
 			foundGrp.PublicId = tt.args.group.PublicId
 			err = w.LookupByPublicId(context.Background(), &foundGrp)
 			require.NoError(err)
-			assert.Equal(g, &foundGrp)
+			assert.Empty(cmp.Diff(g, &foundGrp, protocmp.Transform()))
 		})
 	}
 }
