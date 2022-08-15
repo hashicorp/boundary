@@ -36,5 +36,11 @@ locals {
       to          = 8301
       protocol    = "udp"
     },
+    {
+      description = "Boundary TCP"
+      from        = 9200
+      to          = 9200
+      protocol    = "tcp"
+    },
   ]
 }

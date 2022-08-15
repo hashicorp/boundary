@@ -37,18 +37,23 @@ job "controller" {
 
     network {
       port "api" {
-        static = 9200
+        to = 9200
       }
       port "cluster" {
-        static = 9201
+        to = 9201
       }
       port "proxy" {
-        static = 9202
+        to = 9202
       }
       port "ops" {
-        static = 9203
+        to = 9203
       }
     }
+
+    network {
+    port "redis" { to = 6379 }
+  }
+
 
     task "controller" {
       driver = "docker"
@@ -66,6 +71,11 @@ job "controller" {
       resources {
         cpu    = 500
         memory = 256
+      }
+
+      service {
+        tags = ["boundary"]
+
       }
     }
   }
