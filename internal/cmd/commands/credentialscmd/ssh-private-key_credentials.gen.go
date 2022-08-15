@@ -49,15 +49,19 @@ func (c *SshPrivateKeyCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *SshPrivateKeyCommand) Synopsis() string {
-	if extra := extraSshPrivateKeySynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraSshPrivateKeySynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "credential"
+
+		synopsisStr = fmt.Sprintf("%s %s", "ssh-private-key-type", synopsisStr)
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "credential"
-
-	synopsisStr = fmt.Sprintf("%s %s", "ssh-private-key-type", synopsisStr)
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *SshPrivateKeyCommand) Help() string {

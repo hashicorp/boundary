@@ -50,13 +50,17 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Synopsis() string {
-	if extra := extraSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "session"
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "session"
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *Command) Help() string {

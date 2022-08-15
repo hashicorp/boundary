@@ -49,15 +49,19 @@ func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *PasswordCommand) Synopsis() string {
-	if extra := extraPasswordSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraPasswordSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "account"
+
+		synopsisStr = fmt.Sprintf("%s %s", "password-type", synopsisStr)
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "account"
-
-	synopsisStr = fmt.Sprintf("%s %s", "password-type", synopsisStr)
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *PasswordCommand) Help() string {

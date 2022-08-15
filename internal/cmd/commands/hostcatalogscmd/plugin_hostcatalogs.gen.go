@@ -47,15 +47,19 @@ func (c *PluginCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *PluginCommand) Synopsis() string {
-	if extra := extraPluginSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraPluginSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "host catalog"
+
+		synopsisStr = fmt.Sprintf("%s %s", "plugin-type", synopsisStr)
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "host catalog"
-
-	synopsisStr = fmt.Sprintf("%s %s", "plugin-type", synopsisStr)
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *PluginCommand) Help() string {

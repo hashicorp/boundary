@@ -4,6 +4,12 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
+type addSetRemoveInfo struct {
+	UnitType    string
+	CmdExample  string
+	TextExample string
+}
+
 type cmdInfo struct {
 	// The type of the resource, e.g. "target"
 	ResourceType string
@@ -79,6 +85,11 @@ type cmdInfo struct {
 	// SkipClientCallActions allows skipping creation of an actual client
 	// call for an action in favor of custom logic in extra actions
 	SkipClientCallActions []string
+
+	// AddSetRemoveInfo contains info necessary to autogenerate add/set/remove
+	// bits. It is a slice because some type have more than one add/set/remove
+	// flags
+	AddSetRemoveInfo []*addSetRemoveInfo
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -434,12 +445,22 @@ var inputStructs = map[string][]*cmdInfo{
 			Pkg:                 "roles",
 			StdActions:          []string{"create", "read", "update", "delete", "list"},
 			HasExtraCommandVars: true,
-			HasExtraHelpFunc:    true,
 			HasId:               true,
 			Container:           "Scope",
 			HasName:             true,
 			HasDescription:      true,
 			VersionedActions:    []string{"update", "add-grants", "remove-grants", "set-grants", "add-principals", "remove-principals", "set-principals"},
+			AddSetRemoveInfo: []*addSetRemoveInfo{
+				{
+					UnitType:    "principal",
+					CmdExample:  "u_1234567890",
+					TextExample: "(users, groups) ",
+				},
+				{
+					UnitType:   "grant",
+					CmdExample: "id=ttcp_1234567890;actions=read,authorize-session",
+				},
+			},
 		},
 	},
 	"scopes": {

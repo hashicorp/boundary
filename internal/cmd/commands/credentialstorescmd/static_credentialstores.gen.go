@@ -47,15 +47,19 @@ func (c *StaticCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *StaticCommand) Synopsis() string {
-	if extra := extraStaticSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraStaticSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "credential store"
+
+		synopsisStr = fmt.Sprintf("%s %s", "static-type", synopsisStr)
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "credential store"
-
-	synopsisStr = fmt.Sprintf("%s %s", "static-type", synopsisStr)
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *StaticCommand) Help() string {

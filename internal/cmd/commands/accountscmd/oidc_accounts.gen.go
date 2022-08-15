@@ -49,15 +49,19 @@ func (c *OidcCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *OidcCommand) Synopsis() string {
-	if extra := extraOidcSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraOidcSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "account"
+
+		synopsisStr = fmt.Sprintf("%s %s", "oidc-type", synopsisStr)
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "account"
-
-	synopsisStr = fmt.Sprintf("%s %s", "oidc-type", synopsisStr)
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *OidcCommand) Help() string {

@@ -49,15 +49,19 @@ func (c *VaultCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *VaultCommand) Synopsis() string {
-	if extra := extraVaultSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraVaultSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "credential library"
+
+		synopsisStr = fmt.Sprintf("%s %s", "vault-type", synopsisStr)
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "credential library"
-
-	synopsisStr = fmt.Sprintf("%s %s", "vault-type", synopsisStr)
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *VaultCommand) Help() string {

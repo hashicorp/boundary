@@ -49,15 +49,19 @@ func (c *SshCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *SshCommand) Synopsis() string {
-	if extra := extraSshSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraSshSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "target"
+
+		synopsisStr = fmt.Sprintf("%s %s", "ssh-type", synopsisStr)
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "target"
-
-	synopsisStr = fmt.Sprintf("%s %s", "ssh-type", synopsisStr)
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *SshCommand) Help() string {

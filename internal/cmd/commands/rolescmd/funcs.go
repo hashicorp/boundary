@@ -2,7 +2,6 @@ package rolescmd
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -10,137 +9,23 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/mitchellh/go-wordwrap"
 )
 
 func init() {
 	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
-	extraSynopsisFunc = extraSynopsisFuncImpl
 	extraFlagsFunc = extraFlagsFuncImpl
 	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
-	executeExtraActions = executeExtraActionsImpl
 }
 
 type extraCmdVars struct {
 	flagGrantScopeId string
-	flagPrincipals   []string
-	flagGrants       []string
 }
 
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create":            {"grant-scope-id"},
-		"update":            {"grant-scope-id"},
-		"add-principals":    {"id", "principal", "version"},
-		"set-principals":    {"id", "principal", "version"},
-		"remove-principals": {"id", "principal", "version"},
-		"add-grants":        {"id", "grant", "version"},
-		"set-grants":        {"id", "grant", "version"},
-		"remove-grants":     {"id", "grant", "version"},
+		"create": {"grant-scope-id"},
+		"update": {"grant-scope-id"},
 	}
-}
-
-func extraSynopsisFuncImpl(c *Command) string {
-	switch c.Func {
-	case "add-principals", "set-principals", "remove-principals":
-		return c.principalsGrantsSynopsisFunc(c.Func, true)
-	case "add-grants", "set-grants", "remove-grants":
-		return c.principalsGrantsSynopsisFunc(c.Func, false)
-	}
-
-	return ""
-}
-
-func (c *Command) principalsGrantsSynopsisFunc(inFunc string, principals bool) string {
-	var in string
-	switchStr := "principals (users, groups)"
-	if !principals {
-		switchStr = "grants"
-	}
-	switch {
-	case strings.HasPrefix(inFunc, "add"):
-		in = fmt.Sprintf("Add %s to", switchStr)
-	case strings.HasPrefix(inFunc, "set"):
-		in = fmt.Sprintf("Set the full contents of the %s on", switchStr)
-	case strings.HasPrefix(inFunc, "remove"):
-		in = fmt.Sprintf("Remove %s from", switchStr)
-	}
-	return wordwrap.WrapString(fmt.Sprintf("%s a role", in), base.TermWidth)
-}
-
-func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
-	var helpStr string
-	switch c.Func {
-	case "add-principals":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary roles add-principals [options] [args]",
-			"",
-			`  Adds principals (users, groups) to a role given its ID. The "principal" flag can be specified multiple times. Example:`,
-			"",
-			`    $ boundary roles add-principals -id r_1234567890 -principal u_1234567890`,
-			"",
-			"",
-		})
-
-	case "set-principals":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary roles set-principals [options] [args]",
-			"",
-			`  Sets the complete set of principals (users, groups) on a role given its ID. The "principal" flag can be specified multiple times. Example:`,
-			"",
-			`    $ boundary roles set-principals -id r_1234567890 -principal u_anon -principal sg_1234567890`,
-			"",
-			"",
-		})
-
-	case "remove-principals":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary roles remove-principals [options] [args]",
-			"",
-			`  Removes principals (users, groups) from a role given its ID. The "principal" flags can be specified multiple times. Example:`,
-			"",
-			`    $ boundary roles remove-principals -id r_1234567890 -principal sg_1234567890`,
-			"",
-			"",
-		})
-
-	case "add-grants":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary roles add-grants [options] [args]",
-			"",
-			`  Adds grants to a role given its ID. The "grant" flag can be specified multiple times. Example:`,
-			"",
-			`    $ boundary roles add-grants -id r_1234567890 -grant "id=*;type=*;actions=read"`,
-			"",
-			"",
-		})
-
-	case "set-grants":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary roles set-grants [options] [args]",
-			"",
-			`  Sets the complete set of grants on a role given its ID. The "grant" flag can be specified multiple times. Example:`,
-			"",
-			`    $ boundary roles set-grants -id r_1234567890 -grant "id=*;type=*;actions=read" -grant "id=*;type=*;actions=list"`,
-			"",
-			"",
-		})
-
-	case "remove-grants":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary roles remove-grants [options] [args]",
-			"",
-			`  Removes grants from a role given its ID. The "grant" flags can be specified multiple times. Example:`,
-			"",
-			`    $ boundary roles remove-grants -id r_1234567890 -grant "id=*;type=*;actions=read"`,
-			"",
-			"",
-		})
-
-	default:
-		helpStr = helpMap["base"]()
-	}
-	return helpStr + c.Flags().Help()
 }
 
 func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
@@ -177,42 +62,6 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Opti
 		*opts = append(*opts, roles.WithGrantScopeId(c.flagGrantScopeId))
 	}
 
-	switch c.Func {
-	case "add-principals", "remove-principals":
-		if len(c.flagPrincipals) == 0 {
-			c.UI.Error("No principals supplied via -principal")
-			return false
-		}
-
-	case "add-grants", "remove-grants":
-		if len(c.flagGrants) == 0 {
-			c.UI.Error("No grants supplied via -grant")
-			return false
-		}
-
-	case "set-principals":
-		switch len(c.flagPrincipals) {
-		case 0:
-			c.UI.Error("No principals supplied via -principal")
-			return false
-		case 1:
-			if c.flagPrincipals[0] == "null" {
-				c.flagPrincipals = nil
-			}
-		}
-
-	case "set-grants":
-		switch len(c.flagGrants) {
-		case 0:
-			c.UI.Error("No grants supplied via -grant")
-			return false
-		case 1:
-			if c.flagGrants[0] == "null" {
-				c.flagGrants = nil
-			}
-		}
-	}
-
 	if len(c.flagGrants) > 0 {
 		for _, grant := range c.flagGrants {
 			_, err := perms.Parse(scope.Global.String(), grant)
@@ -224,48 +73,6 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]roles.Opti
 	}
 
 	return true
-}
-
-func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *roles.Role, origItems []*roles.Role, origError error, roleClient *roles.Client, version uint32, opts []roles.Option) (*api.Response, *roles.Role, []*roles.Role, error) {
-	switch c.Func {
-	case "add-principals":
-		result, err := roleClient.AddPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	case "set-principals":
-		result, err := roleClient.SetPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	case "remove-principals":
-		result, err := roleClient.RemovePrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	case "add-grants":
-		result, err := roleClient.AddGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	case "set-grants":
-		result, err := roleClient.SetGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	case "remove-grants":
-		result, err := roleClient.RemoveGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	}
-	return origResp, origItem, origItems, origError
 }
 
 func (c *Command) printListTable(items []*roles.Role) string {

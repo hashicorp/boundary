@@ -49,15 +49,19 @@ func (c *TcpCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *TcpCommand) Synopsis() string {
-	if extra := extraTcpSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraTcpSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "target"
+
+		synopsisStr = fmt.Sprintf("%s %s", "tcp-type", synopsisStr)
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "target"
-
-	synopsisStr = fmt.Sprintf("%s %s", "tcp-type", synopsisStr)
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *TcpCommand) Help() string {

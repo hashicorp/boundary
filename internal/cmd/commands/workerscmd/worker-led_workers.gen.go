@@ -49,15 +49,19 @@ func (c *WorkerLedCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *WorkerLedCommand) Synopsis() string {
-	if extra := extraWorkerLedSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	default:
+		if extra := extraWorkerLedSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "worker"
+
+		synopsisStr = fmt.Sprintf("%s %s", "worker-led-type", synopsisStr)
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "worker"
-
-	synopsisStr = fmt.Sprintf("%s %s", "worker-led-type", synopsisStr)
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *WorkerLedCommand) Help() string {

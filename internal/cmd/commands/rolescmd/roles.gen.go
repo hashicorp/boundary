@@ -36,6 +36,10 @@ type Command struct {
 
 	plural string
 
+	flagPrincipals []string
+
+	flagGrants []string
+
 	extraCmdVars
 }
 
@@ -50,13 +54,23 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 }
 
 func (c *Command) Synopsis() string {
-	if extra := extraSynopsisFunc(c); extra != "" {
-		return extra
+	switch c.Func {
+
+	case "add-principals", "set-principals", "remove-principals":
+		return common.SynopsisAddSetRemoveFunc("role", "principal", "(users, groups) ")[c.Func]()
+
+	case "add-grants", "set-grants", "remove-grants":
+		return common.SynopsisAddSetRemoveFunc("role", "grant", "")[c.Func]()
+
+	default:
+		if extra := extraSynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "role"
+
+		return common.SynopsisFunc(c.Func, synopsisStr)
 	}
-
-	synopsisStr := "role"
-
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	return "Unknown"
 }
 
 func (c *Command) Help() string {
@@ -82,9 +96,15 @@ func (c *Command) Help() string {
 	case "list":
 		helpStr = helpMap[c.Func]() + c.Flags().Help()
 
+	case "add-principals", "set-principals", "remove-principals":
+		helpStr = common.HelpAddSetRemoveMap("role", "principal", "u_1234567890", "(users, groups) ")[c.Func]() + c.Flags().Help()
+
+	case "add-grants", "set-grants", "remove-grants":
+		helpStr = common.HelpAddSetRemoveMap("role", "grant", "id=ttcp_1234567890;actions=read,authorize-session", "")[c.Func]() + c.Flags().Help()
+
 	default:
 
-		helpStr = c.extraHelpFunc(helpMap)
+		helpStr = helpMap["base"]()
 
 	}
 
@@ -104,6 +124,14 @@ var flagsMap = map[string][]string{
 	"delete": {"id"},
 
 	"list": {"scope-id", "filter", "recursive"},
+
+	"add-principals":    {"id", "principal", "version"},
+	"remove-principals": {"id", "principal", "version"},
+	"set-principals":    {"id", "principal", "version"},
+
+	"add-grants":    {"id", "grant", "version"},
+	"remove-grants": {"id", "grant", "version"},
+	"set-grants":    {"id", "grant", "version"},
 }
 
 func (c *Command) Flags() *base.FlagSets {
@@ -268,6 +296,44 @@ func (c *Command) Run(args []string) int {
 
 	}
 
+	switch c.Func {
+
+	case "add-principals", "remove-principals":
+		if len(c.flagPrincipals) == 0 {
+			c.UI.Error("No principals supplied via -principal")
+			return base.CommandUserError
+		}
+
+	case "set-principals":
+		switch len(c.flagPrincipals) {
+		case 0:
+			c.UI.Error("No principals supplied via -principal")
+			return base.CommandUserError
+		case 1:
+			if c.flagPrincipals[0] == "null" {
+				c.flagPrincipals = nil
+			}
+		}
+
+	case "add-grants", "remove-grants":
+		if len(c.flagGrants) == 0 {
+			c.UI.Error("No grants supplied via -grant")
+			return base.CommandUserError
+		}
+
+	case "set-grants":
+		switch len(c.flagGrants) {
+		case 0:
+			c.UI.Error("No grants supplied via -grant")
+			return base.CommandUserError
+		case 1:
+			if c.flagGrants[0] == "null" {
+				c.flagGrants = nil
+			}
+		}
+
+	}
+
 	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
@@ -327,6 +393,54 @@ func (c *Command) Run(args []string) int {
 		}
 		resp = listResult.GetResponse()
 		items = listResult.GetItems()
+
+	case "add-principals":
+		result, err := rolesClient.AddPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = result.GetResponse()
+		item = result.GetItem()
+
+	case "set-principals":
+		result, err := rolesClient.SetPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = result.GetResponse()
+		item = result.GetItem()
+
+	case "remove-principals":
+		result, err := rolesClient.RemovePrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = result.GetResponse()
+		item = result.GetItem()
+
+	case "add-grants":
+		result, err := rolesClient.AddGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = result.GetResponse()
+		item = result.GetItem()
+
+	case "set-grants":
+		result, err := rolesClient.SetGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = result.GetResponse()
+		item = result.GetItem()
+
+	case "remove-grants":
+		result, err := rolesClient.RemoveGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = result.GetResponse()
+		item = result.GetItem()
 
 	}
 

@@ -115,6 +115,13 @@ type {{ camelCase .SubActionPrefix }}Command struct {
 	Func string
 
 	plural string
+
+	{{ if .AddSetRemoveInfo }}
+	{{ range $i, $asrInfo := .AddSetRemoveInfo }}
+	flag{{ camelCase $asrInfo.UnitType }}s []string
+	{{ end }}
+	{{ end }}
+
 	{{ if .HasExtraCommandVars }}
 	extra{{ camelCase .SubActionPrefix }}CmdVars
 	{{ end }}
@@ -131,15 +138,22 @@ func (c *{{ camelCase .SubActionPrefix }}Command) AutocompleteFlags() complete.F
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Synopsis() string {
-	if extra := extra{{ camelCase .SubActionPrefix }}SynopsisFunc(c); extra != "" {
-		return extra
-	}
-
-	synopsisStr := "{{ lowerSpaceCase .ResourceType }}"
-	{{ if .SubActionPrefix }}
-	synopsisStr = fmt.Sprintf("%s %s", "{{ kebabCase .SubActionPrefix }}-type", synopsisStr)
+	switch c.Func {
+	{{ range $i, $asrInfo := .AddSetRemoveInfo }}
+	case "add-{{ $asrInfo.UnitType }}s", "set-{{ $asrInfo.UnitType }}s", "remove-{{ $asrInfo.UnitType }}s":
+		return common.SynopsisAddSetRemoveFunc("{{ lowerSpaceCase $input.ResourceType }}", "{{ $asrInfo.UnitType}}", "{{ $asrInfo.TextExample }}")[c.Func]()
 	{{ end }}
-	return common.SynopsisFunc(c.Func, synopsisStr)
+	default:
+		if extra := extra{{ camelCase .SubActionPrefix }}SynopsisFunc(c); extra != "" {
+			return extra
+		}
+		synopsisStr := "{{ lowerSpaceCase $input.ResourceType }}"
+		{{ if $input.SubActionPrefix }}
+		synopsisStr = fmt.Sprintf("%s %s", "{{ kebabCase $input.SubActionPrefix }}-type", synopsisStr)
+		{{ end }}
+		return common.SynopsisFunc(c.Func, synopsisStr)
+	}
+	return "Unknown"
 }
 
 func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
@@ -154,6 +168,10 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
 	case "{{ $action }}":
 		helpStr = helpMap[c.Func]() + c.Flags().Help()
 	{{ end }}
+	{{ end }}
+	{{ range $i, $asrInfo := .AddSetRemoveInfo }}
+	case "add-{{ $asrInfo.UnitType }}s", "set-{{ $asrInfo.UnitType }}s", "remove-{{ $asrInfo.UnitType }}s":
+		helpStr = common.HelpAddSetRemoveMap("{{ lowerSpaceCase $input.ResourceType }}", "{{ $asrInfo.UnitType}}", "{{ $asrInfo.CmdExample }}", "{{ $asrInfo.TextExample }}")[c.Func]() + c.Flags().Help()
 	{{ end }}
 	default:
 	{{ if .HasExtraHelpFunc }}
@@ -188,6 +206,13 @@ var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
 	"list": { "{{ kebabCase $input.Container }}-id", "filter" {{ if (eq $input.Container "Scope") }}, "recursive"{{ end }} },
 	{{ end }}
 	{{ end }}
+	{{ end }}
+	{{ end }}
+	{{ if .AddSetRemoveInfo }}
+	{{ range $i, $asrInfo := .AddSetRemoveInfo }}
+	"add-{{ $asrInfo.UnitType }}s": {"id", "{{ $asrInfo.UnitType }}", "version"},
+	"remove-{{ $asrInfo.UnitType }}s": {"id", "{{ $asrInfo.UnitType }}", "version"},
+	"set-{{ $asrInfo.UnitType }}s": {"id", "{{ $asrInfo.UnitType }}", "version"},
 	{{ end }}
 	{{ end }}
 }
@@ -395,6 +420,29 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	}
 	{{ end }}
 
+	{{ if .AddSetRemoveInfo }}
+	switch c.Func {
+	{{ range $i, $asrInfo := .AddSetRemoveInfo }}
+	case "add-{{ $asrInfo.UnitType }}s", "remove-{{ $asrInfo.UnitType }}s":
+		if len(c.flag{{ camelCase $asrInfo.UnitType }}s) == 0 {
+			c.UI.Error("No {{ $asrInfo.UnitType }}s supplied via -{{ $asrInfo.UnitType }}")
+			return base.CommandUserError
+		}
+
+	case "set-{{ $asrInfo.UnitType }}s":
+		switch len(c.flag{{ camelCase $asrInfo.UnitType }}s){
+		case 0:
+			c.UI.Error("No {{ $asrInfo.UnitType }}s supplied via -{{ $asrInfo.UnitType }}")
+			return base.CommandUserError
+		case 1:
+			if c.flag{{ camelCase $asrInfo.UnitType }}s[0] == "null" {
+				c.flag{{ camelCase $asrInfo.UnitType }}s = nil
+			}
+		}
+	{{ end }}
+	}
+	{{ end }}
+
 	if ok := extra{{ camelCase .SubActionPrefix }}FlagsHandlingFunc(c, f, &opts, ); !ok {
 		return base.CommandUserError
 	}
@@ -457,6 +505,33 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 		}
 		resp = {{ $action }}Result.GetResponse()
 		items = {{ $action }}Result.GetItems()
+	{{ end }}
+	{{ end }}
+	{{ if .AddSetRemoveInfo }}
+	{{ range $i, $asrInfo := .AddSetRemoveInfo }}
+	case "add-{{ $asrInfo.UnitType }}s":
+		result, err := {{ $input.Pkg}}Client.Add{{ camelCase $asrInfo.UnitType }}s(c.Context, c.FlagId, version, c.flag{{ camelCase $asrInfo.UnitType }}s, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = result.GetResponse()
+		item = result.GetItem()
+
+	case "set-{{ $asrInfo.UnitType }}s":
+		result, err := {{ $input.Pkg}}Client.Set{{ camelCase $asrInfo.UnitType }}s(c.Context, c.FlagId, version, c.flag{{ camelCase $asrInfo.UnitType }}s, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = result.GetResponse()
+		item = result.GetItem()
+		
+	case "remove-{{ $asrInfo.UnitType }}s":
+		result, err := {{ $input.Pkg}}Client.Remove{{ camelCase $asrInfo.UnitType }}s(c.Context, c.FlagId, version, c.flag{{ camelCase $asrInfo.UnitType }}s, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
+		resp = result.GetResponse()
+		item = result.GetItem()
 	{{ end }}
 	{{ end }}
 	}

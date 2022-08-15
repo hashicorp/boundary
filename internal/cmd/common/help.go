@@ -24,22 +24,23 @@ func SynopsisFunc(inFunc, resType string) string {
 	return wordwrap.WrapString(fmt.Sprintf("%s %s", textproto.CanonicalMIMEHeaderKey(inFunc), articleType), base.TermWidth)
 }
 
+var prefixMap = map[string]string{
+	resource.Scope.String():       "o",
+	resource.AuthToken.String():   "at",
+	resource.AuthMethod.String():  "am",
+	resource.Account.String():     "a",
+	resource.Role.String():        "r",
+	resource.Group.String():       "g",
+	resource.User.String():        "u",
+	resource.HostCatalog.String(): "hc",
+	resource.HostSet.String():     "hs",
+	resource.Host.String():        "h",
+	resource.Session.String():     "s",
+	resource.Target.String():      "t",
+	resource.Worker.String():      "w",
+}
+
 func HelpMap(resType string) map[string]func() string {
-	prefixMap := map[string]string{
-		resource.Scope.String():       "o",
-		resource.AuthToken.String():   "at",
-		resource.AuthMethod.String():  "am",
-		resource.Account.String():     "a",
-		resource.Role.String():        "r",
-		resource.Group.String():       "g",
-		resource.User.String():        "u",
-		resource.HostCatalog.String(): "hc",
-		resource.HostSet.String():     "hs",
-		resource.Host.String():        "h",
-		resource.Session.String():     "s",
-		resource.Target.String():      "t",
-		resource.Worker.String():      "w",
-	}
 	return map[string]func() string{
 		"base": func() string {
 			return base.WrapForHelpText(subtype([]string{
@@ -115,6 +116,50 @@ func HelpMap(resType string) map[string]func() string {
 			}, resType, prefixMap))
 		},
 	}
+}
+
+func addSetRemoveActionText(fn, unit, textExample string) string {
+	switch fn {
+	case "add":
+		return fmt.Sprintf("Add %ss %sto", unit, textExample)
+	case "set":
+		return fmt.Sprintf("Set the full contents of %ss %son", unit, textExample)
+	case "remove":
+		return fmt.Sprintf("Remove %ss %sfrom", unit, textExample)
+	}
+	return "Unknown"
+}
+
+func HelpAddSetRemoveMap(resType, unit, cmdExample, textExample string) map[string]func() string {
+	ret := map[string]func() string{}
+	for _, outerAction := range []string{"add", "set", "remove"} {
+		action := outerAction // Bind it locally or it gets overwritten in the end
+		ret[fmt.Sprintf("%s-%ss", action, unit)] = func() string {
+			actionText := addSetRemoveActionText(action, unit, textExample)
+			return base.WrapForHelpText(subtype([]string{
+				fmt.Sprintf("Usage: boundary {{hyphentype}}s %s-%ss [options] [args]", action, unit),
+				"",
+				fmt.Sprintf(`  %s a %s given its ID. The "%s" flag can be specified multiple times. Example:`, actionText, resType, unit),
+				"",
+				fmt.Sprintf(`    $ boundary {{hyphentype}}s %s-%ss -id {{prefix}}_1234567890 -%s %s`, action, unit, unit, cmdExample),
+				"",
+				"",
+			}, resType, prefixMap))
+		}
+	}
+	return ret
+}
+
+func SynopsisAddSetRemoveFunc(resType, unit, textExample string) map[string]func() string {
+	ret := map[string]func() string{}
+	for _, outerAction := range []string{"add", "set", "remove"} {
+		action := outerAction // Bind it locally or it gets overwritten in the end
+		ret[fmt.Sprintf("%s-%ss", action, unit)] = func() string {
+			actionText := addSetRemoveActionText(action, unit, textExample)
+			return wordwrap.WrapString(fmt.Sprintf("%s a %s", actionText, resType), base.TermWidth)
+		}
+	}
+	return ret
 }
 
 func subtype(in []string, resType string, prefixMap map[string]string) []string {
