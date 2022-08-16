@@ -14,9 +14,9 @@ import (
 )
 
 func TestStatsHandler(t *testing.T) {
-	bkpLatency := gRpcRequestLatency
+	bkpLatency := grpcRequestLatency
 	defer func() {
-		gRpcRequestLatency = bkpLatency
+		grpcRequestLatency = bkpLatency
 	}()
 
 	handler := InstrumentClusterStatsHandler()
@@ -38,9 +38,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "OK",
-				labelGRpcMethod:  "method",
-				labelGRpcService: "some.service.path",
+				grpcLabels.Code:    "OK",
+				grpcLabels.Method:  "method",
+				grpcLabels.Service: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -68,9 +68,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "OK",
-				labelGRpcMethod:  "method",
-				labelGRpcService: "some.service.path",
+				grpcLabels.Code:    "OK",
+				grpcLabels.Method:  "method",
+				grpcLabels.Service: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -84,9 +84,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "OK",
-				labelGRpcMethod:  "unknown",
-				labelGRpcService: "unknown",
+				grpcLabels.Code:    "OK",
+				grpcLabels.Method:  "unknown",
+				grpcLabels.Service: "unknown",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -101,9 +101,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "Canceled",
-				labelGRpcMethod:  "method",
-				labelGRpcService: "some.service.path",
+				grpcLabels.Code:    "Canceled",
+				grpcLabels.Method:  "method",
+				grpcLabels.Service: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -118,9 +118,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "InvalidArgument",
-				labelGRpcMethod:  "method",
-				labelGRpcService: "some.service.path",
+				grpcLabels.Code:    "InvalidArgument",
+				grpcLabels.Method:  "method",
+				grpcLabels.Service: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -128,7 +128,7 @@ func TestStatsHandler(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			testableLatency := &testableObserverVec{}
-			gRpcRequestLatency = testableLatency
+			handler.Metric = testableLatency
 
 			ctx := context.Background()
 			ctx = handler.TagRPC(ctx, &stats.RPCTagInfo{

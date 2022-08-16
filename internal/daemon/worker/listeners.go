@@ -183,14 +183,8 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 			return nil, err
 		}
 	}
-<<<<<<< HEAD
-	multihop.RegisterMultihopServiceServer(downstreamServer, multihopService)
+
 	metric.InitializeClusterServerCollectors(w.conf.PrometheusRegisterer, downstreamServer)
-	statusSessionService := NewWorkerProxyServiceServer(w.GrpcClientConn, w.controllerStatusConn)
-	pbs.RegisterServerCoordinationServiceServer(downstreamServer, statusSessionService)
-	pbs.RegisterSessionServiceServer(downstreamServer, statusSessionService)
-=======
->>>>>>> main
 
 	ln.GrpcServer = downstreamServer
 
