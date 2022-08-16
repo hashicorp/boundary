@@ -29,8 +29,8 @@ variable "health_check_port" {
   default = 9200
 }
 
-variable "heath_check_path" {
+variable "health_check_path" {
   description = "The path (e.g. \"boundary\" to use for connecting to Boundary for a healthcheck"
-  type = number
+  type = string
   default = "/boundary"
 }
