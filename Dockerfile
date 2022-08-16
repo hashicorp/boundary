@@ -88,21 +88,21 @@ ARG BIN_NAME
 # NAME and VERSION are the name of the software in releases.hashicorp.com
 # and the version to download. Example: NAME=boundary VERSION=1.2.3.
 ARG NAME=boundary
-ARG VERSION
+ARG PRODUCT_VERSION
 # TARGETARCH and TARGETOS are set automatically when --platform is provided.
 ARG TARGETOS TARGETARCH
 
 LABEL name="Boundary" \
       maintainer="HashiCorp Boundary Team <boundary@hashicorp.com>" \
       vendor="HashiCorp" \
-      version=$VERSION \
-      release=$VERSION \
+      version=$PRODUCT_VERSION \
+      release=$PRODUCT_VERSION \
       summary="Boundary provides simple and secure access to hosts and services" \
       description="The Boundary Docker image is designed to enable practitioners to run Boundary in server mode on a container scheduler"
 
 # Set ARGs as ENV so that they can be used in ENTRYPOINT/CMD
 ENV NAME=$NAME
-ENV VERSION=$VERSION
+ENV VERSION=$PRODUCT_VERSION
 
 # Create a non-root user to run the software.
 RUN addgroup ${NAME} && adduser -s /bin/sh -S -G ${NAME} ${NAME}
