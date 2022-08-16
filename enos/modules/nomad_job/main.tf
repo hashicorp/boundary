@@ -12,6 +12,7 @@ terraform {
 locals {
   controller_job_spec_path = "/tmp/controller.nomad"
   init_job_spec_path       = "/tmp/init.nomad"
+  traefik_job_spec_path = "/tmp/traefik.nomad"
 }
 
 resource "enos_file" "boundary_controller_job" {
@@ -30,6 +31,19 @@ resource "enos_file" "boundary_controller_job" {
 resource "enos_file" "boundary_init_job" {
   source      = abspath("${path.module}/configs/init.nomad")
   destination = local.init_job_spec_path
+
+  transport = {
+    ssh = {
+      user             = "ubuntu"
+      host             = var.nomad_instances[0]
+      private_key_path = var.private_key_path
+    }
+  }
+}
+
+resource "enos_file" "traefik_job" {
+  source      = abspath("${path.module}/configs/traefik.nomad")
+  destination = local.traefik_job_spec_path
 
   transport = {
     ssh = {
@@ -84,5 +98,24 @@ resource "enos_remote_exec" "controller_job" {
   depends_on = [
     enos_remote_exec.init_job,
     enos_file.boundary_controller_job
+  ]
+}
+
+resource "enos_remote_exec" "traefik_job" {
+  environment = {
+    JOB_PATH = local.traefik_job_spec_path
+  }
+
+  scripts = [abspath("${path.module}/scripts/deploy-job.sh")]
+  
+  transport = {
+    ssh = {
+      host = var.nomad_instances[0]
+    }
+  }
+
+  depends_on = [
+    enos_remote_exec.init_job,
+    enos_remote_exec.controller_job
   ]
 }

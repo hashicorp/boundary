@@ -74,8 +74,13 @@ job "controller" {
       }
 
       service {
-        tags = ["boundary"]
-
+        name = "boundary-controller"
+        port = "api"
+        provider = "consul"
+        tags = [
+          "traefik.enable=true",
+          "traefik.http.routers.http.rule=Path(`/boundary`)",
+        ]
       }
     }
   }

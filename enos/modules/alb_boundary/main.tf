@@ -55,10 +55,10 @@ resource "aws_lb_target_group" "boundary_clients" {
 
   # TODO: what should the health check be?
   health_check {
-    port = local.boundary_port
-    path = "/"
+    port = var.health_check_port
+    path = var.health_check_path
     # Mark healthy if redirected
-    matcher = "200,301,302"
+    matcher = "200"
   }
 
   tags = {

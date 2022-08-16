@@ -22,3 +22,15 @@ variable "cluster_name" {
   description = "The unique Name tag of the cluster that the ALB will forward to"
   type        = string
 }
+
+variable "health_check_port" {
+  description = "The port to use for connecting to Boundary for a healthcheck"
+  type = number
+  default = 9200
+}
+
+variable "heath_check_path" {
+  description = "The path (e.g. \"boundary\" to use for connecting to Boundary for a healthcheck"
+  type = number
+  default = "/boundary"
+}
