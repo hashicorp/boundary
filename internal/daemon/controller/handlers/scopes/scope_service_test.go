@@ -1727,3 +1727,137 @@ func TestListKeys(t *testing.T) {
 		})
 	}
 }
+
+func TestRotateKeys(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	aToken := tc.Token()
+	uToken := tc.UnprivilegedToken()
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return tc.IamRepo(), nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return tc.ServersRepo(), nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return tc.AuthTokenRepo(), nil
+	}
+
+	privCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       aToken.Id,
+			EncryptedToken: strings.Split(aToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	unprivCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       uToken.Id,
+			EncryptedToken: strings.Split(uToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	org, proj := iam.TestScopes(t, tc.IamRepo())
+
+	org.Name = "defaultOrg"
+	org.Description = "defaultOrg"
+	org, _, err := tc.IamRepo().UpdateScope(context.Background(), org, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing+rotating keys in org
+	rotateKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), rotateKeysRole.PublicId, 1, []string{"id=*;type=*;actions=rotate-keys,list-keys"})
+	require.NoError(t, err)
+	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), rotateKeysRole.PublicId, 2, []string{aToken.UserId})
+	require.NoError(t, err)
+
+	proj.Name = "defaultProj"
+	proj.Description = "defaultProj"
+	proj, _, err = tc.IamRepo().UpdateScope(context.Background(), proj, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing+rotating keys in project
+	rotateKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), rotateKeysRole.PublicId, 1, []string{"id=*;type=*;actions=rotate-keys,list-keys"})
+	require.NoError(t, err)
+	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), rotateKeysRole.PublicId, 2, []string{aToken.UserId})
+	require.NoError(t, err)
+
+	cases := []struct {
+		name    string
+		req     *pbs.RotateKeysRequest
+		res     *pbs.RotateKeysResponse
+		authCtx context.Context
+		err     error
+	}{
+		{
+			name:    "unauthorized",
+			req:     &pbs.RotateKeysRequest{Id: "global", Rewrap: false},
+			err:     handlers.ApiErrorWithCode(codes.PermissionDenied),
+			authCtx: unprivCtx,
+		},
+		{
+			name:    "Rotate keys in a non existing org",
+			req:     &pbs.RotateKeysRequest{Id: "o_DoesntExis", Rewrap: false},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name:    "successfully Rotate keys in org",
+			req:     &pbs.RotateKeysRequest{Id: org.GetPublicId(), Rewrap: false},
+			authCtx: privCtx,
+		},
+		{
+			name:    "successfully Rotate keys in project",
+			req:     &pbs.RotateKeysRequest{Id: proj.GetPublicId(), Rewrap: true},
+			authCtx: privCtx,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := scopes.NewService(iamRepoFn, tc.Kms())
+			require.NoError(err, "Couldn't create new project service.")
+
+			// RotateKeys returns nocontent response
+			_, kErr := s.RotateKeys(tt.authCtx, tt.req)
+
+			if tt.err != nil {
+				require.Error(kErr)
+				assert.True(errors.Is(kErr, tt.err), "RotateKeys(%+v) got error\n%v, wanted\n%v", tt.req, kErr, tt.err)
+			} else {
+				require.NoError(kErr)
+				keys, gErr := s.ListKeys(privCtx, &pbs.ListKeysRequest{Id: tt.req.Id})
+				require.NoError(gErr)
+
+				keyVersions := map[uint32]int{}
+
+				for _, key := range keys.Items {
+					_, ok := keyVersions[key.Version]
+					if !ok {
+						keyVersions[key.Version] = 0
+					}
+					keyVersions[key.Version]++
+				}
+
+				// there should only be key versions 1 and 2
+				assert.True(len(keyVersions) == 2)
+				// since we just rotated them, there should be the same number of version 1 and version 2
+				assert.True(keyVersions[2] == keyVersions[1])
+			}
+		})
+	}
+}
