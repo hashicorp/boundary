@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"golang.org/x/exp/slices"
 )
 
 // Kms is a way to access wrappers for a given scope and purpose. Since keys can
@@ -285,23 +286,56 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 
 // QueueKeyRevocation revokes a key in the scope.
 // Options are ignored.
-func (k *Kms) QueueKeyRevocation(ctx context.Context, scopeId string, keyId string, _ ...Option) error {
+func (k *Kms) QueueKeyRevocation(ctx context.Context, scopeId string, keyId string, _ ...Option) (wrappingKms.Key, error) {
 	const op = "kms.(Kms).QueueKeyRevocation"
 
 	scopeKeys, err := k.underlying.ListKeys(ctx, scopeId)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return wrappingKms.Key{}, errors.Wrap(ctx, err, op)
 	}
+	// Build a map from purpose to slice of keys ordered by version.
+	// This will be used later to determine when if and when our key
+	// became inactive.
+	purposeToKeys := map[wrappingKms.KeyPurpose][]wrappingKms.Key{}
+	keySearchFn := func(i, j wrappingKms.Key) int {
+		if i.Version == j.Version {
+			return 0
+		}
+		if i.Version < j.Version {
+			return -1
+		}
+		return 1
+	}
+	foundKey := wrappingKms.Key{}
 	found := false
 	for _, key := range scopeKeys {
+		// The keys will hopefully come back in version order from the database,
+		// but lets not assume anything.
+		purposeKeys := purposeToKeys[key.Purpose]
+		index, _ := slices.BinarySearchFunc(purposeKeys, key, keySearchFn)
+		purposeKeys = slices.Insert(purposeKeys, index, key)
+		purposeToKeys[key.Purpose] = purposeKeys
+
 		if key.Id == keyId {
+			foundKey = key
 			found = true
-			break
 		}
 	}
 	if !found {
-		return errors.New(ctx, errors.KeyNotFound, op, "key was not found in the scope")
+		return wrappingKms.Key{}, errors.New(ctx, errors.KeyNotFound, op, "key was not found in the scope")
 	}
+	keysByPurpose := purposeToKeys[foundKey.Purpose]
+	if keysByPurpose[len(keysByPurpose)-1].Id == foundKey.Id {
+		// Attempted to revoke currently active key
+		return wrappingKms.Key{}, errors.New(ctx, errors.KeyActive, op, "cannot revoke a currently active key")
+	}
+	index, ok := slices.BinarySearchFunc(keysByPurpose, foundKey, keySearchFn)
+	if !ok {
+		// This should be impossible, we inserted this key in the loop above
+		return wrappingKms.Key{}, errors.New(ctx, errors.Internal, op, "key was not found in list of keys")
+	}
+	// Our key became inactive the moment the next key version was created
+	keyInactivetime := keysByPurpose[index+1].CreateTime
 
 	_, err = k.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
@@ -319,13 +353,22 @@ func (k *Kms) QueueKeyRevocation(ctx context.Context, scopeId string, keyId stri
 			if err != nil {
 				errors.Wrap(ctx, err, op)
 			}
-			if _, err := w.Exec(ctx, "insert into kms_key_revocation(private_id, key_id, status) values (?, ?, ?)", []interface{}{privateId, keyId, KeyRevocationStatusPending.String()}); err != nil {
+			if _, err := w.Exec(
+				ctx,
+				"insert into kms_key_revocation(private_id, key_id, status, create_time, inactive_time) values (?, ?, ?, ?, ?)",
+				[]interface{}{
+					privateId,
+					keyId,
+					KeyRevocationStatusPending.String(),
+					foundKey.CreateTime,
+					keyInactivetime,
+				}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
 	)
-	return err
+	return foundKey, err
 }
 
 // RunKeyRevocation revokes a key in the scope. This may be a long running operation
@@ -346,7 +389,7 @@ func (k *Kms) RunKeyRevocation(ctx context.Context, keyRevocation *KeyRevocation
 					// If the operation failed, set the status to failed.
 					status = KeyRevocationStatusFailed
 				}
-				if _, err := w.Exec(failedCtx, "update kms_key_revocation set status=?, end_time=current_timestamp where private_id=?", []interface{}{status.String(), keyRevocation.PrivateId}); err != nil {
+				if _, err := w.Exec(failedCtx, "update kms_key_revocation set status=?, revocation_end_time=current_timestamp where private_id=?", []interface{}{status.String(), keyRevocation.PrivateId}); err != nil {
 					return err
 				}
 				return nil

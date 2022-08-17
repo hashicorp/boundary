@@ -23,16 +23,18 @@ begin;
 
   create table kms_key_revocation (
     private_id wt_private_id primary key,
-    key_id wt_private_id not null,
-    create_time wt_timestamp not null,
+    key_id wt_private_id not null, 
+    create_time wt_timestamp not null default null, -- When the key was created
+    inactive_time wt_timestamp not null default null, -- When the key was rotated
+    revocation_start_time wt_timestamp not null, -- When the key was queued for revocation
+    revocation_end_time wt_timestamp null default null, -- When the revocation ended, successfully or not.
     status text not null
-      references kms_key_revocation_status_enm(name),
-    end_time wt_timestamp null default null
+      references kms_key_revocation_status_enm(name)
   );
   comment on table kms_key_revocation is
     'Table holding historical, current and pending key revocations';
 
   create trigger immutable_columns before update on kms_key_revocation
-    for each row execute procedure immutable_columns('private_id', 'key_id', 'create_time');
+    for each row execute procedure immutable_columns('private_id', 'key_id', 'create_time', 'inactive_time', 'revocation_start_time');
   
 commit;

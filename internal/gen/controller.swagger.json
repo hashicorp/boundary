@@ -5160,13 +5160,25 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this key revocation was created.",
+          "description": "Output only. The time this key was created.",
           "readOnly": true
         },
-        "end_time": {
+        "inactive_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this key revocation ended.",
+          "description": "Output only. The time this key was rotated and became inactive.",
+          "readOnly": true
+        },
+        "revocation_start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this key revocation was queued.",
+          "readOnly": true
+        },
+        "revocation_end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this key revocation finished.",
           "readOnly": true
         }
       }
@@ -6763,7 +6775,12 @@
       }
     },
     "controller.api.services.v1.RevokeKeyResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.Key"
+        }
+      }
     },
     "controller.api.services.v1.RotateKeysRequest": {
       "type": "object",

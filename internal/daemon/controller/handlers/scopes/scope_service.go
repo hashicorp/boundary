@@ -394,7 +394,7 @@ func (s Service) ListKeys(ctx context.Context, req *pbs.ListKeysRequest) (*pbs.L
 		Type: resource.Scope,
 	}
 	for _, item := range items {
-		res.Id = item.Id
+		res.Id = item.Scope
 		res.ScopeId = item.Scope
 
 		outputFields := authResults.FetchOutputFields(res, action.ListScopeKeys).SelfOrDefaults(authResults.UserId)
@@ -449,14 +449,42 @@ func (s Service) RevokeKey(ctx context.Context, req *pbs.RevokeKeyRequest) (*pbs
 		return nil, authResults.Error
 	}
 
-	if err := s.kmsRepo.QueueKeyRevocation(ctx, req.Id, req.KeyId); err != nil {
+	key, err := s.kmsRepo.QueueKeyRevocation(ctx, req.Id, req.KeyId)
+	if err != nil {
 		if errors.Match(errors.T(errors.KeyNotFound), err) {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "key not found in scope")
+		}
+		if errors.Match(errors.T(errors.KeyActive), err) {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "an active key cannot be revoked, rotate keys first")
+		}
+		if errors.Match(errors.T(errors.KeyAlreadyRevoked), err) {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "key was already revoked")
 		}
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke key"))
 	}
 
-	return &pbs.RevokeKeyResponse{}, nil
+	res := perms.Resource{
+		Type: resource.Scope,
+	}
+
+	res.Id = key.Scope
+	res.ScopeId = key.Scope
+
+	outputFields := authResults.FetchOutputFields(res, action.RevokeScopeKey).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+
+	protoKey, err := keyToProto(ctx, key, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.RevokeKeyResponse{
+		Item: protoKey,
+	}, nil
 }
 
 // ListKeyRevocations implements the interface pbs.ScopeServiceServer.
@@ -813,8 +841,14 @@ func keyRevocationToProto(ctx context.Context, in *kms.KeyRevocation, opt ...han
 	if outputFields.Has(globals.CreatedTimeField) {
 		out.CreatedTime = in.CreateTime.Timestamp
 	}
-	if outputFields.Has(globals.EndTimeField) && in.EndTime != nil {
-		out.EndTime = in.EndTime.Timestamp
+	if outputFields.Has(globals.InactiveTimeField) && in.InactiveTime != nil {
+		out.InactiveTime = in.InactiveTime.Timestamp
+	}
+	if outputFields.Has(globals.RevocationStartTimeField) && in.RevocationStartTime != nil {
+		out.RevocationStartTime = in.RevocationStartTime.Timestamp
+	}
+	if outputFields.Has(globals.RevocationEndTimeField) && in.RevocationEndTime != nil {
+		out.RevocationEndTime = in.RevocationEndTime.Timestamp
 	}
 
 	return &out, nil

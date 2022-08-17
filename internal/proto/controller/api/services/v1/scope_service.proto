@@ -200,7 +200,9 @@ message RevokeKeyRequest {
   string key_id = 2;
 }
 
-message RevokeKeyResponse {}
+message RevokeKeyResponse {
+  resources.scopes.v1.Key item = 1;
+}
 
 message ListKeyRevocationsRequest {}
 

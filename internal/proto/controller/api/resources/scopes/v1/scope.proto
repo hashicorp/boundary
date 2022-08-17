@@ -127,9 +127,15 @@ message KeyRevocation {
   // Output only. The current status of the key revocation.
   KeyRevocationStatus status = 20; // @gotags: `class:"public"`
 
-  // Output only. The time this key revocation was created.
+  // Output only. The time this key was created.
   google.protobuf.Timestamp created_time = 30 [json_name = "created_time"]; // @gotags: `class:"public"`
 
-  // Output only. The time this key revocation ended.
-  google.protobuf.Timestamp end_time = 40 [json_name = "end_time"]; // @gotags: `class:"public"`
+  // Output only. The time this key was rotated and became inactive.
+  google.protobuf.Timestamp inactive_time = 40 [json_name = "inactive_time"]; // @gotags: `class:"public"`
+
+  // Output only. The time this key revocation was queued.
+  google.protobuf.Timestamp revocation_start_time = 50 [json_name = "revocation_start_time"]; // @gotags: `class:"public"`
+
+  // Output only. The time this key revocation finished.
+  google.protobuf.Timestamp revocation_end_time = 60 [json_name = "revocation_end_time"]; // @gotags: `class:"public"`
 }

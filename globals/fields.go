@@ -85,6 +85,8 @@ const (
 	WorkerProvidedConfigurationField            = "worker_provided_configuration"
 	ActiveConnectionCountField                  = "active_connection_count"
 	KeyPurposeField                             = "purpose"
-	EndTimeField                                = "end_time"
+	InactiveTimeField                           = "inactive_time"
+	RevocationStartTimeField                    = "revocation_start_time"
+	RevocationEndTimeField                      = "revocation_end_time"
 	KeyIdField                                  = "key_id"
 )
