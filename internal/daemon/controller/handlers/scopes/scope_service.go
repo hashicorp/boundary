@@ -28,8 +28,10 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/kms/kmsjob"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -107,12 +109,13 @@ func init() {
 type Service struct {
 	pbs.UnimplementedScopeServiceServer
 
-	repoFn  common.IamRepoFactory
-	kmsRepo *kms.Kms
+	repoFn    common.IamRepoFactory
+	kmsRepo   *kms.Kms
+	scheduler *scheduler.Scheduler
 }
 
 // NewService returns a project service which handles project related requests to boundary.
-func NewService(repo common.IamRepoFactory, kmsRepo *kms.Kms) (Service, error) {
+func NewService(repo common.IamRepoFactory, kmsRepo *kms.Kms, scheduler *scheduler.Scheduler) (Service, error) {
 	const op = "scopes.(Service).NewService"
 	if repo == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
@@ -120,7 +123,10 @@ func NewService(repo common.IamRepoFactory, kmsRepo *kms.Kms) (Service, error) {
 	if kmsRepo == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
-	return Service{repoFn: repo, kmsRepo: kmsRepo}, nil
+	if scheduler == nil {
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing scheduler")
+	}
+	return Service{repoFn: repo, kmsRepo: kmsRepo, scheduler: scheduler}, nil
 }
 
 var _ pbs.ScopeServiceServer = Service{}
@@ -461,6 +467,11 @@ func (s Service) RevokeKey(ctx context.Context, req *pbs.RevokeKeyRequest) (*pbs
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "key was already revoked")
 		}
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to revoke key"))
+	}
+
+	if err := s.scheduler.UpdateJobNextRunInAtLeast(ctx, kmsjob.JobName, 0); err != nil {
+		// Emit event, but this is harmless
+		_ = errors.Wrap(ctx, err, op, errors.WithMsg("failed to update next job run for revoke key job"))
 	}
 
 	res := perms.Resource{

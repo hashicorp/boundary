@@ -286,7 +286,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetScopeRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := scopes.NewService(repoFn, kms)
+			s, err := scopes.NewService(repoFn, kms, nil)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -368,7 +368,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(repoFn, kms)
+			s, err := scopes.NewService(repoFn, kms, nil)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
@@ -482,7 +482,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(repoFn, kms)
+			s, err := scopes.NewService(repoFn, kms, nil)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
@@ -511,7 +511,7 @@ func TestList(t *testing.T) {
 func TestDelete(t *testing.T) {
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(repoFn, kms)
+	s, err := scopes.NewService(repoFn, kms, nil)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	cases := []struct {
@@ -585,7 +585,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(repoFn, kms)
+	s, err := scopes.NewService(repoFn, kms, nil)
 	require.NoError(err, "Error when getting new scopes service")
 	ctx := auth.DisabledAuthTestContext(repoFn, org.GetPublicId())
 	req := &pbs.DeleteScopeRequest{
@@ -793,7 +793,7 @@ func TestCreate(t *testing.T) {
 				req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
 				proto.Merge(req, tc.req)
 
-				s, err := scopes.NewService(repoFn, kms)
+				s, err := scopes.NewService(repoFn, kms, nil)
 				require.NoError(err, "Error when getting new project service.")
 
 				if name != "" {
@@ -868,7 +868,7 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
-	tested, err := scopes.NewService(repoFn, kms)
+	tested, err := scopes.NewService(repoFn, kms, nil)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	iamRepo, err := repoFn()
@@ -1703,7 +1703,7 @@ func TestListKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(iamRepoFn, tc.Kms())
+			s, err := scopes.NewService(iamRepoFn, tc.Kms(), nil)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.ListKeys(tt.authCtx, tt.req)

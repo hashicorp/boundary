@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 )
 
+const JobName = "revoke-key"
+
 type revokeKeyJob struct {
 	kmsRepo *kms.Kms
 
@@ -76,7 +78,7 @@ func (r *revokeKeyJob) NextRunIn(_ context.Context) (time.Duration, error) {
 
 // Name is the unique name of the job.
 func (r *revokeKeyJob) Name() string {
-	return "revoke-key"
+	return JobName
 }
 
 // Description is the human readable description of the job.
