@@ -292,7 +292,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				// "description" since we want description changes for PKI-based
 				// workers to come via API only. We can't really guard on this
 				// in the DB so we need to be sure to not include it here.
-				n, err := w.Update(ctx, workerClone, []string{"address"}, nil)
+				n, err := w.Update(ctx, workerClone, []string{"address", "ReleaseVersion"}, nil)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update status of pki worker"))
 				}
@@ -309,7 +309,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				workerClone.Type = KmsWorkerType.String()
 				workerCreateConflict := &db.OnConflict{
 					Target: db.Columns{"public_id"},
-					Action: append(db.SetColumns([]string{"address"}),
+					Action: append(db.SetColumns([]string{"address", "release_version"}),
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
 				var withRowsAffected int64
