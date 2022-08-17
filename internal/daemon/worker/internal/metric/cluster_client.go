@@ -47,7 +47,7 @@ var grpcServerRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec
 // observations for the collectors associated with gRPC connections
 // between the cluster and its clients.
 func InstrumentClusterClient() grpc.UnaryClientInterceptor {
-	return metric.InstrumentClusterClient(metric.RPCStatsHandler{Metric: grpcRequestLatency, Labels: grpcLabels})
+	return metric.InstrumentClusterClient(metric.StatsHandler{Metric: grpcRequestLatency, Labels: grpcLabels})
 }
 
 // InitializeClusterClientCollectors registers the cluster client metrics to the
@@ -59,8 +59,8 @@ func InitializeClusterClientCollectors(r prometheus.Registerer) {
 
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
 // cluster-specific metrics for a gRPC server.
-func InstrumentClusterStatsHandler() metric.RPCStatsHandler {
-	return metric.RPCStatsHandler{Metric: grpcServerRequestLatency, Labels: grpcLabels}
+func InstrumentClusterStatsHandler() metric.StatsHandler {
+	return metric.StatsHandler{Metric: grpcServerRequestLatency, Labels: grpcLabels}
 }
 
 // InitializeClusterServerCollectors registers the cluster server metrics to the

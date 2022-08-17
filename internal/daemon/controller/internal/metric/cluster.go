@@ -33,8 +33,8 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
 // cluster specific metrics. Use with the cluster gRPC server.
-func InstrumentClusterStatsHandler() metric.RPCStatsHandler {
-	return metric.RPCStatsHandler{Metric: grpcRequestLatency, Labels: grpcLabels}
+func InstrumentClusterStatsHandler() metric.StatsHandler {
+	return metric.StatsHandler{Metric: grpcRequestLatency, Labels: grpcLabels}
 }
 
 // InitializeClusterCollectors registers the cluster metrics to the default

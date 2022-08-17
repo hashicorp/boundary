@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/daemon/metric"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -24,6 +25,10 @@ import (
 var (
 	pathRegex              map[*regexp.Regexp]string
 	expectedPathsToMethods map[string][]string
+)
+
+const (
+	invalidPathValue = "invalid"
 )
 
 func init() {
@@ -110,17 +115,18 @@ func buildRegexFromPath(p string) *regexp.Regexp {
 }
 
 const (
-	invalidPathValue = "invalid"
-
-	labelHttpCode   = "code"
-	labelHttpPath   = "path"
-	labelHttpMethod = "method"
-	apiSubSystem    = "controller_api"
+	apiSubSystem = "controller_api"
 )
 
 var (
 	// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
 	msgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 8)
+
+	httpLabels = metric.LabelNames{
+		Service: "path",
+		Method:  "method",
+		Code:    "code",
+	}
 
 	// httpRequestLatency collects measurements of how long it takes
 	// the boundary system to reply to a request to the controller api
@@ -133,7 +139,7 @@ var (
 			Help:      "Histogram of latencies for HTTP requests.",
 			Buckets:   prometheus.DefBuckets,
 		},
-		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
+		httpLabels.ToList(),
 	)
 
 	// httpRequestSize collections measurements of how large each request
@@ -146,7 +152,7 @@ var (
 			Help:      "Histogram of request sizes for HTTP requests.",
 			Buckets:   msgSizeBuckets,
 		},
-		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
+		httpLabels.ToList(),
 	)
 
 	// httpRequestSize collections measurements of how large each response
@@ -159,7 +165,7 @@ var (
 			Help:      "Histogram of response sizes for HTTP responses.",
 			Buckets:   msgSizeBuckets,
 		},
-		[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
+		httpLabels.ToList(),
 	)
 )
 
@@ -223,7 +229,7 @@ func pathLabel(incomingPath string) string {
 func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
-			labelHttpPath: pathLabel(req.URL.Path),
+			httpLabels.Method: pathLabel(req.URL.Path),
 		}
 		promhttp.InstrumentHandlerDuration(
 			httpRequestLatency.MustCurryWith(l),
@@ -250,7 +256,7 @@ func InitializeApiCollectors(r prometheus.Registerer) {
 	for p, methods := range expectedPathsToMethods {
 		for _, m := range methods {
 			for _, sc := range expectedStatusCodesPerMethod[m] {
-				l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(m)}
+				l := httpLabels.ToPromLabels(strconv.Itoa(sc), p, strings.ToLower(m))
 				httpResponseSize.With(l)
 				httpRequestSize.With(l)
 				httpRequestLatency.With(l)
@@ -263,7 +269,7 @@ func InitializeApiCollectors(r prometheus.Registerer) {
 	p := invalidPathValue
 	for m := range expectedStatusCodesPerMethod {
 		for _, sc := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
-			l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(m)}
+			l := httpLabels.ToPromLabels(strconv.Itoa(sc), p, strings.ToLower(m))
 			httpResponseSize.With(l)
 			httpRequestSize.With(l)
 			httpRequestLatency.With(l)

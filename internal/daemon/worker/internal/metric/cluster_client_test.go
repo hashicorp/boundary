@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/daemon/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,9 +33,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        nil,
 			wantedLabels: map[string]string{
-				labelGrpcCode:    "OK",
-				labelGrpcMethod:  "method",
-				labelGrpcService: "some.service.path",
+				grpcLabels.Code:    "OK",
+				grpcLabels.Method:  "method",
+				grpcLabels.Service: "some.service.path",
 			},
 		},
 		{
@@ -42,9 +43,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "unrecognized",
 			err:        nil,
 			wantedLabels: map[string]string{
-				labelGrpcCode:    "OK",
-				labelGrpcMethod:  "unknown",
-				labelGrpcService: "unknown",
+				grpcLabels.Code:    "OK",
+				grpcLabels.Method:  "unknown",
+				grpcLabels.Service: "unknown",
 			},
 		},
 		{
@@ -52,9 +53,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        status.Error(codes.Canceled, ""),
 			wantedLabels: map[string]string{
-				labelGrpcCode:    "Canceled",
-				labelGrpcMethod:  "method",
-				labelGrpcService: "some.service.path",
+				grpcLabels.Code:    "Canceled",
+				grpcLabels.Method:  "method",
+				grpcLabels.Service: "some.service.path",
 			},
 		},
 		{
@@ -62,9 +63,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        status.Error(codes.PermissionDenied, ""),
 			wantedLabels: map[string]string{
-				labelGrpcCode:    "PermissionDenied",
-				labelGrpcMethod:  "method",
-				labelGrpcService: "some.service.path",
+				grpcLabels.Code:    "PermissionDenied",
+				grpcLabels.Method:  "method",
+				grpcLabels.Service: "some.service.path",
 			},
 		},
 	}
@@ -74,12 +75,13 @@ func TestRecorder(t *testing.T) {
 			ogReqLatency := grpcRequestLatency
 			defer func() { grpcRequestLatency = ogReqLatency }()
 
+			handler := metric.StatsHandler{Metric: grpcServerRequestLatency, Labels: grpcLabels}
 			testableLatency := &testableObserverVec{}
-			grpcRequestLatency = testableLatency
+			handler.Metric = testableLatency
 
 			start := time.Now()
-			tested := newRequestRecorder(tc.methodName)
-			tested.record(tc.err)
+			tested := metric.NewRequestRecorder(tc.methodName, handler)
+			tested.Record(tc.err)
 
 			require.Len(t, testableLatency.observations, 1)
 			assert.Greater(t, testableLatency.observations[0].observation, float64(0))
