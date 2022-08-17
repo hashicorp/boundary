@@ -437,19 +437,19 @@ func (s Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*p
 // RevokeKey implements the interface pbs.ScopeServiceServer.
 func (s Service) RevokeKey(ctx context.Context, req *pbs.RevokeKeyRequest) (*pbs.RevokeKeyResponse, error) {
 	const op = "scopes.(Service).RevokeKey"
-	if req.GetId() == "" {
-		req.Id = scope.Global.String()
+	if req.GetScopeId() == "" {
+		req.ScopeId = scope.Global.String()
 	}
 	if err := validateRevokeKeyRequest(req); err != nil {
 		return nil, err
 	}
 
-	authResults := s.authResult(ctx, req.GetId(), action.RevokeScopeKey)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.RevokeScopeKey)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
 
-	key, err := s.kmsRepo.QueueKeyRevocation(ctx, req.Id, req.KeyId)
+	key, err := s.kmsRepo.QueueKeyRevocation(ctx, req.ScopeId, req.KeyId)
 	if err != nil {
 		if errors.Match(errors.T(errors.KeyNotFound), err) {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.NotFound, "key not found in scope")
@@ -1036,8 +1036,8 @@ func validateRotateKeysRequest(req *pbs.RotateKeysRequest) error {
 
 func validateRevokeKeyRequest(req *pbs.RevokeKeyRequest) error {
 	badFields := map[string]string{}
-	if req.GetId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetId()), scope.Project.Prefix()) {
-		badFields["id"] = "Must be 'global', a valid org scope id or a valid project scope id when revoking a key."
+	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) {
+		badFields["scope_id"] = "Must be 'global', a valid org scope id or a valid project scope id when revoking a key."
 	}
 	if !handlers.ValidId(handlers.Id(req.GetKeyId()), "kdkv", "krkv") {
 		badFields["key_id"] = "Must be a valid root key or data key id."

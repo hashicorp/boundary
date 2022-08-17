@@ -6766,7 +6766,7 @@
     "controller.api.services.v1.RevokeKeyRequest": {
       "type": "object",
       "properties": {
-        "id": {
+        "scope_id": {
           "type": "string"
         },
         "key_id": {
