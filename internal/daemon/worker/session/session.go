@@ -159,7 +159,6 @@ func (s *sess) ApplySessionUpdate(r *pbs.LookupSessionResponse, st pbs.SESSIONST
 	defer s.lock.Unlock()
 	s.resp = r
 	s.status = st
-	s.sessionId = s.resp.GetAuthorization().GetSessionId()
 }
 
 func (s *sess) ApplyLocalStatus(st pbs.SESSIONSTATUS) {
@@ -233,7 +232,6 @@ func (s *sess) GetPrivateKey() []byte {
 
 func (s *sess) GetId() string {
 	return s.sessionId
-	//return s.resp.GetAuthorization().GetSessionId()
 }
 
 func (s *sess) RequestCancel(ctx context.Context) error {
