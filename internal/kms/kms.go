@@ -324,6 +324,9 @@ func (k *Kms) QueueKeyRevocation(ctx context.Context, scopeId string, keyId stri
 	if !found {
 		return wrappingKms.Key{}, errors.New(ctx, errors.KeyNotFound, op, "key was not found in the scope")
 	}
+	if foundKey.Purpose == wrappingKms.KeyPurpose(KeyPurposeOplog.String()) {
+		return wrappingKms.Key{}, errors.New(ctx, errors.InvalidParameter, op, "oplog keys cannot be revoked")
+	}
 	keysByPurpose := purposeToKeys[foundKey.Purpose]
 	if keysByPurpose[len(keysByPurpose)-1].Id == foundKey.Id {
 		// Attempted to revoke currently active key
