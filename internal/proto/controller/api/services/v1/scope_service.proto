@@ -107,7 +107,6 @@ service ScopeService {
     option (google.api.http) = {
       post: "/v1/scopes:rotate-keys"
       body: "*"
-      // response_body: "item" // does this need to be here for an empty response?
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Rotate all keys in a Scope."
