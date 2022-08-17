@@ -113,7 +113,7 @@ func (m *manager) LoadLocalSession(ctx context.Context, id string, workerId stri
 	}
 	// Update the response to the latest
 	actualSess := actualSessRaw.(*sess)
-	actualSess.ApplyLocalStatus(s.GetStatus())
+	actualSess.ApplySessionUpdate(s.resp, s.GetStatus())
 	return actualSess, nil
 }
 

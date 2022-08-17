@@ -107,6 +107,7 @@ type sess struct {
 	resp        *pbs.LookupSessionResponse
 	status      pbs.SESSIONSTATUS
 	cert        *x509.Certificate
+	sessionId   string
 }
 
 func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (*sess, error) {
@@ -128,6 +129,7 @@ func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (
 		resp:        resp,
 		status:      resp.GetStatus(),
 		cert:        parsedCert,
+		sessionId:   resp.GetAuthorization().GetSessionId(),
 	}
 	return s, nil
 }
@@ -152,6 +154,14 @@ func (s *sess) ApplyLocalConnectionStatus(connId string, status pbs.CONNECTIONST
 	return nil
 }
 
+func (s *sess) ApplySessionUpdate(r *pbs.LookupSessionResponse, st pbs.SESSIONSTATUS) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.resp = r
+	s.status = st
+	s.sessionId = s.resp.GetAuthorization().GetSessionId()
+}
+
 func (s *sess) ApplyLocalStatus(st pbs.SESSIONSTATUS) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -174,18 +184,26 @@ func (s *sess) GetLocalConnections() map[string]ConnInfo {
 }
 
 func (s *sess) GetTofuToken() string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetTofuToken()
 }
 
 func (s *sess) GetConnectionLimit() int32 {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetConnectionLimit()
 }
 
 func (s *sess) GetEndpoint() string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetEndpoint()
 }
 
 func (s *sess) GetCredentials() []*pbs.Credential {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetCredentials()
 }
 
@@ -196,19 +214,26 @@ func (s *sess) GetStatus() pbs.SESSIONSTATUS {
 }
 
 func (s *sess) GetExpiration() time.Time {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetExpiration().AsTime()
 }
 
 func (s *sess) GetCertificate() *x509.Certificate {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.cert
 }
 
 func (s *sess) GetPrivateKey() []byte {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetAuthorization().GetPrivateKey()
 }
 
 func (s *sess) GetId() string {
-	return s.resp.GetAuthorization().GetSessionId()
+	return s.sessionId
+	//return s.resp.GetAuthorization().GetSessionId()
 }
 
 func (s *sess) RequestCancel(ctx context.Context) error {
