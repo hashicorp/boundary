@@ -229,7 +229,7 @@ func pathLabel(incomingPath string) string {
 func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
-			httpLabels.Method: pathLabel(req.URL.Path),
+			httpLabels.Service: pathLabel(req.URL.Path),
 		}
 		promhttp.InstrumentHandlerDuration(
 			httpRequestLatency.MustCurryWith(l),
