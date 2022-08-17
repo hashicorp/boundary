@@ -76,10 +76,11 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 	opts := getOpts(opt...)
 	return &Worker{
 		Worker: &store.Worker{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			Address:     opts.withAddress,
+			ScopeId:        scopeId,
+			Name:           opts.withName,
+			Description:    opts.withDescription,
+			Address:        opts.withAddress,
+			ReleaseVersion: opts.withReleaseVersion,
 		},
 		inputTags: opts.withWorkerTags,
 	}

@@ -260,7 +260,9 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	t.Run("create an initial kms worker and update status", func(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("address"), server.WithName("config_name1"),
-			server.WithDescription("kms_description1"))
+			server.WithDescription("kms_description1"),
+			server.WithReleaseVersion("test-version"),
+		)
 		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
 		require.NoError(t, err)
 
@@ -290,7 +292,8 @@ func TestUpsertWorkerStatus(t *testing.T) {
 
 	t.Run("update status for pki worker", func(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
-			server.WithAddress("pki_address"), server.WithDescription("pki_description2"))
+			server.WithAddress("pki_address"), server.WithDescription("pki_description2"),
+			server.WithReleaseVersion("test-version"))
 		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, server.WithKeyId(pkiWorkerKeyId))
 		require.NoError(t, err)
 

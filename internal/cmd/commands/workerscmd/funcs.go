@@ -84,6 +84,11 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 				fmt.Sprintf("    Address:                 %s", item.Address),
 			)
 		}
+		if item.ReleaseVersion != "" {
+			output = append(output,
+				fmt.Sprintf("    ReleaseVersion:                 %s", item.ReleaseVersion),
+			)
+		}
 		if !item.LastStatusTime.IsZero() {
 			output = append(output,
 				fmt.Sprintf("    Last Status Time:        %s", item.LastStatusTime.Format(time.RFC1123)),
@@ -126,6 +131,9 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 	}
 	if item.Address != "" {
 		nonAttributeMap["Address"] = item.Address
+	}
+	if item.ReleaseVersion != "" {
+		nonAttributeMap["ReleaseVersion"] = item.ReleaseVersion
 	}
 	if !item.LastStatusTime.IsZero() {
 		nonAttributeMap["Last Status Time"] = item.LastStatusTime
