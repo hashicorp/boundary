@@ -91,7 +91,7 @@ message Certificate {
   string id = 10; // @gotags: `class:"public"`
 
   // Output only. The public key of the cert authority
-  bytes public_key_sha256 = 20; // @gotags: `class:"public"`
+  string public_key_sha256 = 20; // @gotags: `class:"public"`
 
   // Output only. The time before which this CA is invalid
   google.protobuf.Timestamp not_before_time = 30; // @gotags: `class:"public"`

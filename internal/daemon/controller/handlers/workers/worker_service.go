@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -691,7 +692,7 @@ func certificateAuthorityToProto(in *types.RootCertificates) *pb.CertificateAuth
 	currentSha := sha256.Sum256(current.PublicKeyPkix)
 	currentCert := &pb.Certificate{
 		Id:              current.Id,
-		PublicKeySha256: currentSha[:],
+		PublicKeySha256: hex.EncodeToString(currentSha[:]),
 		NotBeforeTime:   current.NotBefore,
 		NotAfterTime:    current.NotAfter,
 	}
@@ -701,7 +702,7 @@ func certificateAuthorityToProto(in *types.RootCertificates) *pb.CertificateAuth
 	nextSha := sha256.Sum256(next.PublicKeyPkix)
 	nextCert := &pb.Certificate{
 		Id:              next.Id,
-		PublicKeySha256: nextSha[:],
+		PublicKeySha256: hex.EncodeToString(nextSha[:]),
 		NotBeforeTime:   next.NotBefore,
 		NotAfterTime:    next.NotAfter,
 	}

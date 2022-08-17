@@ -5771,7 +5771,6 @@
         },
         "public_key_sha256": {
           "type": "string",
-          "format": "byte",
           "title": "Output only. The public key of the cert authority",
           "readOnly": true
         },
