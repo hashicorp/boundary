@@ -39,6 +39,26 @@ import (
 
 type randFn func(length int) (string, error)
 
+// downstreamRouter defines a min interface which must be met by a
+// Worker.downstreamRoutes field
+type downstreamRouter interface {
+	// StartRouteMgmtTicking starts a ticker which manages the router's
+	// connections.
+	StartRouteMgmtTicking(context.Context, func() string, int) error
+}
+
+// downstreamers provides at least a minimum interface that must be met by a
+// Worker.downstreamWorkers field which is far better than allowing any (empty
+// interface)
+type downstreamers interface {
+	// Root returns the root of the downstreamers' graph
+	Root() string
+}
+
+// downstreamRouterFactory provides a simple factory which a Worker can use to
+// create its downstreamRouter
+var downstreamRouterFactory func() downstreamRouter
+
 const (
 	authenticationStatusNeverAuthenticated uint32 = iota
 	authenticationStatusFirstAuthentication
@@ -91,6 +111,10 @@ type Worker struct {
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
 
+	// downstream workers and routes to those workers
+	downstreamWorkers downstreamers
+	downstreamRoutes  downstreamRouter
+
 	// Test-specific options (and possibly hidden dev-mode flags)
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
@@ -115,6 +139,10 @@ func New(conf *Config) (*Worker, error) {
 		updateTags:             ua.NewBool(false),
 		nonceFn:                base62.Random,
 		WorkerAuthCurrentKeyId: new(ua.String),
+	}
+
+	if downstreamRouterFactory != nil {
+		w.downstreamRoutes = downstreamRouterFactory()
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
@@ -181,12 +209,6 @@ func (w *Worker) Start() error {
 		event.WriteSysEvent(w.baseContext, op, "already started, skipping")
 		return nil
 	}
-
-	extraAddrReceivers, err := extraAddressReceivers(w.baseContext, w)
-	if err != nil {
-		return errors.Wrap(w.baseContext, err, op)
-	}
-	w.addressReceivers = append(w.addressReceivers, extraAddrReceivers...)
 
 	if w.conf.WorkerAuthKms == nil || w.conf.DevUsePkiForUpstream {
 		// In this section, we look for existing worker credentials. The two
@@ -305,6 +327,7 @@ func (w *Worker) Start() error {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error making controller connections"))
 	}
 
+	var err error
 	w.sessionManager, err = session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
 	if err != nil {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error creating session manager"))
@@ -316,16 +339,33 @@ func (w *Worker) Start() error {
 
 	// Rather than deal with some of the potential error conditions for Add on
 	// the waitgroup vs. Done (in case a function exits immediately), we will
-	// always start rotation and simply exit early if we're using KMS, and
-	// always add 2 here.
-	w.tickerWg.Add(2)
+	// always start rotation and simply exit early if we're using KMS
+	w.tickerWg.Add(3)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext, w.sessionManager, w.addressReceivers)
+		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
 		w.startAuthRotationTicking(w.baseContext)
+	}()
+	go func() {
+		defer w.tickerWg.Done()
+		if w.downstreamRoutes != nil {
+			err := w.downstreamRoutes.StartRouteMgmtTicking(
+				w.baseContext,
+				func() string {
+					if s := w.LastStatusSuccess(); s != nil {
+						return s.WorkerId
+					}
+					return "unknown worker id"
+				},
+				-1, // indicates the ticker should run until cancelled.
+			)
+			if err != nil {
+				errors.Wrap(w.baseContext, err, op)
+			}
+		}
 	}()
 
 	w.workerStartTime = time.Now()

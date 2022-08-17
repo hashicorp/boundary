@@ -318,20 +318,21 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/GetCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/GetCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_GetCredentialStore_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_GetCredentialStore_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_GetCredentialStore_0(ctx, mux, outboundMarshaler, w, req, response_CredentialStoreService_GetCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_GetCredentialStore_0(annotatedContext, mux, outboundMarshaler, w, req, response_CredentialStoreService_GetCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -342,20 +343,21 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/ListCredentialStores", runtime.WithHTTPPathPattern("/v1/credential-stores"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/ListCredentialStores", runtime.WithHTTPPathPattern("/v1/credential-stores"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_ListCredentialStores_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_ListCredentialStores_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_ListCredentialStores_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_ListCredentialStores_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -366,20 +368,21 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/CreateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/CreateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_CreateCredentialStore_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_CreateCredentialStore_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_CreateCredentialStore_0(ctx, mux, outboundMarshaler, w, req, response_CredentialStoreService_CreateCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_CreateCredentialStore_0(annotatedContext, mux, outboundMarshaler, w, req, response_CredentialStoreService_CreateCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -390,20 +393,21 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/UpdateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/UpdateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_UpdateCredentialStore_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_UpdateCredentialStore_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_UpdateCredentialStore_0(ctx, mux, outboundMarshaler, w, req, response_CredentialStoreService_UpdateCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_UpdateCredentialStore_0(annotatedContext, mux, outboundMarshaler, w, req, response_CredentialStoreService_UpdateCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -414,20 +418,21 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/DeleteCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/DeleteCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_CredentialStoreService_DeleteCredentialStore_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CredentialStoreService_DeleteCredentialStore_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_DeleteCredentialStore_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_DeleteCredentialStore_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -477,19 +482,20 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/GetCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/GetCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_GetCredentialStore_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_CredentialStoreService_GetCredentialStore_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_GetCredentialStore_0(ctx, mux, outboundMarshaler, w, req, response_CredentialStoreService_GetCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_GetCredentialStore_0(annotatedContext, mux, outboundMarshaler, w, req, response_CredentialStoreService_GetCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -498,19 +504,20 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/ListCredentialStores", runtime.WithHTTPPathPattern("/v1/credential-stores"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/ListCredentialStores", runtime.WithHTTPPathPattern("/v1/credential-stores"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_ListCredentialStores_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_CredentialStoreService_ListCredentialStores_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_ListCredentialStores_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_ListCredentialStores_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -519,19 +526,20 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/CreateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/CreateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_CreateCredentialStore_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_CredentialStoreService_CreateCredentialStore_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_CreateCredentialStore_0(ctx, mux, outboundMarshaler, w, req, response_CredentialStoreService_CreateCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_CreateCredentialStore_0(annotatedContext, mux, outboundMarshaler, w, req, response_CredentialStoreService_CreateCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -540,19 +548,20 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/UpdateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/UpdateCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_UpdateCredentialStore_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_CredentialStoreService_UpdateCredentialStore_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_UpdateCredentialStore_0(ctx, mux, outboundMarshaler, w, req, response_CredentialStoreService_UpdateCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_UpdateCredentialStore_0(annotatedContext, mux, outboundMarshaler, w, req, response_CredentialStoreService_UpdateCredentialStore_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -561,19 +570,20 @@ func RegisterCredentialStoreServiceHandlerClient(ctx context.Context, mux *runti
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/DeleteCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.CredentialStoreService/DeleteCredentialStore", runtime.WithHTTPPathPattern("/v1/credential-stores/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_CredentialStoreService_DeleteCredentialStore_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_CredentialStoreService_DeleteCredentialStore_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_CredentialStoreService_DeleteCredentialStore_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CredentialStoreService_DeleteCredentialStore_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 

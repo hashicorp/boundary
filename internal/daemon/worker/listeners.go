@@ -31,7 +31,7 @@ import (
 // the function that handles a secondary connection over a provided listener
 var handleSecondaryConnection = closeListener
 
-func closeListener(_ context.Context, l net.Listener) error {
+func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
 	if l != nil {
 		return l.Close()
 	}
@@ -197,7 +197,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(proxyListener)
 		go ln.GrpcServer.Serve(eventingListener)
-		go handleSecondaryConnection(cancelCtx, reverseGrpcListener)
+		go handleSecondaryConnection(cancelCtx, reverseGrpcListener, w.downstreamRoutes, -1)
 	}, nil
 }
 

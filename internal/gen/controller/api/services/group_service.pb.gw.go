@@ -522,20 +522,21 @@ func RegisterGroupServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/GetGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/GetGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_GroupService_GetGroup_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_GroupService_GetGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_GetGroup_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_GetGroup_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_GetGroup_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_GetGroup_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -546,20 +547,21 @@ func RegisterGroupServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/ListGroups", runtime.WithHTTPPathPattern("/v1/groups"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/ListGroups", runtime.WithHTTPPathPattern("/v1/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_GroupService_ListGroups_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_GroupService_ListGroups_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_ListGroups_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_GroupService_ListGroups_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -570,20 +572,21 @@ func RegisterGroupServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/CreateGroup", runtime.WithHTTPPathPattern("/v1/groups"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/CreateGroup", runtime.WithHTTPPathPattern("/v1/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_GroupService_CreateGroup_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_GroupService_CreateGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_CreateGroup_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_CreateGroup_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_CreateGroup_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_CreateGroup_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -594,20 +597,21 @@ func RegisterGroupServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/UpdateGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/UpdateGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_GroupService_UpdateGroup_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_GroupService_UpdateGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_UpdateGroup_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_UpdateGroup_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_UpdateGroup_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_UpdateGroup_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -618,20 +622,21 @@ func RegisterGroupServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/DeleteGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/DeleteGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_GroupService_DeleteGroup_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_GroupService_DeleteGroup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_DeleteGroup_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_GroupService_DeleteGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -642,20 +647,21 @@ func RegisterGroupServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/AddGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:add-members"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/AddGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:add-members"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_GroupService_AddGroupMembers_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_GroupService_AddGroupMembers_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_AddGroupMembers_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_AddGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_AddGroupMembers_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_AddGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -666,20 +672,21 @@ func RegisterGroupServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/SetGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:set-members"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/SetGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:set-members"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_GroupService_SetGroupMembers_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_GroupService_SetGroupMembers_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_SetGroupMembers_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_SetGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_SetGroupMembers_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_SetGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -690,20 +697,21 @@ func RegisterGroupServiceHandlerServer(ctx context.Context, mux *runtime.ServeMu
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/RemoveGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:remove-members"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/controller.api.services.v1.GroupService/RemoveGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:remove-members"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_GroupService_RemoveGroupMembers_0(ctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_GroupService_RemoveGroupMembers_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_RemoveGroupMembers_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_RemoveGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_RemoveGroupMembers_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_RemoveGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -753,19 +761,20 @@ func RegisterGroupServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/GetGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/GetGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_GroupService_GetGroup_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_GroupService_GetGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_GetGroup_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_GetGroup_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_GetGroup_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_GetGroup_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -774,19 +783,20 @@ func RegisterGroupServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/ListGroups", runtime.WithHTTPPathPattern("/v1/groups"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/ListGroups", runtime.WithHTTPPathPattern("/v1/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_GroupService_ListGroups_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_GroupService_ListGroups_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_ListGroups_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_GroupService_ListGroups_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -795,19 +805,20 @@ func RegisterGroupServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/CreateGroup", runtime.WithHTTPPathPattern("/v1/groups"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/CreateGroup", runtime.WithHTTPPathPattern("/v1/groups"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_GroupService_CreateGroup_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_GroupService_CreateGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_CreateGroup_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_CreateGroup_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_CreateGroup_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_CreateGroup_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -816,19 +827,20 @@ func RegisterGroupServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/UpdateGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/UpdateGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_GroupService_UpdateGroup_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_GroupService_UpdateGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_UpdateGroup_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_UpdateGroup_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_UpdateGroup_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_UpdateGroup_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -837,19 +849,20 @@ func RegisterGroupServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/DeleteGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/DeleteGroup", runtime.WithHTTPPathPattern("/v1/groups/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_GroupService_DeleteGroup_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_GroupService_DeleteGroup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_DeleteGroup_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_GroupService_DeleteGroup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -858,19 +871,20 @@ func RegisterGroupServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/AddGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:add-members"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/AddGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:add-members"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_GroupService_AddGroupMembers_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_GroupService_AddGroupMembers_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_AddGroupMembers_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_AddGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_AddGroupMembers_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_AddGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -879,19 +893,20 @@ func RegisterGroupServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/SetGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:set-members"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/SetGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:set-members"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_GroupService_SetGroupMembers_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_GroupService_SetGroupMembers_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_SetGroupMembers_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_SetGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_SetGroupMembers_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_SetGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -900,19 +915,20 @@ func RegisterGroupServiceHandlerClient(ctx context.Context, mux *runtime.ServeMu
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
-		ctx, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/RemoveGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:remove-members"))
+		var annotatedContext context.Context
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/controller.api.services.v1.GroupService/RemoveGroupMembers", runtime.WithHTTPPathPattern("/v1/groups/{id}:remove-members"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_GroupService_RemoveGroupMembers_0(ctx, inboundMarshaler, client, req, pathParams)
-		ctx = runtime.NewServerMetadataContext(ctx, md)
+		resp, md, err := request_GroupService_RemoveGroupMembers_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_GroupService_RemoveGroupMembers_0(ctx, mux, outboundMarshaler, w, req, response_GroupService_RemoveGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
+		forward_GroupService_RemoveGroupMembers_0(annotatedContext, mux, outboundMarshaler, w, req, response_GroupService_RemoveGroupMembers_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
