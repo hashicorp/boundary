@@ -50,11 +50,6 @@ job "controller" {
       }
     }
 
-    network {
-    port "redis" { to = 6379 }
-  }
-
-
     task "controller" {
       driver = "docker"
 
@@ -74,12 +69,14 @@ job "controller" {
       }
 
       service {
-        name = "boundary-controller"
+        name = "boundary-api"
         port = "api"
         provider = "consul"
+
         tags = [
           "traefik.enable=true",
-          "traefik.http.routers.http.rule=Path(`/boundary`)",
+          "traefik.http.routers.boundary_api.rule=PathPrefix(`/boundary/api`)",
+          "traefik.http.routers.boundary_api.entrypoints=boundaryAPI",
         ]
       }
     }

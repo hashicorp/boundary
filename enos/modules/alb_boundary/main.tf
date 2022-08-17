@@ -2,11 +2,15 @@ resource "aws_security_group" "boundary_ingress_sg" {
   vpc_id = var.vpc_id
 
   # Boundary
-  ingress {
-    from_port   = local.boundary_port
-    to_port     = local.boundary_port
-    protocol    = "tcp"
-    cidr_blocks = var.cidr_blocks
+  dynamic "ingress" {
+    for_each = local.open_ports
+    content {
+      description = ingress.value["description"]
+      from_port   = ingress.value["port"]
+      to_port     = ingress.value["port"]
+      protocol    = "tcp"
+      cidr_blocks = var.cidr_blocks
+    }
   }
 
   egress {
@@ -53,11 +57,9 @@ resource "aws_lb_target_group" "boundary_clients" {
   protocol = "HTTP"
   vpc_id   = var.vpc_id
 
-  # TODO: what should the health check be?
   health_check {
     port = var.health_check_port
     path = var.health_check_path
-    # Mark healthy if redirected
     matcher = "200"
   }
 
@@ -74,8 +76,8 @@ resource "aws_lb_target_group_attachment" "boundary_clients" {
   port             = local.boundary_port
 }
 
-output "alb_address" {
-  value = "http://${aws_lb.boundary_clients_ingress.dns_name}:${local.boundary_port}"
+output "alb_fqdn" {
+  value = aws_lb.boundary_clients_ingress.dns_name
 }
 
 output "cluster_name_tag" {

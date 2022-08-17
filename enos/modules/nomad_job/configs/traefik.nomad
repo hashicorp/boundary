@@ -7,16 +7,12 @@ job "traefik" {
     count = 1
 
     network {
-      port "http" {
-        static = 8080
+      port "traefik" {
+        static = 8081
       }
 
-      port "api" {
+      port "boundary_api" {
         static = 9200
-      }
-
-      port "consul" {
-        static = 8500
       }
     }
 
@@ -26,7 +22,7 @@ job "traefik" {
       check {
         name     = "alive"
         type     = "tcp"
-        port     = "http"
+        port     = "traefik"
         interval = "10s"
         timeout  = "2s"
       }
@@ -38,7 +34,7 @@ job "traefik" {
       config {
         image        = "traefik:v2.2"
         network_mode = "host"
-
+        ports = ["traefik"]
         volumes = [
           "local/traefik.toml:/etc/traefik/traefik.toml",
         ]
@@ -47,12 +43,11 @@ job "traefik" {
       template {
         data = <<EOF
 [entryPoints]
-    [entryPoints.http]
-    address = ":8080"
+    [entryPoints.boundaryAPI]
+    address = ":9200"
     [entryPoints.traefik]
     address = ":8081"
-    [entryPoints.boundary]
-    address = ":9200"
+
 [api]
     dashboard = true
     insecure  = true

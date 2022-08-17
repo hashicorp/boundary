@@ -37,10 +37,23 @@ locals {
       protocol    = "udp"
     },
     {
-      description = "Boundary TCP"
+      description = "Boundary API TCP"
       from        = 9200
       to          = 9200
       protocol    = "tcp"
     },
+    {
+      description = "Boundary Ops"
+      from        = 9203
+      to          = 9203
+      protocol    = "tcp"
+    },
+    {
+      description = "Traefik UI"
+      from        = 8081
+      to          = 8081
+      protocol    = "tcp"
+    },
+
   ]
 }

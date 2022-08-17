@@ -26,11 +26,11 @@ variable "cluster_name" {
 variable "health_check_port" {
   description = "The port to use for connecting to Boundary for a healthcheck"
   type = number
-  default = 9200
+  default = 8081
 }
 
 variable "health_check_path" {
   description = "The path (e.g. \"boundary\" to use for connecting to Boundary for a healthcheck"
   type = string
-  default = "/boundary"
+  default = "/dashboard/"
 }
