@@ -35,13 +35,13 @@ CMD ["server", "-config", "/boundary/config.hcl"]
 # Official docker image that uses binaries from releases.hashicorp.com
 FROM docker.mirror.hashicorp.services/alpine:3.13.6 as official
 
-ARG VERSION
+ARG PRODUCT_VERSION
 
 LABEL name="Boundary" \
       maintainer="HashiCorp Boundary Team <boundary@hashicorp.com>" \
       vendor="HashiCorp" \
-      version=$VERSION \
-      release=$VERSION \
+      version=$PRODUCT_VERSION \
+      release=$PRODUCT_VERSION \
       summary="Boundary provides simple and secure access to hosts and services" \
       description="The Boundary Docker image is designed to enable practitioners to run Boundary in server mode on a container scheduler"
 
@@ -57,15 +57,15 @@ RUN set -eux && \
         armhf) boundaryArch='armhfv6' ;; \
         x86) boundaryArch='386' ;; \
         x86_64) boundaryArch='amd64' ;; \
-        *) echo >&2 "error: unsupported architecture: ${apkArch} (see https://releases.hashicorp.com/boundary/${VERSION}/ )" && exit 1 ;; \
+        *) echo >&2 "error: unsupported architecture: ${apkArch} (see https://releases.hashicorp.com/boundary/${PRODUCT_VERSION}/ )" && exit 1 ;; \
     esac && \
-    wget https://releases.hashicorp.com/boundary/${VERSION}/boundary_${VERSION}_linux_${boundaryArch}.zip && \
-    wget https://releases.hashicorp.com/boundary/${VERSION}/boundary_${VERSION}_SHA256SUMS && \
-    wget https://releases.hashicorp.com/boundary/${VERSION}/boundary_${VERSION}_SHA256SUMS.sig && \
-    gpg --batch --verify boundary_${VERSION}_SHA256SUMS.sig boundary_${VERSION}_SHA256SUMS && \
-    grep boundary_${VERSION}_linux_${boundaryArch}.zip boundary_${VERSION}_SHA256SUMS | sha256sum -c && \
-    unzip -d /bin boundary_${VERSION}_linux_${boundaryArch}.zip && \
-    rm boundary_${VERSION}_linux_${boundaryArch}.zip boundary_${VERSION}_SHA256SUMS boundary_${VERSION}_SHA256SUMS.sig && \
+    wget https://releases.hashicorp.com/boundary/${PRODUCT_VERSION}/boundary_${PRODUCT_VERSION}_linux_${boundaryArch}.zip && \
+    wget https://releases.hashicorp.com/boundary/${PRODUCT_VERSION}/boundary_${PRODUCT_VERSION}_SHA256SUMS && \
+    wget https://releases.hashicorp.com/boundary/${PRODUCT_VERSION}/boundary_${PRODUCT_VERSION}_SHA256SUMS.sig && \
+    gpg --batch --verify boundary_${PRODUCT_VERSION}_SHA256SUMS.sig boundary_${PRODUCT_VERSION}_SHA256SUMS && \
+    grep boundary_${PRODUCT_VERSION}_linux_${boundaryArch}.zip boundary_${PRODUCT_VERSION}_SHA256SUMS | sha256sum -c && \
+    unzip -d /bin boundary_${PRODUCT_VERSION}_linux_${boundaryArch}.zip && \
+    rm boundary_${PRODUCT_VERSION}_linux_${boundaryArch}.zip boundary_${PRODUCT_VERSION}_SHA256SUMS boundary_${PRODUCT_VERSION}_SHA256SUMS.sig && \
     mkdir /boundary
 
 COPY .release/docker/config.hcl /boundary/config.hcl
@@ -85,24 +85,24 @@ CMD ["server", "-config", "/boundary/config.hcl"]
 FROM docker.mirror.hashicorp.services/alpine:3.13.6 as default
 
 ARG BIN_NAME
-# NAME and VERSION are the name of the software in releases.hashicorp.com
-# and the version to download. Example: NAME=boundary VERSION=1.2.3.
+# NAME and PRODUCT_VERSION are the name of the software in releases.hashicorp.com
+# and the version to download. Example: NAME=boundary PRODUCT_VERSION=1.2.3.
 ARG NAME=boundary
-ARG VERSION
+ARG PRODUCT_VERSION
 # TARGETARCH and TARGETOS are set automatically when --platform is provided.
 ARG TARGETOS TARGETARCH
 
 LABEL name="Boundary" \
       maintainer="HashiCorp Boundary Team <boundary@hashicorp.com>" \
       vendor="HashiCorp" \
-      version=$VERSION \
-      release=$VERSION \
+      version=$PRODUCT_VERSION \
+      release=$PRODUCT_VERSION \
       summary="Boundary provides simple and secure access to hosts and services" \
       description="The Boundary Docker image is designed to enable practitioners to run Boundary in server mode on a container scheduler"
 
 # Set ARGs as ENV so that they can be used in ENTRYPOINT/CMD
 ENV NAME=$NAME
-ENV VERSION=$VERSION
+ENV VERSION=$PRODUCT_VERSION
 
 # Create a non-root user to run the software.
 RUN addgroup ${NAME} && adduser -s /bin/sh -S -G ${NAME} ${NAME}
