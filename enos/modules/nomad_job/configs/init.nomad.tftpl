@@ -1,0 +1,26 @@
+job "init-${cluster_id}" {
+  datacenters = ["dc1"]
+  type        = "batch"
+
+  group "init" {
+    task "init" {
+      driver = "docker"
+
+      config {
+        image          = "hashicorp/boundary"
+        auth_soft_fail = true
+        command        = "boundary"
+        args           = ["database", "init", "-config", "/boundary/config.hcl", "-format", "json"]
+      }
+
+      env {
+        BOUNDARY_POSTGRES_URL = "postgresql://${db_username}:${db_password}@${db_address}:5432/${db_name}?sslmode=disable"
+      }
+
+      lifecycle {
+        hook    = "prestart"
+        sidecar = false
+      }
+    }
+  }
+}

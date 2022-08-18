@@ -10,14 +10,31 @@ terraform {
 }
 
 locals {
-  controller_job_spec_path = "/tmp/controller.nomad"
-  init_job_spec_path       = "/tmp/init.nomad"
+  configs = [for i, _ in range(var.controller_groups_count) : {
+    init = {
+      content     = "${path.module}/configs/init.nomad.tftpl"
+      destination = "/tmp/init_${i}.nomad"
+    }
+    controller = {
+      content     = "${path.module}/configs/controller.nomad.tftpl"
+      destination = "/tmp/controller_${i}.nomad"
+    }
+  }]
   traefik_job_spec_path = "/tmp/traefik.nomad"
 }
 
 resource "enos_file" "boundary_controller_job" {
-  source      = abspath("${path.module}/configs/controller.nomad")
-  destination = local.controller_job_spec_path
+  count = var.controller_groups_count
+
+  content = templatefile(local.configs[count.index].controller.content, {
+    cluster_id  = count.index
+    db_username = var.db_username
+    db_password = var.db_password
+    db_address  = var.db_address
+    db_name     = var.db_name
+    count       = var.controller_count
+  })
+  destination = local.configs[count.index].controller.destination
 
   transport = {
     ssh = {
@@ -29,8 +46,16 @@ resource "enos_file" "boundary_controller_job" {
 }
 
 resource "enos_file" "boundary_init_job" {
-  source      = abspath("${path.module}/configs/init.nomad")
-  destination = local.init_job_spec_path
+  count = var.controller_groups_count
+
+  content = templatefile(local.configs[count.index].init.content, {
+    cluster_id  = count.index
+    db_username = var.db_username
+    db_password = var.db_password
+    db_address  = var.db_address
+    db_name     = var.db_name
+  })
+  destination = local.configs[count.index].init.destination
 
   transport = {
     ssh = {
@@ -55,13 +80,14 @@ resource "enos_file" "traefik_job" {
 }
 
 resource "enos_remote_exec" "init_job" {
+  count = var.controller_groups_count
 
   environment = {
     NOMAD_VAR_db_username = var.db_username
     NOMAD_VAR_db_password = var.db_password
-    NOMAD_VAR_db_address  = var.db_address
-    NOMAD_VAR_db_name     = var.db_name
-    JOB_PATH              = local.init_job_spec_path
+    NOMAD_VAR_db_address  = "${var.db_address}_${count.index}"
+    NOMAD_VAR_db_name     = "${var.db_name}_${count.index}"
+    JOB_PATH              = local.configs[count.index].init.destination
   }
 
   scripts = [abspath("${path.module}/scripts/deploy-job.sh")]
@@ -78,13 +104,14 @@ resource "enos_remote_exec" "init_job" {
 }
 
 resource "enos_remote_exec" "controller_job" {
+  count = var.controller_groups_count
 
   environment = {
     NOMAD_VAR_db_username = var.db_username
     NOMAD_VAR_db_password = var.db_password
-    NOMAD_VAR_db_address  = var.db_address
-    NOMAD_VAR_db_name     = var.db_name
-    JOB_PATH              = local.controller_job_spec_path
+    NOMAD_VAR_db_address  = "${var.db_address}_${count.index}"
+    NOMAD_VAR_db_name     = "${var.db_name}_${count.index}"
+    JOB_PATH              = local.configs[count.index].controller.destination
   }
 
   scripts = [abspath("${path.module}/scripts/deploy-job.sh")]
@@ -107,7 +134,7 @@ resource "enos_remote_exec" "traefik_job" {
   }
 
   scripts = [abspath("${path.module}/scripts/deploy-job.sh")]
-  
+
   transport = {
     ssh = {
       host = var.nomad_instances[0]

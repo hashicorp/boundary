@@ -26,6 +26,18 @@ variable "db_address" {
 }
 
 variable "db_name" {
-  description = "The name of the boundary database to connect to when initializing boundary"
+  description = "The name of the boundary database to connect to when initializing Boundary"
   type        = string
+}
+
+variable "controller_groups_count" {
+  description = "The amount of unique Boundary instances to spin up"
+  type        = number
+  default     = 2
+}
+
+variable "controller_count" {
+  description = "The amount of Boundary controllers to spin up for each controller group"
+  type        = number
+  default     = 3
 }

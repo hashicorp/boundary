@@ -1,34 +1,8 @@
-variable "db_username" {
-  description = "The boundary database username"
-  type = string
-}
-
-variable "db_password" {
-  description = "The boundary database password"
-  type = string
-}
-
-variable "db_address" {
-  description = "The boundary database address"
-  type = string
-}
-
-variable "db_name" {
-  description = "The name of the boundary database to connect to when initializing boundary"
-  type = string
-}
-
-variable "count" {
-  description = "Number of controllers to create"
-  type = number
-  default = 3
-}
-
-job "controller" {
+job "controller-${cluster_id}" {
   datacenters = ["dc1"]
 
   group "controller" {
-    count = var.count
+    count = ${count}
 
     restart {
       attempts = 3
@@ -60,7 +34,7 @@ job "controller" {
       }
 
       env {
-        BOUNDARY_POSTGRES_URL = format("postgresql://%s:%s@%s:5432/%s?sslmode=disable", var.db_username, var.db_password, var.db_address, var.db_name)
+        BOUNDARY_POSTGRES_URL = "postgresql://${db_username}:${db_password}@${db_address}:5432/${db_name}?sslmode=disable"
       }
 
       resources {
@@ -69,13 +43,13 @@ job "controller" {
       }
 
       service {
-        name = "boundary-api"
+        name = "boundary-api-${cluster_id}"
         port = "api"
         provider = "consul"
 
         tags = [
           "traefik.enable=true",
-          "traefik.http.routers.boundary_api.rule=PathPrefix(`/boundary/api`)",
+          "traefik.http.routers.boundary_api_${cluster_id}.rule=PathPrefix(`/boundary_${cluster_id}/api`)",
           "traefik.http.routers.boundary_api.entrypoints=boundaryAPI",
         ]
       }
