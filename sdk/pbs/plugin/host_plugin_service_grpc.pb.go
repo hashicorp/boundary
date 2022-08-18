@@ -21,6 +21,10 @@ type HostPluginServiceClient interface {
 	// NormalizeCatalogData is a hook that passes attributes to the plugin and
 	// allows those values to be normalized prior to creating or updating those
 	// values in the host catalog data.
+	//
+	// NormalizeCatalogData is called before:
+	// * OnCreateCatalog
+	// * OnUpdateCatalog
 	NormalizeCatalogData(ctx context.Context, in *NormalizeCatalogDataRequest, opts ...grpc.CallOption) (*NormalizeCatalogDataResponse, error)
 	// OnCreateCatalog is a hook that runs when a
 	// host catalog is created.
@@ -34,6 +38,10 @@ type HostPluginServiceClient interface {
 	// NormalizeSetData is a hook that passes attributes to the plugin and
 	// allows those values to be normalized prior to creating or updating those
 	// values in the host set data.
+	//
+	// NormalizeSetData is called before:
+	// * OnCreateSet
+	// * OnUpdateSet
 	NormalizeSetData(ctx context.Context, in *NormalizeSetDataRequest, opts ...grpc.CallOption) (*NormalizeSetDataResponse, error)
 	// OnCreateSet is a hook that runs when a host set is created.
 	OnCreateSet(ctx context.Context, in *OnCreateSetRequest, opts ...grpc.CallOption) (*OnCreateSetResponse, error)
@@ -141,6 +149,10 @@ type HostPluginServiceServer interface {
 	// NormalizeCatalogData is a hook that passes attributes to the plugin and
 	// allows those values to be normalized prior to creating or updating those
 	// values in the host catalog data.
+	//
+	// NormalizeCatalogData is called before:
+	// * OnCreateCatalog
+	// * OnUpdateCatalog
 	NormalizeCatalogData(context.Context, *NormalizeCatalogDataRequest) (*NormalizeCatalogDataResponse, error)
 	// OnCreateCatalog is a hook that runs when a
 	// host catalog is created.
@@ -154,6 +166,10 @@ type HostPluginServiceServer interface {
 	// NormalizeSetData is a hook that passes attributes to the plugin and
 	// allows those values to be normalized prior to creating or updating those
 	// values in the host set data.
+	//
+	// NormalizeSetData is called before:
+	// * OnCreateSet
+	// * OnUpdateSet
 	NormalizeSetData(context.Context, *NormalizeSetDataRequest) (*NormalizeSetDataResponse, error)
 	// OnCreateSet is a hook that runs when a host set is created.
 	OnCreateSet(context.Context, *OnCreateSetRequest) (*OnCreateSetResponse, error)
