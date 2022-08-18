@@ -251,5 +251,4 @@ func InitializeApiCollectors(r prometheus.Registerer) {
 		}
 		metric.InitializeApiCollectors(r, sh, expectedPathsToMethods, expectedStatusCodesPerMethod)
 	}
-
 }
