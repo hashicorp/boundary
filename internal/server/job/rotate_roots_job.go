@@ -71,7 +71,7 @@ func (r *rotateRootsJob) Status() scheduler.JobStatus {
 func (r *rotateRootsJob) Run(ctx context.Context) error {
 	const op = "server.(rotateRootsJob).Run"
 
-	err := server.RotateRoots(ctx, r.workerAuthRepo)
+	_, err := server.RotateRoots(ctx, r.workerAuthRepo)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

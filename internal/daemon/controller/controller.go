@@ -352,7 +352,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
 	}
-	err = server.RotateRoots(ctx, serversRepo)
+	_, err = server.RotateRoots(ctx, serversRepo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
 	}
