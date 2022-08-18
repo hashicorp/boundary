@@ -227,7 +227,7 @@ func (r *WorkerAuthRepositoryStorage) convertRootCertificate(ctx context.Context
 	rootCert.NotValidBefore = timestamp.New(cert.NotBefore.AsTime())
 	rootCert.PublicKey = cert.PublicKeyPkix
 	rootCert.State = cert.Id
-	rootCert.IssuingCa = ca_id
+	rootCert.IssuingCa = CaId
 
 	// Encrypt the private key
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
@@ -278,7 +278,7 @@ func (r *WorkerAuthRepositoryStorage) storeRootCertificates(ctx context.Context,
 	}
 	certAuthority := &CertificateAuthority{
 		CertificateAuthority: &store.CertificateAuthority{
-			PrivateId: ca_id,
+			PrivateId: CaId,
 			Version:   version + 1,
 		},
 	}
@@ -600,7 +600,7 @@ func (r *WorkerAuthRepositoryStorage) removeCertificateAuthority(ctx context.Con
 	}
 	certAuthority := &CertificateAuthority{
 		CertificateAuthority: &store.CertificateAuthority{
-			PrivateId: ca_id,
+			PrivateId: CaId,
 			Version:   version + 1,
 		},
 	}
@@ -632,6 +632,7 @@ func (r *WorkerAuthRepositoryStorage) removeCertificateAuthority(ctx context.Con
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
+	cert.State.Fields["version"] = structpb.NewNumberValue(float64(version + 1))
 
 	return nil
 }

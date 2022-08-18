@@ -42,7 +42,7 @@ func TestStoreRootCertificates(t *testing.T) {
 	require.NoError(err)
 
 	// Fail to find root certificates prior to rotation/ creation
-	noCertAuth := &types.RootCertificates{Id: ca_id}
+	noCertAuth := &types.RootCertificates{Id: CaId}
 	err = workerAuthRepo.Load(ctx, noCertAuth)
 	require.Error(err)
 	rootIds, err := workerAuthRepo.List(ctx, (*types.RootCertificate)(nil))
@@ -57,7 +57,7 @@ func TestStoreRootCertificates(t *testing.T) {
 	assert.Len(rootIds, 2)
 
 	// Load stored roots
-	certAuthority := &types.RootCertificates{Id: ca_id}
+	certAuthority := &types.RootCertificates{Id: CaId}
 	err = workerAuthRepo.Load(ctx, certAuthority)
 	require.NoError(err)
 	require.NotNil(certAuthority.GetNext())
@@ -96,7 +96,7 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 	roots, err := rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(err)
 
-	cAuth2 := &types.RootCertificates{Id: ca_id}
+	cAuth2 := &types.RootCertificates{Id: CaId}
 	err = workerAuthRepo.Load(ctx, cAuth2)
 	require.NoError(err)
 	var result2 rootCertificatesVersion
@@ -111,7 +111,7 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 	badState, err := structpb.NewStruct(s.Map())
 	require.NoError(err)
 	newRoots2 := &types.RootCertificates{
-		Id:      ca_id,
+		Id:      CaId,
 		Next:    roots.Next,
 		Current: roots.Current,
 	}
@@ -120,7 +120,7 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 	require.Error(err)
 
 	// Remove CA, expect updated version
-	cAuthRemove := &types.RootCertificates{Id: ca_id}
+	cAuthRemove := &types.RootCertificates{Id: CaId}
 	removeVersion := &rootCertificatesVersion{Version: uint32(2)}
 	s = structs.New(removeVersion)
 	s.TagName = "mapstructure"

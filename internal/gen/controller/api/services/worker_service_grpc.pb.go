@@ -56,6 +56,10 @@ type WorkerServiceClient interface {
 	// RemoveWorkerTags removes api tags from an existing Worker. If missing, malformed,
 	// or referencing a non-existing resource, an error is returned.
 	RemoveWorkerTags(ctx context.Context, in *RemoveWorkerTagsRequest, opts ...grpc.CallOption) (*RemoveWorkerTagsResponse, error)
+	// ReadCertificateAuthority returns the current and next set of root certificates
+	ReadCertificateAuthority(ctx context.Context, in *ReadCertificateAuthorityRequest, opts ...grpc.CallOption) (*ReadCertificateAuthorityResponse, error)
+	// ReinitializeCas removes both current and next root certs and replaces them with a new set
+	ReinitializeCertificateAuthority(ctx context.Context, in *ReinitializeCertificateAuthorityRequest, opts ...grpc.CallOption) (*ReinitializeCertificateAuthorityResponse, error)
 }
 
 type workerServiceClient struct {
@@ -138,6 +142,24 @@ func (c *workerServiceClient) RemoveWorkerTags(ctx context.Context, in *RemoveWo
 	return out, nil
 }
 
+func (c *workerServiceClient) ReadCertificateAuthority(ctx context.Context, in *ReadCertificateAuthorityRequest, opts ...grpc.CallOption) (*ReadCertificateAuthorityResponse, error) {
+	out := new(ReadCertificateAuthorityResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.WorkerService/ReadCertificateAuthority", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workerServiceClient) ReinitializeCertificateAuthority(ctx context.Context, in *ReinitializeCertificateAuthorityRequest, opts ...grpc.CallOption) (*ReinitializeCertificateAuthorityResponse, error) {
+	out := new(ReinitializeCertificateAuthorityResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.WorkerService/ReinitializeCertificateAuthority", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkerServiceServer is the server API for WorkerService service.
 // All implementations must embed UnimplementedWorkerServiceServer
 // for forward compatibility
@@ -180,6 +202,10 @@ type WorkerServiceServer interface {
 	// RemoveWorkerTags removes api tags from an existing Worker. If missing, malformed,
 	// or referencing a non-existing resource, an error is returned.
 	RemoveWorkerTags(context.Context, *RemoveWorkerTagsRequest) (*RemoveWorkerTagsResponse, error)
+	// ReadCertificateAuthority returns the current and next set of root certificates
+	ReadCertificateAuthority(context.Context, *ReadCertificateAuthorityRequest) (*ReadCertificateAuthorityResponse, error)
+	// ReinitializeCas removes both current and next root certs and replaces them with a new set
+	ReinitializeCertificateAuthority(context.Context, *ReinitializeCertificateAuthorityRequest) (*ReinitializeCertificateAuthorityResponse, error)
 	mustEmbedUnimplementedWorkerServiceServer()
 }
 
@@ -210,6 +236,12 @@ func (UnimplementedWorkerServiceServer) SetWorkerTags(context.Context, *SetWorke
 }
 func (UnimplementedWorkerServiceServer) RemoveWorkerTags(context.Context, *RemoveWorkerTagsRequest) (*RemoveWorkerTagsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveWorkerTags not implemented")
+}
+func (UnimplementedWorkerServiceServer) ReadCertificateAuthority(context.Context, *ReadCertificateAuthorityRequest) (*ReadCertificateAuthorityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReadCertificateAuthority not implemented")
+}
+func (UnimplementedWorkerServiceServer) ReinitializeCertificateAuthority(context.Context, *ReinitializeCertificateAuthorityRequest) (*ReinitializeCertificateAuthorityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReinitializeCertificateAuthority not implemented")
 }
 func (UnimplementedWorkerServiceServer) mustEmbedUnimplementedWorkerServiceServer() {}
 
@@ -368,6 +400,42 @@ func _WorkerService_RemoveWorkerTags_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkerService_ReadCertificateAuthority_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadCertificateAuthorityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).ReadCertificateAuthority(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.WorkerService/ReadCertificateAuthority",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).ReadCertificateAuthority(ctx, req.(*ReadCertificateAuthorityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkerService_ReinitializeCertificateAuthority_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReinitializeCertificateAuthorityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServiceServer).ReinitializeCertificateAuthority(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.WorkerService/ReinitializeCertificateAuthority",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServiceServer).ReinitializeCertificateAuthority(ctx, req.(*ReinitializeCertificateAuthorityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkerService_ServiceDesc is the grpc.ServiceDesc for WorkerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -406,6 +474,14 @@ var WorkerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveWorkerTags",
 			Handler:    _WorkerService_RemoveWorkerTags_Handler,
+		},
+		{
+			MethodName: "ReadCertificateAuthority",
+			Handler:    _WorkerService_ReadCertificateAuthority_Handler,
+		},
+		{
+			MethodName: "ReinitializeCertificateAuthority",
+			Handler:    _WorkerService_ReinitializeCertificateAuthority_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

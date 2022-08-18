@@ -3987,6 +3987,56 @@
           "controller.api.services.v1.WorkerService"
         ]
       }
+    },
+    "/v1/workers:read-certificate-authority": {
+      "get": {
+        "summary": "Retrieves root certificates used for worker authentication.",
+        "operationId": "WorkerService_ReadCertificateAuthority",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ReadCertificateAuthorityResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      }
+    },
+    "/v1/workers:reinitialize-certificate-authority": {
+      "post": {
+        "summary": "Reinitializes root certificates used for worker authentication.",
+        "operationId": "WorkerService_ReinitializeCertificateAuthority",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ReinitializeCertificateAuthorityResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -5711,6 +5761,44 @@
       },
       "title": "User contains all fields related to a User resource"
     },
+    "controller.api.resources.workers.v1.Certificate": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Output only. The ID of the certificate",
+          "readOnly": true
+        },
+        "public_key_sha256": {
+          "type": "string",
+          "title": "Output only. The public key of the cert authority",
+          "readOnly": true
+        },
+        "not_before_time": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Output only. The time before which this CA is invalid",
+          "readOnly": true
+        },
+        "not_after_time": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Output only. The time after which this CA is invalid",
+          "readOnly": true
+        }
+      }
+    },
+    "controller.api.resources.workers.v1.CertificateAuthority": {
+      "type": "object",
+      "properties": {
+        "certs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.workers.v1.Certificate"
+          }
+        }
+      }
+    },
     "controller.api.resources.workers.v1.Worker": {
       "type": "object",
       "properties": {
@@ -6477,6 +6565,22 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
           }
+        }
+      }
+    },
+    "controller.api.services.v1.ReadCertificateAuthorityResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.CertificateAuthority"
+        }
+      }
+    },
+    "controller.api.services.v1.ReinitializeCertificateAuthorityResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.CertificateAuthority"
         }
       }
     },
