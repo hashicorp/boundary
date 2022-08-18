@@ -359,5 +359,3 @@ jobs:
       artifact-name: "boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip"
       go-version: ${{ needs.product-metadata.outputs.go-version }}
     secrets: inherit
-    # Enos jobs are still a bit flaky, ensure they don't fail the workflow.
-    continue-on-error: true
