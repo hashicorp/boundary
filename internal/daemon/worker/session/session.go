@@ -154,11 +154,11 @@ func (s *sess) ApplyLocalConnectionStatus(connId string, status pbs.CONNECTIONST
 	return nil
 }
 
-func (s *sess) ApplySessionUpdate(r *pbs.LookupSessionResponse, st pbs.SESSIONSTATUS) {
+func (s *sess) ApplySessionUpdate(r *pbs.LookupSessionResponse) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.resp = r
-	s.status = st
+	s.status = r.Status
 }
 
 func (s *sess) ApplyLocalStatus(st pbs.SESSIONSTATUS) {
