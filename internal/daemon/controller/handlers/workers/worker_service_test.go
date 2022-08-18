@@ -114,6 +114,7 @@ func TestGet(t *testing.T) {
 		ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
 		AuthorizedActions:     strutil.StrListDelete(kmsAuthzActions, action.Update.String()),
 		LastStatusTime:        kmsWorker.GetLastStatusTime().GetTimestamp(),
+		ReleaseVersion:        kmsWorker.ReleaseVersion,
 		CanonicalTags: map[string]*structpb.ListValue{
 			"key": structListValue(t, "val"),
 		},
@@ -154,6 +155,7 @@ func TestGet(t *testing.T) {
 		AuthorizedActions:     testAuthorizedActions,
 		ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
 		LastStatusTime:        pkiWorker.GetLastStatusTime().GetTimestamp(),
+		ReleaseVersion:        pkiWorker.ReleaseVersion,
 		CanonicalTags: map[string]*structpb.ListValue{
 			"config": structListValue(t, "test"),
 		},
@@ -256,6 +258,7 @@ func TestList(t *testing.T) {
 			Address:               w.GetAddress(),
 			Type:                  KmsWorkerType,
 			LastStatusTime:        w.GetLastStatusTime().GetTimestamp(),
+			ReleaseVersion:        w.ReleaseVersion,
 		})
 	}
 
@@ -275,6 +278,7 @@ func TestList(t *testing.T) {
 			Address:               w.GetAddress(),
 			Type:                  PkiWorkerType,
 			LastStatusTime:        w.GetLastStatusTime().GetTimestamp(),
+			ReleaseVersion:        w.ReleaseVersion,
 		})
 	}
 

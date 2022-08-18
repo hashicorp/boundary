@@ -159,7 +159,6 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		event.WriteError(statusCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
 			event.WithInfoMsg("error making status request to controller"))
 	}
-
 	versionInfo := version.Get()
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,

@@ -86,7 +86,7 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 		}
 		if item.ReleaseVersion != "" {
 			output = append(output,
-				fmt.Sprintf("    ReleaseVersion:                 %s", item.ReleaseVersion),
+				fmt.Sprintf("    ReleaseVersion:          %s", item.ReleaseVersion),
 			)
 		}
 		if !item.LastStatusTime.IsZero() {
@@ -133,7 +133,7 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 		nonAttributeMap["Address"] = item.Address
 	}
 	if item.ReleaseVersion != "" {
-		nonAttributeMap["ReleaseVersion"] = item.ReleaseVersion
+		nonAttributeMap["Release Version"] = item.ReleaseVersion
 	}
 	if !item.LastStatusTime.IsZero() {
 		nonAttributeMap["Last Status Time"] = item.LastStatusTime

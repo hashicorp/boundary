@@ -261,7 +261,6 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("address"), server.WithName("config_name1"),
 			server.WithDescription("kms_description1"),
-			server.WithReleaseVersion("test-version"),
 		)
 		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
 		require.NoError(t, err)
@@ -273,16 +272,18 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "address", worker.GetAddress())
+		assert.NotNil(t, worker.ReleaseVersion)
 
 		// update again and see updated last status time
 		wStatus2 := server.NewWorker(scope.Global.String(),
-			server.WithAddress("new_address"), server.WithName("config_name1"))
+			server.WithAddress("new_address"), server.WithName("config_name1"), server.WithReleaseVersion("test-version"))
 		worker, err = repo.UpsertWorkerStatus(ctx, wStatus2)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		assert.Equal(t, "config_name1", worker.Name)
 		// Version does not change for status updates
 		assert.Equal(t, uint32(1), worker.Version)
+		assert.Equal(t, "test-version", wStatus2.ReleaseVersion)
 		assert.Equal(t, "new_address", worker.GetAddress())
 	})
 
@@ -294,7 +295,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("pki_address"), server.WithDescription("pki_description2"),
 			server.WithReleaseVersion("test-version"))
-		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, server.WithKeyId(pkiWorkerKeyId))
+		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, server.WithKeyId(pkiWorkerKeyId), server.WithReleaseVersion("test-version"))
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
@@ -305,6 +306,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "pki_address", worker.GetAddress())
+		assert.Equal(t, "test-version", worker.ReleaseVersion)
 	})
 
 	failureCases := []struct {

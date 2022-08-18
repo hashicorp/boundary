@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"github.com/hashicorp/boundary/version"
 	mathRand "math/rand"
 	"strings"
 	"testing"
@@ -111,10 +112,13 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	if opts.withAddress != "" {
 		address = opts.withAddress
 	}
+	versionInfo := version.Get()
+	relVer := versionInfo.FullVersionNumber(false)
 	wrk := NewWorker(scope.Global.String(),
 		WithName(name),
 		WithAddress(address),
-		WithDescription(opts.withDescription))
+		WithDescription(opts.withDescription),
+		WithReleaseVersion(relVer))
 	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)
