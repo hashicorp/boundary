@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -29,6 +28,7 @@ var (
 
 const (
 	invalidPathValue = "invalid"
+	apiSubSystem     = "controller_api"
 )
 
 func init() {
@@ -113,10 +113,6 @@ func buildRegexFromPath(p string) *regexp.Regexp {
 	escapedPathRegex := strings.Join(seg, idRegexp)
 	return regexp.MustCompile(fmt.Sprintf("^%s$", escapedPathRegex))
 }
-
-const (
-	apiSubSystem = "controller_api"
-)
 
 var (
 	// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
@@ -248,31 +244,12 @@ func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeApiCollectors(r prometheus.Registerer) {
-	if r == nil {
-		return
-	}
-	r.MustRegister(httpResponseSize, httpRequestSize, httpRequestLatency)
-
-	for p, methods := range expectedPathsToMethods {
-		for _, m := range methods {
-			for _, sc := range expectedStatusCodesPerMethod[m] {
-				l := httpLabels.ToPromLabels(strconv.Itoa(sc), p, strings.ToLower(m))
-				httpResponseSize.With(l)
-				httpRequestSize.With(l)
-				httpRequestLatency.With(l)
-			}
+	for _, v := range []prometheus.ObserverVec{httpRequestLatency, httpRequestSize, httpResponseSize} {
+		sh := metric.StatsHandler{
+			Metric: v,
+			Labels: httpLabels,
 		}
+		metric.InitializeApiCollectors(r, sh, expectedPathsToMethods, expectedStatusCodesPerMethod)
 	}
 
-	// When an invalid path is found, any method is possible both we expect
-	// an error response.
-	p := invalidPathValue
-	for m := range expectedStatusCodesPerMethod {
-		for _, sc := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
-			l := httpLabels.ToPromLabels(strconv.Itoa(sc), p, strings.ToLower(m))
-			httpResponseSize.With(l)
-			httpRequestSize.With(l)
-			httpRequestLatency.With(l)
-		}
-	}
 }

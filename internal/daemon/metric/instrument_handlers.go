@@ -4,15 +4,11 @@ package metric
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"path"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/stats"
@@ -122,34 +118,4 @@ func InstrumentClusterClient(sh StatsHandler) grpc.UnaryClientInterceptor {
 		r.Record(err)
 		return err
 	}
-}
-
-/* The following methods are used to instrument http handlers for worker proxy connections. */
-
-// proxyPathLabel maps the requested path to the label value recorded for metric
-func proxyPathLabel(incomingPath string) string {
-	if incomingPath == "" || incomingPath[0] != '/' {
-		incomingPath = fmt.Sprintf("/%s", incomingPath)
-	}
-	incomingPath = path.Clean(incomingPath)
-
-	if incomingPath == proxyPathValue {
-		return proxyPathValue
-	}
-	return invalidPathValue
-}
-
-// InstrumentHttpHandler provides a handler which measures time until header
-// is written by the server and attaches status code, method, and path
-// labels for the relevant measurements.
-func InstrumentHttpHandler(wrapped http.Handler, sh StatsHandler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		l := prometheus.Labels{
-			sh.Labels.Service: proxyPathLabel(req.URL.Path),
-		}
-		promhttp.InstrumentHandlerTimeToWriteHeader(
-			sh.Metric.MustCurryWith(l),
-			wrapped,
-		).ServeHTTP(rw, req)
-	})
 }
