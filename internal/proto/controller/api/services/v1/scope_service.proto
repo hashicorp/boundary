@@ -168,7 +168,7 @@ message ListKeysResponse {
 }
 
 message RotateKeysRequest {
-  string id = 1;
+  string scope_id = 1;
   bool rewrap = 2;
 }
 

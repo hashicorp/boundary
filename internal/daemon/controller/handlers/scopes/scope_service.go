@@ -414,18 +414,18 @@ func (s Service) ListKeys(ctx context.Context, req *pbs.ListKeysRequest) (*pbs.L
 
 // RotateKeys implements the interface pbs.ScopeServiceServer.
 func (s Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*pbs.RotateKeysResponse, error) {
-	if req.GetId() == "" {
-		req.Id = scope.Global.String()
+	if req.GetScopeId() == "" {
+		req.ScopeId = scope.Global.String()
 	}
 	if err := validateRotateKeysRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.RotateScopeKeys)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.RotateScopeKeys)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
 
-	if err := s.kmsRepo.RotateKeys(ctx, req.GetId(), kms.WithRewrap(req.GetRewrap())); err != nil {
+	if err := s.kmsRepo.RotateKeys(ctx, req.GetScopeId(), kms.WithRewrap(req.GetRewrap())); err != nil {
 		return nil, err
 	}
 
@@ -877,7 +877,7 @@ func validateListKeysRequest(req *pbs.ListKeysRequest) error {
 
 func validateRotateKeysRequest(req *pbs.RotateKeysRequest) error {
 	badFields := map[string]string{}
-	if req.GetId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetId()), scope.Project.Prefix()) {
+	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) {
 		badFields["id"] = "Must be 'global', a valid org scope id or a valid project scope id when listing keys."
 	}
 	// other field is just a bool so can't be validated

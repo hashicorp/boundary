@@ -6660,7 +6660,7 @@
     "controller.api.services.v1.RotateKeysRequest": {
       "type": "object",
       "properties": {
-        "id": {
+        "scope_id": {
           "type": "string"
         },
         "rewrap": {

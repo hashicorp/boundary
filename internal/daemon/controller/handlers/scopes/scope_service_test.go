@@ -1769,31 +1769,15 @@ func TestRotateKeys(t *testing.T) {
 			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
 		})
 
-	org, proj := iam.TestScopes(t, tc.IamRepo())
-
-	org.Name = "defaultOrg"
-	org.Description = "defaultOrg"
-	org, _, err := tc.IamRepo().UpdateScope(context.Background(), org, 1, []string{"Name", "Description"})
-	require.NoError(t, err)
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(aToken.UserId))
 
 	// Add new role for listing+rotating keys in org
 	rotateKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
-	_, err = tc.IamRepo().AddRoleGrants(context.Background(), rotateKeysRole.PublicId, 1, []string{"id=*;type=*;actions=rotate-keys,list-keys"})
-	require.NoError(t, err)
-	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), rotateKeysRole.PublicId, 2, []string{aToken.UserId})
-	require.NoError(t, err)
-
-	proj.Name = "defaultProj"
-	proj.Description = "defaultProj"
-	proj, _, err = tc.IamRepo().UpdateScope(context.Background(), proj, 1, []string{"Name", "Description"})
-	require.NoError(t, err)
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
 
 	// Add new role for listing+rotating keys in project
 	rotateKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
-	_, err = tc.IamRepo().AddRoleGrants(context.Background(), rotateKeysRole.PublicId, 1, []string{"id=*;type=*;actions=rotate-keys,list-keys"})
-	require.NoError(t, err)
-	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), rotateKeysRole.PublicId, 2, []string{aToken.UserId})
-	require.NoError(t, err)
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
 
 	cases := []struct {
 		name    string
@@ -1804,24 +1788,34 @@ func TestRotateKeys(t *testing.T) {
 	}{
 		{
 			name:    "unauthorized",
-			req:     &pbs.RotateKeysRequest{Id: "global", Rewrap: false},
+			req:     &pbs.RotateKeysRequest{ScopeId: "global", Rewrap: false},
 			err:     handlers.ApiErrorWithCode(codes.PermissionDenied),
 			authCtx: unprivCtx,
 		},
 		{
 			name:    "Rotate keys in a non existing org",
-			req:     &pbs.RotateKeysRequest{Id: "o_DoesntExis", Rewrap: false},
+			req:     &pbs.RotateKeysRequest{ScopeId: "o_DoesntExis", Rewrap: false},
 			authCtx: privCtx,
 			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name:    "successfully Rotate keys in org",
-			req:     &pbs.RotateKeysRequest{Id: org.GetPublicId(), Rewrap: false},
+			req:     &pbs.RotateKeysRequest{ScopeId: org.GetPublicId(), Rewrap: false},
+			authCtx: privCtx,
+		},
+		{
+			name:    "successfully Rotate and rewrap keys in org",
+			req:     &pbs.RotateKeysRequest{ScopeId: org.GetPublicId(), Rewrap: true},
 			authCtx: privCtx,
 		},
 		{
 			name:    "successfully Rotate keys in project",
-			req:     &pbs.RotateKeysRequest{Id: proj.GetPublicId(), Rewrap: true},
+			req:     &pbs.RotateKeysRequest{ScopeId: proj.GetPublicId(), Rewrap: false},
+			authCtx: privCtx,
+		},
+		{
+			name:    "successfully Rotate and rewrap keys in project",
+			req:     &pbs.RotateKeysRequest{ScopeId: proj.GetPublicId(), Rewrap: true},
 			authCtx: privCtx,
 		},
 	}
@@ -1832,6 +1826,26 @@ func TestRotateKeys(t *testing.T) {
 			s, err := scopes.NewService(iamRepoFn, tc.Kms())
 			require.NoError(err, "Couldn't create new project service.")
 
+			prevKeyVersions := map[uint32]int{}
+			var prevLatest uint32 = 0
+
+			// checking key versions before rotation
+			if tt.err == nil {
+				keys, gErr := s.ListKeys(privCtx, &pbs.ListKeysRequest{Id: tt.req.ScopeId})
+				require.NoError(gErr)
+
+				for _, key := range keys.Items {
+					if key.Version > prevLatest {
+						prevLatest = key.Version
+					}
+					_, ok := prevKeyVersions[key.Version]
+					if !ok {
+						prevKeyVersions[key.Version] = 0
+					}
+					prevKeyVersions[key.Version]++
+				}
+			}
+
 			// RotateKeys returns nocontent response
 			_, kErr := s.RotateKeys(tt.authCtx, tt.req)
 
@@ -1840,12 +1854,16 @@ func TestRotateKeys(t *testing.T) {
 				assert.True(errors.Is(kErr, tt.err), "RotateKeys(%+v) got error\n%v, wanted\n%v", tt.req, kErr, tt.err)
 			} else {
 				require.NoError(kErr)
-				keys, gErr := s.ListKeys(privCtx, &pbs.ListKeysRequest{Id: tt.req.Id})
+				keys, gErr := s.ListKeys(privCtx, &pbs.ListKeysRequest{Id: tt.req.ScopeId})
 				require.NoError(gErr)
 
 				keyVersions := map[uint32]int{}
+				var latest uint32 = 0
 
 				for _, key := range keys.Items {
+					if key.Version > latest {
+						latest = key.Version
+					}
 					_, ok := keyVersions[key.Version]
 					if !ok {
 						keyVersions[key.Version] = 0
@@ -1853,10 +1871,10 @@ func TestRotateKeys(t *testing.T) {
 					keyVersions[key.Version]++
 				}
 
-				// there should only be key versions 1 and 2
-				assert.True(len(keyVersions) == 2)
+				// there should only be one new key version
+				assert.Equal(len(prevKeyVersions)+1, len(keyVersions))
 				// since we just rotated them, there should be the same number of version 1 and version 2
-				assert.True(keyVersions[2] == keyVersions[1])
+				assert.Equal(prevKeyVersions[prevLatest], keyVersions[latest])
 			}
 		})
 	}
