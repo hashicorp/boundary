@@ -360,4 +360,4 @@ jobs:
       go-version: ${{ needs.product-metadata.outputs.go-version }}
     secrets: inherit
     # Enos jobs are still a bit flaky, ensure they don't fail the workflow.
-    continue-on-failure: true
+    continue-on-error: true
