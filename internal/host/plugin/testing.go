@@ -233,14 +233,23 @@ var _ plgpb.HostPluginServiceServer = (*TestPluginServer)(nil)
 
 // TestPluginServer provides a host plugin service server where each method can be overwritten for tests.
 type TestPluginServer struct {
-	OnCreateCatalogFn func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error)
-	OnUpdateCatalogFn func(context.Context, *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error)
-	OnDeleteCatalogFn func(context.Context, *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error)
-	OnCreateSetFn     func(context.Context, *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error)
-	OnUpdateSetFn     func(context.Context, *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error)
-	OnDeleteSetFn     func(context.Context, *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error)
-	ListHostsFn       func(context.Context, *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error)
+	NormalizeCatalogDataFn func(context.Context, *plgpb.NormalizeCatalogDataRequest) (*plgpb.NormalizeCatalogDataResponse, error)
+	OnCreateCatalogFn      func(context.Context, *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error)
+	OnUpdateCatalogFn      func(context.Context, *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error)
+	OnDeleteCatalogFn      func(context.Context, *plgpb.OnDeleteCatalogRequest) (*plgpb.OnDeleteCatalogResponse, error)
+	NormalizeSetDataFn     func(context.Context, *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error)
+	OnCreateSetFn          func(context.Context, *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error)
+	OnUpdateSetFn          func(context.Context, *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error)
+	OnDeleteSetFn          func(context.Context, *plgpb.OnDeleteSetRequest) (*plgpb.OnDeleteSetResponse, error)
+	ListHostsFn            func(context.Context, *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error)
 	plgpb.UnimplementedHostPluginServiceServer
+}
+
+func (t TestPluginServer) NormalizeCatalogData(ctx context.Context, req *plgpb.NormalizeCatalogDataRequest) (*plgpb.NormalizeCatalogDataResponse, error) {
+	if t.NormalizeCatalogDataFn == nil {
+		return t.UnimplementedHostPluginServiceServer.NormalizeCatalogData(ctx, req)
+	}
+	return t.NormalizeCatalogDataFn(ctx, req)
 }
 
 func (t TestPluginServer) OnCreateCatalog(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
@@ -262,6 +271,13 @@ func (t TestPluginServer) OnDeleteCatalog(ctx context.Context, req *plgpb.OnDele
 		return t.UnimplementedHostPluginServiceServer.OnDeleteCatalog(ctx, req)
 	}
 	return t.OnDeleteCatalogFn(ctx, req)
+}
+
+func (t TestPluginServer) NormalizeSetData(ctx context.Context, req *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error) {
+	if t.NormalizeSetDataFn == nil {
+		return t.UnimplementedHostPluginServiceServer.NormalizeSetData(ctx, req)
+	}
+	return t.NormalizeSetDataFn(ctx, req)
 }
 
 func (t TestPluginServer) OnCreateSet(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
