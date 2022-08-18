@@ -1731,3 +1731,155 @@ func TestListKeys(t *testing.T) {
 		})
 	}
 }
+
+func TestRotateKeys(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	aToken := tc.Token()
+	uToken := tc.UnprivilegedToken()
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return tc.IamRepo(), nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return tc.ServersRepo(), nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return tc.AuthTokenRepo(), nil
+	}
+
+	privCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       aToken.Id,
+			EncryptedToken: strings.Split(aToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	unprivCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       uToken.Id,
+			EncryptedToken: strings.Split(uToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(aToken.UserId))
+
+	// Add new role for listing+rotating keys in org
+	rotateKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+
+	// Add new role for listing+rotating keys in project
+	rotateKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+
+	cases := []struct {
+		name    string
+		req     *pbs.RotateKeysRequest
+		res     *pbs.RotateKeysResponse
+		authCtx context.Context
+		err     error
+	}{
+		{
+			name:    "unauthorized",
+			req:     &pbs.RotateKeysRequest{ScopeId: "global", Rewrap: false},
+			err:     handlers.ApiErrorWithCode(codes.PermissionDenied),
+			authCtx: unprivCtx,
+		},
+		{
+			name:    "Rotate keys in a non existing org",
+			req:     &pbs.RotateKeysRequest{ScopeId: "o_DoesntExis", Rewrap: false},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name:    "successfully Rotate keys in org",
+			req:     &pbs.RotateKeysRequest{ScopeId: org.GetPublicId(), Rewrap: false},
+			authCtx: privCtx,
+		},
+		{
+			name:    "successfully Rotate and rewrap keys in org",
+			req:     &pbs.RotateKeysRequest{ScopeId: org.GetPublicId(), Rewrap: true},
+			authCtx: privCtx,
+		},
+		{
+			name:    "successfully Rotate keys in project",
+			req:     &pbs.RotateKeysRequest{ScopeId: proj.GetPublicId(), Rewrap: false},
+			authCtx: privCtx,
+		},
+		{
+			name:    "successfully Rotate and rewrap keys in project",
+			req:     &pbs.RotateKeysRequest{ScopeId: proj.GetPublicId(), Rewrap: true},
+			authCtx: privCtx,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := scopes.NewService(iamRepoFn, tc.Kms())
+			require.NoError(err, "Couldn't create new project service.")
+
+			prevKeyVersions := map[uint32]int{}
+			var prevLatest uint32 = 0
+
+			// checking key versions before rotation
+			if tt.err == nil {
+				keys, gErr := s.ListKeys(privCtx, &pbs.ListKeysRequest{Id: tt.req.ScopeId})
+				require.NoError(gErr)
+
+				for _, key := range keys.Items {
+					if key.Version > prevLatest {
+						prevLatest = key.Version
+					}
+					_, ok := prevKeyVersions[key.Version]
+					if !ok {
+						prevKeyVersions[key.Version] = 0
+					}
+					prevKeyVersions[key.Version]++
+				}
+			}
+
+			// RotateKeys returns nocontent response
+			_, kErr := s.RotateKeys(tt.authCtx, tt.req)
+
+			if tt.err != nil {
+				require.Error(kErr)
+				assert.True(errors.Is(kErr, tt.err), "RotateKeys(%+v) got error\n%v, wanted\n%v", tt.req, kErr, tt.err)
+			} else {
+				require.NoError(kErr)
+				keys, gErr := s.ListKeys(privCtx, &pbs.ListKeysRequest{Id: tt.req.ScopeId})
+				require.NoError(gErr)
+
+				keyVersions := map[uint32]int{}
+				var latest uint32 = 0
+
+				for _, key := range keys.Items {
+					if key.Version > latest {
+						latest = key.Version
+					}
+					_, ok := keyVersions[key.Version]
+					if !ok {
+						keyVersions[key.Version] = 0
+					}
+					keyVersions[key.Version]++
+				}
+
+				// there should only be one new key version
+				assert.Equal(len(prevKeyVersions)+1, len(keyVersions))
+				// since we just rotated them, there should be the same number of version 1 and version 2
+				assert.Equal(prevKeyVersions[prevLatest], keyVersions[latest])
+			}
+		})
+	}
+}

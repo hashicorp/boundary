@@ -99,6 +99,19 @@ service ScopeService {
       summary: "List all keys in a Scope."
     };
   }
+
+  // RotateKeys rotates and optionally rewraps all the keys found in the
+  // scope specified. If the scope is not found an error is returned. If
+  // the scope is empty, the global scope is used.
+  rpc RotateKeys(RotateKeysRequest) returns (RotateKeysResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes:rotate-keys"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Rotate all keys in a Scope."
+    };
+  }
 }
 
 message GetScopeRequest {
@@ -153,3 +166,10 @@ message ListKeysRequest {
 message ListKeysResponse {
   repeated resources.scopes.v1.Key items = 1;
 }
+
+message RotateKeysRequest {
+  string scope_id = 1;
+  bool rewrap = 2;
+}
+
+message RotateKeysResponse {}
