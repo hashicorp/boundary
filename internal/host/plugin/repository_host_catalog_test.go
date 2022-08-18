@@ -336,11 +336,9 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				}
 			}
 
-			// wantedPluginAttributes := &structpb.Struct{}
-			// require.NoError(t, proto.Unmarshal(tt.want.GetAttributes(), wantedPluginAttributes))
-			gotB, err := proto.Marshal(gotPluginAttrs)
-			require.NoError(err)
-			assert.Equal(tt.want.GetAttributes(), gotB)
+			wantedPluginAttributes := &structpb.Struct{}
+			require.NoError(proto.Unmarshal(tt.want.GetAttributes(), wantedPluginAttributes))
+			assert.Empty(cmp.Diff(wantedPluginAttributes, gotPluginAttrs, protocmp.Transform()))
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 

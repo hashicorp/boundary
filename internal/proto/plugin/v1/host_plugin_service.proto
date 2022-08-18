@@ -13,6 +13,10 @@ service HostPluginService {
   // NormalizeCatalogData is a hook that passes attributes to the plugin and
   // allows those values to be normalized prior to creating or updating those
   // values in the host catalog data.
+  //
+  // NormalizeCatalogData is called before:
+  // * OnCreateCatalog
+  // * OnUpdateCatalog
   rpc NormalizeCatalogData(NormalizeCatalogDataRequest) returns (NormalizeCatalogDataResponse);
 
   // OnCreateCatalog is a hook that runs when a
@@ -30,6 +34,10 @@ service HostPluginService {
   // NormalizeSetData is a hook that passes attributes to the plugin and
   // allows those values to be normalized prior to creating or updating those
   // values in the host set data.
+  //
+  // NormalizeSetData is called before:
+  // * OnCreateSet
+  // * OnUpdateSet
   rpc NormalizeSetData(NormalizeSetDataRequest) returns (NormalizeSetDataResponse);
 
   // OnCreateSet is a hook that runs when a host set is created.
