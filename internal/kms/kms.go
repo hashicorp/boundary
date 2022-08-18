@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -436,37 +437,41 @@ func (k *Kms) RunKeyRevocation(ctx context.Context, keyRevocation *KeyRevocation
 		return errors.Wrap(ctx, err, op)
 	}
 
-	fmt.Println("Get rows affected by revocation")
-	select {
-	case <-time.After(3 * time.Second):
-	case <-ctx.Done():
-		fmt.Println("canceled")
-		return ctx.Err()
-	}
-
-	fmt.Println("Update progress for each row revoked")
-	select {
-	case <-time.After(3 * time.Second):
-	case <-ctx.Done():
-		fmt.Println("canceled")
-		return ctx.Err()
-	}
-
-	fmt.Println("Revoke key")
-	select {
-	case <-time.After(3 * time.Second):
-	case <-ctx.Done():
-		fmt.Println("canceled")
-		return ctx.Err()
-	}
-
-	fmt.Println("Done")
-
-	/*
-		if err := k.underlying.RevokeKey(ctx, keyRevocation.KeyId); err != nil {
+	switch {
+	case strings.HasPrefix(keyRevocation.KeyId, "krkv"):
+		// Root key, rewrap keys in scope
+		// TODO: A better way to get scope_id from key version private id
+		// kms doesn't export the type.
+		rows, err := k.reader.Query(ctx, "select scope_id from kms_root_key_version where private_id=?", []interface{}{keyRevocation.KeyId})
+		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-	*/
+		defer rows.Close()
+		if !rows.Next() {
+			return errors.Wrap(ctx, rows.Err(), op)
+		}
+		var scopeId string
+		if err := rows.Scan(&scopeId); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if err := rows.Err(); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if err := k.underlying.RewrapKeys(ctx, scopeId); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	case strings.HasPrefix(keyRevocation.KeyId, "kdkv"):
+		// Data key, rewrap all data
+		for _, rewrapFn := range tableNameToRewrappingFn {
+			if err := rewrapFn(ctx, keyRevocation.KeyId, k.reader, k.writer, k); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		}
+	}
+
+	if err := k.underlying.RevokeKey(ctx, keyRevocation.KeyId); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 
 	return nil
 }

@@ -184,6 +184,7 @@ func (a *AuthMethod) TableName() string {
 
 // SetTableName sets the table name.
 func (a *AuthMethod) SetTableName(n string) {
+	// TODO: Should we register a rewrapping function here?
 	a.tableName = n
 }
 
