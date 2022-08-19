@@ -26,4 +26,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLimit = 5
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithPrivateKeyPassphrase", func(t *testing.T) {
+		opts := getOpts(WithPrivateKeyPassphrase([]byte("my-pass")))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(t, opts, testOpts)
+		testOpts.withPrivateKeyPassphrase = []byte("my-pass")
+		assert.Equal(t, opts, testOpts)
+	})
 }

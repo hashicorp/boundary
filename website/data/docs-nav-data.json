@@ -4,6 +4,10 @@
     "path": "what-is-boundary"
   },
   {
+    "title": "Use Cases",
+    "path": "use-cases"
+  },
+  {
     "title": "Getting Started",
     "routes": [
       {
@@ -46,7 +50,7 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "configuration/worker/overview"
+            "path": "configuration/worker"
           },
           {
             "title": "PKI Workers",
@@ -117,7 +121,7 @@
         "routes": [
           {
             "title": "Overview",
-            "path": "configuration/events/overview"
+            "path": "configuration/events"
           },
           {
             "title": "Common Sink Parameters",
@@ -461,6 +465,10 @@
       {
         "title": "Overview",
         "path": "release-notes"
+      },
+      {
+        "title": "v0.10.0",
+        "path": "release-notes/v0_10_0"
       },
       {
         "title": "v0.9.0",

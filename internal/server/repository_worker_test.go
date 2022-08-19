@@ -940,7 +940,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			}
 			err = rw.LookupByPublicId(testCtx, found)
 			require.NoError(err)
-			assert.Equal(got, found)
+			assert.Empty(cmp.Diff(got, found, protocmp.Transform()))
 
 			if tc.fetchReq != nil {
 				worker := &server.WorkerAuth{

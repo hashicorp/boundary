@@ -206,9 +206,7 @@ begin;
   -- will have conflicting PKs and we just want to "do nothing" on those
   -- conflicts, deferring the raising on an error to insert into the
   -- host_plugin_host table. This allows the upsert-style workflow.
-  create or replace function
-    insert_host_plugin_host_subtype()
-    returns trigger
+  create or replace function insert_host_plugin_host_subtype() returns trigger
   as $$
   begin
     insert into host
@@ -247,17 +245,14 @@ begin;
 
   -- host_immutable_ip_address() ensures that ip addresses assigned to hosts are
   -- immutable.
-  create function
-    host_immutable_ip_address()
-    returns trigger
+  create function host_immutable_ip_address() returns trigger
   as $$
   begin
     raise exception 'host ip addresses are immutable';
   end;
   $$ language plpgsql;
   
-  create trigger immutable_ip_address
-    before update on host_ip_address
+  create trigger immutable_ip_address before update on host_ip_address
     for each row execute procedure host_immutable_ip_address();
 
   -- host_dns_name contains the DNS names associated with a host, one per row.
@@ -279,17 +274,14 @@ begin;
 
   -- host_immutable_dns_name() ensures that dns names assigned to hosts are
   -- immutable.
-  create function
-    host_immutable_dns_name()
-    returns trigger
+  create function host_immutable_dns_name() returns trigger
   as $$
   begin
     raise exception 'host dns names are immutable';
   end;
   $$ language plpgsql;
 
-  create trigger immutable_dns_name
-    before update on host_dns_name
+  create trigger immutable_dns_name before update on host_dns_name
     for each row execute procedure host_immutable_dns_name();
 
   create table host_plugin_set_member (
@@ -318,8 +310,7 @@ begin;
   create trigger immutable_columns before update on host_plugin_set_member
     for each row execute procedure immutable_columns('host_id', 'set_id', 'catalog_id', 'create_time');
 
-  create function insert_host_plugin_set_member()
-    returns trigger
+  create function insert_host_plugin_set_member() returns trigger
   as $$
   begin
     select host_plugin_set.catalog_id
@@ -367,17 +358,14 @@ begin;
 
   -- host_set_immutable_preferred_endpoint() ensures that endpoint conditions
   -- assigned to host sets are immutable.
-  create function
-    host_set_immutable_preferred_endpoint()
-    returns trigger
+  create function host_set_immutable_preferred_endpoint() returns trigger
   as $$
   begin
     raise exception 'preferred endpoints are immutable';
   end;
   $$ language plpgsql;
 
-  create trigger immutable_preferred_endpoint
-    before update on host_set_preferred_endpoint
+  create trigger immutable_preferred_endpoint before update on host_set_preferred_endpoint
     for each row execute procedure host_set_immutable_preferred_endpoint();
 
   insert into oplog_ticket (name, version)

@@ -33,17 +33,12 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	staticOrg, staticProj := iam.TestScopes(t, iamRepo)
+	_, staticProj := iam.TestScopes(t, iamRepo)
 	repo, err := target.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
-	createHostSetsFn := func(orgs, projects []string) []string {
+	createHostSetsFn := func(projects []string) []string {
 		results := []string{}
-		for _, publicId := range orgs {
-			cats := static.TestCatalogs(t, conn, publicId, 1)
-			hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 1)
-			results = append(results, hsets[0].PublicId)
-		}
 		for _, publicId := range projects {
 			cats := static.TestCatalogs(t, conn, publicId, 1)
 			hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 1)
@@ -110,7 +105,7 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 			require.Equal(0, len(origHostSet))
 
 			if tt.args.wantTargetIds {
-				hostSourceIds = createHostSetsFn([]string{staticOrg.PublicId}, []string{staticProj.PublicId})
+				hostSourceIds = createHostSetsFn([]string{staticProj.PublicId})
 			}
 
 			gotTarget, gotHostSources, _, err := repo.AddTargetHostSources(ctx, projTarget.GetPublicId(), tt.args.targetVersion, hostSourceIds, tt.args.opt...)

@@ -4,12 +4,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func Test_NewGroupMember(t *testing.T) {
@@ -253,7 +255,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			found := allocGroupMember()
 			err = w.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []interface{}{gm.GroupId, gm.MemberId})
 			require.NoError(err)
-			assert.Equal(gm, &found)
+			assert.Empty(cmp.Diff(gm, &found, protocmp.Transform()))
 		})
 	}
 }

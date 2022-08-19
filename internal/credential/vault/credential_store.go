@@ -25,7 +25,7 @@ type CredentialStore struct {
 
 // NewCredentialStore creates a new in memory CredentialStore for a Vault
 // server at vaultAddress assigned to scopeId. Name, description, CA cert,
-// client cert, namespace, TLS server name, and TLS skip verify are the
+// client cert, namespace, TLS server name, worker filter, and TLS skip verify are the
 // only valid options. All other options are ignored.
 func NewCredentialStore(scopeId string, vaultAddress string, token TokenSecret, opt ...Option) (*CredentialStore, error) {
 	opts := getOpts(opt...)
@@ -41,6 +41,7 @@ func NewCredentialStore(scopeId string, vaultAddress string, token TokenSecret, 
 			Namespace:     opts.withNamespace,
 			TlsServerName: opts.withTlsServerName,
 			TlsSkipVerify: opts.withTlsSkipVerify,
+			WorkerFilter:  opts.withWorkerFilter,
 		},
 	}
 	return cs, nil
@@ -109,6 +110,8 @@ func (cs *CredentialStore) applyUpdate(new *CredentialStore, fieldMaskPaths []st
 			cp.TlsSkipVerify = new.TlsSkipVerify
 		case strings.EqualFold(tokenField, f):
 			cp.inputToken = new.inputToken
+		case strings.EqualFold(workerFilterField, f):
+			cp.WorkerFilter = new.WorkerFilter
 		}
 	}
 	return cp

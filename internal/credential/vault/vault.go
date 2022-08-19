@@ -26,7 +26,7 @@ type clientConfig struct {
 }
 
 func (c *clientConfig) isValid() bool {
-	if c == nil || c.Addr == "" || len(c.Token) < 0 {
+	if c == nil || c.Addr == "" || len(c.Token) == 0 {
 		return false
 	}
 	return true

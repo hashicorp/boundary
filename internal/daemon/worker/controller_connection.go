@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -22,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
+	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -41,11 +41,11 @@ const hcpbUrlSuffix = ".proxy.boundary.hashicorp.cloud:9202"
 // connection client creation
 func (w *Worker) StartControllerConnections() error {
 	const op = "worker.(Worker).StartControllerConnections"
-	initialAddrs := make([]resolver.Address, 0, len(w.conf.RawConfig.Worker.InitialUpstreams))
+	initialAddrs := make([]string, 0, len(w.conf.RawConfig.Worker.InitialUpstreams))
 	for _, addr := range w.conf.RawConfig.Worker.InitialUpstreams {
 		switch {
 		case strings.HasPrefix(addr, "/"):
-			initialAddrs = append(initialAddrs, resolver.Address{Addr: addr})
+			initialAddrs = append(initialAddrs, addr)
 		default:
 			host, port, err := net.SplitHostPort(addr)
 			if err != nil && strings.Contains(err.Error(), "missing port in address") {
@@ -54,40 +54,39 @@ func (w *Worker) StartControllerConnections() error {
 			if err != nil {
 				return fmt.Errorf("error parsing upstream address: %w", err)
 			}
-			initialAddrs = append(initialAddrs, resolver.Address{Addr: net.JoinHostPort(host, port)})
+			initialAddrs = append(initialAddrs, net.JoinHostPort(host, port))
 		}
 	}
 
 	if len(initialAddrs) == 0 {
 		if w.conf.RawConfig.HcpbClusterId != "" {
 			clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HcpbClusterId, hcpbUrlSuffix)
-			initialAddrs = append(initialAddrs, resolver.Address{Addr: clusterAddress})
+			initialAddrs = append(initialAddrs, clusterAddress)
 			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCP Boundary cluster address %s as upstream address", clusterAddress))
 		} else {
-			return errors.New("no initial upstream addresses found")
+			return errors.New(w.baseContext, errors.InvalidParameter, op, "no initial upstream addresses found")
 		}
 	}
 
-	w.Resolver().InitialState(resolver.State{
-		Addresses: initialAddrs,
-	})
-	if err := w.createClientConn(initialAddrs[0].Addr); err != nil {
-		return fmt.Errorf("error making client connection to upstream address %s: %w", initialAddrs[0].Addr, err)
+	for _, ar := range w.addressReceivers {
+		ar.InitialAddresses(initialAddrs)
 	}
-
+	if err := w.createClientConn(initialAddrs[0]); err != nil {
+		return fmt.Errorf("error making client connection to upstream address %s: %w", initialAddrs[0], err)
+	}
 	return nil
 }
 
-func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn, error) {
+func (w *Worker) controllerDialerFunc(extraAlpnProtos ...string) func(context.Context, string) (net.Conn, error) {
 	const op = "worker.(Worker).controllerDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		var conn net.Conn
 		var err error
 		switch {
 		case w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream:
-			conn, err = w.v1KmsAuthDialFn(ctx, addr)
+			conn, err = w.v1KmsAuthDialFn(ctx, addr, extraAlpnProtos...)
 		default:
-			conn, err = protocol.Dial(ctx, w.WorkerAuthStorage, addr, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+			conn, err = protocol.Dial(ctx, w.WorkerAuthStorage, addr, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms), nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos))
 			// No error and a valid connection means the WorkerAuthRegistrationRequest was populated
 			// We can remove the stored workerAuthRequest file
 			if err == nil && conn != nil {
@@ -110,9 +109,10 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 		}
 
 		if err == nil && conn != nil {
-			if !w.everAuthenticated.Load() {
-				w.everAuthenticated.Store(true)
+			if w.everAuthenticated.Load() == authenticationStatusNeverAuthenticated {
+				w.everAuthenticated.Store(authenticationStatusFirstAuthentication)
 			}
+
 			event.WriteSysEvent(ctx, op, "worker has successfully authenticated")
 		}
 
@@ -120,9 +120,9 @@ func (w *Worker) controllerDialerFunc() func(context.Context, string) (net.Conn,
 	}
 }
 
-func (w *Worker) v1KmsAuthDialFn(ctx context.Context, addr string) (net.Conn, error) {
+func (w *Worker) v1KmsAuthDialFn(ctx context.Context, addr string, extraAlpnProtos ...string) (net.Conn, error) {
 	const op = "worker.(Worker).v1KmsAuthDialFn"
-	tlsConf, authInfo, err := w.workerAuthTLSConfig()
+	tlsConf, authInfo, err := w.workerAuthTLSConfig(extraAlpnProtos...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tls config for worker auth: %w", err)
 	}
@@ -169,7 +169,15 @@ func (w *Worker) createClientConn(addr string) error {
 		]
 	  }
 	  `, defaultTimeout)
-	res := w.Resolver()
+	var res resolver.Builder
+	for _, v := range w.addressReceivers {
+		if rec, ok := v.(*grpcResolverReceiver); ok {
+			res = rec.Resolver
+		}
+	}
+	if res == nil {
+		return errors.New(w.baseContext, errors.Internal, op, "unable to find a resolver.Builder amongst the address receivers")
+	}
 	dialOpts := []grpc.DialOption{
 		grpc.WithResolvers(res),
 		grpc.WithUnaryInterceptor(metric.InstrumentClusterClient()),
@@ -197,14 +205,15 @@ func (w *Worker) createClientConn(addr string) error {
 	if err != nil {
 		return fmt.Errorf("error dialing controller for worker auth: %w", err)
 	}
-	w.GrpcClientConn = cc
 
+	w.GrpcClientConn = cc
 	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerMultihopConn.Store(multihop.NewMultihopServiceClient(cc))
+
 	return nil
 }
 
-func (w *Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error) {
+func (w *Worker) workerAuthTLSConfig(extraAlpnProtos ...string) (*tls.Config, *base.WorkerAuthInfo, error) {
 	var err error
 	info := &base.WorkerAuthInfo{
 		Name:         w.conf.RawConfig.Worker.Name,
@@ -275,6 +284,7 @@ func (w *Worker) workerAuthTLSConfig() (*tls.Config, *base.WorkerAuthInfo, error
 	}
 	b64alpn := base64.RawStdEncoding.EncodeToString(marshaledEncInfo)
 	var nextProtos []string
+	nextProtos = append(nextProtos, extraAlpnProtos...)
 	var count int
 	for i := 0; i < len(b64alpn); i += 230 {
 		end := i + 230

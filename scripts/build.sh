@@ -3,6 +3,8 @@
 # This script builds the application from source for a single platform.
 set -e
 
+GO_CMD=${GO_CMD:-go}
+
 # Get the parent directory of where this script is.
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ] ; do SOURCE="$(readlink "$SOURCE")"; done
@@ -17,6 +19,7 @@ fi
 
 # Set build tags
 BUILD_TAGS="${BUILD_TAGS:-"boundary"}"
+echo "==> Build tags: ${BUILD_TAGS}"
 
 # Get the git commit
 GIT_COMMIT="$(git rev-parse HEAD)"
@@ -57,9 +60,10 @@ rm -f bin/*
 mkdir -p bin/
 
 # Build!
-echo "==> Building into bin/..."
+echo "==> Building into bin/ for ${GOOS}_${GOARCH}..."
 BINARY_NAME="boundary${BINARY_SUFFIX}"
-go build -tags="${BUILD_TAGS}" \
+${GO_CMD} build \
+    -tags="${BUILD_TAGS}" \
     -ldflags "-X github.com/hashicorp/boundary/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY}" \
     -o "bin/${BINARY_NAME}" \
     ./cmd/boundary
@@ -71,4 +75,13 @@ if [ "${BOUNDARY_INSTALL_BINARY}x" != "x" ]; then
 fi
 
 # Done!
-echo "==> Done!"
+echo "==> Results:"
+ls -hl bin/
+
+# Print the version output for just linux_amd64.
+# Since we run this script in CI, and our CI build jobs run on linux runners, 
+# We can only check the version output for a subset of builds
+if [ "${GOOS}" == "linux" ] && [ "${GOARCH}" == "amd64" ]; then
+    echo "==> Version Info:"
+    bin/boundary version
+fi

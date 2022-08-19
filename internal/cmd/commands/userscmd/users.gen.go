@@ -267,41 +267,48 @@ func (c *Command) Run(args []string) int {
 
 	case "create":
 		createResult, err = usersClient.Create(c.Context, c.FlagScopeId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = createResult.GetResponse()
 		item = createResult.GetItem()
 
 	case "read":
 		readResult, err = usersClient.Read(c.Context, c.FlagId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = readResult.GetResponse()
 		item = readResult.GetItem()
 
 	case "update":
 		updateResult, err = usersClient.Update(c.Context, c.FlagId, version, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = updateResult.GetResponse()
 		item = updateResult.GetItem()
 
 	case "delete":
 		deleteResult, err = usersClient.Delete(c.Context, c.FlagId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = deleteResult.GetResponse()
 
 	case "list":
 		listResult, err = usersClient.List(c.Context, c.FlagScopeId, opts...)
+		if exitCode := c.checkFuncError(err); exitCode > 0 {
+			return exitCode
+		}
 		resp = listResult.GetResponse()
 		items = listResult.GetItems()
 
 	}
 
 	resp, item, items, err = executeExtraActions(c, resp, item, items, err, usersClient, version, opts)
-
-	if err != nil {
-		if apiErr := api.AsServerError(err); apiErr != nil {
-			var opts []base.Option
-
-			c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural), opts...)
-			return base.CommandApiError
-		}
-		c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
-		return base.CommandCliError
+	if exitCode := c.checkFuncError(err); exitCode > 0 {
+		return exitCode
 	}
 
 	output, err := printCustomActionOutput(c)
@@ -354,6 +361,18 @@ func (c *Command) Run(args []string) int {
 	}
 
 	return base.CommandSuccess
+}
+
+func (c *Command) checkFuncError(err error) int {
+	if err == nil {
+		return 0
+	}
+	if apiErr := api.AsServerError(err); apiErr != nil {
+		c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing %s on %s", c.Func, c.plural))
+		return base.CommandApiError
+	}
+	c.PrintCliError(fmt.Errorf("Error trying to %s %s: %s", c.Func, c.plural, err.Error()))
+	return base.CommandCliError
 }
 
 var (

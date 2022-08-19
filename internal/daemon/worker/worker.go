@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,10 +13,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
-
 	"github.com/hashicorp/nodeenrollment"
+	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/mr-tron/base58"
+	"google.golang.org/grpc/resolver/manual"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -29,18 +30,40 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
-	"github.com/hashicorp/nodeenrollment/multihop"
-	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/resolver"
-	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/protobuf/proto"
 )
 
 type randFn func(length int) (string, error)
+
+// downstreamRouter defines a min interface which must be met by a
+// Worker.downstreamRoutes field
+type downstreamRouter interface {
+	// StartRouteMgmtTicking starts a ticker which manages the router's
+	// connections.
+	StartRouteMgmtTicking(context.Context, func() string, int) error
+}
+
+// downstreamers provides at least a minimum interface that must be met by a
+// Worker.downstreamWorkers field which is far better than allowing any (empty
+// interface)
+type downstreamers interface {
+	// Root returns the root of the downstreamers' graph
+	Root() string
+}
+
+// downstreamRouterFactory provides a simple factory which a Worker can use to
+// create its downstreamRouter
+var downstreamRouterFactory func() downstreamRouter
+
+const (
+	authenticationStatusNeverAuthenticated uint32 = iota
+	authenticationStatusFirstAuthentication
+	authenticationStatusFirstStatusRpcSuccessful
+)
 
 type Worker struct {
 	conf   *Config
@@ -57,14 +80,15 @@ type Worker struct {
 	// This is exported for tests.
 	GrpcClientConn *grpc.ClientConn
 
+	// receives address updates and contains the grpc resolver.
+	addressReceivers []addressReceiver
+
 	sessionManager session.Manager
 
 	controllerStatusConn *atomic.Value
-	everAuthenticated    *ua.Bool
+	everAuthenticated    *ua.Uint32
 	lastStatusSuccess    *atomic.Value
 	workerStartTime      time.Time
-
-	controllerResolver *atomic.Value
 
 	controllerMultihopConn *atomic.Value
 
@@ -87,6 +111,10 @@ type Worker struct {
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
 
+	// downstream workers and routes to those workers
+	downstreamWorkers downstreamers
+	downstreamRoutes  downstreamRouter
+
 	// Test-specific options (and possibly hidden dev-mode flags)
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
@@ -94,6 +122,7 @@ type Worker struct {
 }
 
 func New(conf *Config) (*Worker, error) {
+	const op = "worker.New"
 	metric.InitializeHttpCollectors(conf.PrometheusRegisterer)
 	metric.InitializeWebsocketCollectors(conf.PrometheusRegisterer)
 	metric.InitializeClusterClientCollectors(conf.PrometheusRegisterer)
@@ -103,9 +132,8 @@ func New(conf *Config) (*Worker, error) {
 		logger:                 conf.Logger.Named("worker"),
 		started:                ua.NewBool(false),
 		controllerStatusConn:   new(atomic.Value),
-		everAuthenticated:      ua.NewBool(false),
+		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
 		lastStatusSuccess:      new(atomic.Value),
-		controllerResolver:     new(atomic.Value),
 		controllerMultihopConn: new(atomic.Value),
 		tags:                   new(atomic.Value),
 		updateTags:             ua.NewBool(false),
@@ -113,10 +141,14 @@ func New(conf *Config) (*Worker, error) {
 		WorkerAuthCurrentKeyId: new(ua.String),
 	}
 
+	if downstreamRouterFactory != nil {
+		w.downstreamRoutes = downstreamRouterFactory()
+	}
+
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
-	w.controllerResolver.Store(controllerResolver)
+	w.addressReceivers = []addressReceiver{&grpcResolverReceiver{controllerResolver}}
 
 	if conf.RawConfig.Worker == nil {
 		conf.RawConfig.Worker = new(config.Worker)
@@ -191,7 +223,7 @@ func (w *Worker) Start() error {
 		w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
 			nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
 		if err != nil {
-			return fmt.Errorf("error loading worker auth storage directory: %w", err)
+			return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error loading worker auth storage directory"))
 		}
 
 		var createNodeAuthCreds bool
@@ -292,31 +324,48 @@ func (w *Worker) Start() error {
 	}
 
 	if err := w.StartControllerConnections(); err != nil {
-		return fmt.Errorf("error making controller connections: %w", err)
+		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error making controller connections"))
 	}
 
 	var err error
 	w.sessionManager, err = session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
 	if err != nil {
-		return fmt.Errorf("error creating session manager: %w", err)
+		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error creating session manager"))
 	}
 
 	if err := w.startListeners(w.sessionManager); err != nil {
-		return fmt.Errorf("error starting worker listeners: %w", err)
+		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error starting worker listeners"))
 	}
 
 	// Rather than deal with some of the potential error conditions for Add on
 	// the waitgroup vs. Done (in case a function exits immediately), we will
-	// always start rotation and simply exit early if we're using KMS, and
-	// always add 2 here.
-	w.tickerWg.Add(2)
+	// always start rotation and simply exit early if we're using KMS
+	w.tickerWg.Add(3)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext, w.sessionManager)
+		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
 		w.startAuthRotationTicking(w.baseContext)
+	}()
+	go func() {
+		defer w.tickerWg.Done()
+		if w.downstreamRoutes != nil {
+			err := w.downstreamRoutes.StartRouteMgmtTicking(
+				w.baseContext,
+				func() string {
+					if s := w.LastStatusSuccess(); s != nil {
+						return s.WorkerId
+					}
+					return "unknown worker id"
+				},
+				-1, // indicates the ticker should run until cancelled.
+			)
+			if err != nil {
+				errors.Wrap(w.baseContext, err, op)
+			}
+		}
 	}()
 
 	w.workerStartTime = time.Now()
@@ -339,9 +388,6 @@ func (w *Worker) Shutdown() error {
 	// Stop listeners first to prevent new connections to the
 	// controller.
 	defer w.started.Store(false)
-	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
-	w.baseCancel()
-
 	if err := w.stopServersAndListeners(); err != nil {
 		return fmt.Errorf("error stopping worker servers and listeners: %w", err)
 	}
@@ -370,7 +416,9 @@ func (w *Worker) Shutdown() error {
 
 	// Proceed with remainder of shutdown.
 	w.baseCancel()
-	w.Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
+	for _, ar := range w.addressReceivers {
+		ar.SetAddresses(nil)
+	}
 
 	w.started.Store(false)
 	w.tickerWg.Wait()
@@ -381,14 +429,6 @@ func (w *Worker) Shutdown() error {
 	}
 
 	return nil
-}
-
-func (w *Worker) Resolver() *manual.Resolver {
-	raw := w.controllerResolver.Load()
-	if raw == nil {
-		panic("nil resolver")
-	}
-	return raw.(*manual.Resolver)
 }
 
 func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
@@ -407,40 +447,6 @@ func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
 	}
 	w.tags.Store(tags)
 	w.updateTags.Store(true)
-}
-
-// ControllerServerCoordinationServiceConn returns the underlying server coordination service client
-func (w *Worker) ControllerServerCoordinationServiceConn() (pbs.ServerCoordinationServiceClient, error) {
-	rawConn := w.controllerStatusConn.Load()
-	if rawConn == nil {
-		return nil, errors.New("unable to load controller service coordination service connection")
-	}
-	statusClient, ok := rawConn.(pbs.ServerCoordinationServiceClient)
-	if !ok {
-		return nil, fmt.Errorf("invalid service coordination service client %T", rawConn)
-	}
-	if statusClient == nil {
-		return nil, fmt.Errorf("service coordination service client is nil")
-	}
-
-	return statusClient, nil
-}
-
-// ControllerMultihopConn returns the underlying multihop service client
-func (w *Worker) ControllerMultihopConn() (multihop.MultihopServiceClient, error) {
-	rawConn := w.controllerMultihopConn.Load()
-	if rawConn == nil {
-		return nil, errors.New("unable to load controller multihop service connection")
-	}
-	multihopClient, ok := rawConn.(multihop.MultihopServiceClient)
-	if !ok {
-		return nil, fmt.Errorf("invalid multihop client %T", rawConn)
-	}
-	if multihopClient == nil {
-		return nil, fmt.Errorf("session multihop is nil")
-	}
-
-	return multihopClient, nil
 }
 
 func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
@@ -520,7 +526,7 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 			// Go will not run this without at least one peer certificate, but
 			// doesn't hurt to check
 			if len(cs.PeerCertificates) == 0 {
-				return errors.New("no peer certificates provided")
+				return errors.New(ctx, errors.InvalidParameter, op, "no peer certificates provided")
 			}
 			_, err := cs.PeerCertificates[0].Verify(verifyOpts)
 			return err

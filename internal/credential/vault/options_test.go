@@ -22,6 +22,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withDescription = "test desc"
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithWorkerFilter", func(t *testing.T) {
+		opts := getOpts(WithWorkerFilter("test filter"))
+		testOpts := getDefaultOptions()
+		testOpts.withWorkerFilter = "test filter"
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithLimit", func(t *testing.T) {
 		opts := getOpts(WithLimit(5))
 		testOpts := getDefaultOptions()
@@ -106,6 +112,13 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithOverridePrivateKeyAttribute("test"))
 		testOpts := getDefaultOptions()
 		testOpts.withOverridePrivateKeyAttribute = "test"
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithOverridePrivateKeyPassphraseAttribute", func(t *testing.T) {
+		opts := getOpts(WithOverridePrivateKeyPassphraseAttribute("test"))
+		testOpts := getDefaultOptions()
+		assert.NotEqual(t, opts, testOpts)
+		testOpts.withOverridePrivateKeyPassphraseAttribute = "test"
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithMappingOverride", func(t *testing.T) {

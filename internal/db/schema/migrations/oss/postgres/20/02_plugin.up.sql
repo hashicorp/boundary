@@ -9,9 +9,7 @@ begin;
   -- in a specific scope across all plugin subtypes.
   alter table plugin
     add column name wt_name,
-    add column scope_id wt_scope_id
-      not null
-      default 'global'
+    add column scope_id wt_scope_id not null default 'global'
       constraint iam_scope_global_fkey
       references iam_scope_global(scope_id)
         on delete cascade
@@ -32,8 +30,7 @@ begin;
   -- insert, update, and delete plugin_subtypes are created since we are adding
   -- subtyped plugins and we need to keep the base table plugin in sync with all
   -- subtype tables.
-  create function insert_plugin_subtype()
-    returns trigger
+  create function insert_plugin_subtype() returns trigger
   as $$
   begin
     insert into plugin
@@ -46,8 +43,7 @@ begin;
   comment on function insert_plugin_subtype() is
     'insert_plugin_subtype() inserts sub type name into the base type plugin table';
 
-  create function update_plugin_subtype()
-    returns trigger
+  create function update_plugin_subtype() returns trigger
   as $$
   begin
     update plugin set name = new.name where public_id = new.public_id and new.name != name;
@@ -59,8 +55,7 @@ begin;
 
   -- delete_plugin_subtype() is an after delete trigger function
   -- for subtypes of plugin
-  create function delete_plugin_subtype()
-    returns trigger
+  create function delete_plugin_subtype() returns trigger
   as $$
   begin
     delete from plugin

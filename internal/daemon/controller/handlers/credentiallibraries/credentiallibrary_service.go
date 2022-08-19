@@ -38,9 +38,10 @@ const (
 
 // Credential mapping override attributes
 const (
-	usernameAttribute   string = "username_attribute"
-	passwordAttribute   string = "password_attribute"
-	privateKeyAttribute string = "private_key_attribute"
+	usernameAttribute     string = "username_attribute"
+	passwordAttribute     string = "password_attribute"
+	privateKeyAttribute   string = "private_key_attribute"
+	pkPassphraseAttribute string = "private_key_passphrase_attribute"
 )
 
 var (
@@ -540,6 +541,9 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 					if mapping.PrivateKeyAttribute != "" {
 						m[privateKeyAttribute] = mapping.PrivateKeyAttribute
 					}
+					if mapping.PrivateKeyPassphraseAttribute != "" {
+						m[pkPassphraseAttribute] = mapping.PrivateKeyPassphraseAttribute
+					}
 				}
 				if len(m) > 0 {
 					mp, err := structpb.NewStruct(m)
@@ -611,6 +615,9 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 		}
 		if pk := overrides[privateKeyAttribute]; pk != nil {
 			mapOpts = append(mapOpts, vault.WithOverridePrivateKeyAttribute(pk.(string)))
+		}
+		if pass := overrides[pkPassphraseAttribute]; pass != nil {
+			mapOpts = append(mapOpts, vault.WithOverridePrivateKeyPassphraseAttribute(pass.(string)))
 		}
 		if len(mapOpts) > 0 {
 			opts = append(opts, vault.WithMappingOverride(vault.NewSshPrivateKeyOverride(mapOpts...)))
@@ -723,6 +730,7 @@ func validateMapping(badFields map[string]string, credentialType credential.Type
 	case credential.SshPrivateKeyType:
 		validFields[usernameAttribute] = true
 		validFields[privateKeyAttribute] = true
+		validFields[pkPassphraseAttribute] = true
 	default:
 		badFields[globals.CredentialTypeField] = fmt.Sprintf("Unknown credential type %q", credentialType)
 		return
@@ -782,10 +790,11 @@ func getMappingUpdates(credentialType credential.Type, current vault.MappingOver
 		}
 
 	case credential.SshPrivateKeyType:
-		var currentUser, currentPk interface{}
+		var currentUser, currentpPass, currentPk interface{}
 		if overrides, ok := current.(*vault.SshPrivateKeyOverride); ok {
 			currentUser = overrides.UsernameAttribute
 			currentPk = overrides.PrivateKeyAttribute
+			currentpPass = overrides.PrivateKeyPassphraseAttribute
 		}
 
 		switch {
@@ -800,6 +809,13 @@ func getMappingUpdates(credentialType credential.Type, current vault.MappingOver
 			ret[privateKeyAttribute] = new[privateKeyAttribute]
 		default:
 			ret[privateKeyAttribute] = currentPk
+		}
+
+		switch {
+		case masks[pkPassphraseAttribute]:
+			ret[pkPassphraseAttribute] = new[pkPassphraseAttribute]
+		default:
+			ret[pkPassphraseAttribute] = currentpPass
 		}
 	}
 

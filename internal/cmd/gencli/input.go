@@ -495,6 +495,21 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:     []string{"update"},
 			NeedsSubtypeInCreate: true,
 		},
+		{
+			ResourceType:         resource.Target.String(),
+			Pkg:                  "targets",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "ssh",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			Container:            "Scope",
+			HasDescription:       true,
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+		},
 	},
 	"users": {
 		{

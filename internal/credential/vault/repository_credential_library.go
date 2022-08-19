@@ -345,20 +345,21 @@ func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId strin
 // mapping overrides. It does not include encrypted data and is safe to
 // return external to boundary.
 type publicLibrary struct {
-	PublicId            string `gorm:"primary_key"`
-	StoreId             string
-	Name                string
-	Description         string
-	CreateTime          *timestamp.Timestamp
-	UpdateTime          *timestamp.Timestamp
-	Version             uint32
-	VaultPath           string
-	HttpMethod          string
-	HttpRequestBody     []byte
-	CredentialType      string
-	UsernameAttribute   string
-	PasswordAttribute   string
-	PrivateKeyAttribute string
+	PublicId                      string `gorm:"primary_key"`
+	StoreId                       string
+	Name                          string
+	Description                   string
+	CreateTime                    *timestamp.Timestamp
+	UpdateTime                    *timestamp.Timestamp
+	Version                       uint32
+	VaultPath                     string
+	HttpMethod                    string
+	HttpRequestBody               []byte
+	CredentialType                string
+	UsernameAttribute             string
+	PasswordAttribute             string
+	PrivateKeyAttribute           string
+	PrivateKeyPassphraseAttribute string
 }
 
 func allocPublicLibrary() *publicLibrary {
@@ -390,11 +391,12 @@ func (pl *publicLibrary) toCredentialLibrary() *CredentialLibrary {
 			cl.MappingOverride = up
 		}
 	case string(credential.SshPrivateKeyType):
-		if pl.UsernameAttribute != "" || pl.PrivateKeyAttribute != "" {
+		if pl.UsernameAttribute != "" || pl.PrivateKeyAttribute != "" || pl.PrivateKeyPassphraseAttribute != "" {
 			pk := allocSshPrivateKeyOverride()
 			pk.LibraryId = pl.PublicId
 			pk.UsernameAttribute = pl.UsernameAttribute
 			pk.PrivateKeyAttribute = pl.PrivateKeyAttribute
+			pk.PrivateKeyPassphraseAttribute = pl.PrivateKeyPassphraseAttribute
 			pk.sanitize()
 			cl.MappingOverride = pk
 		}

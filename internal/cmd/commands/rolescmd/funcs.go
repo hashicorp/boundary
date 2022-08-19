@@ -230,21 +230,39 @@ func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *roles
 	switch c.Func {
 	case "add-principals":
 		result, err := roleClient.AddPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-principals":
 		result, err := roleClient.SetPrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-principals":
 		result, err := roleClient.RemovePrincipals(c.Context, c.FlagId, version, c.flagPrincipals, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-grants":
 		result, err := roleClient.AddGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-grants":
 		result, err := roleClient.SetGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-grants":
 		result, err := roleClient.RemoveGrants(c.Context, c.FlagId, version, c.flagGrants, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	}
 	return origResp, origItem, origItems, origError

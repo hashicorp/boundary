@@ -3,7 +3,7 @@ package worker
 import (
 	"context"
 	"crypto/tls"
-	"errors"
+	stderrers "errors"
 	"fmt"
 	"log"
 	"math"
@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
+	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
@@ -26,6 +26,16 @@ import (
 	"github.com/hashicorp/nodeenrollment/util/temperror"
 	"google.golang.org/grpc"
 )
+
+// the function that handles a secondary connection over a provided listener
+var handleSecondaryConnection = closeListener
+
+func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
+	if l != nil {
+		return l.Close()
+	}
+	return nil
+}
 
 func (w *Worker) startListeners(sm session.Manager) error {
 	const op = "worker.(Worker).startListeners"
@@ -92,13 +102,12 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	) (*types.FetchNodeCredentialsResponse, error) {
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
-			return nil, temperror.New(errors.New("error fetching controller connection, client is nil"))
+			return nil, temperror.New(stderrers.New("error fetching controller connection, client is nil"))
 		}
 		multihopClient, ok := client.(multihop.MultihopServiceClient)
 		if !ok {
-			return nil, temperror.New(errors.New("client could not be understood as a multihop service client"))
+			return nil, temperror.New(stderrers.New("client could not be understood as a multihop service client"))
 		}
-		// log.Println("proxying fetch node credentials request")
 		return multihopClient.FetchNodeCredentials(ctx, req)
 	}
 
@@ -110,13 +119,12 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	) (*types.GenerateServerCertificatesResponse, error) {
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
-			return nil, temperror.New(errors.New("error fetching controller connection, client is nil"))
+			return nil, temperror.New(stderrers.New("error fetching controller connection, client is nil"))
 		}
 		multihopClient, ok := client.(multihop.MultihopServiceClient)
 		if !ok {
-			return nil, temperror.New(errors.New("client could not be understood as a multihop service client"))
+			return nil, temperror.New(stderrers.New("client could not be understood as a multihop service client"))
 		}
-		// log.Println("proxying generate server cert request")
 		return multihopClient.GenerateServerCertificates(ctx, req)
 	}
 
@@ -135,36 +143,57 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
 	}
 
-	w.workerAuthSplitListener = nodeenet.NewSplitListener(interceptingListener)
+	// Create split listener
+	w.workerAuthSplitListener, err = nodeenet.NewSplitListener(interceptingListener)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating split listener: %w", err)
+	}
+
+	// This handles connections coming in that are authenticated via
+	// nodeenrollment but not with any extra purpose; these are normal PKI
+	// worker connections
+	nodeeAuthListener, err := w.workerAuthSplitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating worker split listener: %w", err)
+	}
+
+	// Connections that come into here are not authed by nodeenrollment so are
+	// proxy connections
+	proxyListener, err := w.workerAuthSplitListener.GetListener(nodeenet.UnauthenticatedNextProto)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
+	}
+
+	// Connections coming in here are authed by nodeenrollment and are for the
+	// reverse grpc purpose
+	reverseGrpcListener, err := w.workerAuthSplitListener.GetListener(common.ReverseGrpcConnectionAlpnValue)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
+	}
 
 	downstreamServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 	)
-	multihopService, err := handlers.NewMultihopServiceServer(
-		w.WorkerAuthStorage,
-		false,
-		w.controllerMultihopConn,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
+
+	for _, fn := range workerGrpcServiceRegistrationFunctions {
+		if err := fn(cancelCtx, w, downstreamServer); err != nil {
+			return nil, err
+		}
 	}
-	multihop.RegisterMultihopServiceServer(downstreamServer, multihopService)
-	statusSessionService := NewWorkerProxyServiceServer(w.GrpcClientConn, w.controllerStatusConn)
-	pbs.RegisterServerCoordinationServiceServer(downstreamServer, statusSessionService)
-	pbs.RegisterSessionServiceServer(downstreamServer, statusSessionService)
 
 	ln.GrpcServer = downstreamServer
 
+	eventingListener, err := common.NewEventingListener(cancelCtx, nodeeAuthListener)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
+	}
+
 	return func() {
 		go w.workerAuthSplitListener.Start()
-		go httpServer.Serve(w.workerAuthSplitListener.OtherListener())
-		go ln.GrpcServer.Serve(
-			&eventingListener{
-				ctx:    cancelCtx,
-				baseLn: w.workerAuthSplitListener.NodeEnrollmentListener(),
-			},
-		)
+		go httpServer.Serve(proxyListener)
+		go ln.GrpcServer.Serve(eventingListener)
+		go handleSecondaryConnection(cancelCtx, reverseGrpcListener, w.downstreamRoutes, -1)
 	}, nil
 }
 
@@ -173,29 +202,7 @@ func (w *Worker) stopServersAndListeners() error {
 	mg.Go(w.stopHttpServer)
 	mg.Go(w.stopClusterGrpcServer)
 
-	// FIXME (jeff): For some reason, unlike the controller, the grpc server
-	// really likes to hang on closing. Maybe because it's never served a
-	// connection? This is a workaround to force it until I can dig in.
-	var cancel context.CancelFunc
-	if w.workerAuthSplitListener != nil {
-		var ctx context.Context
-		ctx, cancel = context.WithTimeout(w.baseContext, 2*time.Second)
-		go func() {
-			<-ctx.Done()
-			w.workerAuthSplitListener.Stop()
-			cancel()
-		}()
-	}
-
 	stopErrors := mg.Wait()
-
-	if w.workerAuthSplitListener != nil {
-		cancel()
-		err := w.workerAuthSplitListener.Stop()
-		if err != nil {
-			stopErrors = multierror.Append(stopErrors, err)
-		}
-	}
 
 	err := w.stopAnyListeners()
 	if err != nil {
@@ -240,19 +247,11 @@ func (w *Worker) stopAnyListeners() error {
 	if w.proxyListener == nil {
 		return nil
 	}
-	var closeErrors *multierror.Error
-	var err error
-	if w.workerAuthSplitListener != nil {
-		err = w.workerAuthSplitListener.Stop()
-	} else if w.proxyListener.ProxyListener != nil {
-		err = w.proxyListener.ProxyListener.Close()
-	}
-	err = listenerCloseErrorCheck("proxy", err)
-	if err != nil {
-		closeErrors = multierror.Append(closeErrors, err)
+	if w.proxyListener.ProxyListener == nil {
+		return nil
 	}
 
-	return closeErrors.ErrorOrNil()
+	return listenerCloseErrorCheck("proxy", w.proxyListener.ProxyListener.Close())
 }
 
 // listenerCloseErrorCheck does some validation on an error returned
@@ -274,46 +273,4 @@ func listenerCloseErrorCheck(lnType string, err error) error {
 	}
 
 	return err
-}
-
-type eventingListener struct {
-	ctx    context.Context
-	baseLn net.Listener
-}
-
-func (e *eventingListener) Accept() (net.Conn, error) {
-	const op = "worker.(eventingListener).Accept"
-	conn, err := e.baseLn.Accept()
-	if err != nil || conn == nil {
-		return conn, err
-	}
-
-	// This is all best-effort; anything going wrong here shouldn't disrupt the
-	// connection, so on error simply stop trying to get to an event
-	var tlsConn *tls.Conn
-	switch c := conn.(type) {
-	case *protocol.Conn:
-		// If we so choose, at this point we can pull out the client's
-		// NextProtos with c.ClientNextProtos
-		tlsConn = c.Conn
-	case *tls.Conn:
-		tlsConn = c
-	}
-
-	if tlsConn != nil && len(tlsConn.ConnectionState().PeerCertificates) > 0 {
-		keyId, err := nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId)
-		if err == nil {
-			event.WriteSysEvent(e.ctx, op, "worker successfully authenticated", "key_id", keyId)
-		}
-	}
-
-	return conn, err
-}
-
-func (e *eventingListener) Close() error {
-	return e.baseLn.Close()
-}
-
-func (e *eventingListener) Addr() net.Addr {
-	return e.baseLn.Addr()
 }

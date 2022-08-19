@@ -17,12 +17,10 @@ create table iam_managed_group_role (
   primary key (role_id, principal_id)
   );
 
-create trigger immutable_role_principal
-before update on iam_managed_group_role
+create trigger immutable_role_principal before update on iam_managed_group_role
   for each row execute procedure iam_immutable_role_principal();
 
-create trigger default_create_time_column
-before insert on iam_managed_group_role
+create trigger default_create_time_column before insert on iam_managed_group_role
   for each row execute procedure default_create_time();
 
 -- iam_principal_role provides a consolidated view all principal roles assigned

@@ -23,15 +23,17 @@ type options struct {
 	withNamespace      string
 	withTlsServerName  string
 	withTlsSkipVerify  bool
+	withWorkerFilter   string
 	withClientCert     *ClientCertificate
 	withMethod         Method
 	withRequestBody    []byte
 	withCredentialType credential.Type
 
-	withOverrideUsernameAttribute   string
-	withOverridePasswordAttribute   string
-	withOverridePrivateKeyAttribute string
-	withMappingOverride             MappingOverride
+	withOverrideUsernameAttribute             string
+	withOverridePasswordAttribute             string
+	withOverridePrivateKeyAttribute           string
+	withOverridePrivateKeyPassphraseAttribute string
+	withMappingOverride                       MappingOverride
 }
 
 func getDefaultOptions() options {
@@ -49,6 +51,13 @@ func WithDescription(desc string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithWorkerFilter provides an optional worker filter.
+func WithWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.withWorkerFilter = filter
 	}
 }
 
@@ -147,6 +156,14 @@ func WithOverridePasswordAttribute(s string) Option {
 func WithOverridePrivateKeyAttribute(s string) Option {
 	return func(o *options) {
 		o.withOverridePrivateKeyAttribute = s
+	}
+}
+
+// WithOverridePrivateKeyPassphraseAttribute provides the name of an attribute in the
+// Data field of a Vault api.Secret that maps to a passphrase value.
+func WithOverridePrivateKeyPassphraseAttribute(s string) Option {
+	return func(o *options) {
+		o.withOverridePrivateKeyPassphraseAttribute = s
 	}
 }
 

@@ -419,6 +419,9 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 
 		case len(allowedOrigins) == 1 && allowedOrigins[0] == "*":
 			valid = true
+			// When allowed origins is "*" we want to return that rather than
+			// round-tripping any user-specified value
+			origin = "*"
 
 		default:
 			valid = strutil.StrListContains(allowedOrigins, origin)

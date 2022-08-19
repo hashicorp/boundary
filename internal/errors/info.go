@@ -264,4 +264,12 @@ var errorCodeInfo = map[Code]Info{
 		Message: "cycle found",
 		Kind:    State,
 	},
+	WorkerConnNotFound: {
+		Message: "worker connection not found",
+		Kind:    State,
+	},
+	KmsWorkerUnsupportedOperation: {
+		Message: "unsupported operation for a kms worker",
+		Kind:    State,
+	},
 }

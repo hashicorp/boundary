@@ -138,8 +138,6 @@ func TestWorkerNew(t *testing.T) {
 }
 
 func TestSetupWorkerAuthStorage(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 
 	ts := db.TestWrapper(t)

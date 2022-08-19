@@ -1,0 +1,39 @@
+// Example variable inputs. Set these to valid values and uncomment them before
+// running scenarios.
+
+// The AWS region you want to create the resources in. Make sure you choose a
+// region where you've got an AWS keypair.
+// aws_region = "us-east-1"
+
+// The name of the AWS keypair. You can look them up in the AWS console on a per-
+// region basis. E.g. https://us-east-1.console.aws.amazon.com/ec2/v2/home?region=us-east-1#KeyPairs:
+// aws_ssh_keypair_name = "mykeypair"
+
+// The path to the private key associated with your keypair.
+// aws_ssh_private_key_path = "/Users/<user>/.ssh/mykeypair.pem
+
+// The username to use for boundary. The github username of the user who trigger
+// the workflow will be used automatically in the CI.
+// enos_user = "enos"
+
+// The app.terraform.io API token for the QTI organization. There is a shared
+// token for the Boundary team in 1Password, or you can request access to the
+// organization by reaching out to the members of #team-quality.
+// tfc_api_token  = "xxxxxxxx.atlasv1.xxx...."
+
+// The directory that contains the copy of boundary you want to local execution
+// from. `make install` should install it into the $GOBIN, which is usually
+// similar to what is listed below.
+// local_boundary_dir = "/Users/<user>/.go/bin"
+
+// The path to the installation bundle for the target machines. The existing
+// scenarios all use linux/amd64 architecture so bundle ought to match that
+// architecture. This is only used for variants which use the `crt` builder
+// variant. If you execute variants with the local builder this does not need
+// to be set. In CI we use this to point to the artifacts generated as part
+// of the build workflow.
+// crt_bundle_path = "./boundary_linux_amd64.zip"
+
+// The port the ALB will listen on to proxy controller API requests. This defaults
+// to 9200
+// alb_listener_api_port = 9200

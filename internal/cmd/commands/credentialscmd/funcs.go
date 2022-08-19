@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	usernameFlagName   = "username"
-	passwordFlagName   = "password"
-	privateKeyFlagName = "private-key"
+	usernameFlagName             = "username"
+	passwordFlagName             = "password"
+	privateKeyFlagName           = "private-key"
+	privateKeyPassphraseFlagName = "private-key-passphrase"
 )
 
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
@@ -177,7 +178,8 @@ func printItemTable(item *credentials.Credential, resp *api.Response) string {
 }
 
 var keySubstMap = map[string]string{
-	"username":         "Username",
-	"password_hmac":    "Password HMAC",
-	"private_key_hmac": "Private Key HMAC",
+	"username":                    "Username",
+	"password_hmac":               "Password HMAC",
+	"private_key_hmac":            "Private Key HMAC",
+	"private_key_passphrase_hmac": "Private Key Passphrase HMAC",
 }

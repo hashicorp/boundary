@@ -37,10 +37,8 @@ begin;
 */
 
   create table static_host_catalog (
-    public_id wt_public_id
-      primary key,
-    scope_id wt_scope_id
-      not null
+    public_id wt_public_id primary key,
+    scope_id wt_scope_id not null
       references iam_scope (public_id)
       on delete cascade
       on update cascade,
@@ -176,8 +174,7 @@ begin;
   create trigger immutable_columns before update on static_host_set_member
     for each row execute procedure immutable_columns('host_id', 'set_id', 'catalog_id');
 
-  create or replace function insert_static_host_set_member()
-    returns trigger
+  create or replace function insert_static_host_set_member() returns trigger
   as $$
   begin
     select static_host_set.catalog_id

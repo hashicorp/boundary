@@ -7,8 +7,7 @@ check(
 comment on domain wt_public_id is
 'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
-create domain wt_private_id as text
-not null
+create domain wt_private_id as text not null
 check(
   length(trim(value)) > 10
 );
@@ -22,31 +21,25 @@ check(
 comment on domain wt_scope_id is
 '"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
-create domain wt_user_id as text
-not null
+create domain wt_user_id as text not null
 check(
   length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth' or value = 'u_recovery'
 );
 comment on domain wt_scope_id is
 '"u_anon", "u_auth", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
-create domain wt_role_id as text
-not null
+create domain wt_role_id as text not null
 check(
   length(trim(value)) > 10
 );
 comment on domain wt_scope_id is
 'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
-create domain wt_timestamp as
-  timestamp with time zone
-  default current_timestamp;
+create domain wt_timestamp as timestamp with time zone default current_timestamp;
 comment on domain wt_timestamp is
 'Standard timestamp for all create_time and update_time columns';
 
-create or replace function
-  update_time_column()
-  returns trigger
+create or replace function update_time_column() returns trigger
 as $$
 begin
   if row(new.*) is distinct from row(old.*) then
@@ -57,16 +50,11 @@ begin
   end if;
 end;
 $$ language plpgsql;
-
-comment on function
-  update_time_column()
-is
+comment on function update_time_column() is
   'function used in before update triggers to properly set update_time columns';
   
 -- Replaced in 21/01_default_time.up.sql
-create or replace function
-  default_create_time()
-  returns trigger
+create or replace function default_create_time() returns trigger
 as $$
 begin
   if new.create_time is distinct from now() then
@@ -76,16 +64,10 @@ begin
   return new;
 end;
 $$ language plpgsql;
-
-comment on function
-  default_create_time()
-is
+comment on function default_create_time() is
   'function used in before insert triggers to set create_time column to now';
 
-
-create domain wt_version as bigint
-  default 1
-  not null
+create domain wt_version as bigint default 1 not null
   check(
    value > 0
   );
@@ -96,9 +78,7 @@ comment on domain wt_version is
 -- is updated and should only be used in an update after trigger.  This function
 -- will overwrite any explicit updates to the version column. The function
 -- accepts an optional parameter of 'private_id' for the tables primary key.
-create or replace function
-  update_version_column()
-  returns trigger
+create or replace function update_version_column() returns trigger
 as $$
 begin
   if pg_trigger_depth() = 1 then
@@ -118,18 +98,13 @@ begin
   return new;
 end;
 $$ language plpgsql;
-
-comment on function
-  update_version_column()
-is
+comment on function update_version_column() is
   'function used in after update triggers to properly set version columns';
 
 -- immutable_columns() will make the column names immutable which are passed as
 -- parameters when the trigger is created. It raises error code 23601 which is a
 -- class 23 integrity constraint violation: immutable column  
-create or replace function
-  immutable_columns()
-  returns trigger
+create or replace function immutable_columns() returns trigger
 as $$
 declare 
 	col_name text; 
@@ -150,10 +125,7 @@ begin
   return new;
 end;
 $$ language plpgsql;
-
-comment on function
-  immutable_columns()
-is
+comment on function immutable_columns() is
   'function used in before update triggers to make columns immutable';
 
 commit;

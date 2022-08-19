@@ -2,6 +2,7 @@ package credentials
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 
@@ -27,10 +28,11 @@ import (
 )
 
 const (
-	usernameField   = "attributes.username"
-	passwordField   = "attributes.password"
-	privateKeyField = "attributes.private_key"
-	domain          = "credential"
+	usernameField             = "attributes.username"
+	passwordField             = "attributes.password"
+	privateKeyField           = "attributes.private_key"
+	privateKeyPassphraseField = "attributes.private_key_passphrase"
+	domain                    = "credential"
 )
 
 var (
@@ -409,6 +411,16 @@ func (s Service) updateInRepo(
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert to ssh private key storage credential"))
 		}
+		if cred.PassphraseUnneeded {
+			// This happens when we have a private key given and no passphrase
+			// given and everything parses correctly. In that case we want to
+			// ensure that if a passphrase was in the database for the previous
+			// key that we get rid of it. We'll have nilled out several values
+			// above. Note that adding the passphrase field will, once we get to
+			// the repo, result in the mask for the other two related fields as
+			// well.
+			dbMasks = append(dbMasks, static.PrivateKeyPassphraseField)
+		}
 		cred.PublicId = id
 		repo, err := s.repoFn()
 		if err != nil {
@@ -553,8 +565,9 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 		if outputFields.Has(globals.AttributesField) {
 			out.Attrs = &pb.Credential_SshPrivateKeyAttributes{
 				SshPrivateKeyAttributes: &pb.SshPrivateKeyAttributes{
-					Username:       wrapperspb.String(cred.GetUsername()),
-					PrivateKeyHmac: base64.RawURLEncoding.EncodeToString(cred.GetPrivateKeyHmac()),
+					Username:                 wrapperspb.String(cred.GetUsername()),
+					PrivateKeyHmac:           base64.RawURLEncoding.EncodeToString(cred.GetPrivateKeyHmac()),
+					PrivateKeyPassphraseHmac: base64.RawURLEncoding.EncodeToString(cred.GetPrivateKeyPassphraseHmac()),
 				},
 			}
 		}
@@ -596,6 +609,9 @@ func toSshPrivateKeyStorageCredential(ctx context.Context, storeId string, in *p
 	}
 
 	attrs := in.GetSshPrivateKeyAttributes()
+	if attrs.GetPrivateKeyPassphrase() != nil {
+		opts = append(opts, static.WithPrivateKeyPassphrase([]byte(attrs.GetPrivateKeyPassphrase().GetValue())))
+	}
 	cs, err := static.NewSshPrivateKeyCredential(
 		ctx,
 		storeId,
@@ -645,16 +661,27 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 				badFields[usernameField] = "Field required for creating an SSH private key credential."
 			}
 			privateKey := req.Item.GetSshPrivateKeyAttributes().GetPrivateKey().GetValue()
+			passphrase := req.Item.GetSshPrivateKeyAttributes().GetPrivateKeyPassphrase().GetValue()
 			if privateKey == "" {
 				badFields[privateKeyField] = "Field required for creating an SSH private key credential."
 			} else {
-				_, err := ssh.ParsePrivateKey([]byte(privateKey))
-				switch {
-				case err == nil:
-				case err.Error() == (&ssh.PassphraseMissingError{}).Error():
-					// This is okay, if it's brokered and the client can use it, no worries
+				switch passphrase {
+				case "":
+					if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err != nil {
+						badFields[privateKeyField] = fmt.Sprintf("Unable to parse given private key value: %v.", err)
+					}
 				default:
-					badFields[privateKeyField] = "Unable to parse given private key value."
+					if _, err := ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase)); err != nil {
+						if errors.Is(err, x509.IncorrectPasswordError) {
+							badFields[privateKeyPassphraseField] = "Incorrect private key passphrase."
+						} else {
+							if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err == nil {
+								badFields[privateKeyPassphraseField] = "Passphrase supplied for unencrypted key."
+							} else {
+								badFields[privateKeyField] = fmt.Sprintf("Unable to parse given private key value: %v.", err)
+							}
+						}
+					}
 				}
 			}
 
@@ -669,9 +696,8 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch req.GetItem().GetType() {
-		case "":
-		case credential.UsernamePasswordSubtype.String():
+		switch subtypes.SubtypeFromId(domain, req.GetId()) {
+		case credential.UsernamePasswordSubtype:
 			attrs := req.GetItem().GetUsernamePasswordAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
 				badFields[usernameField] = "This is a required field and cannot be set to empty."
@@ -680,27 +706,40 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 				badFields[passwordField] = "This is a required field and cannot be set to empty."
 			}
 
-		case credential.SshPrivateKeySubtype.String():
+		case credential.SshPrivateKeySubtype:
 			attrs := req.GetItem().GetSshPrivateKeyAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
 				badFields[usernameField] = "This is a required field and cannot be set to empty."
 			}
 			privateKey := attrs.GetPrivateKey().GetValue()
-			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), privateKeyField) && privateKey == "" {
-				badFields[privateKeyField] = "This is a required field and cannot be set to empty."
-			} else {
-				_, err := ssh.ParsePrivateKey([]byte(privateKey))
-				switch {
-				case err == nil:
-				case err.Error() == (&ssh.PassphraseMissingError{}).Error():
-					// This is okay, if it's brokered and the client can use it, no worries
-				default:
-					badFields[privateKeyField] = "Unable to parse given private key value."
+			passphrase := attrs.GetPrivateKeyPassphrase().GetValue()
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), privateKeyField) {
+				if privateKey == "" {
+					badFields[privateKeyField] = "This is a required field and cannot be set to empty."
+				} else {
+					switch passphrase {
+					case "":
+						if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err != nil {
+							badFields[privateKeyField] = fmt.Sprintf("Unable to parse given private key value: %v.", err)
+						}
+					default:
+						if _, err := ssh.ParsePrivateKeyWithPassphrase([]byte(privateKey), []byte(passphrase)); err != nil {
+							if errors.Is(err, x509.IncorrectPasswordError) {
+								badFields[privateKeyPassphraseField] = "Incorrect private key passphrase."
+							} else {
+								if _, err := ssh.ParsePrivateKey([]byte(privateKey)); err == nil {
+									badFields[privateKeyPassphraseField] = "Passphrase supplied for unencrypted key."
+								} else {
+									badFields[privateKeyField] = fmt.Sprintf("Unable to parse given private key value: %v.", err)
+								}
+							}
+						}
+					}
 				}
 			}
 
 		default:
-			badFields[globals.TypeField] = "Cannot modify resource type."
+			badFields[globals.IdField] = "Unknown credential type."
 		}
 
 		return badFields

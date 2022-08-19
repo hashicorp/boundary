@@ -38,8 +38,9 @@ func dynamicToWorkerCredential(ctx context.Context, cred credential.Dynamic) (se
 		workerCred = &serverpb.Credential{
 			Credential: &serverpb.Credential_SshPrivateKey{
 				SshPrivateKey: &serverpb.SshPrivateKey{
-					Username:   c.Username(),
-					PrivateKey: string(c.PrivateKey()),
+					Username:             c.Username(),
+					PrivateKey:           string(c.PrivateKey()),
+					PrivateKeyPassphrase: string(c.PrivateKeyPassphrase()),
 				},
 			},
 		}
@@ -103,8 +104,9 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 		case credential.SshPrivateKey:
 			credData, err = handlers.ProtoToStruct(
 				&pb.SshPrivateKeyCredential{
-					Username:   c.Username(),
-					PrivateKey: string(c.PrivateKey()),
+					Username:             c.Username(),
+					PrivateKey:           string(c.PrivateKey()),
+					PrivateKeyPassphrase: string(c.PrivateKeyPassphrase()),
 				},
 			)
 			if err != nil {
@@ -153,8 +155,9 @@ func staticToWorkerCredential(ctx context.Context, cred credential.Static) (sess
 		workerCred = &serverpb.Credential{
 			Credential: &serverpb.Credential_SshPrivateKey{
 				SshPrivateKey: &serverpb.SshPrivateKey{
-					Username:   c.GetUsername(),
-					PrivateKey: string(c.GetPrivateKey()),
+					Username:             c.GetUsername(),
+					PrivateKey:           string(c.GetPrivateKey()),
+					PrivateKeyPassphrase: string(c.GetPrivateKeyPassphrase()),
 				},
 			},
 		}
@@ -199,13 +202,17 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		credType = string(credential.SshPrivateKeyType)
 		credData, err = handlers.ProtoToStruct(
 			&pb.SshPrivateKeyCredential{
-				Username:   c.GetUsername(),
-				PrivateKey: string(c.GetPrivateKey()),
+				Username:             c.GetUsername(),
+				PrivateKey:           string(c.GetPrivateKey()),
+				PrivateKeyPassphrase: string(c.GetPrivateKeyPassphrase()),
 			},
 		)
 		secret = map[string]interface{}{
 			"username":    c.GetUsername(),
 			"private_key": string(c.GetPrivateKey()),
+		}
+		if len(c.GetPrivateKeyPassphrase()) > 0 {
+			secret["private_key_passphrase"] = string(c.GetPrivateKeyPassphrase())
 		}
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for ssh private key credential"))

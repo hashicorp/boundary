@@ -16,15 +16,12 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"
 )
 
 // TestRotationTicking ensures that we see new credential information for a
 // worker on both the controller side and worker side in a periodic fashion
 func TestRotationTicking(t *testing.T) {
-	t.Parallel()
-
 	require, assert := require.New(t), assert.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
@@ -41,10 +38,16 @@ func TestRotationTicking(t *testing.T) {
 
 	const rotationPeriod = 20 * time.Second
 
+	// names should not be set when using pki workers
+	wConf, err := config.DevWorker()
+	require.NoError(err)
+	wConf.Worker.Name = ""
+	wConf.Worker.InitialUpstreams = c.ClusterAddrs()
 	w := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		InitialUpstreams:   c.ClusterAddrs(),
 		Logger:             logger.Named("worker"),
 		AuthRotationPeriod: rotationPeriod,
+		Config:             wConf,
 	})
 	t.Cleanup(w.Shutdown)
 
@@ -82,7 +85,7 @@ func TestRotationTicking(t *testing.T) {
 	require.NoError(err)
 	assert.Len(auths, 1)
 	// Fetch creds and store current key
-	currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId)
+	currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.Config().WorkerAuthStorageKms))
 	require.NoError(err)
 	currKey := currNodeCreds.CertificatePublicKeyPkix
 
@@ -98,7 +101,7 @@ func TestRotationTicking(t *testing.T) {
 		assert.Len(auths, i)
 
 		// Fetch creds and compare current key
-		currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId)
+		currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.Config().WorkerAuthStorageKms))
 		require.NoError(err)
 		assert.NotEqual(currKey, currNodeCreds.CertificatePublicKeyPkix)
 		currKey = currNodeCreds.CertificatePublicKeyPkix
@@ -109,7 +112,6 @@ func TestRotationTicking(t *testing.T) {
 		// Stop and start the client connections to ensure the new credentials
 		// are valid; if not, we won't establish a new connection and rotation
 		// will fail
-		w.Worker().Resolver().UpdateState(resolver.State{Addresses: []resolver.Address{}})
 		require.NotNil(w.Worker().GrpcClientConn)
 		require.NoError(w.Worker().GrpcClientConn.Close())
 		require.NoError(w.Worker().StartControllerConnections())

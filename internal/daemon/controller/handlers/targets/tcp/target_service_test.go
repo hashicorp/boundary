@@ -2772,7 +2772,23 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, sshPkCredResp)
 
-	// Create secret in vault with default username and password fields
+	sshPkWithPassCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
+		CredentialStoreId: staticStore.GetPublicId(),
+		Type:              credential.SshPrivateKeySubtype.String(),
+		Name:              wrapperspb.String("Cred SSH With Pass Name"),
+		Description:       wrapperspb.String("Cred SSH Description"),
+		Attrs: &credpb.Credential_SshPrivateKeyAttributes{
+			SshPrivateKeyAttributes: &credpb.SshPrivateKeyAttributes{
+				Username:             wrapperspb.String("static-username"),
+				PrivateKey:           wrapperspb.String(string(testdata.PEMEncryptedKeys[0].PEMBytes)),
+				PrivateKeyPassphrase: wrapperspb.String(testdata.PEMEncryptedKeys[0].EncryptionKey),
+			},
+		},
+	}})
+	require.NoError(t, err)
+	require.NotNil(t, sshPkWithPassCredResp)
+
+	// Create secret in vault with default username and private key fields
 	defaultSshPrivateKey := v.CreateKVSecret(t, "default-sshpk", []byte(`{"data": {"username": "my-user", "private_key": "my-pk"}}`))
 	require.NotNil(t, defaultSshPrivateKey)
 
@@ -2790,7 +2806,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	}})
 	require.NoError(t, err)
 
-	// Create secret in vault with non default username and password fields
+	// Create secret in vault with non default username and private key fields
 	nonDefaultSshPrivateKey := v.CreateKVSecret(t, "non-default-sshpk", []byte(`{"data": {"non-default-user": "my-user", "non-default-pk": "my-special-pk"}}`))
 	require.NotNil(t, nonDefaultSshPrivateKey)
 
@@ -2811,6 +2827,49 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		}},
 	}})
 	require.NoError(t, err)
+
+	// Create secret in vault with default username, private key and passphrase fields
+	defaultSshPrivateKeyWithPass := v.CreateKVSecret(t, "default-sshpk-with-pass", []byte(`{"data": {"username": "my-user", "private_key": "my-pk", "private_key_passphrase": "my-pass"}}`))
+	require.NotNil(t, defaultSshPrivateKeyWithPass)
+
+	clsRespSshPrivateKeyWithPass, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+		CredentialStoreId: vaultStore.GetPublicId(),
+		Name:              wrapperspb.String("SSH Private Key With Passphrase Library"),
+		Description:       wrapperspb.String("SSH Private Key Library Description"),
+		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
+				Path:       wrapperspb.String(path.Join("secret", "data", "default-sshpk-with-pass")),
+				HttpMethod: wrapperspb.String("GET"),
+			},
+		},
+		CredentialType: "ssh_private_key",
+	}})
+	require.NoError(t, err)
+	require.NotNil(t, clsRespSshPrivateKeyWithPass)
+
+	// Create secret in vault with non default username, private key and private key passphrase fields
+	nonDefaultSshPrivateKeyWithPass := v.CreateKVSecret(t, "non-default-sshpk-with-pass", []byte(`{"data": {"non-default-user": "my-user", "non-default-pk": "my-special-pk", "embedded": {"secret-pass": "my-special-pass"}}}}`))
+	require.NotNil(t, nonDefaultSshPrivateKeyWithPass)
+
+	clsRespSshPrivateKeyWithPassWithMapping, err := credLibService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+		CredentialStoreId: vaultStore.GetPublicId(),
+		Name:              wrapperspb.String("SSH Private Key With Passphrase Mapping Library"),
+		Description:       wrapperspb.String("SSH Private Key Mapping Library Description"),
+		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
+				Path:       wrapperspb.String(path.Join("secret", "data", "non-default-sshpk-with-pass")),
+				HttpMethod: wrapperspb.String("GET"),
+			},
+		},
+		CredentialType: "ssh_private_key",
+		CredentialMappingOverrides: &structpb.Struct{Fields: map[string]*structpb.Value{
+			"username_attribute":               structpb.NewStringValue("/data/non-default-user"),
+			"private_key_attribute":            structpb.NewStringValue("/data/non-default-pk"),
+			"private_key_passphrase_attribute": structpb.NewStringValue("/data/embedded/secret-pass"),
+		}},
+	}})
+	require.NoError(t, err)
+	require.NotNil(t, clsRespSshPrivateKeyWithPassWithMapping)
 
 	cases := []struct {
 		name           string
@@ -2985,6 +3044,87 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					data := map[string]interface{}{
 						"username":    "my-user",
 						"private_key": "my-special-pk",
+					}
+					st, err := structpb.NewStruct(data)
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+		},
+		{
+			name:           "static-ssh-private-key-with-pass",
+			hostSourceId:   shs.GetPublicId(),
+			credSourceId:   sshPkWithPassCredResp.GetItem().GetId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+			wantedCred: &pb.SessionCredential{
+				CredentialSource: &pb.CredentialSource{
+					Id:                sshPkWithPassCredResp.GetItem().GetId(),
+					Name:              sshPkWithPassCredResp.GetItem().GetName().GetValue(),
+					Description:       sshPkWithPassCredResp.GetItem().GetDescription().GetValue(),
+					CredentialStoreId: staticStore.GetPublicId(),
+					Type:              credstatic.Subtype.String(),
+					CredentialType:    string(credential.SshPrivateKeyType),
+				},
+				Credential: func() *structpb.Struct {
+					data := map[string]interface{}{
+						"private_key_passphrase": testdata.PEMEncryptedKeys[0].EncryptionKey,
+						"private_key":            string(testdata.PEMEncryptedKeys[0].PEMBytes),
+						"username":               "static-username",
+					}
+					st, err := structpb.NewStruct(data)
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+		},
+		{
+			name:           "vault-ssh-private-key-with-pass",
+			hostSourceId:   shs.GetPublicId(),
+			credSourceId:   clsRespSshPrivateKeyWithPass.GetItem().GetId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+			wantedCred: &pb.SessionCredential{
+				CredentialSource: &pb.CredentialSource{
+					Id:                clsRespSshPrivateKeyWithPass.GetItem().GetId(),
+					Name:              clsRespSshPrivateKeyWithPass.GetItem().GetName().GetValue(),
+					Description:       clsRespSshPrivateKeyWithPass.GetItem().GetDescription().GetValue(),
+					CredentialStoreId: vaultStore.GetPublicId(),
+					Type:              vault.Subtype.String(),
+					CredentialType:    string(credential.SshPrivateKeyType),
+				},
+				Credential: func() *structpb.Struct {
+					data := map[string]interface{}{
+						"username":               "my-user",
+						"private_key":            "my-pk",
+						"private_key_passphrase": "my-pass",
+					}
+					st, err := structpb.NewStruct(data)
+					require.NoError(t, err)
+					return st
+				}(),
+			},
+		},
+		{
+			name:           "vault-ssh-private-key-with-pass-with-mapping",
+			hostSourceId:   shs.GetPublicId(),
+			credSourceId:   clsRespSshPrivateKeyWithPassWithMapping.GetItem().GetId(),
+			wantedHostId:   h.GetPublicId(),
+			wantedEndpoint: h.GetAddress(),
+			wantedCred: &pb.SessionCredential{
+				CredentialSource: &pb.CredentialSource{
+					Id:                clsRespSshPrivateKeyWithPassWithMapping.GetItem().GetId(),
+					Name:              clsRespSshPrivateKeyWithPassWithMapping.GetItem().GetName().GetValue(),
+					Description:       clsRespSshPrivateKeyWithPassWithMapping.GetItem().GetDescription().GetValue(),
+					CredentialStoreId: vaultStore.GetPublicId(),
+					Type:              vault.Subtype.String(),
+					CredentialType:    string(credential.SshPrivateKeyType),
+				},
+				Credential: func() *structpb.Struct {
+					data := map[string]interface{}{
+						"username":               "my-user",
+						"private_key":            "my-special-pk",
+						"private_key_passphrase": "my-special-pass",
 					}
 					st, err := structpb.NewStruct(data)
 					require.NoError(t, err)

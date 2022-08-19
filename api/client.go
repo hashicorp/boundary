@@ -660,7 +660,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 			return nil, fmt.Errorf("error performing SRV lookup of http:tcp:%s : %w", u.Hostname(), err)
 		}
 		if len(addrs) > 0 {
-			host = fmt.Sprintf("%s:%d", addrs[0].Target, addrs[0].Port)
+			host = net.JoinHostPort(addrs[0].Target, fmt.Sprintf("%d", addrs[0].Port))
 		}
 	}
 

@@ -15,28 +15,17 @@ create table if not exists db_test_user (
   version wt_version
 );
 
-create trigger 
-  update_time_column 
-before 
-update on db_test_user 
+create trigger update_time_column before update on db_test_user
   for each row execute procedure update_time_column();
 
 -- define the immutable fields for db_test_user
-create trigger 
-  immutable_columns
-before
-update on db_test_user
+create trigger immutable_columns before update on db_test_user
   for each row execute procedure immutable_columns('create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on db_test_user 
+create trigger default_create_time_column before insert on db_test_user
   for each row execute procedure default_create_time();
 
-create trigger 
-  update_version_column
-after update on db_test_user
+create trigger update_version_column after update on db_test_user
   for each row execute procedure update_version_column();
   
 create table if not exists db_test_car (
@@ -49,23 +38,14 @@ create table if not exists db_test_car (
   mpg smallint
 );
 
-create trigger 
-  update_time_column 
-before 
-update on db_test_car 
+create trigger update_time_column before update on db_test_car
   for each row execute procedure update_time_column();
 
 -- define the immutable fields for db_test_car
-create trigger 
-  immutable_columns
-before
-update on db_test_car
+create trigger immutable_columns before update on db_test_car
   for each row execute procedure immutable_columns('create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on db_test_car
+create trigger default_create_time_column before insert on db_test_car
   for each row execute procedure default_create_time();
 
 create table if not exists db_test_rental (
@@ -74,29 +54,21 @@ create table if not exists db_test_rental (
   update_time wt_timestamp,
   public_id text not null unique,
   name text unique,
-  user_id bigint not null references db_test_user(id),
-  car_id bigint not null references db_test_car(id)
+  user_id bigint not null
+    references db_test_user(id),
+  car_id bigint not null
+    references db_test_car(id)
 );
 
-create trigger 
-  update_time_column 
-before 
-update on db_test_rental 
+create trigger update_time_column before update on db_test_rental
   for each row execute procedure update_time_column();
 
 -- define the immutable fields for db_test_rental
-create trigger 
-  immutable_columns
-before
-update on db_test_rental
+create trigger immutable_columns before update on db_test_rental
   for each row execute procedure immutable_columns('create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on db_test_rental
+create trigger default_create_time_column before insert on db_test_rental
   for each row execute procedure default_create_time();
-
 
 create table if not exists db_test_scooter (
   id bigint generated always as identity primary key,
@@ -108,24 +80,14 @@ create table if not exists db_test_scooter (
   mpg smallint
 );
 
-create trigger 
-  update_time_column 
-before 
-update on db_test_scooter 
+create trigger update_time_column before update on db_test_scooter
   for each row execute procedure update_time_column();
 
-
 -- define the immutable fields for db_test_scooter
-create trigger 
-  immutable_columns
-before
-update on db_test_scooter
+create trigger immutable_columns before update on db_test_scooter
   for each row execute procedure immutable_columns('create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on db_test_scooter
+create trigger default_create_time_column before insert on db_test_scooter
   for each row execute procedure default_create_time();
 
 commit;

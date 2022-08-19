@@ -352,7 +352,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.BoolVar(&base.BoolVar{
 		Name:   "worker-auth-storage-skip-cleanup",
 		Target: &c.flagWorkerAuthStorageSkipCleanup,
-		Usage:  "Prevents deletion of temp worker credential storage directory if set",
+		Usage:  "Prevents deletion of temp worker credential storage directory if set.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -381,6 +381,12 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 func (c *Command) Run(args []string) int {
 	const op = "dev.(Command).Run"
 	c.CombineLogs = c.flagCombineLogs
+
+	defer func() {
+		if err := c.RunShutdownFuncs(); err != nil {
+			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
+		}
+	}()
 
 	var err error
 
@@ -615,12 +621,6 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	defer func() {
-		if err := c.RunShutdownFuncs(); err != nil {
-			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
-		}
-	}()
-
 	var opts []base.Option
 	if c.flagCreateLoopbackHostPlugin {
 		c.DevLoopbackHostPluginId = "pl_1234567890"
@@ -775,28 +775,42 @@ func (c *Command) Run(args []string) int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
-	for !shutdownTriggered && !errorEncountered.Load() {
-		select {
-		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary dev environment shutdown triggered, interrupt again to force")
+	// Add a force-shutdown goroutine to consume more interrupts
+	abortForceShutdownCh := make(chan struct{})
+	defer close(abortForceShutdownCh)
 
-			// Add a force-shutdown goroutine to consume another interrupt
-			abortForceShutdownCh := make(chan struct{})
-			defer close(abortForceShutdownCh)
-			go func() {
-				shutdownCh := make(chan os.Signal, 4)
-				signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+	runShutdownLogic := func() {
+		go func() {
+			shutdownCh := make(chan os.Signal, 4)
+			signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+			for {
 				select {
 				case <-shutdownCh:
-					c.UI.Error("Second interrupt received, forcing shutdown")
+					c.UI.Error("Forcing shutdown")
 					os.Exit(base.CommandUserError)
+
+				case <-c.ServerSideShutdownCh:
+					// Drain connections in case this is hit more than once
 
 				case <-abortForceShutdownCh:
 					// No-op, we just use this to shut down the goroutine
+					return
 				}
-			}()
+			}
+		}()
 
-			shutdownTriggered = true
+		shutdownTriggered = true
+	}
+
+	for !shutdownTriggered && !errorEncountered.Load() {
+		select {
+		case <-c.ServerSideShutdownCh:
+			c.UI.Output("==> Boundary dev environment self-terminating")
+			runShutdownLogic()
+
+		case <-c.ShutdownCh:
+			c.UI.Output("==> Boundary dev environment shutdown triggered, interrupt again to force")
+			runShutdownLogic()
 
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)

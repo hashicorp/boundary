@@ -1108,7 +1108,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			}
 			assert.Equal(tt.createCnt, len(testUsers))
 
-			var foundUsers []db_test.TestUser
+			var foundUsers []*db_test.TestUser
 			err := tt.db.SearchWhere(context.Background(), &foundUsers, tt.args.where, tt.args.arg, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)

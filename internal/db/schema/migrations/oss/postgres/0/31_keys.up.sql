@@ -48,16 +48,10 @@ create table kms_root_key (
 );
 
  -- define the immutable fields for kms_root_key (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_root_key
+create trigger immutable_columns before update on kms_root_key
   for each row execute procedure immutable_columns('private_id', 'scope_id', 'create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on kms_root_key
+create trigger default_create_time_column before insert on kms_root_key
   for each row execute procedure default_create_time();
 
 create table kms_root_key_version (
@@ -73,22 +67,13 @@ create table kms_root_key_version (
 );
 
  -- define the immutable fields for kms_root_key_version (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_root_key_version
+create trigger immutable_columns before update on kms_root_key_version
   for each row execute procedure immutable_columns('private_id', 'root_key_id', 'version', 'key', 'create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on kms_root_key_version
+create trigger default_create_time_column before insert on kms_root_key_version
   for each row execute procedure default_create_time();
 
-
-create trigger
-	kms_version_column
-before insert on kms_root_key_version
+create trigger kms_version_column before insert on kms_root_key_version
 	for each row execute procedure kms_version_column('root_key_id');
 
 create table kms_database_key (
@@ -101,16 +86,10 @@ create table kms_database_key (
 );
 
  -- define the immutable fields for kms_database_key (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_database_key
+create trigger immutable_columns before update on kms_database_key
   for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on kms_database_key
+create trigger default_create_time_column before insert on kms_database_key
   for each row execute procedure default_create_time();
 
 create table kms_database_key_version (
@@ -130,21 +109,13 @@ create table kms_database_key_version (
 );
 
  -- define the immutable fields for kms_database_key_version (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_database_key_version
+create trigger immutable_columns before update on kms_database_key_version
   for each row execute procedure immutable_columns('private_id', 'database_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
   
-create trigger 
-  default_create_time_column
-before
-insert on kms_database_key_version
+create trigger default_create_time_column before insert on kms_database_key_version
   for each row execute procedure default_create_time();
 
-create trigger
-	kms_version_column
-before insert on kms_database_key_version
+create trigger kms_version_column before insert on kms_database_key_version
 	for each row execute procedure kms_version_column('database_key_id');
 
 create table kms_oplog_key (
@@ -157,16 +128,10 @@ create table kms_oplog_key (
 );
 
  -- define the immutable fields for kms_oplog_key (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_oplog_key
+create trigger immutable_columns before update on kms_oplog_key
   for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on kms_oplog_key
+create trigger default_create_time_column before insert on kms_oplog_key
   for each row execute procedure default_create_time();
 
 create table kms_oplog_key_version (
@@ -186,21 +151,13 @@ create table kms_oplog_key_version (
 );
 
  -- define the immutable fields for kms_oplog_key_version (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_oplog_key_version
+create trigger immutable_columns before update on kms_oplog_key_version
   for each row execute procedure immutable_columns('private_id', 'oplog_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
   
-create trigger 
-  default_create_time_column
-before
-insert on kms_oplog_key_version
+create trigger default_create_time_column before insert on kms_oplog_key_version
   for each row execute procedure default_create_time();
 
-create trigger
-	kms_version_column
-before insert on kms_oplog_key_version
+create trigger kms_version_column before insert on kms_oplog_key_version
 	for each row execute procedure kms_version_column('oplog_key_id');
 
 create table kms_session_key (
@@ -213,16 +170,10 @@ create table kms_session_key (
 );
 
  -- define the immutable fields for kms_oplog_key (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_session_key
+create trigger immutable_columns before update on kms_session_key
   for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on kms_session_key
+create trigger default_create_time_column before insert on kms_session_key
   for each row execute procedure default_create_time();
 
 create table kms_session_key_version (
@@ -243,21 +194,13 @@ create table kms_session_key_version (
 
 
  -- define the immutable fields for kms_session_key_version (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_session_key_version
+create trigger immutable_columns before update on kms_session_key_version
   for each row execute procedure immutable_columns('private_id', 'session_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
   
-create trigger 
-  default_create_time_column
-before
-insert on kms_session_key_version
+create trigger default_create_time_column before insert on kms_session_key_version
   for each row execute procedure default_create_time();
 
-create trigger
-	kms_version_column
-before insert on kms_session_key_version
+create trigger kms_version_column before insert on kms_session_key_version
 	for each row execute procedure kms_version_column('session_key_id');
 
 create table kms_token_key (
@@ -270,16 +213,10 @@ create table kms_token_key (
 );
 
  -- define the immutable fields for kms_token_key (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_token_key
+create trigger immutable_columns before update on kms_token_key
   for each row execute procedure immutable_columns('private_id', 'root_key_id', 'create_time');
 
-create trigger 
-  default_create_time_column
-before
-insert on kms_token_key
+create trigger default_create_time_column before insert on kms_token_key
   for each row execute procedure default_create_time();
 
 create table kms_token_key_version (
@@ -299,21 +236,13 @@ create table kms_token_key_version (
 );
 
  -- define the immutable fields for kms_token_key_version (all of them)
-create trigger 
-  immutable_columns
-before
-update on kms_token_key_version
+create trigger immutable_columns before update on kms_token_key_version
   for each row execute procedure immutable_columns('private_id', 'token_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
   
-create trigger 
-  default_create_time_column
-before
-insert on kms_token_key_version
+create trigger default_create_time_column before insert on kms_token_key_version
   for each row execute procedure default_create_time();
 
-create trigger
-	kms_version_column
-before insert on kms_token_key_version
+create trigger kms_version_column before insert on kms_token_key_version
 	for each row execute procedure kms_version_column('token_key_id');
 
   insert into oplog_ticket

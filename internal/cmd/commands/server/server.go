@@ -138,6 +138,12 @@ func (c *Command) AutocompleteFlags() complete.Flags {
 func (c *Command) Run(args []string) int {
 	c.CombineLogs = c.flagCombineLogs
 
+	defer func() {
+		if err := c.RunShutdownFuncs(); err != nil {
+			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
+		}
+	}()
+
 	if result := c.ParseFlagsAndConfig(args); result > 0 {
 		return result
 	}
@@ -471,12 +477,6 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	defer func() {
-		if err := c.RunShutdownFuncs(); err != nil {
-			c.UI.Error(fmt.Errorf("Error running shutdown tasks: %w", err).Error())
-		}
-	}()
-
 	if c.Config.Controller != nil {
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
 		if err := c.StartController(c.Context); err != nil {
@@ -511,8 +511,10 @@ func (c *Command) Run(args []string) int {
 					retErr = fmt.Errorf("Error shutting down worker: %w", err)
 				}
 				c.UI.Error(retErr.Error())
-				if err := c.controller.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				if c.controller != nil {
+					if err := c.controller.Shutdown(); err != nil {
+						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+					}
 				}
 				return base.CommandCliError
 			}
@@ -560,16 +562,15 @@ func (c *Command) ParseFlagsAndConfig(args []string) int {
 	if out > 0 {
 		return out
 	}
-	c.Config = cfg
 
-	if c.Config.Controller == nil && c.Config.Worker == nil {
-		c.UI.Error("Neither worker nor controller specified in configuration file.")
-		return base.CommandUserError
+	if extraConfigValidationFunc != nil {
+		if err := extraConfigValidationFunc(cfg); err != nil {
+			c.UI.Error(err.Error())
+			return base.CommandUserError
+		}
 	}
-	if c.Config.Controller != nil && c.Config.Controller.Name == "" {
-		c.UI.Error("Controller has no name set. It must be the unique name of this instance.")
-		return base.CommandUserError
-	}
+
+	c.Config = cfg
 
 	return base.CommandSuccess
 }
@@ -704,50 +705,67 @@ func (c *Command) WaitForInterrupt() int {
 	// Wait for shutdown
 	shutdownTriggered := false
 
-	for !shutdownTriggered {
-		select {
-		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
+	// Add a force-shutdown goroutine to consume another interrupt
+	abortForceShutdownCh := make(chan struct{})
+	defer close(abortForceShutdownCh)
 
-			// Add a force-shutdown goroutine to consume another interrupt
-			abortForceShutdownCh := make(chan struct{})
-			defer close(abortForceShutdownCh)
-			go func() {
-				shutdownCh := make(chan os.Signal, 4)
-				signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+	runShutdownLogic := func() {
+		go func() {
+			shutdownCh := make(chan os.Signal, 4)
+			signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
+			for {
 				select {
 				case <-shutdownCh:
-					c.UI.Error("Second interrupt received, forcing shutdown")
+					c.UI.Error("Forcing shutdown")
 					os.Exit(base.CommandUserError)
+
+				case <-c.ServerSideShutdownCh:
+					// Drain connections in case this is hit more than once
+
 				case <-abortForceShutdownCh:
 					// No-op, we just use this to shut down the goroutine
-				}
-			}()
-
-			if c.Config.Controller != nil {
-				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
-			}
-
-			// Do worker shutdown
-			if c.Config.Worker != nil {
-				if err := c.worker.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+					return
 				}
 			}
+		}()
 
-			// Do controller shutdown
-			if c.Config.Controller != nil {
-				if err := c.controller.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
-				}
+		if c.Config.Controller != nil && c.opsServer != nil {
+			c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+		}
+
+		// Do worker shutdown
+		if c.Config.Worker != nil {
+			if err := c.worker.Shutdown(); err != nil {
+				c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 			}
+		}
 
+		// Do controller shutdown
+		if c.Config.Controller != nil {
+			if err := c.controller.Shutdown(); err != nil {
+				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
+			}
+		}
+
+		if c.opsServer != nil {
 			err := c.opsServer.Shutdown()
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Error shutting down ops listeners: %w", err).Error())
 			}
+		}
 
-			shutdownTriggered = true
+		shutdownTriggered = true
+	}
+
+	for !shutdownTriggered {
+		select {
+		case <-c.ServerSideShutdownCh:
+			c.UI.Output("==> Boundary server self-terminating")
+			runShutdownLogic()
+
+		case <-c.ShutdownCh:
+			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
+			runShutdownLogic()
 
 		case <-c.SighupCh:
 			c.UI.Output("==> Boundary server reload triggered")
@@ -844,10 +862,20 @@ func (c *Command) verifyKmsSetup() error {
 	ctx := context.Background()
 	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
-		return fmt.Errorf("error creating kms: %w", err)
+		return fmt.Errorf("%s: error creating kms: %w", op, err)
 	}
 	if err := kmsCache.VerifyGlobalRoot(ctx); err != nil {
 		return err
+	}
+	return nil
+}
+
+var extraConfigValidationFunc = func(cfg *config.Config) error {
+	if cfg.Controller == nil && cfg.Worker == nil {
+		return stderrors.New("Neither worker nor controller specified in configuration file.")
+	}
+	if cfg.Controller != nil && cfg.Controller.Name == "" {
+		return stderrors.New("Controller has no name set. It must be the unique name of this instance.")
 	}
 	return nil
 }

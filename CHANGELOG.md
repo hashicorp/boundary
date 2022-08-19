@@ -4,9 +4,70 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.10.1 (2022/08/11)
+
+### Bug Fixes
+
+* db: Fix an issue with migrations affecting clusters that contain 
+  credential libraries or static credentials.
+  ([Issue](https://github.com/hashicorp/boundary/issues/2349)),
+  ([PR](https://github.com/hashicorp/boundary/pull/2351)).
+* Managed Groups: Fix an issue where the `filter` field is not sent by
+  admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
+* Host Sets: Fix an issue causing host sets to not display in UI when using the aws plugin 
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1251))
+* Plugins: Fixes regression from 0.9.0 causing a failure to start when using
+  multiple KMS blocks of the same type
+  ([PR1](https://github.com/hashicorp/go-secure-stdlib/pull/43),
+  [PR2](https://github.com/hashicorp/boundary/pull/2346))
+* CLI: Fixed errors related to URL detection when passing in `-attr` or
+  `-secret` values that contained colons
+  ([PR](https://github.com/hashicorp/boundary/pull/2353))
+
+## 0.10.0 (2022/08/10)
+
+### Known Issues
+
+* Migration to this version may fail if the cluster contains credential
+  libraries. This will be fixed shortly in 0.10.1.
+
+### New and Improved
+
+* `ssh` Target Type With Credential Injection (HCP Boundary only): Boundary has
+  gained a new `ssh` target type. Using this type, username/password or SSH
+  private key credentials can be sourced from `vault` credential libraries or
+  `static` credentials and injected into the SSH session between a client and
+  end host. This allows users to securely SSH to remote hosts while never being
+  in possession of a valid credential for that target host.
+* SSH Private Key Credentials: There is now an `ssh_private_key` credential type
+  that allows submitting a username/private key (and optional passphrase) to
+  Boundary for use with credential injection or brokering workflows.
+* `boundary connect ssh` Credential Brokering Enhancements: we have extended
+  support into the `boundary connect ssh` helper for brokered credentials of
+  `ssh_private_key` type; the command will automatically pass the credentials to
+  the `ssh` process ([PR](https://github.com/hashicorp/boundary/pull/2267)).
+* `boundary authenticate`, `boundary accounts`: Enables use of `env://` and
+  `file://` syntax to specify location of a password
+  ([PR](https://github.com/hashicorp/boundary/pull/2325))
+
+### Bug Fixes
+
+* cli: Correctly cleanup plugins after exiting `boundary dev`, `boundary server`
+  and `boundary database init`
+  ([Issue](https://github.com/hashicorp/boundary/issues/2332),
+  [PR](https://github.com/hashicorp/boundary/pull/2333)).
+* `boundary accounts change-password`: Fixed being prompted for confirmation of
+  the current password instead of the new one
+  ([PR](https://github.com/hashicorp/boundary/pull/2325))
+
 ### Deprecations/Changes
 
-* API Module: Changed the return types that reference interfaces into their expected typed definition. Type casting is only allowed against interface types, therefore to mitigate compiler errors please remove any type casting done against the return values. ([Issue](https://github.com/hashicorp/boundary/issues/2122), [PR](https://github.com/hashicorp/boundary/pull/2238))
+* API Module: Changed the return types that reference interfaces into their
+  expected typed definition. Type casting is only allowed against interface
+  types, therefore to mitigate compiler errors please remove any type casting
+  done against the return values.
+  ([Issue](https://github.com/hashicorp/boundary/issues/2122),
+  [PR](https://github.com/hashicorp/boundary/pull/2238))
 * Targets: Rename Application credentials to Brokered credentials
   ([PR](https://github.com/hashicorp/boundary/pull/2260)).
 * Host plugins: Plugin-type host catalogs/sets/hosts now use typed prefixes for
@@ -15,6 +76,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Credential stores: Static-type credential stores/credentials now use typed
   prefixes for any newly-created resources. Existing resources will not be
   affected. ([PR](https://github.com/hashicorp/boundary/pull/2256))
+* Change of behavior on `-token` flag in CLI: Passing a token this way can
+  reveal the token to any user or service that can look at process information.
+  This flag must now reference a file on disk or an env var. Direct usage of the
+  `BOUNDARY_TOKEN` env var is also deprecated as it can show up in environment
+  information; the `env://` format now supported by the `-token` flag causes the
+  Boundary process to read it instead of the shell so is safer.
+  ([PR](https://github.com/hashicorp/boundary/pull/2327))
+* Change of behavior on `-password` flag in CLI: The same change made above for
+  `-token` has also been applied to `-password` or, for supporting resource
+  types, `-current-password` and `-new-password`.
+  ([PR](https://github.com/hashicorp/boundary/pull/2327))
 
 ## 0.9.1 (2022/07/06)
 
@@ -62,8 +134,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   `vault` credential store, and thus can be brokered to users at session
   authorization time. ([PR](https://github.com/hashicorp/boundary/pull/2174))
 * `boundary connect` Credential Brokering Integration: we have extended integration
-  into the `boundary connect` helpers. A new `sshpass` style has been added to the 
-  `ssh` helper, when used, if the credential contains a username/password and `sshpass` 
+  into the `boundary connect` helpers. A new `sshpass` style has been added to the
+  `ssh` helper, when used, if the credential contains a username/password and `sshpass`
   is installed, the command will automatically pass the credentials to the `ssh` process.
   Additionally, the default `ssh` helper will now use the `username` of the brokered credential.
   ([PR](https://github.com/hashicorp/boundary/pull/2191)).
@@ -73,7 +145,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   See Deprecations/Changes for some additional details.
   ([PR](https://github.com/hashicorp/boundary/pull/2160)).
 * event filtering: Change event filters to use lowercase and snake case for data
-  elements like the rest of Boundary filters do. 
+  elements like the rest of Boundary filters do.
 * ui: Use include_terminated flag for listing sessions.
   ([PR](https://github.com/hashicorp/boundary-ui/pull/1126)).
 * ui: Add Quick Setup onboarding guide.
@@ -88,9 +160,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
-* Targets: Removes support for `credential libraries` with respect to Target resources. 
-  The `library` `fields` and `actions` were deprecated in [Boundary 0.5.0](#050-20210802), 
-  please use `credential sources` instead. See changelog referenced above for 
+* Targets: Removes support for `credential libraries` with respect to Target resources.
+  The `library` `fields` and `actions` were deprecated in [Boundary 0.5.0](#050-20210802),
+  please use `credential sources` instead. See changelog referenced above for
   more details ([PR](https://github.com/hashicorp/boundary/pull/1533)).
 * Credential Libraries: The `user_password` credential type has been renamed to
   `username_password` to remove any inconsistency over what the credential type is.
@@ -289,15 +361,15 @@ isolate transactions and prevent resource contention that caused deadlocks.
 ### Deprecations/Changes
 
 * permissions: Fix bug in _Host Sets_ service that authenticated requests  
-  againist incorrect grant actions. This bug affects the _SetHosts_, _AddHosts_ 
-  and _RemoveHosts_ paths that do not have wildcard (`*`) action grants. 
+  againist incorrect grant actions. This bug affects the _SetHosts_, _AddHosts_
+  and _RemoveHosts_ paths that do not have wildcard (`*`) action grants.
   If affected, please update grant actions as follows:
 * * `set-host-sets` -> `set-hosts`
 * * `add-host-sets` -> `add-hosts`
-* * `remove-host-sets` -> `remove-hosts` 
+* * `remove-host-sets` -> `remove-hosts`
   ([PR](https://github.com/hashicorp/boundary/pull/1549)).
-* Removes support for the `auth-methods/<id>:authenticate:login` action that was 
-  deprecated in [Boundary 0.2.0](#020-20210414), please use 
+* Removes support for the `auth-methods/<id>:authenticate:login` action that was
+  deprecated in [Boundary 0.2.0](#020-20210414), please use
   `auth-methods/<id>:authenticate` instead.
   ([PR](https://github.com/hashicorp/boundary/pull/1534)).
 * Removes support for the `credential` field within `auth-methods/<id>:authenticate`

@@ -32,13 +32,14 @@ import (
 )
 
 const (
-	addressField        = "attributes.address"
-	vaultTokenField     = "attributes.token"
-	vaultTokenHmacField = "attributes.token_hmac"
-	caCertsField        = "attributes.ca_cert"
-	clientCertField     = "attributes.client_certificate"
-	clientCertKeyField  = "attributes.certificate_key"
-	domain              = "credential"
+	addressField           = "attributes.address"
+	vaultTokenField        = "attributes.token"
+	vaultTokenHmacField    = "attributes.token_hmac"
+	vaultWorkerFilterField = "attributes.worker_filter"
+	caCertsField           = "attributes.ca_cert"
+	clientCertField        = "attributes.client_certificate"
+	clientCertKeyField     = "attributes.certificate_key"
+	domain                 = "credential"
 )
 
 var (
@@ -66,7 +67,13 @@ var (
 	staticCollectionTypeMap = map[resource.Type]action.ActionSet{
 		resource.Credential: credentials.CollectionActions,
 	}
+	validateVaultWorkerFilterFn = vaultWorkerFilterUnsupported
+	vaultWorkerFilterToProto    = false
 )
+
+func vaultWorkerFilterUnsupported(string) error {
+	return fmt.Errorf("Worker Filter field is not supported in OSS")
+}
 
 func init() {
 	var err error
@@ -668,6 +675,11 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 			if vaultIn.Token() != nil {
 				attrs.TokenHmac = base64.RawURLEncoding.EncodeToString(vaultIn.Token().GetTokenHmac())
 			}
+			if vaultIn.GetWorkerFilter() != "" {
+				if vaultWorkerFilterToProto {
+					attrs.WorkerFilter = wrapperspb.String(vaultIn.GetWorkerFilter())
+				}
+			}
 			if cc := vaultIn.ClientCertificate(); cc != nil {
 				if len(cc.GetCertificate()) != 0 {
 					attrs.ClientCertificate = wrapperspb.String(string(cc.GetCertificate()))
@@ -719,6 +731,9 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 	}
 	if attrs.GetNamespace().GetValue() != "" {
 		opts = append(opts, vault.WithNamespace(attrs.GetNamespace().GetValue()))
+	}
+	if attrs.GetWorkerFilter().GetValue() != "" {
+		opts = append(opts, vault.WithWorkerFilter(attrs.GetWorkerFilter().GetValue()))
 	}
 
 	// TODO (ICU-1478 and ICU-1479): Update the vault's interface around ca cert to match oidc's,
@@ -784,7 +799,12 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 			if attrs.GetTokenHmac() != "" {
 				badFields[vaultTokenHmacField] = "This is a read only field."
 			}
-
+			if attrs.WorkerFilter.GetValue() != "" {
+				err := validateVaultWorkerFilterFn(attrs.WorkerFilter.GetValue())
+				if err != nil {
+					badFields[vaultWorkerFilterField] = err.Error()
+				}
+			}
 			// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
 			_, err := decodePemBlocks(attrs.GetCaCert().GetValue())
 			if attrs.GetCaCert() != nil && err != nil {
@@ -830,6 +850,12 @@ func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 				}
 				if attrs.GetTokenHmac() != "" {
 					badFields[vaultTokenHmacField] = "This is a read only field."
+				}
+				if attrs.WorkerFilter.GetValue() != "" {
+					err := validateVaultWorkerFilterFn(attrs.WorkerFilter.GetValue())
+					if err != nil {
+						badFields[vaultWorkerFilterField] = err.Error()
+					}
 				}
 
 				// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads

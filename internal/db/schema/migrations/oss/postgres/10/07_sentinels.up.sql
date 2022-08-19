@@ -10,8 +10,7 @@ alter domain wt_sentinel
 
 drop function wt_is_sentinel;
 
-create function wt_is_sentinel(string text)
-    returns bool
+create function wt_is_sentinel(string text) returns bool
 as $$
 select starts_with(string, u&'\fffe') and starts_with(reverse(string), u&'\ffff');
 $$ language sql
@@ -27,7 +26,6 @@ alter domain wt_sentinel
                 or
                 length(trim(trailing u&'\ffff' from trim(leading u&'\fffe ' from value))) > 0
             );
-
 comment on domain wt_sentinel is
     'A non-empty string with a Unicode prefix of U+FFFE and suffix of U+FFFF to indicate it is a sentinel value';
 

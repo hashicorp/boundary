@@ -39,6 +39,7 @@ type privateCredential struct {
 	CaCert               []byte
 	TlsServerName        string
 	TlsSkipVerify        bool
+	WorkerFilter         string
 	ClientCert           []byte
 	ClientKey            KeySecret
 	CtClientKey          []byte

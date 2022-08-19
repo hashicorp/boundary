@@ -165,7 +165,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 					return
 				}
 				require.NoError(err)
-				gotPrincipal := map[string]PrincipalRole{}
+				gotPrincipal := map[string]*PrincipalRole{}
 				for _, r := range got {
 					gotPrincipal[r.ScopedPrincipalId] = r
 				}

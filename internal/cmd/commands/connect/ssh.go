@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/posener/complete"
 )
 
@@ -48,6 +49,12 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 	var username string
 	retCreds = creds
 
+	var tryConsume bool
+	switch string(target.SubtypeFromId(c.sessionAuthzData.TargetId)) {
+	case "tcp":
+		tryConsume = true
+	}
+
 	switch strings.ToLower(s.flagSshStyle) {
 	case "ssh":
 		// Might want -t for ssh or -tt but seems fine without it for now...
@@ -58,10 +65,13 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 		args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
 
 	case "sshpass":
+		if !tryConsume {
+			return nil, nil, credentials{}, errors.New("Credentials must be consumed when using sshpass")
+		}
 		var password string
 		if len(retCreds.usernamePassword) > 0 {
 			// For now just grab the first username password credential brokered
-			// Mark credential as consumed so it is not printed to user
+			// Mark credential as consumed so that it is not printed to user
 			retCreds.usernamePassword[0].consumed = true
 
 			username = retCreds.usernamePassword[0].Username
@@ -92,14 +102,24 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 	case "putty", "ssh":
 
 		switch {
-		// First check if we have a private key available
+		// First check if we want to try and consume credentials
+		case !tryConsume:
+			// Do nothing
+
+		// If we want to consume check if we have a private key available first
 		case len(creds.sshPrivateKey) > 0:
 			// For now just grab the first ssh private key credential brokered
-			// Mark credential as consumed so it is not printed to user
-			retCreds.sshPrivateKey[0].consumed = true
+			cred := retCreds.sshPrivateKey[0]
 
-			username = retCreds.sshPrivateKey[0].Username
-			privateKey := retCreds.sshPrivateKey[0].PrivateKey
+			username = cred.Username
+			privateKey := cred.PrivateKey
+			cred.consumed = true
+			if cred.Passphrase != "" {
+				// Don't re-print everything, but print the passphrase they'll need
+				cred.consumed = false
+				delete(cred.raw.Credential, "username")
+				delete(cred.raw.Credential, "private_key")
+			}
 
 			pkFile, err := ioutil.TempFile("", "*")
 			if err != nil {
@@ -112,7 +132,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 				return nil
 			})
 			// SSH requires the private key file to end with a newline.
-			// When injesting a ssh_private_key from a file:// Boundary calls strings.TrimSpace
+			// When ingesting an ssh_private_key from a file:// Boundary calls strings.TrimSpace
 			// which will also trim newlines.
 			if !strings.HasSuffix(privateKey, "\n") {
 				privateKey = fmt.Sprintln(privateKey)
@@ -128,7 +148,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 
 		// Next check if we have a username password credential
 		case len(creds.usernamePassword) > 0:
-			// We cannot use the password of the credential outside of sshpass but we
+			// We cannot use the password of the credential outside of sshpass, but we
 			// can use the username.
 			// N.B. Do not mark credential as consumed, as user will still need enter
 			// the password when prompted.

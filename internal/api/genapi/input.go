@@ -281,14 +281,22 @@ var inputStructs = []*structInfo{
 	},
 	// Auth Methods related resources
 	{
-		inProto:     &authmethods.PasswordAuthMethodAttributes{},
-		outFile:     "authmethods/password_auth_method_attributes.gen.go",
-		subtypeName: "PasswordAuthMethod",
+		inProto:        &authmethods.PasswordAuthMethodAttributes{},
+		outFile:        "authmethods/password_auth_method_attributes.gen.go",
+		subtypeName:    "PasswordAuthMethod",
+		parentTypeName: "AuthMethod",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
-		inProto:     &authmethods.OidcAuthMethodAttributes{},
-		outFile:     "authmethods/oidc_auth_method_attributes.gen.go",
-		subtypeName: "OidcAuthMethod",
+		inProto:        &authmethods.OidcAuthMethodAttributes{},
+		outFile:        "authmethods/oidc_auth_method_attributes.gen.go",
+		subtypeName:    "OidcAuthMethod",
+		parentTypeName: "AuthMethod",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto:     &authmethods.OidcAuthMethodAuthenticateStartResponse{},
@@ -320,14 +328,22 @@ var inputStructs = []*structInfo{
 	},
 	// Accounts
 	{
-		inProto:     &accounts.PasswordAccountAttributes{},
-		outFile:     "accounts/password_account_attributes.gen.go",
-		subtypeName: "PasswordAccount",
+		inProto:        &accounts.PasswordAccountAttributes{},
+		outFile:        "accounts/password_account_attributes.gen.go",
+		subtypeName:    "PasswordAccount",
+		parentTypeName: "Account",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
-		inProto:     &accounts.OidcAccountAttributes{},
-		outFile:     "accounts/oidc_account_attributes.gen.go",
-		subtypeName: "OidcAccount",
+		inProto:        &accounts.OidcAccountAttributes{},
+		outFile:        "accounts/oidc_account_attributes.gen.go",
+		subtypeName:    "OidcAccount",
+		parentTypeName: "Account",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto: &accounts.Account{},
@@ -355,6 +371,10 @@ var inputStructs = []*structInfo{
 				Name:        "Filter",
 				SkipDefault: true,
 			},
+		},
+		parentTypeName: "ManagedGroup",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
 		},
 	},
 	{
@@ -389,9 +409,13 @@ var inputStructs = []*structInfo{
 	},
 	// Credentials
 	{
-		inProto:     &credentialstores.VaultCredentialStoreAttributes{},
-		outFile:     "credentialstores/vault_credential_store_attributes.gen.go",
-		subtypeName: "VaultCredentialStore",
+		inProto:        &credentialstores.VaultCredentialStoreAttributes{},
+		outFile:        "credentialstores/vault_credential_store_attributes.gen.go",
+		subtypeName:    "VaultCredentialStore",
+		parentTypeName: "CredentialStore",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto: &credentialstores.CredentialStore{},
@@ -437,6 +461,10 @@ var inputStructs = []*structInfo{
 				SkipDefault: true,
 			},
 		},
+		parentTypeName: "CredentialLibrary",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto: &credentiallibraries.CredentialLibrary{},
@@ -468,6 +496,10 @@ var inputStructs = []*structInfo{
 				SkipDefault: true,
 			},
 		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto:     &credentials.SshPrivateKeyAttributes{},
@@ -482,6 +514,10 @@ var inputStructs = []*structInfo{
 				Name:        "PrivateKey",
 				SkipDefault: true,
 			},
+		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
 		},
 	},
 	{
@@ -564,9 +600,13 @@ var inputStructs = []*structInfo{
 		createResponseTypes: true,
 	},
 	{
-		inProto:     &hosts.StaticHostAttributes{},
-		outFile:     "hosts/static_host_attributes.gen.go",
-		subtypeName: "StaticHost",
+		inProto:        &hosts.StaticHostAttributes{},
+		outFile:        "hosts/static_host_attributes.gen.go",
+		subtypeName:    "StaticHost",
+		parentTypeName: "Host",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto: &hostsets.HostSet{},
@@ -627,9 +667,22 @@ var inputStructs = []*structInfo{
 		subtypeName: "WorkerInfo",
 	},
 	{
-		inProto:     &targets.TcpTargetAttributes{},
-		outFile:     "targets/tcp_target_attributes.gen.go",
-		subtypeName: "TcpTarget",
+		inProto:        &targets.TcpTargetAttributes{},
+		outFile:        "targets/tcp_target_attributes.gen.go",
+		subtypeName:    "TcpTarget",
+		parentTypeName: "Target",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:        &targets.SshTargetAttributes{},
+		outFile:        "targets/ssh_target_attributes.gen.go",
+		subtypeName:    "SshTarget",
+		parentTypeName: "Target",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto: &targets.Target{},

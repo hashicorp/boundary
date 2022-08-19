@@ -50,7 +50,23 @@ const (
 	missingPortErrStr = "missing port in address"
 )
 
+// extraWorkerFilterFunc takes in a set of workers and returns another set,
+// after any filtering it wishes to perform. When calling one of these
+// functions, the current set should be passed in and the returned set should be
+// used if there is no error; it is up to the filter writer to ensure that what
+// is returned, if no filtering is desired, is the input set.
+//
+// This is generally used to take in a set selected already from the database
+// and possible filtered via target worker filters and provide additional
+// filtering capabilities on those remaining workers.
+type extraWorkerFilterFunc func(ctx context.Context, workers []*server.Worker, host, port string) ([]*server.Worker, error)
+
 var (
+	// ExtraWorkerFilters contains any custom worker filters that should be
+	// layered in at session authorization time. These will be executed in-order
+	// with the results from one fed into the next.
+	ExtraWorkerFilters []extraWorkerFilterFunc
+
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = action.ActionSet{
@@ -902,6 +918,18 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	endpointUrl := &url.URL{
 		Scheme: t.GetType().String(),
 		Host:   net.JoinHostPort(h, p),
+	}
+
+	for _, extraFilter := range ExtraWorkerFilters {
+		selectedWorkers, err = extraFilter(ctx, selectedWorkers, h, p)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error executing extra worker filter"))
+		}
+		if len(selectedWorkers) == 0 {
+			return nil, handlers.ApiErrorWithCodeAndMessage(
+				codes.FailedPrecondition,
+				"No workers are available to handle this session, or all have been filtered.")
+		}
 	}
 
 	var vaultReqs []credential.Request

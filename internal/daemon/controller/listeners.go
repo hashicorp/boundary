@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -13,14 +12,24 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
+	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/nodeenrollment/multihop"
+	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
 	"google.golang.org/grpc"
 )
+
+// the function that handles a secondary connection over a provided listener
+var handleSecondaryConnection = closeListener
+
+func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
+	if l != nil {
+		return l.Close()
+	}
+	return nil
+}
 
 func (c *Controller) startListeners() error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
@@ -112,7 +121,10 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		return nil, fmt.Errorf("error fetching worker auth storage: %w", err)
 	}
 
-	l, err := protocol.NewInterceptingListener(
+	// The cluster listener is shut down at server shutdown time so we do not
+	// need to handle individual listener shutdown.
+	var l net.Listener
+	l, err = protocol.NewInterceptingListener(
 		&protocol.InterceptingListenerConfiguration{
 			Context:      c.baseContext,
 			Storage:      workerAuthStorage,
@@ -125,9 +137,63 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
 	}
 
+	// Create split listener
+	splitListener, err := nodeenet.NewSplitListener(l)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating split listener: %w", err)
+	}
+
+	// This handles connections coming in on the cluster port that are
+	// authenticated via nodeenrollment but not with any extra purpose; these
+	// are normal worker connections
+	nodeeAuthedListener, err := splitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating node enrollment authed split listener: %w", err)
+	}
+	// This wraps the normal worker connections with something that events with
+	// the worker ID on successful auth/connection
+	eventingAuthedListener, err := common.NewEventingListener(c.baseContext, nodeeAuthedListener)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
+	}
+	// Create a multiplexer to unify connections between PKI and KMS
+	multiplexingAuthedListener, err := nodeenet.NewMultiplexingListener(c.baseContext, nodeeAuthedListener.Addr())
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating authed multiplexed listener: %w", err)
+	}
+	if err := multiplexingAuthedListener.IngressListener(eventingAuthedListener); err != nil {
+		return nil, fmt.Errorf("error adding authed evented listener to multiplexed listener: %w", err)
+	}
+	// Connections that came in on the cluster listener that are not authed via
+	// PKI need to be sent for KMS routing
+	nodeeUnauthedListener, err := splitListener.GetListener(nodeenet.UnauthenticatedNextProto)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating node enrollment unauthed split listener: %w", err)
+	}
+
+	// Connections coming in here are authed by nodeenrollment and are for the
+	// reverse grpc purpose
+	reverseGrpcListener, err := splitListener.GetListener(common.ReverseGrpcConnectionAlpnValue)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating reverse gprc connection split listener: %w", err)
+	}
+	// Create a multiplexer to unify reverse grpc connections between PKI and KMS
+	multiplexingReverseGrpcListener, err := nodeenet.NewMultiplexingListener(c.baseContext, reverseGrpcListener.Addr())
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating reverse grpc multiplexed listener: %w", err)
+	}
+	if err := multiplexingReverseGrpcListener.IngressListener(reverseGrpcListener); err != nil {
+		return nil, fmt.Errorf("error adding reverse grpc listener to multiplexed listener: %w", err)
+	}
+
+	// Start routing KMS connections
+	if err := startKmsConnRouter(c.baseContext, c, nodeeUnauthedListener, multiplexingAuthedListener, multiplexingReverseGrpcListener); err != nil {
+		return nil, errors.Wrap(c.baseContext, err, op)
+	}
+
 	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
 	if err != nil {
-		return nil, fmt.Errorf("error getting sub-listener for worker proto: %w", err)
+		return nil, fmt.Errorf("error getting request interceptor for worker proto: %w", err)
 	}
 
 	workerServer := grpc.NewServer(
@@ -143,26 +209,21 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		),
 	)
 
-	workerService := handlers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
-		c.workerStatusUpdateTimes, c.kms)
-	pbs.RegisterServerCoordinationServiceServer(workerServer, workerService)
-	pbs.RegisterSessionServiceServer(workerServer, workerService)
-
-	multihopService, err := handlers.NewMultihopServiceServer(
-		workerAuthStorage,
-		true,
-		nil,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
+	for _, fn := range controllerGrpcServiceRegistrationFunctions {
+		if err := fn(c.baseContext, c, workerServer); err != nil {
+			return nil, err
+		}
 	}
-	multihop.RegisterMultihopServiceServer(workerServer, multihopService)
 
 	metric.InitializeClusterCollectors(c.conf.PrometheusRegisterer, workerServer)
 
 	ln.GrpcServer = workerServer
 
-	return func() { go ln.GrpcServer.Serve(newInterceptingListener(c, l)) }, nil
+	return func() {
+		go splitListener.Start()
+		go handleSecondaryConnection(c.baseContext, multiplexingReverseGrpcListener, c.downstreamRoutes, -1)
+		go ln.GrpcServer.Serve(multiplexingAuthedListener)
+	}, nil
 }
 
 func (c *Controller) stopServersAndListeners() error {

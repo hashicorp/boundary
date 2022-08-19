@@ -466,30 +466,57 @@ func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *targe
 	switch c.Func {
 	case "add-host-sets":
 		result, err := targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-host-sets":
 		result, err := targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-host-sets":
 		result, err := targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-host-sources":
 		result, err := targetClient.AddHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-host-sources":
 		result, err := targetClient.RemoveHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-host-sources":
 		result, err := targetClient.SetHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-credential-sources":
 		result, err := targetClient.AddCredentialSources(c.Context, c.FlagId, version, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-credential-sources":
 		result, err := targetClient.RemoveCredentialSources(c.Context, c.FlagId, version, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-credential-sources":
 		result, err := targetClient.SetCredentialSources(c.Context, c.FlagId, version, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "authorize-session":
 		var err error

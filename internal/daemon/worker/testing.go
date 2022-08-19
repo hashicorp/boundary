@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,13 +24,15 @@ import (
 // fully-programmatic worker for tests. Error checking (for instance, for
 // valid config) is not stringent at the moment.
 type TestWorker struct {
-	b      *base.Server
-	w      *Worker
-	t      testing.TB
-	addrs  []string // The address the worker proxies are listening on
-	ctx    context.Context
-	cancel context.CancelFunc
-	name   string
+	b              *base.Server
+	w              *Worker
+	t              testing.TB
+	addrs          []string // The address the worker proxies are listening on
+	ctx            context.Context
+	cancel         context.CancelFunc
+	name           string
+	shutdownDoneCh chan struct{}
+	shutdownOnce   *sync.Once
 }
 
 // Worker returns the underlying worker
@@ -74,7 +77,7 @@ func (tw *TestWorker) ProxyAddrs() []string {
 			if !ok {
 				tw.t.Fatal("could not parse address as a TCP addr")
 			}
-			addr := fmt.Sprintf("%s:%d", tcpAddr.IP.String(), tcpAddr.Port)
+			addr := net.JoinHostPort(tcpAddr.IP.String(), fmt.Sprintf("%d", tcpAddr.Port))
 			tw.addrs = append(tw.addrs, addr)
 		}
 	}
@@ -139,22 +142,26 @@ func (tw *TestWorker) LookupSession(id string) (TestSessionInfo, bool) {
 // Shutdown runs any cleanup functions; be sure to run this after your test is
 // done
 func (tw *TestWorker) Shutdown() {
-	if tw.b != nil {
-		close(tw.b.ShutdownCh)
-	}
-
-	tw.cancel()
-
-	if tw.w != nil {
-		if err := tw.w.Shutdown(); err != nil {
-			tw.t.Error(err)
+	tw.shutdownOnce.Do(func() {
+		if tw.b != nil {
+			close(tw.b.ShutdownCh)
 		}
-	}
-	if tw.b != nil {
-		if err := tw.b.RunShutdownFuncs(); err != nil {
-			tw.t.Error(err)
+
+		tw.cancel()
+
+		if tw.w != nil {
+			if err := tw.w.Shutdown(); err != nil {
+				tw.t.Error(err)
+			}
 		}
-	}
+		if tw.b != nil {
+			if err := tw.b.RunShutdownFuncs(); err != nil {
+				tw.t.Error(err)
+			}
+		}
+
+		close(tw.shutdownDoneCh)
+	})
 }
 
 type TestWorkerOpts struct {
@@ -204,9 +211,11 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	tw := &TestWorker{
-		t:      t,
-		ctx:    ctx,
-		cancel: cancel,
+		t:              t,
+		ctx:            ctx,
+		cancel:         cancel,
+		shutdownDoneCh: make(chan struct{}),
+		shutdownOnce:   new(sync.Once),
 	}
 
 	if opts == nil {
@@ -216,6 +225,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	// Base server
 	tw.b = base.NewServer(nil)
 	tw.b.Command = &base.Command{
+		Context:    ctx,
 		ShutdownCh: make(chan struct{}),
 	}
 
@@ -307,6 +317,21 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	if opts.NonceFn != nil {
 		tw.w.nonceFn = opts.NonceFn
 	}
+
+	// The real server functions will listen for shutdown cues and act so mimic
+	// that here, and ensure that channels get drained
+	go func() {
+		for {
+			select {
+			case <-tw.b.ShutdownCh:
+				tw.Shutdown()
+			case <-tw.b.ServerSideShutdownCh:
+				tw.Shutdown()
+			case <-tw.shutdownDoneCh:
+				return
+			}
+		}
+	}()
 
 	if !opts.DisableAutoStart {
 		if err := tw.w.Start(); err != nil {

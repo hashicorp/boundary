@@ -11,8 +11,7 @@ begin;
 -- kms_version_column() will increment the version column whenever row data
 -- is inserted and should only be used in an before insert trigger.  This
 -- function will overwrite any explicit values to the version column.
-create or replace function kms_version_column()
-  returns trigger
+create or replace function kms_version_column() returns trigger
 as $$
 declare 
   _key_id text;
@@ -27,11 +26,7 @@ begin
   return new;
 end;
 $$ language plpgsql;
-
-comment on function
-  kms_version_column()
-is
+comment on function kms_version_column() is
   'function used in before insert triggers to properly set version columns for kms_* tables with a version column';
   
-
 commit;

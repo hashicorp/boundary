@@ -131,12 +131,21 @@ func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *users
 	switch c.Func {
 	case "add-accounts":
 		result, err := userClient.AddAccounts(c.Context, c.FlagId, version, c.flagAccounts, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "set-accounts":
 		result, err := userClient.SetAccounts(c.Context, c.FlagId, version, c.flagAccounts, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	case "remove-accounts":
 		result, err := userClient.RemoveAccounts(c.Context, c.FlagId, version, c.flagAccounts, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return result.GetResponse(), result.GetItem(), nil, err
 	}
 	return origResp, origItem, origItems, origError

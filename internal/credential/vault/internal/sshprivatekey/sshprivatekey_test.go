@@ -15,13 +15,15 @@ func TestExtract(t *testing.T) {
 	rsaKey := testdata.PEMBytes["rsa"]
 
 	type args struct {
-		s     data
-		uAttr string
-		pAttr string
+		s      data
+		uAttr  string
+		pkAttr string
+		pAttr  string
 	}
 	type sshpk struct {
 		user       string
 		privateKey credential.PrivateKey
+		passphrase []byte
 	}
 	tests := []struct {
 		name  string
@@ -30,20 +32,20 @@ func TestExtract(t *testing.T) {
 	}{
 		{
 			name: "nil-input",
-			want: sshpk{user: "", privateKey: nil},
+			want: sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name:  "no-input",
 			given: args{},
-			want:  sshpk{user: "", privateKey: nil},
+			want:  sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name: "no-secret",
 			given: args{
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "", privateKey: nil},
+			want: sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name: "no-match-username-secret",
@@ -52,10 +54,10 @@ func TestExtract(t *testing.T) {
 					"username-wrong": "user",
 					"private_key":    string(edKey),
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "", privateKey: nil},
+			want: sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name: "no-match-private-key-secret",
@@ -64,10 +66,10 @@ func TestExtract(t *testing.T) {
 					"username":          "user",
 					"private_key-wrong": string(edKey),
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "", privateKey: nil},
+			want: sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name: "valid-default",
@@ -76,22 +78,24 @@ func TestExtract(t *testing.T) {
 					"username":    "user",
 					"private_key": string(edKey),
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "user", privateKey: edKey},
+			want: sshpk{user: "user", privateKey: edKey, passphrase: nil},
 		},
 		{
-			name: "valid-default-private-key-string",
+			name: "valid-default-with-passphrase",
 			given: args{
 				s: data{
 					"username":    "user",
 					"private_key": string(edKey),
+					"passphrase":  "my-pass",
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
+				pAttr:  "passphrase",
 			},
-			want: sshpk{user: "user", privateKey: edKey},
+			want: sshpk{user: "user", privateKey: edKey, passphrase: []byte("my-pass")},
 		},
 		{
 			name: "no-match-username-secret-kv2",
@@ -103,10 +107,10 @@ func TestExtract(t *testing.T) {
 						"private_key":    string(edKey),
 					},
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "", privateKey: nil},
+			want: sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name: "no-match-private-key-secret-kv2",
@@ -118,10 +122,10 @@ func TestExtract(t *testing.T) {
 						"private_key-wrong": string(edKey),
 					},
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "", privateKey: nil},
+			want: sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name: "valid-kv2",
@@ -133,25 +137,27 @@ func TestExtract(t *testing.T) {
 						"private_key": string(edKey),
 					},
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "user", privateKey: edKey},
+			want: sshpk{user: "user", privateKey: edKey, passphrase: nil},
 		},
 		{
-			name: "valid-kv2-private-key-string",
+			name: "valid-kv2-with-passphrase",
 			given: args{
 				s: data{
 					"metadata": map[string]interface{}{},
 					"data": map[string]interface{}{
 						"username":    "user",
 						"private_key": string(edKey),
+						"passphrase":  "my-pass",
 					},
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
+				pAttr:  "passphrase",
 			},
-			want: sshpk{user: "user", privateKey: edKey},
+			want: sshpk{user: "user", privateKey: edKey, passphrase: []byte("my-pass")},
 		},
 		{
 			name: "no-metadata-kv2",
@@ -162,10 +168,10 @@ func TestExtract(t *testing.T) {
 						"private_key": string(edKey),
 					},
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "", privateKey: nil},
+			want: sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name: "invalid-metadata-kv2",
@@ -177,10 +183,10 @@ func TestExtract(t *testing.T) {
 						"private_key": string(edKey),
 					},
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "", privateKey: nil},
+			want: sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name: "invalid-field-kv2",
@@ -193,10 +199,10 @@ func TestExtract(t *testing.T) {
 						"private_key": string(edKey),
 					},
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "", privateKey: nil},
+			want: sshpk{user: "", privateKey: nil, passphrase: nil},
 		},
 		{
 			name: "valid-order-default-first",
@@ -210,10 +216,10 @@ func TestExtract(t *testing.T) {
 						"private_key": string(edKey),
 					},
 				},
-				uAttr: "username",
-				pAttr: "private_key",
+				uAttr:  "username",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "default-user", privateKey: rsaKey},
+			want: sshpk{user: "default-user", privateKey: rsaKey, passphrase: nil},
 		},
 		{
 			name: "default-user-json-pointer-pk",
@@ -224,10 +230,10 @@ func TestExtract(t *testing.T) {
 						"private_key": string(edKey),
 					},
 				},
-				uAttr: "username",
-				pAttr: "/testing/private_key",
+				uAttr:  "username",
+				pkAttr: "/testing/private_key",
 			},
-			want: sshpk{user: "default-user", privateKey: edKey},
+			want: sshpk{user: "default-user", privateKey: edKey, passphrase: nil},
 		},
 		{
 			name: "default-pk-json-pointer-user",
@@ -238,13 +244,13 @@ func TestExtract(t *testing.T) {
 						"special": "not-so-special",
 					},
 				},
-				uAttr: "/testing/special",
-				pAttr: "private_key",
+				uAttr:  "/testing/special",
+				pkAttr: "private_key",
 			},
-			want: sshpk{user: "not-so-special", privateKey: edKey},
+			want: sshpk{user: "not-so-special", privateKey: edKey, passphrase: nil},
 		},
 		{
-			name: "both-json-pointer",
+			name: "all-json-pointer",
 			given: args{
 				s: data{
 					"first-path": map[string]interface{}{
@@ -255,20 +261,25 @@ func TestExtract(t *testing.T) {
 					"testing": map[string]interface{}{
 						"private_key": string(edKey),
 					},
+					"hidden": map[string]interface{}{
+						"pass": "my-pass",
+					},
 				},
-				uAttr: "/first-path/deeper-path/my-special-user",
-				pAttr: "/testing/private_key",
+				uAttr:  "/first-path/deeper-path/my-special-user",
+				pkAttr: "/testing/private_key",
+				pAttr:  "/hidden/pass",
 			},
-			want: sshpk{user: "you-found-me", privateKey: edKey},
+			want: sshpk{user: "you-found-me", privateKey: edKey, passphrase: []byte("my-pass")},
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			user, privateKey := Extract(tt.given.s, tt.given.uAttr, tt.given.pAttr)
+			user, privateKey, passphrase := Extract(tt.given.s, tt.given.uAttr, tt.given.pkAttr, tt.given.pAttr)
 			assert.Equal(tt.want.user, user)
 			assert.Equal(tt.want.privateKey, privateKey)
+			assert.Equal(tt.want.passphrase, passphrase)
 		})
 	}
 }

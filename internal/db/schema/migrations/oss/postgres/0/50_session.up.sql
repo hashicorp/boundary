@@ -162,33 +162,21 @@ begin;
   );
 
   -- Replaced in 100 to add worker_filter
-  create trigger 
-    immutable_columns
-  before
-  update on session
+  create trigger immutable_columns before update on session
     for each row execute procedure immutable_columns('public_id', 'certificate', 'expiration_time', 'connection_limit', 'create_time', 'endpoint');
   
   -- session table has some cascades of FK to null, so we need to be careful
   -- which columns trigger an update of the version column
-  create trigger 
-    update_version_column 
-  after update of version, termination_reason, key_id, tofu_token, server_id, server_type on session
+  create trigger update_version_column after update of version, termination_reason, key_id, tofu_token, server_id, server_type on session
     for each row execute procedure update_version_column();
     
-  create trigger 
-    update_time_column 
-  before update on session 
+  create trigger update_time_column before update on session
     for each row execute procedure update_time_column();
     
-  create trigger 
-    default_create_time_column
-  before
-  insert on session
+  create trigger default_create_time_column before insert on session
     for each row execute procedure default_create_time();
 
-  create or replace function
-    insert_session()
-    returns trigger
+  create or replace function insert_session() returns trigger
   as $$
   begin
     case 
@@ -212,14 +200,10 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger 
-    insert_session
-  before insert on session
+  create trigger insert_session before insert on session
     for each row execute procedure insert_session();
 
-  create or replace function 
-    insert_new_session_state()
-    returns trigger
+  create or replace function insert_new_session_state() returns trigger
   as $$
   begin
     insert into session_state (session_id, state)
@@ -229,18 +213,14 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger 
-    insert_new_session_state
-  after insert on session
+  create trigger insert_new_session_state after insert on session
     for each row execute procedure insert_new_session_state();
 
   -- update_connection_state_on_closed_reason() is used in an update insert trigger on the
   -- session_connection table.  it will valiadate that all the session's
   -- connections are closed, and then insert a state of "closed" in
   -- session_connection_state for the closed session connection. 
-  create or replace function 
-    update_session_state_on_termination_reason()
-    returns trigger
+  create or replace function update_session_state_on_termination_reason() returns trigger
   as $$
   begin
     if new.termination_reason is not null then
@@ -283,18 +263,13 @@ begin;
   end;
   $$ language plpgsql;
 
-
-  create trigger 
-    update_session_state_on_termination_reason
-  after update of termination_reason on session
+  create trigger update_session_state_on_termination_reason after update of termination_reason on session
     for each row execute procedure update_session_state_on_termination_reason();
- 
 
   -- Updated in 29/01_cancel_session_null_fkey
   -- cancel_session will insert a cancel state for the session, if there's isn't
   -- a canceled state already.  It's used by cancel_session_with_null_fk.
-  create or replace function
-    cancel_session(in sessionId text) returns void 
+  create or replace function cancel_session(in sessionId text) returns void
   as $$
   declare
     rows_affected numeric;
@@ -324,9 +299,7 @@ begin;
 
   -- cancel_session_with_null_fk is intended to be a before update trigger that
   -- sets the session's state to cancel if a FK is set to null.
-  create or replace function 
-    cancel_session_with_null_fk()
-    returns trigger
+  create or replace function cancel_session_with_null_fk() returns trigger
   as $$
   begin
    case 
@@ -347,9 +320,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger 
-    cancel_session_with_null_fk
-  before update of user_id, host_id, target_id, host_set_id, auth_token_id, scope_id on session
+  create trigger cancel_session_with_null_fk before update of user_id, host_id, target_id, host_set_id, auth_token_id, scope_id on session
     for each row execute procedure cancel_session_with_null_fk();
 
   create table session_state_enm (
@@ -420,17 +391,11 @@ begin;
       references session_state (session_id, end_time)
   );
 
-
-  create trigger 
-    immutable_columns
-  before
-  update on session_state
+  create trigger immutable_columns before update on session_state
     for each row execute procedure immutable_columns('session_id', 'state', 'start_time', 'previous_end_time');
 
 -- Replaced in 28/02_prior_session_trigger.up.sql
-  create or replace function
-    insert_session_state()
-    returns trigger
+  create or replace function insert_session_state() returns trigger
   as $$
   begin
 
@@ -453,7 +418,6 @@ begin;
 
   end;
   $$ language plpgsql;
-
 
   create trigger insert_session_state before insert on session_state
     for each row execute procedure insert_session_state();

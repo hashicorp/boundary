@@ -3,16 +3,16 @@ export DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-password}"
 export DEFAULT_LOGIN="${DEFAULT_LOGIN:-admin}"
 export DEFAULT_UNPRIVILEGED_LOGIN="${DEFAULT_UNPRIVILEGED_LOGIN:-user}"
 export DEFAULT_AMPW="${DEFAULT_AMPW:-ampw_1234567890}"
-export DEFAULT_P_ID='p_1234567890'
-export DEFAULT_O_ID='o_1234567890'
+export DEFAULT_P_ID="${DEFAULT_P_ID:-p_1234567890}"
+export DEFAULT_O_ID="${DEFAULT_O_ID:-o_1234567890}"
 export DEFAULT_GLOBAL='global'
-export DEFAULT_TARGET='ttcp_1234567890'
-export DEFAULT_HOST_SET='hsst_1234567890'
-export DEFAULT_HOST_CATALOG='hcst_1234567890'
-export DEFAULT_HOST='hst_1234567890'
-export DEFAULT_USER='u_1234567890'
-export DEFAULT_UNPRIVILEGED_USER='u_0987654321'
-export DEFAULT_GLOBAL='global'
+export DEFAULT_TARGET="${DEFAULT_TARGET:-ttcp_1234567890}"
+export DEFAULT_HOST_SET="${DEFAULT_HOST_SET:-hsst_1234567890}"
+export DEFAULT_HOST_CATALOG="${DEFAULT_HOST_CATALOG:-hcst_1234567890}"
+export DEFAULT_HOST="${DEFAULT_HOST:-hst_1234567890}"
+export DEFAULT_USER="${DEFAULT_USER:-u_1234567890}"
+export DEFAULT_UNPRIVILEGED_USER="${DEFAULT_UNPRIVILEGED_USER:-u_0987654321}"
+export SKIP_FAILING_TESTS_IN_CI="${SKIP_FAILING_TESTS_IN_CI:-false}"
 
 function strip() {
   echo "$1" | tr -d '"'
@@ -28,5 +28,8 @@ function has_status_code() {
   if [ echo "$json"|jq -c ".status_code == $code" ]; then
     return 1
   fi
+}
 
+diag() {
+    echo "$@" | sed -e 's/^/# /' >&3 ;
 }

@@ -14,12 +14,8 @@ begin;
         references credential_vault_library_mapping_override (library_id)
         on delete cascade
         on update cascade,
-    username_attribute wt_sentinel
-      default wt_to_sentinel('no override')
-      not null,
-    private_key_attribute wt_sentinel
-      default wt_to_sentinel('no override')
-      not null
+    username_attribute wt_sentinel default wt_to_sentinel('no override') not null,
+    private_key_attribute wt_sentinel default wt_to_sentinel('no override') not null
   );
   comment on table credential_vault_library_ssh_private_key_mapping_override is
     'credential_vault_library_ssh_private_key_mapping_override is a table '
@@ -33,7 +29,7 @@ begin;
   create trigger delete_credential_vault_library_mapping_override_subtype after delete on credential_vault_library_ssh_private_key_mapping_override
     for each row execute procedure delete_credential_vault_library_mapping_override_subtype();
 
-  -- Replaces view from 36/02_vault_private_library.up.sql
+  -- Replaced in 41/01_worker_filter_vault_cred_store.up.sql
   drop view credential_vault_library_public;
   drop view credential_vault_library_private;
   create view credential_vault_library_private as
@@ -90,7 +86,7 @@ begin;
     'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
-  -- Replaces view from 36/02_vault_private_library.up.sql
+  -- Replaced in 41/01_worker_filter_vault_cred_store.up.sql
   create view credential_vault_library_public as
      select public_id,
             store_id,

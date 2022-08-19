@@ -17,6 +17,7 @@ const (
 	tlsServerNameField  = "TlsServerName"
 	tlsSkipVerifyField  = "TlsSkipVerify"
 	tokenField          = "Token"
+	workerFilterField   = "WorkerFilter"
 
 	// MappingOverrideField represents the field mask indicating a mapping override
 	// update has been requested.

@@ -358,6 +358,13 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		}
 	}
 
+	changeWorkerFilter := func(wf string) func(*CredentialStore) *CredentialStore {
+		return func(cs *CredentialStore) *CredentialStore {
+			cs.WorkerFilter = wf
+			return cs
+		}
+	}
+
 	makeNil := func() func(*CredentialStore) *CredentialStore {
 		return func(cs *CredentialStore) *CredentialStore {
 			return nil
@@ -505,19 +512,37 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "change-name-and-description",
+			name: "change-worker-filter",
 			orig: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
+					WorkerFilter: "test-workerfilter",
 				},
 			},
-			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			chgFn: changeWorkerFilter("test-update-worker-filter"),
+			masks: []string{"WorkerFilter"},
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					WorkerFilter: "test-update-worker-filter",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-name-and-description-and-workerfilter",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:         "test-name-repo",
+					Description:  "test-description-repo",
+					WorkerFilter: "test-workerfilter",
+				},
+			},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo"), changeWorkerFilter("test-update-worker-filter")),
 			masks: []string{"Name", "Description"},
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					Name:        "test-update-name-repo",
-					Description: "test-update-description-repo",
+					Name:         "test-update-name-repo",
+					Description:  "test-update-description-repo",
+					WorkerFilter: "test-update-worker-filter",
 				},
 			},
 			wantCount: 1,
@@ -526,8 +551,9 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			name: "delete-name",
 			orig: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
+					Name:         "test-name-repo",
+					Description:  "test-description-repo",
+					WorkerFilter: "test-workerfilter",
 				},
 			},
 			masks: []string{"Name"},
@@ -543,8 +569,9 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			name: "delete-description",
 			orig: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
+					Name:         "test-name-repo",
+					Description:  "test-description-repo",
+					WorkerFilter: "test-workerfilter",
 				},
 			},
 			masks: []string{"Description"},
@@ -552,6 +579,26 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
 					Name: "test-name-repo",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-workerfilter",
+			orig: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:         "test-name-repo",
+					Description:  "test-description-repo",
+					WorkerFilter: "test-workerfilter",
+				},
+			},
+			masks: []string{"WorkerFilter"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo"),
+				changeWorkerFilter("")),
+			want: &CredentialStore{
+				CredentialStore: &store.CredentialStore{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
 				},
 			},
 			wantCount: 1,

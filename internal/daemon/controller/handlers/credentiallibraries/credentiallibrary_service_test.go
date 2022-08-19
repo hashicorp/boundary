@@ -542,6 +542,92 @@ func TestCreate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Create a valid vault CredentialLibrary ssh_private_key type",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
+					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					},
+				},
+				CredentialType: string(credential.SshPrivateKeyType),
+			}},
+			idPrefix: vault.CredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.Subtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
+						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String("something"),
+							HttpMethod: wrapperspb.String("GET"),
+						},
+					},
+					CredentialType:    string(credential.SshPrivateKeyType),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid vault CredentialLibrary ssh_private_key type with mapping",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
+					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+						Path: wrapperspb.String("something"),
+					},
+				},
+				CredentialMappingOverrides: func() *structpb.Struct {
+					v := map[string]interface{}{
+						usernameAttribute:     "user-test",
+						privateKeyAttribute:   "pk-test",
+						pkPassphraseAttribute: "pass-test",
+					}
+					ret, err := structpb.NewStruct(v)
+					require.NoError(t, err)
+					return ret
+				}(),
+				CredentialType: string(credential.SshPrivateKeyType),
+			}},
+			idPrefix: vault.CredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.Subtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
+						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+							Path:       wrapperspb.String("something"),
+							HttpMethod: wrapperspb.String("GET"),
+						},
+					},
+					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							usernameAttribute:     "user-test",
+							privateKeyAttribute:   "pk-test",
+							pkPassphraseAttribute: "pass-test",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -624,6 +710,7 @@ func TestGet(t *testing.T) {
 			vault.NewSshPrivateKeyOverride(
 				vault.WithOverrideUsernameAttribute("user"),
 				vault.WithOverridePrivateKeyAttribute("pk"),
+				vault.WithOverridePrivateKeyPassphraseAttribute("pass"),
 			)))
 	require.NoError(t, err)
 	sshPkLib, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), lib1)
@@ -711,8 +798,9 @@ func TestGet(t *testing.T) {
 					CredentialType: "ssh_private_key",
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]interface{}{
-							usernameAttribute:   "user",
-							privateKeyAttribute: "pk",
+							usernameAttribute:     "user",
+							privateKeyAttribute:   "pk",
+							pkPassphraseAttribute: "pass",
 						}
 						ret, err := structpb.NewStruct(v)
 						require.NoError(t, err)
@@ -864,6 +952,7 @@ func TestUpdate(t *testing.T) {
 	usernameAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, usernameAttribute)
 	passwordAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, passwordAttribute)
 	privateKeyAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, privateKeyAttribute)
+	passphraseAttrField := fmt.Sprintf("%v.%v", credentialMappingPathField, pkPassphraseAttribute)
 
 	successCases := []struct {
 		name string
@@ -1167,6 +1256,7 @@ func TestUpdate(t *testing.T) {
 					vault.NewSshPrivateKeyOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePrivateKeyAttribute("orig-pk"),
+						vault.WithOverridePrivateKeyPassphraseAttribute("orig-pass"),
 					)),
 			},
 			req: &pbs.UpdateCredentialLibraryRequest{
@@ -1196,6 +1286,7 @@ func TestUpdate(t *testing.T) {
 					vault.NewSshPrivateKeyOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePrivateKeyAttribute("orig-pk"),
+						vault.WithOverridePrivateKeyPassphraseAttribute("orig-pass"),
 					)),
 			},
 			req: &pbs.UpdateCredentialLibraryRequest{
@@ -1218,22 +1309,54 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
-			name: "ssh-private-key-attributes-change-username-and-private-key-attributes",
+			name: "ssh-private-key-attributes-change-passphrase-attribute",
 			opts: []vault.Option{
 				vault.WithCredentialType("ssh_private_key"),
 				vault.WithMappingOverride(
 					vault.NewSshPrivateKeyOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePrivateKeyAttribute("orig-pk"),
+						vault.WithOverridePrivateKeyPassphraseAttribute("orig-pass"),
 					)),
 			},
 			req: &pbs.UpdateCredentialLibraryRequest{
-				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField),
+				UpdateMask: fieldmask(passphraseAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]interface{}{
-							usernameAttribute:   "changed-user",
-							privateKeyAttribute: "changed-pk",
+							pkPassphraseAttribute: "changed-pass",
+						}
+						ret, err := structpb.NewStruct(v)
+						require.NoError(t, err)
+						return ret
+					}(),
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.CredentialMappingOverrides.Fields[pkPassphraseAttribute] = structpb.NewStringValue("changed-pass")
+				return out
+			},
+		},
+		{
+			name: "ssh-private-key-attributes-change-all-attributes",
+			opts: []vault.Option{
+				vault.WithCredentialType("ssh_private_key"),
+				vault.WithMappingOverride(
+					vault.NewSshPrivateKeyOverride(
+						vault.WithOverrideUsernameAttribute("orig-user"),
+						vault.WithOverridePrivateKeyAttribute("orig-pk"),
+						vault.WithOverridePrivateKeyPassphraseAttribute("orig-pass"),
+					)),
+			},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField, passphraseAttrField),
+				Item: &pb.CredentialLibrary{
+					CredentialMappingOverrides: func() *structpb.Struct {
+						v := map[string]interface{}{
+							usernameAttribute:     "changed-user",
+							privateKeyAttribute:   "changed-pk",
+							pkPassphraseAttribute: "changed-pass",
 						}
 						ret, err := structpb.NewStruct(v)
 						require.NoError(t, err)
@@ -1245,21 +1368,23 @@ func TestUpdate(t *testing.T) {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
 				out.CredentialMappingOverrides.Fields[usernameAttribute] = structpb.NewStringValue("changed-user")
 				out.CredentialMappingOverrides.Fields[privateKeyAttribute] = structpb.NewStringValue("changed-pk")
+				out.CredentialMappingOverrides.Fields[pkPassphraseAttribute] = structpb.NewStringValue("changed-pass")
 				return out
 			},
 		},
 		{
-			name: "no-mapping-override-change-username-and-private-key-attributes",
+			name: "no-mapping-override-change-all-attributes",
 			opts: []vault.Option{
 				vault.WithCredentialType("ssh_private_key"),
 			},
 			req: &pbs.UpdateCredentialLibraryRequest{
-				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField),
+				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField, passphraseAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]interface{}{
-							usernameAttribute:   "new-user",
-							privateKeyAttribute: "new-pk",
+							usernameAttribute:     "new-user",
+							privateKeyAttribute:   "new-pk",
+							pkPassphraseAttribute: "new-pass",
 						}
 						ret, err := structpb.NewStruct(v)
 						require.NoError(t, err)
@@ -1270,8 +1395,9 @@ func TestUpdate(t *testing.T) {
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
 				v := map[string]interface{}{
-					usernameAttribute:   "new-user",
-					privateKeyAttribute: "new-pk",
+					usernameAttribute:     "new-user",
+					privateKeyAttribute:   "new-pk",
+					pkPassphraseAttribute: "new-pass",
 				}
 				var err error
 				out.CredentialMappingOverrides, err = structpb.NewStruct(v)
@@ -1287,6 +1413,7 @@ func TestUpdate(t *testing.T) {
 					vault.NewSshPrivateKeyOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePrivateKeyAttribute("orig-pk"),
+						vault.WithOverridePrivateKeyPassphraseAttribute("orig-pass"),
 					)),
 			},
 			req: &pbs.UpdateCredentialLibraryRequest{
@@ -1326,15 +1453,17 @@ func TestUpdate(t *testing.T) {
 					vault.NewSshPrivateKeyOverride(
 						vault.WithOverrideUsernameAttribute("orig-user"),
 						vault.WithOverridePrivateKeyAttribute("orig-pk"),
+						vault.WithOverridePrivateKeyPassphraseAttribute("orig-pass"),
 					)),
 			},
 			req: &pbs.UpdateCredentialLibraryRequest{
-				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField),
+				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField, passphraseAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]interface{}{
-							usernameAttribute:   nil,
-							privateKeyAttribute: nil,
+							usernameAttribute:     nil,
+							privateKeyAttribute:   nil,
+							pkPassphraseAttribute: nil,
 						}
 						ret, err := structpb.NewStruct(v)
 						require.NoError(t, err)
