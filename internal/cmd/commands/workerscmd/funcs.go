@@ -100,10 +100,17 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 	for _, name := range flagsMap[c.Func] {
 		switch name {
 		case "tag":
+			var nullCheckFn func() bool = nil
+			switch c.Func {
+			case "set-worker-tags":
+				nullCheckFn = func() bool { return true }
+			default:
+			}
 			f.StringSliceMapVar(&base.StringSliceMapVar{
-				Name:   "tag",
-				Target: &c.FlagTags,
-				Usage:  "The api tag resources to add, remove, or set.",
+				Name:      "tag",
+				Target:    &c.FlagTags,
+				NullCheck: nullCheckFn,
+				Usage:     "The api tag resources to add, remove, or set.",
 			})
 		}
 	}

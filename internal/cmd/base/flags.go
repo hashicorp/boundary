@@ -685,6 +685,9 @@ func mapToKV(m map[string]string) string {
 // StringSliceMapVar maps a key string to a slice of string values.
 // This is useful for cases such as modifying Worker tags, which can have
 // multiple values associated per key.
+// Setting NullCheck to return true enables the string input value "null"
+// to be accepted without throwing an error. This is useful for add/set/remove
+// patterns where we want to enable "set null".
 type StringSliceMapVar struct {
 	Name       string
 	Aliases    []string
@@ -692,6 +695,7 @@ type StringSliceMapVar struct {
 	Default    map[string][]string
 	Hidden     bool
 	Target     *map[string][]string
+	NullCheck  func() bool
 	Completion complete.Predictor
 }
 
@@ -700,75 +704,80 @@ func (f *FlagSet) StringSliceMapVar(i *StringSliceMapVar) {
 		Name:       i.Name,
 		Aliases:    i.Aliases,
 		Usage:      i.Usage,
-		Value:      newStringSliceMapValue(i.Default, i.Target, i.Hidden),
+		Value:      newStringSliceMapValue(i.Default, i.Target, i.NullCheck, i.Hidden),
 		Completion: i.Completion,
 	})
 }
 
 type stringSliceMapValue struct {
-	hidden bool
-	target *map[string][]string
+	hidden    bool
+	target    *map[string][]string
+	nullCheck func() bool
+	isNull    bool
 }
 
-func newStringSliceMapValue(def map[string][]string, target *map[string][]string, hidden bool) *stringSliceMapValue {
+func newStringSliceMapValue(def map[string][]string, target *map[string][]string, nullCheck func() bool, hidden bool) *stringSliceMapValue {
 	*target = def
 	return &stringSliceMapValue{
-		hidden: hidden,
-		target: target,
+		hidden:    hidden,
+		target:    target,
+		nullCheck: nullCheck,
+		isNull:    false,
 	}
 }
 
 func (s *stringSliceMapValue) Set(val string) error {
 	kv := strings.TrimSpace(val)
+
+	// Don't enable this behavior if nullCheck is not defined.
+	if s.nullCheck != nil {
+		if kv == "null" {
+			if !s.nullCheck() {
+				return fmt.Errorf(`"null" is not an allowed value`)
+			}
+			// Ensure "null" cannot be entered as a consecutive entry in a chain of valid entries
+			if s.isNull == true || len(*s.target) > 0 {
+				return fmt.Errorf(`"null" cannot be combined with other values`)
+			}
+			// Set target to nil and return
+			if kv == "null" {
+				*s.target = nil
+				s.isNull = true
+				return nil
+			}
+		} else if s.isNull == true {
+			// Ensure consecutive "non-null" entries cannot be entered after a "null"
+			return fmt.Errorf(`"null" cannot be combined with other values`)
+		}
+	}
+	// Return a better error message if "null" is not enabled
 	if kv == "null" {
-		s.target = nil
-		return nil
+		return fmt.Errorf(`"null" is not an allowed value`)
 	}
 
 	if *s.target == nil {
 		*s.target = make(map[string][]string)
 	}
-
 	split := strings.SplitN(kv, "=", 2)
 	if len(split) != 2 {
 		return fmt.Errorf("missing = in KV pair: %q", val)
 	}
 
-	key := split[0]
+	// trim space, check proto, and assign to map
+	key := strings.TrimSpace(split[0])
+	if !protoIdentifierRegex.Match([]byte(key)) {
+		return fmt.Errorf("key %q is invalid", key)
+	}
 
-	// This loop does not hit the else case because `split` is always returned as a tuple by `SplitN`.
-	// Regardless, the code below is useful to have in the case where we ever need to enter multiple tags
-	// with different key values (e.g. "t1=v1, t2=v2,v3, t3=v4") in one string as an input
-	for i := 1; i <= len(split)-1; i++ {
-		var vals []string
-		var nextKey string
-
-		if i == len(split)-1 {
-			// handle edge case at final index; assign values and don't worry about next key
-			vals = strings.Split(split[i], ",")
-		} else {
-			// ..otherwise split by comma and identify key for the next loop
-			vals = strings.Split(split[i], ",")
-			nextKey = vals[len(vals)-1]
-			vals = vals[:len(vals)-1]
+	vals := strings.Split(split[1], ",")
+	for i, v := range vals {
+		vals[i] = strings.TrimSpace(v)
+		if !protoIdentifierRegex.Match([]byte(vals[i])) {
+			return fmt.Errorf("value %q is invalid", vals[i])
 		}
-
-		// trim space and assign to map
-		// also check proto
-		key = strings.TrimSpace(key)
-		if !protoIdentifierRegex.Match([]byte(key)) {
-			return fmt.Errorf("key %q is invalid", key)
-		}
-		for i, v := range vals {
-			vals[i] = strings.TrimSpace(v)
-			if !protoIdentifierRegex.Match([]byte(vals[i])) {
-				return fmt.Errorf("value %q is invalid", vals[i])
-			}
-		}
-		for _, v := range vals {
-			(*s.target)[key] = append((*s.target)[key], v)
-		}
-		key = nextKey
+	}
+	for _, v := range vals {
+		(*s.target)[key] = append((*s.target)[key], v)
 	}
 
 	return nil

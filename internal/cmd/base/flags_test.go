@@ -9,29 +9,28 @@ import (
 
 func TestFlagSet_StringSliceMapVar(t *testing.T) {
 	t.Parallel()
-	target := make(map[string][]string, 1)
-	sliceMapVal := &stringSliceMapValue{
-		hidden: false,
-		target: &target,
-	}
 
 	tests := []struct {
 		name            string
 		setString       string
 		wantErrContains string
+		wantTarget      map[string][]string
 	}{
 		{
-			name:      "key-value",
-			setString: "key=value",
+			name:       "key-value",
+			setString:  "key=value",
+			wantTarget: map[string][]string{"key": {"value"}},
 		},
 		{
-			name:      "many-values",
-			setString: "key=v1,v2,v3,v4,v5",
+			name:       "many-values",
+			setString:  "key=v1,v2,v3,v4,v5",
+			wantTarget: map[string][]string{"key": {"v1", "v2", "v3", "v4", "v5"}},
 		},
 		{
-			name:      "duplicate-values",
-			setString: "k1=v1,v1",
 			// this case passes here and errors at worker client
+			name:       "duplicate-values",
+			setString:  "k1=v1,v1",
+			wantTarget: map[string][]string{"k1": {"v1", "v1"}},
 		},
 		{
 			name:            "no-deliminator",
@@ -63,6 +62,12 @@ func TestFlagSet_StringSliceMapVar(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
+			target := make(map[string][]string, 1)
+			sliceMapVal := &stringSliceMapValue{
+				hidden: false,
+				target: &target,
+			}
+
 			err := sliceMapVal.Set(tt.setString)
 			if tt.wantErrContains != "" {
 				assert.Error(err)
@@ -70,6 +75,76 @@ func TestFlagSet_StringSliceMapVar(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			assert.Equal(tt.wantTarget, *sliceMapVal.target)
+		})
+	}
+}
+
+func TestFlagSet_StringSliceMapVar_NullCheck(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		setStrings      []string
+		wantErrContains string
+		wantTarget      map[string][]string
+	}{
+		{
+			name:       "null",
+			setStrings: []string{"null"},
+			wantTarget: nil,
+		},
+		{
+			name:            "glass-half-null",
+			setStrings:      []string{"milk=half", "null"},
+			wantErrContains: `"null" cannot be combined with other values`,
+		},
+		{
+			name:            "invalid-entry-before",
+			setStrings:      []string{"the-milk-is-bad", "null"},
+			wantErrContains: `missing = in KV pair: "the-milk-is-bad"`,
+		},
+		{
+			name:            "invalid-entry-after",
+			setStrings:      []string{"null", "the-milk-is-still-bad"},
+			wantErrContains: `"null" cannot be combined with other values`,
+		},
+		{
+			name:       "no-error",
+			setStrings: []string{"k1=v1,v2,v3", "k2=v4,v5,v6"},
+			wantTarget: map[string][]string{"k1": {"v1", "v2", "v3"}, "k2": {"v4", "v5", "v6"}},
+		},
+		{
+			name:            "too-null",
+			setStrings:      []string{"null", "null", "null"},
+			wantErrContains: `"null" cannot be combined with other values`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			target := make(map[string][]string, 1)
+			sliceMapVal := &stringSliceMapValue{
+				hidden:    false,
+				target:    &target,
+				nullCheck: func() bool { return true },
+			}
+			var err error
+
+			for _, s := range tt.setStrings {
+				err = sliceMapVal.Set(s)
+				if err != nil {
+					break
+				}
+			}
+			if tt.wantErrContains != "" {
+				assert.Error(err)
+				assert.Contains(err.Error(), tt.wantErrContains)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tt.wantTarget, *sliceMapVal.target)
 		})
 	}
 }
