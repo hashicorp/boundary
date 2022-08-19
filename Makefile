@@ -324,6 +324,7 @@ DEV_DOCKER_GOARCH ?= amd64
 # Builds from the locally generated binary in ./bin/
 docker-build-dev: export GOOS=$(DEV_DOCKER_GOOS)
 docker-build-dev: export GOARCH=$(DEV_DOCKER_GOARCH)
+docker-build-dev: export DEV_BUILD="dev-build"
 docker-build-dev: build
 	docker build \
 		--tag $(IMAGE_TAG_DEV) \
