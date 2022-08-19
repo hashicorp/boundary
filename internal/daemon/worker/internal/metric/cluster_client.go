@@ -10,7 +10,6 @@ import (
 
 const (
 	clusterClientSubsystem = "cluster_client"
-	workerClusterSubsystem = "worker_cluster"
 )
 
 var grpcLabels = metric.LabelNames{
@@ -32,17 +31,6 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 	grpcLabels.ToList(),
 )
 
-var grpcServerRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
-	prometheus.HistogramOpts{
-		Namespace: globals.MetricNamespace,
-		Subsystem: workerClusterSubsystem,
-		Name:      "grpc_request_duration_seconds",
-		Help:      "Histogram of latencies for gRPC requests between the a worker server and a worker client.",
-		Buckets:   prometheus.DefBuckets,
-	},
-	grpcLabels.ToList(),
-)
-
 // InstrumentClusterClient wraps a UnaryClientInterceptor and records
 // observations for the collectors associated with gRPC connections
 // between the cluster and its clients.
@@ -55,17 +43,4 @@ func InstrumentClusterClient() grpc.UnaryClientInterceptor {
 // combinations.
 func InitializeClusterClientCollectors(r prometheus.Registerer) {
 	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency, grpcLabels, services.File_controller_servers_services_v1_session_service_proto)
-}
-
-// InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
-// cluster-specific metrics for a gRPC server.
-func InstrumentClusterStatsHandler() metric.StatsHandler {
-	return metric.StatsHandler{Metric: grpcServerRequestLatency, Labels: grpcLabels}
-}
-
-// InitializeClusterServerCollectors registers the cluster server metrics to the
-// prometheus register and initializes them to 0 for all possible label
-// combinations.
-func InitializeClusterServerCollectors(r prometheus.Registerer, server *grpc.Server) {
-	metric.InitializeGrpcCollectorsFromServer(r, grpcServerRequestLatency, grpcLabels, server)
 }
