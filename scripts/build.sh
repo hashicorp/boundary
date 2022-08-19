@@ -77,16 +77,3 @@ fi
 # Done!
 echo "==> Results:"
 ls -hl bin/
-
-# Printing the Boundary version will fail if cross compiling for a dev Docker build
-if [ "${DEV_BUILD}x" != "x" ]; then
-    exit 0
-fi
-
-# Print the version output for just linux_amd64.
-# Since we run this script in CI, and our CI build jobs run on linux runners, 
-# We can only check the version output for a subset of builds
-if [ "${GOOS}" == "linux" ] && [ "${GOARCH}" == "amd64" ]; then
-    echo "==> Version Info:"
-    bin/boundary version
-fi
