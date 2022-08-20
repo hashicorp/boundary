@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	kms.RegisterTableRewrappingFn(defaultAuthMethodTableName, getAuthMethodRewrapFn(defaultAccountTableName))
+	kms.RegisterTableRewrapFn(defaultAuthMethodTableName, getAuthMethodRewrapFn(defaultAccountTableName))
 }
 
 var allAuthMethodFields = []string{
@@ -35,7 +35,7 @@ var allAuthMethodFields = []string{
 	UserinfoClaimsField,
 }
 
-func getAuthMethodRewrapFn(authMethodTableName string) kms.RewrappingFn {
+func getAuthMethodRewrapFn(authMethodTableName string) kms.RewrapFn {
 	return func(ctx context.Context, dataKeyId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 		repo, err := NewRepository(ctx, reader, writer, kmsRepo)
 		if err != nil {

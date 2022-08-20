@@ -21,6 +21,6 @@ func TestAllDataKeyReferencersHaveARewrappingFn(t *testing.T) {
 	t.Cleanup(tc.Shutdown)
 	tableNames, err := tc.Kms().ListDataKeyReferencers(ctx)
 	require.NoError(t, err)
-	registeredTableNames := kms.ListTablesSupportingRewrapping()
+	registeredTableNames := kms.ListTablesSupportingRewrap()
 	require.Empty(t, cmp.Diff(tableNames, registeredTableNames, cmpopts.SortSlices(func(i, j string) bool { return i < j })), "At least one table referencing a data key does not have a rewrapping function registered")
 }

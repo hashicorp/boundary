@@ -462,7 +462,7 @@ func (k *Kms) RunKeyRevocation(ctx context.Context, keyRevocation *KeyRevocation
 		}
 	case strings.HasPrefix(keyRevocation.KeyId, "kdkv"):
 		// Data key, rewrap all data
-		for _, rewrapFn := range tableNameToRewrappingFn {
+		for _, rewrapFn := range tableNameToRewrapFn {
 			if err := rewrapFn(ctx, keyRevocation.KeyId, k.reader, k.writer, k); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

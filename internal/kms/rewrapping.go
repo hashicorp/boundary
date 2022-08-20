@@ -9,21 +9,21 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-type RewrappingFn func(ctx context.Context, dataKeyId string, reader db.Reader, writer db.Writer, kms *Kms) error
+type RewrapFn func(ctx context.Context, dataKeyId string, reader db.Reader, writer db.Writer, kms *Kms) error
 
-var tableNameToRewrappingFn = map[string]RewrappingFn{}
+var tableNameToRewrapFn = map[string]RewrapFn{}
 
-// RegisterTableRewrappingFn registers a function to be used to rewrap data in a specific table with a new key
-func RegisterTableRewrappingFn(tableName string, rewrappingFn RewrappingFn) {
-	if _, ok := tableNameToRewrappingFn[tableName]; ok {
-		panic(fmt.Sprintf("rewrapping function for table name %q already exists", tableName))
+// RegisterTableRewrapFn registers a function to be used to rewrap data in a specific table with a new key
+func RegisterTableRewrapFn(tableName string, rewrapFn RewrapFn) {
+	if _, ok := tableNameToRewrapFn[tableName]; ok {
+		panic(fmt.Sprintf("rewrap function for table name %q already exists", tableName))
 	}
-	tableNameToRewrappingFn[tableName] = rewrappingFn
+	tableNameToRewrapFn[tableName] = rewrapFn
 }
 
-// ListTablesSupportingRewrapping lists all the table names registered with a rewrapping function
-func ListTablesSupportingRewrapping() []string {
-	return maps.Keys(tableNameToRewrappingFn)
+// ListTablesSupportingRewrap lists all the table names registered with a rewrap function
+func ListTablesSupportingRewrap() []string {
+	return maps.Keys(tableNameToRewrapFn)
 }
 
 func (k *Kms) ListDataKeyReferencers(ctx context.Context) ([]string, error) {
