@@ -15,9 +15,9 @@ import (
 )
 
 func TestStatsHandler(t *testing.T) {
-	bkpLatency := grpcRequestLatency
+	bkpLatency := gRpcRequestLatency
 	defer func() {
-		grpcRequestLatency = bkpLatency
+		gRpcRequestLatency = bkpLatency
 	}()
 
 	handler := InstrumentClusterStatsHandler()

@@ -72,10 +72,10 @@ func TestRecorder(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			ogReqLatency := grpcRequestLatency
-			defer func() { grpcRequestLatency = ogReqLatency }()
+			ogReqLatency := gRpcRequestLatency
+			defer func() { gRpcRequestLatency = ogReqLatency }()
 
-			handler := metric.StatsHandler{Metric: grpcServerRequestLatency}
+			handler := metric.StatsHandler{Metric: gRpcServerRequestLatency}
 			testableLatency := &metric.TestableObserverVec{}
 			handler.Metric = testableLatency
 
@@ -92,11 +92,11 @@ func TestRecorder(t *testing.T) {
 }
 
 func TestInstrumentClusterClient(t *testing.T) {
-	ogReqLatency := grpcRequestLatency
-	defer func() { grpcRequestLatency = ogReqLatency }()
+	ogReqLatency := gRpcRequestLatency
+	defer func() { gRpcRequestLatency = ogReqLatency }()
 
 	testableLatency := &metric.TestableObserverVec{}
-	grpcRequestLatency = testableLatency
+	gRpcRequestLatency = testableLatency
 
 	interceptor := InstrumentClusterClient()
 	i := &metric.TestInvoker{T: t, RetErr: nil}
@@ -112,11 +112,11 @@ func TestInstrumentClusterClient(t *testing.T) {
 }
 
 func TestInstrumentClusterClient_InvokerError(t *testing.T) {
-	ogReqLatency := grpcRequestLatency
-	defer func() { grpcRequestLatency = ogReqLatency }()
+	ogReqLatency := gRpcRequestLatency
+	defer func() { gRpcRequestLatency = ogReqLatency }()
 
 	testableLatency := &metric.TestableObserverVec{}
-	grpcRequestLatency = testableLatency
+	gRpcRequestLatency = testableLatency
 
 	interceptor := InstrumentClusterClient()
 	i := &metric.TestInvoker{T: t, RetErr: fmt.Errorf("oops!")}

@@ -102,16 +102,16 @@ func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.Ob
 
 /* The following methods are used to initialize Prometheus histogram vectors for http requests. */
 
-func InitializeApiCollectors(r prometheus.Registerer, sh StatsHandler, expectedPathsToMethods map[string][]string, expectedStatusCodesPerMethod map[string][]int) {
+func InitializeApiCollectors(r prometheus.Registerer, v prometheus.ObserverVec, expectedPathsToMethods map[string][]string, expectedStatusCodesPerMethod map[string][]int) {
 	if r == nil {
 		return
 	}
-	r.MustRegister(sh.Metric)
+	r.MustRegister(v)
 
 	for p, methods := range expectedPathsToMethods {
 		for _, m := range methods {
 			for _, sc := range expectedStatusCodesPerMethod[m] {
-				sh.Metric.With(prometheus.Labels{LabelHttpPath: p, LabelHttpMethod: strings.ToLower(m), LabelHttpCode: strconv.Itoa(sc)})
+				v.With(prometheus.Labels{LabelHttpPath: p, LabelHttpMethod: strings.ToLower(m), LabelHttpCode: strconv.Itoa(sc)})
 			}
 		}
 	}
@@ -121,7 +121,7 @@ func InitializeApiCollectors(r prometheus.Registerer, sh StatsHandler, expectedP
 	p := invalidPathValue
 	for m := range expectedStatusCodesPerMethod {
 		for _, sc := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
-			sh.Metric.With(prometheus.Labels{LabelHttpPath: p, LabelHttpMethod: strings.ToLower(m), LabelHttpCode: strconv.Itoa(sc)})
+			v.With(prometheus.Labels{LabelHttpPath: p, LabelHttpMethod: strings.ToLower(m), LabelHttpCode: strconv.Itoa(sc)})
 		}
 	}
 }

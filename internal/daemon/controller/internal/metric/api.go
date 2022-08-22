@@ -239,7 +239,6 @@ func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 // combinations.
 func InitializeApiCollectors(r prometheus.Registerer) {
 	for _, v := range []prometheus.ObserverVec{httpRequestLatency, httpRequestSize, httpResponseSize} {
-		sh := metric.StatsHandler{Metric: v}
-		metric.InitializeApiCollectors(r, sh, expectedPathsToMethods, expectedStatusCodesPerMethod)
+		metric.InitializeApiCollectors(r, v, expectedPathsToMethods, expectedStatusCodesPerMethod)
 	}
 }

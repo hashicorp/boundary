@@ -46,6 +46,9 @@ func splitMethodName(fullMethodName string) (string, string) {
 
 type metricMethodNameContextKey struct{}
 
+// StatsHandler satisfies grpc's stats.Handler interface. This helps measure the latency of grpc requests as close to the
+// wire as possible, and allows us to capture error codes returned by the grpc go library which our service may
+// never return, or error codes for requests that our service may never even see.
 type StatsHandler struct {
 	Metric prometheus.ObserverVec
 }

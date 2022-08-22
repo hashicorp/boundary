@@ -20,10 +20,6 @@ const (
 )
 
 var (
-	latencyStatsHandler = metric.StatsHandler{
-		Metric: httpTimeUntilHeader,
-	}
-
 	expectedPathsToMethods = map[string][]string{
 		proxyPathValue: {http.MethodGet},
 	}
@@ -88,5 +84,5 @@ func InstrumentHttpHandler(wrapped http.Handler) http.Handler {
 // prometheus register and initializes them to 0 for the most likely label
 // combinations.
 func InitializeHttpCollectors(r prometheus.Registerer) {
-	metric.InitializeApiCollectors(r, latencyStatsHandler, expectedPathsToMethods, expectedCodesPerMethod)
+	metric.InitializeApiCollectors(r, httpTimeUntilHeader, expectedPathsToMethods, expectedCodesPerMethod)
 }
