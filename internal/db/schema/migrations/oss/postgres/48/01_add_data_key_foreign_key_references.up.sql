@@ -14,6 +14,9 @@ begin;
     on delete restrict
     on update cascade;
 
+  -- Some existing sessions may exist with an empty key_id
+  update session set key_id=NULL where key_id='';
+
   alter table session
     add constraint kms_data_key_version_fkey
     foreign key (key_id)
