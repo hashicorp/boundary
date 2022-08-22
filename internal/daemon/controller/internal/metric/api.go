@@ -118,12 +118,6 @@ var (
 	// 100 bytes, 1kb, 10kb, 100kb, 1mb, 10mb, 100mb, 1gb
 	msgSizeBuckets = prometheus.ExponentialBuckets(100, 10, 8)
 
-	httpLabels = metric.LabelNames{
-		Service: "path",
-		Method:  "method",
-		Code:    "code",
-	}
-
 	// httpRequestLatency collects measurements of how long it takes
 	// the boundary system to reply to a request to the controller api
 	// from the time that boundary received the request.
@@ -135,7 +129,7 @@ var (
 			Help:      "Histogram of latencies for HTTP requests.",
 			Buckets:   prometheus.DefBuckets,
 		},
-		httpLabels.ToList(),
+		metric.ListHttpLabels,
 	)
 
 	// httpRequestSize collections measurements of how large each request
@@ -148,7 +142,7 @@ var (
 			Help:      "Histogram of request sizes for HTTP requests.",
 			Buckets:   msgSizeBuckets,
 		},
-		httpLabels.ToList(),
+		metric.ListHttpLabels,
 	)
 
 	// httpRequestSize collections measurements of how large each response
@@ -161,7 +155,7 @@ var (
 			Help:      "Histogram of response sizes for HTTP responses.",
 			Buckets:   msgSizeBuckets,
 		},
-		httpLabels.ToList(),
+		metric.ListHttpLabels,
 	)
 )
 
@@ -225,7 +219,7 @@ func pathLabel(incomingPath string) string {
 func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
-			httpLabels.Service: pathLabel(req.URL.Path),
+			metric.LabelHttpPath: pathLabel(req.URL.Path),
 		}
 		promhttp.InstrumentHandlerDuration(
 			httpRequestLatency.MustCurryWith(l),
@@ -245,10 +239,7 @@ func InstrumentApiHandler(wrapped http.Handler) http.Handler {
 // combinations.
 func InitializeApiCollectors(r prometheus.Registerer) {
 	for _, v := range []prometheus.ObserverVec{httpRequestLatency, httpRequestSize, httpResponseSize} {
-		sh := metric.StatsHandler{
-			Metric: v,
-			Labels: httpLabels,
-		}
+		sh := metric.StatsHandler{Metric: v}
 		metric.InitializeApiCollectors(r, sh, expectedPathsToMethods, expectedStatusCodesPerMethod)
 	}
 }

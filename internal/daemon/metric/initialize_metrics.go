@@ -14,21 +14,21 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
-type LabelNames struct {
-	Service string
-	Method  string
-	Code    string
-}
+const (
+	LabelGrpcService = "grpc_service"
+	LabelGrpcMethod  = "grpc_method"
+	LabelGrpcCode    = "grpc_code"
+	LabelHttpPath    = "path"
+	LabelHttpMethod  = "method"
+	LabelHttpCode    = "code"
 
-// ToList is useful for defining label names when creating a new Prometheus vector.
-func (l LabelNames) ToList() []string {
-	return []string{l.Code, l.Service, l.Method}
-}
+	invalidPathValue = "invalid"
+)
 
-// ToPromLabels converts the LabelNames struct to a prometheus.Labels object, given the corresponding params.
-func (l LabelNames) ToPromLabels(code string, service string, method string) prometheus.Labels {
-	return prometheus.Labels{l.Code: code, l.Service: service, l.Method: method}
-}
+var (
+	ListGrpcLabels = []string{LabelGrpcService, LabelGrpcMethod, LabelGrpcCode}
+	ListHttpLabels = []string{LabelHttpPath, LabelHttpMethod, LabelHttpCode}
+)
 
 /* The following methods are used to initialize Prometheus histogram vectors for gRPC connections. */
 
@@ -62,7 +62,7 @@ var allGrpcCodes = []codes.Code{
 
 // InitializeGrpcCollectorsFromPackage registers and zeroes a Prometheus histogram, populating all service and method labels
 // by ranging through a given protobuf package.
-func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec, labels LabelNames, pkg protoreflect.FileDescriptor) {
+func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec, pkg protoreflect.FileDescriptor) {
 	if r == nil {
 		return
 	}
@@ -77,7 +77,7 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 	for serviceName, serviceMethods := range serviceNamesToMethodNames {
 		for _, sm := range serviceMethods {
 			for _, c := range allGrpcCodes {
-				v.With(labels.ToPromLabels(c.String(), serviceName, sm))
+				v.With(prometheus.Labels{LabelGrpcService: serviceName, LabelGrpcMethod: sm, LabelGrpcCode: c.String()})
 			}
 		}
 	}
@@ -85,7 +85,7 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 
 // InitializeGrpcCollectorsFromServer registers and zeroes a Prometheus histogram, finding all service and method labels
 // from the provided gRPC server.
-func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, labels LabelNames, server *grpc.Server) {
+func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, server *grpc.Server) {
 	if r == nil {
 		return
 	}
@@ -94,17 +94,13 @@ func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.Ob
 	for serviceName, info := range server.GetServiceInfo() {
 		for _, mInfo := range info.Methods {
 			for _, c := range allGrpcCodes {
-				v.With(labels.ToPromLabels(c.String(), serviceName, mInfo.Name))
+				v.With(prometheus.Labels{LabelGrpcService: serviceName, LabelGrpcMethod: mInfo.Name, LabelGrpcCode: c.String()})
 			}
 		}
 	}
 }
 
 /* The following methods are used to initialize Prometheus histogram vectors for http requests. */
-
-const (
-	invalidPathValue = "invalid"
-)
 
 func InitializeApiCollectors(r prometheus.Registerer, sh StatsHandler, expectedPathsToMethods map[string][]string, expectedStatusCodesPerMethod map[string][]int) {
 	if r == nil {
@@ -115,7 +111,7 @@ func InitializeApiCollectors(r prometheus.Registerer, sh StatsHandler, expectedP
 	for p, methods := range expectedPathsToMethods {
 		for _, m := range methods {
 			for _, sc := range expectedStatusCodesPerMethod[m] {
-				sh.Metric.With(sh.Labels.ToPromLabels(strconv.Itoa(sc), p, strings.ToLower(m)))
+				sh.Metric.With(prometheus.Labels{LabelHttpPath: p, LabelHttpMethod: strings.ToLower(m), LabelHttpCode: strconv.Itoa(sc)})
 			}
 		}
 	}
@@ -125,7 +121,7 @@ func InitializeApiCollectors(r prometheus.Registerer, sh StatsHandler, expectedP
 	p := invalidPathValue
 	for m := range expectedStatusCodesPerMethod {
 		for _, sc := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
-			sh.Metric.With(sh.Labels.ToPromLabels(strconv.Itoa(sc), p, strings.ToLower(m)))
+			sh.Metric.With(prometheus.Labels{LabelHttpPath: p, LabelHttpMethod: strings.ToLower(m), LabelHttpCode: strconv.Itoa(sc)})
 		}
 	}
 }

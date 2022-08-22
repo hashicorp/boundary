@@ -19,18 +19,18 @@ var grpcServerRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec
 		Help:      "Histogram of latencies for gRPC requests between the a worker server and a worker client.",
 		Buckets:   prometheus.DefBuckets,
 	},
-	grpcLabels.ToList(),
+	metric.ListGrpcLabels,
 )
 
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
 // cluster-specific metrics for a gRPC server.
 func InstrumentClusterStatsHandler() metric.StatsHandler {
-	return metric.StatsHandler{Metric: grpcServerRequestLatency, Labels: grpcLabels}
+	return metric.StatsHandler{Metric: grpcServerRequestLatency}
 }
 
 // InitializeClusterServerCollectors registers the cluster server metrics to the
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterServerCollectors(r prometheus.Registerer, server *grpc.Server) {
-	metric.InitializeGrpcCollectorsFromServer(r, grpcServerRequestLatency, grpcLabels, server)
+	metric.InitializeGrpcCollectorsFromServer(r, grpcServerRequestLatency, server)
 }

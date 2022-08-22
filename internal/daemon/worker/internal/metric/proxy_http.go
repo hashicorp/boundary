@@ -20,15 +20,8 @@ const (
 )
 
 var (
-	httpLabels = metric.LabelNames{
-		Service: "path",
-		Method:  "method",
-		Code:    "code",
-	}
-
 	latencyStatsHandler = metric.StatsHandler{
 		Metric: httpTimeUntilHeader,
-		Labels: httpLabels,
 	}
 
 	expectedPathsToMethods = map[string][]string{
@@ -60,7 +53,7 @@ var httpTimeUntilHeader prometheus.ObserverVec = prometheus.NewHistogramVec(
 		Help:      "Histogram of time elapsed after the TLS connection is established to when the first http header is written back from the server.",
 		Buckets:   prometheus.DefBuckets,
 	},
-	httpLabels.ToList(),
+	metric.ListHttpLabels,
 )
 
 // pathLabel maps the requested path to the label value recorded for metric
@@ -82,7 +75,7 @@ func pathLabel(incomingPath string) string {
 func InstrumentHttpHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
-			httpLabels.Service: pathLabel(req.URL.Path),
+			metric.LabelHttpPath: pathLabel(req.URL.Path),
 		}
 		promhttp.InstrumentHandlerTimeToWriteHeader(
 			httpTimeUntilHeader.MustCurryWith(l),

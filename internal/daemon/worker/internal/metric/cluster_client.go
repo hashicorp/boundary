@@ -12,12 +12,6 @@ const (
 	clusterClientSubsystem = "cluster_client"
 )
 
-var grpcLabels = metric.LabelNames{
-	Service: "grpc_service",
-	Method:  "grpc_method",
-	Code:    "grpc_code",
-}
-
 // grpcRequestLatency collects measurements of how long a gRPC
 // request between a cluster and its clients takes.
 var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
@@ -28,19 +22,19 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 		Help:      "Histogram of latencies for gRPC requests between the cluster and any of its clients.",
 		Buckets:   prometheus.DefBuckets,
 	},
-	grpcLabels.ToList(),
+	metric.ListGrpcLabels,
 )
 
 // InstrumentClusterClient wraps a UnaryClientInterceptor and records
 // observations for the collectors associated with gRPC connections
 // between the cluster and its clients.
 func InstrumentClusterClient() grpc.UnaryClientInterceptor {
-	return metric.InstrumentClusterClient(metric.StatsHandler{Metric: grpcRequestLatency, Labels: grpcLabels})
+	return metric.InstrumentClusterClient(metric.StatsHandler{Metric: grpcRequestLatency})
 }
 
 // InitializeClusterClientCollectors registers the cluster client metrics to the
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterClientCollectors(r prometheus.Registerer) {
-	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency, grpcLabels, services.File_controller_servers_services_v1_session_service_proto)
+	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency, services.File_controller_servers_services_v1_session_service_proto)
 }

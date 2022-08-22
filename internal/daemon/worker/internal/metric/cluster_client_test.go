@@ -33,9 +33,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        nil,
 			wantedLabels: map[string]string{
-				grpcLabels.Code:    "OK",
-				grpcLabels.Method:  "method",
-				grpcLabels.Service: "some.service.path",
+				metric.LabelGrpcCode:    "OK",
+				metric.LabelGrpcMethod:  "method",
+				metric.LabelGrpcService: "some.service.path",
 			},
 		},
 		{
@@ -43,9 +43,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "unrecognized",
 			err:        nil,
 			wantedLabels: map[string]string{
-				grpcLabels.Code:    "OK",
-				grpcLabels.Method:  "unknown",
-				grpcLabels.Service: "unknown",
+				metric.LabelGrpcCode:    "OK",
+				metric.LabelGrpcMethod:  "unknown",
+				metric.LabelGrpcService: "unknown",
 			},
 		},
 		{
@@ -53,9 +53,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        status.Error(codes.Canceled, ""),
 			wantedLabels: map[string]string{
-				grpcLabels.Code:    "Canceled",
-				grpcLabels.Method:  "method",
-				grpcLabels.Service: "some.service.path",
+				metric.LabelGrpcCode:    "Canceled",
+				metric.LabelGrpcMethod:  "method",
+				metric.LabelGrpcService: "some.service.path",
 			},
 		},
 		{
@@ -63,9 +63,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        status.Error(codes.PermissionDenied, ""),
 			wantedLabels: map[string]string{
-				grpcLabels.Code:    "PermissionDenied",
-				grpcLabels.Method:  "method",
-				grpcLabels.Service: "some.service.path",
+				metric.LabelGrpcCode:    "PermissionDenied",
+				metric.LabelGrpcMethod:  "method",
+				metric.LabelGrpcService: "some.service.path",
 			},
 		},
 	}
@@ -75,7 +75,7 @@ func TestRecorder(t *testing.T) {
 			ogReqLatency := grpcRequestLatency
 			defer func() { grpcRequestLatency = ogReqLatency }()
 
-			handler := metric.StatsHandler{Metric: grpcServerRequestLatency, Labels: grpcLabels}
+			handler := metric.StatsHandler{Metric: grpcServerRequestLatency}
 			testableLatency := &metric.TestableObserverVec{}
 			handler.Metric = testableLatency
 
