@@ -778,6 +778,9 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 	if outputFields.Has(globals.UpdatedTimeField) {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
 	}
+	if outputFields.Has(globals.ReleaseVersionField) {
+		out.ReleaseVersion = in.GetReleaseVersion()
+	}
 	if outputFields.Has(globals.VersionField) {
 		out.Version = in.GetVersion()
 	}

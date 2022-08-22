@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hashicorp/boundary/version"
+
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
@@ -159,15 +161,16 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		event.WriteError(statusCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
 			event.WithInfoMsg("error making status request to controller"))
 	}
-
+	versionInfo := version.Get()
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		WorkerStatus: &pb.ServerWorkerStatus{
-			Name:        w.conf.RawConfig.Worker.Name,
-			Description: w.conf.RawConfig.Worker.Description,
-			Address:     w.conf.RawConfig.Worker.PublicAddr,
-			Tags:        tags,
-			KeyId:       keyId,
+			Name:           w.conf.RawConfig.Worker.Name,
+			Description:    w.conf.RawConfig.Worker.Description,
+			Address:        w.conf.RawConfig.Worker.PublicAddr,
+			Tags:           tags,
+			KeyId:          keyId,
+			ReleaseVersion: versionInfo.FullVersionNumber(false),
 		},
 		UpdateTags: w.updateTags.Load(),
 	})

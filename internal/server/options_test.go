@@ -176,10 +176,18 @@ func Test_GetOpts(t *testing.T) {
 		opts = GetOpts(WithStopAfter(10))
 		assert.Equal(t, uint(10), opts.withStopAfter)
 	})
+<<<<<<< HEAD
 	t.Run("WithCreateControllerLedActivationToken", func(t *testing.T) {
 		opts := getDefaultOptions()
 		assert.False(t, opts.WithCreateControllerLedActivationToken)
 		opts = GetOpts(WithCreateControllerLedActivationToken(true))
 		assert.True(t, opts.WithCreateControllerLedActivationToken)
+=======
+	t.Run("WithReleaseVersion", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.Empty(t, opts.withReleaseVersion)
+		opts = getOpts(WithReleaseVersion("version"))
+		assert.Equal(t, "version", opts.withReleaseVersion)
+>>>>>>> d6b5254dd (feat(workers): Return Release Version on worker list and read (#2377))
 	})
 }
