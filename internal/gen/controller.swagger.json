@@ -5900,6 +5900,11 @@
           "description": "Output only. The api tags set for the worker.",
           "readOnly": true
         },
+        "release_version": {
+          "type": "string",
+          "description": "Output only. The version of the Boundary binary the worker is running.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

@@ -76,10 +76,11 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 	opts := getOpts(opt...)
 	return &Worker{
 		Worker: &store.Worker{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			Address:     opts.withAddress,
+			ScopeId:        scopeId,
+			Name:           opts.withName,
+			Description:    opts.withDescription,
+			Address:        opts.withAddress,
+			ReleaseVersion: opts.withReleaseVersion,
 		},
 		inputTags: opts.withWorkerTags,
 	}
@@ -189,6 +190,7 @@ type workerAggregate struct {
 	Address               string
 	Version               uint32
 	Type                  string
+	ReleaseVersion        string
 	ApiTags               string
 	ActiveConnectionCount uint32
 	// Config Fields
@@ -210,6 +212,7 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 			Version:        a.Version,
 			LastStatusTime: a.LastStatusTime,
 			Type:           a.Type,
+			ReleaseVersion: a.ReleaseVersion,
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 	}

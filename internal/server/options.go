@@ -41,6 +41,7 @@ type options struct {
 	withWorkerType                     WorkerType
 	withRoot                           string
 	withStopAfter                      uint
+	withReleaseVersion                 string
 }
 
 func getDefaultOptions() options {
@@ -186,5 +187,12 @@ func WithRoot(workerId string) Option {
 func WithStopAfter(stopAfter uint) Option {
 	return func(o *options) {
 		o.withStopAfter = stopAfter
+	}
+}
+
+// WithRelease version provides an optional release version
+func WithReleaseVersion(version string) Option {
+	return func(o *options) {
+		o.withReleaseVersion = version
 	}
 }

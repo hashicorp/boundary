@@ -176,4 +176,10 @@ func Test_GetOpts(t *testing.T) {
 		opts = getOpts(WithStopAfter(10))
 		assert.Equal(t, uint(10), opts.withStopAfter)
 	})
+	t.Run("WithReleaseVersion", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.Empty(t, opts.withReleaseVersion)
+		opts = getOpts(WithReleaseVersion("version"))
+		assert.Equal(t, "version", opts.withReleaseVersion)
+	})
 }

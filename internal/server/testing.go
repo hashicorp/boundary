@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/version"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
@@ -111,10 +112,13 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	if opts.withAddress != "" {
 		address = opts.withAddress
 	}
+	versionInfo := version.Get()
+	relVer := versionInfo.FullVersionNumber(false)
 	wrk := NewWorker(scope.Global.String(),
 		WithName(name),
 		WithAddress(address),
-		WithDescription(opts.withDescription))
+		WithDescription(opts.withDescription),
+		WithReleaseVersion(relVer))
 	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)
