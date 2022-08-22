@@ -16,14 +16,14 @@ with worker_config_tags(worker_id, source, tags) as (
   from server_worker_tag ct
   group by ct.worker_id, ct.source
 ),
-     connection_count (worker_id, count) as (
-       select
-         worker_id,
-         count(1) as count
-       from session_connection
-       where closed_reason is null
-       group by worker_id
-     )
+ connection_count (worker_id, count) as (
+   select
+     worker_id,
+     count(1) as count
+   from session_connection
+   where closed_reason is null
+   group by worker_id
+ )
 select
   w.public_id,
   w.scope_id,
