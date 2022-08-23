@@ -160,7 +160,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 	}
 	for _, item := range csl {
 		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetScopeId()
+		res.ScopeId = item.GetProjectId()
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
@@ -170,7 +170,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetProjectId()]))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
@@ -586,7 +586,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 				res.Error = handlers.NotFoundError()
 				return res
 			}
-			parentId = cs.GetScopeId()
+			parentId = cs.GetProjectId()
 
 		case static.Subtype:
 			var err error
@@ -599,7 +599,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 				res.Error = handlers.NotFoundError()
 				return res
 			}
-			parentId = cs.GetScopeId()
+			parentId = cs.GetProjectId()
 		}
 		opts = append(opts, auth.WithId(id))
 	}
@@ -621,7 +621,7 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 		out.Id = in.GetPublicId()
 	}
 	if outputFields.Has(globals.ScopeIdField) {
-		out.ScopeId = in.GetScopeId()
+		out.ScopeId = in.GetProjectId()
 	}
 	if outputFields.Has(globals.TypeField) {
 		out.Type = subtypes.SubtypeFromId(domain, in.GetPublicId()).String()

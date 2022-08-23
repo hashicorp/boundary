@@ -167,7 +167,7 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 
 func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error {
 	const op = "vault.(TokenRenewalJob).renewToken"
-	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -397,7 +397,7 @@ or
 
 func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) error {
 	const op = "vault.(TokenRevocationJob).revokeToken"
-	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -541,7 +541,6 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-
 		if err := r.renewCred(ctx, c); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error renewing credential", "credential id", c.PublicId))
 		}
@@ -554,7 +553,7 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 
 func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredential) error {
 	const op = "vault.(CredentialRenewalJob).renewCred"
-	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -713,7 +712,7 @@ func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 
 func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCredential) error {
 	const op = "vault.(CredentialRenewalJob).revokeCred"
-	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -847,7 +846,7 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 			return errors.Wrap(ctx, err, op)
 		}
 
-		oplogWrapper, err := r.kms.GetWrapper(ctx, store.ScopeId, kms.KeyPurposeOplog)
+		oplogWrapper, err := r.kms.GetWrapper(ctx, store.ProjectId, kms.KeyPurposeOplog)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to get oplog wrapper for credential store cleanup job", "credential store id", store.PublicId))
 			r.numProcessed++

@@ -18,7 +18,7 @@ import (
 )
 
 // A HostCatalog contains plugin host sets. It is owned by
-// a scope.
+// a project.
 type HostCatalog struct {
 	*store.HostCatalog
 	tableName string `gorm:"-"`
@@ -26,10 +26,10 @@ type HostCatalog struct {
 	Secrets *structpb.Struct `gorm:"-"`
 }
 
-// NewHostCatalog creates a new in memory HostCatalog assigned to a scopeId
+// NewHostCatalog creates a new in memory HostCatalog assigned to a projectId
 // and pluginId. Name and description are the only valid options. All other
 // options are ignored.
-func NewHostCatalog(ctx context.Context, scopeId, pluginId string, opt ...Option) (*HostCatalog, error) {
+func NewHostCatalog(ctx context.Context, projectId, pluginId string, opt ...Option) (*HostCatalog, error) {
 	const op = "plugin.NewHostCatalog"
 	opts := getOpts(opt...)
 
@@ -40,7 +40,7 @@ func NewHostCatalog(ctx context.Context, scopeId, pluginId string, opt ...Option
 
 	hc := &HostCatalog{
 		HostCatalog: &store.HostCatalog{
-			ScopeId:     scopeId,
+			ProjectId:   projectId,
 			PluginId:    pluginId,
 			Name:        opts.withName,
 			Description: opts.withDescription,
@@ -125,15 +125,15 @@ func (s *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
 		"resource-type":      []string{"plugin-host-catalog"},
 		"op-type":            []string{op.String()},
 	}
-	if s.ScopeId != "" {
-		metadata["scope-id"] = []string{s.ScopeId}
+	if s.ProjectId != "" {
+		metadata["project-id"] = []string{s.ProjectId}
 	}
 	return metadata
 }
 
 type catalogAgg struct {
 	PublicId            string `gorm:"primary_key"`
-	ScopeId             string
+	ProjectId           string
 	PluginId            string
 	Name                string
 	Description         string
@@ -154,7 +154,7 @@ func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret
 	}
 	c := allocHostCatalog()
 	c.PublicId = agg.PublicId
-	c.ScopeId = agg.ScopeId
+	c.ProjectId = agg.ProjectId
 	c.PluginId = agg.PluginId
 	c.Name = agg.Name
 	c.Description = agg.Description

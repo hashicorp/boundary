@@ -20,8 +20,8 @@ import (
 
 type hooks struct{}
 
-func (h hooks) NewTarget(scopeId string, opt ...target.Option) (target.Target, error) {
-	return targettest.New(scopeId, opt...)
+func (h hooks) NewTarget(projectId string, opt ...target.Option) (target.Target, error) {
+	return targettest.New(projectId, opt...)
 }
 
 func (h hooks) AllocTarget() target.Target {

@@ -519,38 +519,38 @@ func TestDelete(t *testing.T) {
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
-		name    string
-		scopeId string
-		req     *pbs.DeleteHostRequest
-		res     *pbs.DeleteHostResponse
-		err     error
+		name      string
+		projectId string
+		req       *pbs.DeleteHostRequest
+		res       *pbs.DeleteHostResponse
+		err       error
 	}{
 		{
-			name:    "Delete an Existing Host",
-			scopeId: proj.GetPublicId(),
+			name:      "Delete an Existing Host",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostRequest{
 				Id: h.GetPublicId(),
 			},
 		},
 		{
-			name:    "Delete a plugin Host",
-			scopeId: proj.GetPublicId(),
+			name:      "Delete a plugin Host",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostRequest{
 				Id: pluginH.GetPublicId(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
-			name:    "Delete bad id Host",
-			scopeId: proj.GetPublicId(),
+			name:      "Delete bad id Host",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostRequest{
 				Id: static.HostPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Bad Host Id formatting",
-			scopeId: proj.GetPublicId(),
+			name:      "Bad Host Id formatting",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostRequest{
 				Id: static.HostPrefix + "_bad_format",
 			},
@@ -560,7 +560,7 @@ func TestDelete(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteHost(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			got, gErr := s.DeleteHost(auth.DisabledAuthTestContext(iamRepoFn, tc.projectId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)

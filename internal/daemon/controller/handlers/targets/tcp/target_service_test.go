@@ -666,7 +666,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
@@ -702,7 +702,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
@@ -802,7 +802,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
@@ -836,7 +836,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("updated"),
 					Description: wrapperspb.String("default"),
@@ -871,7 +871,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("default"),
 					Description: wrapperspb.String("notignored"),
@@ -2448,7 +2448,7 @@ func TestAuthorizeSession(t *testing.T) {
 	shsWithPort := static.TestSets(t, conn, hcWithPort.GetPublicId(), 1)[0]
 	_ = static.TestSetMembers(t, conn, shsWithPort.GetPublicId(), []*static.Host{hWithPort})
 	hWithPort.Address = fmt.Sprintf("%s:54321", hWithPort.GetAddress())
-	hWithPort, _, err = staticRepo.UpdateHost(ctx, hcWithPort.GetScopeId(), hWithPort, hWithPort.GetVersion(), []string{"address"})
+	hWithPort, _, err = staticRepo.UpdateHost(ctx, hcWithPort.GetProjectId(), hWithPort, hWithPort.GetVersion(), []string{"address"})
 	require.NoError(t, err)
 
 	phc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
@@ -3289,7 +3289,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		h.Address = fmt.Sprintf("%s:54321", h.GetAddress())
 		repo, err := staticHostRepoFn()
 		require.NoError(t, err)
-		h, _, err = repo.UpdateHost(ctx, hc.GetScopeId(), h, h.GetVersion(), []string{"address"})
+		h, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
 		require.NoError(t, err)
 		return apiTar.GetItem().GetVersion()
 	}

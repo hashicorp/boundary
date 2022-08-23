@@ -53,7 +53,7 @@ func TestSession_Create(t *testing.T) {
 				TargetId:           composedOf.TargetId,
 				HostSetId:          composedOf.HostSetId,
 				AuthTokenId:        composedOf.AuthTokenId,
-				ScopeId:            composedOf.ScopeId,
+				ProjectId:          composedOf.ProjectId,
 				Endpoint:           "tcp://127.0.0.1:22",
 				ExpirationTime:     composedOf.ExpirationTime,
 				ConnectionLimit:    composedOf.ConnectionLimit,
@@ -128,11 +128,11 @@ func TestSession_Create(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "empty-scopeId",
+			name: "empty-projectId",
 			args: args{
 				composedOf: func() ComposedOf {
 					c := composedOf
-					c.ScopeId = ""
+					c.ProjectId = ""
 					return c
 				}(),
 				addresses: defaultAddresses,
@@ -154,7 +154,7 @@ func TestSession_Create(t *testing.T) {
 				TargetId:           composedOf.TargetId,
 				HostSetId:          composedOf.HostSetId,
 				AuthTokenId:        composedOf.AuthTokenId,
-				ScopeId:            composedOf.ScopeId,
+				ProjectId:          composedOf.ProjectId,
 				Endpoint:           "tcp://127.0.0.1:22",
 				ExpirationTime:     composedOf.ExpirationTime,
 				ConnectionLimit:    composedOf.ConnectionLimit,

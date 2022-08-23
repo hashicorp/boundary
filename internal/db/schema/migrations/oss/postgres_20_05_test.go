@@ -5,21 +5,94 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/host/static"
-	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_PreferredEndpointTable(t *testing.T) {
 	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
+	dialect := dbtest.Postgres
+	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, c())
+	})
+	d, err := common.SqlOpen(dialect, u)
+	require.NoError(t, err)
+
+	// migration to the prior migration (before the one we want to test)
+	m, err := schema.NewManager(ctx, schema.Dialect(dialect), d, schema.WithEditions(
+		schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": 20005}),
+	))
+	require.NoError(t, err)
+
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(t, err)
+	state, err := m.CurrentState(ctx)
+	require.NoError(t, err)
+	want := &schema.State{
+		Initialized: true,
+		Editions: []schema.EditionState{
+			{
+				Name:                  "oss",
+				BinarySchemaVersion:   20005,
+				DatabaseSchemaVersion: 20005,
+				DatabaseSchemaState:   schema.Equal,
+			},
+		},
+	}
+	require.Equal(t, want, state)
+
+	dbType, err := db.StringToDbType(dialect)
+	require.NoError(t, err)
+	conn, err := db.Open(ctx, dbType, u)
+	require.NoError(t, err)
 	rw := db.New(conn)
-	rootWrapper := db.TestWrapper(t)
-	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
-	hc := static.TestCatalogs(t, conn, proj.PublicId, 1)[0]
-	hs := static.TestSets(t, conn, hc.PublicId, 1)[0]
+
+	// Create org scope
+	orgId := "o_test___17005"
+	num, err := rw.Exec(ctx, `
+insert into iam_scope
+	(parent_id, type, public_id, name)
+values
+	('global', 'org', ?, 'my-org-scope')
+`, []interface{}{orgId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	// Create project scope
+	projectId := "p_test___17005"
+	num, err = rw.Exec(ctx, `
+insert into iam_scope
+	(parent_id, type, public_id, name)
+values
+	(?, 'project', ?, 'my-project-scope')`, []interface{}{orgId, projectId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	// Create host catalog
+	hostCatalogId := "hcst_v38sxr5fY3"
+	num, err = rw.Exec(ctx, `
+insert into static_host_catalog
+	(scope_id,  public_id,    name)
+values
+	(?, ?, 'my-host-catalog')`, []interface{}{projectId, hostCatalogId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	// Create host-set
+	hostSetId := "hsst_Nt6curcj4C"
+	num, err = rw.Exec(ctx, `
+insert into static_host_set
+	(catalog_id,    public_id,   name)
+values
+	(?, ?, 'my-host-set')`, []interface{}{hostCatalogId, hostSetId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
 
 	type testCondition struct {
 		condition string
@@ -48,7 +121,7 @@ func Test_PreferredEndpointTable(t *testing.T) {
 		},
 		{
 			testName:  "invalid condition prefix",
-			hostSetId: hs.PublicId,
+			hostSetId: hostSetId,
 			conditions: []testCondition{
 				{
 					priority:  1,
@@ -59,7 +132,7 @@ func Test_PreferredEndpointTable(t *testing.T) {
 		},
 		{
 			testName:  "invalid condition length",
-			hostSetId: hs.PublicId,
+			hostSetId: hostSetId,
 			conditions: []testCondition{
 				{
 					priority:  1,
@@ -70,7 +143,7 @@ func Test_PreferredEndpointTable(t *testing.T) {
 		},
 		{
 			testName:  "invalid priority",
-			hostSetId: hs.PublicId,
+			hostSetId: hostSetId,
 			conditions: []testCondition{
 				{
 					priority:  0,
@@ -81,7 +154,7 @@ func Test_PreferredEndpointTable(t *testing.T) {
 		},
 		{
 			testName:  "duplicate priority",
-			hostSetId: hs.PublicId,
+			hostSetId: hostSetId,
 			conditions: []testCondition{
 				{
 					priority:  1,
@@ -96,7 +169,7 @@ func Test_PreferredEndpointTable(t *testing.T) {
 		},
 		{
 			testName:  "invalid char 1",
-			hostSetId: hs.PublicId,
+			hostSetId: hostSetId,
 			conditions: []testCondition{
 				{
 					priority:  1,
@@ -111,7 +184,7 @@ func Test_PreferredEndpointTable(t *testing.T) {
 		},
 		{
 			testName:  "invalid char 2",
-			hostSetId: hs.PublicId,
+			hostSetId: hostSetId,
 			conditions: []testCondition{
 				{
 					priority:  1,
@@ -126,7 +199,7 @@ func Test_PreferredEndpointTable(t *testing.T) {
 		},
 		{
 			testName:  "valid",
-			hostSetId: hs.PublicId,
+			hostSetId: hostSetId,
 			conditions: []testCondition{
 				{
 					priority:  1,

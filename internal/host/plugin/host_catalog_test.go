@@ -29,9 +29,9 @@ func TestHostCatalog_Create(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test")
 
 	type args struct {
-		pluginId string
-		scopeId  string
-		opts     []Option
+		pluginId  string
+		projectId string
+		opts      []Option
 	}
 
 	tests := []struct {
@@ -42,10 +42,10 @@ func TestHostCatalog_Create(t *testing.T) {
 		wantCreateErr bool
 	}{
 		{
-			name: "blank-scopeId",
+			name: "blank-projectId",
 			args: args{
-				pluginId: plg.GetPublicId(),
-				scopeId:  "",
+				pluginId:  plg.GetPublicId(),
+				projectId: "",
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
@@ -58,12 +58,12 @@ func TestHostCatalog_Create(t *testing.T) {
 		{
 			name: "blank-pluginId",
 			args: args{
-				pluginId: "",
-				scopeId:  prj.GetPublicId(),
+				pluginId:  "",
+				projectId: prj.GetPublicId(),
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					Attributes: []byte{},
 				},
 			},
@@ -72,13 +72,13 @@ func TestHostCatalog_Create(t *testing.T) {
 		{
 			name: "valid-no-options",
 			args: args{
-				pluginId: plg.GetPublicId(),
-				scopeId:  prj.GetPublicId(),
+				pluginId:  plg.GetPublicId(),
+				projectId: prj.GetPublicId(),
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					PluginId:   plg.GetPublicId(),
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					Attributes: []byte{},
 				},
 			},
@@ -86,8 +86,8 @@ func TestHostCatalog_Create(t *testing.T) {
 		{
 			name: "valid-with-name",
 			args: args{
-				pluginId: plg.GetPublicId(),
-				scopeId:  prj.GetPublicId(),
+				pluginId:  plg.GetPublicId(),
+				projectId: prj.GetPublicId(),
 				opts: []Option{
 					WithName("test-name"),
 				},
@@ -95,7 +95,7 @@ func TestHostCatalog_Create(t *testing.T) {
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					PluginId:   plg.GetPublicId(),
-					ScopeId:    prj.GetPublicId(),
+					ProjectId:  prj.GetPublicId(),
 					Name:       "test-name",
 					Attributes: []byte{},
 				},
@@ -104,8 +104,8 @@ func TestHostCatalog_Create(t *testing.T) {
 		{
 			name: "valid-with-description",
 			args: args{
-				pluginId: plg.GetPublicId(),
-				scopeId:  prj.GetPublicId(),
+				pluginId:  plg.GetPublicId(),
+				projectId: prj.GetPublicId(),
 				opts: []Option{
 					WithDescription("test-description"),
 				},
@@ -113,7 +113,7 @@ func TestHostCatalog_Create(t *testing.T) {
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
 					PluginId:    plg.GetPublicId(),
-					ScopeId:     prj.GetPublicId(),
+					ProjectId:   prj.GetPublicId(),
 					Description: "test-description",
 					Attributes:  []byte{},
 				},
@@ -122,8 +122,8 @@ func TestHostCatalog_Create(t *testing.T) {
 		{
 			name: "valid-with-attributes",
 			args: args{
-				pluginId: plg.GetPublicId(),
-				scopeId:  prj.GetPublicId(),
+				pluginId:  plg.GetPublicId(),
+				projectId: prj.GetPublicId(),
 				opts: []Option{
 					WithAttributes(&structpb.Struct{Fields: map[string]*structpb.Value{"foo": structpb.NewStringValue("bar")}}),
 				},
@@ -131,8 +131,8 @@ func TestHostCatalog_Create(t *testing.T) {
 			want: func() *HostCatalog {
 				hc := &HostCatalog{
 					HostCatalog: &store.HostCatalog{
-						PluginId: plg.GetPublicId(),
-						ScopeId:  prj.GetPublicId(),
+						PluginId:  plg.GetPublicId(),
+						ProjectId: prj.GetPublicId(),
 					},
 				}
 				var err error
@@ -146,7 +146,7 @@ func TestHostCatalog_Create(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewHostCatalog(ctx, tt.args.scopeId, tt.args.pluginId, tt.args.opts...)
+			got, err := NewHostCatalog(ctx, tt.args.projectId, tt.args.pluginId, tt.args.opts...)
 			require.NoError(t, err)
 			require.NotNil(t, got)
 
@@ -193,19 +193,19 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, got))
 
-	// Can't create another resource with the same name in the same scope
+	// Can't create another resource with the same name in the same project
 	got.PublicId, err = newHostCatalogId(ctx)
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
-	// Can't create another resource with same name in same scope even for different plugin
+	// Can't create another resource with same name in same project even for different plugin
 	got, err = NewHostCatalog(ctx, prj.GetPublicId(), plg2.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
 	got.PublicId, err = newHostCatalogId(ctx)
 	require.NoError(t, err)
 	assert.Error(t, w.Create(ctx, got))
 
-	// Can create another resource with same name in different scope even for same plugin
+	// Can create another resource with same name in different project even for same plugin
 	got, err = NewHostCatalog(ctx, prj2.GetPublicId(), plg.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
 	got.PublicId, err = newHostCatalogId(ctx)
@@ -266,7 +266,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	ctx := context.Background()
 
-	t.Run("delete-scope", func(t *testing.T) {
+	t.Run("delete-project", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		plg := host.TestPlugin(t, conn, "deletescope")
 		cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())

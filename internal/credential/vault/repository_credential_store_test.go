@@ -66,7 +66,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		assert.Nil(got2)
 	})
 
-	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
+	t.Run("valid-duplicate-names-diff-projects", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
@@ -74,6 +74,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.GetPublicId())
 		err = RegisterJobs(ctx, sche, rw, rw, kms)
 		require.NoError(err)
 
@@ -94,11 +95,11 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		assert.Equal(got1.CreateTime, got1.UpdateTime)
 
 		_, token2 := v.CreateToken(t)
-		in2, err := NewCredentialStore(org.GetPublicId(), v.Addr, []byte(token2), WithName("gary"), WithDescription("46"))
+		in2, err := NewCredentialStore(prj2.GetPublicId(), v.Addr, []byte(token2), WithName("gary"), WithDescription("46"))
 		assert.NoError(err)
 		require.NotNil(in2)
 		assert.NotEmpty(in2.Name)
-		in2.ScopeId = org.GetPublicId()
+		in2.ProjectId = prj2.GetPublicId()
 		got2, err := repo.CreateCredentialStore(ctx, in2)
 		require.NoError(err)
 		require.NotNil(got2)
@@ -465,7 +466,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 				},
 			},
 			chgFn:   changeName("test-update-name-repo"),
-			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ProjectId"},
 			wantErr: errors.InvalidFieldMask,
 		},
 		{
@@ -778,7 +779,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			require.NoError(err)
 
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-			tt.orig.ScopeId = prj.GetPublicId()
+			tt.orig.ProjectId = prj.GetPublicId()
 
 			vs := NewTestVaultServer(t)
 
@@ -810,7 +811,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			assertPublicId(t, CredentialStorePrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
-			assert.Equal(tt.orig.ScopeId, got.ScopeId)
+			assert.Equal(tt.orig.ProjectId, got.ProjectId)
 			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
@@ -870,7 +871,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		in := &CredentialStore{
 			inputToken: []byte(token),
 			CredentialStore: &store.CredentialStore{
-				ScopeId:      prj.GetPublicId(),
+				ProjectId:    prj.GetPublicId(),
 				VaultAddress: fmt.Sprintf("%v://127.0.0.1:%s", u.Scheme, port),
 			},
 		}
@@ -918,7 +919,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		in := &CredentialStore{
 			inputToken: []byte(token),
 			CredentialStore: &store.CredentialStore{
-				ScopeId:      prj.GetPublicId(),
+				ProjectId:    prj.GetPublicId(),
 				VaultAddress: vs.Addr,
 				CaCert:       vs.CaCert,
 			},
@@ -981,7 +982,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 	})
 
-	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
+	t.Run("valid-duplicate-names-diff-projects", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
@@ -1007,7 +1008,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		in2 := in.clone()
 		in2.inputToken = []byte(token2)
 
-		in.ScopeId = prj.GetPublicId()
+		in.ProjectId = prj.GetPublicId()
 		got, err := repo.CreateCredentialStore(ctx, in)
 		assert.NoError(err)
 		require.NotNil(got)
@@ -1016,7 +1017,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 
-		in2.ScopeId = org.GetPublicId()
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.GetPublicId())
+		in2.ProjectId = prj2.GetPublicId()
 		in2.Name = "first-name"
 		got2, err := repo.CreateCredentialStore(ctx, in2)
 		assert.NoError(err)
@@ -1031,7 +1033,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert.Equal(1, gotCount3, "row count")
 	})
 
-	t.Run("change-scope-id", func(t *testing.T) {
+	t.Run("change-project-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
@@ -1042,20 +1044,20 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		require.NoError(err)
 
 		iamRepo := iam.TestRepo(t, conn, wrapper)
-		_, prj1 := iam.TestScopes(t, iamRepo)
-		_, prj2 := iam.TestScopes(t, iamRepo)
+		org, prj1 := iam.TestScopes(t, iamRepo)
+		prj2 := iam.TestProject(t, iamRepo, org.GetPublicId())
 		csA, csB := TestCredentialStores(t, conn, wrapper, prj1.PublicId, 1)[0], TestCredentialStores(t, conn, wrapper, prj2.PublicId, 1)[0]
-		assert.NotEqual(csA.ScopeId, csB.ScopeId)
+		assert.NotEqual(csA.ProjectId, csB.ProjectId)
 		orig := csA.clone()
 
-		csA.ScopeId = csB.ScopeId
-		assert.Equal(csA.ScopeId, csB.ScopeId)
+		csA.ProjectId = csB.ProjectId
+		assert.Equal(csA.ProjectId, csB.ProjectId)
 
 		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"Name"})
 
 		assert.NoError(err)
 		require.NotNil(got1)
-		assert.Equal(orig.ScopeId, got1.ScopeId)
+		assert.Equal(orig.ProjectId, got1.ProjectId)
 		assert.Equal(1, gotCount1, "row count")
 	})
 }
@@ -1338,7 +1340,7 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 
 	type setupFn func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository)
 
-	baseSetup := func(t *testing.T, conn *db.DB) (wrapper wrapping.Wrapper, repo *Repository, scopeId string) {
+	baseSetup := func(t *testing.T, conn *db.DB) (wrapper wrapping.Wrapper, repo *Repository, projectId string) {
 		wrapper = db.TestWrapper(t)
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
@@ -1350,15 +1352,15 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 		require.NoError(t, err)
 
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		scopeId = prj.GetPublicId()
+		projectId = prj.GetPublicId()
 		return
 	}
 
-	testStores := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId string, count int) ([]*CredentialStore, tokenMap) {
+	testStores := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, projectId string, count int) ([]*CredentialStore, tokenMap) {
 		if tokens == nil {
 			tokens = make(tokenMap)
 		}
-		css := TestCredentialStores(t, conn, wrapper, scopeId, count)
+		css := TestCredentialStores(t, conn, wrapper, projectId, count)
 		for _, cs := range css {
 			storeId := cs.GetPublicId()
 			tokens[storeId] = new(tokenCount)
@@ -1367,13 +1369,13 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 		return css, tokens
 	}
 
-	makeMaintainingTokens := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId, storeId string, count int) tokenMap {
-		testTokens(t, conn, wrapper, scopeId, storeId, count)
+	makeMaintainingTokens := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, projectId, storeId string, count int) tokenMap {
+		testTokens(t, conn, wrapper, projectId, storeId, count)
 		tokens[storeId].maintaining = count
 		return tokens
 	}
 
-	makeRevokedTokens := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId, storeId string, count int) tokenMap {
+	makeRevokedTokens := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, projectId, storeId string, count int) tokenMap {
 		require.NotNil(t, tokens)
 		const query = `
 update credential_vault_token
@@ -1390,12 +1392,12 @@ update credential_vault_token
 			require.Equal(t, 1, rows)
 			require.NoError(t, err)
 			tokens[storeId].revoked++
-			testTokens(t, conn, wrapper, scopeId, storeId, 1)
+			testTokens(t, conn, wrapper, projectId, storeId, 1)
 		}
 		return tokens
 	}
 
-	makeExpiredTokens := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, scopeId, storeId string, count int) tokenMap {
+	makeExpiredTokens := func(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, tokens tokenMap, projectId, storeId string, count int) tokenMap {
 		require.NotNil(t, tokens)
 		const query = `
 update credential_vault_token
@@ -1412,7 +1414,7 @@ update credential_vault_token
 			require.Equal(t, 1, rows)
 			require.NoError(t, err)
 			tokens[storeId].expired++
-			testTokens(t, conn, wrapper, scopeId, storeId, 1)
+			testTokens(t, conn, wrapper, projectId, storeId, 1)
 		}
 		return tokens
 	}
@@ -1468,8 +1470,8 @@ group by store_id, status;
 		{
 			name: "simple",
 			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
-				wrapper, repo, scopeId := baseSetup(t, conn)
-				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
+				wrapper, repo, projectId := baseSetup(t, conn)
+				css, tokens := testStores(t, conn, wrapper, nil, projectId, 1)
 				cs := css[0]
 				storeId = cs.GetPublicId()
 				return
@@ -1478,8 +1480,8 @@ group by store_id, status;
 		{
 			name: "with-libraries",
 			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
-				wrapper, repo, scopeId := baseSetup(t, conn)
-				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
+				wrapper, repo, projectId := baseSetup(t, conn)
+				css, tokens := testStores(t, conn, wrapper, nil, projectId, 1)
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
@@ -1490,54 +1492,54 @@ group by store_id, status;
 		{
 			name: "with-maintaining-tokens",
 			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
-				wrapper, repo, scopeId := baseSetup(t, conn)
-				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
+				wrapper, repo, projectId := baseSetup(t, conn)
+				css, tokens := testStores(t, conn, wrapper, nil, projectId, 1)
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
 				libs = TestCredentialLibraries(t, conn, wrapper, storeId, 4)
-				tokens = makeMaintainingTokens(t, conn, wrapper, tokens, scopeId, storeId, 4)
+				tokens = makeMaintainingTokens(t, conn, wrapper, tokens, projectId, storeId, 4)
 				return
 			},
 		},
 		{
 			name: "with-revoked-tokens",
 			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
-				wrapper, repo, scopeId := baseSetup(t, conn)
-				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
+				wrapper, repo, projectId := baseSetup(t, conn)
+				css, tokens := testStores(t, conn, wrapper, nil, projectId, 1)
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
 				libs = TestCredentialLibraries(t, conn, wrapper, storeId, 4)
-				tokens = makeRevokedTokens(t, conn, wrapper, tokens, scopeId, storeId, 4)
+				tokens = makeRevokedTokens(t, conn, wrapper, tokens, projectId, storeId, 4)
 				return
 			},
 		},
 		{
 			name: "with-expired-tokens",
 			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
-				wrapper, repo, scopeId := baseSetup(t, conn)
-				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
+				wrapper, repo, projectId := baseSetup(t, conn)
+				css, tokens := testStores(t, conn, wrapper, nil, projectId, 1)
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
 				libs = TestCredentialLibraries(t, conn, wrapper, storeId, 4)
-				tokens = makeExpiredTokens(t, conn, wrapper, tokens, scopeId, storeId, 4)
+				tokens = makeExpiredTokens(t, conn, wrapper, tokens, projectId, storeId, 4)
 				return
 			},
 		},
 		{
 			name: "with-all-token-statuses",
 			setup: func(t *testing.T, conn *db.DB) (storeId string, libs []*CredentialLibrary, tokens tokenMap, repo *Repository) {
-				wrapper, repo, scopeId := baseSetup(t, conn)
-				css, tokens := testStores(t, conn, wrapper, nil, scopeId, 1)
+				wrapper, repo, projectId := baseSetup(t, conn)
+				css, tokens := testStores(t, conn, wrapper, nil, projectId, 1)
 				cs := css[0]
 				storeId = cs.GetPublicId()
 
 				libs = TestCredentialLibraries(t, conn, wrapper, storeId, 4)
-				tokens = makeMaintainingTokens(t, conn, wrapper, tokens, scopeId, storeId, 2)
-				tokens = makeRevokedTokens(t, conn, wrapper, tokens, scopeId, storeId, 3)
-				tokens = makeExpiredTokens(t, conn, wrapper, tokens, scopeId, storeId, 5)
+				tokens = makeMaintainingTokens(t, conn, wrapper, tokens, projectId, storeId, 2)
+				tokens = makeRevokedTokens(t, conn, wrapper, tokens, projectId, storeId, 3)
+				tokens = makeExpiredTokens(t, conn, wrapper, tokens, projectId, storeId, 5)
 				return
 			},
 		},
@@ -1554,7 +1556,7 @@ group by store_id, status;
 			storeId, actualLibs, tokens, repo := tt.setup(t, conn)
 
 			var credStore *CredentialStore
-			var scopeId string
+			var projectId string
 
 			assertTokens(t, conn, tokens)
 			{
@@ -1562,12 +1564,12 @@ group by store_id, status;
 				assert.NoError(err)
 				require.NotNil(lookup)
 				assert.Nil(lookup.DeleteTime)
-				scopeId = lookup.GetScopeId()
+				projectId = lookup.GetProjectId()
 				credStore = lookup
 			}
 
 			{
-				stores, err := repo.ListCredentialStores(ctx, []string{scopeId})
+				stores, err := repo.ListCredentialStores(ctx, []string{projectId})
 				assert.NoError(err)
 				assert.NotEmpty(stores)
 				var storeIds []string
@@ -1623,7 +1625,7 @@ group by store_id, status;
 
 			// should not be in list
 			{
-				stores, err := repo.ListCredentialStores(ctx, []string{scopeId})
+				stores, err := repo.ListCredentialStores(ctx, []string{projectId})
 				assert.NoError(err)
 				var storeIds []string
 				for _, v := range stores {
@@ -1648,7 +1650,7 @@ group by store_id, status;
 						VaultPath:  "/some/path",
 					},
 				}
-				lib, err := repo.CreateCredentialLibrary(ctx, scopeId, newLib)
+				lib, err := repo.CreateCredentialLibrary(ctx, projectId, newLib)
 				assert.Error(err)
 				assert.Nil(lib)
 			}

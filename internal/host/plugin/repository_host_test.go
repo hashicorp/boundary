@@ -110,10 +110,10 @@ func TestJob_UpsertHosts(t *testing.T) {
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "no-scope-id",
+			name: "no-project-id",
 			in: func() *input {
 				cat := catalog.clone()
-				cat.ScopeId = ""
+				cat.ProjectId = ""
 				return &input{
 					catalog: cat,
 					sets:    setIds,

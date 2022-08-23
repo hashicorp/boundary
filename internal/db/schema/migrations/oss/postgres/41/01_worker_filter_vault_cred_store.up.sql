@@ -10,6 +10,7 @@ drop view credential_vault_store_public;
 drop view credential_vault_store_private;
 
 -- Replaces view from 10/04_vault_credential.up.sql
+-- Updated in 44/01_credentials.up.sql
 create view credential_vault_store_private as
 with
   active_tokens as (
@@ -66,6 +67,7 @@ comment on view credential_vault_store_private is
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
 -- Replaces view from 10/04_vault_credential.up.sql
+-- Updated in 44/01_credentials.up.sql
 create view credential_vault_store_public as
 select public_id,
        scope_id,
@@ -176,6 +178,7 @@ comment on view credential_vault_library_public is
 
 drop view credential_vault_credential_private;
 -- Replaces view from 10/04_vault_credential.up.sql
+-- Updated in 44/01_credentials.up.sql
 create view credential_vault_credential_private as
 select credential.public_id         as public_id,
        credential.library_id        as library_id,

@@ -28,7 +28,7 @@ func (r *Repository) listRevokePrivateStores(ctx context.Context, opt ...Option)
 	}
 
 	for _, store := range stores {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, store.ScopeId, kms.KeyPurposeDatabase)
+		databaseWrapper, err := r.kms.GetWrapper(ctx, store.ProjectId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}
@@ -52,7 +52,7 @@ func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for: %s", publicId)))
 	}
 
-	databaseWrapper, err := r.kms.GetWrapper(ctx, ps.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, ps.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -66,7 +66,7 @@ func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*
 
 type privateStore struct {
 	PublicId             string `gorm:"primary_key"`
-	ScopeId              string
+	ProjectId            string
 	Name                 string
 	Description          string
 	CreateTime           *timestamp.Timestamp
@@ -104,7 +104,7 @@ func allocPrivateStore() *privateStore {
 func (ps *privateStore) toCredentialStore() *CredentialStore {
 	cs := allocCredentialStore()
 	cs.PublicId = ps.PublicId
-	cs.ScopeId = ps.ScopeId
+	cs.ProjectId = ps.ProjectId
 	cs.Name = ps.Name
 	cs.Description = ps.Description
 	cs.CreateTime = ps.CreateTime

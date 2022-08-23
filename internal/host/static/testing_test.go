@@ -29,12 +29,12 @@ func Test_TestHosts(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	require.NotNil(org)
-	assert.NotEmpty(org.GetPublicId())
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
 
-	c := TestCatalogs(t, conn, org.GetPublicId(), 1)[0]
+	c := TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
 
 	count := 4
 	hosts := TestHosts(t, conn, c.GetPublicId(), count)

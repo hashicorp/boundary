@@ -298,7 +298,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		}
 	}
 
-	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ScopeId, sessionInfo.PublicId)
+	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ProjectId, sessionInfo.PublicId)
 	if err != nil {
 		return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
 			fmt.Sprintf("Error retrieving session credentials: %s", err))
@@ -336,7 +336,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
 	}
 
-	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions, kms.WithKeyId(sessionInfo.KeyId))
+	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ProjectId, kms.KeyPurposeSessions, kms.WithKeyId(sessionInfo.KeyId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
 	}

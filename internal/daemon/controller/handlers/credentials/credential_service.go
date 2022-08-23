@@ -502,7 +502,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		res.Error = handlers.NotFoundError()
 		return res
 	}
-	opts = append(opts, auth.WithScopeId(cs.GetScopeId()))
+	opts = append(opts, auth.WithScopeId(cs.GetProjectId()))
 
 	return auth.Verify(ctx, opts...)
 }

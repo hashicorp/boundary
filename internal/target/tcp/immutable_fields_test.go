@@ -53,13 +53,13 @@ func TestTarget_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"CreateTime"},
 		},
 		{
-			name: "scope_id",
+			name: "project_id",
 			update: func() *tcp.Target {
 				target := new.Clone().(*tcp.Target)
-				target.ScopeId = "o_thisIsNotAValidId"
+				target.ProjectId = "o_thisIsNotAValidId"
 				return target
 			}(),
-			fieldMask: []string{"ScopeId"},
+			fieldMask: []string{"ProjectId"},
 		},
 	}
 	for _, tt := range tests {
@@ -123,13 +123,13 @@ func TestTcpTarget_ImmutableFields(t *testing.T) {
 			fieldMask: []string{"CreateTime"},
 		},
 		{
-			name: "scope_id",
+			name: "project_id",
 			update: func() *tcp.Target {
 				target := new.Clone().(*tcp.Target)
-				target.ScopeId = "o_thisIsNotAValidId"
+				target.ProjectId = "o_thisIsNotAValidId"
 				return target
 			}(),
-			fieldMask: []string{"ScopeId"},
+			fieldMask: []string{"ProjectId"},
 		},
 	}
 	for _, tt := range tests {

@@ -39,15 +39,15 @@ var (
 
 // NewTarget creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
-func (h targetHooks) NewTarget(scopeId string, opt ...target.Option) (target.Target, error) {
+func (h targetHooks) NewTarget(projectId string, opt ...target.Option) (target.Target, error) {
 	const op = "tcp.NewTarget"
 	opts := target.GetOpts(opt...)
-	if scopeId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
+	if projectId == "" {
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing project id")
 	}
 	t := &Target{
 		Target: &store.Target{
-			ScopeId:                scopeId,
+			ProjectId:              projectId,
 			Name:                   opts.WithName,
 			Description:            opts.WithDescription,
 			DefaultPort:            opts.WithDefaultPort,
@@ -82,8 +82,8 @@ func (t *Target) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType,
 		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if opType == db.CreateOp {
-		if t.ScopeId == "" {
-			return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+		if t.ProjectId == "" {
+			return errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 		}
 		if t.Name == "" {
 			return errors.New(ctx, errors.InvalidParameter, op, "missing name")
@@ -113,7 +113,7 @@ func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 		"resource-public-id": []string{t.PublicId},
 		"resource-type":      []string{"tcp target"},
 		"op-type":            []string{op.String()},
-		"scope-id":           []string{t.ScopeId},
+		"project-id":         []string{t.ProjectId},
 	}
 	return metadata
 }
@@ -132,8 +132,8 @@ func (t *Target) SetPublicId(ctx context.Context, publicId string) error {
 	return nil
 }
 
-func (t *Target) SetScopeId(scopeId string) {
-	t.ScopeId = scopeId
+func (t *Target) SetProjectId(projectId string) {
+	t.ProjectId = projectId
 }
 
 func (t *Target) SetName(name string) {
