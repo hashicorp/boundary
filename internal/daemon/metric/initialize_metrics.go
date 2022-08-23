@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	LabelGrpcService = "grpc_service"
-	LabelGrpcMethod  = "grpc_method"
-	LabelGrpcCode    = "grpc_code"
+	LabelGRpcService = "grpc_service"
+	LabelGRpcMethod  = "grpc_method"
+	LabelGRpcCode    = "grpc_code"
 	LabelHttpPath    = "path"
 	LabelHttpMethod  = "method"
 	LabelHttpCode    = "code"
@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	ListGrpcLabels = []string{LabelGrpcService, LabelGrpcMethod, LabelGrpcCode}
+	ListGrpcLabels = []string{LabelGRpcService, LabelGRpcMethod, LabelGRpcCode}
 	ListHttpLabels = []string{LabelHttpPath, LabelHttpMethod, LabelHttpCode}
 )
 
@@ -60,9 +60,9 @@ var allGrpcCodes = []codes.Code{
 	codes.Unavailable, codes.Unauthenticated,
 }
 
-// InitializeGrpcCollectorsFromPackage registers and zeroes a Prometheus histogram, populating all service and method labels
+// InitializeGRpcCollectorsFromPackage registers and zeroes a Prometheus histogram, populating all service and method labels
 // by ranging through a given protobuf package.
-func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec, pkg protoreflect.FileDescriptor) {
+func InitializeGRpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec, pkg protoreflect.FileDescriptor) {
 	if r == nil {
 		return
 	}
@@ -77,15 +77,15 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 	for serviceName, serviceMethods := range serviceNamesToMethodNames {
 		for _, sm := range serviceMethods {
 			for _, c := range allGrpcCodes {
-				v.With(prometheus.Labels{LabelGrpcService: serviceName, LabelGrpcMethod: sm, LabelGrpcCode: c.String()})
+				v.With(prometheus.Labels{LabelGRpcService: serviceName, LabelGRpcMethod: sm, LabelGRpcCode: c.String()})
 			}
 		}
 	}
 }
 
-// InitializeGrpcCollectorsFromServer registers and zeroes a Prometheus histogram, finding all service and method labels
+// InitializeGRpcCollectorsFromServer registers and zeroes a Prometheus histogram, finding all service and method labels
 // from the provided gRPC server.
-func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, server *grpc.Server) {
+func InitializeGRpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, server *grpc.Server) {
 	if r == nil {
 		return
 	}
@@ -94,7 +94,7 @@ func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.Ob
 	for serviceName, info := range server.GetServiceInfo() {
 		for _, mInfo := range info.Methods {
 			for _, c := range allGrpcCodes {
-				v.With(prometheus.Labels{LabelGrpcService: serviceName, LabelGrpcMethod: mInfo.Name, LabelGrpcCode: c.String()})
+				v.With(prometheus.Labels{LabelGRpcService: serviceName, LabelGRpcMethod: mInfo.Name, LabelGRpcCode: c.String()})
 			}
 		}
 	}

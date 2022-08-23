@@ -33,9 +33,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        nil,
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric.LabelGRpcCode:    "OK",
+				metric.LabelGRpcMethod:  "method",
+				metric.LabelGRpcService: "some.service.path",
 			},
 		},
 		{
@@ -43,9 +43,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "unrecognized",
 			err:        nil,
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "unknown",
-				metric.LabelGrpcService: "unknown",
+				metric.LabelGRpcCode:    "OK",
+				metric.LabelGRpcMethod:  "unknown",
+				metric.LabelGRpcService: "unknown",
 			},
 		},
 		{
@@ -53,9 +53,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        status.Error(codes.Canceled, ""),
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "Canceled",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric.LabelGRpcCode:    "Canceled",
+				metric.LabelGRpcMethod:  "method",
+				metric.LabelGRpcService: "some.service.path",
 			},
 		},
 		{
@@ -63,9 +63,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        status.Error(codes.PermissionDenied, ""),
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "PermissionDenied",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric.LabelGRpcCode:    "PermissionDenied",
+				metric.LabelGRpcMethod:  "method",
+				metric.LabelGRpcService: "some.service.path",
 			},
 		},
 	}

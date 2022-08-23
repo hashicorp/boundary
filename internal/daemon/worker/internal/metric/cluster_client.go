@@ -36,5 +36,5 @@ func InstrumentClusterClient() grpc.UnaryClientInterceptor {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterClientCollectors(r prometheus.Registerer) {
-	metric.InitializeGrpcCollectorsFromPackage(r, gRpcRequestLatency, services.File_controller_servers_services_v1_session_service_proto)
+	metric.InitializeGRpcCollectorsFromPackage(r, gRpcRequestLatency, services.File_controller_servers_services_v1_session_service_proto)
 }
