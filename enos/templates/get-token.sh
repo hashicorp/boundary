@@ -21,11 +21,8 @@ function retry {
   return 0
 }
 
-# make sure the ALB is up and passing healthchecks
-retry 10 curl -s -o /dev/null ${BOUNDARY_ADDR}
-
 # make sure boundary is connected to DB (unauthenticated endpoint)
-retry 10 boundary auth-methods list > /dev/null
+retry 10 ${BOUNDARY_PATH}/boundary auth-methods list > /dev/null
 
 export BP="${PASSWORD}"
 ${BOUNDARY_PATH}/boundary authenticate password -auth-method-id=${METHOD_ID} -login-name=${LOGIN_NAME} -password=env://BP -token-name=none -format=json -keyring-type=none
