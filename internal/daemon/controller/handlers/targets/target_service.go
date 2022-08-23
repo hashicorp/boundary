@@ -98,7 +98,7 @@ var (
 type Service struct {
 	pbs.UnsafeTargetServiceServer
 
-	repoFn           common.TargetRepoFactory
+	repoFn           target.RepositoryFactory
 	iamRepoFn        common.IamRepoFactory
 	serversRepoFn    common.ServersRepoFactory
 	sessionRepoFn    session.RepositoryFactory
@@ -115,7 +115,7 @@ var _ pbs.TargetServiceServer = (*Service)(nil)
 func NewService(
 	ctx context.Context,
 	kmsCache *kms.Kms,
-	repoFn common.TargetRepoFactory,
+	repoFn target.RepositoryFactory,
 	iamRepoFn common.IamRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
 	sessionRepoFn session.RepositoryFactory,
