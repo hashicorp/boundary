@@ -1138,6 +1138,18 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
+		"workers certificate-authority read": func() (cli.Command, error) {
+			return &workerscmd.WorkerCACommand{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"workers certificate-authority reinitialize": func() (cli.Command, error) {
+			return &workerscmd.WorkerCACommand{
+				Command: base.NewCommand(ui),
+				Func:    "reinitialize",
+			}, nil
+		},
 	}
 
 	for _, fn := range extraCommandsFuncs {
