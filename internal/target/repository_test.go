@@ -1,6 +1,7 @@
 package target
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -126,7 +127,7 @@ func TestNewRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
+			got, err := NewRepository(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrString, err.Error())

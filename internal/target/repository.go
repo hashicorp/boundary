@@ -48,16 +48,16 @@ type Repository struct {
 // - WithLimit: sets a limit on the number of results returned by various repo operations.
 // - WithPermissions: defines the permissions the user has to perform different
 // actions and access resources within the created repo object.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "target.NewRepository"
 	if r == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
 	}
 
 	opts := GetOpts(opt...)
@@ -68,7 +68,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 
 	for _, p := range opts.WithPermissions {
 		if p.Resource != resource.Target {
-			return nil, errors.New(context.Background(), errors.InvalidParameter, op, "permission for incorrect resource found")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "permission for incorrect resource found")
 		}
 	}
 

@@ -32,7 +32,7 @@ func TestRepository_LookupTarget(t *testing.T) {
 	_, _, err := iamRepo.UpdateScope(ctx, proj, 1, []string{"name"})
 	require.NoError(t, err)
 	rw := db.New(conn)
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 	tgt := tcp.TestTarget(ctx, t, conn, proj.PublicId, "target-name")
 
@@ -160,7 +160,7 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	}
 
 	rw := db.New(conn)
-	repo, err := target.NewRepository(rw, rw, testKms,
+	repo, err := target.NewRepository(ctx, rw, rw, testKms,
 		target.WithPermissions([]perms.Permission{
 			{
 				ScopeId:  proj1.PublicId,
@@ -191,10 +191,11 @@ func TestRepository_DeleteTarget(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, proj := iam.TestScopes(t, iamRepo)
-	repo, err := target.NewRepository(rw, rw, testKms)
-	require.NoError(t, err)
 
 	ctx := context.Background()
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
 	type args struct {
 		target target.Target
 		opt    []target.Option

@@ -51,7 +51,7 @@ func TestServiceCloseConnections(t *testing.T) {
 		// is terminated when the one connection is closed.
 		tcpTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "test target", target.WithSessionConnectionLimit(1))
 
-		targetRepo, err := target.NewRepository(rw, rw, testKms)
+		targetRepo, err := target.NewRepository(ctx, rw, rw, testKms)
 		require.NoError(t, err)
 		_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 		require.NoError(t, err)
