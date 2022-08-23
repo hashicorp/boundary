@@ -19,14 +19,6 @@ message HostSource {
   string host_catalog_id = 20 [json_name = "host_catalog_id"]; // @gotags: `class:"public"`
 }
 
-message HostSet {
-  // Output only. The ID of the Host Set.
-  string id = 10; // @gotags: `class:"public"`
-
-  // Output only. The Host Catalog to which this Host Set belongs.
-  string host_catalog_id = 20 [json_name = "host_catalog_id"]; // @gotags: `class:"public"`
-}
-
 message CredentialSource {
   // The ID of the Credential. May be empty if the credential is dynamically generated from a library.
   string id = 10; // @gotags: `class:"public"`
@@ -116,12 +108,6 @@ message Target {
   // The type of the Target.
   string type = 90; // @gotags: `class:"public"`
 
-  // Output only. The IDs of the Host Sets associated with this Target.
-  repeated string host_set_ids = 100 [json_name = "host_set_ids"]; // @gotags: `class:"public"`
-
-  // Output only. The Host Sets associated with this Target.
-  repeated HostSet host_sets = 110 [json_name = "host_sets"];
-
   // Output only. The IDs of the Host Sources associated with this Target.
   repeated string host_source_ids = 420 [json_name = "host_source_ids"]; // @gotags: `class:"public"`
 
@@ -207,6 +193,8 @@ message Target {
   reserved 150, 180;
   reserved "egress_credential_source_ids", "egress_credential_sources";
   reserved 500, 510;
+  reserved "host_set_ids", "host_sets";
+  reserved 100, 110;
 }
 
 // TcpTargetAttributes contains attributes relevant to Targets of type "tcp"

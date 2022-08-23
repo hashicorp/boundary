@@ -22,8 +22,6 @@ type Target struct {
 	UpdatedTime                            time.Time              `json:"updated_time,omitempty"`
 	Version                                uint32                 `json:"version,omitempty"`
 	Type                                   string                 `json:"type,omitempty"`
-	HostSetIds                             []string               `json:"host_set_ids,omitempty"`
-	HostSets                               []*HostSet             `json:"host_sets,omitempty"`
 	HostSourceIds                          []string               `json:"host_source_ids,omitempty"`
 	HostSources                            []*HostSource          `json:"host_sources,omitempty"`
 	SessionMaxSeconds                      uint32                 `json:"session_max_seconds,omitempty"`

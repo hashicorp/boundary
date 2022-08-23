@@ -631,10 +631,6 @@ var inputStructs = []*structInfo{
 		createResponseTypes: true,
 	},
 	{
-		inProto: &targets.HostSet{},
-		outFile: "targets/host_set.gen.go",
-	},
-	{
 		inProto: &targets.HostSource{},
 		outFile: "targets/host_source.gen.go",
 	},

@@ -623,20 +623,8 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	var hostSourceMaps []map[string]interface{}
-	switch {
-	case len(item.HostSources) > 0:
+	if len(item.HostSources) > 0 {
 		for _, set := range item.HostSources {
-			m := map[string]interface{}{
-				"ID":              set.Id,
-				"Host Catalog ID": set.HostCatalogId,
-			}
-			hostSourceMaps = append(hostSourceMaps, m)
-		}
-		if l := len("Host Catalog ID"); l > maxLength {
-			maxLength = l
-		}
-	case len(item.HostSets) > 0:
-		for _, set := range item.HostSets {
 			m := map[string]interface{}{
 				"ID":              set.Id,
 				"Host Catalog ID": set.HostCatalogId,
@@ -886,14 +874,14 @@ func exampleOutput() string {
 		Scope: &scopes.ScopeInfo{
 			Id: scope.Global.String(),
 		},
-		Name:        "foo",
-		Description: "The bar of foos",
-		CreatedTime: time.Now().Add(-5 * time.Minute),
-		UpdatedTime: time.Now(),
-		Version:     3,
-		Type:        "tcp",
-		HostSetIds:  []string{"hsst_1234567890", "hsst_0987654321"},
-		HostSets: []*targets.HostSet{
+		Name:          "foo",
+		Description:   "The bar of foos",
+		CreatedTime:   time.Now().Add(-5 * time.Minute),
+		UpdatedTime:   time.Now(),
+		Version:       3,
+		Type:          "tcp",
+		HostSourceIds: []string{"hsst_1234567890", "hsst_0987654321"},
+		HostSources: []*targets.HostSource{
 			{
 				Id:            "hsst_1234567890",
 				HostCatalogId: "hcst_1234567890",
