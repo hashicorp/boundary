@@ -4,6 +4,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.10.2 (2022/08/23)
+
+### Security
+
+* Fix security vulnerability CVE-2022-36130, Boundary up to 0.10.1 did not properly perform  
+  authorization checks to ensure the resources were associated with the correct scopes,  
+  allowing potential privilege escalation for authorized users of another scope.
+  [[HCSEC-2022-17](https://discuss.hashicorp.com/t/hcsec-2022017-boundary-allowed-access-to-host-sets-and-credential-sources-for-authorized-users-of-another-scope/43493)]
+
 ## 0.10.1 (2022/08/11)
 
 ### Bug Fixes
