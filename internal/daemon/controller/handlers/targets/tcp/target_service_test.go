@@ -77,7 +77,7 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
-		return target.NewRepository(rw, rw, kms, o...)
+		return target.NewRepository(ctx, rw, rw, kms, o...)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
@@ -710,8 +710,9 @@ func TestUpdate(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
+	ctx := context.Background()
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
-		return target.NewRepository(rw, rw, kms)
+		return target.NewRepository(ctx, rw, rw, kms)
 	}
 	repo, err := repoFn()
 	require.NoError(t, err, "Couldn't create new target repo.")
@@ -729,7 +730,6 @@ func TestUpdate(t *testing.T) {
 		{Id: hs[1].GetPublicId(), HostCatalogId: hs[1].GetCatalogId()},
 	}
 
-	ctx := context.Background()
 	ttar, err := target.New(ctx, tcp.Subtype, proj.GetPublicId(),
 		target.WithName("default"),
 		target.WithDescription("default"),
@@ -1134,13 +1134,13 @@ func TestUpdate_BadVersion(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
+	ctx := context.Background()
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
-		return target.NewRepository(rw, rw, kms)
+		return target.NewRepository(ctx, rw, rw, kms)
 	}
 	repo, err := repoFn()
 	require.NoError(t, err, "Couldn't create new target repo.")
 
-	ctx := context.Background()
 	ttar, err := target.New(ctx, tcp.Subtype, proj.GetPublicId(), target.WithName("default"), target.WithDescription("default"))
 	tar := ttar.(*tcp.Target)
 	tar.DefaultPort = 2
@@ -2740,7 +2740,7 @@ func TestAuthorizeSession(t *testing.T) {
 	require.NoError(t, err)
 
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
-		return target.NewRepository(rw, rw, kms)
+		return target.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -3000,7 +3000,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	require.NoError(t, err)
 
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
-		return target.NewRepository(rw, rw, kms)
+		return target.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -3579,7 +3579,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	require.NoError(t, err)
 
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
-		return target.NewRepository(rw, rw, kms)
+		return target.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
