@@ -3,7 +3,6 @@ package tcp_test
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -12,8 +11,11 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -135,119 +137,15 @@ func TestRepository_LookupTarget(t *testing.T) {
 	}
 }
 
-func TestRepository_ListTargets(t *testing.T) {
-	t.Parallel()
-	conn, _ := db.TestSetup(t, "postgres")
-	const testLimit = 10
-	wrapper := db.TestWrapper(t)
-	testKms := kms.TestKms(t, conn, wrapper)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-	_, proj := iam.TestScopes(t, iamRepo)
-	rw := db.New(conn)
-	repo, err := target.NewRepository(rw, rw, testKms, target.WithLimit(testLimit))
-	require.NoError(t, err)
-
-	type args struct {
-		opt []target.Option
-	}
-	tests := []struct {
-		name             string
-		createCnt        int
-		createProjectId  string
-		createProjectId2 string
-		grantUserId      string
-		args             args
-		wantCnt          int
-		wantErr          bool
-	}{
-		{
-			name:            "tcp-target",
-			createCnt:       5,
-			createProjectId: proj.PublicId,
-			args: args{
-				opt: []target.Option{target.WithType(tcp.Subtype), target.WithProjectIds([]string{proj.PublicId})},
-			},
-			wantCnt: 5,
-			wantErr: false,
-		},
-		{
-			name:            "no-limit",
-			createCnt:       testLimit + 1,
-			createProjectId: proj.PublicId,
-			args: args{
-				opt: []target.Option{target.WithLimit(-1), target.WithProjectIds([]string{proj.PublicId})},
-			},
-			wantCnt: testLimit + 1,
-			wantErr: false,
-		},
-		{
-			name:            "default-limit",
-			createCnt:       testLimit + 1,
-			createProjectId: proj.PublicId,
-			args: args{
-				opt: []target.Option{target.WithProjectIds([]string{proj.PublicId})},
-			},
-			wantCnt: testLimit,
-			wantErr: false,
-		},
-		{
-			name:            "custom-limit",
-			createCnt:       testLimit + 1,
-			createProjectId: proj.PublicId,
-			args: args{
-				opt: []target.Option{target.WithLimit(3), target.WithProjectIds([]string{proj.PublicId})},
-			},
-			wantCnt: 3,
-			wantErr: false,
-		},
-		{
-			name:            "bad-org",
-			createCnt:       1,
-			createProjectId: proj.PublicId,
-			args: args{
-				opt: []target.Option{target.WithProjectIds([]string{"bad-id"})},
-			},
-			wantCnt: 0,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			ctx := context.Background()
-			db.TestDeleteWhere(t, conn, tcp.NewTestTarget(""), "1=1")
-			testGroups := []target.Target{}
-			for i := 0; i < tt.createCnt; i++ {
-				switch {
-				case tt.createProjectId2 != "" && i%2 == 0:
-					testGroups = append(testGroups, tcp.TestTarget(ctx, t, conn, tt.createProjectId2, strconv.Itoa(i)))
-				default:
-					testGroups = append(testGroups, tcp.TestTarget(ctx, t, conn, tt.createProjectId, strconv.Itoa(i)))
-				}
-			}
-			assert.Equal(tt.createCnt, len(testGroups))
-			got, err := repo.ListTargets(ctx, tt.args.opt...)
-			if tt.wantErr {
-				require.Error(err)
-				return
-			}
-			require.NoError(err)
-			assert.Equal(tt.wantCnt, len(got))
-		})
-	}
-}
-
 func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+
 	_, proj1 := iam.TestScopes(t, iamRepo)
 	_, proj2 := iam.TestScopes(t, iamRepo)
-	rw := db.New(conn)
-	repo, err := target.NewRepository(rw, rw, testKms)
-	require.NoError(t, err)
 
 	db.TestDeleteWhere(t, conn, tcp.NewTestTarget(""), "1=1")
 
@@ -261,7 +159,26 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 		total++
 	}
 
-	got, err := repo.ListTargets(ctx, target.WithProjectIds([]string{"global", proj1.GetPublicId(), proj2.GetPublicId()}))
+	rw := db.New(conn)
+	repo, err := target.NewRepository(rw, rw, testKms,
+		target.WithPermissions([]perms.Permission{
+			{
+				ScopeId:  proj1.PublicId,
+				Resource: resource.Target,
+				Action:   action.List,
+				All:      true,
+			},
+			{
+				ScopeId:  proj2.PublicId,
+				Resource: resource.Target,
+				Action:   action.List,
+				All:      true,
+			},
+		}),
+	)
+	require.NoError(t, err)
+
+	got, err := repo.ListTargets(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 }
