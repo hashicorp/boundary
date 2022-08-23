@@ -76,8 +76,8 @@ var testAuthorizedActions = []string{
 func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repoFn := func() (*target.Repository, error) {
-		return target.NewRepository(rw, rw, kms)
+	repoFn := func(o ...target.Option) (*target.Repository, error) {
+		return target.NewRepository(rw, rw, kms, o...)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
@@ -710,7 +710,7 @@ func TestUpdate(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	repoFn := func() (*target.Repository, error) {
+	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
 	repo, err := repoFn()
@@ -1134,7 +1134,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	repoFn := func() (*target.Repository, error) {
+	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
 	repo, err := repoFn()
@@ -2739,7 +2739,7 @@ func TestAuthorizeSession(t *testing.T) {
 	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
 	require.NoError(t, err)
 
-	repoFn := func() (*target.Repository, error) {
+	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -2999,7 +2999,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
 	require.NoError(t, err)
 
-	repoFn := func() (*target.Repository, error) {
+	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -3578,7 +3578,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
 	require.NoError(t, err)
 
-	repoFn := func() (*target.Repository, error) {
+	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)

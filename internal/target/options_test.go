@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/assert"
@@ -106,6 +107,13 @@ func Test_GetOpts(t *testing.T) {
 		opts := GetOpts(WithWorkerFilter(`"/foo" == "bar"`))
 		testOpts := getDefaultOptions()
 		testOpts.WithWorkerFilter = `"/foo" == "bar"`
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithPermissions", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithPermissions([]perms.Permission{{ScopeId: "test1"}, {ScopeId: "test2"}}))
+		testOpts := getDefaultOptions()
+		testOpts.WithPermissions = []perms.Permission{{ScopeId: "test1"}, {ScopeId: "test2"}}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithCredentialLibraries", func(t *testing.T) {

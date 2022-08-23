@@ -333,8 +333,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(dbase, dbase, c.kms)
 	}
-	c.TargetRepoFn = func() (*target.Repository, error) {
-		return target.NewRepository(dbase, dbase, c.kms)
+	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
+		return target.NewRepository(dbase, dbase, c.kms, o...)
 	}
 	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, dbase, dbase, c.kms, opt...)
