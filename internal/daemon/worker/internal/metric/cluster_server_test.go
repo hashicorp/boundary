@@ -15,9 +15,9 @@ import (
 )
 
 func TestStatsHandler(t *testing.T) {
-	bkpLatency := grpcRequestLatency
+	bkpLatency := gRpcRequestLatency
 	defer func() {
-		grpcRequestLatency = bkpLatency
+		gRpcRequestLatency = bkpLatency
 	}()
 
 	handler := InstrumentClusterStatsHandler()
@@ -39,9 +39,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric.LabelGRpcCode:    "OK",
+				metric.LabelGRpcMethod:  "method",
+				metric.LabelGRpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -69,9 +69,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric.LabelGRpcCode:    "OK",
+				metric.LabelGRpcMethod:  "method",
+				metric.LabelGRpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -85,9 +85,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "unknown",
-				metric.LabelGrpcService: "unknown",
+				metric.LabelGRpcCode:    "OK",
+				metric.LabelGRpcMethod:  "unknown",
+				metric.LabelGRpcService: "unknown",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -102,9 +102,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "Canceled",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric.LabelGRpcCode:    "Canceled",
+				metric.LabelGRpcMethod:  "method",
+				metric.LabelGRpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -119,9 +119,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "InvalidArgument",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric.LabelGRpcCode:    "InvalidArgument",
+				metric.LabelGRpcMethod:  "method",
+				metric.LabelGRpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},

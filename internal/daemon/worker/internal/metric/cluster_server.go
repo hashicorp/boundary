@@ -36,5 +36,5 @@ func InstrumentClusterStatsHandler() metric.StatsHandler {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterServerCollectors(r prometheus.Registerer, server *grpc.Server) {
-	metric.InitializeGrpcCollectorsFromServer(r, gRpcServerRequestLatency, server)
+	metric.InitializeGRpcCollectorsFromServer(r, gRpcServerRequestLatency, server)
 }
