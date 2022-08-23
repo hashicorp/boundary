@@ -114,7 +114,7 @@ type Controller struct {
 	StaticHostRepoFn        common.StaticRepoFactory
 	PluginHostRepoFn        common.PluginHostRepoFactory
 	HostPluginRepoFn        common.HostPluginRepoFactory
-	TargetRepoFn            common.TargetRepoFactory
+	TargetRepoFn            target.RepositoryFactory
 	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler

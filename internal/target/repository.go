@@ -15,6 +15,10 @@ import (
 	"github.com/hashicorp/go-dbw"
 )
 
+// RepositoryFactory enables `target.Repository` object instantiation,
+// and is used by the various service packages/controller object to do so.
+type RepositoryFactory func() (*Repository, error)
+
 // Cloneable provides a cloning interface
 type Cloneable interface {
 	Clone() Target
