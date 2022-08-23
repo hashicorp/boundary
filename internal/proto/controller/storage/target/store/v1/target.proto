@@ -59,6 +59,20 @@ message TargetView {
   string worker_filter = 120;
 }
 
+message TargetHost {
+  // target_id of the TargetHost
+  // @inject_tag: gorm:"primary_key"
+  string target_id = 10;
+
+  // host_id of the TargetHost
+  // @inject_tag: gorm:"primary_key"
+  string host_id = 20;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 30;
+}
+
 message TargetHostSet {
   // target_id of the TargetHostSet
   // @inject_tag: gorm:"primary_key"

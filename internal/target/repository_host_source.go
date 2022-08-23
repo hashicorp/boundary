@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host/plugin"
+	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -26,13 +29,23 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 	if len(hostSourceIds) == 0 {
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing host source ids")
 	}
-	newHostSources := make([]interface{}, 0, len(hostSourceIds))
+	newHostSets := make([]interface{}, 0, len(hostSourceIds))
+	newHosts := make([]interface{}, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
-		ths, err := NewTargetHostSet(targetId, id)
-		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host set"))
+		switch {
+		case handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix):
+			ths, err := NewTargetHostSet(targetId, id)
+			if err != nil {
+				return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host set"))
+			}
+			newHostSets = append(newHostSets, ths)
+		case handlers.ValidId(handlers.Id(id), static.HostPrefix, plugin.HostPrefix, plugin.PreviousHostPrefix):
+			ths, err := NewTargetHost(targetId, id)
+			if err != nil {
+				return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host"))
+			}
+			newHosts = append(newHosts, ths)
 		}
-		newHostSources = append(newHostSources, ths)
 	}
 	t := allocTargetView()
 	t.PublicId = targetId
@@ -80,8 +93,13 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 			}
 			msgs = append(msgs, &targetOplogMsg)
 
-			hostSourcesOplogMsgs := make([]*oplog.Message, 0, len(newHostSources))
-			if err := w.CreateItems(ctx, newHostSources, db.NewOplogMsgs(&hostSourcesOplogMsgs)); err != nil {
+			hostSourcesOplogMsgs := make([]*oplog.Message, 0, len(newHostSets))
+			if err := w.CreateItems(ctx, newHostSets, db.NewOplogMsgs(&hostSourcesOplogMsgs)); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add target host set sources"))
+			}
+			msgs = append(msgs, hostSourcesOplogMsgs...)
+			hostSourcesOplogMsgs = make([]*oplog.Message, 0, len(newHosts))
+			if err := w.CreateItems(ctx, newHosts, db.NewOplogMsgs(&hostSourcesOplogMsgs)); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add target host sources"))
 			}
 			msgs = append(msgs, hostSourcesOplogMsgs...)

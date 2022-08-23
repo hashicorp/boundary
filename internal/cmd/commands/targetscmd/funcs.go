@@ -464,24 +464,6 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 
 func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *targets.Target, origItems []*targets.Target, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (*api.Response, *targets.Target, []*targets.Target, error) {
 	switch c.Func {
-	case "add-host-sets":
-		result, err := targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	case "remove-host-sets":
-		result, err := targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	case "set-host-sets":
-		result, err := targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-host-sources":
 		result, err := targetClient.AddHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
 		if err != nil {

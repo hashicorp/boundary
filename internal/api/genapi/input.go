@@ -693,10 +693,6 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName: "targets",
 		sliceSubtypes: map[string]sliceSubtypeInfo{
-			"HostSets": {
-				SliceType: "[]string",
-				VarName:   "hostSetIds",
-			},
 			"HostSources": {
 				SliceType: "[]string",
 				VarName:   "hostSourceIds",
