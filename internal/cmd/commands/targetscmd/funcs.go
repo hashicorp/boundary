@@ -41,9 +41,6 @@ type extraCmdVars struct {
 func extraActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
 		"authorize-session":         {"id", "host-id"},
-		"add-host-sets":             {"id", "host-set", "version"},
-		"remove-host-sets":          {"id", "host-set", "version"},
-		"set-host-sets":             {"id", "host-set", "version"},
 		"add-host-sources":          {"id", "host-source", "version"},
 		"remove-host-sources":       {"id", "host-source", "version"},
 		"set-host-sources":          {"id", "host-source", "version"},
@@ -55,18 +52,6 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 
 func extraSynopsisFuncImpl(c *Command) string {
 	switch c.Func {
-	case "add-host-sets", "set-host-sets", "remove-host-sets":
-		var in string
-		switch {
-		case strings.HasPrefix(c.Func, "add"):
-			in = "Add host sets to"
-		case strings.HasPrefix(c.Func, "set"):
-			in = "Set the full contents of the host sets on"
-		case strings.HasPrefix(c.Func, "remove"):
-			in = "Remove host sets from"
-		}
-		return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
-
 	case "add-host-sources", "set-host-sources", "remove-host-sources":
 		var in string
 		switch {
@@ -137,48 +122,6 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			`      $ boundary targets update tcp -id ttcp_1234567890 -name devops -description "For DevOps usage"`,
 			"",
 			"  Please see the typed subcommand help for detailed usage information.",
-		})
-	case "add-host-sets":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary target add-host-sets [options] [args]",
-			"",
-			"  DEPRECATED: Use add-host-sources instead.",
-			"",
-			"  This command allows adding host-set resources to target resources. Example:",
-			"",
-			"    Add host-set resources to a tcp-type target:",
-			"",
-			`      $ boundary targets add-host-sets -id ttcp_1234567890 -host-set hsst_1234567890 -host-set hsst_0987654321`,
-			"",
-			"",
-		})
-	case "remove-host-sets":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary target remove-host-sets [options] [args]",
-			"",
-			"  DEPRECATED: Use remove-host-sources instead.",
-			"",
-			"  This command allows removing host-set resources from target resources. Example:",
-			"",
-			"    Remove host-set resources from a tcp-type target:",
-			"",
-			`      $ boundary targets remove-host-sets -id ttcp_1234567890 -host hsst_1234567890 -host-set hsst_0987654321`,
-			"",
-			"",
-		})
-	case "set-host-sets":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary target set-host-sets [options] [args]",
-			"",
-			"  DEPRECATED: Use set-host-sources instead.",
-			"",
-			"  This command allows setting the complete set of host-set resources on a target resource. Example:",
-			"",
-			"    Set host-set resources on a tcp-type target:",
-			"",
-			`      $ boundary targets set-host-sets -id ttcp_1234567890 -host-set hsst_1234567890`,
-			"",
-			"",
 		})
 	case "add-host-sources":
 		helpStr = base.WrapForHelpText([]string{
@@ -464,24 +407,6 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 
 func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *targets.Target, origItems []*targets.Target, origError error, targetClient *targets.Client, version uint32, opts []targets.Option) (*api.Response, *targets.Target, []*targets.Target, error) {
 	switch c.Func {
-	case "add-host-sets":
-		result, err := targetClient.AddHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	case "remove-host-sets":
-		result, err := targetClient.RemoveHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
-	case "set-host-sets":
-		result, err := targetClient.SetHostSets(c.Context, c.FlagId, version, c.flagHostSets, opts...)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return result.GetResponse(), result.GetItem(), nil, err
 	case "add-host-sources":
 		result, err := targetClient.AddHostSources(c.Context, c.FlagId, version, c.flagHostSources, opts...)
 		if err != nil {
@@ -623,20 +548,8 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	var hostSourceMaps []map[string]interface{}
-	switch {
-	case len(item.HostSources) > 0:
+	if len(item.HostSources) > 0 {
 		for _, set := range item.HostSources {
-			m := map[string]interface{}{
-				"ID":              set.Id,
-				"Host Catalog ID": set.HostCatalogId,
-			}
-			hostSourceMaps = append(hostSourceMaps, m)
-		}
-		if l := len("Host Catalog ID"); l > maxLength {
-			maxLength = l
-		}
-	case len(item.HostSets) > 0:
-		for _, set := range item.HostSets {
 			m := map[string]interface{}{
 				"ID":              set.Id,
 				"Host Catalog ID": set.HostCatalogId,
@@ -886,14 +799,14 @@ func exampleOutput() string {
 		Scope: &scopes.ScopeInfo{
 			Id: scope.Global.String(),
 		},
-		Name:        "foo",
-		Description: "The bar of foos",
-		CreatedTime: time.Now().Add(-5 * time.Minute),
-		UpdatedTime: time.Now(),
-		Version:     3,
-		Type:        "tcp",
-		HostSetIds:  []string{"hsst_1234567890", "hsst_0987654321"},
-		HostSets: []*targets.HostSet{
+		Name:          "foo",
+		Description:   "The bar of foos",
+		CreatedTime:   time.Now().Add(-5 * time.Minute),
+		UpdatedTime:   time.Now(),
+		Version:       3,
+		Type:          "tcp",
+		HostSourceIds: []string{"hsst_1234567890", "hsst_0987654321"},
+		HostSources: []*targets.HostSource{
 			{
 				Id:            "hsst_1234567890",
 				HostCatalogId: "hcst_1234567890",

@@ -53,15 +53,6 @@ func TestTargets(t *testing.T) {
 					UpdatedTime: pbNow,
 					Version:     0,
 					Type:        "type",
-					HostSetIds: []string{
-						"host-set-id",
-					},
-					HostSets: []*pb.HostSet{
-						{
-							Id:            "id",
-							HostCatalogId: "host-catalog-id",
-						},
-					},
 					HostSourceIds: []string{
 						"host-source-id",
 					},
@@ -123,15 +114,6 @@ func TestTargets(t *testing.T) {
 					UpdatedTime: pbNow,
 					Version:     0,
 					Type:        "type",
-					HostSetIds: []string{
-						"host-set-id",
-					},
-					HostSets: []*pb.HostSet{
-						{
-							Id:            "id",
-							HostCatalogId: "host-catalog-id",
-						},
-					},
 					HostSourceIds: []string{
 						"host-source-id",
 					},

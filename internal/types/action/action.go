@@ -114,6 +114,15 @@ var Map = map[string]Type{
 	RemoveWorkerTags.String():          RemoveWorkerTags,
 }
 
+var DeprecatedMap = map[string]Type{
+	AddHostSets.String():               AddHostSources,
+	SetHostSets.String():               SetHostSources,
+	RemoveHostSets.String():            RemoveHostSources,
+	AddCredentialLibraries.String():    AddCredentialSources,
+	SetCredentialLibraries.String():    SetCredentialSources,
+	RemoveCredentialLibraries.String(): RemoveCredentialSources,
+}
+
 func (a Type) String() string {
 	return [...]string{
 		"unknown",
