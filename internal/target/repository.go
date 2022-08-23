@@ -11,13 +11,15 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 )
 
 // RepositoryFactory enables `target.Repository` object instantiation,
 // and is used by the various service packages/controller object to do so.
-type RepositoryFactory func() (*Repository, error)
+type RepositoryFactory func(...Option) (*Repository, error)
 
 // Cloneable provides a cloning interface
 type Cloneable interface {
@@ -32,10 +34,19 @@ type Repository struct {
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
+
+	// permissions provides a set of user permissions - these directly correlate to what the user
+	// has access to in terms of actions and resources and we use it to build queries.
+	// These are passed in on the repository constructor using `WithPermissions`, meaning the
+	// `Repository` object is contextualized to whatever the request context is.
+	permissions []perms.Permission
 }
 
-// NewRepository creates a new target Repository. Supports the options: WithLimit
-// which sets a default limit on results returned by repo operations.
+// NewRepository creates a new target Repository.
+// Supports the following options:
+// - WithLimit: sets a limit on the number of results returned by various repo operations.
+// - WithPermissions: defines the permissions the user has to perform different
+// actions and access resources within the created repo object.
 func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "target.NewRepository"
 	if r == nil {
@@ -47,16 +58,25 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	if kms == nil {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
+
 	opts := GetOpts(opt...)
 	if opts.WithLimit == 0 {
 		// zero signals the boundary defaults should be used.
 		opts.WithLimit = db.DefaultLimit
 	}
+
+	for _, p := range opts.WithPermissions {
+		if p.Resource != resource.Target {
+			return nil, errors.New(context.Background(), errors.InvalidParameter, op, "permission for incorrect resource found")
+		}
+	}
+
 	return &Repository{
 		reader:       r,
 		writer:       w,
 		kms:          kms,
 		defaultLimit: opts.WithLimit,
+		permissions:  opts.WithPermissions,
 	}, nil
 }
 

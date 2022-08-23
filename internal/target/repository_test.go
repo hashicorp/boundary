@@ -5,6 +5,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,9 +18,10 @@ func TestNewRepository(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	type args struct {
-		r   db.Reader
-		w   db.Writer
-		kms *kms.Kms
+		r    db.Reader
+		w    db.Writer
+		kms  *kms.Kms
+		opts []Option
 	}
 	tests := []struct {
 		name          string
@@ -75,11 +78,53 @@ func TestNewRepository(t *testing.T) {
 			wantErr:       true,
 			wantErrString: "target.NewRepository: nil reader: parameter violation: error #100",
 		},
+		{
+			name: "WithPermissions sets object to `permissions`",
+			args: args{
+				r:   rw,
+				w:   rw,
+				kms: testKms,
+				opts: []Option{
+					WithPermissions([]perms.Permission{
+						{ScopeId: "test1", Resource: resource.Target},
+						{ScopeId: "test2", Resource: resource.Target},
+					}),
+				},
+			},
+			want: &Repository{
+				reader:       rw,
+				writer:       rw,
+				kms:          testKms,
+				defaultLimit: db.DefaultLimit,
+				permissions: []perms.Permission{
+					{ScopeId: "test1", Resource: resource.Target},
+					{ScopeId: "test2", Resource: resource.Target},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Don't accept permissions that aren't for the Target resource",
+			args: args{
+				r:   rw,
+				w:   rw,
+				kms: testKms,
+				opts: []Option{
+					WithPermissions([]perms.Permission{
+						{ScopeId: "test1", Resource: resource.Target},
+						{ScopeId: "test2", Resource: resource.Host},
+					}),
+				},
+			},
+			want:          nil,
+			wantErr:       true,
+			wantErrString: "target.NewRepository: permission for incorrect resource found: parameter violation: error #100",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrString, err.Error())
