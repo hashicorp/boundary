@@ -104,5 +104,5 @@ message Certificate {
 }
 
 message CertificateAuthority {
-  repeated Certificate certs = 10;
+  repeated Certificate certs = 10; // @gotags: `class:"public"`
 }

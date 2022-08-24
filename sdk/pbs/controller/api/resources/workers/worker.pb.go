@@ -317,7 +317,7 @@ type CertificateAuthority struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Certs []*Certificate `protobuf:"bytes,10,rep,name=certs,proto3" json:"certs,omitempty"`
+	Certs []*Certificate `protobuf:"bytes,10,rep,name=certs,proto3" json:"certs,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *CertificateAuthority) Reset() {

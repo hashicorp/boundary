@@ -35,9 +35,13 @@ func (c *WorkerCACommand) Synopsis() string {
 	return wordwrap.WrapString("Manage the certificate authority used to authorize Boundary workers", base.TermWidth)
 }
 
-var flagsCertificateAuthority = map[string][]string{}
+var flagsCertificateAuthority = map[string][]string{
+	"reinitialize": {"scope-id"},
+	"read":         {"scope-id"},
+}
 
 func (c *WorkerCACommand) Help() string {
+	initFlags()
 	switch c.Func {
 	case "read":
 		return base.WrapForHelpText([]string{
@@ -80,10 +84,12 @@ func (c *WorkerCACommand) Flags() *base.FlagSets {
 }
 
 func (c *WorkerCACommand) AutocompleteArgs() complete.Predictor {
+	initFlags()
 	return complete.PredictAnything
 }
 
 func (c *WorkerCACommand) AutocompleteFlags() complete.Flags {
+	initFlags()
 	return c.Flags().Completions()
 }
 
@@ -95,7 +101,7 @@ func (c *WorkerCACommand) checkFuncError(err error) int {
 		c.PrintApiError(apiErr, fmt.Sprintf("Error from controller when performing certificate authority %s", c.Func))
 		return base.CommandApiError
 	}
-	c.PrintCliError(fmt.Errorf("Error trying to certificate authority %s: %s", c.Func, err.Error()))
+	c.PrintCliError(fmt.Errorf("Error trying to %s certificate authority : %s", c.Func, err.Error()))
 	return base.CommandCliError
 }
 
@@ -135,7 +141,7 @@ func (c *WorkerCACommand) printListTable(item *workers.CertificateAuthority) str
 		}
 		if !ca.NotAfterTime.IsZero() {
 			output = append(output,
-				fmt.Sprintf("  Not After Time:           %s", ca.NotAfterTime),
+				fmt.Sprintf("  Not After Time:            %s", ca.NotAfterTime),
 			)
 		}
 	}
@@ -143,6 +149,7 @@ func (c *WorkerCACommand) printListTable(item *workers.CertificateAuthority) str
 }
 
 func (c *WorkerCACommand) Run(args []string) int {
+	initFlags()
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {

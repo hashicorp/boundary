@@ -787,36 +787,6 @@ var inputStructs = []*structInfo{
 		outFile: "workers/certificate.gen.go",
 	},
 	{
-		inProto: &workers.CertificateAuthority{},
-		outFile: "workers/certificate-authority.gen.go",
-		templates: []*template.Template{
-			template.Must(template.New("").Funcs(
-				template.FuncMap{
-					"snakeCase": snakeCase,
-					"funcName": func() string {
-						return "ReinitializeCA"
-					},
-					"apiAction": func() string {
-						return ":reinitialize-certificate-authority"
-					},
-				},
-			).Parse(createTemplateStr)),
-			template.Must(template.New("").Funcs(
-				template.FuncMap{
-					"snakeCase": snakeCase,
-					"funcName": func() string {
-						return "ReadCA"
-					},
-					"apiAction": func() string {
-						return ":read-certificate-authority"
-					},
-				},
-			).Parse(getTemplateStr)),
-		},
-		pluralResourceName:  "workers",
-		createResponseTypes: true,
-	},
-	{
 		inProto: &workers.Worker{},
 		outFile: "workers/worker.gen.go",
 		templates: []*template.Template{

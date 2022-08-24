@@ -3994,9 +3994,9 @@
         "operationId": "WorkerService_ReadCertificateAuthority",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ReadCertificateAuthorityResponse"
+              "$ref": "#/definitions/controller.api.resources.workers.v1.CertificateAuthority"
             }
           }
         },
@@ -4019,9 +4019,9 @@
         "operationId": "WorkerService_ReinitializeCertificateAuthority",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
-              "$ref": "#/definitions/controller.api.services.v1.ReinitializeCertificateAuthorityResponse"
+              "$ref": "#/definitions/controller.api.resources.workers.v1.CertificateAuthority"
             }
           }
         },
