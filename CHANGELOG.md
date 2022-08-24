@@ -4,6 +4,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+* Sessions: Fix an issue where sessions could not have more than one connection 
+([Issue](https://github.com/hashicorp/boundary/issues/2362)), ([PR](https://github.com/hashicorp/boundary/pull/2369))
+
 ## 0.10.2 (2022/08/23)
 
 ### Security
