@@ -306,7 +306,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		t.Helper()
 
 		var conns []*Connection
-		require.NoError(repo.list(ctx, &conns, "", nil))
+		require.NoError(rw.SearchWhere(ctx, &conns, "", nil))
 		for i, connId := range connIds {
 			var expected ConnectionStatus
 			switch {
