@@ -440,9 +440,7 @@ func (k *Kms) RunKeyRevocation(ctx context.Context, keyRevocation *KeyRevocation
 	switch {
 	case strings.HasPrefix(keyRevocation.KeyId, "krkv"):
 		// Root key, rewrap keys in scope
-		// TODO: A better way to get scope_id from key version private id
-		// kms doesn't export the type.
-		rows, err := k.reader.Query(ctx, "select scope_id from kms_root_key_version where private_id=?", []interface{}{keyRevocation.KeyId})
+		rows, err := k.reader.Query(ctx, "select kms_root_key.scope_id from kms_root_key_version inner join kms_root_key on kms_root_key_version.root_key_id = kms_root_key.private_id where kms_root_key_version.private_id=?", []interface{}{keyRevocation.KeyId})
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
