@@ -101,7 +101,7 @@ func (c *Client) ReinitializeCA(ctx context.Context, scopeId string, opt ...Opti
 	return target, nil
 }
 
-func (c *Client) ReadCA(ctx context.Context, scopeId string, opt ...Option) (*CertificateAuthorityCreateResult, error) {
+func (c *Client) ReadCA(ctx context.Context, scopeId string, opt ...Option) (*CertificateAuthorityReadResult, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("empty scopeId value passed into ReadCA request")
 	}
@@ -114,7 +114,7 @@ func (c *Client) ReadCA(ctx context.Context, scopeId string, opt ...Option) (*Ce
 
 	opts.postMap["scope_id"] = scopeId
 
-	req, err := c.client.NewRequest(ctx, "POST", "workers:read-certificate-authority", opts.postMap, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "workers:read-certificate-authority", nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating ReadCA request: %w", err)
 	}
@@ -127,12 +127,12 @@ func (c *Client) ReadCA(ctx context.Context, scopeId string, opt ...Option) (*Ce
 		req.URL.RawQuery = q.Encode()
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.client.Do(req, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during ReadCA call: %w", err)
 	}
 
-	target := new(CertificateAuthorityCreateResult)
+	target := new(CertificateAuthorityReadResult)
 	target.Item = new(CertificateAuthority)
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {

@@ -35,10 +35,7 @@ func (c *WorkerCACommand) Synopsis() string {
 	return wordwrap.WrapString("Manage the certificate authority used to authorize Boundary workers", base.TermWidth)
 }
 
-var flagsCertificateAuthority = map[string][]string{
-	"read":         {"scope-id"},
-	"reinitialize": {"scope-id"},
-}
+var flagsCertificateAuthority = map[string][]string{}
 
 func (c *WorkerCACommand) Help() string {
 	switch c.Func {
@@ -211,6 +208,6 @@ func (c *WorkerCACommand) Run(args []string) int {
 			return base.CommandCliError
 		}
 	}
-	// return saveAndOrPrintToken(c.Command, result)
+
 	return base.CommandSuccess
 }

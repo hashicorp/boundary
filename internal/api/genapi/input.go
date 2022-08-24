@@ -811,7 +811,7 @@ var inputStructs = []*structInfo{
 						return ":read-certificate-authority"
 					},
 				},
-			).Parse(createTemplateStr)),
+			).Parse(getTemplateStr)),
 		},
 		pluralResourceName:  "workers",
 		createResponseTypes: true,

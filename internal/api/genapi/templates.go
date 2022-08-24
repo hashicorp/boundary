@@ -259,6 +259,57 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 }
 `))
 
+const getTemplateStr = `
+func (c *Client) {{ funcName }}(ctx context.Context, {{ range .ExtraRequiredParams }} {{ .Name }} {{ .Typ }}, {{ end }} {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}ReadResult, error) {
+	if {{ .CollectionFunctionArg }} == "" {
+		return nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into {{ funcName }} request")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if c.client == nil {
+		return nil, fmt.Errorf("nil client")
+	}
+	{{ range .ExtraRequiredParams }} if {{ .Name }} == "" {
+		return nil, fmt.Errorf("empty {{ .Name }} value passed into {{ funcName }} request")
+	} else {
+		opts.postMap["{{ .PostType }}"] = {{ .Name }}
+	}{{ end }}
+
+	opts.postMap["{{ snakeCase .CollectionFunctionArg }}"] = {{ .CollectionFunctionArg }}
+
+	req, err := c.client.NewRequest(ctx, "GET", "{{ .CollectionPath }}{{ apiAction }}", nil, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating {{ funcName }} request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during {{ funcName }} call: %w", err)
+	}
+
+	target := new({{ .Name }}ReadResult)
+	target.Item = new({{ .Name }})
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding {{ funcName }} response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+`
+
 var readTemplate = template.Must(template.New("").Parse(`
 func (c *Client) Read(ctx context.Context, id string, opt... Option) (*{{ .Name }}ReadResult, error) {
 	if id == "" {
