@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
 func TestNewRepository(t *testing.T) {
@@ -15,6 +16,7 @@ func TestNewRepository(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
 
 	type args struct {
 		r db.Reader
@@ -36,7 +38,7 @@ func TestNewRepository(t *testing.T) {
 				k: testKms,
 			},
 			want: func() *Repository {
-				ret, err := NewRepository(rw, rw, testKms)
+				ret, err := NewRepository(ctx, rw, rw, testKms)
 				require.NoError(t, err)
 				return ret
 			}(),
@@ -66,7 +68,7 @@ func TestNewRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.k)
+			got, err := NewRepository(ctx, tt.args.r, tt.args.w, tt.args.k)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrString, err.Error())

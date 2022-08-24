@@ -189,7 +189,7 @@ func TestLookupWorker(t *testing.T) {
 		server.WithWorkerTags(&server.Tag{"key", "val"}))
 	require.NoError(t, err)
 
-	sessRepo, err := session.NewRepository(rw, rw, kms)
+	sessRepo, err := session.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	connRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms, session.WithWorkerStateDelay(0))
 	require.NoError(t, err)

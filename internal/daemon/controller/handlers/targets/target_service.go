@@ -101,7 +101,7 @@ type Service struct {
 	repoFn           common.TargetRepoFactory
 	iamRepoFn        common.IamRepoFactory
 	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    common.SessionRepoFactory
+	sessionRepoFn    session.RepositoryFactory
 	pluginHostRepoFn common.PluginHostRepoFactory
 	staticHostRepoFn common.StaticRepoFactory
 	vaultCredRepoFn  common.VaultCredentialRepoFactory
@@ -118,7 +118,7 @@ func NewService(
 	repoFn common.TargetRepoFactory,
 	iamRepoFn common.IamRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
-	sessionRepoFn common.SessionRepoFactory,
+	sessionRepoFn session.RepositoryFactory,
 	pluginHostRepoFn common.PluginHostRepoFactory,
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,

@@ -97,7 +97,7 @@ func BenchmarkSessionList(b *testing.B) {
 				return iamRepo, nil
 			}
 			sessRepoFn := func(opt ...session.Option) (*session.Repository, error) {
-				return session.NewRepository(rw, rw, kmsThing, opt...)
+				return session.NewRepository(ctx, rw, rw, kmsThing, opt...)
 			}
 			authTokenRepoFn := func() (*authtoken.Repository, error) {
 				return authTokenRepo, nil

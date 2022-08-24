@@ -38,16 +38,16 @@ type RepositoryFactory func(opt ...Option) (*Repository, error)
 
 // NewRepository creates a new session Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "session.NewRepository"
 	if r == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
@@ -58,7 +58,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 	if opts.withPermissions != nil {
 		for _, p := range opts.withPermissions.Permissions {
 			if p.Resource != resource.Session {
-				return nil, errors.NewDeprecated(errors.InvalidParameter, op, "permission for incorrect resource")
+				return nil, errors.New(ctx, errors.InvalidParameter, op, "permission for incorrect resource")
 			}
 		}
 	}

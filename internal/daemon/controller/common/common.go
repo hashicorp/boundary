@@ -25,7 +25,6 @@ type (
 	StaticRepoFactory            func() (*static.Repository, error)
 	PluginHostRepoFactory        func() (*pluginhost.Repository, error)
 	HostPluginRepoFactory        func() (*hostplugin.Repository, error)
-	SessionRepoFactory           session.RepositoryFactory // TODO refactor and remove this
 	ConnectionRepoFactory        func() (*session.ConnectionRepository, error)
 	TargetRepoFactory            func() (*target.Repository, error)
 	WorkerAuthRepoStorageFactory func() (*server.WorkerAuthRepositoryStorage, error)
