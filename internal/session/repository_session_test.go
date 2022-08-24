@@ -42,6 +42,7 @@ func TestRepository_ListSession(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 
 	listPerms := &perms.UserPermissions{
@@ -148,7 +149,7 @@ func TestRepository_ListSession(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit), WithPermissions(tt.perms))
+			repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(tt.perms))
 			require.NoError(err)
 
 			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
@@ -193,7 +194,7 @@ func TestRepository_ListSession(t *testing.T) {
 			_ = TestSession(t, conn, wrapper, composedOf)
 		}
 
-		repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit), WithPermissions(listPerms))
+		repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(listPerms))
 		require.NoError(err)
 
 		got, err := repo.ListSessions(context.Background(), WithOrderByCreateTime(db.AscendingOrderBy))
@@ -226,7 +227,7 @@ func TestRepository_ListSession(t *testing.T) {
 				},
 			},
 		}
-		repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit), WithPermissions(p))
+		repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(p))
 		require.NoError(err)
 		got, err := repo.ListSessions(context.Background(), WithUserId(s.UserId))
 		require.NoError(err)
@@ -242,6 +243,7 @@ func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
 
 	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
 
@@ -258,7 +260,7 @@ func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
 		_ = TestState(t, conn, s.PublicId, StatusActive)
 	}
 
-	repo, err := NewRepository(rw, rw, kms, WithPermissions(&perms.UserPermissions{
+	repo, err := NewRepository(ctx, rw, rw, kms, WithPermissions(&perms.UserPermissions{
 		Permissions: p,
 	}))
 	require.NoError(t, err)
@@ -274,7 +276,8 @@ func TestRepository_CreateSession(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	workerAddresses := []string{"1.2.3.4"}
@@ -469,7 +472,8 @@ func TestRepository_updateState(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -583,7 +587,8 @@ func TestRepository_transitionState(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	tofu := TestTofu(t)
 
@@ -680,7 +685,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
@@ -919,7 +924,7 @@ func TestRepository_CancelSession(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	testKms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, testKms)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
@@ -1097,7 +1102,8 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	setupFn := func() *Session {
 		session := TestDefaultSession(t, conn, wrapper, iamRepo)
@@ -1276,7 +1282,8 @@ func TestRepository_ActivateSession(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	tofu := TestTofu(t)
@@ -1399,7 +1406,8 @@ func TestRepository_DeleteSession(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	type args struct {
@@ -1520,7 +1528,8 @@ func TestRepository_deleteTargetFKey(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	targetRepo, err := target.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
@@ -1569,7 +1578,7 @@ func TestRepository_deleteTerminated(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 
 	cases := []struct {

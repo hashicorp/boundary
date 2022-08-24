@@ -29,7 +29,7 @@ type workerServiceServer struct {
 	pbs.UnimplementedSessionServiceServer
 
 	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    common.SessionRepoFactory
+	sessionRepoFn    session.RepositoryFactory
 	connectionRepoFn common.ConnectionRepoFactory
 	updateTimes      *sync.Map
 	kms              *kms.Kms
@@ -37,7 +37,7 @@ type workerServiceServer struct {
 
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
-	sessionRepoFn common.SessionRepoFactory,
+	sessionRepoFn session.RepositoryFactory,
 	connectionRepoFn common.ConnectionRepoFactory,
 	updateTimes *sync.Map,
 	kms *kms.Kms,

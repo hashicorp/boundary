@@ -44,11 +44,12 @@ func TestGetSession(t *testing.T) {
 
 	rw := db.New(conn)
 
+	ctx := context.Background()
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
 	sessRepoFn := func(opt ...session.Option) (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms, opt...)
+		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
@@ -166,11 +167,12 @@ func TestList_Self(t *testing.T) {
 
 	rw := db.New(conn)
 
+	ctx := context.Background()
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
 	sessRepoFn := func(opt ...session.Option) (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms, opt...)
+		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
@@ -250,14 +252,14 @@ func TestList(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
 	rw := db.New(conn)
-	sessRepo, err := session.NewRepository(rw, rw, kms)
+	sessRepo, err := session.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
 	sessRepoFn := func(opt ...session.Option) (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms, opt...)
+		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
@@ -550,11 +552,12 @@ func TestCancel(t *testing.T) {
 
 	rw := db.New(conn)
 
+	ctx := context.Background()
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
 	sessRepoFn := func(opt ...session.Option) (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms, opt...)
+		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)

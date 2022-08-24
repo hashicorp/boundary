@@ -33,7 +33,7 @@ func TestWorkerStatusReport(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	repo, err := session.NewRepository(rw, rw, kms)
+	repo, err := session.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	connRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms, session.WithWorkerStateDelay(0))
 	require.NoError(t, err)

@@ -45,12 +45,12 @@ var (
 type Service struct {
 	pbs.UnimplementedSessionServiceServer
 
-	repoFn    common.SessionRepoFactory
+	repoFn    session.RepositoryFactory
 	iamRepoFn common.IamRepoFactory
 }
 
 // NewService returns a session service which handles session related requests to boundary.
-func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(repoFn session.RepositoryFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "sessions.NewService"
 	if repoFn == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing session repository")

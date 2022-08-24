@@ -109,7 +109,7 @@ type Controller struct {
 	OidcRepoFn              common.OidcAuthRepoFactory
 	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
 	ServersRepoFn           common.ServersRepoFactory
-	SessionRepoFn           common.SessionRepoFactory
+	SessionRepoFn           session.RepositoryFactory
 	ConnectionRepoFn        common.ConnectionRepoFactory
 	StaticHostRepoFn        common.StaticRepoFactory
 	PluginHostRepoFn        common.PluginHostRepoFactory
@@ -336,7 +336,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return target.NewRepository(dbase, dbase, c.kms)
 	}
 	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
-		return session.NewRepository(dbase, dbase, c.kms, opt...)
+		return session.NewRepository(ctx, dbase, dbase, c.kms, opt...)
 	}
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)

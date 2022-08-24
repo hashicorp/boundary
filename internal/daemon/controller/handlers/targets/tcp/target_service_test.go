@@ -86,7 +86,7 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms, opts...)
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -2750,7 +2750,7 @@ func TestAuthorizeSession(t *testing.T) {
 		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms, opts...)
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	staticRepo, err := static.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
@@ -3010,7 +3010,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms, opts...)
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -3589,7 +3589,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms, opts...)
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)

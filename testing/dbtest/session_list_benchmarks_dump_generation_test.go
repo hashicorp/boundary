@@ -125,7 +125,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			require.NoError(err)
 			pwRepo, err := password.NewRepository(rw, rw, kms)
 			require.NoError(err)
-			sessRepo, err := session.NewRepository(rw, rw, kms)
+			sessRepo, err := session.NewRepository(ctx, rw, rw, kms)
 			require.NoError(err)
 			connRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms)
 			require.NoError(err)

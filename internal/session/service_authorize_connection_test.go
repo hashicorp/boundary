@@ -29,7 +29,7 @@ func TestService_AuthorizeConnection(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	testKms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, testKms)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
