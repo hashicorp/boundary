@@ -49,7 +49,7 @@ func TestValidateCreateRequest(t *testing.T) {
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attrs:        nil,
 			},
-			errContains: fieldError(attrFilterField, "This field is required."),
+			errContains: fieldError(globals.AttributesField, "Attribute fields is required."),
 		},
 		{
 			name: "bad oidc attributes",
