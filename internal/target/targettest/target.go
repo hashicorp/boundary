@@ -44,8 +44,8 @@ func (t *Target) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType,
 		return errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	if opType == db.CreateOp {
-		if t.ScopeId == "" {
-			return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+		if t.ProjectId == "" {
+			return errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 		}
 		if t.Name == "" {
 			return errors.New(ctx, errors.InvalidParameter, op, "missing name")
@@ -73,8 +73,8 @@ func (t *Target) GetPublicId() string {
 	return t.PublicId
 }
 
-func (t *Target) GetScopeId() string {
-	return t.ScopeId
+func (t *Target) GetProjectId() string {
+	return t.ProjectId
 }
 
 func (t *Target) GetDefaultPort() uint32 {
@@ -129,8 +129,8 @@ func (t *Target) SetPublicId(_ context.Context, publicId string) error {
 	return nil
 }
 
-func (t *Target) SetScopeId(scopeId string) {
-	t.ScopeId = scopeId
+func (t *Target) SetProjectId(projectId string) {
+	t.ProjectId = projectId
 }
 
 func (t *Target) SetName(name string) {
@@ -174,7 +174,7 @@ func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 		"resource-public-id": []string{t.PublicId},
 		"resource-type":      []string{"tcp target"},
 		"op-type":            []string{op.String()},
-		"scope-id":           []string{t.ScopeId},
+		"project-id":         []string{t.ProjectId},
 	}
 }
 
@@ -236,15 +236,15 @@ func VetCredentialSources(_ context.Context, _ []*target.CredentialLibrary, _ []
 }
 
 // New creates a targettest.Target.
-func New(scopeId string, opt ...target.Option) (target.Target, error) {
+func New(projectId string, opt ...target.Option) (target.Target, error) {
 	const op = "target_test.New"
 	opts := target.GetOpts(opt...)
-	if scopeId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
+	if projectId == "" {
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing project id")
 	}
 	t := &Target{
 		Target: &store.Target{
-			ScopeId:                scopeId,
+			ProjectId:              projectId,
 			Name:                   opts.WithName,
 			Description:            opts.WithDescription,
 			DefaultPort:            opts.WithDefaultPort,
@@ -257,13 +257,13 @@ func New(scopeId string, opt ...target.Option) (target.Target, error) {
 }
 
 // TestNewTestTarget is a test helper for creating a targettest.Target.
-func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, scopeId, name string, opt ...target.Option) target.Target {
+func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId, name string, opt ...target.Option) target.Target {
 	t.Helper()
 	opt = append(opt, target.WithName(name))
 	opts := target.GetOpts(opt...)
 	require := require.New(t)
 	rw := db.New(conn)
-	tar, err := New(scopeId, opt...)
+	tar, err := New(projectId, opt...)
 	require.NoError(err)
 	id, err := db.NewPublicId(TargetPrefix)
 	require.NoError(err)

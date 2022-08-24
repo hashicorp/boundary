@@ -20,11 +20,10 @@ func TestCredentialStore_New(t *testing.T) {
 	rw := db.New(conn)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	scope := prj
 
 	type args struct {
-		scopeId string
-		opts    []Option
+		projectId string
+		opts      []Option
 	}
 
 	tests := []struct {
@@ -34,47 +33,47 @@ func TestCredentialStore_New(t *testing.T) {
 		wantCreateErr bool
 	}{
 		{
-			name:          "missing-scope-id",
+			name:          "missing-project-id",
 			want:          allocCredentialStore(),
 			wantCreateErr: true,
 		},
 		{
 			name: "valid-no-options",
 			args: args{
-				scopeId: scope.PublicId,
+				projectId: prj.PublicId,
 			},
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					ScopeId: scope.PublicId,
+					ProjectId: prj.PublicId,
 				},
 			},
 		},
 		{
 			name: "valid-with-name",
 			args: args{
-				scopeId: scope.PublicId,
+				projectId: prj.PublicId,
 				opts: []Option{
 					WithName("test-name"),
 				},
 			},
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					ScopeId: scope.PublicId,
-					Name:    "test-name",
+					ProjectId: prj.PublicId,
+					Name:      "test-name",
 				},
 			},
 		},
 		{
 			name: "valid-with-description",
 			args: args{
-				scopeId: scope.PublicId,
+				projectId: prj.PublicId,
 				opts: []Option{
 					WithDescription("test-description"),
 				},
 			},
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					ScopeId:     scope.PublicId,
+					ProjectId:   prj.PublicId,
 					Description: "test-description",
 				},
 			},
@@ -85,7 +84,7 @@ func TestCredentialStore_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewCredentialStore(tt.args.scopeId, tt.args.opts...)
+			got, err := NewCredentialStore(tt.args.projectId, tt.args.opts...)
 			require.NoError(err)
 			require.NotNil(got)
 

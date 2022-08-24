@@ -57,7 +57,8 @@ func TestMigrateDatabase(t *testing.T) {
 					schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": earlyMigrationVersion}),
 				))
 				require.NoError(t, err)
-				require.NoError(t, man.ApplyMigrations(ctx))
+				_, err = man.ApplyMigrations(ctx)
+				require.NoError(t, err)
 				return u
 			},
 			expectedCode:   0,
@@ -81,7 +82,8 @@ func TestMigrateDatabase(t *testing.T) {
 					schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": earlyMigrationVersion}),
 				))
 				require.NoError(t, err)
-				require.NoError(t, man.ApplyMigrations(ctx))
+				_, err = man.ApplyMigrations(ctx)
+				require.NoError(t, err)
 				return u
 			},
 			expectedCode:   -1,
@@ -193,7 +195,7 @@ func TestMigrateDatabase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			u := tc.urlProvider()
 			ui := cli.NewMockUi()
-			clean, errCode := migrateDatabase(ctx, ui, dialect, u, tc.initialized, 10)
+			clean, errCode := migrateDatabase(ctx, ui, dialect, u, tc.initialized, 10, nil)
 			clean()
 			assert.EqualValues(t, tc.expectedCode, errCode)
 			assert.Equal(t, tc.expectedOutput, ui.OutputWriter.String())
@@ -218,7 +220,8 @@ func TestVerifyOplogIsEmpty(t *testing.T) {
 
 	man, err := schema.NewManager(ctx, schema.Dialect(dialect), dBase)
 	require.NoError(t, err)
-	require.NoError(t, man.ApplyMigrations(ctx))
+	_, err = man.ApplyMigrations(ctx)
+	require.NoError(t, err)
 
 	cmd := InitCommand{Server: base.NewServer(base.NewCommand(cli.NewMockUi()))}
 

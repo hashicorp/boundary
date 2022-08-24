@@ -19,6 +19,8 @@ env:
 jobs:
   enos:
     name: Integration
+    # Enos jobs are still a bit flaky, ensure they don't fail the workflow.
+    continue-on-error: true
     strategy:
       matrix:
         include:

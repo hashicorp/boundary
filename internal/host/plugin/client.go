@@ -19,6 +19,10 @@ func NewWrappingPluginClient(s plgpb.HostPluginServiceServer) *WrappingPluginCli
 	return &WrappingPluginClient{Server: s}
 }
 
+func (tpc *WrappingPluginClient) NormalizeCatalogData(ctx context.Context, req *plgpb.NormalizeCatalogDataRequest, opts ...grpc.CallOption) (*plgpb.NormalizeCatalogDataResponse, error) {
+	return tpc.Server.NormalizeCatalogData(ctx, req)
+}
+
 func (tpc *WrappingPluginClient) OnCreateCatalog(ctx context.Context, req *plgpb.OnCreateCatalogRequest, opts ...grpc.CallOption) (*plgpb.OnCreateCatalogResponse, error) {
 	return tpc.Server.OnCreateCatalog(ctx, req)
 }
@@ -29,6 +33,10 @@ func (tpc *WrappingPluginClient) OnUpdateCatalog(ctx context.Context, req *plgpb
 
 func (tpc *WrappingPluginClient) OnDeleteCatalog(ctx context.Context, req *plgpb.OnDeleteCatalogRequest, opts ...grpc.CallOption) (*plgpb.OnDeleteCatalogResponse, error) {
 	return tpc.Server.OnDeleteCatalog(ctx, req)
+}
+
+func (tpc *WrappingPluginClient) NormalizeSetData(ctx context.Context, req *plgpb.NormalizeSetDataRequest, opts ...grpc.CallOption) (*plgpb.NormalizeSetDataResponse, error) {
+	return tpc.Server.NormalizeSetData(ctx, req)
 }
 
 func (tpc *WrappingPluginClient) OnCreateSet(ctx context.Context, req *plgpb.OnCreateSetRequest, opts ...grpc.CallOption) (*plgpb.OnCreateSetResponse, error) {

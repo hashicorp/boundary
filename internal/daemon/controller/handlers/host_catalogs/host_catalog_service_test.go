@@ -101,7 +101,7 @@ func TestGet_Static(t *testing.T) {
 
 	pHostCatalog := &pb.HostCatalog{
 		Id:                          hc.GetPublicId(),
-		ScopeId:                     hc.GetScopeId(),
+		ScopeId:                     hc.GetProjectId(),
 		Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 		CreatedTime:                 hc.CreateTime.GetTimestamp(),
 		UpdatedTime:                 hc.UpdateTime.GetTimestamp(),
@@ -194,7 +194,7 @@ func TestGet_Plugin(t *testing.T) {
 
 	pHostCatalog := &pb.HostCatalog{
 		Id:      hc.GetPublicId(),
-		ScopeId: hc.GetScopeId(),
+		ScopeId: hc.GetProjectId(),
 		Scope: &scopepb.ScopeInfo{
 			Id:            proj.GetPublicId(),
 			Type:          scope.Project.String(),
@@ -306,7 +306,7 @@ func TestList(t *testing.T) {
 	for _, hc := range static.TestCatalogs(t, conn, pWithCatalogs.GetPublicId(), 3) {
 		wantSomeCatalogs = append(wantSomeCatalogs, &pb.HostCatalog{
 			Id:                          hc.GetPublicId(),
-			ScopeId:                     hc.GetScopeId(),
+			ScopeId:                     hc.GetProjectId(),
 			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
 			Scope:                       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithCatalogs.GetPublicId()},
@@ -324,7 +324,7 @@ func TestList(t *testing.T) {
 		hc := plugin.TestCatalog(t, conn, pWithCatalogs.GetPublicId(), plg.GetPublicId())
 		cat := &pb.HostCatalog{
 			Id:          hc.GetPublicId(),
-			ScopeId:     hc.GetScopeId(),
+			ScopeId:     hc.GetProjectId(),
 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
 			Scope:       &scopepb.ScopeInfo{Id: pWithCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithCatalogs.GetPublicId()},
@@ -347,7 +347,7 @@ func TestList(t *testing.T) {
 	for _, hc := range static.TestCatalogs(t, conn, pWithOtherCatalogs.GetPublicId(), 3) {
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
 			Id:                          hc.GetPublicId(),
-			ScopeId:                     hc.GetScopeId(),
+			ScopeId:                     hc.GetProjectId(),
 			CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime:                 hc.GetUpdateTime().GetTimestamp(),
 			Scope:                       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithOtherCatalogs.GetPublicId()},
@@ -364,7 +364,7 @@ func TestList(t *testing.T) {
 		hc := plugin.TestCatalog(t, conn, pWithOtherCatalogs.GetPublicId(), diffPlg.GetPublicId())
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
 			Id:          hc.GetPublicId(),
-			ScopeId:     hc.GetScopeId(),
+			ScopeId:     hc.GetProjectId(),
 			CreatedTime: hc.GetCreateTime().GetTimestamp(),
 			UpdatedTime: hc.GetUpdateTime().GetTimestamp(),
 			Scope:       &scopepb.ScopeInfo{Id: pWithOtherCatalogs.GetPublicId(), Type: scope.Project.String(), ParentScopeId: oWithOtherCatalogs.GetPublicId()},
@@ -1056,7 +1056,7 @@ func TestUpdate_Static(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
-					ScopeId:                     hc.GetScopeId(),
+					ScopeId:                     hc.GetProjectId(),
 					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "new"},
 					Description:                 &wrappers.StringValue{Value: "desc"},
@@ -1082,7 +1082,7 @@ func TestUpdate_Static(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
-					ScopeId:                     hc.GetScopeId(),
+					ScopeId:                     hc.GetProjectId(),
 					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "new"},
 					Description:                 &wrappers.StringValue{Value: "desc"},
@@ -1138,7 +1138,7 @@ func TestUpdate_Static(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
-					ScopeId:                     hc.GetScopeId(),
+					ScopeId:                     hc.GetProjectId(),
 					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Description:                 &wrappers.StringValue{Value: "default"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
@@ -1161,7 +1161,7 @@ func TestUpdate_Static(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
-					ScopeId:                     hc.GetScopeId(),
+					ScopeId:                     hc.GetProjectId(),
 					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "default"},
 					CreatedTime:                 hc.GetCreateTime().GetTimestamp(),
@@ -1185,7 +1185,7 @@ func TestUpdate_Static(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
-					ScopeId:                     hc.GetScopeId(),
+					ScopeId:                     hc.GetProjectId(),
 					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "updated"},
 					Description:                 &wrappers.StringValue{Value: "default"},
@@ -1210,7 +1210,7 @@ func TestUpdate_Static(t *testing.T) {
 			res: &pbs.UpdateHostCatalogResponse{
 				Item: &pb.HostCatalog{
 					Id:                          hc.GetPublicId(),
-					ScopeId:                     hc.GetScopeId(),
+					ScopeId:                     hc.GetProjectId(),
 					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
 					Name:                        &wrappers.StringValue{Value: "default"},
 					Description:                 &wrappers.StringValue{Value: "notignored"},

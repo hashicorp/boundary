@@ -51,7 +51,8 @@ func testSetupDb(ctx context.Context, t *testing.T) *sql.DB {
 	))
 	require.NoError(err)
 
-	require.NoError(m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(err)
 	state, err := m.CurrentState(ctx)
 	require.NoError(err)
 	want := &schema.State{

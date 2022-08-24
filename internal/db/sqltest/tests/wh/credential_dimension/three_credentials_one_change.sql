@@ -14,7 +14,7 @@ begin;
 
   -- insert session and session_credential_dynamic, should result in a three new credential dimensions
   insert into session
-    ( scope_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,     target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bwidget', 't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's1____walter');
   insert into session_credential_dynamic
@@ -29,7 +29,7 @@ begin;
   update credential_vault_library set vault_path = '/secrets/tcp/user' where public_id = 'vl______wvl2';
 
   insert into session
-    ( scope_id,      target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,     target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
     ('p____bwidget', 't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's2____walter');
   insert into session_credential_dynamic

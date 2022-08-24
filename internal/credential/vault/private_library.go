@@ -148,7 +148,7 @@ type privateLibrary struct {
 	CreateTime                    *timestamp.Timestamp
 	UpdateTime                    *timestamp.Timestamp
 	Version                       uint32
-	ScopeId                       string
+	ProjectId                     string
 	VaultPath                     string
 	HttpMethod                    string
 	HttpRequestBody               []byte
@@ -185,7 +185,7 @@ func (pl *privateLibrary) clone() *privateLibrary {
 		CreateTime:                    proto.Clone(pl.CreateTime).(*timestamp.Timestamp),
 		UpdateTime:                    proto.Clone(pl.UpdateTime).(*timestamp.Timestamp),
 		Version:                       pl.Version,
-		ScopeId:                       pl.ScopeId,
+		ProjectId:                     pl.ProjectId,
 		VaultPath:                     pl.VaultPath,
 		HttpMethod:                    pl.HttpMethod,
 		HttpRequestBody:               append(pl.HttpRequestBody[:0:0], pl.HttpRequestBody...),
@@ -387,7 +387,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	}
 
 	for _, pl := range libs {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, pl.ScopeId, kms.KeyPurposeDatabase)
+		databaseWrapper, err := r.kms.GetWrapper(ctx, pl.ProjectId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}

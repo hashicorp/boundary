@@ -23,7 +23,7 @@ type Option func(*options)
 type options struct {
 	withLimit             int
 	withOrderByCreateTime db.OrderBy
-	withScopeIds          []string
+	withProjectIds        []string
 	withUserId            string
 	withExpirationTime    *timestamp.Timestamp
 	withTestTofu          []byte
@@ -57,10 +57,10 @@ func WithOrderByCreateTime(orderBy db.OrderBy) Option {
 	}
 }
 
-// WithScopeIds allows specifying a scope ID criteria for the function.
-func WithScopeIds(scopeIds []string) Option {
+// WithProjectIds allows specifying a project ID criteria for the function.
+func WithProjectIds(projectIds []string) Option {
 	return func(o *options) {
-		o.withScopeIds = scopeIds
+		o.withProjectIds = projectIds
 	}
 }
 

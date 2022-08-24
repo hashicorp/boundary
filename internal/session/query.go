@@ -119,18 +119,18 @@ from
 	session_connection_limit, session_connection_count;
 `
 	nonTerminatedSessionPublicIdList = `
-select public_id, scope_id, user_id from session
+select public_id, project_id, user_id from session
 where
 	session.termination_reason is null
 and
-	scope_id = any(@scope_ids)
+	project_id = any(@project_ids)
 ;
 `
 
 	sessionPublicIdList = `
-select public_id, scope_id, user_id from session
+select public_id, project_id, user_id from session
 where
-	scope_id = any(@scope_ids)
+	project_id = any(@project_ids)
 ;
 `
 

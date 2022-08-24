@@ -48,7 +48,7 @@ func Test_TestCredentials(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     prj.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 

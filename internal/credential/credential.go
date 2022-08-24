@@ -12,13 +12,13 @@ import (
 const Domain = "credential"
 
 // A Store is a resource that can store, retrieve, and potentially generate
-// credentials of differing types and access levels. It belongs to a scope
+// credentials of differing types and access levels. It belongs to a project
 // and must support the principle of least privilege by providing
 // mechanisms to limit the credentials it can access to the minimum
-// necessary for the scope it is in.
+// necessary for the project it is in.
 type Store interface {
 	boundary.Resource
-	GetScopeId() string
+	GetProjectId() string
 }
 
 // Type is the type of credential provided by a library.

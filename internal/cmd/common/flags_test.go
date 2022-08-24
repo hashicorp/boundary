@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -420,5 +421,105 @@ func TestHandleAttributeFlags(t *testing.T) {
 				assert.Equal(tt.expectedMap, outMap)
 			})
 		}
+	}
+}
+
+func TestNullableStringSlice(t *testing.T) {
+	makeStringSlicePointer := func(in ...string) *[]string {
+		return &in
+	}
+	tests := []struct {
+		name        string
+		cmd         string
+		args        []string
+		expected    base.StringSliceVar
+		expectedErr string
+	}{
+		{
+			name: "not-set-no-null",
+			cmd:  "add-values",
+			args: []string{"-val", "foobar", "-val", "barfoo", "-val", "boobaz", "-val", "bazboo"},
+			expected: base.StringSliceVar{
+				Target: makeStringSlicePointer("foobar", "barfoo", "boobaz", "bazboo"),
+			},
+		},
+		{
+			name:        "not-set-null",
+			cmd:         "add-values",
+			args:        []string{"-val", "foobar", "-val", "null", "-val", "boobaz", "-val", "bazboo"},
+			expectedErr: `"null" is not an allowed value`,
+		},
+		{
+			name: "set-no-null",
+			cmd:  "set-values",
+			args: []string{"-val", "foobar", "-val", "barfoo", "-val", "boobaz", "-val", "bazboo"},
+			expected: base.StringSliceVar{
+				Target: makeStringSlicePointer("foobar", "barfoo", "boobaz", "bazboo"),
+			},
+		},
+		{
+			name: "set-only-null",
+			cmd:  "set-values",
+			args: []string{"-val", "null"},
+			expected: base.StringSliceVar{
+				Target: makeStringSlicePointer("null"),
+			},
+		},
+		{
+			name:        "set-null-and-others-beginning",
+			cmd:         "set-values",
+			args:        []string{"-val", "null", "-val", "barfoo", "-val", "boobaz", "-val", "bazboo"},
+			expectedErr: `"null" cannot be combined with other values`,
+		},
+		{
+			name:        "set-null-and-others-middle",
+			cmd:         "set-values",
+			args:        []string{"-val", "foobar", "-val", "null", "-val", "boobaz", "-val", "bazboo"},
+			expectedErr: `"null" cannot be combined with other values`,
+		},
+		{
+			name:        "set-null-and-others-end",
+			cmd:         "set-values",
+			args:        []string{"-val", "foobar", "-val", "barfoo", "-val", "boobaz", "-val", "null"},
+			expectedErr: `"null" cannot be combined with other values`,
+		},
+		{
+			name: "set-null-multiple",
+			cmd:  "set-values",
+			args: []string{"-val", "null", "-val", "null"},
+			expected: base.StringSliceVar{
+				Target: makeStringSlicePointer("null"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			// Note: we do the setup on each run to make sure we aren't carrying
+			// state over; just like in the real CLI where each run would have
+			// pristine state.
+			c := new(base.Command)
+			flagSet := c.FlagSet(base.FlagSetNone)
+			f := flagSet.NewFlagSet("Stringsssss")
+			var target []string
+			ssVar := &base.StringSliceVar{
+				Name:   "val",
+				Target: &target,
+				NullCheck: func() bool {
+					return strings.HasPrefix(tt.cmd, "set-")
+				},
+			}
+			f.StringSliceVar(ssVar)
+
+			err := flagSet.Parse(tt.args)
+			if tt.expectedErr != "" {
+				require.Error(err)
+				assert.Contains(err.Error(), tt.expectedErr)
+				return
+			}
+			require.NoError(err)
+			assert.Equal(*tt.expected.Target, *ssVar.Target)
+		})
 	}
 }

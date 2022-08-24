@@ -5,6 +5,7 @@ begin;
   -- Updates whx_host_dimension_source to not have the host address on the
   -- view and instead rely on a reference to the wh_network_address_group
   -- referenced in the wh_upsert_host function query that uses this view.
+  -- Replaced in 44/03_targets.up.sql
   drop view whx_host_dimension_source;
   create view whx_host_dimension_source as
   select -- id is the first column in the target view

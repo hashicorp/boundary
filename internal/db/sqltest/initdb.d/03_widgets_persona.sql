@@ -192,7 +192,7 @@ begin;
   as $$
   begin
     insert into static_host_catalog
-      (scope_id, public_id, name)
+      (project_id, public_id, name)
     values
       ('p____bwidget', 'c___wb-sthcl', 'Big Widget Static Catalog'),
       ('p____swidget', 'c___ws-sthcl', 'Small Widget Static Catalog');
@@ -243,7 +243,7 @@ begin;
       ('global', 'plg___wb-hplg', 'Short Host Plugin');
 
     insert into host_plugin_catalog
-      (scope_id, public_id, plugin_id, name, attributes)
+      (project_id, public_id, plugin_id, name, attributes)
     values
       ('p____bwidget', 'c___wb-plghcl', 'plg___wb-hplg', 'Big Widget Plugin Catalog', ''),
       ('p____swidget', 'c___ws-plghcl', 'plg___wb-hplg',  'Small Widget Plugin Catalog', '');
@@ -307,22 +307,22 @@ begin;
   as $$
   begin
     insert into target_tcp
-      (scope_id, public_id, name)
+      (project_id, public_id, name)
     values
       ('p____bwidget', 't_________wb', 'Big Widget Target'),
       ('p____swidget', 't_________ws', 'Small Widget Target');
 
     insert into target_host_set
-      (target_id, host_set_id)
+      (project_id, target_id, host_set_id)
     values
-      ('t_________wb', 's___1wb-sths'),
-      ('t_________wb', 's___2wb-sths'),
-      ('t_________ws', 's___1ws-sths'),
-      ('t_________ws', 's___2ws-sths'),
-      ('t_________wb', 's___1wb-plghs'),
-      ('t_________wb', 's___2wb-plghs'),
-      ('t_________ws', 's___1ws-plghs'),
-      ('t_________ws', 's___2ws-plghs');
+      ('p____bwidget', 't_________wb', 's___1wb-sths'),
+      ('p____bwidget', 't_________wb', 's___2wb-sths'),
+      ('p____swidget', 't_________ws', 's___1ws-sths'),
+      ('p____swidget', 't_________ws', 's___2ws-sths'),
+      ('p____bwidget', 't_________wb', 's___1wb-plghs'),
+      ('p____bwidget', 't_________wb', 's___2wb-plghs'),
+      ('p____swidget', 't_________ws', 's___1ws-plghs'),
+      ('p____swidget', 't_________ws', 's___2ws-plghs');
 
   end;
   $$ language plpgsql;
@@ -332,7 +332,7 @@ begin;
   as $$
   begin
     insert into credential_vault_store
-      (scope_id,       public_id,      name,                 description, vault_address,          namespace)
+      (project_id,       public_id,      name,                 description, vault_address,          namespace)
     values
       ('p____bwidget', 'vs_______wvs', 'widget vault store', 'None',      'https://vault.widget', 'default');
 
@@ -398,12 +398,24 @@ begin;
       ('vl______wvl12', 'my_username',      'my_private_key',     'my_passphrase');
 
     insert into target_credential_library
-      (target_id,      credential_library_id, credential_purpose)
+      (project_id,     target_id,      credential_library_id, credential_purpose)
     values
-      ('t_________wb', 'vl______wvl1',        'brokered'),
-      ('t_________wb', 'vl______wvl2',        'brokered'),
-      ('t_________wb', 'vl______wvl3',        'brokered'),
-      ('t_________wb', 'vl______wvl3',        'injected_application');
+      ('p____bwidget', 't_________wb', 'vl______wvl1',        'brokered'),
+      ('p____bwidget', 't_________wb', 'vl______wvl2',        'brokered'),
+      ('p____bwidget', 't_________wb', 'vl______wvl3',        'brokered'),
+      ('p____bwidget', 't_________wb', 'vl______wvl3',        'injected_application');
+
+    insert into credential_static_store
+      (project_id,     public_id,      name,                  description)
+    values
+      ('p____bwidget', 'cs______wup1', 'widget static store', 'None'),
+      ('p____swidget', 'cs______wup2', 'widget static store', 'None');
+
+    insert into credential_static_username_password_credential
+      (store_id,       public_id,      name,                                         description, username, password_encrypted,   password_hmac, key_id)
+    values
+      ('cs______wup1', 'cred____wup1', 'widget static username password credential', 'None',      'b_user', 'encrypted_password', 'hmac-value', 'kdkv___widget'),
+      ('cs______wup2', 'cred____wup2', 'widget static username password credential', 'None',      's_user', 'encrypted_password', 'hmac-value', 'kdkv___widget');
   end;
   $$ language plpgsql;
 
@@ -412,7 +424,7 @@ create function _wtt_load_widgets_sessions()
 as $$
 begin
     insert into session
-    ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
+    ( project_id        ,  target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
     values
         ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__01' , 'u_____warren' , 'tok___warren' , 'abc'::bytea , 'ep1'    , 's1____warren');
 end;
