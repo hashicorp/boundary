@@ -59,16 +59,16 @@ func Test_TestHosts(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
-	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	plg := host.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
-	require.NotNil(org)
-	assert.NotEmpty(org.GetPublicId())
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
 
-	c := TestCatalog(t, conn, org.GetPublicId(), plg.GetPublicId())
+	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 	h := TestHost(t, conn, c.GetPublicId(), plg.GetPublicId())
 	assert.NotEmpty(h.GetPublicId())

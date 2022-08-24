@@ -52,7 +52,8 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := edition.New(tt.name, edition.Dialect("postgres"), tt.fs, tt.priority)
+			e, err := edition.New(tt.name, edition.Dialect("postgres"), tt.fs, tt.priority)
+			assert.NoError(t, err)
 			assert.Equal(t, e.Name, tt.name, "Name")
 			assert.Equal(t, e.Dialect, edition.Dialect("postgres"), "Dialect")
 			assert.Equal(t, e.LatestVersion, tt.expectedVersion, "Version")
@@ -78,7 +79,7 @@ var (
 	duplicateVersions embed.FS
 )
 
-func TestNewPanics(t *testing.T) {
+func TestNewErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -112,9 +113,8 @@ func TestNewPanics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Panics(t, func() {
-				edition.New(tt.name, edition.Dialect("postgres"), tt.fs, 0)
-			}, tt.name)
+			_, err := edition.New(tt.name, edition.Dialect("postgres"), tt.fs, 0)
+			assert.Error(t, err)
 		})
 	}
 }

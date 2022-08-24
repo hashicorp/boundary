@@ -325,7 +325,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Host, *plugin
 	return h, plg, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.Host) (*static.Host, error) {
+func (s Service) createInRepo(ctx context.Context, projectId, catalogId string, item *pb.Host) (*static.Host, error) {
 	const op = "hosts.(Service).createInRepo"
 	ha := item.GetStaticHostAttributes()
 	var opts []static.Option
@@ -347,7 +347,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	out, err := repo.CreateHost(ctx, scopeId, h)
+	out, err := repo.CreateHost(ctx, projectId, h)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to create host"))
 	}
@@ -357,7 +357,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string, mask []string, item *pb.Host) (*static.Host, error) {
+func (s Service) updateInRepo(ctx context.Context, projectId, catalogId, id string, mask []string, item *pb.Host) (*static.Host, error) {
 	const op = "hosts.(Service).updateInRepo"
 	ha := item.GetStaticHostAttributes()
 	var opts []static.Option
@@ -383,7 +383,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	if err != nil {
 		return nil, err
 	}
-	out, rowsUpdated, err := repo.UpdateHost(ctx, scopeId, h, item.GetVersion(), dbMask)
+	out, rowsUpdated, err := repo.UpdateHost(ctx, projectId, h, item.GetVersion(), dbMask)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host"))
 	}
@@ -393,13 +393,13 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId, id string
 	return out, nil
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool, error) {
 	const op = "hosts.(Service).deleteFromRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteHost(ctx, scopeId, id)
+	rows, err := repo.DeleteHost(ctx, projectId, id)
 	if err != nil {
 		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 	}
@@ -510,7 +510,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		}
 		cat = plcat
 	}
-	opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(parentId))
+	opts = append(opts, auth.WithScopeId(cat.GetProjectId()), auth.WithPin(parentId))
 	return cat, auth.Verify(ctx, opts...)
 }
 

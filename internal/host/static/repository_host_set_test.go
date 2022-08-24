@@ -596,7 +596,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		assert.Empty(gotHosts3)
 	})
 
-	t.Run("change-scope-id", func(t *testing.T) {
+	t.Run("change-project-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)

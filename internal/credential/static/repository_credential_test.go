@@ -30,7 +30,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		scopeId     string
+		projectId   string
 		cred        *UsernamePasswordCredential
 		wantErr     bool
 		wantErrCode errors.Code
@@ -47,7 +47,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "missing-scope-id",
+			name: "missing-project-id",
 			cred: &UsernamePasswordCredential{
 				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "my-user",
@@ -59,8 +59,8 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name:    "missing-username",
-			scopeId: prj.PublicId,
+			name:      "missing-username",
+			projectId: prj.PublicId,
 			cred: &UsernamePasswordCredential{
 				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Password: []byte("secret"),
@@ -71,8 +71,8 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name:    "missing-password",
-			scopeId: prj.PublicId,
+			name:      "missing-password",
+			projectId: prj.PublicId,
 			cred: &UsernamePasswordCredential{
 				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "my-user",
@@ -83,8 +83,8 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name:    "missing-store-id",
-			scopeId: prj.PublicId,
+			name:      "missing-store-id",
+			projectId: prj.PublicId,
 			cred: &UsernamePasswordCredential{
 				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "my-user",
@@ -95,8 +95,8 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name:    "valid",
-			scopeId: prj.PublicId,
+			name:      "valid",
+			projectId: prj.PublicId,
 			cred: &UsernamePasswordCredential{
 				UsernamePasswordCredential: &store.UsernamePasswordCredential{
 					Username: "my-user",
@@ -116,7 +116,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 
-			got, err := repo.CreateUsernamePasswordCredential(ctx, tt.scopeId, tt.cred)
+			got, err := repo.CreateUsernamePasswordCredential(ctx, tt.projectId, tt.cred)
 			if tt.wantErr {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)
@@ -133,7 +133,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 			lookupCred.PublicId = got.PublicId
 			require.NoError(rw.LookupById(ctx, lookupCred))
 
-			databaseWrapper, err := kkms.GetWrapper(context.Background(), tt.scopeId, kms.KeyPurposeDatabase)
+			databaseWrapper, err := kkms.GetWrapper(context.Background(), tt.projectId, kms.KeyPurposeDatabase)
 			require.NoError(err)
 			require.NoError(lookupCred.decrypt(ctx, databaseWrapper))
 			assert.Equal(tt.cred.Password, lookupCred.Password)
@@ -160,10 +160,11 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.GetPublicId())
 		require.NoError(err)
 
 		prjCs := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-		orgCs := TestCredentialStore(t, conn, wrapper, org.GetPublicId())
+		prj2Cs := TestCredentialStore(t, conn, wrapper, prj2.GetPublicId())
 
 		in, err := NewUsernamePasswordCredential(prjCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("original"))
 		assert.NoError(err)
@@ -179,10 +180,9 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 
-		// Creating credential in different scope should not conflict
-		in3, err := NewUsernamePasswordCredential(orgCs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
-		require.NoError(err)
-		got3, err := repo.CreateUsernamePasswordCredential(ctx, org.GetPublicId(), in3)
+		// Creating credential in different project should not conflict
+		in3, err := NewUsernamePasswordCredential(prj2Cs.GetPublicId(), "user", "pass", WithName("my-name"), WithDescription("different"))
+		got3, err := repo.CreateUsernamePasswordCredential(ctx, prj2.GetPublicId(), in3)
 		require.NoError(err)
 		assert.Equal(in3.Name, got3.Name)
 		assert.Equal(in3.Description, got3.Description)
@@ -202,7 +202,7 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		scopeId     string
+		projectId   string
 		cred        *SshPrivateKeyCredential
 		wantErr     bool
 		wantErrCode errors.Code
@@ -219,7 +219,7 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "missing-scope-id",
+			name: "missing-project-id",
 			cred: &SshPrivateKeyCredential{
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					Username:   "my-user",
@@ -231,8 +231,8 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name:    "missing-username",
-			scopeId: prj.PublicId,
+			name:      "missing-username",
+			projectId: prj.PublicId,
 			cred: &SshPrivateKeyCredential{
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					PrivateKey: []byte(TestSshPrivateKeyPem),
@@ -243,8 +243,8 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name:    "missing-private-key",
-			scopeId: prj.PublicId,
+			name:      "missing-private-key",
+			projectId: prj.PublicId,
 			cred: &SshPrivateKeyCredential{
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					Username: "my-user",
@@ -255,8 +255,8 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name:    "missing-store-id",
-			scopeId: prj.PublicId,
+			name:      "missing-store-id",
+			projectId: prj.PublicId,
 			cred: &SshPrivateKeyCredential{
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					Username:   "my-user",
@@ -267,8 +267,8 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name:    "valid",
-			scopeId: prj.PublicId,
+			name:      "valid",
+			projectId: prj.PublicId,
 			cred: &SshPrivateKeyCredential{
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					Username:   "my-user",
@@ -278,8 +278,8 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			},
 		},
 		{
-			name:    "valid-large-pk",
-			scopeId: prj.PublicId,
+			name:      "valid-large-pk",
+			projectId: prj.PublicId,
 			cred: &SshPrivateKeyCredential{
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					Username:   "my-user",
@@ -289,8 +289,8 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			},
 		},
 		{
-			name:    "valid-with-passphrase",
-			scopeId: prj.PublicId,
+			name:      "valid-with-passphrase",
+			projectId: prj.PublicId,
 			cred: &SshPrivateKeyCredential{
 				SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
 					Username:             "my-user",
@@ -311,7 +311,7 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(repo)
 
-			got, err := repo.CreateSshPrivateKeyCredential(ctx, tt.scopeId, tt.cred)
+			got, err := repo.CreateSshPrivateKeyCredential(ctx, tt.projectId, tt.cred)
 			if tt.wantErr {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)
@@ -330,7 +330,7 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 			lookupCred.PublicId = got.PublicId
 			require.NoError(rw.LookupById(ctx, lookupCred))
 
-			databaseWrapper, err := kkms.GetWrapper(context.Background(), tt.scopeId, kms.KeyPurposeDatabase)
+			databaseWrapper, err := kkms.GetWrapper(context.Background(), tt.projectId, kms.KeyPurposeDatabase)
 			require.NoError(err)
 			require.NoError(lookupCred.decrypt(ctx, databaseWrapper))
 			assert.Equal(tt.cred.PrivateKey, lookupCred.PrivateKey)
@@ -366,10 +366,11 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.PublicId)
 		require.NoError(err)
 
 		prjCs := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-		orgCs := TestCredentialStore(t, conn, wrapper, org.GetPublicId())
+		prj2Cs := TestCredentialStore(t, conn, wrapper, prj2.GetPublicId())
 
 		in, err := NewSshPrivateKeyCredential(ctx, prjCs.GetPublicId(), "user", credential.PrivateKey(TestSshPrivateKeyPem), WithName("my-name"), WithDescription("original"))
 		assert.NoError(err)
@@ -385,10 +386,10 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 
-		// Creating credential in different scope should not conflict
-		in3, err := NewSshPrivateKeyCredential(ctx, orgCs.GetPublicId(), "user", credential.PrivateKey(TestSshPrivateKeyPem), WithName("my-name"), WithDescription("different"))
+		// Creating credential in different project should not conflict
+		in3, err := NewSshPrivateKeyCredential(ctx, prj2Cs.GetPublicId(), "user", credential.PrivateKey(TestSshPrivateKeyPem), WithName("my-name"), WithDescription("different"))
 		require.NoError(err)
-		got3, err := repo.CreateSshPrivateKeyCredential(ctx, org.GetPublicId(), in3)
+		got3, err := repo.CreateSshPrivateKeyCredential(ctx, prj2.GetPublicId(), in3)
 		require.NoError(err)
 		assert.Equal(in3.Name, got3.Name)
 		assert.Equal(in3.Description, got3.Description)
@@ -815,7 +816,7 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 				},
 			},
 			chgFn:   changeName("test-update-name-repo"),
-			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ProjectId"},
 			wantErr: errors.InvalidFieldMask,
 		},
 		{
@@ -1345,7 +1346,7 @@ Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
 				},
 			},
 			chgFn:   changeName("test-update-name-repo"),
-			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ProjectId"},
 			wantErr: errors.InvalidFieldMask,
 		},
 		{

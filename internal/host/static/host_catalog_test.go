@@ -18,8 +18,8 @@ func TestHostCatalog_New(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	type args struct {
-		scopeId string
-		opts    []Option
+		projectId string
+		opts      []Option
 	}
 
 	tests := []struct {
@@ -29,9 +29,9 @@ func TestHostCatalog_New(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "blank-scopeId",
+			name: "blank-projectId",
 			args: args{
-				scopeId: "",
+				projectId: "",
 			},
 			want:    nil,
 			wantErr: true,
@@ -39,40 +39,40 @@ func TestHostCatalog_New(t *testing.T) {
 		{
 			name: "valid-no-options",
 			args: args{
-				scopeId: prj.GetPublicId(),
+				projectId: prj.GetPublicId(),
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId: prj.GetPublicId(),
+					ProjectId: prj.GetPublicId(),
 				},
 			},
 		},
 		{
 			name: "valid-with-name",
 			args: args{
-				scopeId: prj.GetPublicId(),
+				projectId: prj.GetPublicId(),
 				opts: []Option{
 					WithName("test-name"),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId: prj.GetPublicId(),
-					Name:    "test-name",
+					ProjectId: prj.GetPublicId(),
+					Name:      "test-name",
 				},
 			},
 		},
 		{
 			name: "valid-with-description",
 			args: args{
-				scopeId: prj.GetPublicId(),
+				projectId: prj.GetPublicId(),
 				opts: []Option{
 					WithDescription("test-description"),
 				},
 			},
 			want: &HostCatalog{
 				HostCatalog: &store.HostCatalog{
-					ScopeId:     prj.GetPublicId(),
+					ProjectId:   prj.GetPublicId(),
 					Description: "test-description",
 				},
 			},
@@ -83,7 +83,7 @@ func TestHostCatalog_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewHostCatalog(tt.args.scopeId, tt.args.opts...)
+			got, err := NewHostCatalog(tt.args.projectId, tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(got)

@@ -61,7 +61,8 @@ func Test_ServerEnumChanges(t *testing.T) {
 	))
 	require.NoError(err)
 
-	require.NoError(m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(err)
 	state, err := m.CurrentState(ctx)
 	require.NoError(err)
 	want := &schema.State{
@@ -87,7 +88,8 @@ func Test_ServerEnumChanges(t *testing.T) {
 	))
 	require.NoError(err)
 
-	require.NoError(m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(err)
 	state, err = m.CurrentState(ctx)
 	require.NoError(err)
 

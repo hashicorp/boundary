@@ -497,30 +497,30 @@ func TestDelete_Static(t *testing.T) {
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
-		name    string
-		scopeId string
-		req     *pbs.DeleteHostSetRequest
-		res     *pbs.DeleteHostSetResponse
-		err     error
+		name      string
+		projectId string
+		req       *pbs.DeleteHostSetRequest
+		res       *pbs.DeleteHostSetResponse
+		err       error
 	}{
 		{
-			name:    "Delete an Existing Host Set",
-			scopeId: proj.GetPublicId(),
+			name:      "Delete an Existing Host Set",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
 		},
 		{
-			name:    "Delete bad id Host Set",
-			scopeId: proj.GetPublicId(),
+			name:      "Delete bad id Host Set",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: static.HostSetPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Bad Host Id formatting",
-			scopeId: proj.GetPublicId(),
+			name:      "Bad Host Id formatting",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: static.HostSetPrefix + "_bad_format",
 			},
@@ -530,7 +530,7 @@ func TestDelete_Static(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteHostSet(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			got, gErr := s.DeleteHostSet(auth.DisabledAuthTestContext(iamRepoFn, tc.projectId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
@@ -574,30 +574,30 @@ func TestDelete_Plugin(t *testing.T) {
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
-		name    string
-		scopeId string
-		req     *pbs.DeleteHostSetRequest
-		res     *pbs.DeleteHostSetResponse
-		err     error
+		name      string
+		projectId string
+		req       *pbs.DeleteHostSetRequest
+		res       *pbs.DeleteHostSetResponse
+		err       error
 	}{
 		{
-			name:    "Delete an Existing Host Set",
-			scopeId: proj.GetPublicId(),
+			name:      "Delete an Existing Host Set",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: h.GetPublicId(),
 			},
 		},
 		{
-			name:    "Delete bad id Host Set",
-			scopeId: proj.GetPublicId(),
+			name:      "Delete bad id Host Set",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: plugin.HostSetPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name:    "Bad Host Id formatting",
-			scopeId: proj.GetPublicId(),
+			name:      "Bad Host Id formatting",
+			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
 				Id: plugin.HostSetPrefix + "_bad_format",
 			},
@@ -607,7 +607,7 @@ func TestDelete_Plugin(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, gErr := s.DeleteHostSet(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			got, gErr := s.DeleteHostSet(auth.DisabledAuthTestContext(iamRepoFn, tc.projectId), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteHostSet(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)

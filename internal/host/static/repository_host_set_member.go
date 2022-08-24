@@ -17,10 +17,10 @@ import (
 // slice of all hosts in setId. A host must belong to the same catalog as
 // the set to be added. The version must match the current version of the
 // setId in the repository.
-func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, error) {
+func (r *Repository) AddSetMembers(ctx context.Context, projectId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, error) {
 	const op = "static.(Repository).AddSetMembers"
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if setId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no set id")
@@ -38,7 +38,7 @@ func (r *Repository) AddSetMembers(ctx context.Context, scopeId string, setId st
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	wrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -161,10 +161,10 @@ func getHosts(ctx context.Context, reader db.Reader, setId string, limit int) ([
 // DeleteSetMembers deletes hostIds from setId in the repository. It
 // returns the number of hosts deleted from the set. The version must match
 // the current version of the setId in the repository.
-func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) (int, error) {
+func (r *Repository) DeleteSetMembers(ctx context.Context, projectId string, setId string, version uint32, hostIds []string, opt ...Option) (int, error) {
 	const op = "static.(Repository).DeleteSetMembers"
-	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if setId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no set id")
@@ -182,7 +182,7 @@ func (r *Repository) DeleteSetMembers(ctx context.Context, scopeId string, setId
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
-	wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	wrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -229,10 +229,10 @@ func deleteMembers(ctx context.Context, w db.Writer, members []interface{}) ([]*
 // hosts added or deleted. A host must belong to the same catalog as the
 // set to be added. The version must match the current version of the setId
 // in the repository. If hostIds is empty, all hosts will be removed setId.
-func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, int, error) {
+func (r *Repository) SetSetMembers(ctx context.Context, projectId string, setId string, version uint32, hostIds []string, opt ...Option) ([]*Host, int, error) {
 	const op = "static.(Repository).SetSetMembers"
-	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if setId == "" {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no set id")
@@ -274,7 +274,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, scopeId string, setId st
 
 	var hosts []*Host
 	if len(changes) > 0 {
-		wrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+		wrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 		}

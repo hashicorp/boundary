@@ -185,7 +185,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 						TargetId:    users[userIndex].targetId,
 						HostSetId:   users[userIndex].hostSetId,
 						AuthTokenId: users[userIndex].authTokenId,
-						ScopeId:     users[userIndex].scopeId,
+						ProjectId:   users[userIndex].scopeId,
 						Endpoint:    "tcp://127.0.0.1:22",
 					})
 					cycleSessionStates(t, ctx, sess, sessRepo, connRepo, conn, scenario.connsPerSession)

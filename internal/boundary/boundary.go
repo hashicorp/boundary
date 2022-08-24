@@ -33,6 +33,6 @@ type Resource interface {
 // some common information necessary for calculating authz.
 type AuthzProtectedEntity interface {
 	Entity
-	GetScopeId() string
+	GetProjectId() string
 	GetUserId() string
 }

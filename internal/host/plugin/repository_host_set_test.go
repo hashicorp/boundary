@@ -466,7 +466,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		"one": "two",
 	}))
 	require.NoError(t, err)
-	scopeWrapper, err := dbKmsCache.GetWrapper(ctx, testCatalog.GetScopeId(), kms.KeyPurposeDatabase)
+	scopeWrapper, err := dbKmsCache.GetWrapper(ctx, testCatalog.GetProjectId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	require.NoError(t, testCatalogSecret.encrypt(ctx, scopeWrapper))
 	err = dbRW.Create(ctx, testCatalogSecret)
@@ -789,7 +789,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 	tests := []struct {
 		name                    string
 		startingSet             func(*testing.T, context.Context) (*HostSet, []*Host)
-		withScopeId             *string
+		withProjectId           *string
 		withEmptyPluginMap      bool
 		withPluginError         error
 		changeFuncs             []changeHostSetFunc
@@ -818,10 +818,10 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantIsErr:   errors.InvalidParameter,
 		},
 		{
-			name:        "missing scope id",
-			startingSet: setupBareHostSet,
-			withScopeId: func() *string { a := ""; return &a }(),
-			wantIsErr:   errors.InvalidParameter,
+			name:          "missing project id",
+			startingSet:   setupBareHostSet,
+			withProjectId: func() *string { a := ""; return &a }(),
+			wantIsErr:     errors.InvalidParameter,
 		},
 		{
 			name:        "empty field mask",
@@ -845,11 +845,11 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantIsErr:   errors.VersionMismatch,
 		},
 		{
-			name:        "mismatched scope id to catalog scope",
-			startingSet: setupBareHostSet,
-			withScopeId: func() *string { a := "badid"; return &a }(),
-			fieldMask:   []string{"name"},
-			wantIsErr:   errors.InvalidParameter,
+			name:          "mismatched project id to catalog project",
+			startingSet:   setupBareHostSet,
+			withProjectId: func() *string { a := "badid"; return &a }(),
+			fieldMask:     []string{"name"},
+			wantIsErr:     errors.InvalidParameter,
 		},
 		{
 			name:               "plugin lookup error",
@@ -1240,9 +1240,9 @@ func TestRepository_UpdateSet(t *testing.T) {
 				workingSet = cf(workingSet)
 			}
 
-			scopeId := testCatalog.ScopeId
-			if tt.withScopeId != nil {
-				scopeId = *tt.withScopeId
+			projectId := testCatalog.ProjectId
+			if tt.withProjectId != nil {
+				projectId = *tt.withProjectId
 			}
 
 			version := origSet.Version
@@ -1250,7 +1250,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				version = tt.version
 			}
 
-			gotUpdatedSet, gotHosts, gotPlugin, gotNumUpdated, err := repo.UpdateSet(ctx, scopeId, workingSet, version, tt.fieldMask)
+			gotUpdatedSet, gotHosts, gotPlugin, gotNumUpdated, err := repo.UpdateSet(ctx, projectId, workingSet, version, tt.fieldMask)
 			t.Cleanup(func() { gotOnUpdateCallCount = 0 })
 			if tt.wantIsErr != 0 {
 				require.Equal(db.NoRowsAffected, gotNumUpdated)
@@ -1323,7 +1323,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		workingSet := origSet.clone()
 		workingSet = changePreferredEndpoints(nil)(workingSet)
 
-		gotUpdatedSet, _, _, gotNumUpdated, err := repo.UpdateSet(ctx, testCatalog.ScopeId, workingSet, origSet.Version, []string{"PreferredEndpoints"})
+		gotUpdatedSet, _, _, gotNumUpdated, err := repo.UpdateSet(ctx, testCatalog.ProjectId, workingSet, origSet.Version, []string{"PreferredEndpoints"})
 		t.Cleanup(func() { gotOnUpdateCallCount = 0 })
 
 		require.NoError(t, err)

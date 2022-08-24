@@ -67,7 +67,7 @@ func TestGetSession(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     p.GetPublicId(),
+		ProjectId:   p.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -101,7 +101,7 @@ func TestGetSession(t *testing.T) {
 	}{
 		{
 			name:    "Get a session",
-			scopeId: sess.ScopeId,
+			scopeId: sess.ProjectId,
 			req:     &pbs.GetSessionRequest{Id: sess.GetPublicId()},
 			res:     &pbs.GetSessionResponse{Item: wireSess},
 		},
@@ -185,7 +185,7 @@ func TestList_Self(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     pWithSessions.GetPublicId(),
+		ProjectId:   pWithSessions.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -279,7 +279,7 @@ func TestList(t *testing.T) {
 			TargetId:    tar.GetPublicId(),
 			HostSetId:   hs.GetPublicId(),
 			AuthTokenId: at.GetPublicId(),
-			ScopeId:     pWithSessions.GetPublicId(),
+			ProjectId:   pWithSessions.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
 
@@ -318,7 +318,7 @@ func TestList(t *testing.T) {
 			TargetId:    tarOther.GetPublicId(),
 			HostSetId:   hsOther.GetPublicId(),
 			AuthTokenId: atOther.GetPublicId(),
-			ScopeId:     pWithOtherSessions.GetPublicId(),
+			ProjectId:   pWithOtherSessions.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
 
@@ -356,7 +356,7 @@ func TestList(t *testing.T) {
 			TargetId:    tar.GetPublicId(),
 			HostSetId:   hs.GetPublicId(),
 			AuthTokenId: at.GetPublicId(),
-			ScopeId:     pWithSessions.GetPublicId(),
+			ProjectId:   pWithSessions.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
 
@@ -541,7 +541,7 @@ func TestCancel(t *testing.T) {
 		TargetId:    tar.GetPublicId(),
 		HostSetId:   hs.GetPublicId(),
 		AuthTokenId: at.GetPublicId(),
-		ScopeId:     p.GetPublicId(),
+		ProjectId:   p.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
@@ -575,13 +575,13 @@ func TestCancel(t *testing.T) {
 	}{
 		{
 			name:    "Cancel a session",
-			scopeId: sess.ScopeId,
+			scopeId: sess.ProjectId,
 			req:     &pbs.CancelSessionRequest{Id: sess.GetPublicId()},
 			res:     &pbs.CancelSessionResponse{Item: wireSess},
 		},
 		{
 			name:    "Already canceled",
-			scopeId: sess.ScopeId,
+			scopeId: sess.ProjectId,
 			req:     &pbs.CancelSessionRequest{Id: sess.GetPublicId()},
 			res:     &pbs.CancelSessionResponse{Item: wireSess},
 		},

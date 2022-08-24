@@ -6,6 +6,7 @@ alter table host_plugin_host
 create trigger update_version_column after update on host_plugin_host
   for each row execute procedure update_version_column();
 
+-- Updated view in 44/02_hosts.up.sql
 -- host_plugin_host_with_value_obj_and_set_memberships is useful for reading a
 -- plugin host with its associated value objects (ip addresses, dns names) and
 -- set membership as columns with delimited values. The delimiter depends on

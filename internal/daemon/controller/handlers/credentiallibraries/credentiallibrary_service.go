@@ -465,7 +465,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = handlers.NotFoundError()
 			return res
 		}
-		opts = append(opts, auth.WithScopeId(cs.GetScopeId()))
+		opts = append(opts, auth.WithScopeId(cs.GetProjectId()))
 	default:
 		res.Error = errors.New(ctx, errors.InvalidParameter, op, "unrecognized credential store subtype from id")
 		return res

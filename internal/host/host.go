@@ -9,7 +9,7 @@ const Domain = "host"
 // catalogs.
 type Catalog interface {
 	boundary.Resource
-	GetScopeId() string
+	GetProjectId() string
 }
 
 // Set contains the common methods across all the different types of host sets.
