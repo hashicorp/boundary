@@ -113,6 +113,7 @@ type Command struct {
 	FlagVersion           int
 	FlagRecursive         bool
 	FlagFilter            string
+	FlagRewrap            bool
 
 	// Attribute values
 	FlagAttributes string
