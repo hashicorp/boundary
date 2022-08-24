@@ -79,23 +79,6 @@ begin;
   end;
   $$ language plpgsql;
 
-  -- Replaces target_all_subtypes defined in 1/01_server_tags_migrations.up.sql
-  drop view target_all_subtypes;
-  create view target_all_subtypes as
-  select public_id,
-         project_id,
-         name,
-         description,
-         default_port,
-         session_max_seconds,
-         session_connection_limit,
-         version,
-         create_time,
-         update_time,
-         worker_filter,
-         'tcp' as type
-    from target_tcp;
-
   -- warehouse
 
   -- Replaces whx_host_dimension_source defined in 26/02_wh_network_address_dimensions.up.sql.
@@ -231,5 +214,22 @@ begin;
         and p.type = 'project'
         and o.public_id = p.parent_id
         and o.type = 'org';
+
+  -- Replaces target_all_subtypes defined in 1/01_server_tags_migrations.up.sql
+  drop view target_all_subtypes;
+  create view target_all_subtypes as
+  select public_id,
+         project_id,
+         name,
+         description,
+         default_port,
+         session_max_seconds,
+         session_connection_limit,
+         version,
+         create_time,
+         update_time,
+         worker_filter,
+         'tcp' as type
+  from target_tcp;
 
 commit;
