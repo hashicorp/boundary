@@ -8,11 +8,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-dbw"
 )
 
 // Cloneable provides a cloning interface
@@ -518,7 +518,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			"Name":                   target.GetName(),
 			"Description":            target.GetDescription(),
