@@ -108,30 +108,6 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []interface{}) {
 	return where, args
 }
 
-// list will return a listing of resources and honor the WithLimit option or the
-// repo defaultLimit.  Supports WithOrder option.
-func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
-	const op = "session.(Repository).list"
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	var dbOpts []db.Option
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	dbOpts = append(dbOpts, db.WithLimit(limit))
-	switch opts.withOrderByCreateTime {
-	case db.AscendingOrderBy:
-		dbOpts = append(dbOpts, db.WithOrder("create_time asc"))
-	case db.DescendingOrderBy:
-		dbOpts = append(dbOpts, db.WithOrder("create_time"))
-	}
-	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	return nil
-}
-
 func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessionListView, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).convertToSessions"
 	opts := getOpts(opt...)
