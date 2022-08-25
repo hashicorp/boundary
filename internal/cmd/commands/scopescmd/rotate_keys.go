@@ -31,7 +31,7 @@ func (c *RotateKeysCommand) Help() string {
 		"",
 		"  Generate new keys for a scope and all nested scopes. Example:",
 		"",
-		`    $ boundary scopes rotate-keys -scope-id global`, // how to show rewrap?
+		`    $ boundary scopes rotate-keys -scope-id global`,
 		"",
 		"",
 	}) + c.Flags().Help()
@@ -106,7 +106,7 @@ func (c *RotateKeysCommand) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "json":
-		if ok := c.PrintJsonItems(result.GetResponse()); !ok {
+		if ok := c.PrintJsonItem(result.GetResponse()); !ok {
 			return base.CommandCliError
 		}
 
