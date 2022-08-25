@@ -5,35 +5,53 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## Next
 
 ### Bug Fixes
-* Sessions: Fix an issue where sessions could not have more than one connection 
-([Issue](https://github.com/hashicorp/boundary/issues/2362)), ([PR](https://github.com/hashicorp/boundary/pull/2369))
+
+* sessions: Fix an issue where sessions could not have more than one connection
+([Issue](https://github.com/hashicorp/boundary/issues/2362)),
+([PR](https://github.com/hashicorp/boundary/pull/2369))
+
+### Deprecations/Changes
+
+* In 0.5.0, the `add-host-sets`, `remove-host-sets`, and `set-host-sets` actions
+on targets were deprecated in favor of `add-host-sources`,
+`remove-host-sources`, and `set-host-sources`. Originally these actions and API
+calls were to be removed in 0.6, but this was delayed to give extra time for
+clients to switch over. This has now been fully switched over. A database
+migration will modify any grants in roles to have the new actions. This same
+changeover has been made for `add-/remove-/set-credential-libraries` to
+`add-/remove-/set-credential-sources`, although those actions would only be in
+grant strings in very rare circumstances as the `-sources` actions replaced the
+`-libraries` actions very quickly.
+([PR](https://github.com/hashicorp/boundary/pull/2393))
 
 ## 0.10.2 (2022/08/23)
 
 ### Security
 
-* Fix security vulnerability CVE-2022-36130, Boundary up to 0.10.1 did not properly perform  
-  authorization checks to ensure the resources were associated with the correct scopes,  
-  allowing potential privilege escalation for authorized users of another scope.
+* Fix security vulnerability CVE-2022-36130: Boundary up to 0.10.1 did not
+  properly perform data integrity checks to ensure that host-set and
+  credential-source resources being added to a target were associated with the
+  same scope as the target. This could allow privilege escalation via allowing a
+  user able to modify a target to provide connections to unintended hosts.
   [[HCSEC-2022-17](https://discuss.hashicorp.com/t/hcsec-2022017-boundary-allowed-access-to-host-sets-and-credential-sources-for-authorized-users-of-another-scope/43493)]
 
 ## 0.10.1 (2022/08/11)
 
 ### Bug Fixes
 
-* db: Fix an issue with migrations affecting clusters that contain 
-  credential libraries or static credentials.
+* db: Fix an issue with migrations affecting clusters that contain credential
+  libraries or static credentials.
   ([Issue](https://github.com/hashicorp/boundary/issues/2349)),
   ([PR](https://github.com/hashicorp/boundary/pull/2351)).
-* Managed Groups: Fix an issue where the `filter` field is not sent by
-  admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
-* Host Sets: Fix an issue causing host sets to not display in UI when using the aws plugin 
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/1251))
-* Plugins: Fixes regression from 0.9.0 causing a failure to start when using
+* managed groups: Fix an issue where the `filter` field is not sent by admin UI
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
+* host sets: Fix an issue causing host sets to not display in UI when using the
+  aws plugin ([PR](https://github.com/hashicorp/boundary-ui/pull/1251))
+* plugins: Fixes regression from 0.9.0 causing a failure to start when using
   multiple KMS blocks of the same type
   ([PR1](https://github.com/hashicorp/go-secure-stdlib/pull/43),
   [PR2](https://github.com/hashicorp/boundary/pull/2346))
-* CLI: Fixed errors related to URL detection when passing in `-attr` or
+* cli: Fixed errors related to URL detection when passing in `-attr` or
   `-secret` values that contained colons
   ([PR](https://github.com/hashicorp/boundary/pull/2353))
 
