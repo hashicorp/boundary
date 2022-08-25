@@ -22,6 +22,18 @@ worker {
 }
 ```
 
+## KMS Configuration
+PKI Workers credentials can be encrypted by including an optional KMS stanza with the purpose `worker-auth-storage`.
+
+```hcl
+kms "aead" {
+  purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "worker-auth-storage"
+}
+```
+
 ~> **Note:** `name` and `description` fields are not valid config fields for PKI
 workers. These fields are only valid for [KMS Workers][]. `name` and
 `description` can only be set for PKI workers through the API.
@@ -52,6 +64,13 @@ worker {
     type   = ["prod", "webservers"]
     region = ["us-east-1"]
   }
+}
+
+kms "aead" {
+  purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "worker-auth-storage"
 }
 
 
