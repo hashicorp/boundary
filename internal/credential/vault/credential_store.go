@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"context"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
@@ -168,7 +169,7 @@ func (cs *CredentialStore) ClientCertificate() *ClientCertificate {
 	return cs.clientCert
 }
 
-func (cs *CredentialStore) client() (*client, error) {
+func (cs *CredentialStore) client(ctx context.Context) (*client, error) {
 	const op = "vault.(CredentialStore).client"
 	clientConfig := &clientConfig{
 		Addr:          cs.VaultAddress,
@@ -183,9 +184,9 @@ func (cs *CredentialStore) client() (*client, error) {
 		clientConfig.ClientKey = cs.clientCert.GetCertificateKey()
 	}
 
-	c, err := newClient(clientConfig)
+	c, err := newClient(ctx, clientConfig)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return c, nil
 }
