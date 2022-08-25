@@ -85,6 +85,8 @@ for permanent installations, are detailed in our [Installation Guide](https://ww
 
 ### Build and Start Boundary in Dev Mode
 
+**NOTE**: Do _not_ use the `main` branch except for dev or test cases. Boundary 0.10 introduced release branches which should be safe to track, however, migrations in `main` may be renumbered if needed. The Boundary team will not be able to provide assistance if running `main` over the long term results in migration breakages.
+
 If you have the following requirements met locally:
 - Golang v1.19 or greater
 - Docker
