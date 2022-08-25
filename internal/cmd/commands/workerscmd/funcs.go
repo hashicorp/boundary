@@ -2,6 +2,7 @@ package workerscmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -101,8 +102,8 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 		switch name {
 		case "tag":
 			var nullCheckFn func() bool = nil
-			switch c.Func {
-			case "set-worker-tags":
+			switch {
+			case strings.ToLower(c.Func[:3]) == "set":
 				nullCheckFn = func() bool { return true }
 			default:
 			}
