@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	vault "github.com/hashicorp/vault/api"
 )
@@ -385,7 +385,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
-	dbMask, nullFields := dbcommon.BuildUpdatePaths(
+	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:          cs.Name,
 			descriptionField:   cs.Description,
@@ -407,7 +407,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		clientCert = cs.ClientCertificate().GetCertificate()
 		clientCertKey = cs.ClientCertificate().GetCertificateKey()
 	}
-	certDbMask, certNullFields := dbcommon.BuildUpdatePaths(
+	certDbMask, certNullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			certificateField:    clientCert,
 			certificateKeyField: clientCertKey,

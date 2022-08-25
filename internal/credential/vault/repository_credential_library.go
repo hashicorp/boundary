@@ -7,11 +7,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
@@ -157,7 +157,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, projectId stri
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:            l.Name,
 			descriptionField:     l.Description,

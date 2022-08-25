@@ -7,11 +7,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/go-dbw"
 )
 
 // CreateUsernamePasswordCredential inserts c into the repository and returns a new
@@ -287,7 +287,7 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
-	dbMask, nullFields := dbcommon.BuildUpdatePaths(
+	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:        c.Name,
 			descriptionField: c.Description,
@@ -403,7 +403,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
-	dbMask, nullFields := dbcommon.BuildUpdatePaths(
+	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:                 c.Name,
 			descriptionField:          c.Description,

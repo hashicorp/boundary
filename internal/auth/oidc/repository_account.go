@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 )
 
 // CreateAccount inserts an Account, a, into the repository and returns a
@@ -231,7 +231,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			NameField:        a.Name,
 			DescriptionField: a.Description,

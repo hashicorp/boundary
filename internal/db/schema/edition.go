@@ -63,7 +63,7 @@ func RegisterEdition(name string, dialect Dialect, fs embed.FS, priority int, op
 
 	ee, err := edition.New(name, dialect, fs, priority, opt...)
 	if err != nil {
-		panic(err.Error)
+		panic(err.Error())
 	}
 	e = append(e, ee)
 	e.Sort()

@@ -8,7 +8,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-dbw"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -59,7 +58,7 @@ func (q *Queue) add(ctx context.Context, m proto.Message, typeName string, t OpT
 		if nullPaths == nil {
 			nullPaths = []string{}
 		}
-		i, _, _, err := common.Intersection(fMasks, nullPaths)
+		i, _, _, err := dbw.Intersection(fMasks, nullPaths)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}

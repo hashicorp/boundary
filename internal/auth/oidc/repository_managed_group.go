@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 )
 
 // CreateManagedGroup inserts an ManagedGroup, mg, into the repository and
@@ -197,7 +197,7 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			NameField:        mg.Name,
 			DescriptionField: mg.Description,
