@@ -4,28 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-
-	"github.com/hashicorp/boundary/api"
 )
-
-type CertificateAuthority struct {
-	Certs []*Certificate `json:"certs,omitempty"`
-
-	response *api.Response
-}
-
-type CertificateAuthorityReadResult struct {
-	Item     *CertificateAuthority
-	response *api.Response
-}
-
-func (n CertificateAuthorityReadResult) GetItem() *CertificateAuthority {
-	return n.Item
-}
-
-func (n CertificateAuthorityReadResult) GetResponse() *api.Response {
-	return n.response
-}
 
 type CertificateAuthorityReinitializeResult = CertificateAuthorityReadResult
 
