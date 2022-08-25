@@ -717,9 +717,9 @@ func tagsToMapProto(in map[string][]string) (map[string]*structpb.ListValue, err
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetWorkerRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
 }

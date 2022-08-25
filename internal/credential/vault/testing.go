@@ -738,9 +738,9 @@ func (v *TestVaultServer) addPolicy(t testing.TB, name string, pc pathCapabiliti
 // standard set of polices attached to tokens created with v.CreateToken.
 // The policy is defined as:
 //
-//   path "mountPath/*" {
-//     capabilities = ["create", "read", "update", "delete", "list"]
-//   }
+//	path "mountPath/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
 func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
@@ -802,9 +802,9 @@ func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secre
 // standard set of polices attached to tokens created with v.CreateToken.
 // The policy is defined as:
 //
-//   path "secret/*" {
-//     capabilities = ["create", "read", "update", "delete", "list"]
-//   }
+//	path "secret/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
 //
 // All options are ignored.
 func (v *TestVaultServer) AddKVPolicy(t testing.TB, _ ...TestOption) {
@@ -872,9 +872,9 @@ func NewTestVaultServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 // to the standard set of polices attached to tokens created with
 // v.CreateToken. The policy is defined as:
 //
-//   path "mountPath/*" {
-//     capabilities = ["create", "read", "update", "delete", "list"]
-//   }
+//	path "mountPath/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
 //
 // MountDatabase returns a TestDatabase for testing credentials from the
 // mount.

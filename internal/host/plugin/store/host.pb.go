@@ -429,7 +429,8 @@ func (x *HostCatalogSecret) GetKeyId() string {
 }
 
 // TODO: Add a field which tracks if the host in cache should be considered
-//       invalid and fall back to the plugin provided data.
+//
+//	invalid and fall back to the plugin provided data.
 type Host struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

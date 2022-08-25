@@ -599,6 +599,7 @@ type ChangeStateRequest struct {
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
+	//
 	//	*ChangeStateRequest_Attributes
 	//	*ChangeStateRequest_OidcChangeStateAttributes
 	Attrs isChangeStateRequest_Attrs `protobuf_oneof:"attrs"`
@@ -867,6 +868,7 @@ type AuthenticateRequest struct {
 	// to keep it safe from rogue JS in the browser.
 	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
+	//
 	//	*AuthenticateRequest_Attributes
 	//	*AuthenticateRequest_PasswordLoginAttributes
 	//	*AuthenticateRequest_OidcStartAttributes
@@ -1025,6 +1027,7 @@ type AuthenticateResponse struct {
 	// The type of the token returned. Either "cookie" or "token".
 	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
+	//
 	//	*AuthenticateResponse_Attributes
 	//	*AuthenticateResponse_OidcAuthMethodAuthenticateStartResponse
 	//	*AuthenticateResponse_OidcAuthMethodAuthenticateCallbackResponse

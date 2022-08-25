@@ -11,6 +11,7 @@ import (
 
 // postgres contains the sql for creating the base tables used to manage
 // migrations.
+//
 //go:embed base/postgres
 var postgres embed.FS
 

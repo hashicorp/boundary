@@ -9,7 +9,7 @@
 // expiration time and a last accessed time which are used to determine if the
 // token can still be used.
 //
-// Repository
+// # Repository
 //
 // A repository provides methods for creating, validating a provided token value,
 // and deleting the auth token.  At validation time if the token is determined

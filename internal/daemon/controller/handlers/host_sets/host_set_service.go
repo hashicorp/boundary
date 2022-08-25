@@ -937,11 +937,11 @@ func toStoragePluginSet(ctx context.Context, catalogId string, item *pb.HostSet)
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
-//  * The type asserted by the ID and/or field is known
-//  * If relevant, the type derived from the id prefix matches what is claimed by the type field
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
+//   - The type asserted by the ID and/or field is known
+//   - If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostSetRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix)
 }

@@ -619,7 +619,6 @@ func Parse(d string) (*Config, error) {
 }
 
 // supportControllersRawConfig returns either initialUpstreamsRaw or controllersRaw depending on which is populated. Errors when both fields are populated.
-//
 func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, error) {
 	switch {
 	case initialUpstreamsRaw == nil && controllersRaw != nil:
