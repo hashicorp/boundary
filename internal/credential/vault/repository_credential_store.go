@@ -74,11 +74,11 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		cs.clientCert.StoreId = id
 	}
 
-	client, err := cs.client()
+	client, err := cs.client(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create vault client"))
 	}
-	tokenLookup, err := client.lookupToken()
+	tokenLookup, err := client.lookupToken(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup vault token"))
 	}
@@ -86,7 +86,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, err
 	}
 
-	available, err := client.capabilities(requiredCapabilities.paths())
+	available, err := client.capabilities(ctx, requiredCapabilities.paths())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get vault capabilities"))
 	}
@@ -96,7 +96,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			errors.New(ctx, errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
 	}
 
-	renewedToken, err := client.renewToken()
+	renewedToken, err := client.renewToken(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
 	}
@@ -473,12 +473,12 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	}
 
 	var token *Token
-	client, err := updatedStore.client()
+	client, err := updatedStore.client(ctx)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get client for updated store"))
 	}
 	if validateToken {
-		tokenLookup, err := client.lookupToken()
+		tokenLookup, err := client.lookupToken(ctx)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("cannot lookup token for updated store"))
 		}
@@ -486,7 +486,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 
-		available, err := client.capabilities(requiredCapabilities.paths())
+		available, err := client.capabilities(ctx, requiredCapabilities.paths())
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get vault capabilities"))
 		}
@@ -498,7 +498,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		}
 	}
 	if updateToken {
-		renewedToken, err := client.renewToken()
+		renewedToken, err := client.renewToken(ctx)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
 		}

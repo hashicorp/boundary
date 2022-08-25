@@ -181,13 +181,13 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		return nil
 	}
 
-	vc, err := s.client()
+	vc, err := s.client(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
 	var respErr *vault.ResponseError
-	renewedToken, err := vc.renewToken()
+	renewedToken, err := vc.renewToken(ctx)
 	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusForbidden {
 		// Vault returned a 403 when attempting a renew self, the token is either expired
 		// or malformed.  Set status to "expired" so credentials created with token can be
@@ -411,13 +411,13 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 		return nil
 	}
 
-	vc, err := s.client()
+	vc, err := s.client(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
 	var respErr *vault.ResponseError
-	err = vc.revokeToken()
+	err = vc.revokeToken(ctx)
 	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusForbidden {
 		// Vault returned a 403 when attempting a revoke self, the token is already expired.
 		// Clobber error and set status to "revoked" below.
@@ -561,7 +561,7 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 		return errors.Wrap(ctx, err, op)
 	}
 
-	vc, err := c.client()
+	vc, err := c.client(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -570,7 +570,7 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 	var respErr *vault.ResponseError
 	// Subtract last renewal time from previous expiration time to get lease duration
 	leaseDuration := c.ExpirationTime.AsTime().Sub(c.LastRenewalTime.AsTime())
-	renewedCred, err := vc.renewLease(c.ExternalId, leaseDuration)
+	renewedCred, err := vc.renewLease(ctx, c.ExternalId, leaseDuration)
 	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusBadRequest {
 		// Vault returned a 400 when attempting a renew lease, the lease is either expired
 		// or the leaseId is malformed.  Set status to "expired".
@@ -720,14 +720,14 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 		return errors.Wrap(ctx, err, op)
 	}
 
-	vc, err := c.client()
+	vc, err := c.client(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
 	cred := c.toCredential()
 	var respErr *vault.ResponseError
-	err = vc.revokeLease(c.ExternalId)
+	err = vc.revokeLease(ctx, c.ExternalId)
 	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusBadRequest {
 		// Vault returned a 400 when attempting a revoke lease, the lease is already expired.
 		// Clobber error and set status to "revoked" below.

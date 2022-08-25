@@ -627,6 +627,7 @@ func (v *TestVaultServer) client(t testing.TB) *client {
 
 func (v *TestVaultServer) clientUsingToken(t testing.TB, token string) *client {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 	conf := &clientConfig{
 		Addr:       v.Addr,
@@ -636,10 +637,10 @@ func (v *TestVaultServer) clientUsingToken(t testing.TB, token string) *client {
 		ClientKey:  v.ClientKey,
 	}
 
-	client, err := newClient(conf)
+	client, err := newClient(ctx, conf)
 	require.NoError(err)
 	require.NotNil(client)
-	require.NoError(client.ping())
+	require.NoError(client.ping(ctx))
 	return client
 }
 
@@ -823,10 +824,11 @@ func (v *TestVaultServer) AddKVPolicy(t testing.TB, _ ...TestOption) {
 // https://www.vaultproject.io/api-docs/secret/kv/kv-v2#create-update-secret
 func (v *TestVaultServer) CreateKVSecret(t testing.TB, p string, data []byte) *vault.Secret {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 
 	vc := v.client(t)
-	cred, err := vc.post(path.Join("secret", "data", p), data)
+	cred, err := vc.post(ctx, path.Join("secret", "data", p), data)
 	require.NoError(err)
 	return cred
 }
