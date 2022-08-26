@@ -41,7 +41,6 @@ var flagsCertificateAuthority = map[string][]string{
 }
 
 func (c *WorkerCACommand) Help() string {
-	initFlags()
 	switch c.Func {
 	case "read":
 		return base.WrapForHelpText([]string{
@@ -67,17 +66,21 @@ func (c *WorkerCACommand) Help() string {
 	return base.WrapForHelpText([]string{
 		"Usage: boundary workers certificate-authority [options]",
 		"",
-		"  Manage the certificate authority used to authorize Boundary workers:",
+		"  This command allows for management of the certificate authority used to authorize Boundary workers. Example:",
+		"",
+		"    Read the current certificate authority:",
 		"",
 		`    $ boundary workers certificate-authority read`,
 		"",
+		"  Please see the certificate-authority subcommand help for detailed usage information.",
 		"",
-	}) + c.Flags().Help()
+		"",
+	})
 }
 
 func (c *WorkerCACommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
-	f := set.NewFlagSet("Command Options")
+	f := set.NewFlagSet("Worker Certificate Authority Options")
 	common.PopulateCommonFlags(c.Command, f, "certificate authority", flagsCertificateAuthority, c.Func)
 
 	return set
