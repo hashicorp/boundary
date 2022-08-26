@@ -726,12 +726,12 @@ func (s Service) listCertificateAuthorityFromRepo(ctx context.Context) (*types.R
 }
 
 func certificateAuthorityToProto(in *types.RootCertificates) *pb.CertificateAuthority {
-	certs := make([]*pb.Certificate, 2)
+	certs := make([]*pb.Certificate, 0)
 
 	current := in.GetCurrent()
 	currentSha := sha256.Sum256(current.PublicKeyPkix)
 	currentCert := &pb.Certificate{
-		Id:              current.Id,
+		Id:              string(server.CurrentState),
 		PublicKeySha256: hex.EncodeToString(currentSha[:]),
 		NotBeforeTime:   current.NotBefore,
 		NotAfterTime:    current.NotAfter,
@@ -741,7 +741,7 @@ func certificateAuthorityToProto(in *types.RootCertificates) *pb.CertificateAuth
 	next := in.GetNext()
 	nextSha := sha256.Sum256(next.PublicKeyPkix)
 	nextCert := &pb.Certificate{
-		Id:              next.Id,
+		Id:              string(server.NextState),
 		PublicKeySha256: hex.EncodeToString(nextSha[:]),
 		NotBeforeTime:   next.NotBefore,
 		NotAfterTime:    next.NotAfter,

@@ -867,7 +867,7 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_WorkerService_ReadCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_WorkerService_ReadCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReadCertificateAuthority_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -892,7 +892,7 @@ func RegisterWorkerServiceHandlerServer(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_WorkerService_ReinitializeCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_WorkerService_ReinitializeCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReinitializeCertificateAuthority_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1153,7 +1153,7 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_WorkerService_ReadCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_WorkerService_ReadCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReadCertificateAuthority_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1175,7 +1175,7 @@ func RegisterWorkerServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 			return
 		}
 
-		forward_WorkerService_ReinitializeCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_WorkerService_ReinitializeCertificateAuthority_0(annotatedContext, mux, outboundMarshaler, w, req, response_WorkerService_ReinitializeCertificateAuthority_0{resp}, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -1242,6 +1242,24 @@ type response_WorkerService_RemoveWorkerTags_0 struct {
 
 func (m response_WorkerService_RemoveWorkerTags_0) XXX_ResponseBody() interface{} {
 	response := m.Message.(*RemoveWorkerTagsResponse)
+	return response.Item
+}
+
+type response_WorkerService_ReadCertificateAuthority_0 struct {
+	proto.Message
+}
+
+func (m response_WorkerService_ReadCertificateAuthority_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*ReadCertificateAuthorityResponse)
+	return response.Item
+}
+
+type response_WorkerService_ReinitializeCertificateAuthority_0 struct {
+	proto.Message
+}
+
+func (m response_WorkerService_ReinitializeCertificateAuthority_0) XXX_ResponseBody() interface{} {
+	response := m.Message.(*ReinitializeCertificateAuthorityResponse)
 	return response.Item
 }
 

@@ -146,6 +146,7 @@ service WorkerService {
   rpc ReadCertificateAuthority(ReadCertificateAuthorityRequest) returns (ReadCertificateAuthorityResponse) {
     option (google.api.http) = {
       get: "/v1/workers:read-certificate-authority"
+      response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Retrieves root certificates used for worker authentication."
@@ -156,6 +157,7 @@ service WorkerService {
   rpc ReinitializeCertificateAuthority(ReinitializeCertificateAuthorityRequest) returns (ReinitializeCertificateAuthorityResponse) {
     option (google.api.http) = {
       post: "/v1/workers:reinitialize-certificate-authority"
+      response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
       summary: "Reinitializes root certificates used for worker authentication."
