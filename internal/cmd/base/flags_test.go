@@ -92,7 +92,8 @@ func TestFlagSet_StringSliceMapVar_NullCheck(t *testing.T) {
 		{
 			name:       "null",
 			setStrings: []string{"null"},
-			wantTarget: nil,
+			wantTarget: map[string][]string{"null": nil},
+			// this target is then converted to a nil value in workerscmd/func.go
 		},
 		{
 			name:            "glass-half-null",

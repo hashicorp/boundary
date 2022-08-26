@@ -775,7 +775,7 @@ func (s *stringSliceMapValue) Set(val string) error {
 			}
 			// Set target to nil and return
 			if kv == "null" {
-				*s.target = nil
+				*s.target = map[string][]string{"null": nil}
 				s.isNull = true
 				return nil
 			}

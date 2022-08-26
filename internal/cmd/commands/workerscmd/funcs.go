@@ -124,6 +124,16 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]workers.Op
 			c.UI.Error("No tags supplied via -tag")
 			return false
 		}
+	case "set-worker-tags":
+		switch len(c.FlagTags) {
+		case 0:
+			c.UI.Error("No tags supplied via -tag")
+			return false
+		case 1:
+			if c.FlagTags["null"] == nil {
+				c.FlagTags = nil
+			}
+		}
 	}
 	return true
 }
