@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 )
 
-func (r *Repository) listRevokePrivateStores(ctx context.Context, opt ...Option) ([]*privateStore, error) {
+func (r *Repository) listRevokePrivateStores(ctx context.Context, opt ...Option) ([]*clientStore, error) {
 	const op = "vault.(Repository).listRevokePrivateStores"
 
 	opts := getOpts(opt...)
@@ -21,31 +21,34 @@ func (r *Repository) listRevokePrivateStores(ctx context.Context, opt ...Option)
 		limit = opts.withLimit
 	}
 
-	var stores []*privateStore
+	var stores []*renewRevokeStore
 	where, values := "token_status = ?", []interface{}{"revoke"}
 	if err := r.reader.SearchWhere(ctx, &stores, where, values, db.WithLimit(limit)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
+	var returnPrivStores []*clientStore
 	for _, store := range stores {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, store.ProjectId, kms.KeyPurposeDatabase)
+		privStore := store.Store
+		databaseWrapper, err := r.kms.GetWrapper(ctx, privStore.ProjectId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}
-		if err := store.decrypt(ctx, databaseWrapper); err != nil {
+		if err := privStore.decrypt(ctx, databaseWrapper); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
+		returnPrivStores = append(returnPrivStores, privStore)
 	}
-	return stores, nil
+	return returnPrivStores, nil
 }
 
-func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*privateStore, error) {
-	const op = "vault.(Repository).lookupPrivateStore"
+func (r *Repository) lookupClientStore(ctx context.Context, publicId string) (*clientStore, error) {
+	const op = "vault.(Repository).lookupClientStore"
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	ps := allocPrivateStore()
-	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ? and token_status = ?", []interface{}{publicId, CurrentToken}); err != nil {
+	ps := allocClientStore()
+	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ?", []interface{}{publicId}); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
@@ -64,53 +67,40 @@ func (r *Repository) lookupPrivateStore(ctx context.Context, publicId string) (*
 	return ps, nil
 }
 
-type privateStore struct {
-	PublicId             string `gorm:"primary_key"`
-	ProjectId            string
-	Name                 string
-	Description          string
-	CreateTime           *timestamp.Timestamp
-	UpdateTime           *timestamp.Timestamp
-	DeleteTime           *timestamp.Timestamp
-	Version              uint32
-	VaultAddress         string
-	Namespace            string
-	CaCert               []byte
-	TlsServerName        string
-	TlsSkipVerify        bool
-	WorkerFilter         string
-	StoreId              string
-	TokenHmac            []byte
-	Token                TokenSecret
-	CtToken              []byte
-	TokenCreateTime      *timestamp.Timestamp
-	TokenUpdateTime      *timestamp.Timestamp
-	TokenLastRenewalTime *timestamp.Timestamp
-	TokenExpirationTime  *timestamp.Timestamp
-	TokenRenewalTime     *timestamp.Timestamp
-	TokenKeyId           string
-	TokenStatus          string
-	ClientCert           []byte
-	ClientKeyId          string
-	ClientKey            KeySecret
-	CtClientKey          []byte
-	ClientCertKeyHmac    []byte
+// clientStore is a Vault credential store that contains all the data needed to create
+// a Vault client. If the Vault token for the store is expired all token data will be null
+// other than the status of expired.
+type clientStore struct {
+	PublicId         string `gorm:"primary_key"`
+	ProjectId        string
+	DeleteTime       *timestamp.Timestamp
+	VaultAddress     string
+	Namespace        string
+	CaCert           []byte
+	TlsServerName    string
+	TlsSkipVerify    bool
+	WorkerFilter     string
+	TokenHmac        []byte
+	Token            TokenSecret
+	CtToken          []byte
+	TokenRenewalTime *timestamp.Timestamp
+	TokenKeyId       string
+	TokenStatus      string
+	ClientCert       []byte
+	ClientKeyId      string
+	ClientKey        KeySecret
+	CtClientKey      []byte
 }
 
-func allocPrivateStore() *privateStore {
-	return &privateStore{}
+func allocClientStore() *clientStore {
+	return &clientStore{}
 }
 
-func (ps *privateStore) toCredentialStore() *CredentialStore {
+func (ps *clientStore) toCredentialStore() *CredentialStore {
 	cs := allocCredentialStore()
 	cs.PublicId = ps.PublicId
 	cs.ProjectId = ps.ProjectId
-	cs.Name = ps.Name
-	cs.Description = ps.Description
-	cs.CreateTime = ps.CreateTime
-	cs.UpdateTime = ps.UpdateTime
 	cs.DeleteTime = ps.DeleteTime
-	cs.Version = ps.Version
 	cs.VaultAddress = ps.VaultAddress
 	cs.Namespace = ps.Namespace
 	cs.CaCert = ps.CaCert
@@ -120,28 +110,22 @@ func (ps *privateStore) toCredentialStore() *CredentialStore {
 	cs.privateToken = ps.token()
 	if ps.ClientCert != nil {
 		cert := allocClientCertificate()
-		cert.StoreId = ps.StoreId
+		cert.StoreId = ps.PublicId
 		cert.Certificate = ps.ClientCert
 		cert.CtCertificateKey = ps.CtClientKey
-		cert.CertificateKeyHmac = ps.ClientCertKeyHmac
 		cert.KeyId = ps.ClientKeyId
 		cs.privateClientCert = cert
 	}
 	return cs
 }
 
-func (ps *privateStore) token() *Token {
+func (ps *clientStore) token() *Token {
 	if ps.TokenHmac != nil {
 		tk := allocToken()
-		tk.StoreId = ps.StoreId
 		tk.TokenHmac = ps.TokenHmac
-		tk.LastRenewalTime = ps.TokenLastRenewalTime
-		tk.ExpirationTime = ps.TokenExpirationTime
-		tk.CreateTime = ps.TokenCreateTime
-		tk.UpdateTime = ps.TokenUpdateTime
+		tk.Status = ps.TokenStatus
 		tk.CtToken = ps.CtToken
 		tk.KeyId = ps.TokenKeyId
-		tk.Status = ps.TokenStatus
 
 		return tk
 	}
@@ -149,8 +133,8 @@ func (ps *privateStore) token() *Token {
 	return nil
 }
 
-func (ps *privateStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "vault.(privateStore).decrypt"
+func (ps *clientStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "vault.(clientStore).decrypt"
 
 	if ps.CtToken != nil {
 		type ptk struct {
@@ -182,8 +166,8 @@ func (ps *privateStore) decrypt(ctx context.Context, cipher wrapping.Wrapper) er
 	return nil
 }
 
-func (ps *privateStore) client(ctx context.Context) (vaultClient, error) {
-	const op = "vault.(privateStore).client"
+func (ps *clientStore) client(ctx context.Context) (vaultClient, error) {
+	const op = "vault.(clientStore).client"
 	clientConfig := &clientConfig{
 		Addr:          ps.VaultAddress,
 		Token:         ps.Token,
@@ -206,9 +190,20 @@ func (ps *privateStore) client(ctx context.Context) (vaultClient, error) {
 }
 
 // GetPublicId returns the public id.
-func (ps *privateStore) GetPublicId() string { return ps.PublicId }
+func (ps *clientStore) GetPublicId() string { return ps.PublicId }
 
 // TableName returns the table name for gorm.
-func (ps *privateStore) TableName() string {
-	return "credential_vault_store_private"
+func (ps *clientStore) TableName() string {
+	return "credential_vault_client_store"
+}
+
+// renewRevokeStore is a clientStore that is not limited to the current token and includes
+// 'current', 'maintaining' and 'revoke' tokens.
+type renewRevokeStore struct {
+	Store *clientStore `gorm:"embedded"`
+}
+
+// TableName returns the table name for gorm.
+func (ps *renewRevokeStore) TableName() string {
+	return "credential_vault_token_renewal_revocation"
 }

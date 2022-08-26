@@ -5,8 +5,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## Next
 
 ### Bug Fixes
-* Sessions: Fix an issue where sessions could not have more than one connection 
-([Issue](https://github.com/hashicorp/boundary/issues/2362)), ([PR](https://github.com/hashicorp/boundary/pull/2369))
+
+* Vault: Correctly handle Vault credential stores and libraries that are linked to an
+  expired Vault token. ([Issue](https://github.com/hashicorp/boundary/issues/2179),
+  [PR](https://github.com/hashicorp/boundary/pull/2399)).
+* Sessions: Fix an issue where sessions could not have more than one connection
+  ([Issue](https://github.com/hashicorp/boundary/issues/2362),
+  [PR](https://github.com/hashicorp/boundary/pull/2369)).
 
 ## 0.10.3 (2022/08/30)
 

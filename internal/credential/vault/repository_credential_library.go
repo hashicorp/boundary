@@ -302,7 +302,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, projectId stri
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 
-			pl := allocPublicLibrary()
+			pl := allocListLookupLibrary()
 			pl.PublicId = l.PublicId
 			if err := rr.LookupByPublicId(ctx, pl); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve updated credential library"))
@@ -330,7 +330,7 @@ func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId strin
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	l := allocPublicLibrary()
+	l := allocListLookupLibrary()
 	l.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, l); err != nil {
 		if errors.IsNotFoundError(err) {
@@ -341,10 +341,10 @@ func (r *Repository) LookupCredentialLibrary(ctx context.Context, publicId strin
 	return l.toCredentialLibrary(), nil
 }
 
-// publicLibrary is a credential library and any of library's credential
+// listLookupLibrary is a credential library and any of library's credential
 // mapping overrides. It does not include encrypted data and is safe to
 // return external to boundary.
-type publicLibrary struct {
+type listLookupLibrary struct {
 	PublicId                      string `gorm:"primary_key"`
 	StoreId                       string
 	Name                          string
@@ -362,11 +362,11 @@ type publicLibrary struct {
 	PrivateKeyPassphraseAttribute string
 }
 
-func allocPublicLibrary() *publicLibrary {
-	return &publicLibrary{}
+func allocListLookupLibrary() *listLookupLibrary {
+	return &listLookupLibrary{}
 }
 
-func (pl *publicLibrary) toCredentialLibrary() *CredentialLibrary {
+func (pl *listLookupLibrary) toCredentialLibrary() *CredentialLibrary {
 	cl := allocCredentialLibrary()
 	cl.PublicId = pl.PublicId
 	cl.StoreId = pl.StoreId
@@ -405,10 +405,10 @@ func (pl *publicLibrary) toCredentialLibrary() *CredentialLibrary {
 }
 
 // TableName returns the table name for gorm.
-func (_ *publicLibrary) TableName() string { return "credential_vault_library_public" }
+func (_ *listLookupLibrary) TableName() string { return "credential_vault_list_lookup_library" }
 
 // GetPublicId returns the public id.
-func (pl *publicLibrary) GetPublicId() string { return pl.PublicId }
+func (pl *listLookupLibrary) GetPublicId() string { return pl.PublicId }
 
 // DeleteCredentialLibrary deletes publicId from the repository and returns
 // the number of records deleted.

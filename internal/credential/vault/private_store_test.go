@@ -77,7 +77,7 @@ func TestRepository_lookupPrivateStore(t *testing.T) {
 			assert.NotNil(origLookup.Token())
 			assert.Equal(orig.GetPublicId(), origLookup.GetPublicId())
 
-			got, err := repo.lookupPrivateStore(ctx, orig.GetPublicId())
+			got, err := repo.lookupClientStore(ctx, orig.GetPublicId())
 			assert.NoError(err)
 			require.NotNil(got)
 			assert.Equal(orig.GetPublicId(), got.GetPublicId())
