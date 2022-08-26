@@ -4,6 +4,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+* Workers: Added the ability to read and reinitialize the Worker certificate authority ([PR1](https://github.com/hashicorp/boundary/pull/2312), [PR2](https://github.com/hashicorp/boundary/pull/2387))
+* Workers: Return the worker Boundary binary version on worker list and read ([PR](https://github.com/hashicorp/boundary/pull/2377))
+
 ## 0.10.4 (Unreleased)
 
 ### New and Improved
