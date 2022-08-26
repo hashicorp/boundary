@@ -667,6 +667,28 @@ func TestWorkerTags(t *testing.T) {
 			expErr: false,
 		},
 		{
+			name: "comma in tag key string",
+			in: `
+			worker {
+				tags {
+					"key,"= ["value"],
+				}
+			}`,
+			expErr:    true,
+			expErrStr: `Tag key "key," cannot contain commas`,
+		},
+		{
+			name: "comma in tag value string",
+			in: `
+			worker {
+				tags {
+					"key"= ["va,lue","value2"],
+				}
+			}`,
+			expErr:    true,
+			expErrStr: `Tag value "va,lue" for tag key "key" cannot contain commas`,
+		},
+		{
 			name: "json tags - entire tags block",
 			in: `
 			worker {
