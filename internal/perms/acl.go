@@ -228,8 +228,13 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 	return
 }
 
-// ListPermissions builds a set of Permissions based on the grants in the ACL for the List action, for the requested scopes and resource type.
-func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, requestedType resource.Type, requestedActions action.ActionSet) []Permission {
+// ListPermissions builds a set of Permissions based on the grants in the ACL.
+// Permissions are determined for the given resource for each of the provided scopes.
+// There must be a grant for a given resource for one of the provided "id actions"
+// or for action.All in order for a Permission to be created for the scope.
+// The set of "id actions" is resource dependant, but will generally include all
+// actions that can be taken on an individual resource.
+func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, requestedType resource.Type, idActions action.ActionSet) []Permission {
 	perms := make([]Permission, 0, len(requestedScopes))
 	for scopeId := range requestedScopes {
 		p := Permission{
@@ -252,7 +257,7 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, reque
 			if ok := grant.actions[action.All]; ok {
 				found = true
 			} else {
-				for _, a := range requestedActions {
+				for _, a := range idActions {
 					if ok := grant.actions[a]; ok {
 						found = true
 						break
