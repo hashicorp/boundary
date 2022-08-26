@@ -67,7 +67,8 @@ worker {
   }
 }
 
-# The following KMS config is an example only; production scenarios should use a different KMS option
+# The following KMS config is an example only
+# Use a production KMS such as AWS KMS for production installs
 kms "aead" {
   purpose = "worker-auth-storage"
 	aead_type = "aes-gcm"
