@@ -29,7 +29,7 @@ func (c *RotateKeysCommand) Help() string {
 	return base.WrapForHelpText([]string{
 		"Usage: boundary scopes rotate-keys [args]",
 		"",
-		"  Generate new keys for a scope and all nested scopes. Example:",
+		"  Generate a new root key and new DEKs for a scope. Example:",
 		"",
 		`    $ boundary scopes rotate-keys -scope-id global`,
 		"",
@@ -38,7 +38,6 @@ func (c *RotateKeysCommand) Help() string {
 }
 
 func (c *RotateKeysCommand) Flags() *base.FlagSets {
-	// what are these and what do they do??
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
 
@@ -51,7 +50,7 @@ func (c *RotateKeysCommand) Flags() *base.FlagSets {
 	f.BoolVar((&base.BoolVar{
 		Name:   "rewrap",
 		Target: &c.FlagRewrap,
-		Usage:  "Whether or not child keys should be re-encrypted by the newly generated keys",
+		Usage:  "Whether or not to re-encrypt DEKs with the new KEK",
 	}))
 
 	return set
