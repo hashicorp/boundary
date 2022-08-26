@@ -25,6 +25,7 @@ worker {
 ## KMS Configuration
 PKI Workers credentials can be encrypted by including an optional KMS stanza with the purpose `worker-auth-storage`.
 
+Example (not safe for production!):
 ```hcl
 kms "aead" {
   purpose = "worker-auth-storage"
@@ -66,6 +67,7 @@ worker {
   }
 }
 
+# The following KMS config is an example only; production scenarios should use a different KMS option
 kms "aead" {
   purpose = "worker-auth-storage"
 	aead_type = "aes-gcm"
