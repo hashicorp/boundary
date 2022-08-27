@@ -1823,7 +1823,7 @@ func TestRotateKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := scopes.NewService(iamRepoFn, tc.Kms())
+			s, err := scopes.NewService(iamRepoFn, tc.Kms(), nil)
 			require.NoError(err, "Couldn't create new project service.")
 
 			prevKeyVersions := map[uint32]int{}
