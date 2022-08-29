@@ -3090,6 +3090,10 @@
                 "host_id": {
                   "type": "string",
                   "description": "An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session."
+                },
+                "worker_filter": {
+                  "type": "string",
+                  "title": "An optional parameter allowing specification of the particular worker  tag filter"
                 }
               }
             }

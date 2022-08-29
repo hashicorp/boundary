@@ -825,7 +825,17 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
-	if len(t.GetWorkerFilter()) > 0 && len(selectedWorkers) > 0 {
+	// allow a worker filter from the authorize session api
+	if len(req.GetWorkerFilter()) > 0 && len(selectedWorkers) > 0 {
+		eval, err := bexpr.CreateEvaluator(req.GetWorkerFilter())
+		if err != nil {
+			return nil, err
+		}
+		selectedWorkers, err = workerList(selectedWorkers).filtered(eval)
+		if err != nil {
+			return nil, err
+		}
+	} else if len(t.GetWorkerFilter()) > 0 && len(selectedWorkers) > 0 {
 		eval, err := bexpr.CreateEvaluator(t.GetWorkerFilter())
 		if err != nil {
 			return nil, err
