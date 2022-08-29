@@ -48,9 +48,9 @@ func (sh StatsHandler) HandleRPC(ctx context.Context, s stats.RPCStats) {
 		fullName, _ := ctx.Value(metricMethodNameContextKey{}).(string)
 		service, method := splitMethodName(fullName)
 		labels := prometheus.Labels{
-			LabelGRpcMethod:  method,
-			LabelGRpcService: service,
-			LabelGRpcCode:    statusFromError(v.Error).Code().String(),
+			LabelGrpcMethod:  method,
+			LabelGrpcService: service,
+			LabelGrpcCode:    statusFromError(v.Error).Code().String(),
 		}
 		sh.Metric.With(labels).Observe(v.EndTime.Sub(v.BeginTime).Seconds())
 	}
@@ -71,8 +71,8 @@ func NewRequestRecorder(fullMethodName string, handler StatsHandler) requestReco
 	r := requestRecorder{
 		handler: handler,
 		labels: prometheus.Labels{
-			LabelGRpcMethod:  method,
-			LabelGRpcService: service,
+			LabelGrpcMethod:  method,
+			LabelGrpcService: service,
 		},
 		start: time.Now(),
 	}
@@ -81,7 +81,7 @@ func NewRequestRecorder(fullMethodName string, handler StatsHandler) requestReco
 }
 
 func (r requestRecorder) Record(err error) {
-	r.labels[LabelGRpcCode] = statusFromError(err).Code().String()
+	r.labels[LabelGrpcCode] = statusFromError(err).Code().String()
 	r.handler.Metric.With(r.labels).Observe(time.Since(r.start).Seconds())
 }
 

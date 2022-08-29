@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	LabelGRpcService = "grpc_service"
-	LabelGRpcMethod  = "grpc_method"
-	LabelGRpcCode    = "grpc_code"
+	LabelGrpcService = "grpc_service"
+	LabelGrpcMethod  = "grpc_method"
+	LabelGrpcCode    = "grpc_code"
 	LabelHttpPath    = "path"
 	LabelHttpMethod  = "method"
 	LabelHttpCode    = "code"
@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	ListGrpcLabels = []string{LabelGRpcService, LabelGRpcMethod, LabelGRpcCode}
+	ListGrpcLabels = []string{LabelGrpcService, LabelGrpcMethod, LabelGrpcCode}
 	ListHttpLabels = []string{LabelHttpPath, LabelHttpMethod, LabelHttpCode}
 )
 
@@ -77,7 +77,7 @@ func InitializeGRpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 	for serviceName, serviceMethods := range serviceNamesToMethodNames {
 		for _, sm := range serviceMethods {
 			for _, c := range allGrpcCodes {
-				v.With(prometheus.Labels{LabelGRpcService: serviceName, LabelGRpcMethod: sm, LabelGRpcCode: c.String()})
+				v.With(prometheus.Labels{LabelGrpcService: serviceName, LabelGrpcMethod: sm, LabelGrpcCode: c.String()})
 			}
 		}
 	}
@@ -85,7 +85,7 @@ func InitializeGRpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 
 // InitializeGRpcCollectorsFromServer registers and zeroes a Prometheus histogram, finding all service and method labels
 // from the provided gRPC server.
-func InitializeGRpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, server *grpc.Server) {
+func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, server *grpc.Server) {
 	if r == nil {
 		return
 	}
@@ -94,7 +94,7 @@ func InitializeGRpcCollectorsFromServer(r prometheus.Registerer, v prometheus.Ob
 	for serviceName, info := range server.GetServiceInfo() {
 		for _, mInfo := range info.Methods {
 			for _, c := range allGrpcCodes {
-				v.With(prometheus.Labels{LabelGRpcService: serviceName, LabelGRpcMethod: mInfo.Name, LabelGRpcCode: c.String()})
+				v.With(prometheus.Labels{LabelGrpcService: serviceName, LabelGrpcMethod: mInfo.Name, LabelGrpcCode: c.String()})
 			}
 		}
 	}
