@@ -2,11 +2,11 @@
 layout: docs
 page_title: Filtering - Worker Tags
 description: |-
-  How to use worker tags to control which workers can handle a given target.
+  How to use worker tags to control which workers can handle a given resource.
 ---
 
 This page describes how to use worker tags and filters to control which workers
-are allowed to handle a given target. This can be used to control traffic
+are allowed to handle a given resource. This can be used to control traffic
 locality. As an example, this can be used to ensure that traffic going into a
 public cloud is only handled by workers running within that same cloud.
 
@@ -100,11 +100,7 @@ array with the tags intended for the particular key is required:
 ["prod", "webservers"]
 ```
 
-# Target Worker Filtering
-
-Once workers have tags, it is possible to use these tags to control which
-workers are allowed to handle a given session by specifying a `worker_filter`
-attribute when configuring [targets](/docs/concepts/domain-model/targets).
+# Worker Filtering
 
 As filters operate on JSON Pointer selectors, the values that are input into the
 filter come from the JSON representation of the values in the configuration file
@@ -137,3 +133,21 @@ Following are some examples of using these values in filters:
   know that you have only one value, an equivalent would be `"/tags/region/0" == "us-east-1"`.
 
 - Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1") or "webservers" in "/tags/type"`
+
+# Target Worker Filtering
+
+Once workers have tags, it is possible to use these tags to control which
+workers are allowed to handle a given session by specifying a `worker_filter`
+attribute when configuring [targets](/docs/concepts/domain-model/targets).
+
+
+# Vault Worker Filtering <sup>HCP Only</sup>
+Tags can be used to control which [PKI workers] can handle Vault requests by specifying
+a `worker_filter`attribute when configuring [credential stores].
+
+This allows for the use of private Vault instances with Boundary. PKI workers
+deployed in the same network as a private Vault instance can access and relay
+Vault requests to Boundary controllers. 
+
+[PKI workers]: /docs/configuration/worker/pki-worker
+[credential stores]: /docs/concepts/domain-model/credential-stores#vault-credential-store-attributes
