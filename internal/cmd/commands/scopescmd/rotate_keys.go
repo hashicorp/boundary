@@ -29,7 +29,7 @@ func (c *RotateKeysCommand) Help() string {
 	return base.WrapForHelpText([]string{
 		"Usage: boundary scopes rotate-keys [args]",
 		"",
-		"  Generate a new root key and new DEKs for a scope. Example:",
+		"  Deactivates a given scope's current KEK and DEKs and activates a new set of keys for the scope. Example:",
 		"",
 		`    $ boundary scopes rotate-keys -scope-id global`,
 		"",
