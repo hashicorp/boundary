@@ -34,6 +34,14 @@ message Entry {
   // we are NOT storing this plain-text entry data in the db
   // @inject_tag: gorm:"-" wrapping:"pt,entry_data"
   bytes data = 8;
+
+  // the private id of the data key version used to encrypt the data.
+  // @inject_tag: gorm:"not_null"
+  string key_id = 9;
+
+  // the scope id associated with the key used to encrypt the data.
+  // @inject_tag: gorm:"not_null"
+  string scope_id = 10;
 }
 
 // Metadata provides a message for oplog metadata that's compatible with gorm
