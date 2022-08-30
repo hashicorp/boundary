@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
@@ -70,103 +69,23 @@ func TestMigrations_Credential_Purpose_Refactor(t *testing.T) {
 	require.NoError(t, err)
 	rw := db.New(conn)
 
+	// Create project
 	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, proj := iam.TestScopes(t, iamRepo)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	authRepo, err := authtoken.NewRepository(rw, rw, kmsCache)
-	require.NoError(t, err)
 
-	uId := "u_1234567890"
-	oId := "o_1234567890"
-	pId := "p_1234567890"
-	accId := "acct_1234567890"
-
-	num, err := rw.Exec(ctx, `
-insert into iam_scope
-	(public_id, type, parent_id)
-values
-	(?, ?, ?)
-	`, []interface{}{oId, "org", "global"})
-	require.NoError(t, err)
-	assert.Equal(t, 1, num)
-
-	require.NoError(t, kmsCache.CreateKeys(ctx, oId))
-
-	num, err = rw.Exec(ctx, `
-insert into iam_scope
-	(public_id, type, parent_id)
-values
-	(?, ?, ?)
-	`, []interface{}{pId, "project", oId})
-	require.NoError(t, err)
-	assert.Equal(t, 1, num)
-
-	require.NoError(t, kmsCache.CreateKeys(ctx, pId))
-
-	_, err = rw.DoTx(ctx, 0, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		_, err := w.Exec(ctx, `
-		insert into auth_password_argon2_conf
-			(private_id, password_method_id)
-		values
-			(?, ?)
-			`, []interface{}{"arg2conf_kWA0RG11DL", "ampw_1234567890"})
-		if err != nil {
-			return err
-		}
-		_, err = w.Exec(ctx, `
-		insert into auth_password_method
-			(public_id, password_conf_id, scope_id)
-		values
-			(?, ?, ?)
-			`, []interface{}{"ampw_1234567890", "arg2conf_kWA0RG11DL", oId})
-		return err
-	})
-	require.NoError(t, err)
-
-	num, err = rw.Exec(ctx, `
-insert into auth_password_account
-	(public_id, auth_method_id, scope_id, login_name)
-values
-	(?, ?, ?, ?)
-	`, []interface{}{"acctpw_1234567890", "ampw_1234567890", oId, "name1"})
-	require.NoError(t, err)
-	assert.Equal(t, 1, num)
-
-	num, err = rw.Exec(ctx, `
-insert into iam_user
-	(public_id, scope_id)
-values
-	(?, ?)
-	`, []interface{}{uId, oId})
-	require.NoError(t, err)
-	assert.Equal(t, 1, num)
-
-	num, err = rw.Exec(ctx, `
-insert into auth_account
-	(public_id, scope_id, auth_method_id, iam_user_id, iam_user_scope_id)
-values
-	(?, ?, ?, ?, ?)
-	`, []interface{}{accId, oId, "ampw_1234567890", uId, oId})
-	require.NoError(t, err)
-	assert.Equal(t, 1, num)
-
-	user := &iam.User{
-		User: &store.User{
-			PublicId: uId,
-		},
-	}
-	require.NoError(t, rw.LookupById(ctx, user))
-
-	at, err := authRepo.CreateAuthToken(ctx, user, accId)
-	require.NoError(t, err)
+	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+	uId := at.GetIamUserId()
 
 	// Create host catalog
 	hostCatalogId := "hcst_s1P81LMusN"
-	num, err = rw.Exec(ctx, `
+	num, err := rw.Exec(ctx, `
 insert into static_host_catalog
 	(scope_id, public_id, name)
 values
 	(?, ?, ?)
-`, []interface{}{pId, hostCatalogId, "my-host-catalog"})
+`, []interface{}{proj.GetPublicId(), hostCatalogId, "my-host-catalog"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -209,7 +128,7 @@ insert into target_tcp
 	(public_id, scope_id, name, session_max_seconds, session_connection_limit)
 values
 	(?, ?, ?, ?, ?);
-`, []interface{}{targetId, pId, "my-credential-sources", 28800, -1})
+`, []interface{}{targetId, proj.GetPublicId(), "my-credential-sources", 28800, -1})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -220,7 +139,7 @@ insert into credential_vault_store
   (public_id, scope_id, vault_address)
 values
   (?, ?, ?);
-`, []interface{}{vaultStoreId, pId, "http://vault"})
+`, []interface{}{vaultStoreId, proj.GetPublicId(), "http://vault"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -235,11 +154,11 @@ insert into credential_static_store
 	(public_id, scope_id, name)
 values
 	(?, ?, ?)
-`, []interface{}{staticStoreId, pId, "my-static-credential-store"})
+`, []interface{}{staticStoreId, proj.GetPublicId(), "my-static-credential-store"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
-	credsStatic := static.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", staticStoreId, pId, 2)
+	credsStatic := static.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", staticStoreId, proj.GetPublicId(), 2)
 	cred1 := credsStatic[0]
 	cred2 := credsStatic[1]
 
@@ -287,7 +206,7 @@ values
 		(public_id, user_id, host_id, target_id, host_set_id, auth_token_id, scope_id, certificate, expiration_time, endpoint)
 	values
 		(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, []interface{}{sessionId, uId, hostId, targetId, hostSetId, at.GetPublicId(), pId, cert, expirationTime, "tcp://127.0.0.1:22"})
+	`, []interface{}{sessionId, uId, hostId, targetId, hostSetId, at.GetPublicId(), proj.GetPublicId(), cert, expirationTime, "tcp://127.0.0.1:22"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
