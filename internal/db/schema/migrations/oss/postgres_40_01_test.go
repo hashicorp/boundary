@@ -119,7 +119,6 @@ values
 			(?, ?, ?)
 			`, []interface{}{"ampw_1234567890", "arg2conf_kWA0RG11DL", oId})
 		return err
-
 	})
 	require.NoError(t, err)
 
