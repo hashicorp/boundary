@@ -123,11 +123,11 @@ public_id in
 		return db.NoRowsAffected, nil
 	}
 
-	scopeToHost := make(map[string][]*Host)
+	projectToHost := make(map[string][]*Host)
 	for _, ha := range hostAggs {
 		h := allocHost()
 		h.PublicId = ha.PublicId
-		scopeToHost[ha.ScopeId] = append(scopeToHost[ha.ScopeId], h)
+		projectToHost[ha.ProjectId] = append(projectToHost[ha.ProjectId], h)
 	}
 
 	_, err = r.writer.DoTx(
@@ -135,8 +135,8 @@ public_id in
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			for scopeId, hosts := range scopeToHost {
-				oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+			for projectId, hosts := range projectToHost {
+				oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 				}

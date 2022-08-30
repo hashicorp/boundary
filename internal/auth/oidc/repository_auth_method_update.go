@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
@@ -91,7 +91,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
-	dbMask, nullFields := dbcommon.BuildUpdatePaths(
+	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			NameField:             am.Name,
 			DescriptionField:      am.Description,

@@ -9,7 +9,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-// DeriveED25519Key generates a key based on the scope's session DEK, the
+// DeriveED25519Key generates a key based on the project's session DEK, the
 // requesting user, and the generated job ID.
 func DeriveED25519Key(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PublicKey, ed25519.PrivateKey, error) {
 	const op = "session.DeriveED25519Key"

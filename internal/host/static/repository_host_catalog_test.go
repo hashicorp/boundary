@@ -83,7 +83,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			if tt.in != nil && tt.in.HostCatalog != nil {
-				tt.in.ScopeId = prj.GetPublicId()
+				tt.in.ProjectId = prj.GetPublicId()
 				assert.Empty(tt.in.PublicId)
 			}
 			got, err := repo.CreateCatalog(context.Background(), tt.in, tt.opts...)
@@ -112,8 +112,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
-				ScopeId: prj.GetPublicId(),
-				Name:    "test-name-repo",
+				ProjectId: prj.GetPublicId(),
+				Name:      "test-name-repo",
 			},
 		}
 
@@ -131,13 +131,14 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Nil(got2)
 	})
 
-	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
+	t.Run("valid-duplicate-names-diff-projects", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.GetPublicId())
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
 				Name: "test-name-repo",
@@ -145,7 +146,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		}
 		in2 := in.clone()
 
-		in.ScopeId = prj.GetPublicId()
+		in.ProjectId = prj.GetPublicId()
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
@@ -155,7 +156,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		in2.ScopeId = org.GetPublicId()
+		in2.ProjectId = prj2.GetPublicId()
 		got2, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
 		assert.NotNil(got2)
@@ -295,7 +296,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				},
 			},
 			chgFn:     changeName("test-update-name-repo"),
-			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			masks:     []string{"PublicId", "CreateTime", "UpdateTime", "ProjectId"},
 			wantIsErr: errors.InvalidFieldMask,
 		},
 		{
@@ -440,7 +441,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert.NoError(err)
 			assert.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-			tt.orig.ScopeId = prj.GetPublicId()
+			tt.orig.ProjectId = prj.GetPublicId()
 			orig, err := repo.CreateCatalog(context.Background(), tt.orig)
 			require.NoError(t, err)
 			require.NotNil(t, orig)
@@ -461,7 +462,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assertPublicId(t, "hcst", got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
-			assert.Equal(tt.orig.ScopeId, got.ScopeId)
+			assert.Equal(tt.orig.ProjectId, got.ProjectId)
 			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(t, err)
 			dbassert := dbassert.New(t, underlyingDB)
@@ -504,13 +505,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 	})
 
-	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
+	t.Run("valid-duplicate-names-diff-projects", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		assert.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.GetPublicId())
 		in := &HostCatalog{
 			HostCatalog: &store.HostCatalog{
 				Name: "test-name-repo",
@@ -518,7 +520,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 		in2 := in.clone()
 
-		in.ScopeId = prj.GetPublicId()
+		in.ProjectId = prj.GetPublicId()
 		got, err := repo.CreateCatalog(context.Background(), in)
 		assert.NoError(err)
 		assert.NotNil(got)
@@ -527,7 +529,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 
-		in2.ScopeId = org.GetPublicId()
+		in2.ProjectId = prj2.GetPublicId()
 		in2.Name = "first-name"
 		got2, err := repo.CreateCatalog(context.Background(), in2)
 		assert.NoError(err)
@@ -542,7 +544,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		assert.Equal(1, gotCount3, "row count")
 	})
 
-	t.Run("change-scope-id", func(t *testing.T) {
+	t.Run("change-project-id", func(t *testing.T) {
 		assert := assert.New(t)
 		kms := kms.TestKms(t, conn, wrapper)
 		repo, err := NewRepository(rw, rw, kms)
@@ -553,17 +555,17 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		_, prj1 := iam.TestScopes(t, iamRepo)
 		_, prj2 := iam.TestScopes(t, iamRepo)
 		c1, c2 := testCatalog(t, conn, prj1.PublicId), testCatalog(t, conn, prj2.PublicId)
-		assert.NotEqual(c1.ScopeId, c2.ScopeId)
+		assert.NotEqual(c1.ProjectId, c2.ProjectId)
 		orig := c1.clone()
 
-		c1.ScopeId = c2.ScopeId
-		assert.Equal(c1.ScopeId, c2.ScopeId)
+		c1.ProjectId = c2.ProjectId
+		assert.Equal(c1.ProjectId, c2.ProjectId)
 
 		got1, gotCount1, err := repo.UpdateCatalog(context.Background(), c1, 1, []string{"name"})
 
 		assert.NoError(err)
 		assert.NotNil(got1)
-		assert.Equal(orig.ScopeId, got1.ScopeId)
+		assert.Equal(orig.ProjectId, got1.ProjectId)
 		assert.Equal(1, gotCount1, "row count")
 	})
 }

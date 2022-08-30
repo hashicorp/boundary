@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary
 
-go 1.18
+go 1.19
 
 replace github.com/hashicorp/boundary/api => ./api
 
@@ -82,7 +82,7 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.28.1
 	gorm.io/driver/postgres v1.3.8
-	gorm.io/gorm v1.23.8
+	gorm.io/gorm v1.23.8 // indirect
 	mvdan.cc/gofumpt v0.3.1
 	nhooyr.io/websocket v1.8.7
 )

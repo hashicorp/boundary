@@ -24,9 +24,9 @@ func TestRepository_AddSessionCredentials(t *testing.T) {
 	s := TestSession(t, conn, wrapper, TestSessionParams(t, conn, wrapper, iamRepo))
 
 	type args struct {
-		creds          []Credential
-		sessionId      string
-		sessionScopeId string
+		creds            []Credential
+		sessionId        string
+		sessionProjectId string
 	}
 	tests := []struct {
 		name        string
@@ -38,15 +38,15 @@ func TestRepository_AddSessionCredentials(t *testing.T) {
 		{
 			name: "invalid-missing-credentials",
 			args: args{
-				sessionId:      s.PublicId,
-				sessionScopeId: s.ScopeId,
+				sessionId:        s.PublicId,
+				sessionProjectId: s.ProjectId,
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
 			wantErrMsg:  "session.(Repository).AddSessionCredentials: missing credentials: parameter violation: error #100",
 		},
 		{
-			name: "invalid-missing-scope-id",
+			name: "invalid-missing-project-id",
 			args: args{
 				sessionId: s.PublicId,
 				creds: []Credential{
@@ -55,12 +55,12 @@ func TestRepository_AddSessionCredentials(t *testing.T) {
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "session.(Repository).AddSessionCredentials: missing session scope id: parameter violation: error #100",
+			wantErrMsg:  "session.(Repository).AddSessionCredentials: missing session project id: parameter violation: error #100",
 		},
 		{
 			name: "invalid-missing-session-id",
 			args: args{
-				sessionScopeId: s.ScopeId,
+				sessionProjectId: s.ProjectId,
 				creds: []Credential{
 					Credential("test-cred"),
 				},
@@ -72,8 +72,8 @@ func TestRepository_AddSessionCredentials(t *testing.T) {
 		{
 			name: "invalid-empty-cred",
 			args: args{
-				sessionId:      s.PublicId,
-				sessionScopeId: s.ScopeId,
+				sessionId:        s.PublicId,
+				sessionProjectId: s.ProjectId,
 				creds: []Credential{
 					Credential(""),
 				},
@@ -85,8 +85,8 @@ func TestRepository_AddSessionCredentials(t *testing.T) {
 		{
 			name: "invalid-empty-cred-with-valid",
 			args: args{
-				sessionId:      s.PublicId,
-				sessionScopeId: s.ScopeId,
+				sessionId:        s.PublicId,
+				sessionProjectId: s.ProjectId,
 				creds: []Credential{
 					Credential("test-cred"),
 					Credential(""),
@@ -100,8 +100,8 @@ func TestRepository_AddSessionCredentials(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				sessionId:      s.PublicId,
-				sessionScopeId: s.ScopeId,
+				sessionId:        s.PublicId,
+				sessionProjectId: s.ProjectId,
 				creds: []Credential{
 					Credential("test-cred"),
 					Credential("test-cred1"),
@@ -114,7 +114,7 @@ func TestRepository_AddSessionCredentials(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			err := repo.AddSessionCredentials(context.Background(), tt.args.sessionScopeId, tt.args.sessionId, tt.args.creds)
+			err := repo.AddSessionCredentials(context.Background(), tt.args.sessionProjectId, tt.args.sessionId, tt.args.creds)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -123,7 +123,7 @@ func TestRepository_AddSessionCredentials(t *testing.T) {
 			}
 			require.NoError(err)
 
-			creds, err := repo.ListSessionCredentials(context.Background(), s.ScopeId, s.PublicId)
+			creds, err := repo.ListSessionCredentials(context.Background(), s.ProjectId, s.PublicId)
 			require.NoError(err)
 			assert.ElementsMatch(creds, tt.args.creds)
 		})
@@ -152,15 +152,15 @@ func TestRepository_ListSessionCredentials(t *testing.T) {
 		Credential("cred1"),
 	}
 
-	err = repo.AddSessionCredentials(context.Background(), s1.ScopeId, s1.PublicId, s1Creds)
+	err = repo.AddSessionCredentials(context.Background(), s1.ProjectId, s1.PublicId, s1Creds)
 	require.NoError(t, err)
 
-	err = repo.AddSessionCredentials(context.Background(), s2.ScopeId, s2.PublicId, s2Creds)
+	err = repo.AddSessionCredentials(context.Background(), s2.ProjectId, s2.PublicId, s2Creds)
 	require.NoError(t, err)
 
 	type args struct {
-		sessionId      string
-		sessionScopeId string
+		sessionId        string
+		sessionProjectId string
 	}
 	tests := []struct {
 		name        string
@@ -171,18 +171,18 @@ func TestRepository_ListSessionCredentials(t *testing.T) {
 		wantErrMsg  string
 	}{
 		{
-			name: "invalid-missing-scope-id",
+			name: "invalid-missing-project-id",
 			args: args{
 				sessionId: s1.PublicId,
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
-			wantErrMsg:  "session.(Repository).ListSessionCredentials: missing session scope id: parameter violation: error #100",
+			wantErrMsg:  "session.(Repository).ListSessionCredentials: missing session project id: parameter violation: error #100",
 		},
 		{
 			name: "invalid-missing-session-id",
 			args: args{
-				sessionScopeId: s1.ScopeId,
+				sessionProjectId: s1.ProjectId,
 			},
 			wantErr:     true,
 			wantErrCode: errors.InvalidParameter,
@@ -191,24 +191,24 @@ func TestRepository_ListSessionCredentials(t *testing.T) {
 		{
 			name: "valid-s1",
 			args: args{
-				sessionId:      s1.PublicId,
-				sessionScopeId: s1.ScopeId,
+				sessionId:        s1.PublicId,
+				sessionProjectId: s1.ProjectId,
 			},
 			wantCreds: s1Creds,
 		},
 		{
 			name: "valid-s2",
 			args: args{
-				sessionId:      s2.PublicId,
-				sessionScopeId: s2.ScopeId,
+				sessionId:        s2.PublicId,
+				sessionProjectId: s2.ProjectId,
 			},
 			wantCreds: s2Creds,
 		},
 		{
 			name: "valid-s3-no-creds",
 			args: args{
-				sessionId:      s3.PublicId,
-				sessionScopeId: s3.ScopeId,
+				sessionId:        s3.PublicId,
+				sessionProjectId: s3.ProjectId,
 			},
 			wantCreds: nil,
 		},
@@ -217,7 +217,7 @@ func TestRepository_ListSessionCredentials(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			creds, err := repo.ListSessionCredentials(context.Background(), tt.args.sessionScopeId, tt.args.sessionId)
+			creds, err := repo.ListSessionCredentials(context.Background(), tt.args.sessionProjectId, tt.args.sessionId)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)

@@ -12,9 +12,9 @@ message Target {
   // @inject_tag: gorm:"primary_key"
   string public_id = 10;
 
-  // scope id for the targettest.Target
+  // project id for the targettest.Target
   // @inject_tag: `gorm:"default:null"`
-  string scope_id = 20;
+  string project_id = 20;
 
   // name is the optional friendly name used to
   // access the targettest.Target via an API

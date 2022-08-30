@@ -36,11 +36,11 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 	badVersion := uint32(12345)
 
 	type args struct {
-		scopeId string
-		setId   string
-		version uint32
-		hostIds []string
-		opt     []Option
+		projectId string
+		setId     string
+		version   uint32
+		hostIds   []string
+		opt       []Option
 	}
 
 	tests := []struct {
@@ -51,7 +51,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 		wantIsErr errors.Code
 	}{
 		{
-			name: "empty-scope-id",
+			name: "empty-project-id",
 			args: args{
 				setId:   set.PublicId,
 				version: set.Version,
@@ -62,47 +62,47 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 		{
 			name: "empty-set-id",
 			args: args{
-				scopeId: prj.PublicId,
-				version: set.Version,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				version:   set.Version,
+				hostIds:   hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "zero-version",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				hostIds:   hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-host-ids",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: set.Version,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				version:   set.Version,
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-version",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: badVersion,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				version:   badVersion,
+				hostIds:   hostIds,
 			},
 			wantErr: true,
 		},
 		{
 			name: "valid",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: set.Version,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				version:   set.Version,
+				hostIds:   hostIds,
 			},
 			want: hosts,
 		},
@@ -115,7 +115,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.AddSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			got, err := repo.AddSetMembers(context.Background(), tt.args.projectId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -227,11 +227,11 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 	badVersion := uint32(12345)
 
 	type args struct {
-		scopeId string
-		setId   string
-		version uint32
-		hostIds []string
-		opt     []Option
+		projectId string
+		setId     string
+		version   uint32
+		hostIds   []string
+		opt       []Option
 	}
 
 	tests := []struct {
@@ -242,7 +242,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 		wantIsErr errors.Code
 	}{
 		{
-			name: "empty-scope-id",
+			name: "empty-project-id",
 			args: args{
 				setId:   set.PublicId,
 				version: set.Version,
@@ -253,47 +253,47 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 		{
 			name: "empty-set-id",
 			args: args{
-				scopeId: prj.PublicId,
-				version: set.Version,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				version:   set.Version,
+				hostIds:   hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "zero-version",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				hostIds:   hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "empty-host-ids",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: set.Version,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				version:   set.Version,
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-version",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: badVersion,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				version:   badVersion,
+				hostIds:   hostIds,
 			},
 			wantErr: true,
 		},
 		{
 			name: "valid",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: set.Version,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				version:   set.Version,
+				hostIds:   hostIds,
 			},
 			want:    count,
 			wantErr: false,
@@ -307,7 +307,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			got, err := repo.DeleteSetMembers(context.Background(), tt.args.projectId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
@@ -424,11 +424,11 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 	badVersion := uint32(12345)
 
 	type args struct {
-		scopeId string
-		setId   string
-		version uint32
-		hostIds []string
-		opt     []Option
+		projectId string
+		setId     string
+		version   uint32
+		hostIds   []string
+		opt       []Option
 	}
 
 	tests := []struct {
@@ -440,7 +440,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 		wantIsErr errors.Code
 	}{
 		{
-			name: "empty-scope-id",
+			name: "empty-project-id",
 			args: args{
 				setId:   set.PublicId,
 				version: set.Version,
@@ -451,38 +451,38 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 		{
 			name: "empty-set-id",
 			args: args{
-				scopeId: prj.PublicId,
-				version: set.Version,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				version:   set.Version,
+				hostIds:   hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "zero-version",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				hostIds:   hostIds,
 			},
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-version",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: badVersion,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				version:   badVersion,
+				hostIds:   hostIds,
 			},
 			wantErr: true,
 		},
 		{
 			name: "valid",
 			args: args{
-				scopeId: prj.PublicId,
-				setId:   set.PublicId,
-				version: set.Version,
-				hostIds: hostIds,
+				projectId: prj.PublicId,
+				setId:     set.PublicId,
+				version:   set.Version,
+				hostIds:   hostIds,
 			},
 			want:      hostsB,
 			wantCount: 4, // 2 deleted, 2 added
@@ -496,7 +496,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, gotCount, err := repo.SetSetMembers(context.Background(), tt.args.scopeId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			got, gotCount, err := repo.SetSetMembers(context.Background(), tt.args.projectId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)

@@ -6,19 +6,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A CredentialStore contains credentials. It is owned by a scope.
+// A CredentialStore contains credentials. It is owned by a project.
 type CredentialStore struct {
 	*store.CredentialStore
 	tableName string `gorm:"-"`
 }
 
-// NewCredentialStore creates a new in memory static CredentialStore assigned to scopeId.
+// NewCredentialStore creates a new in memory static CredentialStore assigned to projectId.
 // Name and description are the only valid options. All other options are ignored.
-func NewCredentialStore(scopeId string, opt ...Option) (*CredentialStore, error) {
+func NewCredentialStore(projectId string, opt ...Option) (*CredentialStore, error) {
 	opts := getOpts(opt...)
 	cs := &CredentialStore{
 		CredentialStore: &store.CredentialStore{
-			ScopeId:     scopeId,
+			ProjectId:   projectId,
 			Name:        opts.withName,
 			Description: opts.withDescription,
 		},
@@ -58,8 +58,8 @@ func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 		"resource-type":      []string{"credential-static-store"},
 		"op-type":            []string{op.String()},
 	}
-	if cs.ScopeId != "" {
-		metadata["scope-id"] = []string{cs.ScopeId}
+	if cs.ProjectId != "" {
+		metadata["project-id"] = []string{cs.ProjectId}
 	}
 	return metadata
 }

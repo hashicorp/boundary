@@ -7,11 +7,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/go-dbw"
 )
 
 // CreateUsernamePasswordCredential inserts c into the repository and returns a new
@@ -23,11 +23,11 @@ import (
 // PasswordHmac is returned, the plain-text and encrypted password is not returned.
 //
 // Both c.Name and c.Description are optional. If c.Name is set, it must
-// be unique within c.ScopeId. Both c.CreateTime and c.UpdateTime are
+// be unique within c.ProjectId. Both c.CreateTime and c.UpdateTime are
 // ignored.
 func (r *Repository) CreateUsernamePasswordCredential(
 	ctx context.Context,
-	scopeId string,
+	projectId string,
 	c *UsernamePasswordCredential,
 	_ ...Option,
 ) (*UsernamePasswordCredential, error) {
@@ -38,8 +38,8 @@ func (r *Repository) CreateUsernamePasswordCredential(
 	if c.UsernamePasswordCredential == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing embedded credential")
 	}
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	if c.Username == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing username")
@@ -60,13 +60,13 @@ func (r *Repository) CreateUsernamePasswordCredential(
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	c.PublicId = id
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	// encrypt
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -112,10 +112,10 @@ func (r *Repository) CreateUsernamePasswordCredential(
 // key and passphrase are not returned.
 //
 // Both c.Name and c.Description are optional. If c.Name is set, it must be
-// unique within c.ScopeId. Both c.CreateTime and c.UpdateTime are ignored.
+// unique within c.ProjectId. Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreateSshPrivateKeyCredential(
 	ctx context.Context,
-	scopeId string,
+	projectId string,
 	c *SshPrivateKeyCredential,
 	_ ...Option,
 ) (*SshPrivateKeyCredential, error) {
@@ -126,8 +126,8 @@ func (r *Repository) CreateSshPrivateKeyCredential(
 	if c.SshPrivateKeyCredential == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing embedded credential")
 	}
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	if c.Username == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing username")
@@ -148,13 +148,13 @@ func (r *Repository) CreateSshPrivateKeyCredential(
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	c.PublicId = id
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	// encrypt
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -245,12 +245,12 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 // number of records updated. c is not changed.
 //
 // c must contain a valid PublicId. Only Name, Description, Username and Password can be
-// changed. If c.Name is set to a non-empty string, it must be unique within c.ScopeId.
+// changed. If c.Name is set to a non-empty string, it must be unique within c.ProjectId.
 //
 // An attribute of c will be set to NULL in the database if the attribute
 // in c is the zero value and it is included in fieldMaskPaths.
 func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
-	scopeId string,
+	projectId string,
 	c *UsernamePasswordCredential,
 	version uint32,
 	fieldMaskPaths []string,
@@ -269,8 +269,8 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 	if version == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	if projectId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	if c.StoreId == "" {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing store id")
@@ -287,7 +287,7 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
-	dbMask, nullFields := dbcommon.BuildUpdatePaths(
+	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:        c.Name,
 			descriptionField: c.Description,
@@ -304,7 +304,7 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 	for _, f := range fieldMaskPaths {
 		if strings.EqualFold(passwordField, f) {
 			// Password has been updated, re-encrypt and recalculate hmac
-			databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+			databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 			if err != nil {
 				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 			}
@@ -317,7 +317,7 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected,
 			errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
@@ -360,12 +360,12 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 //
 // c must contain a valid PublicId. Only Name, Description, Username,
 // PrivateKey and PrivateKeyPassphrase can be changed. If c.Name is set to a non-empty string, it
-// must be unique within c.ScopeId.
+// must be unique within c.ProjectId.
 //
 // An attribute of c will be set to NULL in the database if the attribute in c
 // is the zero value and it is included in fieldMaskPaths.
 func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
-	scopeId string,
+	projectId string,
 	c *SshPrivateKeyCredential,
 	version uint32,
 	fieldMaskPaths []string,
@@ -384,8 +384,8 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 	if version == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	if projectId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	if c.StoreId == "" {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing store id")
@@ -403,7 +403,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
-	dbMask, nullFields := dbcommon.BuildUpdatePaths(
+	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:                 c.Name,
 			descriptionField:          c.Description,
@@ -425,7 +425,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 				// We don't need to encrypt twice so keep track
 				performedEncryption = true
 
-				databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+				databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 				if err != nil {
 					return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 				}
@@ -445,7 +445,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected,
 			errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
@@ -486,7 +486,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 }
 
 // ListCredentials returns a slice of UsernamePasswordCredentials for the
-// scopeIds. WithLimit is the only option supported.
+// storeId. WithLimit is the only option supported.
 // TODO: This should hit a view and return the interface type...
 func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ...Option) ([]credential.Static, error) {
 	const op = "static.(Repository).ListCredentials"
@@ -538,13 +538,13 @@ func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ..
 // DeleteCredential deletes publicId from the repository and returns
 // the number of records deleted. All options are ignored.
 // TODO: This should hit a view...
-func (r *Repository) DeleteCredential(ctx context.Context, scopeId, id string, _ ...Option) (int, error) {
+func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string, _ ...Option) (int, error) {
 	const op = "static.(Repository).DeleteCredential"
 	if id == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 
 	var input interface{}
@@ -564,7 +564,7 @@ func (r *Repository) DeleteCredential(ctx context.Context, scopeId, id string, _
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "unknown type")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get oplog wrapper"))
 	}

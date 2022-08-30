@@ -37,6 +37,7 @@ type Err struct {
 	// wrapped represents an optionally wrapped error
 	//
 	// Types that are assignable to Wrapped:
+	//
 	//	*Err_Err
 	//	*Err_StdError
 	//	*Err_None

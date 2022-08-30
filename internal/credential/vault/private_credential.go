@@ -33,7 +33,7 @@ type privateCredential struct {
 	TokenExpirationTime  *timestamp.Timestamp
 	TokenKeyId           string
 	TokenStatus          string
-	ScopeId              string
+	ProjectId            string
 	VaultAddress         string
 	Namespace            string
 	CaCert               []byte
@@ -79,7 +79,7 @@ func (pc *privateCredential) decrypt(ctx context.Context, cipher wrapping.Wrappe
 	return nil
 }
 
-func (pc *privateCredential) client() (*client, error) {
+func (pc *privateCredential) client(ctx context.Context) (*client, error) {
 	const op = "vault.(privateCredential).client"
 	clientConfig := &clientConfig{
 		Addr:          pc.VaultAddress,
@@ -95,7 +95,7 @@ func (pc *privateCredential) client() (*client, error) {
 		clientConfig.ClientKey = pc.ClientKey
 	}
 
-	client, err := newClient(clientConfig)
+	client, err := newClient(ctx, clientConfig)
 	if err != nil {
 		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
 	}

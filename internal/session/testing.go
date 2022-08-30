@@ -166,7 +166,7 @@ func TestSessionParams(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamR
 		TargetId:        tcpTarget.GetPublicId(),
 		HostSetId:       sets[0].PublicId,
 		AuthTokenId:     at.PublicId,
-		ScopeId:         tcpTarget.GetScopeId(),
+		ProjectId:       tcpTarget.GetProjectId(),
 		Endpoint:        "tcp://127.0.0.1:22",
 		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),

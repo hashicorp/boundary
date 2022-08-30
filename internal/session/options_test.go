@@ -30,11 +30,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withLimit = 1
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithScopeId", func(t *testing.T) {
+	t.Run("WithProjectIds", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithScopeIds([]string{"o_1234"}))
+		opts := getOpts(WithProjectIds([]string{"o_1234"}))
 		testOpts := getDefaultOptions()
-		testOpts.withScopeIds = []string{"o_1234"}
+		testOpts.withProjectIds = []string{"o_1234"}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithOrderByCreateTime", func(t *testing.T) {

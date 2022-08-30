@@ -1,6 +1,7 @@
 package credentialstores
 
 import (
+	"context"
 	"encoding/pem"
 	"testing"
 
@@ -10,10 +11,11 @@ import (
 )
 
 func TestPkAndClientCerts(t *testing.T) {
+	ctx := context.Background()
 	s := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS))
 
 	t.Run("seperate client cert and key", func(t *testing.T) {
-		c, k, err := extractClientCertAndPk(string(s.ClientCert), string(s.ClientKey))
+		c, k, err := extractClientCertAndPk(ctx, string(s.ClientCert), string(s.ClientKey))
 		assert.NoError(t, err)
 		require.NotNil(t, k)
 		assert.Equal(t, s.ClientKey, pem.EncodeToMemory(k))
@@ -22,7 +24,7 @@ func TestPkAndClientCerts(t *testing.T) {
 	})
 
 	t.Run("client cert and key bundled in cert", func(t *testing.T) {
-		c, k, err := extractClientCertAndPk(string(s.ClientCert)+string(s.ClientKey), "")
+		c, k, err := extractClientCertAndPk(ctx, string(s.ClientCert)+string(s.ClientKey), "")
 		assert.NoError(t, err)
 		require.NotNil(t, k)
 		assert.Equal(t, s.ClientKey, pem.EncodeToMemory(k))
@@ -31,7 +33,7 @@ func TestPkAndClientCerts(t *testing.T) {
 	})
 
 	t.Run("cert with no private key", func(t *testing.T) {
-		c, k, err := extractClientCertAndPk(string(s.ClientCert), "")
+		c, k, err := extractClientCertAndPk(ctx, string(s.ClientCert), "")
 		assert.NoError(t, err)
 		assert.Nil(t, k)
 		require.Len(t, c, 1)
@@ -39,7 +41,7 @@ func TestPkAndClientCerts(t *testing.T) {
 	})
 
 	t.Run("private key with no cert", func(t *testing.T) {
-		c, k, err := extractClientCertAndPk("", string(s.ClientKey))
+		c, k, err := extractClientCertAndPk(ctx, "", string(s.ClientKey))
 		assert.NoError(t, err)
 		assert.NotNil(t, k)
 		assert.Equal(t, s.ClientKey, pem.EncodeToMemory(k))
@@ -47,13 +49,13 @@ func TestPkAndClientCerts(t *testing.T) {
 	})
 
 	t.Run("error cases", func(t *testing.T) {
-		_, _, err := extractClientCertAndPk(string(s.ClientCert), "invalid key")
+		_, _, err := extractClientCertAndPk(ctx, string(s.ClientCert), "invalid key")
 		assert.Error(t, err)
-		_, _, err = extractClientCertAndPk("invalid cert", string(s.ClientKey))
+		_, _, err = extractClientCertAndPk(ctx, "invalid cert", string(s.ClientKey))
 		assert.Error(t, err)
 
 		// private key with the cert and the private key
-		c, k, err := extractClientCertAndPk(string(s.ClientCert)+string(s.ClientKey), string(s.ClientKey))
+		c, k, err := extractClientCertAndPk(ctx, string(s.ClientCert)+string(s.ClientKey), string(s.ClientKey))
 		assert.Error(t, err)
 		assert.Nil(t, k)
 		assert.Empty(t, c)

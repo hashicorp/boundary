@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	vault "github.com/hashicorp/vault/api"
 )
@@ -19,13 +19,13 @@ import (
 // CreateCredentialStore inserts cs into the repository and returns a new
 // CredentialStore containing the credential store's PublicId. cs is not
 // changed. cs must not contain a PublicId. The PublicId is generated and
-// assigned by this method. cs must contain a valid ScopeId, VaultAddress,
+// assigned by this method. cs must contain a valid ProjectId, VaultAddress,
 // and Vault token. The Vault token must be renewable, periodic, and
 // orphan. CreateCredentialStore calls the /auth/token/renew-self and
 // /auth/token/lookup-self Vault endpoints.
 //
 // Both cs.Name and cs.Description are optional. If cs.Name is set, it must
-// be unique within cs.ScopeId. Both cs.CreateTime and cs.UpdateTime are
+// be unique within cs.ProjectId. Both cs.CreateTime and cs.UpdateTime are
 // ignored.
 //
 // For more information about the required properties of the Vault token see:
@@ -47,8 +47,8 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	if cs.CredentialStore == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil embedded CredentialStore")
 	}
-	if cs.ScopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if cs.ProjectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if len(cs.inputToken) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no vault token")
@@ -74,11 +74,11 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		cs.clientCert.StoreId = id
 	}
 
-	client, err := cs.client()
+	client, err := cs.client(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create vault client"))
 	}
-	tokenLookup, err := client.lookupToken()
+	tokenLookup, err := client.lookupToken(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup vault token"))
 	}
@@ -86,7 +86,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, err
 	}
 
-	available, err := client.capabilities(requiredCapabilities.paths())
+	available, err := client.capabilities(ctx, requiredCapabilities.paths())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get vault capabilities"))
 	}
@@ -96,7 +96,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 			errors.New(ctx, errors.VaultTokenMissingCapabilities, op, fmt.Sprintf("missing capabilites: %v", missing))
 	}
 
-	renewedToken, err := client.renewToken()
+	renewedToken, err := client.renewToken(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
 	}
@@ -116,11 +116,11 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, err
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
-	databaseWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, cs.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -195,9 +195,9 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s: name %s already exists", cs.ScopeId, cs.Name)))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s: name %s already exists", cs.ProjectId, cs.Name)))
 		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s", cs.ScopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s", cs.ProjectId)))
 	}
 
 	// Best effort update next run time of token renewal job, but an error should not
@@ -262,7 +262,7 @@ func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string,
 
 type publicStore struct {
 	PublicId             string `gorm:"primary_key"`
-	ScopeId              string
+	ProjectId            string
 	Name                 string
 	Description          string
 	CreateTime           *timestamp.Timestamp
@@ -290,7 +290,7 @@ func allocPublicStore() *publicStore {
 func (ps *publicStore) toCredentialStore() *CredentialStore {
 	cs := allocCredentialStore()
 	cs.PublicId = ps.PublicId
-	cs.ScopeId = ps.ScopeId
+	cs.ProjectId = ps.ProjectId
 	cs.Name = ps.Name
 	cs.Description = ps.Description
 	cs.CreateTime = ps.CreateTime
@@ -336,7 +336,7 @@ func (ps *publicStore) GetPublicId() string { return ps.PublicId }
 // cs must contain a valid PublicId. Only Name, Description, Namespace,
 // TlsServerName, TlsSkipVerify, CaCert, VaultAddress, ClientCertificate,
 // ClientCertificateKey, workerFilter, and Token can be changed. If cs.Name is set to a
-// non-empty string, it must be unique within cs.ScopeId. If Token is changed,
+// non-empty string, it must be unique within cs.Projectid. If Token is changed,
 // the new token must have the same properties defined in CreateCredentialStore
 // and UpdateCredentialStore calls the same Vault endpoints described in
 // CreateCredentialStore.
@@ -357,8 +357,8 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	if version == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	if cs.ScopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	if cs.ProjectId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	cs = cs.clone()
 
@@ -385,7 +385,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
-	dbMask, nullFields := dbcommon.BuildUpdatePaths(
+	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:          cs.Name,
 			descriptionField:   cs.Description,
@@ -407,7 +407,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		clientCert = cs.ClientCertificate().GetCertificate()
 		clientCertKey = cs.ClientCertificate().GetCertificateKey()
 	}
-	certDbMask, certNullFields := dbcommon.BuildUpdatePaths(
+	certDbMask, certNullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			certificateField:    clientCert,
 			certificateKeyField: clientCertKey,
@@ -438,12 +438,12 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected,
 			errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
-	databaseWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, cs.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, db.NoRowsAffected,
 			errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
@@ -473,12 +473,12 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	}
 
 	var token *Token
-	client, err := updatedStore.client()
+	client, err := updatedStore.client(ctx)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get client for updated store"))
 	}
 	if validateToken {
-		tokenLookup, err := client.lookupToken()
+		tokenLookup, err := client.lookupToken(ctx)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("cannot lookup token for updated store"))
 		}
@@ -486,7 +486,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 
-		available, err := client.capabilities(requiredCapabilities.paths())
+		available, err := client.capabilities(ctx, requiredCapabilities.paths())
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get vault capabilities"))
 		}
@@ -498,7 +498,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		}
 	}
 	if updateToken {
-		renewedToken, err := client.renewToken()
+		renewedToken, err := client.renewToken(ctx)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to renew vault token"))
 		}
@@ -643,11 +643,11 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 }
 
 // ListCredentialStores returns a slice of CredentialStores for the
-// scopeIds. WithLimit is the only option supported.
-func (r *Repository) ListCredentialStores(ctx context.Context, scopeIds []string, opt ...Option) ([]*CredentialStore, error) {
+// projectIds. WithLimit is the only option supported.
+func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []string, opt ...Option) ([]*CredentialStore, error) {
 	const op = "vault.(Repository).ListCredentialStores"
-	if len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopeIds")
+	if len(projectIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no projectIds")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -656,7 +656,7 @@ func (r *Repository) ListCredentialStores(ctx context.Context, scopeIds []string
 		limit = opts.withLimit
 	}
 	var credentialStores []*publicStore
-	err := r.reader.SearchWhere(ctx, &credentialStores, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &credentialStores, "project_id in (?)", []interface{}{projectIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -683,11 +683,11 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 		}
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", publicId)))
 	}
-	if cs.ScopeId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if cs.ProjectId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}

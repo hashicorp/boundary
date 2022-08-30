@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pbset "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -25,13 +26,45 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+// normalizeCatalogAttributes allows a plugin to normalize attributes before
+// they are saved
+func normalizeCatalogAttributes(ctx context.Context, plgClient plgpb.HostPluginServiceClient, plgHc *pb.HostCatalog) error {
+	const op = "plugin.(Repository).normalizeCatalogAttributes"
+	switch {
+	case util.IsNil(plgClient):
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin client is nil")
+	case plgHc == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "host catalog is nil")
+	case plgHc.GetAttributes() == nil:
+		return nil
+	}
+
+	ret, err := plgClient.NormalizeCatalogData(ctx, &plgpb.NormalizeCatalogDataRequest{
+		Attributes: plgHc.GetAttributes(),
+	})
+	switch {
+	case err == nil:
+		if ret.Attributes != nil {
+			plgHc.Attrs = &pb.HostCatalog_Attributes{
+				Attributes: ret.Attributes,
+			}
+		}
+	case status.Code(err) == codes.Unimplemented:
+		// Do nothing
+	default:
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error asking plugin to normalize catalog data"))
+	}
+
+	return nil
+}
+
 // CreateCatalog inserts c into the repository and returns a new
 // HostCatalog containing the catalog's PublicId. c must contain a valid
-// ScopeID and PluginID. c must not contain a PublicId. The PublicId is
+// ProjectID and PluginID. c must not contain a PublicId. The PublicId is
 // generated and assigned by this method. opt is ignored.
 //
 // c.Secret, c.Name and c.Description are optional. If c.Name is set, it must be
-// unique within c.ScopeID.  If c.Secret is set, it will be stored encrypted but
+// unique within c.ProjectId.  If c.Secret is set, it will be stored encrypted but
 // not included in the returned *HostCatalog.
 //
 // Both c.CreateTime and c.UpdateTime are ignored.
@@ -43,8 +76,8 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	if c.HostCatalog == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostCatalog")
 	}
-	if c.ScopeId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if c.ProjectId == "" {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if c.PublicId != "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
@@ -72,7 +105,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 
 	// If secrets were passed in, HMAC 'em
 	if c.Secrets != nil && len(c.Secrets.GetFields()) > 0 {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+		databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}
@@ -90,7 +123,13 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	if plgHc.GetAttributes() != nil {
+		if err := normalizeCatalogAttributes(ctx, plgClient, plgHc); err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -134,7 +173,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
-				dbWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+				dbWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 				}
@@ -161,9 +200,9 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s: name %s already exists", c.ScopeId, c.Name)))
+			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s: name %s already exists", c.ProjectId, c.Name)))
 		}
-		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s", c.ScopeId)))
+		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s", c.ProjectId)))
 	}
 	plg, err := r.getPlugin(ctx, newHostCatalog.GetPluginId())
 	if err != nil {
@@ -205,8 +244,8 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	if c.PublicId == "" {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	if c.ScopeId == "" {
-		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if c.ProjectId == "" {
+		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if len(fieldMask) == 0 {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
@@ -269,7 +308,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 				nullFields = append(nullFields, "SecretsHmac")
 			default:
 				// If secrets were passed in, HMAC 'em
-				databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+				databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
 				if err != nil {
 					return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 				}
@@ -321,12 +360,23 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 
-	dbWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ScopeId, kms.KeyPurposeDatabase)
+	if updateAttributes {
+		if newPlgHc.GetAttributes() != nil {
+			if err := normalizeCatalogAttributes(ctx, plgClient, newPlgHc); err != nil {
+				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+			if newCatalog.Attributes, err = proto.Marshal(newPlgHc.GetAttributes()); err != nil {
+				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+		}
+	}
+
+	dbWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 	}
 	// Get the oplog.
-	oplogWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -536,11 +586,11 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) 
 	return c, plg, nil
 }
 
-// ListCatalogs returns a slice of HostCatalogs for the scope IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ...host.Option) ([]*HostCatalog, []*hostplugin.Plugin, error) {
+// ListCatalogs returns a slice of HostCatalogs for the project IDs. WithLimit is the only option supported.
+func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...host.Option) ([]*HostCatalog, []*hostplugin.Plugin, error) {
 	const op = "plugin.(Repository).ListCatalogs"
-	if len(scopeIds) == 0 {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if len(projectIds) == 0 {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	opts, err := host.GetOpts(opt...)
 	if err != nil {
@@ -552,7 +602,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ..
 		limit = opts.WithLimit
 	}
 	var hostCatalogs []*HostCatalog
-	if err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []interface{}{projectIds}, db.WithLimit(limit)); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	plgIds := make([]string, 0, len(hostCatalogs))
@@ -614,7 +664,7 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 		event.WriteError(ctx, op, err, event.WithInfoMsg("plugin deleting catalog", "host plugin id", c.GetPluginId()))
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -664,7 +714,7 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, *
 	var p *plgpb.HostCatalogPersisted
 	if s != nil {
 		var err error
-		p, err = toPluginPersistedData(ctx, r.kms, c.GetScopeId(), s)
+		p, err = toPluginPersistedData(ctx, r.kms, c.GetProjectId(), s)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
@@ -702,7 +752,7 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 
 	hc := &pb.HostCatalog{
 		Id:          in.GetPublicId(),
-		ScopeId:     in.GetScopeId(),
+		ScopeId:     in.GetProjectId(),
 		Name:        name,
 		Description: description,
 	}
@@ -725,16 +775,16 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 }
 
 // toPluginCatalog converts a *HostCatalogSecret from storage to a
-// *plgpb.HostCatalogPersisted expected by a plugin. Scope Id must be set.
-func toPluginPersistedData(ctx context.Context, kmsCache *kms.Kms, scopeId string, cSecret *HostCatalogSecret) (*plgpb.HostCatalogPersisted, error) {
+// *plgpb.HostCatalogPersisted expected by a plugin. Project Id must be set.
+func toPluginPersistedData(ctx context.Context, kmsCache *kms.Kms, projectId string, cSecret *HostCatalogSecret) (*plgpb.HostCatalogPersisted, error) {
 	const op = "plugin.(Repository).getPersistedDataForCatalog"
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty scope id")
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty project id")
 	}
 	if cSecret == nil {
 		return nil, nil
 	}
-	dbWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	dbWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get db wrapper"))
 	}

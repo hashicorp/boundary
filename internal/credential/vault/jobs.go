@@ -167,7 +167,7 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 
 func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error {
 	const op = "vault.(TokenRenewalJob).renewToken"
-	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -181,13 +181,13 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *privateStore) error
 		return nil
 	}
 
-	vc, err := s.client()
+	vc, err := s.client(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
 	var respErr *vault.ResponseError
-	renewedToken, err := vc.renewToken()
+	renewedToken, err := vc.renewToken(ctx)
 	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusForbidden {
 		// Vault returned a 403 when attempting a renew self, the token is either expired
 		// or malformed.  Set status to "expired" so credentials created with token can be
@@ -397,7 +397,7 @@ or
 
 func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) error {
 	const op = "vault.(TokenRevocationJob).revokeToken"
-	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -411,13 +411,13 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *privateStore) e
 		return nil
 	}
 
-	vc, err := s.client()
+	vc, err := s.client(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
 	var respErr *vault.ResponseError
-	err = vc.revokeToken()
+	err = vc.revokeToken(ctx)
 	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusForbidden {
 		// Vault returned a 403 when attempting a revoke self, the token is already expired.
 		// Clobber error and set status to "revoked" below.
@@ -541,7 +541,6 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-
 		if err := r.renewCred(ctx, c); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error renewing credential", "credential id", c.PublicId))
 		}
@@ -554,7 +553,7 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 
 func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredential) error {
 	const op = "vault.(CredentialRenewalJob).renewCred"
-	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -562,7 +561,7 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 		return errors.Wrap(ctx, err, op)
 	}
 
-	vc, err := c.client()
+	vc, err := c.client(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -571,7 +570,7 @@ func (r *CredentialRenewalJob) renewCred(ctx context.Context, c *privateCredenti
 	var respErr *vault.ResponseError
 	// Subtract last renewal time from previous expiration time to get lease duration
 	leaseDuration := c.ExpirationTime.AsTime().Sub(c.LastRenewalTime.AsTime())
-	renewedCred, err := vc.renewLease(c.ExternalId, leaseDuration)
+	renewedCred, err := vc.renewLease(ctx, c.ExternalId, leaseDuration)
 	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusBadRequest {
 		// Vault returned a 400 when attempting a renew lease, the lease is either expired
 		// or the leaseId is malformed.  Set status to "expired".
@@ -713,7 +712,7 @@ func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 
 func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCredential) error {
 	const op = "vault.(CredentialRenewalJob).revokeCred"
-	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -721,14 +720,14 @@ func (r *CredentialRevocationJob) revokeCred(ctx context.Context, c *privateCred
 		return errors.Wrap(ctx, err, op)
 	}
 
-	vc, err := c.client()
+	vc, err := c.client(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
 	cred := c.toCredential()
 	var respErr *vault.ResponseError
-	err = vc.revokeLease(c.ExternalId)
+	err = vc.revokeLease(ctx, c.ExternalId)
 	if ok := errors.As(err, &respErr); ok && respErr.StatusCode == http.StatusBadRequest {
 		// Vault returned a 400 when attempting a revoke lease, the lease is already expired.
 		// Clobber error and set status to "revoked" below.
@@ -847,7 +846,7 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 			return errors.Wrap(ctx, err, op)
 		}
 
-		oplogWrapper, err := r.kms.GetWrapper(ctx, store.ScopeId, kms.KeyPurposeOplog)
+		oplogWrapper, err := r.kms.GetWrapper(ctx, store.ProjectId, kms.KeyPurposeOplog)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to get oplog wrapper for credential store cleanup job", "credential store id", store.PublicId))
 			r.numProcessed++

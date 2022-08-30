@@ -18,8 +18,16 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HostPluginServiceClient interface {
-	// OnCreateCatalog is a hook that runs when a host catalog is
-	// created.
+	// NormalizeCatalogData is a hook that passes attributes to the plugin and
+	// allows those values to be normalized prior to creating or updating those
+	// values in the host catalog data.
+	//
+	// NormalizeCatalogData is called before:
+	// * OnCreateCatalog
+	// * OnUpdateCatalog
+	NormalizeCatalogData(ctx context.Context, in *NormalizeCatalogDataRequest, opts ...grpc.CallOption) (*NormalizeCatalogDataResponse, error)
+	// OnCreateCatalog is a hook that runs when a
+	// host catalog is created.
 	OnCreateCatalog(ctx context.Context, in *OnCreateCatalogRequest, opts ...grpc.CallOption) (*OnCreateCatalogResponse, error)
 	// OnUpdateCatalog is a hook that runs when a host catalog is
 	// updated.
@@ -27,6 +35,14 @@ type HostPluginServiceClient interface {
 	// OnDeleteCatalog is a hook that runs when a host catalog is
 	// deleted.
 	OnDeleteCatalog(ctx context.Context, in *OnDeleteCatalogRequest, opts ...grpc.CallOption) (*OnDeleteCatalogResponse, error)
+	// NormalizeSetData is a hook that passes attributes to the plugin and
+	// allows those values to be normalized prior to creating or updating those
+	// values in the host set data.
+	//
+	// NormalizeSetData is called before:
+	// * OnCreateSet
+	// * OnUpdateSet
+	NormalizeSetData(ctx context.Context, in *NormalizeSetDataRequest, opts ...grpc.CallOption) (*NormalizeSetDataResponse, error)
 	// OnCreateSet is a hook that runs when a host set is created.
 	OnCreateSet(ctx context.Context, in *OnCreateSetRequest, opts ...grpc.CallOption) (*OnCreateSetResponse, error)
 	// OnUpdateSet is a hook that runs when a host set is updated.
@@ -43,6 +59,15 @@ type hostPluginServiceClient struct {
 
 func NewHostPluginServiceClient(cc grpc.ClientConnInterface) HostPluginServiceClient {
 	return &hostPluginServiceClient{cc}
+}
+
+func (c *hostPluginServiceClient) NormalizeCatalogData(ctx context.Context, in *NormalizeCatalogDataRequest, opts ...grpc.CallOption) (*NormalizeCatalogDataResponse, error) {
+	out := new(NormalizeCatalogDataResponse)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/NormalizeCatalogData", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *hostPluginServiceClient) OnCreateCatalog(ctx context.Context, in *OnCreateCatalogRequest, opts ...grpc.CallOption) (*OnCreateCatalogResponse, error) {
@@ -66,6 +91,15 @@ func (c *hostPluginServiceClient) OnUpdateCatalog(ctx context.Context, in *OnUpd
 func (c *hostPluginServiceClient) OnDeleteCatalog(ctx context.Context, in *OnDeleteCatalogRequest, opts ...grpc.CallOption) (*OnDeleteCatalogResponse, error) {
 	out := new(OnDeleteCatalogResponse)
 	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/OnDeleteCatalog", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostPluginServiceClient) NormalizeSetData(ctx context.Context, in *NormalizeSetDataRequest, opts ...grpc.CallOption) (*NormalizeSetDataResponse, error) {
+	out := new(NormalizeSetDataResponse)
+	err := c.cc.Invoke(ctx, "/plugin.v1.HostPluginService/NormalizeSetData", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +146,16 @@ func (c *hostPluginServiceClient) ListHosts(ctx context.Context, in *ListHostsRe
 // All implementations must embed UnimplementedHostPluginServiceServer
 // for forward compatibility
 type HostPluginServiceServer interface {
-	// OnCreateCatalog is a hook that runs when a host catalog is
-	// created.
+	// NormalizeCatalogData is a hook that passes attributes to the plugin and
+	// allows those values to be normalized prior to creating or updating those
+	// values in the host catalog data.
+	//
+	// NormalizeCatalogData is called before:
+	// * OnCreateCatalog
+	// * OnUpdateCatalog
+	NormalizeCatalogData(context.Context, *NormalizeCatalogDataRequest) (*NormalizeCatalogDataResponse, error)
+	// OnCreateCatalog is a hook that runs when a
+	// host catalog is created.
 	OnCreateCatalog(context.Context, *OnCreateCatalogRequest) (*OnCreateCatalogResponse, error)
 	// OnUpdateCatalog is a hook that runs when a host catalog is
 	// updated.
@@ -121,6 +163,14 @@ type HostPluginServiceServer interface {
 	// OnDeleteCatalog is a hook that runs when a host catalog is
 	// deleted.
 	OnDeleteCatalog(context.Context, *OnDeleteCatalogRequest) (*OnDeleteCatalogResponse, error)
+	// NormalizeSetData is a hook that passes attributes to the plugin and
+	// allows those values to be normalized prior to creating or updating those
+	// values in the host set data.
+	//
+	// NormalizeSetData is called before:
+	// * OnCreateSet
+	// * OnUpdateSet
+	NormalizeSetData(context.Context, *NormalizeSetDataRequest) (*NormalizeSetDataResponse, error)
 	// OnCreateSet is a hook that runs when a host set is created.
 	OnCreateSet(context.Context, *OnCreateSetRequest) (*OnCreateSetResponse, error)
 	// OnUpdateSet is a hook that runs when a host set is updated.
@@ -136,6 +186,9 @@ type HostPluginServiceServer interface {
 type UnimplementedHostPluginServiceServer struct {
 }
 
+func (UnimplementedHostPluginServiceServer) NormalizeCatalogData(context.Context, *NormalizeCatalogDataRequest) (*NormalizeCatalogDataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NormalizeCatalogData not implemented")
+}
 func (UnimplementedHostPluginServiceServer) OnCreateCatalog(context.Context, *OnCreateCatalogRequest) (*OnCreateCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnCreateCatalog not implemented")
 }
@@ -144,6 +197,9 @@ func (UnimplementedHostPluginServiceServer) OnUpdateCatalog(context.Context, *On
 }
 func (UnimplementedHostPluginServiceServer) OnDeleteCatalog(context.Context, *OnDeleteCatalogRequest) (*OnDeleteCatalogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnDeleteCatalog not implemented")
+}
+func (UnimplementedHostPluginServiceServer) NormalizeSetData(context.Context, *NormalizeSetDataRequest) (*NormalizeSetDataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NormalizeSetData not implemented")
 }
 func (UnimplementedHostPluginServiceServer) OnCreateSet(context.Context, *OnCreateSetRequest) (*OnCreateSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnCreateSet not implemented")
@@ -168,6 +224,24 @@ type UnsafeHostPluginServiceServer interface {
 
 func RegisterHostPluginServiceServer(s grpc.ServiceRegistrar, srv HostPluginServiceServer) {
 	s.RegisterService(&HostPluginService_ServiceDesc, srv)
+}
+
+func _HostPluginService_NormalizeCatalogData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NormalizeCatalogDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostPluginServiceServer).NormalizeCatalogData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/plugin.v1.HostPluginService/NormalizeCatalogData",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostPluginServiceServer).NormalizeCatalogData(ctx, req.(*NormalizeCatalogDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _HostPluginService_OnCreateCatalog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -220,6 +294,24 @@ func _HostPluginService_OnDeleteCatalog_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HostPluginServiceServer).OnDeleteCatalog(ctx, req.(*OnDeleteCatalogRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _HostPluginService_NormalizeSetData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NormalizeSetDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostPluginServiceServer).NormalizeSetData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/plugin.v1.HostPluginService/NormalizeSetData",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostPluginServiceServer).NormalizeSetData(ctx, req.(*NormalizeSetDataRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -304,6 +396,10 @@ var HostPluginService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*HostPluginServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "NormalizeCatalogData",
+			Handler:    _HostPluginService_NormalizeCatalogData_Handler,
+		},
+		{
 			MethodName: "OnCreateCatalog",
 			Handler:    _HostPluginService_OnCreateCatalog_Handler,
 		},
@@ -314,6 +410,10 @@ var HostPluginService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "OnDeleteCatalog",
 			Handler:    _HostPluginService_OnDeleteCatalog_Handler,
+		},
+		{
+			MethodName: "NormalizeSetData",
+			Handler:    _HostPluginService_NormalizeSetData_Handler,
 		},
 		{
 			MethodName: "OnCreateSet",

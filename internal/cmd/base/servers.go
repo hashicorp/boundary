@@ -855,11 +855,11 @@ func MakeSighupCh() chan struct{} {
 //
 // The setting is derived from one of the following, in order:
 //
-//   * Via the supplied value if non-zero.
-//   * BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
-//   integer value to define the setting.
-//   * If either of these is missing, the default is used. See the
-//   defaultStatusGracePeriod value for the default value.
+//   - Via the supplied value if non-zero.
+//   - BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
+//     integer value to define the setting.
+//   - If either of these is missing, the default is used. See the
+//     defaultStatusGracePeriod value for the default value.
 //
 // The minimum setting for this value is the default setting. Values
 // below this will be reset to the default.

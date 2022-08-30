@@ -601,12 +601,13 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 			attrs := req.GetItem().GetOidcManagedGroupAttributes()
 			if attrs == nil {
 				badFields[globals.AttributesField] = "Attribute fields is required."
-			}
-			if attrs.Filter == "" {
-				badFields[attrFilterField] = "This field is required."
 			} else {
-				if _, err := bexpr.CreateEvaluator(attrs.Filter); err != nil {
-					badFields[attrFilterField] = fmt.Sprintf("Error evaluating submitted filter expression: %v.", err)
+				if attrs.Filter == "" {
+					badFields[attrFilterField] = "This field is required."
+				} else {
+					if _, err := bexpr.CreateEvaluator(attrs.Filter); err != nil {
+						badFields[attrFilterField] = fmt.Sprintf("Error evaluating submitted filter expression: %v.", err)
+					}
 				}
 			}
 		default:

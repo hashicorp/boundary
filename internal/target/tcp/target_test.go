@@ -24,8 +24,8 @@ func TestTarget_Create(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	ctx := context.Background()
 	type args struct {
-		scopeId string
-		opt     []target.Option
+		projectId string
+		opt       []target.Option
 	}
 	tests := []struct {
 		name          string
@@ -37,23 +37,23 @@ func TestTarget_Create(t *testing.T) {
 		wantCreateErr bool
 	}{
 		{
-			name:      "empty-scopeId",
+			name:      "empty-projectId",
 			args:      args{},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,
 		},
 		{
-			name: "valid-proj-scope",
+			name: "valid-proj-id",
 			args: args{
-				scopeId: prj.PublicId,
-				opt:     []target.Option{target.WithName("valid-proj-scope")},
+				projectId: prj.PublicId,
+				opt:       []target.Option{target.WithName("valid-proj-id")},
 			},
 			want: func() target.Target {
 				t, _ := target.New(
 					ctx,
 					tcp.Subtype,
 					prj.PublicId,
-					target.WithName("valid-proj-scope"),
+					target.WithName("valid-proj-id"),
 					target.WithSessionMaxSeconds(uint32((8 * time.Hour).Seconds())),
 					target.WithSessionConnectionLimit(-1),
 				)
@@ -65,7 +65,7 @@ func TestTarget_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := target.New(ctx, tcp.Subtype, tt.args.scopeId, tt.args.opt...)
+			got, err := target.New(ctx, tcp.Subtype, tt.args.projectId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -163,7 +163,7 @@ func TestTarget_Update(t *testing.T) {
 		description    string
 		fieldMaskPaths []string
 		nullPaths      []string
-		ScopeId        string
+		ProjectId      string
 	}
 	tests := []struct {
 		name           string
@@ -178,27 +178,27 @@ func TestTarget_Update(t *testing.T) {
 			args: args{
 				name:           "valid" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "proj-scope-id-not-in-mask",
+			name: "proj-id-not-in-mask",
 			args: args{
-				name:           "proj-scope-id" + id,
+				name:           "proj-id" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
 		},
 		{
-			name: "empty-scope-id",
+			name: "empty-project-id",
 			args: args{
-				name:           "empty-scope-id" + id,
+				name:           "empty-project-id" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        "",
+				ProjectId:      "",
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -208,11 +208,11 @@ func TestTarget_Update(t *testing.T) {
 			args: args{
 				name:           "dup-name" + id,
 				fieldMaskPaths: []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `db.Update: duplicate key value violates unique constraint "target_tcp_scope_id_name_key": unique constraint violation: integrity violation: error #1002`,
+			wantErrMsg: `db.Update: duplicate key value violates unique constraint "target_tcp_project_id_name_uq": unique constraint violation: integrity violation: error #1002`,
 		},
 		{
 			name: "set description null",
@@ -220,7 +220,7 @@ func TestTarget_Update(t *testing.T) {
 				name:           "set description null" + id,
 				fieldMaskPaths: []string{"Name"},
 				nullPaths:      []string{"Description"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -231,7 +231,7 @@ func TestTarget_Update(t *testing.T) {
 				description:    "set description null" + id,
 				fieldMaskPaths: []string{"Description"},
 				nullPaths:      []string{"Name"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
 			wantErr:    true,
 			wantErrMsg: `db.Update: name must not be empty: not null constraint violated: integrity violation: error #1001`,
@@ -242,7 +242,7 @@ func TestTarget_Update(t *testing.T) {
 				name:           "set name null" + id,
 				fieldMaskPaths: []string{"Name"},
 				nullPaths:      []string{"Description"},
-				ScopeId:        proj.PublicId,
+				ProjectId:      proj.PublicId,
 			},
 			wantErr:        false,
 			wantRowsUpdate: 1,
@@ -262,7 +262,7 @@ func TestTarget_Update(t *testing.T) {
 			id := tcp.TestId(t)
 			tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, id, target.WithDescription(id))
 
-			updateTarget := tcp.NewTestTarget(tt.args.ScopeId)
+			updateTarget := tcp.NewTestTarget(tt.args.ProjectId)
 			updateTarget.SetPublicId(ctx, tar.GetPublicId())
 			updateTarget.SetName(tt.args.name)
 			updateTarget.SetDescription(tt.args.description)
@@ -280,7 +280,7 @@ func TestTarget_Update(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
 			assert.NotEqual(tar.GetUpdateTime(), updateTarget.GetUpdateTime())
-			foundTarget := tcp.NewTestTarget(tt.args.ScopeId)
+			foundTarget := tcp.NewTestTarget(tt.args.ProjectId)
 			foundTarget.SetPublicId(ctx, tar.GetPublicId())
 			err = rw.LookupByPublicId(ctx, foundTarget)
 			require.NoError(err)
@@ -296,7 +296,7 @@ func TestTarget_Update(t *testing.T) {
 			}
 		})
 	}
-	t.Run("update dup names in diff scopes", func(t *testing.T) {
+	t.Run("update dup names in diff projects", func(t *testing.T) {
 		ctx := context.Background()
 		assert, require := assert.New(t), require.New(t)
 		id := tcp.TestId(t)
@@ -396,7 +396,7 @@ func TestTarget_oplog(t *testing.T) {
 				"resource-public-id": []string{id},
 				"resource-type":      []string{"tcp target"},
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{id},
+				"project-id":         []string{id},
 			},
 		},
 	}

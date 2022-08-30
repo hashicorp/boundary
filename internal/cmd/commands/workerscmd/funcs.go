@@ -2,6 +2,7 @@ package workerscmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -9,6 +10,35 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
+
+func init() {
+	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
+	extraSynopsisFunc = extraSynopsisFuncImpl
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraFlagsHandlingFunc = extraFlagsHandlingFuncImpl
+	executeExtraActions = executeExtraActionsImpl
+}
+
+func extraActionsFlagsMapFuncImpl() map[string][]string {
+	return map[string][]string{
+		"add-worker-tags":    {"id", "tag", "version"},
+		"set-worker-tags":    {"id", "tag", "version"},
+		"remove-worker-tags": {"id", "tag", "version"},
+	}
+}
+
+func extraSynopsisFuncImpl(c *Command) string {
+	switch c.Func {
+	case "add-worker-tags":
+		return "Add api tags to the specified worker"
+	case "set-worker-tags":
+		return "Set api tags for the specified worker"
+	case "remove-worker-tags":
+		return "Remove api tags from the specified worker"
+	default:
+		return ""
+	}
+}
 
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
@@ -25,10 +55,111 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"  Please see the workers subcommand help for detailed usage information.",
 		})
+	case "add-worker-tags":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary workers add-worker-tags [sub command] [args]",
+			"",
+			"  This command allows adding api tags to worker resources. Example:",
+			"",
+			"    Add a set of api tags to a specified worker:",
+			"",
+			`      & boundary workers add-worker-tags -id w_1234567890 -tag "key1=val-a" -tag "key2=val-b,val-c"`,
+			"",
+			"",
+		})
+	case "set-worker-tags":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary workers set-worker-tags [sub command] [args]",
+			"",
+			"  This command allows setting api tags for worker resources. Example:",
+			"",
+			"    Set api tags for a specified worker:",
+			"",
+			`      & boundary workers set-worker-tags -id w_1234567890 -tag "key1=val-a" -tag "key2=val-b,val-c"`,
+			"",
+			"",
+		})
+	case "remove-worker-tags":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary workers remove-worker-tags [sub command] [args]",
+			"",
+			"  This command allows removing api tags from worker resources. Example:",
+			"",
+			"    Remove a set of api tags to a specified worker:",
+			"",
+			`      & boundary workers remove-worker-tags -id w_1234567890 -tag "key1=val-a" -tag "key2=val-b,val-c"`,
+			"",
+			"",
+		})
 	default:
 		helpStr = helpMap[c.Func]()
 	}
 	return helpStr + c.Flags().Help()
+}
+
+func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
+	for _, name := range flagsMap[c.Func] {
+		switch name {
+		case "tag":
+			var nullCheckFn func() bool = nil
+			switch {
+			case strings.ToLower(c.Func[:3]) == "set":
+				nullCheckFn = func() bool { return true }
+			default:
+			}
+			f.StringSliceMapVar(&base.StringSliceMapVar{
+				Name:      "tag",
+				Target:    &c.FlagTags,
+				NullCheck: nullCheckFn,
+				Usage:     "The api tag resources to add, remove, or set.",
+			})
+		}
+	}
+}
+
+func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]workers.Option) bool {
+	switch c.Func {
+	case "add-worker-tags", "remove-worker-tags":
+		if len(c.FlagTags) == 0 {
+			c.UI.Error("No tags supplied via -tag")
+			return false
+		}
+	case "set-worker-tags":
+		switch len(c.FlagTags) {
+		case 0:
+			c.UI.Error("No tags supplied via -tag")
+			return false
+		case 1:
+			if c.FlagTags["null"] == nil {
+				c.FlagTags = nil
+			}
+		}
+	}
+	return true
+}
+
+func executeExtraActionsImpl(c *Command, inResp *api.Response, inItem *workers.Worker, inItems []*workers.Worker, inErr error, workerClient *workers.Client, version uint32, opts []workers.Option) (*api.Response, *workers.Worker, []*workers.Worker, error) {
+	switch c.Func {
+	case "add-worker-tags":
+		result, err := workerClient.AddWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
+	case "set-worker-tags":
+		result, err := workerClient.SetWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
+	case "remove-worker-tags":
+		result, err := workerClient.RemoveWorkerTags(c.Context, c.FlagId, version, c.FlagTags, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
+	}
+	return inResp, inItem, inItems, inErr
 }
 
 func (c *Command) printListTable(items []*workers.Worker) string {
@@ -152,7 +283,7 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 		)
 	}
 
-	if len(item.CanonicalTags) > 0 || len(item.ConfigTags) > 0 {
+	if len(item.CanonicalTags) > 0 || len(item.ApiTags) > 0 || len(item.ConfigTags) > 0 {
 		ret = append(ret,
 			"",
 			"  Tags:",
@@ -163,7 +294,17 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 				tagMap[k] = v
 			}
 			ret = append(ret,
-				"    Worker Configuration:",
+				"    Configuration:",
+				base.WrapMap(6, 2, tagMap),
+			)
+		}
+		if len(item.ApiTags) > 0 {
+			tagMap := make(map[string]any, len(item.ApiTags))
+			for k, v := range item.ApiTags {
+				tagMap[k] = v
+			}
+			ret = append(ret,
+				"    Api:",
 				base.WrapMap(6, 2, tagMap),
 			)
 		}

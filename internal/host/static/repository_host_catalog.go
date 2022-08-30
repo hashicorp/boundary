@@ -13,11 +13,11 @@ import (
 
 // CreateCatalog inserts c into the repository and returns a new
 // HostCatalog containing the catalog's PublicId. c is not changed. c must
-// contain a valid ScopeID. c must not contain a PublicId. The PublicId is
+// contain a valid ProjectID. c must not contain a PublicId. The PublicId is
 // generated and assigned by this method. opt is ignored.
 //
 // Both c.Name and c.Description are optional. If c.Name is set, it must be
-// unique within c.ScopeID.
+// unique within c.ProjectId.
 //
 // Both c.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...Option) (*HostCatalog, error) {
@@ -28,8 +28,8 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 	if c.HostCatalog == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil embedded HostCatalog")
 	}
-	if c.ScopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if c.ProjectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if c.PublicId != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
@@ -55,7 +55,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 		c.PublicId = id
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -83,9 +83,9 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s: name %s already exists", c.ScopeId, c.Name)))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s: name %s already exists", c.ProjectId, c.Name)))
 		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in scope: %s", c.ScopeId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in project: %s", c.ProjectId)))
 	}
 	return newHostCatalog, nil
 }
@@ -97,7 +97,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 //
 // c must contain a valid PublicId. Only c.Name and c.Description can be
 // updated. If c.Name is set to a non-empty string, it must be unique
-// within c.ScopeID.
+// within c.ProjectId.
 //
 // An attribute of c will be set to NULL in the database if the attribute
 // in c is the zero value and it is included in fieldMask.
@@ -112,8 +112,8 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	if c.PublicId == "" {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	if c.ScopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if c.ProjectId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	if len(fieldMask) == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
@@ -136,7 +136,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -200,11 +200,11 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 	return c, nil
 }
 
-// ListCatalogs returns a slice of HostCatalogs for the scope IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ...Option) ([]*HostCatalog, error) {
+// ListCatalogs returns a slice of HostCatalogs for the project IDs. WithLimit is the only option supported.
+func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...Option) ([]*HostCatalog, error) {
 	const op = "static.(Repository).ListCatalogs"
-	if len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if len(projectIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -213,7 +213,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, scopeIds []string, opt ..
 		limit = opts.withLimit
 	}
 	var hostCatalogs []*HostCatalog
-	err := r.reader.SearchWhere(ctx, &hostCatalogs, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []interface{}{projectIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -236,10 +236,10 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 		}
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", id)))
 	}
-	if c.ScopeId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if c.ProjectId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}

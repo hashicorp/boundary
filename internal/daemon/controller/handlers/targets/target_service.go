@@ -231,10 +231,10 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeResourceInfo.ScopeResourceMap[item.GetScopeId()].ScopeInfo))
+			outputOpts = append(outputOpts, handlers.WithScope(scopeResourceInfo.ScopeResourceMap[item.GetProjectId()].ScopeInfo))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(scopeResourceInfo.ScopeResourceMap[item.GetScopeId()].Resources[item.GetPublicId()].AuthorizedActions.Strings()))
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(scopeResourceInfo.ScopeResourceMap[item.GetProjectId()].Resources[item.GetPublicId()].AuthorizedActions.Strings()))
 		}
 
 		item, err := toProto(ctx, item, nil, nil, outputOpts...)
@@ -753,8 +753,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.AuthorizeSession,
 		target.WithName(req.GetName()),
-		target.WithScopeId(req.GetScopeId()),
-		target.WithScopeName(req.GetScopeName()),
+		target.WithProjectId(req.GetScopeId()),
+		target.WithProjectName(req.GetScopeName()),
 	)
 	if authResults.Error != nil {
 		return nil, authResults.Error
@@ -958,7 +958,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		TargetId:           t.GetPublicId(),
 		HostSetId:          chosenEndpoint.SetId,
 		AuthTokenId:        authResults.AuthTokenId,
-		ScopeId:            authResults.Scope.Id,
+		ProjectId:          authResults.Scope.Id,
 		Endpoint:           endpointUrl.String(),
 		ExpirationTime:     &timestamp.Timestamp{Timestamp: expTime},
 		ConnectionLimit:    t.GetSessionConnectionLimit(),
@@ -1001,7 +1001,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 
 		// Remove duplicate requests
 		staticIds = strutil.RemoveDuplicates(staticIds, false)
-		creds, err := credRepo.Retrieve(ctx, t.GetScopeId(), staticIds)
+		creds, err := credRepo.Retrieve(ctx, t.GetProjectId(), staticIds)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -1058,7 +1058,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 
 	if len(workerCreds) > 0 {
 		// store credentials in repo, worker will request creds when a connection is established
-		err = sessionRepo.AddSessionCredentials(ctx, sess.ScopeId, sess.PublicId, workerCreds)
+		err = sessionRepo.AddSessionCredentials(ctx, sess.ProjectId, sess.PublicId, workerCreds)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -1433,7 +1433,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 			return res
 		}
 		id = t.GetPublicId()
-		parentId = t.GetScopeId()
+		parentId = t.GetProjectId()
 		opts = append(opts, auth.WithId(id))
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
@@ -1455,7 +1455,7 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 		out.Id = in.GetPublicId()
 	}
 	if outputFields.Has(globals.ScopeIdField) {
-		out.ScopeId = in.GetScopeId()
+		out.ScopeId = in.GetProjectId()
 	}
 	if outputFields.Has(globals.TypeField) {
 		out.Type = in.GetType().String()

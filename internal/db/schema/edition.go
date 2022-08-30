@@ -36,7 +36,7 @@ var editions = dialects{
 // - An unsupported dialect is provided.
 // - The same (dialect, name) is registered.
 // - The same (dialect, priority) is registered.
-func RegisterEdition(name string, dialect Dialect, fs embed.FS, priority int) {
+func RegisterEdition(name string, dialect Dialect, fs embed.FS, priority int, opt ...edition.Option) {
 	editions.Lock()
 	defer editions.Unlock()
 
@@ -61,7 +61,11 @@ func RegisterEdition(name string, dialect Dialect, fs embed.FS, priority int) {
 		}
 	}
 
-	e = append(e, edition.New(name, dialect, fs, priority))
+	ee, err := edition.New(name, dialect, fs, priority, opt...)
+	if err != nil {
+		panic(err.Error())
+	}
+	e = append(e, ee)
 	e.Sort()
 
 	editions.m[dialect] = e

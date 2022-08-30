@@ -148,7 +148,7 @@ type privateLibrary struct {
 	CreateTime                    *timestamp.Timestamp
 	UpdateTime                    *timestamp.Timestamp
 	Version                       uint32
-	ScopeId                       string
+	ProjectId                     string
 	VaultPath                     string
 	HttpMethod                    string
 	HttpRequestBody               []byte
@@ -185,7 +185,7 @@ func (pl *privateLibrary) clone() *privateLibrary {
 		CreateTime:                    proto.Clone(pl.CreateTime).(*timestamp.Timestamp),
 		UpdateTime:                    proto.Clone(pl.UpdateTime).(*timestamp.Timestamp),
 		Version:                       pl.Version,
-		ScopeId:                       pl.ScopeId,
+		ProjectId:                     pl.ProjectId,
 		VaultPath:                     pl.VaultPath,
 		HttpMethod:                    pl.HttpMethod,
 		HttpRequestBody:               append(pl.HttpRequestBody[:0:0], pl.HttpRequestBody...),
@@ -257,7 +257,7 @@ func (pl *privateLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) 
 	return nil
 }
 
-func (pl *privateLibrary) client() (*client, error) {
+func (pl *privateLibrary) client(ctx context.Context) (*client, error) {
 	const op = "vault.(privateLibrary).client"
 	clientConfig := &clientConfig{
 		Addr:          pl.VaultAddress,
@@ -273,7 +273,7 @@ func (pl *privateLibrary) client() (*client, error) {
 		clientConfig.ClientKey = pl.ClientKey
 	}
 
-	client, err := newClient(clientConfig)
+	client, err := newClient(ctx, clientConfig)
 	if err != nil {
 		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
 	}
@@ -297,7 +297,7 @@ func (pl *privateLibrary) retrieveCredential(ctx context.Context, op errors.Op, 
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	client, err := pl.client()
+	client, err := pl.client(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -305,9 +305,9 @@ func (pl *privateLibrary) retrieveCredential(ctx context.Context, op errors.Op, 
 	var secret *vault.Secret
 	switch Method(pl.HttpMethod) {
 	case MethodGet:
-		secret, err = client.get(pl.VaultPath)
+		secret, err = client.get(ctx, pl.VaultPath)
 	case MethodPost:
-		secret, err = client.post(pl.VaultPath, pl.HttpRequestBody)
+		secret, err = client.post(ctx, pl.VaultPath, pl.HttpRequestBody)
 	default:
 		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", pl.PublicId))
 	}
@@ -387,7 +387,7 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	}
 
 	for _, pl := range libs {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, pl.ScopeId, kms.KeyPurposeDatabase)
+		databaseWrapper, err := r.kms.GetWrapper(ctx, pl.ProjectId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}

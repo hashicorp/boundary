@@ -729,7 +729,7 @@ func TestGet(t *testing.T) {
 				Item: &pb.CredentialLibrary{
 					Id:                unspecifiedLib.GetPublicId(),
 					CredentialStoreId: unspecifiedLib.GetStoreId(),
-					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:              vault.Subtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       unspecifiedLib.CreateTime.GetTimestamp(),
@@ -751,7 +751,7 @@ func TestGet(t *testing.T) {
 				Item: &pb.CredentialLibrary{
 					Id:                userPassLib.GetPublicId(),
 					CredentialStoreId: userPassLib.GetStoreId(),
-					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:              vault.Subtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       userPassLib.CreateTime.GetTimestamp(),
@@ -783,7 +783,7 @@ func TestGet(t *testing.T) {
 				Item: &pb.CredentialLibrary{
 					Id:                sshPkLib.GetPublicId(),
 					CredentialStoreId: sshPkLib.GetStoreId(),
-					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:              vault.Subtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       sshPkLib.CreateTime.GetTimestamp(),

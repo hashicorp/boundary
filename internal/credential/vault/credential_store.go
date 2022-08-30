@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"context"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
@@ -10,7 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// A CredentialStore contains credential libraries. It is owned by a scope.
+// A CredentialStore contains credential libraries. It is owned by a project.
 type CredentialStore struct {
 	*store.CredentialStore
 	tableName string `gorm:"-"`
@@ -24,16 +25,16 @@ type CredentialStore struct {
 }
 
 // NewCredentialStore creates a new in memory CredentialStore for a Vault
-// server at vaultAddress assigned to scopeId. Name, description, CA cert,
+// server at vaultAddress assigned to projectId. Name, description, CA cert,
 // client cert, namespace, TLS server name, worker filter, and TLS skip verify are the
 // only valid options. All other options are ignored.
-func NewCredentialStore(scopeId string, vaultAddress string, token TokenSecret, opt ...Option) (*CredentialStore, error) {
+func NewCredentialStore(projectId string, vaultAddress string, token TokenSecret, opt ...Option) (*CredentialStore, error) {
 	opts := getOpts(opt...)
 	cs := &CredentialStore{
 		inputToken: token,
 		clientCert: opts.withClientCert,
 		CredentialStore: &store.CredentialStore{
-			ScopeId:       scopeId,
+			ProjectId:     projectId,
 			Name:          opts.withName,
 			Description:   opts.withDescription,
 			VaultAddress:  vaultAddress,
@@ -136,8 +137,8 @@ func (cs *CredentialStore) oplog(op oplog.OpType) oplog.Metadata {
 		"resource-type":      []string{"credential-vault-store"},
 		"op-type":            []string{op.String()},
 	}
-	if cs.ScopeId != "" {
-		metadata["scope-id"] = []string{cs.ScopeId}
+	if cs.ProjectId != "" {
+		metadata["project-id"] = []string{cs.ProjectId}
 	}
 	return metadata
 }
@@ -168,7 +169,7 @@ func (cs *CredentialStore) ClientCertificate() *ClientCertificate {
 	return cs.clientCert
 }
 
-func (cs *CredentialStore) client() (*client, error) {
+func (cs *CredentialStore) client(ctx context.Context) (*client, error) {
 	const op = "vault.(CredentialStore).client"
 	clientConfig := &clientConfig{
 		Addr:          cs.VaultAddress,
@@ -183,9 +184,9 @@ func (cs *CredentialStore) client() (*client, error) {
 		clientConfig.ClientKey = cs.clientCert.GetCertificateKey()
 	}
 
-	c, err := newClient(clientConfig)
+	c, err := newClient(ctx, clientConfig)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return c, nil
 }

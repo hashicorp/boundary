@@ -49,7 +49,7 @@ func TestValidateCreateRequest(t *testing.T) {
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attrs:        nil,
 			},
-			errContains: fieldError(attrFilterField, "This field is required."),
+			errContains: fieldError(globals.AttributesField, "Attribute fields is required."),
 		},
 		{
 			name: "bad oidc attributes",
@@ -78,6 +78,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
+		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			req := &pbs.CreateManagedGroupRequest{Item: tc.item}
@@ -126,6 +127,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
+		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			err := validateUpdateRequest(tc.req)

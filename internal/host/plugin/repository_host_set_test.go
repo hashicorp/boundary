@@ -17,10 +17,12 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -43,6 +45,8 @@ func TestRepository_CreateSet(t *testing.T) {
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	unimplementedPluginCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	attrs := []byte{}
+
+	const normalizeToSliceKey = "normalize_to_slice"
 
 	tests := []struct {
 		name             string
@@ -233,8 +237,9 @@ func TestRepository_CreateSet(t *testing.T) {
 					Description: ("test-description-repo"),
 					Attributes: func() []byte {
 						st, err := structpb.NewStruct(map[string]interface{}{
-							"k1":      "foo",
-							"removed": nil,
+							"k1":                "foo",
+							"removed":           nil,
+							normalizeToSliceKey: "normalizeme",
 						})
 						require.NoError(t, err)
 						b, err := proto.Marshal(st)
@@ -262,14 +267,37 @@ func TestRepository_CreateSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			var pluginReceivedAttrs *structpb.Struct
+			var origPluginAttrs, pluginReceivedAttrs *structpb.Struct
+			if tt.in != nil && tt.in.HostSet != nil && len(tt.in.Attributes) > 0 {
+				origPluginAttrs = new(structpb.Struct)
+				require.NoError(proto.Unmarshal(tt.in.Attributes, origPluginAttrs))
+			}
 			var pluginCalled bool
 			plgm := map[string]plgpb.HostPluginServiceClient{
-				plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
-					pluginCalled = true
-					pluginReceivedAttrs = req.GetSet().GetAttributes()
-					return &plgpb.OnCreateSetResponse{}, nil
-				}}),
+				plg.GetPublicId(): NewWrappingPluginClient(TestPluginServer{
+					NormalizeSetDataFn: func(_ context.Context, req *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error) {
+						if req.Attributes == nil {
+							return new(plgpb.NormalizeSetDataResponse), nil
+						}
+						var attrs struct {
+							NormalizeToSlice string `mapstructure:"normalize_to_slice"`
+						}
+						require.NoError(mapstructure.Decode(req.Attributes.AsMap(), &attrs))
+						if attrs.NormalizeToSlice == "" {
+							return new(plgpb.NormalizeSetDataResponse), nil
+						}
+						retAttrs := proto.Clone(req.Attributes).(*structpb.Struct)
+						retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
+							Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
+						})
+						return &plgpb.NormalizeSetDataResponse{Attributes: retAttrs}, nil
+					},
+					OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+						pluginCalled = true
+						pluginReceivedAttrs = req.GetSet().GetAttributes()
+						return &plgpb.OnCreateSetResponse{}, nil
+					},
+				}),
 				unimplementedPlugin.GetPublicId(): NewWrappingPluginClient(TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 					pluginCalled = true
 					pluginReceivedAttrs = req.GetSet().GetAttributes()
@@ -294,6 +322,23 @@ func TestRepository_CreateSet(t *testing.T) {
 			assert.Equal(tt.want.Name, got.GetName())
 			assert.Equal(tt.want.Description, got.GetDescription())
 			assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
+
+			if origPluginAttrs != nil {
+				if normalizeVal := origPluginAttrs.Fields[normalizeToSliceKey]; normalizeVal != nil {
+					gotVal := pluginReceivedAttrs.Fields[normalizeToSliceKey]
+					require.NotNil(gotVal)
+					listVal := gotVal.GetListValue()
+					require.NotNil(listVal)
+					require.Len(listVal.Values, 1)
+					assert.Equal(normalizeVal.GetStringValue(), listVal.Values[0].GetStringValue())
+					origPluginAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(listVal)
+					tt.want.Attributes, err = proto.Marshal(origPluginAttrs)
+					require.NoError(err)
+					tt.want.Attributes, err = patchstruct.PatchBytes([]byte{}, tt.want.Attributes)
+					require.NoError(err)
+				}
+			}
+
 			wantedPluginAttributes := &structpb.Struct{}
 			require.NoError(proto.Unmarshal(tt.want.Attributes, wantedPluginAttributes))
 			assert.Empty(cmp.Diff(wantedPluginAttributes, pluginReceivedAttrs, protocmp.Transform()))
@@ -421,11 +466,13 @@ func TestRepository_UpdateSet(t *testing.T) {
 		"one": "two",
 	}))
 	require.NoError(t, err)
-	scopeWrapper, err := dbKmsCache.GetWrapper(ctx, testCatalog.GetScopeId(), kms.KeyPurposeDatabase)
+	scopeWrapper, err := dbKmsCache.GetWrapper(ctx, testCatalog.GetProjectId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 	require.NoError(t, testCatalogSecret.encrypt(ctx, scopeWrapper))
 	err = dbRW.Create(ctx, testCatalogSecret)
 	require.NoError(t, err)
+
+	const normalizeToSliceKey = "normalize_to_slice"
 
 	// Create a test duplicate set. We don't use this set, it just
 	// exists to ensure that we can test for conflicts when setting
@@ -742,7 +789,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 	tests := []struct {
 		name                    string
 		startingSet             func(*testing.T, context.Context) (*HostSet, []*Host)
-		withScopeId             *string
+		withProjectId           *string
 		withEmptyPluginMap      bool
 		withPluginError         error
 		changeFuncs             []changeHostSetFunc
@@ -771,10 +818,10 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantIsErr:   errors.InvalidParameter,
 		},
 		{
-			name:        "missing scope id",
-			startingSet: setupBareHostSet,
-			withScopeId: func() *string { a := ""; return &a }(),
-			wantIsErr:   errors.InvalidParameter,
+			name:          "missing project id",
+			startingSet:   setupBareHostSet,
+			withProjectId: func() *string { a := ""; return &a }(),
+			wantIsErr:     errors.InvalidParameter,
 		},
 		{
 			name:        "empty field mask",
@@ -798,11 +845,11 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantIsErr:   errors.VersionMismatch,
 		},
 		{
-			name:        "mismatched scope id to catalog scope",
-			startingSet: setupBareHostSet,
-			withScopeId: func() *string { a := "badid"; return &a }(),
-			fieldMask:   []string{"name"},
-			wantIsErr:   errors.InvalidParameter,
+			name:          "mismatched project id to catalog project",
+			startingSet:   setupBareHostSet,
+			withProjectId: func() *string { a := "badid"; return &a }(),
+			fieldMask:     []string{"name"},
+			wantIsErr:     errors.InvalidParameter,
 		},
 		{
 			name:               "plugin lookup error",
@@ -1007,7 +1054,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 			name:        "update attributes (overwrite)",
 			startingSet: setupHostSet,
 			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
-				"foo": "baz",
+				"foo":               "baz",
+				normalizeToSliceKey: "normalizeme",
 			})},
 			fieldMask: []string{"attributes"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
@@ -1015,7 +1063,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 					"foo": "bar",
 				}),
 				checkUpdateSetRequestNewAttributes(map[string]interface{}{
-					"foo": "baz",
+					"foo":               "baz",
+					normalizeToSliceKey: []any{"normalizeme"},
 				}),
 				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
 					"one": "two",
@@ -1024,7 +1073,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
 				checkAttributes(map[string]interface{}{
-					"foo": "baz",
+					"foo":               "baz",
+					normalizeToSliceKey: []any{"normalizeme"},
 				}),
 				checkNeedSync(true),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
@@ -1147,6 +1197,23 @@ func TestRepository_UpdateSet(t *testing.T) {
 			testPluginMap := map[string]plgpb.HostPluginServiceClient{
 				testPlugin.GetPublicId(): &WrappingPluginClient{
 					Server: &TestPluginServer{
+						NormalizeSetDataFn: func(_ context.Context, req *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error) {
+							if req.Attributes == nil {
+								return new(plgpb.NormalizeSetDataResponse), nil
+							}
+							var attrs struct {
+								NormalizeToSlice string `mapstructure:"normalize_to_slice"`
+							}
+							require.NoError(mapstructure.Decode(req.Attributes.AsMap(), &attrs))
+							if attrs.NormalizeToSlice == "" {
+								return new(plgpb.NormalizeSetDataResponse), nil
+							}
+							retAttrs := proto.Clone(req.Attributes).(*structpb.Struct)
+							retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
+								Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
+							})
+							return &plgpb.NormalizeSetDataResponse{Attributes: retAttrs}, nil
+						},
 						OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
 							gotOnUpdateCallCount++
 							for _, check := range tt.wantCheckPluginReqFuncs {
@@ -1173,9 +1240,9 @@ func TestRepository_UpdateSet(t *testing.T) {
 				workingSet = cf(workingSet)
 			}
 
-			scopeId := testCatalog.ScopeId
-			if tt.withScopeId != nil {
-				scopeId = *tt.withScopeId
+			projectId := testCatalog.ProjectId
+			if tt.withProjectId != nil {
+				projectId = *tt.withProjectId
 			}
 
 			version := origSet.Version
@@ -1183,7 +1250,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				version = tt.version
 			}
 
-			gotUpdatedSet, gotHosts, gotPlugin, gotNumUpdated, err := repo.UpdateSet(ctx, scopeId, workingSet, version, tt.fieldMask)
+			gotUpdatedSet, gotHosts, gotPlugin, gotNumUpdated, err := repo.UpdateSet(ctx, projectId, workingSet, version, tt.fieldMask)
 			t.Cleanup(func() { gotOnUpdateCallCount = 0 })
 			if tt.wantIsErr != 0 {
 				require.Equal(db.NoRowsAffected, gotNumUpdated)
@@ -1256,7 +1323,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		workingSet := origSet.clone()
 		workingSet = changePreferredEndpoints(nil)(workingSet)
 
-		gotUpdatedSet, _, _, gotNumUpdated, err := repo.UpdateSet(ctx, testCatalog.ScopeId, workingSet, origSet.Version, []string{"PreferredEndpoints"})
+		gotUpdatedSet, _, _, gotNumUpdated, err := repo.UpdateSet(ctx, testCatalog.ProjectId, workingSet, origSet.Version, []string{"PreferredEndpoints"})
 		t.Cleanup(func() { gotOnUpdateCallCount = 0 })
 
 		require.NoError(t, err)

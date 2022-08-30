@@ -7,11 +7,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
@@ -24,7 +24,7 @@ import (
 // unique within l.StoreId.
 //
 // Both l.CreateTime and l.UpdateTime are ignored.
-func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string, l *CredentialLibrary, _ ...Option) (*CredentialLibrary, error) {
+func (r *Repository) CreateCredentialLibrary(ctx context.Context, projectId string, l *CredentialLibrary, _ ...Option) (*CredentialLibrary, error) {
 	const op = "vault.(Repository).CreateCredentialLibrary"
 	if l == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil CredentialLibrary")
@@ -41,8 +41,8 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 	if l.PublicId != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	l = l.clone()
 
@@ -60,7 +60,7 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 	}
 	l.setId(id)
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -123,7 +123,7 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, scopeId string
 // HttpMethod.  If HttpMethod is in the fieldMaskPath but l.HttpMethod
 // is not set it will be set to the value "GET".  If storage has a value
 // for HttpRequestBody when l.HttpMethod is set to GET the update will fail.
-func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string, l *CredentialLibrary, version uint32, fieldMaskPaths []string, _ ...Option) (*CredentialLibrary, int, error) {
+func (r *Repository) UpdateCredentialLibrary(ctx context.Context, projectId string, l *CredentialLibrary, version uint32, fieldMaskPaths []string, _ ...Option) (*CredentialLibrary, int, error) {
 	const op = "vault.(Repository).UpdateCredentialLibrary"
 	if l == nil {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing CredentialLibrary")
@@ -137,8 +137,8 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 	if version == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
-	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	if projectId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	l = l.clone()
 
@@ -157,7 +157,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:            l.Name,
 			descriptionField:     l.Description,
@@ -212,7 +212,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, scopeId string
 		}
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt),
 			errors.WithMsg("unable to get oplog wrapper"))
@@ -412,19 +412,19 @@ func (pl *publicLibrary) GetPublicId() string { return pl.PublicId }
 
 // DeleteCredentialLibrary deletes publicId from the repository and returns
 // the number of records deleted.
-func (r *Repository) DeleteCredentialLibrary(ctx context.Context, scopeId string, publicId string, _ ...Option) (int, error) {
+func (r *Repository) DeleteCredentialLibrary(ctx context.Context, projectId string, publicId string, _ ...Option) (int, error) {
 	const op = "vault.(Repository).DeleteCredentialLibrary"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	if scopeId == "" {
-		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 
 	l := allocCredentialLibrary()
 	l.PublicId = publicId
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}

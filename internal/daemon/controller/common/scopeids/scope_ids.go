@@ -22,7 +22,7 @@ type authzProtectedEntityProvider interface {
 	// "where clause" style of argument: if the set of scopes is populated these
 	// are the scopes to limit to (e.g. to put in a where clause). An empty set
 	// of scopes means to look in *all* scopes, not none!
-	FetchAuthzProtectedEntitiesByScope(ctx context.Context, scopeIds []string) (map[string][]boundary.AuthzProtectedEntity, error)
+	FetchAuthzProtectedEntitiesByScope(ctx context.Context, projectIds []string) (map[string][]boundary.AuthzProtectedEntity, error)
 }
 
 // ResourceInfo contains information about a particular resource

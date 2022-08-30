@@ -34,6 +34,7 @@ type TestResource struct {
 	Type    string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
 	OtherId string `protobuf:"bytes,3,opt,name=other_id,json=otherId,proto3" json:"other_id,omitempty"`
 	// Types that are assignable to Attrs:
+	//
 	//	*TestResource_Attributes
 	//	*TestResource_SubResourceAttributes
 	Attrs isTestResource_Attrs `protobuf_oneof:"attrs"`
@@ -302,6 +303,7 @@ type TestCustomTransformation struct {
 	SomeRandomId string `protobuf:"bytes,1,opt,name=some_random_id,json=someRandomId,proto3" json:"some_random_id,omitempty"`
 	SecondaryId  string `protobuf:"bytes,2,opt,name=secondary_id,json=secondaryId,proto3" json:"secondary_id,omitempty"`
 	// Types that are assignable to Attrs:
+	//
 	//	*TestCustomTransformation_Attributes
 	//	*TestCustomTransformation_SubResourceAttributes
 	Attrs isTestCustomTransformation_Attrs `protobuf_oneof:"attrs"`
@@ -968,6 +970,7 @@ type TestNoItemAttributes struct {
 
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Types that are assignable to Attrs:
+	//
 	//	*TestNoItemAttributes_Attributes
 	//	*TestNoItemAttributes_SubResourceAttributes
 	Attrs isTestNoItemAttributes_Attrs `protobuf_oneof:"attrs"`

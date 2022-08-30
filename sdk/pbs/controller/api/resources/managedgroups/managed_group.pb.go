@@ -52,6 +52,7 @@ type ManagedGroup struct {
 	// The ID of the Auth Method that is associated with this ManagedGroup.
 	AuthMethodId string `protobuf:"bytes,90,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
+	//
 	//	*ManagedGroup_Attributes
 	//	*ManagedGroup_OidcManagedGroupAttributes
 	Attrs isManagedGroup_Attrs `protobuf_oneof:"attrs"`

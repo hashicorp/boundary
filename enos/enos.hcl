@@ -1,18 +1,6 @@
 terraform_cli "default" {
   plugin_cache_dir = abspath("./terraform-plugin-cache")
 
-  provider_installation {
-    network_mirror {
-      url     = "https://enos-provider-stable.s3.amazonaws.com/"
-      include = ["hashicorp.com/qti/enos"]
-    }
-    direct {
-      exclude = [
-        "hashicorp.com/qti/enos"
-      ]
-    }
-  }
-
   credentials "app.terraform.io" {
     token = var.tfc_api_token
   }
@@ -23,8 +11,7 @@ terraform "default" {
 
   required_providers {
     enos = {
-      source  = "hashicorp.com/qti/enos"
-      version = ">= 0.2.1"
+      source = "app.terraform.io/hashicorp-qti/enos"
     }
 
     aws = {
