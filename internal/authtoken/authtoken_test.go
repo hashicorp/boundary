@@ -128,6 +128,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	wrapper, _ = kms.GetWrapper(context.Background(), org.GetPublicId(), 1)
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	acct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 	createdAuthToken := TestAuthToken(t, conn, kms, org.GetPublicId())
