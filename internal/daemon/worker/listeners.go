@@ -172,8 +172,12 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
 	}
 
+	statsHandler, err := metric.InstrumentClusterStatsHandler(w.baseContext)
+	if err != nil {
+		return nil, errors.Wrap(w.baseContext, err, op)
+	}
 	downstreamServer := grpc.NewServer(
-		grpc.StatsHandler(metric.InstrumentClusterStatsHandler()),
+		grpc.StatsHandler(statsHandler),
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 	)

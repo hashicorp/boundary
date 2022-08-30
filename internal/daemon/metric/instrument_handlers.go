@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/stats"
@@ -22,8 +23,15 @@ type statsHandler struct {
 	reqLatency prometheus.ObserverVec
 }
 
-func NewStatsHandler(o prometheus.ObserverVec) *statsHandler {
-	return &statsHandler{reqLatency: o}
+// NewStatsHandler takes a request latency metric (prometheus.ObserverVec) and
+// returns a grpc stats.Handler that updates the provided metric with the
+// request latency.
+func NewStatsHandler(ctx context.Context, o prometheus.ObserverVec) (*statsHandler, error) {
+	const op = "metric.NewStatsHandler"
+	if util.IsNil(o) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "prometheus.ObserverVec is nil")
+	}
+	return &statsHandler{reqLatency: o}, nil
 }
 
 var _ stats.Handler = (*statsHandler)(nil)

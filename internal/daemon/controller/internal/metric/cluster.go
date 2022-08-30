@@ -1,6 +1,8 @@
 package metric
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/metric"
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,8 +47,8 @@ var expectedGrpcCodes = []codes.Code{
 
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
 // cluster specific metrics. Use with the cluster gRPC server.
-func InstrumentClusterStatsHandler() stats.Handler {
-	return metric.NewStatsHandler(grpcRequestLatency)
+func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
+	return metric.NewStatsHandler(ctx, grpcRequestLatency)
 }
 
 // InitializeClusterCollectors registers the cluster metrics to the default

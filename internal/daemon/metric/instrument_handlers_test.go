@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
@@ -120,10 +121,11 @@ func TestNewStatsHandler(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			testableLatency := &TestableObserverVec{}
-			handler := NewStatsHandler(testableLatency)
-
 			ctx := context.Background()
+			testableLatency := &TestableObserverVec{}
+			handler, err := NewStatsHandler(ctx, testableLatency)
+			require.NoError(t, err)
+
 			ctx = handler.TagRPC(ctx, &stats.RPCTagInfo{
 				FullMethodName: tc.fullMethodName,
 			})
