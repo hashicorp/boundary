@@ -17,8 +17,7 @@ import (
 
 func Test_ImmutableFields(t *testing.T) {
 	testCtx := context.Background()
-	db := setup(t)
-	cipherer := testWrapper(t)
+	db, cipherer := setup(testCtx, t)
 
 	writer := &Writer{db}
 	id := testId(t)
