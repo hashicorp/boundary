@@ -85,12 +85,14 @@ func init() {
 
 // Service handles request as described by the pbs.CredentialStoreServiceServer interface.
 type Service struct {
-	pbs.UnimplementedCredentialStoreServiceServer
+	pbs.UnsafeCredentialStoreServiceServer
 
 	iamRepoFn    common.IamRepoFactory
 	vaultRepoFn  common.VaultCredentialRepoFactory
 	staticRepoFn common.StaticCredentialRepoFactory
 }
+
+var _ pbs.CredentialStoreServiceServer = (*Service)(nil)
 
 // NewService returns a credential store service which handles credential store related requests to boundary.
 func NewService(
@@ -111,8 +113,6 @@ func NewService(
 	}
 	return Service{iamRepoFn: iamRepo, vaultRepoFn: vaultRepo, staticRepoFn: staticRepo}, nil
 }
-
-var _ pbs.CredentialStoreServiceServer = Service{}
 
 // ListCredentialStores implements the interface pbs.CredentialStoreServiceServer
 func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredentialStoresRequest) (*pbs.ListCredentialStoresResponse, error) {

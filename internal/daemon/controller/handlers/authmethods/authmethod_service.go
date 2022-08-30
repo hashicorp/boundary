@@ -76,7 +76,7 @@ var (
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
 type Service struct {
-	pbs.UnimplementedAuthMethodServiceServer
+	pbs.UnsafeAuthMethodServiceServer
 
 	kms        *kms.Kms
 	pwRepoFn   common.PasswordAuthRepoFactory
@@ -84,6 +84,8 @@ type Service struct {
 	iamRepoFn  common.IamRepoFactory
 	atRepoFn   common.AuthTokenRepoFactory
 }
+
+var _ pbs.AuthMethodServiceServer = (*Service)(nil)
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
 func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, opt ...handlers.Option) (Service, error) {
@@ -107,8 +109,6 @@ func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoF
 
 	return s, nil
 }
-
-var _ pbs.AuthMethodServiceServer = Service{}
 
 // ListAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRequest) (*pbs.ListAuthMethodsResponse, error) {

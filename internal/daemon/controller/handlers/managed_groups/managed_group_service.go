@@ -63,10 +63,12 @@ func init() {
 
 // Service handles request as described by the pbs.ManagedGroupServiceServer interface.
 type Service struct {
-	pbs.UnimplementedManagedGroupServiceServer
+	pbs.UnsafeManagedGroupServiceServer
 
 	oidcRepoFn common.OidcAuthRepoFactory
 }
+
+var _ pbs.ManagedGroupServiceServer = (*Service)(nil)
 
 // NewService returns a managed group service which handles managed group related requests to boundary.
 func NewService(oidcRepo common.OidcAuthRepoFactory) (Service, error) {
@@ -76,8 +78,6 @@ func NewService(oidcRepo common.OidcAuthRepoFactory) (Service, error) {
 	}
 	return Service{oidcRepoFn: oidcRepo}, nil
 }
-
-var _ pbs.ManagedGroupServiceServer = Service{}
 
 // ListManagedGroups implements the interface pbs.ManagedGroupsServiceServer.
 func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGroupsRequest) (*pbs.ListManagedGroupsResponse, error) {

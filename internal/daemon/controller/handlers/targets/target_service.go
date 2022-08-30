@@ -96,7 +96,7 @@ var (
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
-	pbs.UnimplementedTargetServiceServer
+	pbs.UnsafeTargetServiceServer
 
 	repoFn           common.TargetRepoFactory
 	iamRepoFn        common.IamRepoFactory
@@ -108,6 +108,8 @@ type Service struct {
 	staticCredRepoFn common.StaticCredentialRepoFactory
 	kmsCache         *kms.Kms
 }
+
+var _ pbs.TargetServiceServer = (*Service)(nil)
 
 // NewService returns a target service which handles target related requests to boundary.
 func NewService(
@@ -159,8 +161,6 @@ func NewService(
 		kmsCache:         kmsCache,
 	}, nil
 }
-
-var _ pbs.TargetServiceServer = Service{}
 
 // ListTargets implements the interface pbs.TargetServiceServer.
 func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (*pbs.ListTargetsResponse, error) {

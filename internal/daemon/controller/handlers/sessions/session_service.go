@@ -43,11 +43,13 @@ var (
 
 // Service handles request as described by the pbs.SessionServiceServer interface.
 type Service struct {
-	pbs.UnimplementedSessionServiceServer
+	pbs.UnsafeSessionServiceServer
 
 	repoFn    common.SessionRepoFactory
 	iamRepoFn common.IamRepoFactory
 }
+
+var _ pbs.SessionServiceServer = (*Service)(nil)
 
 // NewService returns a session service which handles session related requests to boundary.
 func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
@@ -60,8 +62,6 @@ func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactor
 	}
 	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
-
-var _ pbs.SessionServiceServer = Service{}
 
 // GetSessions implements the interface pbs.SessionServiceServer.
 func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {

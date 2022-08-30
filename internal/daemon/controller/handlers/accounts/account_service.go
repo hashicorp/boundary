@@ -96,11 +96,13 @@ func init() {
 
 // Service handles request as described by the pbs.AccountServiceServer interface.
 type Service struct {
-	pbs.UnimplementedAccountServiceServer
+	pbs.UnsafeAccountServiceServer
 
 	pwRepoFn   common.PasswordAuthRepoFactory
 	oidcRepoFn common.OidcAuthRepoFactory
 }
+
+var _ pbs.AccountServiceServer = (*Service)(nil)
 
 // NewService returns a account service which handles account related requests to boundary.
 func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory) (Service, error) {
@@ -113,8 +115,6 @@ func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthR
 	}
 	return Service{pwRepoFn: pwRepo, oidcRepoFn: oidcRepo}, nil
 }
-
-var _ pbs.AccountServiceServer = Service{}
 
 // ListAccounts implements the interface pbs.AccountServiceServer.
 func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest) (*pbs.ListAccountsResponse, error) {

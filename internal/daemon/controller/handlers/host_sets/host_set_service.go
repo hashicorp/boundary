@@ -75,13 +75,13 @@ func init() {
 }
 
 type Service struct {
-	pbs.UnimplementedHostSetServiceServer
+	pbs.UnsafeHostSetServiceServer
 
 	staticRepoFn common.StaticRepoFactory
 	pluginRepoFn common.PluginHostRepoFactory
 }
 
-var _ pbs.HostSetServiceServer = Service{}
+var _ pbs.HostSetServiceServer = (*Service)(nil)
 
 // NewService returns a host set Service which handles host set related requests to boundary and uses the provided
 // repositories for storage and retrieval.

@@ -66,11 +66,13 @@ func init() {
 
 // Service handles request as described by the pbs.WorkerServiceServer interface.
 type Service struct {
-	pbs.UnimplementedWorkerServiceServer
+	pbs.UnsafeWorkerServiceServer
 
 	repoFn    common.ServersRepoFactory
 	iamRepoFn common.IamRepoFactory
 }
+
+var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
 func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
@@ -83,8 +85,6 @@ func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn c
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
-
-var _ pbs.WorkerServiceServer = Service{}
 
 // ListWorkers implements the interface pbs.WorkerServiceServer.
 func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (*pbs.ListWorkersResponse, error) {

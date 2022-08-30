@@ -96,10 +96,12 @@ func init() {
 
 // Service handles requests as described by the pbs.ScopeServiceServer interface.
 type Service struct {
-	pbs.UnimplementedScopeServiceServer
+	pbs.UnsafeScopeServiceServer
 
 	repoFn common.IamRepoFactory
 }
+
+var _ pbs.ScopeServiceServer = (*Service)(nil)
 
 // NewService returns a project service which handles project related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
@@ -109,8 +111,6 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	}
 	return Service{repoFn: repo}, nil
 }
-
-var _ pbs.ScopeServiceServer = Service{}
 
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {

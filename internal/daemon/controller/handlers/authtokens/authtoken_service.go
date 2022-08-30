@@ -41,11 +41,13 @@ var (
 
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
 type Service struct {
-	pbs.UnimplementedAuthTokenServiceServer
+	pbs.UnsafeAuthTokenServiceServer
 
 	repoFn    common.AuthTokenRepoFactory
 	iamRepoFn common.IamRepoFactory
 }
+
+var _ pbs.AuthTokenServiceServer = (*Service)(nil)
 
 // NewService returns a user service which handles user related requests to boundary.
 func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
@@ -58,8 +60,6 @@ func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactor
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
-
-var _ pbs.AuthTokenServiceServer = Service{}
 
 // ListAuthTokens implements the interface pbs.AuthTokenServiceServer.
 func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequest) (*pbs.ListAuthTokensResponse, error) {

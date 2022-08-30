@@ -81,7 +81,7 @@ func init() {
 }
 
 type Service struct {
-	pbs.UnimplementedHostCatalogServiceServer
+	pbs.UnsafeHostCatalogServiceServer
 
 	staticRepoFn     common.StaticRepoFactory
 	pluginHostRepoFn common.PluginHostRepoFactory
@@ -89,7 +89,7 @@ type Service struct {
 	iamRepoFn        common.IamRepoFactory
 }
 
-var _ pbs.HostCatalogServiceServer = Service{}
+var _ pbs.HostCatalogServiceServer = (*Service)(nil)
 
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.

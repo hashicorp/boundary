@@ -25,8 +25,8 @@ import (
 const ManagedWorkerTagKey = "boundary.cloud.hashicorp.com:managed"
 
 type workerServiceServer struct {
-	pbs.UnimplementedServerCoordinationServiceServer
-	pbs.UnimplementedSessionServiceServer
+	pbs.UnsafeServerCoordinationServiceServer
+	pbs.UnsafeSessionServiceServer
 
 	serversRepoFn    common.ServersRepoFactory
 	sessionRepoFn    common.SessionRepoFactory
@@ -34,6 +34,11 @@ type workerServiceServer struct {
 	updateTimes      *sync.Map
 	kms              *kms.Kms
 }
+
+var (
+	_ pbs.SessionServiceServer            = &workerServiceServer{}
+	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
+)
 
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
@@ -50,11 +55,6 @@ func NewWorkerServiceServer(
 		kms:              kms,
 	}
 }
-
-var (
-	_ pbs.SessionServiceServer            = &workerServiceServer{}
-	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
-)
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	const op = "workers.(workerServiceServer).Status"
