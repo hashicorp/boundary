@@ -20,8 +20,6 @@ func TestStatsHandler(t *testing.T) {
 		grpcRequestLatency = bkpLatency
 	}()
 
-	handler := InstrumentClusterStatsHandler()
-
 	cases := []struct {
 		name           string
 		stats          []stats.RPCStats
@@ -129,7 +127,12 @@ func TestStatsHandler(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			testableLatency := &metric.TestableObserverVec{}
-			handler.Metric = testableLatency
+			originalMetric := grpcRequestLatency
+			defer func() {
+				grpcRequestLatency = originalMetric
+			}()
+			grpcRequestLatency = testableLatency
+			handler := InstrumentClusterStatsHandler()
 
 			ctx := context.Background()
 			ctx = handler.TagRPC(ctx, &stats.RPCTagInfo{

@@ -15,12 +15,10 @@ import (
 )
 
 func TestStatsHandler(t *testing.T) {
-	bkpLatency := gRpcRequestLatency
+	bkpLatency := grpcRequestLatency
 	defer func() {
-		gRpcRequestLatency = bkpLatency
+		grpcRequestLatency = bkpLatency
 	}()
-
-	handler := InstrumentClusterStatsHandler()
 
 	cases := []struct {
 		name           string
@@ -128,8 +126,13 @@ func TestStatsHandler(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			orig := grpcServerRequestLatency
+			defer func() {
+				grpcServerRequestLatency = orig
+			}()
 			testableLatency := &metric.TestableObserverVec{}
-			handler.Metric = testableLatency
+			grpcServerRequestLatency = testableLatency
+			handler := InstrumentClusterStatsHandler()
 
 			ctx := context.Background()
 			ctx = handler.TagRPC(ctx, &stats.RPCTagInfo{
