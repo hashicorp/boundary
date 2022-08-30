@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -324,6 +325,9 @@ func TestArgon2Credential_New(t *testing.T) {
 	aut := auts[0]
 	accts := TestMultipleAccounts(t, conn, aut.PublicId, 5)
 	confs := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)
+
+	kms := kms.TestKms(t, conn, wrapper)
+	wrapper, _ = kms.GetWrapper(context.Background(), o.GetPublicId(), 1)
 
 	type args struct {
 		accountId string

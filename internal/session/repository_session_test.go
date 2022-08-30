@@ -399,6 +399,11 @@ func TestRepository_CreateSession(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.args.composedOf.ProjectId != "" {
+				wrapper, err = kms.GetWrapper(context.Background(), tt.args.composedOf.ProjectId, 1)
+				require.NoError(t, err)
+			}
+
 			assert, require := assert.New(t), require.New(t)
 			s := &Session{
 				UserId:             tt.args.composedOf.UserId,
@@ -414,6 +419,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				StaticCredentials:  tt.args.composedOf.StaticCredentials,
 			}
 			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
+
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(ses)
