@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/daemon/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
@@ -14,12 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestStatsHandler(t *testing.T) {
-	bkpLatency := grpcRequestLatency
-	defer func() {
-		grpcRequestLatency = bkpLatency
-	}()
-
+func TestNewStatsHandler(t *testing.T) {
 	cases := []struct {
 		name           string
 		stats          []stats.RPCStats
@@ -37,9 +31,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				LabelGrpcCode:    "OK",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -67,9 +61,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				LabelGrpcCode:    "OK",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -83,9 +77,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "unknown",
-				metric.LabelGrpcService: "unknown",
+				LabelGrpcCode:    "OK",
+				LabelGrpcMethod:  "unknown",
+				LabelGrpcService: "unknown",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -100,9 +94,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "Canceled",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				LabelGrpcCode:    "Canceled",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -117,22 +111,17 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "InvalidArgument",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				LabelGrpcCode:    "InvalidArgument",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			testableLatency := &metric.TestableObserverVec{}
-			originalMetric := grpcRequestLatency
-			defer func() {
-				grpcRequestLatency = originalMetric
-			}()
-			grpcRequestLatency = testableLatency
-			handler := InstrumentClusterStatsHandler()
+			testableLatency := &TestableObserverVec{}
+			handler := NewStatsHandler(testableLatency)
 
 			ctx := context.Background()
 			ctx = handler.TagRPC(ctx, &stats.RPCTagInfo{
