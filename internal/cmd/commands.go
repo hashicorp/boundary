@@ -903,6 +903,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
+		"scopes rotate-keys": func() (cli.Command, error) {
+			return &scopescmd.RotateKeysCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"sessions": func() (cli.Command, error) {
 			return &sessionscmd.Command{
