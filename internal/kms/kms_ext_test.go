@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
@@ -158,6 +159,7 @@ func TestKms_ReconcileKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			// start with no keys...
+			oplog.TestOplogDeleteAllEntries(t, db.New(conn).UnderlyingDB())
 			kms.TestKmsDeleteAllKeys(t, conn)
 
 			// create initial keys for the global scope...

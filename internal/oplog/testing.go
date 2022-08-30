@@ -3,6 +3,7 @@ package oplog
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/common"
@@ -17,6 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
 )
+
+// TestOplogDeleteAllEntries allows you to delete all the entries for testing.
+func TestOplogDeleteAllEntries(t testing.TB, conn *dbw.DB) {
+	_, err := dbw.New(conn).Exec(context.Background(), fmt.Sprintf("delete from %q", Entry{}.TableName()), nil)
+	require.NoError(t, err)
+}
 
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
 func setup(ctx context.Context, t testing.TB) (*dbw.DB, wrapping.Wrapper) {

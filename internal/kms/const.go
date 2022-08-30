@@ -87,3 +87,24 @@ func ValidDekPurposes() []KeyPurpose {
 		KeyPurposeAudit,
 	}
 }
+
+// KeyDestructionStatus defines the possible states a key destruction can take.
+type KeyDestructionStatus uint
+
+const (
+	KeyDestructionStatusUnspecified KeyDestructionStatus = iota
+	KeyDestructionStatusPending
+	KeyDestructionStatusRunning
+	KeyDestructionStatusCompleted
+	KeyDestructionStatusFailed
+)
+
+func (k KeyDestructionStatus) String() string {
+	return [...]string{
+		"unspecified",
+		"pending",
+		"running",
+		"completed",
+		"failed",
+	}[k]
+}
