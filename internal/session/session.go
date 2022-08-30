@@ -104,7 +104,7 @@ type Session struct {
 	// used to identify a specific version of the key needed to decrypt the value,
 	// which is useful for caching purposes.
 	// @inject_tag: `gorm:"not_null"`
-	KeyId string `json:"key_id,omitempty" gorm:"not_null"`
+	KeyId string `json:"key_id,omitempty" gorm:"default:null"`
 
 	// States for the session which are for read only and are ignored during
 	// write operations
@@ -467,7 +467,7 @@ type sessionListView struct {
 	Version           uint32               `json:"version,omitempty" gorm:"default:null"`
 	Endpoint          string               `json:"-" gorm:"default:null"`
 	ConnectionLimit   int32                `json:"connection_limit,omitempty" gorm:"default:null"`
-	KeyId             string               `json:"key_id,omitempty" gorm:"not_null"`
+	KeyId             string               `json:"key_id,omitempty" gorm:"default:null"`
 
 	// State fields
 	Status          string               `json:"state,omitempty" gorm:"column:state"`
