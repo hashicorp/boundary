@@ -5,14 +5,13 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/common"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_testUser(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	db := setup(t)
+	db, _ := setup(context.Background(), t)
 
 	id := testId(t)
 
@@ -25,7 +24,7 @@ func Test_testUser(t *testing.T) {
 
 func Test_testFindUser(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	db := setup(t)
+	db, _ := setup(context.Background(), t)
 	id := testId(t)
 	u := testUser(t, db, id, id, id)
 	require.NotNil(u)
@@ -48,14 +47,6 @@ func Test_testInitDbInDocker(t *testing.T) {
 	require.NoError(err)
 	require.NotEmpty(url)
 	require.NotNil(cleanup)
-}
-
-func Test_testWrapper(t *testing.T) {
-	w := testWrapper(t)
-	require.NotNil(t, w)
-	typ, err := w.Type(context.Background())
-	require.NoError(t, err)
-	assert.Equal(t, wrapping.WrapperTypeAead, typ)
 }
 
 func Test_testInitStore(t *testing.T) {
@@ -81,7 +72,7 @@ select count(*) from information_schema."tables" t where table_name = 'boundary_
 
 func Test_testListConstraints(t *testing.T) {
 	assert := assert.New(t)
-	db := setup(t)
+	db, _ := setup(context.Background(), t)
 	constraints := testListConstraints(t, db, "oplog_test_user")
 	assert.NotEmpty(constraints)
 }
