@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/daemon/metric"
+	metric2 "github.com/hashicorp/boundary/internal/daemon/internal/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,9 +33,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        nil,
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric2.LabelGrpcCode:    "OK",
+				metric2.LabelGrpcMethod:  "method",
+				metric2.LabelGrpcService: "some.service.path",
 			},
 		},
 		{
@@ -43,9 +43,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "unrecognized",
 			err:        nil,
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "unknown",
-				metric.LabelGrpcService: "unknown",
+				metric2.LabelGrpcCode:    "OK",
+				metric2.LabelGrpcMethod:  "unknown",
+				metric2.LabelGrpcService: "unknown",
 			},
 		},
 		{
@@ -53,9 +53,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        status.Error(codes.Canceled, ""),
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "Canceled",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric2.LabelGrpcCode:    "Canceled",
+				metric2.LabelGrpcMethod:  "method",
+				metric2.LabelGrpcService: "some.service.path",
 			},
 		},
 		{
@@ -63,9 +63,9 @@ func TestRecorder(t *testing.T) {
 			methodName: "/some.service.path/method",
 			err:        status.Error(codes.PermissionDenied, ""),
 			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "PermissionDenied",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
+				metric2.LabelGrpcCode:    "PermissionDenied",
+				metric2.LabelGrpcMethod:  "method",
+				metric2.LabelGrpcService: "some.service.path",
 			},
 		},
 	}
@@ -74,7 +74,7 @@ func TestRecorder(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ogReqLatency := grpcRequestLatency
 			defer func() { grpcRequestLatency = ogReqLatency }()
-			testableLatency := &metric.TestableObserverVec{}
+			testableLatency := &metric2.TestableObserverVec{}
 			start := time.Now()
 			tested := newRequestRecorder(tc.methodName, testableLatency)
 			tested.Record(tc.err)
@@ -91,11 +91,11 @@ func TestInstrumentClusterClient(t *testing.T) {
 	ogReqLatency := grpcRequestLatency
 	defer func() { grpcRequestLatency = ogReqLatency }()
 
-	testableLatency := &metric.TestableObserverVec{}
+	testableLatency := &metric2.TestableObserverVec{}
 	grpcRequestLatency = testableLatency
 
 	interceptor := InstrumentClusterClient()
-	i := &metric.TestInvoker{T: t, RetErr: nil}
+	i := &metric2.TestInvoker{T: t, RetErr: nil}
 
 	start := time.Now()
 	err := interceptor(context.Background(), "/some.service.path/method", wrapperspb.Bytes([]byte{1}), nil, nil, i.Invoke, []grpc.CallOption{}...)
@@ -111,11 +111,11 @@ func TestInstrumentClusterClient_InvokerError(t *testing.T) {
 	ogReqLatency := grpcRequestLatency
 	defer func() { grpcRequestLatency = ogReqLatency }()
 
-	testableLatency := &metric.TestableObserverVec{}
+	testableLatency := &metric2.TestableObserverVec{}
 	grpcRequestLatency = testableLatency
 
 	interceptor := InstrumentClusterClient()
-	i := &metric.TestInvoker{T: t, RetErr: fmt.Errorf("oops!")}
+	i := &metric2.TestInvoker{T: t, RetErr: fmt.Errorf("oops!")}
 
 	start := time.Now()
 	err := interceptor(context.Background(), "/some.service.path/method", wrapperspb.Bytes([]byte{1}), nil, nil, i.Invoke, []grpc.CallOption{}...)

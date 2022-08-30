@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/daemon/metric"
+	metric2 "github.com/hashicorp/boundary/internal/daemon/internal/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -30,7 +30,7 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 		Help:      "Histogram of latencies for gRPC requests.",
 		Buckets:   prometheus.DefBuckets,
 	},
-	metric.ListGrpcLabels,
+	metric2.ListGrpcLabels,
 )
 
 // All the codes expected to be returned by boundary or the grpc framework to
@@ -48,12 +48,12 @@ var expectedGrpcCodes = []codes.Code{
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
 // cluster specific metrics. Use with the cluster gRPC server.
 func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
-	return metric.NewStatsHandler(ctx, grpcRequestLatency)
+	return metric2.NewStatsHandler(ctx, grpcRequestLatency)
 }
 
 // InitializeClusterCollectors registers the cluster metrics to the default
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterCollectors(r prometheus.Registerer, server *grpc.Server) {
-	metric.InitializeGrpcCollectorsFromServer(r, grpcRequestLatency, server, expectedGrpcCodes)
+	metric2.InitializeGrpcCollectorsFromServer(r, grpcRequestLatency, server, expectedGrpcCodes)
 }

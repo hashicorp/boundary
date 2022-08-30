@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/daemon/metric"
+	metric2 "github.com/hashicorp/boundary/internal/daemon/internal/metric"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
@@ -26,7 +26,7 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 		Help:      "Histogram of latencies for gRPC requests between the cluster and any of its clients.",
 		Buckets:   prometheus.DefBuckets,
 	},
-	metric.ListGrpcLabels,
+	metric2.ListGrpcLabels,
 )
 
 type requestRecorder struct {
@@ -40,12 +40,12 @@ type requestRecorder struct {
 // NewRequestRecorder creates a requestRecorder struct which is used to measure gRPC client request latencies.
 // For testing purposes, this method is exported.
 func newRequestRecorder(fullMethodName string, reqLatency prometheus.ObserverVec) requestRecorder {
-	service, method := metric.SplitMethodName(fullMethodName)
+	service, method := metric2.SplitMethodName(fullMethodName)
 	r := requestRecorder{
 		reqLatency: reqLatency,
 		labels: prometheus.Labels{
-			metric.LabelGrpcMethod:  method,
-			metric.LabelGrpcService: service,
+			metric2.LabelGrpcMethod:  method,
+			metric2.LabelGrpcService: service,
 		},
 		start: time.Now(),
 	}
@@ -54,7 +54,7 @@ func newRequestRecorder(fullMethodName string, reqLatency prometheus.ObserverVec
 }
 
 func (r requestRecorder) Record(err error) {
-	r.labels[metric.LabelGrpcCode] = metric.StatusFromError(err).Code().String()
+	r.labels[metric2.LabelGrpcCode] = metric2.StatusFromError(err).Code().String()
 	r.reqLatency.With(r.labels).Observe(time.Since(r.start).Seconds())
 }
 
@@ -82,5 +82,5 @@ func InstrumentClusterClient() grpc.UnaryClientInterceptor {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterClientCollectors(r prometheus.Registerer) {
-	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency, services.File_controller_servers_services_v1_session_service_proto, expectedGrpcClientCodes)
+	metric2.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency, services.File_controller_servers_services_v1_session_service_proto, expectedGrpcClientCodes)
 }
