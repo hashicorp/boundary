@@ -147,7 +147,10 @@ a `worker_filter`attribute when configuring [credential stores].
 
 This allows for the use of private Vault instances with Boundary. PKI workers
 deployed in the same network as a private Vault instance can access and relay
-Vault requests to Boundary controllers. 
+Vault requests to Boundary controllers.
+
+ ~> **Note:** A PKI worker that matches the worker filter must exist before defining the Vault credential store, as it
+ will perform the Vault calls needed to set up the credential store with Boundary
 
 [PKI workers]: /docs/configuration/worker/pki-worker
 [credential stores]: /docs/concepts/domain-model/credential-stores#vault-credential-store-attributes
