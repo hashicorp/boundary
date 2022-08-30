@@ -67,6 +67,9 @@ type Worker struct {
 	// other based on the context in which the worker is passed.  As such
 	// inputTags should only be read when performing mutations on the database.
 	inputTags []*Tag `gorm:"-"`
+
+	// This is used to pass the token back to the calling function
+	ControllerGeneratedActivationToken string `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription

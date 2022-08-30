@@ -1114,6 +1114,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"workers create controller-led": func() (cli.Command, error) {
+			return &workerscmd.ControllerLedCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"workers read": func() (cli.Command, error) {
 			return &workerscmd.Command{
 				Command: base.NewCommand(ui),

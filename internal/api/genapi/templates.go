@@ -46,7 +46,6 @@ type templateInput struct {
 	SliceSubtypes         map[string]sliceSubtypeInfo
 	ExtraFields           []fieldInfo
 	VersionEnabled        bool
-	ExtraRequiredParams   []requiredParam
 	CreateResponseTypes   bool
 	RecursiveListing      bool
 }
@@ -65,7 +64,6 @@ func fillTemplates() {
 			ParentTypeName:      in.parentTypeName,
 			ExtraFields:         in.extraFields,
 			VersionEnabled:      in.versionEnabled,
-			ExtraRequiredParams: in.extraRequiredParams,
 			CreateResponseTypes: in.createResponseTypes,
 			RecursiveListing:    in.recursiveListing,
 		}
@@ -347,7 +345,7 @@ func (c *Client) Delete(ctx context.Context, id string, opt... Option) (*{{ .Nam
 `))
 
 const createTemplateStr = `
-func (c *Client) {{ funcName }} (ctx context.Context, {{ range .ExtraRequiredParams }} {{ .Name }} {{ .Typ }}, {{ end }} {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}CreateResult, error) {
+func (c *Client) {{ funcName }} (ctx context.Context, {{ range extraRequiredParams }} {{ .Name }} {{ .Typ }}, {{ end }} {{ .CollectionFunctionArg }} string, opt... Option) (*{{ .Name }}CreateResult, error) {
 	if {{ .CollectionFunctionArg }} == "" {
 		return nil, fmt.Errorf("empty {{ .CollectionFunctionArg }} value passed into {{ funcName }} request")
 	}
@@ -357,7 +355,7 @@ func (c *Client) {{ funcName }} (ctx context.Context, {{ range .ExtraRequiredPar
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
 	}
-	{{ range .ExtraRequiredParams }} if {{ .Name }} == "" {
+	{{ range extraRequiredParams }} if {{ .Name }} == "" {
 		return nil, fmt.Errorf("empty {{ .Name }} value passed into {{ funcName }} request")
 	} else {
 		opts.postMap["{{ .PostType }}"] = {{ .Name }}
@@ -407,6 +405,9 @@ var commonCreateTemplate = template.Must(template.New("").Funcs(
 		},
 		"apiAction": func() string {
 			return ""
+		},
+		"extraRequiredParams": func() []requiredParam {
+			return nil
 		},
 	},
 ).Parse(createTemplateStr))

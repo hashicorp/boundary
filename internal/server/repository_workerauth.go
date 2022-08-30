@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/fatih/structs"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -370,6 +371,41 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformation")
 	}
 
+	// If doing a server-led approach, the ID within the node will have the
+	// known prefix. In this implementation of storage it is in a different
+	// table.
+	if strings.HasPrefix(node.Id, nodeenrollment.ServerLedActivationTokenPrefix) {
+		if node.State == nil {
+			return errors.New(ctx, errors.InvalidParameter, op, "missing node state")
+		}
+		actToken := allocWorkerAuthActivationToken()
+		actToken.TokenId = node.Id
+
+		err := r.reader.LookupById(ctx, actToken)
+		if err != nil {
+			if errors.Is(err, dbw.ErrRecordNotFound) {
+				return nodee.ErrNotFound
+			}
+			return errors.Wrap(ctx, err, op)
+		}
+
+		// We don't actually need the full activation token returned because of
+		// the way that the lookup value is calculated from an HMAC of the data,
+		// including the nonce and timestamp; it must be calculated twice the
+		// same way in order to have the token_id be found via the lookup. So
+		// just populate this and return. We do _store_ the activation token,
+		// encrypted, in case there is a use for it later. However, as an extra
+		// check, validate that the state matches.
+		var workerInfo workerAuthWorkerId
+		if err := mapstructure.Decode(node.State.AsMap(), &workerInfo); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if workerInfo.WorkerId != actToken.WorkerId {
+			return errors.New(ctx, errors.NotSpecificIntegrity, op, "worker id from loaded activation token entry does not match value encoded in activation token")
+		}
+		return nil
+	}
+
 	authorizedWorker, err := r.findWorkerAuth(ctx, node)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
@@ -561,23 +597,49 @@ func (r *WorkerAuthRepositoryStorage) removeNodeInformation(ctx context.Context,
 		return errors.New(ctx, errors.InvalidParameter, op, "empty id")
 	}
 
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			var err error
-			_, err = w.Exec(ctx, deleteWorkerAuthQuery, []interface{}{sql.Named("worker_key_identifier", id)})
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []interface{}{sql.Named("worker_key_identifier", id)})
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete workerAuth"))
-			}
-			return nil
-		},
-	)
+	// If doing a server-led approach, the ID within the node will have the
+	// known prefix. In this implementation of storage it is in a different
+	// table.
+	var err error
+	switch strings.HasPrefix(id, nodeenrollment.ServerLedActivationTokenPrefix) {
+	case true:
+		actToken := allocWorkerAuthActivationToken()
+		actToken.TokenId = id
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			func(reader db.Reader, w db.Writer) error {
+				rowsDeleted, err := w.Delete(ctx, actToken)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if rowsDeleted != 1 {
+					return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to delete one activation token, deleted %d", rowsDeleted))
+				}
+				return nil
+			},
+		)
+
+	default:
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			func(reader db.Reader, w db.Writer) error {
+				var err error
+				_, err = w.Exec(ctx, deleteWorkerAuthQuery, []interface{}{sql.Named("worker_key_identifier", id)})
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []interface{}{sql.Named("worker_key_identifier", id)})
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete workerAuth"))
+				}
+				return nil
+			},
+		)
+	}
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

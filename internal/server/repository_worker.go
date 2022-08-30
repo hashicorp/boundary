@@ -11,9 +11,9 @@ import (
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
+	"github.com/hashicorp/nodeenrollment/types"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -492,8 +492,9 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 // ReportedStatus and Tags are intentionally ignored when creating a worker (not
 // included).  Currently, a worker can only be created in the global scope
 //
-// Options supported: WithFetchNodeCredentialsRequest and WithNewIdFunc (this
-// option is likely only useful for tests)
+// Options supported: WithFetchNodeCredentialsRequest, WithNewIdFunc (this
+// option is likely only useful for tests),
+// WithCreateControllerLedActivationToken
 func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "server.CreateWorker"
 	switch {
@@ -523,14 +524,11 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating state struct", err))
 	}
 
-	var databaseWrapper wrapping.Wrapper
 	var workerAuthRepo *WorkerAuthRepositoryStorage
-	if opts.withFetchNodeCredentialsRequest != nil {
-		// used to encrypt the privKey within the NodeInformation
-		databaseWrapper, err = r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
+
+	databaseWrapper, err := r.kms.GetWrapper(context.Background(), worker.ScopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	var returnedWorker *Worker
@@ -547,7 +545,9 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 			); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker"))
 			}
-			if opts.withFetchNodeCredentialsRequest != nil {
+
+			switch {
+			case opts.withFetchNodeCredentialsRequest != nil:
 				workerAuthRepo, err = NewRepositoryStorage(ctx, read, w, r.kms)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker auth repository"))
@@ -560,7 +560,30 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 				if err := StoreNodeInformationTx(ctx, w, databaseWrapper, nodeInfo); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to store node information"))
 				}
+
+			case opts.withCreateControllerLedActivationToken:
+				tokenId, activationToken, err := registration.CreateServerLedActivationToken(ctx, nil, &types.ServerLedRegistrationRequest{},
+					nodeenrollment.WithSkipStorage(true),
+					nodeenrollment.WithState(state))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create controller-led activation token"))
+				}
+				activationTokenInfo, err := newWorkerAuthActivationToken(ctx, worker.PublicId, tokenId, activationToken)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in-memory activation token"))
+				}
+				if err := activationTokenInfo.encrypt(ctx, databaseWrapper); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err := w.Create(
+					ctx,
+					activationTokenInfo,
+				); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker activation token in storage"))
+				}
+				returnedWorker.ControllerGeneratedActivationToken = activationToken
 			}
+
 			return nil
 		},
 	); err != nil {
@@ -590,10 +613,7 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no worker found with public id %s", workerId))
 	}
 
-	newTags := worker.apiTags
-	for _, t := range tags {
-		newTags = append(newTags, t)
-	}
+	newTags := append(worker.apiTags, tags...)
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		worker := worker.clone()
 		worker.PublicId = workerId

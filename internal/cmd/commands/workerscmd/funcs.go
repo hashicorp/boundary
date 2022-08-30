@@ -261,6 +261,9 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 	if !item.LastStatusTime.IsZero() {
 		nonAttributeMap["Last Status Time"] = item.LastStatusTime
 	}
+	if item.ControllerGeneratedActivationToken != "" {
+		nonAttributeMap["Controller-Generated Activation Token"] = item.ControllerGeneratedActivationToken
+	}
 
 	resultMap := resp.Map
 	if count, ok := resultMap[globals.ActiveConnectionCountField]; ok {

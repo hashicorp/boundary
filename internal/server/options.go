@@ -21,26 +21,27 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName                           string
-	withPublicId                       string
-	withDescription                    string
-	withAddress                        string
-	withLimit                          int
-	withLiveness                       time.Duration
-	withUpdateTags                     bool
-	withWorkerTags                     []*Tag
-	withWorkerKeyIdentifier            string
-	withWorkerKeys                     WorkerKeys
-	withControllerEncryptionPrivateKey []byte
-	withKeyId                          string
-	withNonce                          []byte
-	withNewIdFunc                      func(context.Context) (string, error)
-	withFetchNodeCredentialsRequest    *types.FetchNodeCredentialsRequest
-	withTestPkiWorkerAuthorized        bool
-	withTestPkiWorkerKeyId             *string
-	withWorkerType                     WorkerType
-	withRoot                           string
-	withStopAfter                      uint
+	withName                               string
+	withPublicId                           string
+	withDescription                        string
+	withAddress                            string
+	withLimit                              int
+	withLiveness                           time.Duration
+	withUpdateTags                         bool
+	withWorkerTags                         []*Tag
+	withWorkerKeyIdentifier                string
+	withWorkerKeys                         WorkerKeys
+	withControllerEncryptionPrivateKey     []byte
+	withKeyId                              string
+	withNonce                              []byte
+	withNewIdFunc                          func(context.Context) (string, error)
+	withFetchNodeCredentialsRequest        *types.FetchNodeCredentialsRequest
+	withTestPkiWorkerAuthorized            bool
+	withTestPkiWorkerKeyId                 *string
+	withWorkerType                         WorkerType
+	withRoot                               string
+	withStopAfter                          uint
+	withCreateControllerLedActivationToken bool
 }
 
 func getDefaultOptions() options {
@@ -186,5 +187,12 @@ func WithRoot(workerId string) Option {
 func WithStopAfter(stopAfter uint) Option {
 	return func(o *options) {
 		o.withStopAfter = stopAfter
+	}
+}
+
+// WithCreateControllerLedActivationToken provides an optional stop after count
+func WithCreateControllerLedActivationToken(with bool) Option {
+	return func(o *options) {
+		o.withCreateControllerLedActivationToken = with
 	}
 }

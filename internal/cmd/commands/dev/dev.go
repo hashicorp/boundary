@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"os/signal"
@@ -701,6 +702,46 @@ func (c *Command) Run(args []string) int {
 			c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthRotationInterval
 		}
 
+		// Note: this should be done before starting the worker so that the
+		// activation token is populated
+		var useWorkerLed bool
+		if !c.flagUseKmsWorkerAuthMethod {
+			// Flip a coin. Use one method or the other; it's transparent to
+			// users, but keeps both exercised.
+			switch rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2) {
+			case 0:
+				// Controller-led
+				serversRepo, err := c.controller.ServersRepoFn()
+				if err != nil {
+					c.UI.Error(fmt.Errorf("Error instantiating server repo: %w", err).Error())
+					if err := c.controller.Shutdown(); err != nil {
+						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+					}
+					return base.CommandCliError
+				}
+
+				// Create the worker in the database and fetch an activation token
+				worker, err := serversRepo.CreateWorker(c.Context, &server.Worker{
+					Worker: &store.Worker{
+						ScopeId: scope.Global.String(),
+					},
+				}, server.WithCreateControllerLedActivationToken(true))
+				if err != nil {
+					c.UI.Error(fmt.Errorf("Error creating worker in database: %w", err).Error())
+					if err := c.controller.Shutdown(); err != nil {
+						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+					}
+					return base.CommandCliError
+				}
+
+				// Set the activation token in the config
+				conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
+
+			default:
+				useWorkerLed = true
+			}
+		}
+
 		if err := c.worker.Start(); err != nil {
 			retErr := fmt.Errorf("Error starting worker: %w", err)
 			if err := c.worker.Shutdown(); err != nil {
@@ -715,45 +756,47 @@ func (c *Command) Run(args []string) int {
 		}
 
 		if !c.flagUseKmsWorkerAuthMethod {
-			req := c.worker.WorkerAuthRegistrationRequest
-			if req == "" {
-				c.UI.Error("No worker auth registration request found at worker start time")
-				return base.CommandCliError
-			}
-			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
-			c.Info["worker auth registration request"] = req
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
 			c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
-			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
-				// Shutdown on failure
-				retErr := fmt.Errorf("Error storing worker auth request: %w", err)
-				if err := c.worker.Shutdown(); err != nil {
+
+			if useWorkerLed {
+				req := c.worker.WorkerAuthRegistrationRequest
+				if req == "" {
+					c.UI.Error("No worker auth registration request found at worker start time")
+					return base.CommandCliError
+				}
+
+				if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
+					// Shutdown on failure
+					retErr := fmt.Errorf("Error storing worker auth request: %w", err)
+					if err := c.worker.Shutdown(); err != nil {
+						c.UI.Error(retErr.Error())
+						retErr = fmt.Errorf("Error shutting down worker: %w", err)
+					}
 					c.UI.Error(retErr.Error())
-					retErr = fmt.Errorf("Error shutting down worker: %w", err)
+					if err := c.controller.Shutdown(); err != nil {
+						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+					}
+					return base.CommandCliError
 				}
-				c.UI.Error(retErr.Error())
-				if err := c.controller.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-				}
-				return base.CommandCliError
-			}
-			go func() {
-				for {
-					select {
-					case <-c.Context.Done():
-						return
-					case <-time.After(time.Second):
-						if err := authorizeWorker(c.Context, c.controller, req); err != nil {
-							c.UI.Error(fmt.Errorf("Error authorizing node: %w", err).Error())
-							errorEncountered.Store(true)
+				go func() {
+					for {
+						select {
+						case <-c.Context.Done():
+							return
+						case <-time.After(time.Second):
+							if err := authorizeWorker(c.Context, c.controller, req); err != nil {
+								c.UI.Error(fmt.Errorf("Error authorizing node: %w", err).Error())
+								errorEncountered.Store(true)
+								return
+							}
 							return
 						}
-						return
 					}
-				}
-			}()
+				}()
+			}
 		}
 	}
 
