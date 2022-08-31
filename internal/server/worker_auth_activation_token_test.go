@@ -72,7 +72,7 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 				in.WorkerId = origWorker.PublicId
 				return in
 			},
-			wantErrContains: "worker_auth_activation_token_pkey",
+			wantErrContains: "worker_auth_activation_token_token_id_uq",
 		},
 		{
 			name: "same-activation-token",
@@ -90,7 +90,7 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 				in.TokenId = in.TokenId[0:5]
 				return in
 			},
-			wantErrContains: "worker_auth_activation_token_worker_id_uq",
+			wantErrContains: "worker_auth_activation_token_pkey",
 		},
 		{
 			name: "modify-worker-id",

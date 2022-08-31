@@ -57,13 +57,13 @@ message WorkerCertBundle {
 // WorkerAuthActivationToken contains all fields related to a
 // WorkerAuthActivationToken resource
 message WorkerAuthActivationToken {
-  // The token identifier, used for lookup
-  // @inject_tag: `gorm:"primary_key"`
-  string token_id = 10;
-
   // The worker_id of the worker that this activates
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // The token identifier, used for lookup
   // @inject_tag: `gorm:"not_null"`
-  string worker_id = 15;
+  string token_id = 15;
 
   // The token itself, encrypted
   // @inject_tag: `gorm:"not_null" wrapping:"ct,activation_token_data"`
