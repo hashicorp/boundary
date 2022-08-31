@@ -10,7 +10,8 @@ RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.8/main'>> /etc/apk/repositorie
       build-base make perl perl-dev
 
 # install pg_prove
-RUN cpan TAP::Parser::SourceHandler::pgTAP
+RUN PERL_MM_USE_DEFAULT=1 cpan -T TAP::Harness::JUnit \
+  && PERL_MM_USE_DEFAULT=1 cpan -T TAP::Parser::SourceHandler::pgTAP
 
 # install pgtap
 RUN git clone https://github.com/theory/pgtap.git \
