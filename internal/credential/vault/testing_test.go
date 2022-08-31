@@ -507,7 +507,7 @@ func TestTestVaultServer_VerifyTokenInvalid(t *testing.T) {
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 
 	_, token := v.CreateToken(t)
-	client := v.clientUsingToken(t, token)
+	client := v.ClientUsingToken(t, token)
 	err := client.revokeToken(ctx)
 	require.NoError(err)
 	v.VerifyTokenInvalid(t, token)
@@ -559,7 +559,7 @@ func TestTestVaultServer_AddKVPolicy(t *testing.T) {
 
 		_, token := v.CreateToken(t, WithPolicies([]string{"default", "secret"}))
 		require.NotNil(token)
-		client := v.clientUsingToken(t, token)
+		client := v.ClientUsingToken(t, token)
 
 		_, err := client.get(ctx, "/secret/data/my-secret")
 		assert.Error(err)
@@ -574,7 +574,7 @@ func TestTestVaultServer_AddKVPolicy(t *testing.T) {
 		v.AddKVPolicy(t)
 		_, token = v.CreateToken(t, WithPolicies([]string{"default", "secret"}))
 		require.NotNil(token)
-		client = v.clientUsingToken(t, token)
+		client = v.ClientUsingToken(t, token)
 
 		_, err = client.get(ctx, "/secret/data/my-secret")
 		assert.NoError(err)
