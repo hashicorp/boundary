@@ -9,7 +9,7 @@ create table worker_auth_activation_token(
         on update cascade,
   activation_token_encrypted bytea not null,
   create_time wt_timestamp,
-  key_id text not null
+  key_id kms_private_id
     constraint kms_data_key_version_fkey
       references kms_data_key_version (private_id)
       on delete restrict
