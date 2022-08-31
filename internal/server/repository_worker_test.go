@@ -701,7 +701,6 @@ func TestRepository_CreateWorker(t *testing.T) {
 		name            string
 		setup           func() *server.Worker
 		repo            *server.Repository
-		fetchReq        *types.FetchNodeCredentialsRequest
 		reader          db.Reader
 		opt             []server.Option
 		wantErr         bool
@@ -817,19 +816,21 @@ func TestRepository_CreateWorker(t *testing.T) {
 				return w
 			},
 			reader: rw,
-			fetchReq: func() *types.FetchNodeCredentialsRequest {
-				// This happens on the worker
-				fileStorage, err := file.New(testCtx)
-				require.NoError(t, err)
-				defer fileStorage.Cleanup()
+			opt: []server.Option{server.WithFetchNodeCredentialsRequest(
+				func() *types.FetchNodeCredentialsRequest {
+					// This happens on the worker
+					fileStorage, err := file.New(testCtx)
+					require.NoError(t, err)
+					defer fileStorage.Cleanup()
 
-				nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
-				require.NoError(t, err)
-				// Create request using worker id
-				fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
-				require.NoError(t, err)
-				return fetchReq
-			}(),
+					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+					require.NoError(t, err)
+					// Create request using worker id
+					fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
+					require.NoError(t, err)
+					return fetchReq
+				}(),
+			)},
 			repo: func() *server.Repository {
 				mockConn, mock := db.TestSetupWithMock(t)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
@@ -849,7 +850,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 				return w
 			},
 			reader:          rw,
-			fetchReq:        &types.FetchNodeCredentialsRequest{},
+			opt:             []server.Option{server.WithFetchNodeCredentialsRequest(&types.FetchNodeCredentialsRequest{})},
 			repo:            testRepo,
 			wantErr:         true,
 			wantErrContains: "unable to authorize node",
@@ -867,7 +868,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			wantErrIs: errors.NotUnique,
 		},
 		{
-			name: "success",
+			name: "success-no-options",
 			setup: func() *server.Worker {
 				w := server.NewWorker(scope.Global.String())
 				w.Name = "success"
@@ -897,28 +898,39 @@ func TestRepository_CreateWorker(t *testing.T) {
 				return w
 			},
 			reader: rw,
-			fetchReq: func() *types.FetchNodeCredentialsRequest {
-				// This happens on the worker
-				fileStorage, err := file.New(testCtx)
-				require.NoError(t, err)
-				defer fileStorage.Cleanup()
+			opt: []server.Option{server.WithFetchNodeCredentialsRequest(
+				func() *types.FetchNodeCredentialsRequest {
+					// This happens on the worker
+					fileStorage, err := file.New(testCtx)
+					require.NoError(t, err)
+					defer fileStorage.Cleanup()
 
-				nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
-				require.NoError(t, err)
-				// Create request using worker id
-				fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
-				require.NoError(t, err)
-				return fetchReq
-			}(),
+					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+					require.NoError(t, err)
+					// Create request using worker id
+					fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
+					require.NoError(t, err)
+					return fetchReq
+				}(),
+			)},
 			repo: testRepo,
+		},
+		{
+			name: "success-with-controller-activation-token",
+			setup: func() *server.Worker {
+				w := server.NewWorker(scope.Global.String())
+				w.Name = "success-with-controller-activation-token"
+				return w
+			},
+			reader: rw,
+			opt:    []server.Option{server.WithCreateControllerLedActivationToken(true)},
+			repo:   testRepo,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testWorker := tc.setup()
-
-			tc.opt = append(tc.opt, server.WithFetchNodeCredentialsRequest(tc.fetchReq))
 
 			got, err := tc.repo.CreateWorker(testCtx, testWorker, tc.opt...)
 			if tc.wantErr {
@@ -947,11 +959,18 @@ func TestRepository_CreateWorker(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(cmp.Diff(got, found, protocmp.Transform()))
 
-			if tc.fetchReq != nil {
+			opts := server.GetOpts(tc.opt...)
+			if opts.WithFetchNodeCredentialsRequest != nil {
 				worker := &server.WorkerAuth{
 					WorkerAuth: &store.WorkerAuth{},
 				}
 				require.NoError(tc.reader.LookupWhere(testCtx, worker, "worker_id = ?", []any{found.PublicId}))
+			}
+			if opts.WithCreateControllerLedActivationToken {
+				activationToken := &server.WorkerAuthActivationToken{
+					WorkerAuthActivationToken: &store.WorkerAuthActivationToken{},
+				}
+				require.NoError(tc.reader.LookupWhere(testCtx, activationToken, "worker_id = ?", []any{found.PublicId}))
 			}
 		})
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 // getOpts - iterate the inbound Options and return a struct
-func getOpts(opt ...Option) options {
+func GetOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
@@ -35,13 +35,13 @@ type options struct {
 	withKeyId                              string
 	withNonce                              []byte
 	withNewIdFunc                          func(context.Context) (string, error)
-	withFetchNodeCredentialsRequest        *types.FetchNodeCredentialsRequest
+	WithFetchNodeCredentialsRequest        *types.FetchNodeCredentialsRequest
 	withTestPkiWorkerAuthorized            bool
 	withTestPkiWorkerKeyId                 *string
 	withWorkerType                         WorkerType
 	withRoot                               string
 	withStopAfter                          uint
-	withCreateControllerLedActivationToken bool
+	WithCreateControllerLedActivationToken bool
 }
 
 func getDefaultOptions() options {
@@ -154,7 +154,7 @@ func WithNewIdFunc(fn func(context.Context) (string, error)) Option {
 // FetchNodeCredentialsRequest to be specified.
 func WithFetchNodeCredentialsRequest(req *types.FetchNodeCredentialsRequest) Option {
 	return func(o *options) {
-		o.withFetchNodeCredentialsRequest = req
+		o.WithFetchNodeCredentialsRequest = req
 	}
 }
 
@@ -193,6 +193,6 @@ func WithStopAfter(stopAfter uint) Option {
 // WithCreateControllerLedActivationToken provides an optional stop after count
 func WithCreateControllerLedActivationToken(with bool) Option {
 	return func(o *options) {
-		o.withCreateControllerLedActivationToken = with
+		o.WithCreateControllerLedActivationToken = with
 	}
 }

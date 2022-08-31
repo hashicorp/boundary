@@ -76,7 +76,7 @@ type Worker struct {
 // WithAddress, and WithWorkerTags. All other options are ignored.  This does
 // not set any of the worker reported values.
 func NewWorker(scopeId string, opt ...Option) *Worker {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	return &Worker{
 		Worker: &store.Worker{
 			ScopeId:     scopeId,

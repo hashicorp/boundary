@@ -170,7 +170,7 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope ids set")
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
 		liveness = DefaultLiveness
@@ -233,7 +233,7 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "server.UpsertWorkerStatus"
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	switch {
 	case worker == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
@@ -512,7 +512,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "last status time is not nil")
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	var err error
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate worker id"))
@@ -547,12 +547,12 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 			}
 
 			switch {
-			case opts.withFetchNodeCredentialsRequest != nil:
+			case opts.WithFetchNodeCredentialsRequest != nil:
 				workerAuthRepo, err = NewRepositoryStorage(ctx, read, w, r.kms)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker auth repository"))
 				}
-				nodeInfo, err := registration.AuthorizeNode(ctx, workerAuthRepo, opts.withFetchNodeCredentialsRequest, nodeenrollment.WithSkipStorage(true))
+				nodeInfo, err := registration.AuthorizeNode(ctx, workerAuthRepo, opts.WithFetchNodeCredentialsRequest, nodeenrollment.WithSkipStorage(true))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to authorize node"))
 				}
@@ -561,7 +561,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to store node information"))
 				}
 
-			case opts.withCreateControllerLedActivationToken:
+			case opts.WithCreateControllerLedActivationToken:
 				tokenId, activationToken, err := registration.CreateServerLedActivationToken(ctx, nil, &types.ServerLedRegistrationRequest{},
 					nodeenrollment.WithSkipStorage(true),
 					nodeenrollment.WithState(state))
