@@ -213,7 +213,7 @@ func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRe
 	return &pbs.CreateWorkerLedResponse{Item: out}, nil
 }
 
-// CreateWorkerLed implements the interface pbs.WorkerServiceServer and handles
+// CreateControllerLed implements the interface pbs.WorkerServiceServer and handles
 // a request to create a new worker, generating and returning an activation
 // token
 func (s Service) CreateControllerLed(ctx context.Context, req *pbs.CreateControllerLedRequest) (*pbs.CreateControllerLedResponse, error) {
