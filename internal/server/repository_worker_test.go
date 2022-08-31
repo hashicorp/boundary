@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"strings"
 	"testing"
@@ -143,6 +144,7 @@ func TestLookupWorkerIdByKeyId(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 	repo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 	ctx := context.Background()
@@ -252,6 +254,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 	repo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 
@@ -496,9 +499,11 @@ func TestListWorkers(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
 	const testLimit = 10
-	repo, err := server.NewRepository(rw, rw, kms, server.WithLimit(testLimit))
+	repo, err := server.NewRepository(rw, rw, kmsCache, server.WithLimit(testLimit))
 	require.NoError(t, err)
 	ctx := context.Background()
 
@@ -959,6 +964,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
 	repo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)

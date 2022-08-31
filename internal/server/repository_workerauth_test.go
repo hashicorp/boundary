@@ -253,8 +253,7 @@ func TestStoreNodeInformationTx(t *testing.T) {
 
 	kmsCache := kms.TestKms(t, conn, testWrapper)
 	// Ensures the global scope contains a valid root key
-	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
-	require.NoError(t, err)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
