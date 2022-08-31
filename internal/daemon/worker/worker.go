@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -285,30 +284,12 @@ func (w *Worker) Start() error {
 		}
 
 		// Don't output a fetch request if an activation token has been
-		// provided. Technically we _could_ still output a fetch request, but if
-		// a token was provided it may well be confusing if it seems like it was
-		// ignored because a fetch request was still output.
-		//
-		// Additionally, if we have an activation token and the nonce doesn't
-		// match, update the stored nonce. This could happen if, for instance, a
-		// worker was created in the cluster via the API, then removed, then
-		// submitted to the worker. It won't be valid any longer, so this allows
-		// the operator to update the value.
+		// provided. Technically we _could_ still output a fetch request, and it
+		// would be valid to do so, but if a token was provided it may well be
+		// confusing to a user if it seems like it was ignored because a fetch
+		// request was still output.
 		if actToken := w.conf.RawConfig.Worker.ControllerGeneratedActivationToken; actToken != "" {
 			createFetchRequest = false
-			if nodeCreds != nil {
-				nonce, err := base58.FastBase58Decoding(strings.TrimPrefix(actToken, nodeenrollment.ServerLedActivationTokenPrefix))
-				if err != nil {
-					return fmt.Errorf("(%s) error base58-decoding activation token: %w", op, err)
-				}
-				if subtle.ConstantTimeCompare(nodeCreds.RegistrationNonce, nonce) != 1 {
-					// Update the nonce in the node creds
-					nodeCreds.RegistrationNonce = nonce
-					if err := nodeCreds.Store(w.baseContext, w.WorkerAuthStorage, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms)); err != nil {
-						return fmt.Errorf("(%s) error updating node credentials with new registration nonce: %w", op, err)
-					}
-				}
-			}
 		}
 
 		// NOTE: this block _must_ be before the `if createFetchRequest` block
@@ -319,7 +300,6 @@ func (w *Worker) Start() error {
 				w.WorkerAuthStorage,
 				nodeenrollment.WithRandomReader(w.conf.SecureRandomReader),
 				nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
-				nodeenrollment.WithActivationToken(w.conf.RawConfig.Worker.ControllerGeneratedActivationToken),
 			)
 			if err != nil {
 				return fmt.Errorf("error generating new worker auth creds: %w", err)

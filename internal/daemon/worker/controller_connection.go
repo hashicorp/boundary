@@ -86,7 +86,16 @@ func (w *Worker) controllerDialerFunc(extraAlpnProtos ...string) func(context.Co
 		case w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream:
 			conn, err = w.v1KmsAuthDialFn(ctx, addr, extraAlpnProtos...)
 		default:
-			conn, err = protocol.Dial(ctx, w.WorkerAuthStorage, addr, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms), nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos))
+			conn, err = protocol.Dial(
+				ctx,
+				w.WorkerAuthStorage,
+				addr,
+				nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
+				nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos),
+				// If the activation token hasn't been populated, this won't do
+				// anything, and it won't do anything if it's already been used
+				nodeenrollment.WithActivationToken(w.conf.RawConfig.Worker.ControllerGeneratedActivationToken),
+			)
 			// No error and a valid connection means the WorkerAuthRegistrationRequest was populated
 			// We can remove the stored workerAuthRequest file
 			if err == nil && conn != nil {
