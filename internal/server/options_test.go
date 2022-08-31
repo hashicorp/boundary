@@ -176,4 +176,10 @@ func Test_GetOpts(t *testing.T) {
 		opts = getOpts(WithStopAfter(10))
 		assert.Equal(t, uint(10), opts.withStopAfter)
 	})
+	t.Run("WithCreateControllerLedActivationToken", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.False(t, opts.withCreateControllerLedActivationToken)
+		opts = getOpts(WithCreateControllerLedActivationToken(true))
+		assert.True(t, opts.withCreateControllerLedActivationToken)
+	})
 }
