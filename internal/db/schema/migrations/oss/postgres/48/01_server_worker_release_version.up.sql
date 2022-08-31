@@ -1,7 +1,11 @@
 begin;
 
-  alter table server_worker
-    add column release_version text;
+-- release_version can be null, but if provided it must be greater than 8 to account for
+-- the 'Boundary' suffix
+alter table server_worker
+  add column release_version text
+    constraint release_version_too_short
+      check (release_version = '' or length(trim(release_version)) >= 8);
 
 drop view server_worker_aggregate;
 
