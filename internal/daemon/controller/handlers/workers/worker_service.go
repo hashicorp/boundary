@@ -201,7 +201,9 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 	return &pbs.GetWorkerResponse{Item: item}, nil
 }
 
-// CreateWorker implements the interface pbs.WorkerServiceServer.
+// CreateWorkerLed implements the interface pbs.WorkerServiceServer and handles
+// a request to create a new worker and consume a worker-generated authorization
+// request
 func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRequest) (*pbs.CreateWorkerLedResponse, error) {
 	const op = "workers.(Service).CreateWorkerLed"
 	out, err := s.createCommon(ctx, req.GetItem(), action.CreateWorkerLed)
@@ -211,6 +213,9 @@ func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRe
 	return &pbs.CreateWorkerLedResponse{Item: out}, nil
 }
 
+// CreateWorkerLed implements the interface pbs.WorkerServiceServer and handles
+// a request to create a new worker, generating and returning an activation
+// token
 func (s Service) CreateControllerLed(ctx context.Context, req *pbs.CreateControllerLedRequest) (*pbs.CreateControllerLedResponse, error) {
 	const op = "workers.(Service).CreateControllerLed"
 	out, err := s.createCommon(ctx, req.GetItem(), action.CreateControllerLed)
