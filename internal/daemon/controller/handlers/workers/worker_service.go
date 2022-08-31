@@ -709,7 +709,7 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 	if outputFields.Has(globals.ActiveConnectionCountField) {
 		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.ActiveConnectionCount()}
 	}
-	if outputFields.Has(globals.ControllerGeneratedActivationToken) {
+	if outputFields.Has(globals.ControllerGeneratedActivationToken) && in.ControllerGeneratedActivationToken != "" {
 		out.ControllerGeneratedActivationToken = &wrapperspb.StringValue{Value: in.ControllerGeneratedActivationToken}
 	}
 	if outputFields.Has(globals.ConfigTagsField) && len(in.GetConfigTags()) > 0 {

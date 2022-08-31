@@ -1662,8 +1662,9 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 			name: "remove-valid-tag",
 			req: func() *pbs.RemoveWorkerTagsRequest {
 				worker := server.TestKmsWorker(t, conn, wrapper)
-				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
+				_, err := s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
 					worker.Version, map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}})
+				require.NoError(err)
 				return &pbs.RemoveWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version + 1,
@@ -1676,7 +1677,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 			name: "remove-many-valid-tags",
 			req: func() *pbs.RemoveWorkerTagsRequest {
 				worker := server.TestKmsWorker(t, conn, wrapper)
-				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
+				_, err := s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
 					worker.Version, map[string]*structpb.ListValue{
 						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value1")}},
 						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
@@ -1685,6 +1686,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 						"key5": {Values: []*structpb.Value{structpb.NewStringValue("value5")}},
 						"key6": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
 					})
+				require.NoError(err)
 				return &pbs.RemoveWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version + 1,
@@ -1738,7 +1740,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 			name: "remove-nonexistent-tags",
 			req: func() *pbs.RemoveWorkerTagsRequest {
 				worker := server.TestKmsWorker(t, conn, wrapper)
-				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
+				_, err := s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
 					worker.Version, map[string]*structpb.ListValue{
 						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
 						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
@@ -1747,6 +1749,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 						"key5": {Values: []*structpb.Value{structpb.NewStringValue("value5")}},
 						"key6": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
 					})
+				require.NoError(err)
 				return &pbs.RemoveWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version + 1,
