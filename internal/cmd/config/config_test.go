@@ -301,6 +301,24 @@ func TestDevWorker(t *testing.T) {
 
 	_, err = Parse(devConfig + devWorkerKeyValueConfig)
 	assert.Error(t, err)
+
+	// Check activation token parsing
+	devWorkerActivationTokenConfig := `
+		listener "tcp" {
+			purpose = "proxy"
+		}
+	
+		worker {
+			name = "dev-worker"
+			description = "A default worker created in dev mode"
+			initial_upstreams = ["127.0.0.1"]
+			controller_generated_activation_token = "foobar"
+		}
+		`
+
+	actual, err = Parse(devConfig + devWorkerActivationTokenConfig)
+	require.NoError(t, err)
+	assert.Equal(t, "foobar", actual.Worker.ControllerGeneratedActivationToken)
 }
 
 func TestDevCombined(t *testing.T) {
