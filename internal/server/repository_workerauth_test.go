@@ -135,18 +135,15 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 func TestStoreWorkerAuth(t *testing.T) {
 	require, assert := require.New(t), assert.New(t)
 	ctx := context.Background()
-	wrapper := db.TestWrapper(t)
+	rootWrapper := db.TestWrapper(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	kmsCache := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
 	// Ensures the global scope contains a valid root key
 	err := kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
 	require.NoError(err)
-	wrapper, err = kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase)
-	require.NoError(err)
-	require.NotNil(wrapper)
 
-	worker := TestPkiWorker(t, conn, wrapper)
+	worker := TestPkiWorker(t, conn, rootWrapper)
 
 	rw := db.New(conn)
 	rootStorage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
