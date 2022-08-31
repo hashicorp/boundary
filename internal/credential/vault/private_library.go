@@ -257,7 +257,7 @@ func (pl *privateLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) 
 	return nil
 }
 
-func (pl *privateLibrary) client(ctx context.Context) (*client, error) {
+func (pl *privateLibrary) client(ctx context.Context) (vaultClient, error) {
 	const op = "vault.(privateLibrary).client"
 	clientConfig := &clientConfig{
 		Addr:          pl.VaultAddress,
@@ -273,7 +273,7 @@ func (pl *privateLibrary) client(ctx context.Context) (*client, error) {
 		clientConfig.ClientKey = pl.ClientKey
 	}
 
-	client, err := newClient(ctx, clientConfig)
+	client, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(pl.WorkerFilter))
 	if err != nil {
 		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
 	}

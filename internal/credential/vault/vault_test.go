@@ -78,7 +78,7 @@ func TestClient_RenewToken(t *testing.T) {
 	// need to sleep so the expiration times will be different
 	time.Sleep(100 * time.Millisecond)
 
-	client := v.clientUsingToken(t, token)
+	client := v.ClientUsingToken(t, token)
 	renewedToken, err := client.renewToken(ctx)
 	require.NoError(t, err)
 	assert.NotNil(renewedToken)
@@ -112,7 +112,7 @@ func TestClient_LookupToken(t *testing.T) {
 	_, token := v.CreateToken(t)
 	secretLookup := v.LookupToken(t, token)
 
-	client := v.clientUsingToken(t, token)
+	client := v.ClientUsingToken(t, token)
 	tokenLookup, err := client.lookupToken(ctx)
 	assert.NoError(err)
 	require.NotNil(tokenLookup)
@@ -129,7 +129,7 @@ func TestClient_RevokeToken(t *testing.T) {
 
 	_, token := v.CreateToken(t)
 
-	client := v.clientUsingToken(t, token)
+	client := v.ClientUsingToken(t, token)
 	tokenLookup, err := client.lookupToken(ctx)
 	assert.NoError(err)
 	assert.NotNil(tokenLookup)
@@ -192,7 +192,7 @@ func TestClient_RenewLease(t *testing.T) {
 	v.MountDatabase(t)
 
 	_, token := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
-	client := v.clientUsingToken(t, token)
+	client := v.ClientUsingToken(t, token)
 
 	// Create secret
 	cred, err := client.get(ctx, path.Join("database", "creds", "opened"))
@@ -252,7 +252,7 @@ func TestClient_capabilities(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			_, token := v.CreateToken(t, WithPolicies(tt.polices))
-			client := v.clientUsingToken(t, token)
+			client := v.ClientUsingToken(t, token)
 
 			have, err := client.capabilities(ctx, tt.require.paths())
 			assert.NoError(err)
@@ -270,7 +270,7 @@ func TestClient_revokeLease(t *testing.T) {
 	testDatabase := v.MountDatabase(t)
 
 	_, token := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
-	client := v.clientUsingToken(t, token)
+	client := v.ClientUsingToken(t, token)
 
 	cred, err := client.get(ctx, path.Join("database", "creds", "opened"))
 	assert.NoError(err)

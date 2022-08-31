@@ -14,15 +14,39 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+type vaultClient interface {
+	ping(context.Context) error
+	renewToken(context.Context) (*vault.Secret, error)
+	revokeToken(context.Context) error
+	renewLease(context.Context, string, time.Duration) (*vault.Secret, error)
+	revokeLease(context.Context, string) error
+	lookupToken(context.Context) (*vault.Secret, error)
+	swapToken(context.Context, TokenSecret) (old TokenSecret)
+	get(context.Context, string) (*vault.Secret, error)
+	post(context.Context, string, []byte) (*vault.Secret, error)
+	capabilities(context.Context, []string) (pathCapabilities, error)
+}
+
+var vaultClientFactoryFn = vaultClientFactory
+
+func vaultClientFactory(ctx context.Context, c *clientConfig, opt ...Option) (vaultClient, error) {
+	const op = "vault.vaultClientFactory"
+	nc, err := newClient(ctx, c)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return nc, nil
+}
+
 type clientConfig struct {
-	Addr          string
-	Token         TokenSecret
-	CaCert        []byte
-	ClientCert    []byte
-	ClientKey     KeySecret
-	TlsServerName string
-	TlsSkipVerify bool
-	Namespace     string
+	Addr          string `json:"addr"`
+	Token         []byte `json:"token"`
+	CaCert        []byte `json:"ca_cert"`
+	ClientCert    []byte `json:"client_cert"`
+	ClientKey     []byte `json:"client_key"`
+	TlsServerName string `json:"tls_server_name"`
+	TlsSkipVerify bool   `json:"tls_skip_verify"`
+	Namespace     string `json:"namespace"`
 }
 
 func (c *clientConfig) isValid() bool {
@@ -31,6 +55,8 @@ func (c *clientConfig) isValid() bool {
 	}
 	return true
 }
+
+var _ vaultClient = (*client)(nil)
 
 func (c *clientConfig) isClientTLS() bool {
 	if len(c.ClientCert) > 0 && len(c.ClientKey) > 0 {
