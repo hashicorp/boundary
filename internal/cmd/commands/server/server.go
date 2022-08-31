@@ -840,7 +840,7 @@ func (c *Command) Reload(newConf *config.Config) error {
 	}
 
 	if newConf != nil && c.worker != nil {
-		c.worker.ParseAndStoreTags(newConf.Worker.Tags)
+		c.worker.Reload(c.Context, newConf)
 	}
 
 	// Send a message that we reloaded. This prevents "guessing" sleep times
