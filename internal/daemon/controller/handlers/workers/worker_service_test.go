@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -22,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -1309,6 +1311,350 @@ func TestCreateWorkerLed(t *testing.T) {
 					tc.res.Item.UpdatedTime = got.GetItem().GetUpdatedTime()
 					tc.res.Item.Scope = got.GetItem().Scope
 					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
+				}
+			}
+			assert.Equal(tc.res, got)
+		})
+	}
+}
+
+func TestCreateControllerLed(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	testRootWrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, testRootWrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	rw := db.New(conn)
+	testKms := kms.TestKms(t, conn, testRootWrapper)
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, testKms)
+	}
+	testCtx := context.Background()
+
+	testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+	require.NoError(t, err, "Error when getting new worker service.")
+
+	// Get an initial set of authorized node credentials
+	rootStorage, err := server.NewRepositoryStorage(testCtx, rw, rw, testKms)
+	require.NoError(t, err)
+	_, err = rotation.RotateRootCertificates(testCtx, rootStorage)
+	require.NoError(t, err)
+
+	fetchReqFn := func() string {
+		// This happens on the worker
+		fileStorage, err := file.New(testCtx)
+		require.NoError(t, err)
+		defer fileStorage.Cleanup()
+
+		nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+		require.NoError(t, err)
+		// Create request using worker id
+		fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
+		require.NoError(t, err)
+
+		fetchEncoded, err := proto.Marshal(fetchReq)
+		require.NoError(t, err)
+
+		return base58.Encode(fetchEncoded)
+	}
+
+	tests := []struct {
+		name            string
+		scopeId         string
+		service         Service
+		req             *pbs.CreateControllerLedRequest
+		res             *pbs.CreateControllerLedResponse
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:    "invalid-scope",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: "invalid-scope",
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "Must be 'global'",
+		},
+		{
+			name:    "supplied-node-auth-request",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:                  scope.Global.String(),
+					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.WorkerGeneratedAuthTokenField,
+		},
+		{
+			name:    "invalid-id",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					Id:      "invalid-id",
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.IdField,
+		},
+		{
+			name:    "invalid-address",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					Address: "invalid-address",
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.AddressField,
+		},
+		{
+			name:    "invalid-config-tags",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					ConfigTags: map[string]*structpb.ListValue{
+						"invalid": {Values: []*structpb.Value{
+							structpb.NewStringValue("invalid-tags"),
+						}},
+					},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.ConfigTagsField,
+		},
+		{
+			name:    "invalid-canonical-tags",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					CanonicalTags: map[string]*structpb.ListValue{
+						"invalid": {Values: []*structpb.Value{
+							structpb.NewStringValue("invalid-canonical-tags"),
+						}},
+					},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.CanonicalTagsField,
+		},
+		{
+			name:    "invalid-last-status-time",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:        scope.Global.String(),
+					LastStatusTime: timestamppb.Now(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.LastStatusTimeField,
+		},
+		{
+			name:    "invalid-authorized-actions",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:           scope.Global.String(),
+					AuthorizedActions: []string{"invalid-authorized-actions"},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.AuthorizedActionsField,
+		},
+		{
+			name:    "invalid-create-time",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					CreatedTime: timestamppb.Now(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.CreatedTimeField,
+		},
+		{
+			name:    "invalid-update-time",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					UpdatedTime: timestamppb.Now(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.UpdatedTimeField,
+		},
+		{
+			name:    "invalid-version",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					Version: 1,
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.VersionField,
+		},
+		{
+			name:    "invalid-auth",
+			service: testSrv,
+			scopeId: "splat-auth-scope",
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "non-existent scope \"splat-auth-scope\"",
+		},
+		{
+			name: "create-error",
+			service: func() Service {
+				repoFn := func() (*server.Repository, error) {
+					return server.NewRepository(rw, &db.Db{}, testKms)
+				}
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+				require.NoError(t, err, "Error when getting new worker service.")
+				return testSrv
+			}(),
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					Name:        &wrapperspb.StringValue{Value: "success"},
+					Description: &wrapperspb.StringValue{Value: "success-description"},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "error creating worker",
+		},
+		{
+			name: "bad-repo-function-in-create",
+			service: func() Service {
+				// var cnt gives us a way for the repoFn to fail the 2nd time
+				// it's called so we can get past the AuthRequest check in
+				// CreateWorker(...) and test the createInRepo(...) failure
+				// path if the repoFn returns and err.
+				cnt := 0
+				repoFn := func() (*server.Repository, error) {
+					cnt = cnt + 1
+					switch {
+					case cnt > 1:
+						return nil, errors.New(testCtx, errors.Internal, "bad-repo-function", "error creating repo")
+					default:
+						return server.NewRepository(rw, rw, testKms)
+					}
+				}
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+				require.NoError(t, err, "Error when getting new worker service.")
+				return testSrv
+			}(),
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					Name:        &wrapperspb.StringValue{Value: "success"},
+					Description: &wrapperspb.StringValue{Value: "success-description"},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "error creating worker: bad-repo-function: error creating repo",
+		},
+		{
+			name:    "success",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					Name:        &wrapperspb.StringValue{Value: "success"},
+					Description: &wrapperspb.StringValue{Value: "success-description"},
+				},
+			},
+			res: &pbs.CreateControllerLedResponse{
+				Item: &workers.Worker{
+					ScopeId:               scope.Global.String(),
+					Name:                  &wrapperspb.StringValue{Value: "success"},
+					Description:           &wrapperspb.StringValue{Value: "success-description"},
+					ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
+					Version:               1,
+					Type:                  PkiWorkerType,
+				},
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := tc.service.CreateControllerLed(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			{
+				// we only need to check that these "read-only" fields were set
+				// outbound. Other portions of the domain is responsible for
+				// testing that these values are correct and there's no reason
+				// to repeat those tests here.
+				assert.NotEmpty(got.GetItem().GetId())
+				assert.NotEmpty(got.GetItem().CreatedTime)
+				assert.NotEmpty(got.GetItem().UpdatedTime)
+				assert.NotEmpty(got.GetItem().Scope)
+				assert.NotEmpty(got.GetItem().AuthorizedActions)
+				assert.NotEmpty(got.GetItem().ControllerGeneratedActivationToken)
+				assert.True(strings.HasPrefix(got.GetItem().ControllerGeneratedActivationToken.GetValue(), nodeenrollment.ServerLedActivationTokenPrefix))
+				{
+					tc.res.Item.Id = got.GetItem().GetId()
+					tc.res.Item.CreatedTime = got.GetItem().GetCreatedTime()
+					tc.res.Item.UpdatedTime = got.GetItem().GetUpdatedTime()
+					tc.res.Item.Scope = got.GetItem().Scope
+					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
+					tc.res.Item.ControllerGeneratedActivationToken = got.GetItem().GetControllerGeneratedActivationToken()
 				}
 			}
 			assert.Equal(tc.res, got)

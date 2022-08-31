@@ -53,8 +53,8 @@ var (
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
 	CollectionActions = action.ActionSet{
-		action.CreateWorkerLed,
 		action.CreateControllerLed,
+		action.CreateWorkerLed,
 		action.List,
 	}
 )
@@ -833,8 +833,11 @@ func validateCreateRequest(item *pb.Worker, act action.Type) error {
 		if scope.Global.String() != item.GetScopeId() {
 			badFields[globals.ScopeIdField] = mustBeGlobalMsg
 		}
-		if act == action.CreateWorkerLed && item.WorkerGeneratedAuthToken == nil {
+		switch {
+		case act == action.CreateWorkerLed && item.WorkerGeneratedAuthToken == nil:
 			badFields[globals.WorkerGeneratedAuthTokenField] = cannotBeEmptyMsg
+		case act == action.CreateControllerLed && item.WorkerGeneratedAuthToken != nil:
+			badFields[globals.WorkerGeneratedAuthTokenField] = "Worker-generated auth tokens are not used with the controller-led creation flow."
 		}
 		if item.Address != "" {
 			badFields[globals.CanonicalAddressField] = readOnlyFieldMsg
