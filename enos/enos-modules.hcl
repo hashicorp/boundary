@@ -66,3 +66,6 @@ module "test_cli_ui" {
   source = "./modules/test_cli_ui"
 }
 
+module "test_e2e" {
+  source = "./modules/test_e2e"
+}
