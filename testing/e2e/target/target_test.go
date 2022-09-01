@@ -3,46 +3,37 @@ package target_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"log"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/e2e"
+	"github.com/hashicorp/boundary/testing/e2e/boundary"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestConnectTargetCli(t *testing.T) {
-	// !! add boundary_local_dir to path?
-	var config e2e.BaseTest
-	require.NoError(t, envconfig.Process("", &config))
-	s, _ := json.MarshalIndent(config, "", "\t")
-	log.Printf("%s", s)
+type testVars struct {
+	BoundaryTargetIp         string `envconfig:"BOUNDARY_E2E_TARGET_IP"`
+	BoundaryTargetSshKeyPath string `envconfig:"BOUNDARY_E2E_SSH_KEY_PATH"`
+}
 
-	output := e2e.RunCommand([]string{
-		"boundary", "authenticate", "password",
-		"-addr", config.BoundaryAddress,
-		"-auth-method-id", config.BoundaryAuthMethodId,
-		"-login-name", config.BoundaryAdminLoginName,
-		"-password", "env://BOUNDARY_AUTHENTICATE_PASSWORD_PASSWORD",
-	})
+func TestConnectTargetCli(t *testing.T) {
+	var testConfig testVars
+	require.NoError(t, envconfig.Process("", &testConfig))
+
+	output := boundary.AuthenticateCli(t)
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Create an org
-	orgName := "mycow_org_" + time.Now().Format(time.RFC3339)
 	output = e2e.RunCommand([]string{
 		"boundary", "scopes", "create",
-		"-name", orgName,
+		"-name", "e2e Automated Test Org",
 		"-format", "json",
 	})
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -110,8 +101,8 @@ func TestConnectTargetCli(t *testing.T) {
 	output = e2e.RunCommand([]string{
 		"boundary", "hosts", "create", "static",
 		"-host-catalog-id", newHostCatalog.Id,
-		"-name", config.BoundaryTargetIp,
-		"-address", config.BoundaryTargetIp,
+		"-name", testConfig.BoundaryTargetIp,
+		"-address", testConfig.BoundaryTargetIp,
 		"-format", "json",
 	})
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -164,7 +155,7 @@ func TestConnectTargetCli(t *testing.T) {
 		"-target-id", newTarget.Id,
 		"-exec", "/usr/bin/ssh", "--",
 		"-l", "ubuntu",
-		"-i", config.BoundaryTargetSshKeyPath,
+		"-i", testConfig.BoundaryTargetSshKeyPath,
 		"-o", "UserKnownHostsFile=/dev/null",
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "IdentitiesOnly=yes", // forces the use of the provided key
@@ -176,39 +167,22 @@ func TestConnectTargetCli(t *testing.T) {
 
 	parts := strings.Fields(string(output.Stdout))
 	hostIp := parts[len(parts)-1]
-	assert.Equal(t, config.BoundaryTargetIp, hostIp)
+	assert.Equal(t, testConfig.BoundaryTargetIp, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 }
 
 func TestCreateTargetApi(t *testing.T) {
-	var config e2e.BaseTest
-	require.NoError(t, envconfig.Process("", &config))
+	var testConfig testVars
+	require.NoError(t, envconfig.Process("", &testConfig))
 
-	client, err := api.NewClient(&api.Config{
-		Addr: config.BoundaryAddress,
-	})
+	client, err := boundary.NewApiClient(t)
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	authmethodsClient := authmethods.NewClient(client)
-	authenticationResult, err := authmethodsClient.Authenticate(
-		ctx,
-		config.BoundaryAuthMethodId,
-		"login",
-		map[string]interface{}{
-			"login_name": config.BoundaryAdminLoginName,
-			"password":   config.BoundaryAdminLoginPassword,
-		},
-	)
-	require.NoError(t, err)
-	assert.NotNil(t, authenticationResult)
-	client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
-	// !! new package Boundary.NewAdminClient -> return client (that has the token) or error
 
 	// Create an org
-	orgName := "mycow_org_" + time.Now().Format(time.RFC3339)
 	scopeClient := scopes.NewClient(client)
-	newOrgResult, err := scopeClient.Create(ctx, "global", scopes.WithName(orgName))
+	newOrgResult, err := scopeClient.Create(ctx, "global", scopes.WithName("e2e Automated Test Org"))
 	require.NoError(t, err)
 	newOrg := newOrgResult.Item
 	t.Cleanup(func() {
@@ -250,8 +224,8 @@ func TestCreateTargetApi(t *testing.T) {
 	// Create a host
 	hClient := hosts.NewClient(client)
 	newHostResult, err := hClient.Create(ctx, newHostCatalog.Id,
-		hosts.WithName(config.BoundaryTargetIp),
-		hosts.WithStaticHostAddress(config.BoundaryTargetIp),
+		hosts.WithName(testConfig.BoundaryTargetIp),
+		hosts.WithStaticHostAddress(testConfig.BoundaryTargetIp),
 	)
 	require.NoError(t, err)
 	newHost := newHostResult.Item
