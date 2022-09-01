@@ -2,13 +2,18 @@ package server
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/fatih/structs"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
@@ -17,9 +22,11 @@ import (
 	"github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/curve25519"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -140,8 +147,7 @@ func TestStoreWorkerAuth(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
 	// Ensures the global scope contains a valid root key
-	err := kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
-	require.NoError(err)
+	require.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
 	worker := TestPkiWorker(t, conn, rootWrapper)
 
@@ -211,6 +217,49 @@ func TestStoreWorkerAuth(t *testing.T) {
 	require.NoError(err)
 	err = storage.Load(ctx, nodeLookup)
 	require.Error(err)
+}
+
+func TestStoreServerLedActivationToken(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	ctx := context.Background()
+	rootWrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	// Ensure the global scope contains a valid root key
+	require.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	rw := db.New(conn)
+	rootStorage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
+	require.NoError(err)
+
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
+	worker, err := repo.CreateWorker(ctx, &Worker{Worker: &store.Worker{ScopeId: scope.Global.String()}}, WithCreateControllerLedActivationToken(true))
+	require.NoError(err)
+	require.NotEmpty(worker.ControllerGeneratedActivationToken)
+
+	// We should now look for an activation token value in storage using the
+	// lookup function and validate that it's populated
+	tokenNonce := new(types.ServerLedActivationTokenNonce)
+	marshaledNonce, err := base58.FastBase58Decoding(strings.TrimPrefix(worker.ControllerGeneratedActivationToken, nodeenrollment.ServerLedActivationTokenPrefix))
+	require.NoError(err)
+	require.NoError(proto.Unmarshal(marshaledNonce, tokenNonce))
+	hm := hmac.New(sha256.New, tokenNonce.HmacKeyBytes)
+	idBytes := hm.Sum(tokenNonce.Nonce)
+	actToken := &types.ServerLedActivationToken{
+		Id: base58.FastBase58Encoding(idBytes),
+	}
+	require.NoError(rootStorage.Load(ctx, actToken))
+	require.NotNil(actToken.CreationTime)
+	assert.False(actToken.CreationTime.AsTime().IsZero())
+	assert.Less(time.Until(actToken.CreationTime.AsTime()), time.Duration(0))
+
+	require.NoError(rootStorage.Remove(ctx, actToken))
+	require.Error(rootStorage.Load(ctx, actToken))
 }
 
 func TestUnsupportedMessages(t *testing.T) {

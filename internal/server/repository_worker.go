@@ -14,7 +14,9 @@ import (
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/types"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // DeleteWorker will delete a worker from the repository.
@@ -568,16 +570,21 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create controller-led activation token"))
 				}
-				activationTokenInfo, err := newWorkerAuthActivationToken(ctx, worker.PublicId, tokenId, activationToken)
+				creationTime := timestamppb.Now()
+				creationTimeBytes, err := proto.Marshal(creationTime)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal timestamp for activation token"))
+				}
+				activationTokenEntry, err := newWorkerAuthServerLedActivationToken(ctx, worker.PublicId, tokenId, creationTimeBytes)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in-memory activation token"))
 				}
-				if err := activationTokenInfo.encrypt(ctx, databaseWrapper); err != nil {
+				if err := activationTokenEntry.encrypt(ctx, databaseWrapper); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 				if err := w.Create(
 					ctx,
-					activationTokenInfo,
+					activationTokenEntry,
 				); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker activation token in storage"))
 				}

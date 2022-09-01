@@ -3,8 +3,6 @@ syntax = "proto3";
 // Package store provides protobufs for storing types in the pki package.
 package controller.storage.servers.store.v1;
 
-import "controller/storage/timestamp/v1/timestamp.proto";
-
 option go_package = "github.com/hashicorp/boundary/internal/server/store;store";
 
 // WorkerAuth contains all fields related to an authorized Worker resource
@@ -54,28 +52,26 @@ message WorkerCertBundle {
   bytes cert_bundle = 30;
 }
 
-// WorkerAuthActivationToken contains all fields related to a
-// WorkerAuthActivationToken resource
-message WorkerAuthActivationToken {
+// WorkerAuthServerLedActivationToken contains all fields related to a
+// WorkerAuthServerLedActivationToken resource
+message WorkerAuthServerLedActivationToken {
   // The worker_id of the worker that this activates
   // @inject_tag: `gorm:"primary_key"`
   string worker_id = 10;
 
-  // The token identifier, used for lookup
+  // The token identifier, which is used for lookup
   // @inject_tag: `gorm:"not_null"`
   string token_id = 15;
 
-  // The token itself, encrypted
-  // @inject_tag: `gorm:"not_null" wrapping:"ct,activation_token_data"`
-  bytes activation_token_encrypted = 20;
+  // The creation time, encrypted to prevent tampering, as the time plus
+  // existence of the record allows authorization
+  // @inject_tag: `gorm:"not_null" wrapping:"ct,creation_time_data"`
+  bytes creation_time_encrypted = 20;
 
-  // The plaintext bytes of the activation token, which are never stored.
-  // @inject_tag: `gorm:"-" wrapping:"pt,activation_token_data"`
-  bytes activation_token = 21;
-
-  // The time this was created
-  // @inject_tag: `gorm:"not_null"`
-  storage.timestamp.v1.Timestamp create_time = 30;
+  // The plaintext bytes of the creation time, which are never stored. This is a
+  // marshaled timestamppb.Timestamp.
+  // @inject_tag: `gorm:"-" wrapping:"pt,creation_time_data"`
+  bytes creation_time = 21;
 
   // The key ID of the encrypting key
   // @inject_tag: `gorm:"not_null"`

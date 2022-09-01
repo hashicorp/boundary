@@ -92,7 +92,7 @@ require github.com/hashicorp/go-dbw v0.0.0-20220725170111-b7cb3aa3d628
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220711120347-32232bae6803
-	github.com/hashicorp/nodeenrollment v0.1.15-0.20220831202932-77014bca76d1
+	github.com/hashicorp/nodeenrollment v0.1.15-0.20220901162924-33e036cbb723
 )
 
 require (

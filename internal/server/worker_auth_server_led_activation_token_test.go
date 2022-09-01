@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -33,7 +32,7 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 	origWorker, err = repo.CreateWorker(ctx, origWorker)
 	tlRequire.NoError(err)
 	tlAssert.Empty(origWorker.ControllerGeneratedActivationToken)
-	activationToken := allocWorkerAuthActivationToken()
+	activationToken := allocWorkerAuthServerLedActivationToken()
 	err = rw.LookupWhere(ctx, activationToken, "worker_id = ?", []any{origWorker.PublicId})
 	tlRequire.Error(err)
 	tlAssert.ErrorIs(err, dbw.ErrRecordNotFound)
@@ -43,82 +42,64 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 	worker, err = repo.CreateWorker(ctx, worker, WithCreateControllerLedActivationToken(true))
 	tlRequire.NoError(err)
 	tlAssert.NotEmpty(worker.ControllerGeneratedActivationToken)
-	activationToken = allocWorkerAuthActivationToken()
+	activationToken = allocWorkerAuthServerLedActivationToken()
 	err = rw.LookupWhere(ctx, activationToken, "worker_id = ?", []any{worker.PublicId})
 	tlRequire.NoError(err)
-	tlAssert.NotNil(activationToken.CreateTime)
+	tlAssert.NotEmpty(activationToken.CreationTime)
 	tlAssert.NotEmpty(activationToken.KeyId)
 	tlAssert.NotEmpty(activationToken.TokenId)
-	tlAssert.NotEmpty(activationToken.ActivationTokenEncrypted)
+	tlAssert.NotEmpty(activationToken.CreationTimeEncrypted)
 
 	// Run some test cases. All are expected to result in error.
 	cases := []struct {
 		name            string
-		createModifyFn  func(*testing.T, *WorkerAuthActivationToken) *WorkerAuthActivationToken
-		updateModifyFn  func(*testing.T, *WorkerAuthActivationToken) (string, []any) // If set, will update instead of create
+		createModifyFn  func(*testing.T, *WorkerAuthServerLedActivationToken) *WorkerAuthServerLedActivationToken
+		updateModifyFn  func(*testing.T, *WorkerAuthServerLedActivationToken) (string, []any) // If set, will update instead of create
 		wantErrContains string
 	}{
 		{
 			name: "fully-duplicate",
-			createModifyFn: func(t *testing.T, in *WorkerAuthActivationToken) *WorkerAuthActivationToken {
+			createModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) *WorkerAuthServerLedActivationToken {
 				return in
 			},
-			wantErrContains: "worker_auth_activation_token_pkey",
+			wantErrContains: "worker_auth_server_led_activation_token_pkey",
 		},
 		{
 			name: "same-token-id",
-			createModifyFn: func(t *testing.T, in *WorkerAuthActivationToken) *WorkerAuthActivationToken {
-				in.ActivationTokenEncrypted = in.ActivationTokenEncrypted[0:5]
+			createModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) *WorkerAuthServerLedActivationToken {
 				in.WorkerId = origWorker.PublicId
 				return in
 			},
-			wantErrContains: "worker_auth_activation_token_token_id_uq",
-		},
-		{
-			name: "same-activation-token",
-			createModifyFn: func(t *testing.T, in *WorkerAuthActivationToken) *WorkerAuthActivationToken {
-				in.WorkerId = origWorker.PublicId
-				in.TokenId = in.TokenId[0:5]
-				return in
-			},
-			wantErrContains: "worker_auth_activation_token_activation_token_encrypted_uq",
+			wantErrContains: "worker_auth_server_led_activation_token_token_id_uq",
 		},
 		{
 			name: "same-worker-id",
-			createModifyFn: func(t *testing.T, in *WorkerAuthActivationToken) *WorkerAuthActivationToken {
-				in.ActivationTokenEncrypted = in.ActivationTokenEncrypted[0:5]
+			createModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) *WorkerAuthServerLedActivationToken {
 				in.TokenId = in.TokenId[0:5]
 				return in
 			},
-			wantErrContains: "worker_auth_activation_token_pkey",
+			wantErrContains: "worker_auth_server_led_activation_token_pkey",
 		},
 		{
 			name: "modify-worker-id",
-			updateModifyFn: func(t *testing.T, in *WorkerAuthActivationToken) (string, []any) {
+			updateModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) (string, []any) {
 				return "update worker_auth_activation_token set worker_id = ? where token_id = ?", []any{origWorker.PublicId, in.TokenId}
 			},
-			wantErrContains: "immutable column: worker_auth_activation_token.worker_id: integrity violation",
+			wantErrContains: "immutable column: worker_auth_server_led_activation_token.worker_id: integrity violation",
 		},
 		{
 			name: "modify-token-id",
-			updateModifyFn: func(t *testing.T, in *WorkerAuthActivationToken) (string, []any) {
+			updateModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) (string, []any) {
 				return "update worker_auth_activation_token set token_id = ? where worker_id = ?", []any{in.TokenId[0:5], in.WorkerId}
 			},
-			wantErrContains: "immutable column: worker_auth_activation_token.token_id: integrity violation",
+			wantErrContains: "immutable column: worker_auth_server_led_activation_token.token_id: integrity violation",
 		},
 		{
 			name: "modify-create-time",
-			updateModifyFn: func(t *testing.T, in *WorkerAuthActivationToken) (string, []any) {
-				return "update worker_auth_activation_token set create_time = ? where worker_id = ?", []any{time.Now().Add(time.Hour), in.WorkerId}
+			updateModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) (string, []any) {
+				return "update worker_auth_activation_token set creation_time_encrypted = ? where worker_id = ?", []any{in.CreationTimeEncrypted[0:5], in.WorkerId}
 			},
-			wantErrContains: "immutable column: worker_auth_activation_token.create_time: integrity violation",
-		},
-		{
-			name: "modify-activation-token-encrypted",
-			updateModifyFn: func(t *testing.T, in *WorkerAuthActivationToken) (string, []any) {
-				return "update worker_auth_activation_token set activation_token_encrypted = ? where worker_id = ?", []any{in.ActivationTokenEncrypted[0:5], in.WorkerId}
-			},
-			wantErrContains: "immutable column: worker_auth_activation_token.activation_token_encrypted: integrity violation",
+			wantErrContains: "immutable column: worker_auth_activation_token.creation_time_encrypted: integrity violation",
 		},
 	}
 	for _, tc := range cases {

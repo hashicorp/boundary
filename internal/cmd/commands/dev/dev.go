@@ -91,7 +91,7 @@ type Command struct {
 	flagEveryEventDenyFilters        []string
 	flagCreateLoopbackHostPlugin     bool
 	flagPluginExecutionDir           string
-	flagUseKmsWorkerAuthMethod       bool
+	flagWorkerAuthMethod             string
 	flagWorkerAuthStorageDir         string
 	flagWorkerAuthStorageSkipCleanup bool
 	flagWorkerAuthRotationInterval   time.Duration
@@ -338,10 +338,11 @@ func (c *Command) Flags() *base.FlagSets {
 		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
 		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
 	})
-	f.BoolVar(&base.BoolVar{
-		Name:   "use-kms-worker-auth-method",
-		Target: &c.flagUseKmsWorkerAuthMethod,
-		Usage:  "If set, the original KMS-based method of worker auth will be used to connect the initial dev worker to the controller.",
+	f.StringVar(&base.StringVar{
+		Name:    "worker-auth-method",
+		Target:  &c.flagWorkerAuthMethod,
+		Default: "random-pki",
+		Usage:   `Allows specifying how the generated worker will authenticate to the controller. Valid values are "kms" for the KMS-based mechanism; "pki-controller-led" for the PKI mechanism via the server-led authorization flow; "pki-worker-led" for the PKI mechanism via the worker-led authorization flow; and "random-pki" to randomly choose one of the PKI methods.`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -599,7 +600,7 @@ func (c *Command) Run(args []string) int {
 	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
 	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 
-	if !c.flagUseKmsWorkerAuthMethod {
+	if c.flagWorkerAuthMethod != "kms" {
 		c.DevUsePkiForUpstream = true
 		// These must be unset for PKI
 		c.Config.Worker.Name = ""
@@ -705,11 +706,19 @@ func (c *Command) Run(args []string) int {
 		// Note: this should be done before starting the worker so that the
 		// activation token is populated
 		var useWorkerLed bool
-		if !c.flagUseKmsWorkerAuthMethod {
+		if c.flagWorkerAuthMethod != "kms" {
 			// Flip a coin. Use one method or the other; it's transparent to
 			// users, but keeps both exercised.
-			switch rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2) {
-			case 0:
+			randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
+			if c.flagWorkerAuthMethod == "random-pki" {
+				if randPki == 0 {
+					c.flagWorkerAuthMethod = "pki-controller-led"
+				} else {
+					c.flagWorkerAuthMethod = "pki-worker-led"
+				}
+			}
+			switch c.flagWorkerAuthMethod {
+			case "pki-controller-led":
 				// Controller-led
 				serversRepo, err := c.controller.ServersRepoFn()
 				if err != nil {
@@ -755,7 +764,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		if !c.flagUseKmsWorkerAuthMethod {
+		if c.flagWorkerAuthMethod != "kms" {
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")

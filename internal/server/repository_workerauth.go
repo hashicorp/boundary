@@ -6,10 +6,10 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/fatih/structs"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -86,6 +86,7 @@ func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodee.Messa
 		}); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+
 	case *types.RootCertificates:
 		err := r.storeRootCertificates(ctx, t)
 		if err != nil {
@@ -344,6 +345,9 @@ func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodee.Messag
 	case *types.NodeInformation:
 		err = r.loadNodeInformation(ctx, t)
 
+	case *types.ServerLedActivationToken:
+		err = r.loadServerLedActivationToken(ctx, t)
+
 	case *types.RootCertificates:
 		err = r.loadRootCertificates(ctx, t)
 
@@ -369,44 +373,6 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	const op = "server.(WorkerAuthRepositoryStorage).loadNodeInformation"
 	if node == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformation")
-	}
-
-	// If doing a server-led approach, the ID within the node will have the
-	// known prefix. In this implementation of storage it is in a different
-	// table.
-	if strings.HasPrefix(node.Id, nodeenrollment.ServerLedActivationTokenPrefix) {
-		if node.State == nil {
-			return errors.New(ctx, errors.InvalidParameter, op, "missing node state")
-		}
-		var workerInfo workerAuthWorkerId
-		if err := mapstructure.Decode(node.State.AsMap(), &workerInfo); err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		if workerInfo.WorkerId == "" {
-			return errors.New(ctx, errors.InvalidParameter, op, "state is missing worker id")
-		}
-
-		// We don't actually need the full activation token returned because of
-		// the way that the lookup value is calculated from an HMAC of the data,
-		// including the nonce and timestamp; it must be calculated twice the
-		// same way in order to have the token_id be found via the lookup.
-		// However, we do perform some validations.
-		actToken := allocWorkerAuthActivationToken()
-		actToken.WorkerId = workerInfo.WorkerId
-
-		err := r.reader.LookupById(ctx, actToken)
-		if err != nil {
-			if errors.Is(err, dbw.ErrRecordNotFound) {
-				return nodee.ErrNotFound
-			}
-			return errors.Wrap(ctx, err, op)
-		}
-
-		if actToken.TokenId != node.Id {
-			return errors.New(ctx, errors.NotSpecificIntegrity, op, "token id/node id mismatch after activation token lookup")
-		}
-
-		return nil
 	}
 
 	authorizedWorker, err := r.findWorkerAuth(ctx, node)
@@ -451,6 +417,48 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.Wrap(ctx, err, op)
 	}
 	node.CertificateBundles = certBundles
+
+	return nil
+}
+
+// Node information is loaded in two parts:
+// * the workerAuth record
+// * its certificate bundles
+func (r *WorkerAuthRepositoryStorage) loadServerLedActivationToken(ctx context.Context, token *types.ServerLedActivationToken) error {
+	const op = "server.(WorkerAuthRepositoryStorage).loadServerLedActivationToken"
+	if token == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ServerLedActivationToken")
+	}
+
+	activationTokenEntry := allocWorkerAuthServerLedActivationToken()
+
+	err := r.reader.LookupWhere(ctx, activationTokenEntry, "token_id = ?", []any{token.Id})
+	if err != nil {
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return nodee.ErrNotFound
+		}
+		return errors.Wrap(ctx, err, op)
+	}
+
+	token.State, err = AttachWorkerIdToState(ctx, activationTokenEntry.WorkerId)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	// Decrypt marshaled creation time
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(activationTokenEntry.KeyId))
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if err := activationTokenEntry.decrypt(ctx, databaseWrapper); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	token.CreationTimeMarshaled = activationTokenEntry.CreationTime
+
+	token.CreationTime = new(timestamppb.Timestamp)
+	if err := proto.Unmarshal(token.CreationTimeMarshaled, token.CreationTime); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 
 	return nil
 }
@@ -582,6 +590,11 @@ func (r *WorkerAuthRepositoryStorage) Remove(ctx context.Context, msg nodee.Mess
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+	case *types.ServerLedActivationToken:
+		err := r.removeServerLedActivationToken(ctx, t)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
 	case *types.RootCertificates:
 		err := r.removeCertificateAuthority(ctx, msg.(*types.RootCertificates))
 		if err != nil {
@@ -603,59 +616,66 @@ func (r *WorkerAuthRepositoryStorage) removeNodeInformation(ctx context.Context,
 		return errors.New(ctx, errors.InvalidParameter, op, "empty id")
 	}
 
-	// If doing a server-led approach, the ID within the node will have the
-	// known prefix. In this implementation of storage it is in a different
-	// table.
-	var err error
-	switch strings.HasPrefix(msg.Id, nodeenrollment.ServerLedActivationTokenPrefix) {
-	case true:
-		if msg.State == nil {
-			return errors.New(ctx, errors.InvalidParameter, op, "missing state")
-		}
-		var workerInfo workerAuthWorkerId
-		if err := mapstructure.Decode(msg.State.AsMap(), &workerInfo); err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		if workerInfo.WorkerId == "" {
-			return errors.New(ctx, errors.InvalidParameter, op, "state missing worker id")
-		}
-		actToken := allocWorkerAuthActivationToken()
-		actToken.WorkerId = workerInfo.WorkerId
-		_, err = r.writer.DoTx(
-			ctx,
-			db.StdRetryCnt,
-			db.ExpBackoff{},
-			func(reader db.Reader, w db.Writer) error {
-				rowsDeleted, err := w.Delete(ctx, actToken)
-				if err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
-				if rowsDeleted != 1 {
-					return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to delete one activation token, deleted %d", rowsDeleted))
-				}
-				return nil
-			},
-		)
-
-	default:
-		_, err = r.writer.DoTx(
-			ctx,
-			db.StdRetryCnt,
-			db.ExpBackoff{},
-			func(reader db.Reader, w db.Writer) error {
-				var err error
-				_, err = w.Exec(ctx, deleteWorkerAuthQuery, []interface{}{sql.Named("worker_key_identifier", msg.Id)})
-				if err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
-				_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []interface{}{sql.Named("worker_key_identifier", msg.Id)})
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete workerAuth"))
-				}
-				return nil
-			},
-		)
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			var err error
+			_, err = w.Exec(ctx, deleteWorkerAuthQuery, []interface{}{sql.Named("worker_key_identifier", msg.Id)})
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []interface{}{sql.Named("worker_key_identifier", msg.Id)})
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete workerAuth"))
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
 	}
+
+	return nil
+}
+
+func (r *WorkerAuthRepositoryStorage) removeServerLedActivationToken(ctx context.Context, msg *types.ServerLedActivationToken) error {
+	const op = "server.(WorkerAuthRepositoryStorage).removeServerLedActivationToken"
+	switch {
+	case msg == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "nil node information")
+	case msg.Id == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "empty id")
+	case msg.State == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing state")
+	}
+
+	var workerInfo workerAuthWorkerId
+	if err := mapstructure.Decode(msg.State.AsMap(), &workerInfo); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if workerInfo.WorkerId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "state missing worker id")
+	}
+
+	actToken := allocWorkerAuthServerLedActivationToken()
+	actToken.WorkerId = workerInfo.WorkerId
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			rowsDeleted, err := w.Delete(ctx, actToken)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsDeleted != 1 {
+				return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to delete one activation token, deleted %d", rowsDeleted))
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

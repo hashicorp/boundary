@@ -967,8 +967,8 @@ func TestRepository_CreateWorker(t *testing.T) {
 				require.NoError(tc.reader.LookupWhere(testCtx, worker, "worker_id = ?", []any{found.PublicId}))
 			}
 			if opts.WithCreateControllerLedActivationToken {
-				activationToken := &server.WorkerAuthActivationToken{
-					WorkerAuthActivationToken: &store.WorkerAuthActivationToken{},
+				activationToken := &server.WorkerAuthServerLedActivationToken{
+					WorkerAuthServerLedActivationToken: &store.WorkerAuthServerLedActivationToken{},
 				}
 				require.NoError(tc.reader.LookupWhere(testCtx, activationToken, "worker_id = ?", []any{found.PublicId}))
 			}
