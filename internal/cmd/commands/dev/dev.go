@@ -709,8 +709,8 @@ func (c *Command) Run(args []string) int {
 		if c.flagWorkerAuthMethod != "kms" {
 			// Flip a coin. Use one method or the other; it's transparent to
 			// users, but keeps both exercised.
-			randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
 			if c.flagWorkerAuthMethod == "random-pki" {
+				randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
 				if randPki == 0 {
 					c.flagWorkerAuthMethod = "pki-controller-led"
 				} else {
