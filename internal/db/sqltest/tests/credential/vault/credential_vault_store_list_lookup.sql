@@ -1,4 +1,4 @@
--- credential_vault_list_lookup_store tests the credential_vault_list_lookup_store view
+-- credential_vault_store_list_lookup tests the credential_vault_store_list_lookup view
 
 begin;
 
@@ -6,7 +6,7 @@ begin;
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'credentials');
 
   -- validate the setup data
-  select has_view('credential_vault_list_lookup_store', 'view for list and lookup Vault stores does not exist');
+  select has_view('credential_vault_store_list_lookup', 'view for list and lookup Vault stores does not exist');
   select is(count(*), 1::bigint) from credential_vault_store where public_id = 'vs_______cvs1';
   select is(count(*), 1::bigint) from credential_vault_store where public_id = 'vs_______cvs2';
   select is(count(*), 1::bigint) from credential_vault_store where public_id = 'vs_______cvs3';
@@ -26,7 +26,7 @@ begin;
 
   prepare select_stores as
     select public_id::text, token_hmac, token_status::text
-    from credential_vault_list_lookup_store
+    from credential_vault_store_list_lookup
     where public_id in ('vs_______cvs1', 'vs_______cvs2', 'vs_______cvs3')
     order by public_id;
 

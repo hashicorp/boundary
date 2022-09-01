@@ -339,7 +339,7 @@ func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op err
 
 // TableName returns the table name for gorm.
 func (pl *issueCredentialLibrary) TableName() string {
-	return "credential_vault_issue_credential_library"
+	return "credential_vault_library_issue_credentials"
 }
 
 func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []credential.Request) ([]*issueCredentialLibrary, error) {

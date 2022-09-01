@@ -41,13 +41,12 @@ begin;
     on store.public_id = token.store_id
   left join credential_vault_client_certificate cert
     on store.public_id = cert.store_id;
-
   comment on view credential_vault_token_renewal_revocation is
     'credential_vault_token_renewal_revocation is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
     'The view returns a separate row for each active token in Vault (current, maintaining and revoke tokens); this view should only be used for token renewal and revocation. '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
-  create view credential_vault_list_lookup_store as
+  create view credential_vault_store_list_lookup as
   select store.public_id                   as public_id,
          store.project_id                  as project_id,
          store.name                        as name,
@@ -73,13 +72,12 @@ begin;
     left join credential_vault_client_certificate cert
       on store.public_id = cert.store_id
    where store.delete_time is null;
-
-  comment on view credential_vault_list_lookup_store is
-    'credential_vault_list_lookup_store is a view where each row contains a credential store. '
+  comment on view credential_vault_store_list_lookup is
+    'credential_vault_store_list_lookup is a view where each row contains a credential store. '
     'If the Vault token has expired this view will return an empty token_hmac and a token_status of ''expired'' '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
-  create view credential_vault_client_store as
+  create view credential_vault_store_client as
   select store.public_id                   as public_id,
          store.project_id                  as project_id,
          store.vault_address               as vault_address,
@@ -102,13 +100,12 @@ begin;
     left join credential_vault_client_certificate cert
       on store.public_id = cert.store_id
    where store.delete_time is null;
-
-  comment on view credential_vault_client_store is
-    'credential_vault_client_store is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
+  comment on view credential_vault_store_client is
+    'credential_vault_store_client is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
     'The view returns the current token for the store, if the Vault token has expired this view will return an empty token_hmac and a token_status of ''expired''  '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
-  create view credential_vault_issue_credential_library as
+  create view credential_vault_library_issue_credentials as
   with
     password_override (library_id, username_attribute, password_attribute) as (
       select library_id,
@@ -154,19 +151,18 @@ begin;
          sshpk.private_key_attribute            as private_key_attribute,
          sshpk.private_key_passphrase_attribute as private_key_passphrase_attribute
     from credential_vault_library library
-    join credential_vault_client_store store
+    join credential_vault_store_client store
       on library.store_id = store.public_id
     left join password_override upasso
       on library.public_id = upasso.library_id
     left join ssh_private_key_override sshpk
       on library.public_id = sshpk.library_id;
-
-  comment on view credential_vault_issue_credential_library is
-    'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
+  comment on view credential_vault_library_issue_credentials is
+    'credential_vault_library_issue_credentials is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
     'This view should only be used when issuing credentials from a Vault credential library. Each row may contain encrypted data. '
     'This view should not be used to retrieve data which will be returned external to boundary.';
 
-  create view credential_vault_list_lookup_library as
+  create view credential_vault_library_list_lookup as
   with
     password_override (library_id, username_attribute, password_attribute) as (
       select library_id,
@@ -202,9 +198,8 @@ begin;
       on library.public_id = upasso.library_id
     left join ssh_private_key_override sshpk
       on library.public_id = sshpk.library_id;
-
-  comment on view credential_vault_list_lookup_library is
-    'credential_vault_list_lookup_library is a view where each row contains a credential library and any of library''s credential mapping overrides. '
+  comment on view credential_vault_library_list_lookup is
+    'credential_vault_library_list_lookup is a view where each row contains a credential library and any of library''s credential mapping overrides. '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
 commit;

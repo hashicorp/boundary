@@ -1581,10 +1581,14 @@ group by store_id, status;
 				assert.Len(libs, len(actualLibs))
 			}
 
+			// verify no revoke stores exist
 			{
-				privStores, err := repo.listRevokePrivateStores(ctx)
-				assert.NoError(err)
-				assert.Empty(privStores)
+				rows, err := repo.reader.Query(ctx,
+					"select * from credential_vault_token_renewal_revocation where token_status = $1",
+					[]interface{}{ExpiredToken})
+				require.NoError(err)
+				defer rows.Close()
+				assert.False(rows.Next())
 			}
 
 			// verify updating the credential store works
@@ -1654,15 +1658,25 @@ group by store_id, status;
 			var deleteTime *timestamp.Timestamp
 			// still in clientStore delete time set
 			{
-				privStores, err := repo.listRevokePrivateStores(ctx)
-				assert.NoError(err)
+				rows, err := repo.reader.Query(ctx,
+					"select * from credential_vault_token_renewal_revocation where token_status = $1",
+					[]interface{}{RevokeToken})
+				require.NoError(err)
+				defer rows.Close()
+
 				var privateStore *clientStore
 				var storeIds []string
-				for _, v := range privStores {
-					id := v.GetPublicId()
+				for rows.Next() {
+					var s clientStore
+					err = repo.reader.ScanRows(ctx, rows, &s)
+					require.NoError(err)
+					require.NotNil(s)
+
+					id := s.GetPublicId()
 					storeIds = append(storeIds, id)
 					if id == storeId {
-						privateStore = v
+						privateStore = &s
+						break
 					}
 				}
 				assert.Contains(storeIds, storeId)
@@ -1691,15 +1705,25 @@ group by store_id, status;
 
 			// still in clientStore delete time should not change
 			{
-				privStores, err := repo.listRevokePrivateStores(ctx)
-				assert.NoError(err)
+				rows, err := repo.reader.Query(ctx,
+					"select * from credential_vault_token_renewal_revocation where token_status = $1",
+					[]interface{}{RevokeToken})
+				require.NoError(err)
+				defer rows.Close()
+
 				var privateStore *clientStore
 				var storeIds []string
-				for _, v := range privStores {
-					id := v.GetPublicId()
+				for rows.Next() {
+					var s clientStore
+					err = repo.reader.ScanRows(ctx, rows, &s)
+					require.NoError(err)
+					require.NotNil(s)
+
+					id := s.GetPublicId()
 					storeIds = append(storeIds, id)
 					if id == storeId {
-						privateStore = v
+						privateStore = &s
+						break
 					}
 				}
 				assert.Contains(storeIds, storeId)

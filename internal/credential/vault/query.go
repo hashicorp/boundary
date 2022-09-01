@@ -89,7 +89,7 @@ delete from credential_vault_client_certificate
 
 	selectLibrariesQuery = `
 select *
-  from credential_vault_issue_credential_library
+  from credential_vault_library_issue_credentials
  where public_id in (%s);
 `
 

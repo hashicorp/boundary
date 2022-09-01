@@ -4,43 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 )
-
-func (r *Repository) listRevokePrivateStores(ctx context.Context, opt ...Option) ([]*clientStore, error) {
-	const op = "vault.(Repository).listRevokePrivateStores"
-
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		limit = opts.withLimit
-	}
-
-	var stores []*renewRevokeStore
-	where, values := "token_status = ?", []interface{}{"revoke"}
-	if err := r.reader.SearchWhere(ctx, &stores, where, values, db.WithLimit(limit)); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	var returnPrivStores []*clientStore
-	for _, store := range stores {
-		privStore := store.Store
-		databaseWrapper, err := r.kms.GetWrapper(ctx, privStore.ProjectId, kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-		}
-		if err := privStore.decrypt(ctx, databaseWrapper); err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		returnPrivStores = append(returnPrivStores, privStore)
-	}
-	return returnPrivStores, nil
-}
 
 func (r *Repository) lookupClientStore(ctx context.Context, publicId string) (*clientStore, error) {
 	const op = "vault.(Repository).lookupClientStore"
@@ -194,13 +163,19 @@ func (ps *clientStore) GetPublicId() string { return ps.PublicId }
 
 // TableName returns the table name for gorm.
 func (ps *clientStore) TableName() string {
-	return "credential_vault_client_store"
+	return "credential_vault_store_client"
 }
 
 // renewRevokeStore is a clientStore that is not limited to the current token and includes
 // 'current', 'maintaining' and 'revoke' tokens.
 type renewRevokeStore struct {
 	Store *clientStore `gorm:"embedded"`
+}
+
+func allocRenewRevokeStore() *renewRevokeStore {
+	return &renewRevokeStore{
+		Store: allocClientStore(),
+	}
 }
 
 // TableName returns the table name for gorm.

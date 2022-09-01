@@ -3,7 +3,7 @@
 --    insert_credential_vault_library_mapping_override_subtype
 --    delete_credential_vault_library_mapping_override_subtype
 --   and the following view
---    credential_vault_list_lookup_library
+--    credential_vault_library_list_lookup
 
 begin;
   select plan(11);
@@ -20,7 +20,7 @@ begin;
 
   prepare select_libraries as
    select public_id::text, credential_type::text, username_attribute::text, private_key_attribute::text, private_key_passphrase_attribute::text
-     from credential_vault_list_lookup_library
+     from credential_vault_library_list_lookup
     where public_id in ('vl______wvl2', 'vl______wvl8', 'vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12')
  order by public_id;
 

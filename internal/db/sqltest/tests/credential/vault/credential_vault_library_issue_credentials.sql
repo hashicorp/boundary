@@ -1,4 +1,4 @@
--- credential_vault_issue_credential_library tests the credential_vault_issue_credential_library view
+-- credential_vault_library_issue_credentials tests the credential_vault_library_issue_credentials view
 
 begin;
 
@@ -6,7 +6,7 @@ begin;
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'credentials');
 
   -- validate the setup data
-  select has_view('credential_vault_issue_credential_library', 'view for issuing credentials does not exist');
+  select has_view('credential_vault_library_issue_credentials', 'view for issuing credentials does not exist');
   select is(count(*), 1::bigint) from credential_vault_store where public_id = 'vs_______wvs';
 
   select is(count(*), 4::bigint)
@@ -31,7 +31,7 @@ begin;
 
   prepare select_libraries as
     select public_id::text, token_hmac, token_status::text, credential_type::text, username_attribute::text, password_attribute::text, private_key_attribute::text, private_key_passphrase_attribute::text
-    from credential_vault_issue_credential_library
+    from credential_vault_library_issue_credentials
     where public_id in ('vl______wvl2', 'vl______wvl3', 'vl______wvl4', 'vl______wvl5', 'vl______wvl6', 'vl______wvl7', 'vl______wvl8', 'vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12')
     order by public_id;
 

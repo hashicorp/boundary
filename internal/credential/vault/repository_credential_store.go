@@ -315,7 +315,7 @@ func (ps *listLookupStore) toCredentialStore() *CredentialStore {
 }
 
 // TableName returns the table name for gorm.
-func (_ *listLookupStore) TableName() string { return "credential_vault_list_lookup_store" }
+func (_ *listLookupStore) TableName() string { return "credential_vault_store_list_lookup" }
 
 // GetPublicId returns the public id.
 func (ps *listLookupStore) GetPublicId() string { return ps.PublicId }
