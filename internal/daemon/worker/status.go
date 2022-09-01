@@ -107,6 +107,8 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 
 func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager, addressReceivers *[]addressReceiver) {
 	const op = "worker.(Worker).sendWorkerStatus"
+	w.statusLock.Lock()
+	defer w.statusLock.Unlock()
 
 	// First send info as-is. We'll perform cleanup duties after we
 	// get cancel/job change info back.

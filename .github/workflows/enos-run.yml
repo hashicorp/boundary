@@ -22,6 +22,7 @@ jobs:
     # Enos jobs are still a bit flaky, ensure they don't fail the workflow.
     continue-on-error: true
     strategy:
+      fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
           - test: smoke
