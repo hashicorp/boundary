@@ -85,33 +85,34 @@ func init() {
 
 // Service handles request as described by the pbs.CredentialStoreServiceServer interface.
 type Service struct {
-	pbs.UnimplementedCredentialStoreServiceServer
+	pbs.UnsafeCredentialStoreServiceServer
 
 	iamRepoFn    common.IamRepoFactory
 	vaultRepoFn  common.VaultCredentialRepoFactory
 	staticRepoFn common.StaticCredentialRepoFactory
 }
 
+var _ pbs.CredentialStoreServiceServer = (*Service)(nil)
+
 // NewService returns a credential store service which handles credential store related requests to boundary.
 func NewService(
+	ctx context.Context,
 	vaultRepo common.VaultCredentialRepoFactory,
 	staticRepo common.StaticCredentialRepoFactory,
 	iamRepo common.IamRepoFactory,
 ) (Service, error) {
 	const op = "credentialstores.NewService"
 	if iamRepo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
 	if vaultRepo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing vault credential repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential repository")
 	}
 	if staticRepo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static credential repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
 	}
 	return Service{iamRepoFn: iamRepo, vaultRepoFn: vaultRepo, staticRepoFn: staticRepo}, nil
 }
-
-var _ pbs.CredentialStoreServiceServer = Service{}
 
 // ListCredentialStores implements the interface pbs.CredentialStoreServiceServer
 func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredentialStoresRequest) (*pbs.ListCredentialStoresResponse, error) {
@@ -183,7 +184,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
 		}
 
-		item, err := toProto(item, outputOpts...)
+		item, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +237,7 @@ func (s Service) GetCredentialStore(ctx context.Context, req *pbs.GetCredentialS
 		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
 	}
 
-	item, err := toProto(cs, outputOpts...)
+	item, err := toProto(ctx, cs, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +249,7 @@ func (s Service) GetCredentialStore(ctx context.Context, req *pbs.GetCredentialS
 func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCredentialStoreRequest) (*pbs.CreateCredentialStoreResponse, error) {
 	const op = "credentialstores.(Service).CreateCredentialStore"
 
-	if err := validateCreateRequest(req); err != nil {
+	if err := validateCreateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.Create)
@@ -281,7 +282,7 @@ func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCrede
 		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
 	}
 
-	item, err := toProto(cs, outputOpts...)
+	item, err := toProto(ctx, cs, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +297,7 @@ func (s Service) CreateCredentialStore(ctx context.Context, req *pbs.CreateCrede
 func (s Service) UpdateCredentialStore(ctx context.Context, req *pbs.UpdateCredentialStoreRequest) (*pbs.UpdateCredentialStoreResponse, error) {
 	const op = "credentialstores.(Service).UpdateCredentialStore"
 
-	if err := validateUpdateRequest(req); err != nil {
+	if err := validateUpdateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.Update)
@@ -329,7 +330,7 @@ func (s Service) UpdateCredentialStore(ctx context.Context, req *pbs.UpdateCrede
 		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
 	}
 
-	item, err := toProto(cs, outputOpts...)
+	item, err := toProto(ctx, cs, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +425,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.Crede
 
 	switch item.Type {
 	case vault.Subtype.String():
-		cs, err := toStorageVaultStore(projId, item)
+		cs, err := toStorageVaultStore(ctx, projId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -439,7 +440,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.Crede
 		return out, nil
 
 	case static.Subtype.String():
-		cs, err := toStorageStaticStore(projId, item)
+		cs, err := toStorageStaticStore(ctx, projId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -471,7 +472,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 
 	switch subtypes.SubtypeFromId(domain, id) {
 	case vault.Subtype:
-		cs, err := toStorageVaultStore(projId, item)
+		cs, err := toStorageVaultStore(ctx, projId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -487,7 +488,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 		}
 
 	case static.Subtype:
-		cs, err := toStorageStaticStore(projId, item)
+		cs, err := toStorageStaticStore(ctx, projId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -607,7 +608,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, error) {
+func toProto(ctx context.Context, in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, error) {
 	const op = "credentialstores.toProto"
 
 	opts := handlers.GetOpts(opt...)
@@ -655,7 +656,7 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 		case vault.Subtype:
 			vaultIn, ok := in.(*vault.CredentialStore)
 			if !ok {
-				return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault credential store")
+				return nil, errors.New(ctx, errors.Internal, op, "unable to cast to vault credential store")
 			}
 			attrs := &pb.VaultCredentialStoreAttributes{
 				Address: wrapperspb.String(vaultIn.GetVaultAddress()),
@@ -695,7 +696,7 @@ func toProto(in credential.Store, opt ...handlers.Option) (*pb.CredentialStore, 
 	return &out, nil
 }
 
-func toStorageStaticStore(scopeId string, in *pb.CredentialStore) (out *static.CredentialStore, err error) {
+func toStorageStaticStore(ctx context.Context, scopeId string, in *pb.CredentialStore) (out *static.CredentialStore, err error) {
 	const op = "credentialstores.toStorageStaticStore"
 	var opts []static.Option
 	if in.GetName() != nil {
@@ -707,12 +708,12 @@ func toStorageStaticStore(scopeId string, in *pb.CredentialStore) (out *static.C
 
 	cs, err := static.NewCredentialStore(scopeId, opts...)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential store for creation"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential store for creation"))
 	}
 	return cs, err
 }
 
-func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.CredentialStore, err error) {
+func toStorageVaultStore(ctx context.Context, scopeId string, in *pb.CredentialStore) (out *vault.CredentialStore, err error) {
 	const op = "credentialstores.toStorageVaultStore"
 	var opts []vault.Option
 	if in.GetName() != nil {
@@ -741,9 +742,9 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 	if attrs.GetCaCert() != nil {
 		opts = append(opts, vault.WithCACert([]byte(attrs.GetCaCert().GetValue())))
 	}
-	pemCerts, pemPk, err := extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
+	pemCerts, pemPk, err := extractClientCertAndPk(ctx, attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if len(pemCerts) != 0 {
 		var cert []byte
@@ -756,28 +757,28 @@ func toStorageVaultStore(scopeId string, in *pb.CredentialStore) (out *vault.Cre
 		}
 		cc, err := vault.NewClientCertificate(cert, pk)
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		opts = append(opts, vault.WithClientCert(cc))
 	}
 
 	cs, err := vault.NewCredentialStore(scopeId, attrs.GetAddress().GetValue(), []byte(attrs.GetToken().GetValue()), opts...)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential store for creation"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential store for creation"))
 	}
 	return cs, err
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetCredentialStoreRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, vault.CredentialStorePrefix, static.CredentialStorePrefix, static.PreviousCredentialStorePrefix)
 }
 
-func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
+func validateCreateRequest(ctx context.Context, req *pbs.CreateCredentialStoreRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		if !handlers.ValidId(handlers.Id(req.GetItem().GetScopeId()), scope.Project.Prefix()) {
@@ -806,12 +807,12 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 				}
 			}
 			// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
-			_, err := decodePemBlocks(attrs.GetCaCert().GetValue())
+			_, err := decodePemBlocks(ctx, attrs.GetCaCert().GetValue())
 			if attrs.GetCaCert() != nil && err != nil {
 				badFields[caCertsField] = "Incorrectly formatted value."
 			}
 
-			cs, pk, err := extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
+			cs, pk, err := extractClientCertAndPk(ctx, attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
 			if err != nil {
 				badFields[clientCertField] = fmt.Sprintf("Invalid values: %q", err.Error())
 			}
@@ -830,7 +831,7 @@ func validateCreateRequest(req *pbs.CreateCredentialStoreRequest) error {
 	})
 }
 
-func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
+func validateUpdateRequest(ctx context.Context, req *pbs.UpdateCredentialStoreRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
@@ -859,12 +860,12 @@ func validateUpdateRequest(req *pbs.UpdateCredentialStoreRequest) error {
 				}
 
 				// TODO(ICU-1478 and ICU-1479): Validate client and CA certificate payloads
-				_, err := decodePemBlocks(attrs.GetCaCert().GetValue())
+				_, err := decodePemBlocks(ctx, attrs.GetCaCert().GetValue())
 				if attrs.GetCaCert() != nil && err != nil {
 					badFields[caCertsField] = "Incorrectly formatted value."
 				}
 
-				_, _, err = extractClientCertAndPk(attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
+				_, _, err = extractClientCertAndPk(ctx, attrs.GetClientCertificate().GetValue(), attrs.GetClientCertificateKey().GetValue())
 				if err != nil {
 					badFields[clientCertField] = fmt.Sprintf("Invalid values: %q", err.Error())
 				}

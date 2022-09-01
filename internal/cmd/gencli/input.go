@@ -535,7 +535,7 @@ var inputStructs = map[string][]*cmdInfo{
 			Container:        "Scope",
 			HasName:          true,
 			HasDescription:   true,
-			VersionedActions: []string{"update"},
+			VersionedActions: []string{"update", "add-worker-tags", "set-worker-tags", "remove-worker-tags"},
 		},
 		{
 			ResourceType:          resource.Worker.String(),

@@ -1138,6 +1138,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
+		"workers add-worker-tags": func() (cli.Command, error) {
+			return &workerscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-worker-tags",
+			}, nil
+		},
+		"workers set-worker-tags": func() (cli.Command, error) {
+			return &workerscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-worker-tags",
+			}, nil
+		},
+		"workers remove-worker-tags": func() (cli.Command, error) {
+			return &workerscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-worker-tags",
+			}, nil
+		},
 	}
 
 	for _, fn := range extraCommandsFuncs {

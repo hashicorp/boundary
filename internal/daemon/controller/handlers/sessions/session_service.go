@@ -43,11 +43,13 @@ var (
 
 // Service handles request as described by the pbs.SessionServiceServer interface.
 type Service struct {
-	pbs.UnimplementedSessionServiceServer
+	pbs.UnsafeSessionServiceServer
 
 	repoFn    common.SessionRepoFactory
 	iamRepoFn common.IamRepoFactory
 }
+
+var _ pbs.SessionServiceServer = (*Service)(nil)
 
 // NewService returns a session service which handles session related requests to boundary.
 func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
@@ -60,8 +62,6 @@ func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactor
 	}
 	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
-
-var _ pbs.SessionServiceServer = Service{}
 
 // GetSessions implements the interface pbs.SessionServiceServer.
 func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*pbs.GetSessionResponse, error) {
@@ -473,9 +473,9 @@ func toProto(ctx context.Context, in *session.Session, opt ...handlers.Option) (
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetSessionRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, session.SessionPrefix)
 }

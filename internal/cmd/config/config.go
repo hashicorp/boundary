@@ -546,12 +546,18 @@ func Parse(d string) (*Config, error) {
 			if !strutil.Printable(k) {
 				return nil, fmt.Errorf("Tag key %q contains non-printable characters", k)
 			}
+			if strings.Contains(k, ",") {
+				return nil, fmt.Errorf("Tag key %q cannot contain commas", k)
+			}
 			for _, val := range v {
 				if val != strings.ToLower(val) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q is not all lower-case letters", val, k)
 				}
 				if !strutil.Printable(k) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q contains non-printable characters", v, k)
+				}
+				if strings.Contains(val, ",") {
+					return nil, fmt.Errorf("Tag value %q for tag key %q cannot contain commas", val, k)
 				}
 			}
 		}
@@ -619,7 +625,6 @@ func Parse(d string) (*Config, error) {
 }
 
 // supportControllersRawConfig returns either initialUpstreamsRaw or controllersRaw depending on which is populated. Errors when both fields are populated.
-//
 func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, error) {
 	switch {
 	case initialUpstreamsRaw == nil && controllersRaw != nil:

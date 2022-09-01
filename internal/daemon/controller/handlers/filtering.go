@@ -33,7 +33,7 @@ func NewFilter(f string) (*Filter, error) {
 // Match returns if the provided interface matches the filter.
 // If the filter does not match the structure of the object being Matched, false is returned.
 // TODO: Support more than just matching against the item being filtered.  Also allow matching against
-//   values in the request or the request context itself.
+// values in the request or the request context itself.
 func (f *Filter) Match(item interface{}) bool {
 	if f.eval == nil {
 		return true

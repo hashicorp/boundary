@@ -97,6 +97,7 @@ func testVaultCred(t *testing.T,
 	expiration time.Duration,
 ) (*vault.Secret, *Credential) {
 	t.Helper()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
 
@@ -105,9 +106,9 @@ func testVaultCred(t *testing.T,
 	var err error
 	switch Method(cl.HttpMethod) {
 	case MethodGet:
-		secret, err = client.get(cl.VaultPath)
+		secret, err = client.get(ctx, cl.VaultPath)
 	case MethodPost:
-		secret, err = client.post(cl.VaultPath, cl.HttpRequestBody)
+		secret, err = client.post(ctx, cl.VaultPath, cl.HttpRequestBody)
 	}
 	require.NoError(err)
 	require.NotNil(secret)

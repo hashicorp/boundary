@@ -18,6 +18,7 @@ import (
 
 // Version of oplog entries (among other things, it's used to manage upgrade
 // compatibility when replicating)
+//
 //	v1: initial version
 //	v2: adds the new Message.Opts
 const Version = "v2"
@@ -338,7 +339,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx *Writer, ticket *store.Ti
 }
 
 // Write the entry as is with whatever it has for e.Data marshaled into a FIFO QueueBuffer
-//  Cipherer != nil then the data is authentication encrypted
+// If Cipherer != nil then the data is authentication encrypted
 func (e *Entry) Write(ctx context.Context, tx *Writer, ticket *store.Ticket) error {
 	const op = "oplog.(Entry).Write"
 	if err := e.validate(ctx); err != nil {

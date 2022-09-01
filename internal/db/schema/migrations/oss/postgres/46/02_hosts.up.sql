@@ -88,7 +88,7 @@ begin;
      set (project_id) =
          (select project_id
             from host_set
-           where host_set.public_id = host_plugin_set.catalog_id
+           where host_set.public_id = host_plugin_set.public_id
          )
   ;
 

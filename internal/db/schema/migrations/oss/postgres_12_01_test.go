@@ -13,7 +13,8 @@ import (
 )
 
 // Tests migration:
-//   migrations/oss/12/01_timestamp_sub_funcs.up.sql
+//
+//	migrations/oss/12/01_timestamp_sub_funcs.up.sql
 func TestWtSubSeconds(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)

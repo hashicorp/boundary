@@ -424,9 +424,10 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 }
 
 // TerminateCompletedSessions will terminate sessions in the repo based on:
-//  * sessions that have exhausted their connection limit and all their connections are closed.
-//	* sessions that are expired and all their connections are closed.
-//	* sessions that are canceling and all their connections are closed
+//   - sessions that have exhausted their connection limit and all their connections are closed.
+//   - sessions that are expired and all their connections are closed.
+//   - sessions that are canceling and all their connections are closed
+//
 // This function should called on a periodic basis a Controllers via it's
 // "ticker" pattern.
 func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error) {
@@ -453,9 +454,9 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 
 // terminateSessionIfPossible is called on connection close and will attempt to close the connection's
 // session if the following conditions are met:
-//  * sessions that have exhausted their connection limit and all their connections are closed.
-//	* sessions that are expired and all their connections are closed.
-//	* sessions that are canceling and all their connections are closed
+//   - sessions that have exhausted their connection limit and all their connections are closed.
+//   - sessions that are expired and all their connections are closed.
+//   - sessions that are canceling and all their connections are closed
 func (r *Repository) terminateSessionIfPossible(ctx context.Context, sessionId string) (int, error) {
 	const op = "session.(Repository).terminateSessionIfPossible"
 	rowsAffected := 0

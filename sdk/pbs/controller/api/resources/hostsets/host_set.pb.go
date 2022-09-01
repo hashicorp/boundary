@@ -70,6 +70,7 @@ type HostSet struct {
 	// be valid for all plugin types.
 	SyncIntervalSeconds *wrapperspb.Int32Value `protobuf:"bytes,102,opt,name=sync_interval_seconds,proto3" json:"sync_interval_seconds,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
+	//
 	//	*HostSet_Attributes
 	Attrs isHostSet_Attrs `protobuf_oneof:"attrs"`
 	// Output only. The available actions on this resource for this user.
