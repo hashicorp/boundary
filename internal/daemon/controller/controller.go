@@ -72,6 +72,7 @@ var (
 
 	downstreamersFactory           func(context.Context, string) (downstreamers, error)
 	downstreamWorkersTickerFactory func(context.Context, string, downstreamers, downstreamRouter) (downstreamWorkersTicker, error)
+	commandClientFactory           func(context.Context, *Controller) error
 )
 
 type Controller struct {
@@ -360,6 +361,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		c.downstreamWorkers, err = downstreamersFactory(ctx, "root")
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize downstream workers graph: %w", err)
+		}
+		if commandClientFactory != nil {
+			err := commandClientFactory(ctx, c)
+			if err != nil {
+				return nil, fmt.Errorf("unable to initialize issue command factory: %w", err)
+			}
 		}
 	}
 

@@ -169,7 +169,7 @@ func (cs *CredentialStore) ClientCertificate() *ClientCertificate {
 	return cs.clientCert
 }
 
-func (cs *CredentialStore) client(ctx context.Context) (*client, error) {
+func (cs *CredentialStore) client(ctx context.Context) (vaultClient, error) {
 	const op = "vault.(CredentialStore).client"
 	clientConfig := &clientConfig{
 		Addr:          cs.VaultAddress,
@@ -184,7 +184,7 @@ func (cs *CredentialStore) client(ctx context.Context) (*client, error) {
 		clientConfig.ClientKey = cs.clientCert.GetCertificateKey()
 	}
 
-	c, err := newClient(ctx, clientConfig)
+	c, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(cs.WorkerFilter))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

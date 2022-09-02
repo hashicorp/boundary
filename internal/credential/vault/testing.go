@@ -620,12 +620,26 @@ func TestRenewableToken(b bool) TestOption {
 	}
 }
 
-func (v *TestVaultServer) client(t testing.TB) *client {
-	t.Helper()
-	return v.clientUsingToken(t, v.RootToken)
+// TestClientConfig returns a client config, using the
+// provided Vault Server and token
+func TestClientConfig(v *TestVaultServer, token string) *clientConfig {
+	clientConfig := &clientConfig{
+		Addr:       v.Addr,
+		Token:      TokenSecret(token),
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+	}
+
+	return clientConfig
 }
 
-func (v *TestVaultServer) clientUsingToken(t testing.TB, token string) *client {
+func (v *TestVaultServer) client(t testing.TB) *client {
+	t.Helper()
+	return v.ClientUsingToken(t, v.RootToken)
+}
+
+func (v *TestVaultServer) ClientUsingToken(t testing.TB, token string) *client {
 	t.Helper()
 	ctx := context.Background()
 	require := require.New(t)

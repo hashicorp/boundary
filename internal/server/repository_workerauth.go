@@ -877,3 +877,23 @@ func decrypt(ctx context.Context, value []byte, wrapper wrapping.Wrapper) ([]byt
 
 	return marshaledInfo, nil
 }
+
+// FindWorkerAuthByWorkerId takes a workerId and returns the WorkerAuth record associated with that worker.
+func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Context, workerId string) (*WorkerAuth, error) {
+	const op = "server.(WorkerAuthRepositoryStorage).FindWorkerAuthByWorkerId"
+	if len(workerId) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty worker ID")
+	}
+
+	worker := allocWorkerAuth()
+	worker.WorkerId = workerId
+	err := r.reader.SearchWhere(ctx, &worker, "worker_id = ?", []interface{}{workerId})
+	if err != nil {
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return worker, nil
+}
