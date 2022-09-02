@@ -210,6 +210,10 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error("Worker is using KMS auth but has no name set. It must be the unique name of this instance.")
 				return base.CommandUserError
 			}
+			if c.Config.Worker.ControllerGeneratedActivationToken != "" {
+				c.UI.Error("Worker has KMS auth info but also has a controller-generated activation token set, which is incompatible.")
+				return base.CommandUserError
+			}
 		}
 	}
 

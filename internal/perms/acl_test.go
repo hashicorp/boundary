@@ -427,7 +427,7 @@ func Test_AnonRestrictions(t *testing.T) {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
-				for j := action.Type(1); j <= action.RemoveHostSources; j++ {
+				for j := action.Type(1); j <= action.CreateControllerLed; j++ {
 					res := Resource{
 						ScopeId: scope.Global.String(),
 						Id:      "foobar",

@@ -17,7 +17,7 @@ func (r *Repository) ListControllers(ctx context.Context, opt ...Option) ([]*sto
 // WithLimit option or the repo defaultLimit. It accepts a reader, allowing it
 // to be used within a transaction or without.
 func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*store.Controller, error) {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
 		liveness = DefaultLiveness

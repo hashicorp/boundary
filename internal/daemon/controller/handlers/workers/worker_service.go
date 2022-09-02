@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -52,6 +53,7 @@ var (
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
 	CollectionActions = action.ActionSet{
+		action.CreateControllerLed,
 		action.CreateWorkerLed,
 		action.List,
 	}
@@ -199,18 +201,20 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 	return &pbs.GetWorkerResponse{Item: item}, nil
 }
 
-// CreateWorker implements the interface pbs.WorkerServiceServer.
+// CreateWorkerLed implements the interface pbs.WorkerServiceServer and handles
+// a request to create a new worker and consume a worker-generated authorization
+// request
 func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRequest) (*pbs.CreateWorkerLedResponse, error) {
 	const op = "workers.(Service).CreateWorkerLed"
 
-	if err := validateCreateRequest(req); err != nil {
+	act := action.CreateWorkerLed
+	item := req.GetItem()
+
+	if err := validateCreateRequest(item, act); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetItem().GetScopeId(), action.CreateWorkerLed)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	reqBytes, err := base58.FastBase58Decoding(req.GetItem().WorkerGeneratedAuthToken.GetValue())
+
+	reqBytes, err := base58.FastBase58Decoding(item.WorkerGeneratedAuthToken.GetValue())
 	if err != nil {
 		return nil, fmt.Errorf("%s: error decoding node_credentials_token: %w", op, err)
 	}
@@ -219,7 +223,43 @@ func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRe
 	if err := proto.Unmarshal(reqBytes, creds); err != nil {
 		return nil, fmt.Errorf("%s: error unmarshaling node_credentials_token: %w", op, err)
 	}
-	created, err := s.createInRepo(ctx, req.GetItem(), creds)
+
+	out, err := s.createCommon(ctx, item, act, server.WithFetchNodeCredentialsRequest(creds))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return &pbs.CreateWorkerLedResponse{Item: out}, nil
+}
+
+// CreateControllerLed implements the interface pbs.WorkerServiceServer and handles
+// a request to create a new worker, generating and returning an activation
+// token
+func (s Service) CreateControllerLed(ctx context.Context, req *pbs.CreateControllerLedRequest) (*pbs.CreateControllerLedResponse, error) {
+	const op = "workers.(Service).CreateControllerLed"
+	act := action.CreateControllerLed
+
+	if err := validateCreateRequest(req.GetItem(), act); err != nil {
+		return nil, err
+	}
+
+	out, err := s.createCommon(ctx, req.GetItem(), act, server.WithCreateControllerLedActivationToken(true))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return &pbs.CreateControllerLedResponse{Item: out}, nil
+}
+
+func (s Service) createCommon(ctx context.Context, in *pb.Worker, act action.Type, opt ...server.Option) (*pb.Worker, error) {
+	const op = "workers.(Service).createCommon"
+
+	authResults := s.authResult(ctx, in.GetScopeId(), act)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	created, err := s.createInRepo(ctx, in, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating worker: %w", op, err)
 	}
@@ -243,7 +283,7 @@ func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRe
 		return nil, err
 	}
 
-	return &pbs.CreateWorkerLedResponse{Item: item}, nil
+	return item, nil
 }
 
 // DeleteWorker implements the interface pbs.WorkerServiceServer.
@@ -438,7 +478,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*server.Worker, er
 	return w, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, worker *pb.Worker, creds *types.FetchNodeCredentialsRequest) (*server.Worker, error) {
+func (s Service) createInRepo(ctx context.Context, worker *pb.Worker, opt ...server.Option) (*server.Worker, error) {
 	const op = "workers.(Service).createInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -449,7 +489,7 @@ func (s Service) createInRepo(ctx context.Context, worker *pb.Worker, creds *typ
 		server.WithName(worker.GetName().GetValue()),
 		server.WithDescription(worker.GetDescription().GetValue()),
 	)
-	retWorker, err := repo.CreateWorker(ctx, newWorker, server.WithFetchNodeCredentialsRequest(creds))
+	retWorker, err := repo.CreateWorker(ctx, newWorker, opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker"))
 	}
@@ -593,7 +633,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Worker), auth.WithAction(a)}
 	switch a {
-	case action.List, action.CreateWorkerLed:
+	case action.List, action.CreateWorkerLed, action.CreateControllerLed:
 		parentId = id
 	default:
 		w, err := repo.LookupWorker(ctx, id)
@@ -669,6 +709,9 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 	}
 	if outputFields.Has(globals.ActiveConnectionCountField) {
 		out.ActiveConnectionCount = &wrapperspb.UInt32Value{Value: in.ActiveConnectionCount()}
+	}
+	if outputFields.Has(globals.ControllerGeneratedActivationToken) && in.ControllerGeneratedActivationToken != "" {
+		out.ControllerGeneratedActivationToken = &wrapperspb.StringValue{Value: in.ControllerGeneratedActivationToken}
 	}
 	if outputFields.Has(globals.ConfigTagsField) && len(in.GetConfigTags()) > 0 {
 		var err error
@@ -769,45 +812,57 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 	}, server.WorkerPrefix)
 }
 
-func validateCreateRequest(req *pbs.CreateWorkerLedRequest) error {
-	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+func validateCreateRequest(item *pb.Worker, act action.Type) error {
+	if util.IsNil(item) {
+		return handlers.InvalidArgumentErrorf("Request item is nil", nil)
+	}
+	switch act {
+	case action.CreateWorkerLed:
+	case action.CreateControllerLed:
+	default:
+		// This shouldn't happen because we shouldn't be routed to one of the
+		// handlers if it's the wrong action, but check anyways.
+		return handlers.InvalidArgumentErrorf("Invalid action", nil)
+	}
+	return handlers.ValidateCreateRequest(item, func() map[string]string {
 		const (
 			mustBeGlobalMsg  = "Must be 'global'"
 			cannotBeEmptyMsg = "Cannot be empty."
 			readOnlyFieldMsg = "This is a read only field."
 		)
 		badFields := map[string]string{}
-		if scope.Global.String() != req.GetItem().GetScopeId() {
+		if scope.Global.String() != item.GetScopeId() {
 			badFields[globals.ScopeIdField] = mustBeGlobalMsg
 		}
-		// FIXME: in the future, we won't require this token since we'll support
-		// the server led flow where a token is returned when a worker is created.
-		if req.GetItem().WorkerGeneratedAuthToken == nil {
+		switch {
+		case act == action.CreateWorkerLed && item.WorkerGeneratedAuthToken == nil:
 			badFields[globals.WorkerGeneratedAuthTokenField] = cannotBeEmptyMsg
+		case act == action.CreateControllerLed && item.WorkerGeneratedAuthToken != nil:
+			badFields[globals.WorkerGeneratedAuthTokenField] = "Worker-generated auth tokens are not used with the controller-led creation flow."
 		}
-		if req.GetItem().Address != "" {
+		if item.Address != "" {
 			badFields[globals.CanonicalAddressField] = readOnlyFieldMsg
 		}
-		if req.GetItem().CanonicalTags != nil {
+		if item.CanonicalTags != nil {
 			badFields[globals.CanonicalTagsField] = readOnlyFieldMsg
 		}
-		if req.GetItem().ConfigTags != nil {
+		if item.ConfigTags != nil {
 			badFields[globals.ConfigTagsField] = readOnlyFieldMsg
 		}
-		if req.GetItem().LastStatusTime != nil {
+		if item.LastStatusTime != nil {
 			badFields[globals.LastStatusTimeField] = readOnlyFieldMsg
 		}
-		if req.GetItem().AuthorizedActions != nil {
+		if item.AuthorizedActions != nil {
 			badFields[globals.AuthorizedActionsField] = readOnlyFieldMsg
 		}
-		nameString := req.GetItem().GetName().String()
+		nameString := item.GetName().String()
 		if !strutil.Printable(nameString) {
 			badFields[globals.NameField] = "Name contains non-printable characters."
 		}
 		if strings.ToLower(nameString) != nameString {
 			badFields[globals.NameField] = "Name must be all lowercase."
 		}
-		descriptionString := req.GetItem().GetDescription().String()
+		descriptionString := item.GetDescription().String()
 		if !strutil.Printable(descriptionString) {
 			badFields[globals.DescriptionField] = "Description contains non-printable characters."
 		}

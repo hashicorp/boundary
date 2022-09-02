@@ -99,7 +99,7 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	serversRepo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	ctx := context.Background()
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	namePart, err := newWorkerId(ctx)
 	require.NoError(t, err)
@@ -150,7 +150,7 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	serversRepo, err := NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 	ctx := context.Background()
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	require.NoError(t, err)
 	wrk := NewWorker(scope.Global.String(),

@@ -95,9 +95,6 @@ type structInfo struct {
 	// useful to avoid collisions
 	nameOverride string
 
-	// extraRequiredParams allows adding extra required parameters to templates
-	extraRequiredParams []requiredParam
-
 	// recursiveListing indicates that the collection supports recursion when
 	// listing
 	recursiveListing bool
@@ -308,20 +305,32 @@ var inputStructs = []*structInfo{
 		outFile: "authmethods/authmethods.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName: "auth-methods",
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
-		},
+		pluralResourceName:  "auth-methods",
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -422,21 +431,33 @@ var inputStructs = []*structInfo{
 		outFile: "credentialstores/credential_store.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName: "credential-stores",
-		parentTypeName:     "scope",
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
-		},
+		pluralResourceName:  "credential-stores",
+		parentTypeName:      "scope",
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -525,18 +546,30 @@ var inputStructs = []*structInfo{
 		outFile: "credentials/credential.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
-		},
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
 		},
 		pluralResourceName:  "credentials",
 		parentTypeName:      "credential-store",
@@ -550,7 +583,26 @@ var inputStructs = []*structInfo{
 		outFile: "hostcatalogs/host_catalog.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -571,14 +623,7 @@ var inputStructs = []*structInfo{
 				SkipDefault: true,
 			},
 		},
-		pluralResourceName: "host-catalogs",
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
-		},
+		pluralResourceName:  "host-catalogs",
 		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
@@ -689,7 +734,26 @@ var inputStructs = []*structInfo{
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -742,14 +806,7 @@ var inputStructs = []*structInfo{
 				FieldType: "[]string",
 			},
 		},
-		versionEnabled: true,
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
-		},
+		versionEnabled:      true,
 		createResponseTypes: true,
 		recursiveListing:    true,
 	},
@@ -796,19 +853,35 @@ var inputStructs = []*structInfo{
 					"apiAction": func() string {
 						return ":create:worker-led"
 					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "workerGeneratedAuthToken",
+								Typ:      "string",
+								PostType: "worker_generated_auth_token",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "CreateControllerLed"
+					},
+					"apiAction": func() string {
+						return ":create:controller-led"
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return nil
+					},
 				},
 			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
-		},
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "workerGeneratedAuthToken",
-				Typ:      "string",
-				PostType: "worker_generated_auth_token",
-			},
 		},
 		pluralResourceName: "workers",
 		sliceSubtypes: map[string]sliceSubtypeInfo{

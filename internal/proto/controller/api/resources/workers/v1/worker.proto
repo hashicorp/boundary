@@ -72,6 +72,10 @@ message Worker {
   // https://github.com/hashicorp/nodeenrollment
   google.protobuf.StringValue worker_generated_auth_token = 150 [json_name = "worker_generated_auth_token"]; // @gotags: `class:"public"`
 
+  // Output only. An activation token that can be given to a worker to correlate
+  // it to the created resource.
+  google.protobuf.StringValue controller_generated_activation_token = 151 [json_name = "controller_generated_activation_token"]; // @gotags: `class:"secret"`
+
   // Output only. The number of connections that this worker is currently handling.
   google.protobuf.UInt32Value active_connection_count = 160 [json_name = "active_connection_count"]; // @gotags: `class:"public"`
 

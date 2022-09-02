@@ -251,6 +251,10 @@ func (w *Worker) Start() error {
 		// the controller, we don't want to invalidate that request on restart
 		// by generating a new set of credentials. However it's safe to output a
 		// new fetch request so we do in fact do that.
+		//
+		// Note that if a controller-generated activation token has been
+		// supplied, we do not output a fetch request; we attempt to use that
+		// directly later.
 		var err error
 		w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
 			nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
@@ -309,6 +313,15 @@ func (w *Worker) Start() error {
 		default:
 			// Some other type of error happened, bail out
 			return fmt.Errorf("error loading worker auth creds: %w", err)
+		}
+
+		// Don't output a fetch request if an activation token has been
+		// provided. Technically we _could_ still output a fetch request, and it
+		// would be valid to do so, but if a token was provided it may well be
+		// confusing to a user if it seems like it was ignored because a fetch
+		// request was still output.
+		if actToken := w.conf.RawConfig.Worker.ControllerGeneratedActivationToken; actToken != "" {
+			createFetchRequest = false
 		}
 
 		// NOTE: this block _must_ be before the `if createFetchRequest` block
