@@ -33,6 +33,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   if only one filter was created and was set by the CLI or directly via the API
   ([PR1](https://github.com/hashicorp/boundary/pull/2376),
   [PR2](https://github.com/hashicorp/boundary-plugin-host-aws/pull/16))
+* aws host catalog: Use provided region for IAM calls in addition to EC2
+  ([Issue](https://github.com/hashicorp/boundary/issues/2233),
+  [PR](https://github.com/hashicorp/boundary-plugin-host-aws/pull/18))
 * azure host catalog: Fix hosts not being found depending on the exact filter
   used because different filters return values with different casing
   ([PR](https://github.com/hashicorp/boundary-plugin-host-azure/pull/8))
