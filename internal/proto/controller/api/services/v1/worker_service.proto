@@ -38,14 +38,32 @@ service WorkerService {
     };
   }
 
-  // CreateWorkerLed creates and stores a Worker in boundary.  The provided
-  // request must include the Scope id in which the Worker will be created.
-  // If the Scope id is missing, malformed or references a non existing
-  // resource, an error is returned.  If a name is provided that is in
-  // use in another Worker in the same scope, an error is returned.
+  // CreateWorkerLed creates and stores a Worker in Boundary. The provided
+  // request must include the Scope ID in which the Worker will be created. If
+  // the Scope ID is missing, malformed or references a non existing resource,
+  // an error is returned. If a name is provided that is in use in another
+  // Worker in the same scope, an error is returned.
   rpc CreateWorkerLed(CreateWorkerLedRequest) returns (CreateWorkerLedResponse) {
     option (google.api.http) = {
       post: "/v1/workers:create:worker-led"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Creates a single Worker."
+    };
+  }
+
+  // CreateControllerLed creates and stores a Worker in Boundary and returns an
+  // activation token that can be used by a worker binary to claim the created
+  // Worker's identity. The provided request must include the Scope ID in which
+  // the Worker will be created. If the Scope ID is missing, malformed or
+  // references a non existing resource, an error is returned. If a name is
+  // provided that is in use in another Worker in the same scope, an error is
+  // returned.
+  rpc CreateControllerLed(CreateControllerLedRequest) returns (CreateControllerLedResponse) {
+    option (google.api.http) = {
+      post: "/v1/workers:create:controller-led"
       body: "item"
       response_body: "item"
     };
@@ -148,6 +166,15 @@ message CreateWorkerLedRequest {
 }
 
 message CreateWorkerLedResponse {
+  string uri = 1; // @gotags: `class:"public"`
+  resources.workers.v1.Worker item = 2;
+}
+
+message CreateControllerLedRequest {
+  resources.workers.v1.Worker item = 1;
+}
+
+message CreateControllerLedResponse {
   string uri = 1; // @gotags: `class:"public"`
   resources.workers.v1.Worker item = 2;
 }

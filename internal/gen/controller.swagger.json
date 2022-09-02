@@ -3961,6 +3961,33 @@
         ]
       }
     },
+    "/v1/workers:create:controller-led": {
+      "post": {
+        "summary": "Creates a single Worker.",
+        "operationId": "WorkerService_CreateControllerLed",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.WorkerService"
+        ]
+      }
+    },
     "/v1/workers:create:worker-led": {
       "post": {
         "summary": "Creates a single Worker.",
@@ -5790,6 +5817,11 @@
           "type": "string",
           "title": "worker_generated_auth_token is input only. Supports the worker led node\nenrollment flow where this credentials token is produced by a worker. This\ntoken is a base58 encoded types.FetchNodeCredentialsRequest from\nhttps://github.com/hashicorp/nodeenrollment"
         },
+        "controller_generated_activation_token": {
+          "type": "string",
+          "description": "Output only. An activation token that can be given to a worker to correlate\nit to the created resource.",
+          "readOnly": true
+        },
         "active_connection_count": {
           "type": "integer",
           "format": "int64",
@@ -5963,6 +5995,17 @@
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateControllerLedResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
     },
