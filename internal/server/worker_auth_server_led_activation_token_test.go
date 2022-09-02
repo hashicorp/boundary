@@ -45,7 +45,7 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 	activationToken = allocWorkerAuthServerLedActivationToken()
 	err = rw.LookupWhere(ctx, activationToken, "worker_id = ?", []any{worker.PublicId})
 	tlRequire.NoError(err)
-	tlAssert.NotEmpty(activationToken.CreationTime)
+	tlAssert.Empty(activationToken.CreationTime)
 	tlAssert.NotEmpty(activationToken.KeyId)
 	tlAssert.NotEmpty(activationToken.TokenId)
 	tlAssert.NotEmpty(activationToken.CreationTimeEncrypted)
@@ -83,23 +83,23 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 		{
 			name: "modify-worker-id",
 			updateModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) (string, []any) {
-				return "update worker_auth_activation_token set worker_id = ? where token_id = ?", []any{origWorker.PublicId, in.TokenId}
+				return "update worker_auth_server_led_activation_token set worker_id = ? where token_id = ?", []any{origWorker.PublicId, in.TokenId}
 			},
 			wantErrContains: "immutable column: worker_auth_server_led_activation_token.worker_id: integrity violation",
 		},
 		{
 			name: "modify-token-id",
 			updateModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) (string, []any) {
-				return "update worker_auth_activation_token set token_id = ? where worker_id = ?", []any{in.TokenId[0:5], in.WorkerId}
+				return "update worker_auth_server_led_activation_token set token_id = ? where worker_id = ?", []any{in.TokenId[0:5], in.WorkerId}
 			},
 			wantErrContains: "immutable column: worker_auth_server_led_activation_token.token_id: integrity violation",
 		},
 		{
 			name: "modify-create-time",
 			updateModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) (string, []any) {
-				return "update worker_auth_activation_token set creation_time_encrypted = ? where worker_id = ?", []any{in.CreationTimeEncrypted[0:5], in.WorkerId}
+				return "update worker_auth_server_led_activation_token set creation_time_encrypted = ? where worker_id = ?", []any{in.CreationTimeEncrypted[0:5], in.WorkerId}
 			},
-			wantErrContains: "immutable column: worker_auth_activation_token.creation_time_encrypted: integrity violation",
+			wantErrContains: "immutable column: worker_auth_server_led_activation_token.creation_time_encrypted: integrity violation",
 		},
 	}
 	for _, tc := range cases {
