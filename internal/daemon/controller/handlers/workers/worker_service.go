@@ -206,10 +206,29 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 // request
 func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRequest) (*pbs.CreateWorkerLedResponse, error) {
 	const op = "workers.(Service).CreateWorkerLed"
-	out, err := s.createCommon(ctx, req.GetItem(), action.CreateWorkerLed)
+
+	act := action.CreateWorkerLed
+	item := req.GetItem()
+
+	if err := validateCreateRequest(item, act); err != nil {
+		return nil, err
+	}
+
+	reqBytes, err := base58.FastBase58Decoding(item.WorkerGeneratedAuthToken.GetValue())
+	if err != nil {
+		return nil, fmt.Errorf("%s: error decoding node_credentials_token: %w", op, err)
+	}
+	// Decode the proto into the request
+	creds := new(types.FetchNodeCredentialsRequest)
+	if err := proto.Unmarshal(reqBytes, creds); err != nil {
+		return nil, fmt.Errorf("%s: error unmarshaling node_credentials_token: %w", op, err)
+	}
+
+	out, err := s.createCommon(ctx, item, act, server.WithFetchNodeCredentialsRequest(creds))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+
 	return &pbs.CreateWorkerLedResponse{Item: out}, nil
 }
 
@@ -218,47 +237,29 @@ func (s Service) CreateWorkerLed(ctx context.Context, req *pbs.CreateWorkerLedRe
 // token
 func (s Service) CreateControllerLed(ctx context.Context, req *pbs.CreateControllerLedRequest) (*pbs.CreateControllerLedResponse, error) {
 	const op = "workers.(Service).CreateControllerLed"
-	out, err := s.createCommon(ctx, req.GetItem(), action.CreateControllerLed)
+	act := action.CreateControllerLed
+
+	if err := validateCreateRequest(req.GetItem(), act); err != nil {
+		return nil, err
+	}
+
+	out, err := s.createCommon(ctx, req.GetItem(), act, server.WithCreateControllerLedActivationToken(true))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
+
 	return &pbs.CreateControllerLedResponse{Item: out}, nil
 }
 
-func (s Service) createCommon(ctx context.Context, in *pb.Worker, act action.Type) (*pb.Worker, error) {
+func (s Service) createCommon(ctx context.Context, in *pb.Worker, act action.Type, opt ...server.Option) (*pb.Worker, error) {
 	const op = "workers.(Service).createCommon"
 
-	if err := validateCreateRequest(in, act); err != nil {
-		return nil, err
-	}
 	authResults := s.authResult(ctx, in.GetScopeId(), act)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
 
-	var opts []server.Option
-	switch act {
-	// validateCreateRequest will ensure it's one of these two options
-	case action.CreateWorkerLed:
-		reqBytes, err := base58.FastBase58Decoding(in.WorkerGeneratedAuthToken.GetValue())
-		if err != nil {
-			return nil, fmt.Errorf("%s: error decoding node_credentials_token: %w", op, err)
-		}
-		// Decode the proto into the request
-		creds := new(types.FetchNodeCredentialsRequest)
-		if err := proto.Unmarshal(reqBytes, creds); err != nil {
-			return nil, fmt.Errorf("%s: error unmarshaling node_credentials_token: %w", op, err)
-		}
-		opts = append(opts, server.WithFetchNodeCredentialsRequest(creds))
-
-	case action.CreateControllerLed:
-		opts = append(opts, server.WithCreateControllerLedActivationToken(true))
-
-	default:
-		return nil, fmt.Errorf("%s: unsupported action %s", op, act.String())
-	}
-
-	created, err := s.createInRepo(ctx, in, opts...)
+	created, err := s.createInRepo(ctx, in, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating worker: %w", op, err)
 	}

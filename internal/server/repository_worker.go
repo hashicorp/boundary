@@ -494,11 +494,15 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 // ReportedStatus and Tags are intentionally ignored when creating a worker (not
 // included).  Currently, a worker can only be created in the global scope
 //
-// Options supported: WithFetchNodeCredentialsRequest, WithNewIdFunc (this
-// option is likely only useful for tests),
-// WithCreateControllerLedActivationToken
+// Options supported: WithNewIdFunc (this option is likely only useful for
+// tests), WithFetchNodeCredentialsRequest,
+// WithCreateControllerLedActivationToken. The latter two are mutually
+// exclusive.
 func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "server.CreateWorker"
+
+	opts := GetOpts(opt...)
+
 	switch {
 	case worker == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing worker")
@@ -512,9 +516,10 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "address is not empty")
 	case worker.LastStatusTime != nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "last status time is not nil")
+	case opts.WithFetchNodeCredentialsRequest != nil && opts.WithCreateControllerLedActivationToken:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "fetch node credentials request and controller led activation token option cannot both be set")
 	}
 
-	opts := GetOpts(opt...)
 	var err error
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate worker id"))

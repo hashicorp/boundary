@@ -16,7 +16,7 @@ type WorkerAuthServerLedActivationToken struct {
 	tableName string `gorm:"-"`
 }
 
-// newWorkerAuthServerLedActivation
+// newWorkerAuthServerLedActivation creates a new token from the given values
 func newWorkerAuthServerLedActivationToken(ctx context.Context, workerId, tokenId string, creationTime []byte, _ ...Option) (*WorkerAuthServerLedActivationToken, error) {
 	const op = "server.newWorkerAuthServerLedActivationToken"
 
