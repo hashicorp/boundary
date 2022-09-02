@@ -240,7 +240,7 @@ type VaultCredentialStoreAttributes struct {
 	ClientCertificateKeyHmac string `protobuf:"bytes,100,opt,name=client_certificate_key_hmac,proto3" json:"client_certificate_key_hmac,omitempty" class:"public"` // @gotags: `class:"public"`
 	// worker_filter is optional. Filters to the worker(s) who can handle Vault requests for this cred store
 	WorkerFilter *wrapperspb.StringValue `protobuf:"bytes,110,opt,name=worker_filter,proto3" json:"worker_filter,omitempty" class:"public"` // @gotags: `class:"public"`
-	// Output only. The status vault token used by this credential store (current or expired).
+	// Output only. The status of the vault token used by this credential store (current or expired).
 	TokenStatus string `protobuf:"bytes,120,opt,name=token_status,proto3" json:"token_status,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
