@@ -251,6 +251,11 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int, ed
 	return nil
 }
 
+// Close closes the underlying Postgres database connection.
+func (p *Postgres) Close() error {
+	return p.conn.Close()
+}
+
 var errOldMigrationTable = stderrors.New("old schema migration table")
 
 func (p *Postgres) schemaInitialized(ctx context.Context) (bool, error) {
