@@ -22,6 +22,7 @@ type driver interface {
 	Lock(context.Context) error
 	Unlock(context.Context) error
 	UnlockShared(context.Context) error
+	Close() error
 	// StartRun begins a transaction internal to the driver.
 	StartRun(context.Context) error
 	// CommitRun commits a transaction, if there is an error it should rollback the transaction.
@@ -121,6 +122,18 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 	}
 
 	return &dbS, nil
+}
+
+// Close unlocks the database shared lock and closes the underlying
+// database connection afterwards.
+func (b *Manager) Close(ctx context.Context) error {
+	const op = "schema.(Manager).Close"
+	err := b.SharedUnlock(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	return b.driver.Close()
 }
 
 // SharedLock attempts to obtain a shared lock on the database.  This can fail
