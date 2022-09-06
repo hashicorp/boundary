@@ -678,11 +678,26 @@ func (b *Server) RunShutdownFuncs() error {
 	return mErr.ErrorOrNil()
 }
 
-func (b *Server) ConnectToDatabase(ctx context.Context, dialect string) error {
+// OpenAndSetServerDatabase calls OpenDatabase and sets its result *db.DB to the Server's
+// `Database` field.
+func (b *Server) OpenAndSetServerDatabase(ctx context.Context, dialect string) error {
+	dbase, err := b.OpenDatabase(ctx, dialect, b.DatabaseUrl)
+	if err != nil {
+		return err
+	}
+	b.Database = dbase
+	return nil
+}
+
+// OpenDatabase creates a database connection with the given URL and returns it to the caller.
+// It supports various configuration options - The values must be set on the Server object
+// beforehand.
+func (b *Server) OpenDatabase(ctx context.Context, dialect, url string) (*db.DB, error) {
 	dbType, err := db.StringToDbType(dialect)
 	if err != nil {
-		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+		return nil, fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
+
 	opts := []db.Option{
 		db.WithMaxOpenConnections(b.DatabaseMaxOpenConnections),
 		db.WithMaxIdleConnections(b.DatabaseMaxIdleConnections),
@@ -691,12 +706,13 @@ func (b *Server) ConnectToDatabase(ctx context.Context, dialect string) error {
 	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
 		opts = append(opts, db.WithGormFormatter(b.Logger))
 	}
-	dbase, err := db.Open(ctx, dbType, b.DatabaseUrl, opts...)
+
+	dbase, err := db.Open(ctx, dbType, url, opts...)
 	if err != nil {
-		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+		return nil, fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
-	b.Database = dbase
-	return nil
+
+	return dbase, nil
 }
 
 func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
