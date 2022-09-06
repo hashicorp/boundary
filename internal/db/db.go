@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-dbw"
@@ -41,7 +42,37 @@ func StringToDbType(dialect string) (DbType, error) {
 
 // DB is a wrapper around the ORM
 type DB struct {
+	mu      sync.Mutex
 	wrapped *dbw.DB
+}
+
+type closeDbFn func(context.Context) error
+
+// Swap replaces *DB's underlying database object with the one from `newDB`.
+// It returns a function that calls Close() on the outgoing database object.
+// Note: Swap does not verify the incoming *DB object is correctly set-up.
+func (db *DB) Swap(ctx context.Context, newDB *DB) (closeDbFn, error) {
+	if newDB == nil || newDB.wrapped == nil {
+		return nil, fmt.Errorf("no new db object present")
+	}
+	if db.wrapped == nil {
+		// TBD: We could be helpful here and set the new DB instead of err?
+		return nil, fmt.Errorf("no current db is present to swap, aborting")
+	}
+
+	// Grab the old db to allow for cleanup after swap.
+	oldDbw := *db.wrapped
+	closeOldDbFn := func(ctx context.Context) error { return oldDbw.Close(ctx) }
+
+	// Replace the current DB value with the new one.
+	// Note: It's important that the pointer doesn't change, rather the value
+	// the pointer points to. Changing the pointer itself does not update the
+	// references in the other objects (repo functions, etc).
+	db.mu.Lock()
+	*db.wrapped = *newDB.wrapped
+	db.mu.Unlock()
+
+	return closeOldDbFn, nil
 }
 
 // Debug will enable/disable debug info for the connection

@@ -821,6 +821,11 @@ func (c *Command) Reload(newConf *config.Config) error {
 		}
 	}
 
+	err := c.reloadControllerDatabase(newConf)
+	if err != nil {
+		reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
+	}
+
 	if newConf != nil && c.worker != nil {
 		c.worker.ParseAndStoreTags(newConf.Worker.Tags)
 	}
@@ -849,6 +854,65 @@ func verifyKmsSetup(dbase *db.DB) error {
 	if err := kmsCache.VerifyGlobalRoot(ctx); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (c *Command) reloadControllerDatabase(newConfig *config.Config) error {
+	if c.Server == nil || c.Server.Database == nil {
+		return nil
+	}
+	if c.controller == nil {
+		return nil
+	}
+	if newConfig == nil || newConfig.Controller == nil || newConfig.Controller.Database == nil {
+		return nil
+	}
+
+	var err error
+	newConfig.Controller.Database.Url, err = parseutil.ParsePath(newConfig.Controller.Database.Url)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+		return fmt.Errorf("failed to parse db url: %w", err)
+	}
+	if len(newConfig.Controller.Database.Url) == 0 || c.DatabaseUrl == newConfig.Controller.Database.Url {
+		return nil
+	}
+
+	newDb, err := c.Server.OpenDatabase(c.Context, "postgres", newConfig.Controller.Database.Url)
+	if err != nil {
+		return fmt.Errorf("failed to open connection to new database: %w", err)
+	}
+
+	// Acquire new lock on the new database and verify that it's in a good state to be used.
+	newDbSchemaManager, err := acquireDatabaseSharedLock(c.Context, newDb)
+	if err != nil {
+		_ = newDb.Close(c.Context)
+		return fmt.Errorf("failed to acquire shared lock on new database: %w", err)
+	}
+
+	err = verifyDatabaseState(c.Context, newDb, newDbSchemaManager)
+	if err != nil {
+		_ = newDbSchemaManager.Close(c.Context)
+		_ = newDb.Close(c.Context)
+		return fmt.Errorf("invalid new database state: %w", err)
+	}
+
+	oldDbSchemaManager := c.schemaManager
+
+	// Swap underlying database with new one and update application state.
+	oldDbCloseFn, err := c.Database.Swap(c.Context, newDb)
+	if err != nil {
+		_ = newDbSchemaManager.Close(c.Context)
+		_ = newDb.Close(c.Context)
+		return fmt.Errorf("failed to swap databases: %w", err)
+	}
+	c.schemaManager = newDbSchemaManager
+	c.Server.DatabaseUrl = newConfig.Controller.Database.Url
+	c.Config.Controller.Database.Url = newConfig.Controller.Database.Url
+
+	// Release old database shared lock and close old database object.
+	_ = oldDbSchemaManager.Close(c.Context)
+	_ = oldDbCloseFn(c.Context)
+
 	return nil
 }
 
