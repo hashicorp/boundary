@@ -3257,6 +3257,17 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "database"}))
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 
+	sec1, tok1 := v.CreateToken(t, vault.WithPolicies([]string{"default", "database"}))
+	expiredStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok1, sec1.Auth.Accessor)
+
+	// Set previous token to expired in the database and revoke in Vault to validate a
+	// credential store with an expired token is correctly returned over the API
+	num, err := rw.Exec(context.Background(), "update credential_vault_token set status = ? where store_id = ?",
+		[]interface{}{vault.ExpiredToken, expiredStore.PublicId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+	v.RevokeToken(t, tok1)
+
 	workerExists := func(tar target.Target) (version uint32) {
 		server.TestKmsWorker(t, conn, wrapper)
 		return tar.GetVersion()
@@ -3356,6 +3367,30 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return tr.GetItem().GetVersion()
 	}
 
+	expiredTokenLibrary := func(tar target.Target) (version uint32) {
+		credService, err := credentiallibraries.NewService(vaultCredRepoFn, iamRepoFn)
+		require.NoError(t, err)
+		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+			CredentialStoreId: expiredStore.GetPublicId(),
+			Description:       wrapperspb.String(fmt.Sprintf("Library Description for target %q", tar.GetName())),
+			Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+				VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
+					Path: wrapperspb.String(path.Join("database", "creds", "opened")),
+				},
+			},
+		}})
+		require.NoError(t, err)
+
+		tr, err := s.AddTargetCredentialSources(ctx,
+			&pbs.AddTargetCredentialSourcesRequest{
+				Id:                          tar.GetPublicId(),
+				BrokeredCredentialSourceIds: []string{clsResp.GetItem().GetId()},
+				Version:                     tar.GetVersion(),
+			})
+		require.NoError(t, err)
+		return tr.GetItem().GetVersion()
+	}
+
 	cases := []struct {
 		name  string
 		setup []func(target.Target) uint32
@@ -3384,6 +3419,11 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		{
 			name:  "bad library configuration",
 			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
+			err:   true,
+		},
+		{
+			name:  "expired token library",
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
 			err:   true,
 		},
 	}

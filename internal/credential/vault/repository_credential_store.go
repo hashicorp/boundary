@@ -249,7 +249,7 @@ func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string,
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
-	agg := allocPublicStore()
+	agg := allocListLookupStore()
 	agg.PublicId = publicId
 	if err := r.reader.LookupByPublicId(ctx, agg); err != nil {
 		if errors.IsNotFoundError(err) {
@@ -260,34 +260,31 @@ func (r *Repository) LookupCredentialStore(ctx context.Context, publicId string,
 	return agg.toCredentialStore(), nil
 }
 
-type publicStore struct {
-	PublicId             string `gorm:"primary_key"`
-	ProjectId            string
-	Name                 string
-	Description          string
-	CreateTime           *timestamp.Timestamp
-	UpdateTime           *timestamp.Timestamp
-	Version              uint32
-	VaultAddress         string
-	Namespace            string
-	CaCert               []byte
-	TlsServerName        string
-	TlsSkipVerify        bool
-	WorkerFilter         string
-	TokenHmac            []byte
-	TokenCreateTime      *timestamp.Timestamp
-	TokenUpdateTime      *timestamp.Timestamp
-	TokenLastRenewalTime *timestamp.Timestamp
-	TokenExpirationTime  *timestamp.Timestamp
-	ClientCert           []byte
-	ClientCertKeyHmac    []byte
+type listLookupStore struct {
+	PublicId          string `gorm:"primary_key"`
+	ProjectId         string
+	Name              string
+	Description       string
+	CreateTime        *timestamp.Timestamp
+	UpdateTime        *timestamp.Timestamp
+	Version           uint32
+	VaultAddress      string
+	Namespace         string
+	CaCert            []byte
+	TlsServerName     string
+	TlsSkipVerify     bool
+	WorkerFilter      string
+	TokenHmac         []byte
+	TokenStatus       string
+	ClientCert        []byte
+	ClientCertKeyHmac []byte
 }
 
-func allocPublicStore() *publicStore {
-	return &publicStore{}
+func allocListLookupStore() *listLookupStore {
+	return &listLookupStore{}
 }
 
-func (ps *publicStore) toCredentialStore() *CredentialStore {
+func (ps *listLookupStore) toCredentialStore() *CredentialStore {
 	cs := allocCredentialStore()
 	cs.PublicId = ps.PublicId
 	cs.ProjectId = ps.ProjectId
@@ -303,15 +300,10 @@ func (ps *publicStore) toCredentialStore() *CredentialStore {
 	cs.TlsSkipVerify = ps.TlsSkipVerify
 	cs.WorkerFilter = ps.WorkerFilter
 
-	if ps.TokenHmac != nil {
-		tk := allocToken()
-		tk.TokenHmac = ps.TokenHmac
-		tk.LastRenewalTime = ps.TokenLastRenewalTime
-		tk.ExpirationTime = ps.TokenExpirationTime
-		tk.CreateTime = ps.TokenCreateTime
-		tk.UpdateTime = ps.TokenUpdateTime
-		cs.outputToken = tk
-	}
+	tk := allocToken()
+	tk.TokenHmac = ps.TokenHmac
+	tk.Status = ps.TokenStatus
+	cs.outputToken = tk
 
 	if ps.ClientCert != nil {
 		cert := allocClientCertificate()
@@ -323,10 +315,10 @@ func (ps *publicStore) toCredentialStore() *CredentialStore {
 }
 
 // TableName returns the table name for gorm.
-func (_ *publicStore) TableName() string { return "credential_vault_store_public" }
+func (_ *listLookupStore) TableName() string { return "credential_vault_store_list_lookup" }
 
 // GetPublicId returns the public id.
-func (ps *publicStore) GetPublicId() string { return ps.PublicId }
+func (ps *listLookupStore) GetPublicId() string { return ps.PublicId }
 
 // UpdateCredentialStore updates the repository entry for cs.PublicId with
 // the values in cs for the fields listed in fieldMaskPaths. It returns a
@@ -449,7 +441,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
-	ps, err := r.lookupPrivateStore(ctx, cs.GetPublicId())
+	ps, err := r.lookupClientStore(ctx, cs.GetPublicId())
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup private credential store"))
 	}
@@ -613,7 +605,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 			}
 
 			publicId := cs.PublicId
-			agg := allocPublicStore()
+			agg := allocListLookupStore()
 			agg.PublicId = publicId
 			if err := reader.LookupByPublicId(ctx, agg); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to lookup credential store: %s", publicId)))
@@ -655,7 +647,7 @@ func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []stri
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var credentialStores []*publicStore
+	var credentialStores []*listLookupStore
 	err := r.reader.SearchWhere(ctx, &credentialStores, "project_id in (?)", []interface{}{projectIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

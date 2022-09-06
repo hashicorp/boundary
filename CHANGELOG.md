@@ -25,6 +25,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* vault: Correctly handle Vault credential stores and libraries that are linked to an
+  expired Vault token. ([Issue](https://github.com/hashicorp/boundary/issues/2179),
+  [PR](https://github.com/hashicorp/boundary/pull/2399)).
 * aws host catalog: Fix an issue where the request to list hosts could timeout
   on a large number of hosts
   ([Issue](https://github.com/hashicorp/boundary/issues/2224),
@@ -40,8 +43,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   used because different filters return values with different casing
   ([PR](https://github.com/hashicorp/boundary-plugin-host-azure/pull/8))
 * sessions: Fix an issue where sessions could not have more than one connection
-  ([Issue](https://github.com/hashicorp/boundary/issues/2362)),
-  ([PR](https://github.com/hashicorp/boundary/pull/2369))
+  ([Issue](https://github.com/hashicorp/boundary/issues/2362),
+  [PR](https://github.com/hashicorp/boundary/pull/2369))
 * workers: Fix repeating error in logs when connected to HCP Boundary about an
   unimplemented HcpbWorkers call
   ([PR](https://github.com/hashicorp/boundary/pull/2361))

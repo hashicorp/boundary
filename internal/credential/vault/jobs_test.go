@@ -2031,7 +2031,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, r.numStores)
 
 	// Lookup of cs1 and its token should fail
-	agg := allocPublicStore()
+	agg := allocListLookupStore()
 	agg.PublicId = cs1.PublicId
 	err = rw.LookupByPublicId(context.Background(), agg)
 	require.Error(err)
@@ -2076,7 +2076,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, r.numStores)
 
 	// Lookup of cs2 and its token should fail
-	agg = allocPublicStore()
+	agg = allocListLookupStore()
 	agg.PublicId = cs2.PublicId
 	err = rw.LookupByPublicId(context.Background(), agg)
 	require.Error(err)
