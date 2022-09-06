@@ -2,7 +2,9 @@ package oss_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/credential/static"
@@ -10,12 +12,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	hoststatic "github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/boundary/internal/target/targettest"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +45,8 @@ func TestMigrations_Credential_Purpose_Refactor(t *testing.T) {
 	))
 	require.NoError(t, err)
 
-	require.NoError(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(t, err)
 	state, err := m.CurrentState(ctx)
 	require.NoError(t, err)
 	want := &schema.State{
@@ -76,20 +77,68 @@ func TestMigrations_Credential_Purpose_Refactor(t *testing.T) {
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
 	uId := at.GetIamUserId()
-	hc := hoststatic.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
-	hs := hoststatic.TestSets(t, conn, hc.GetPublicId(), 1)[0]
-	h := hoststatic.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
-	hoststatic.TestSetMembers(t, conn, hs.GetPublicId(), []*hoststatic.Host{h})
+
+	// Create host catalog
+	hostCatalogId := "hcst_s1P81LMusN"
+	num, err := rw.Exec(ctx, `
+insert into static_host_catalog
+	(scope_id, public_id, name)
+values
+	(?, ?, ?)
+`, []interface{}{proj.GetPublicId(), hostCatalogId, "my-host-catalog"})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	// Create host-set
+	hostSetId := "hsst_pff4ao7PjN"
+	num, err = rw.Exec(ctx, `
+insert into static_host_set
+	(public_id, catalog_id)
+values
+	(?, ?)
+`, []interface{}{hostSetId, hostCatalogId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	// Create host
+	hostId := "hst_kDvWAAHBx8"
+	num, err = rw.Exec(ctx, `
+insert into static_host
+	(public_id, catalog_id, address)
+values
+	(?, ?, ?)
+`, []interface{}{hostId, hostCatalogId, "0.0.0.0"})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	// Associate host to host-set
+	num, err = rw.Exec(ctx, `
+insert into static_host_set_member
+	(host_id, set_id)
+values
+	(?, ?)
+`, []interface{}{hostId, hostSetId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
 
 	// Create a target
-	tar := targettest.TestNewTestTarget(ctx, t, conn, proj.PublicId, "my-credential-sources", target.WithHostSources([]string{hs.GetPublicId()}))
+	targetId := "ttcp_JunMRz380q"
+	num, err = rw.Exec(ctx, `
+insert into target_tcp
+	(public_id, scope_id, name, session_max_seconds, session_connection_limit)
+values
+	(?, ?, ?, ?, ?);
+`, []interface{}{targetId, proj.GetPublicId(), "my-credential-sources", 28800, -1})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
 
+	// Create a credential vault store
 	vaultStoreId := "csvlt_vaultid123"
-	num, err := rw.Exec(ctx, `
+	num, err = rw.Exec(ctx, `
 insert into credential_vault_store
   (public_id, scope_id, vault_address)
 values
-  ($1, $2, $3);
+  (?, ?, ?);
 `, []interface{}{vaultStoreId, proj.GetPublicId(), "http://vault"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
@@ -98,18 +147,28 @@ values
 	lib1 := credLibs[0]
 	lib2 := credLibs[1]
 
-	storeStatic := static.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
-	credsStatic := static.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", storeStatic.GetPublicId(), proj.GetPublicId(), 2)
+	// Create static store
+	staticStoreId := "csst_staticid123"
+	num, err = rw.Exec(ctx, `
+insert into credential_static_store
+	(public_id, scope_id, name)
+values
+	(?, ?, ?)
+`, []interface{}{staticStoreId, proj.GetPublicId(), "my-static-credential-store"})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	credsStatic := static.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", staticStoreId, proj.GetPublicId(), 2)
 	cred1 := credsStatic[0]
 	cred2 := credsStatic[1]
 
-	appCredLib, err := target.NewCredentialLibrary(tar.GetPublicId(), lib1.GetPublicId(), "application")
+	appCredLib, err := target.NewCredentialLibrary(targetId, lib1.GetPublicId(), "application")
 	require.NoError(t, err)
-	egressCredLib, err := target.NewCredentialLibrary(tar.GetPublicId(), lib2.GetPublicId(), "egress")
+	egressCredLib, err := target.NewCredentialLibrary(targetId, lib2.GetPublicId(), "egress")
 	require.NoError(t, err)
-	appCred, err := target.NewStaticCredential(tar.GetPublicId(), cred1.PublicId, "application")
+	appCred, err := target.NewStaticCredential(targetId, cred1.PublicId, "application")
 	require.NoError(t, err)
-	egressCred, err := target.NewStaticCredential(tar.GetPublicId(), cred2.PublicId, "egress")
+	egressCred, err := target.NewStaticCredential(targetId, cred2.PublicId, "egress")
 	require.NoError(t, err)
 
 	err = rw.CreateItems(ctx, []interface{}{appCredLib, egressCredLib})
@@ -126,18 +185,56 @@ values
 		session.NewStaticCredential(egressCred.GetCredentialId(), "egress"),
 	}
 
+	// Associate host-set to target
+	num, err = rw.Exec(ctx, `
+insert into target_host_set
+	(target_id, host_set_id)
+values
+	(?, ?)
+	`, []interface{}{targetId, hostSetId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
 	// Create a test session
-	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
-		UserId:             uId,
-		HostId:             h.GetPublicId(),
-		TargetId:           tar.GetPublicId(),
-		HostSetId:          hs.GetPublicId(),
-		AuthTokenId:        at.GetPublicId(),
-		ScopeId:            proj.GetPublicId(),
-		Endpoint:           "tcp://127.0.0.1:22",
-		DynamicCredentials: dynCreds,
-		StaticCredentials:  staticCreds,
+	sessionId := "s_AgLzPhDINE"
+	future := time.Now().Add(time.Hour)
+	expirationTime := fmt.Sprintf("%v-%d-%v %v:%v:%v.000", future.Year(), future.Month(), future.Day(), future.Hour(), future.Minute(), future.Second())
+	_, cert, err := session.TestCert(wrapper, uId, sessionId)
+	require.NoError(t, err)
+	num, err = rw.Exec(ctx, `
+	insert into session
+		(public_id, user_id, host_id, target_id, host_set_id, auth_token_id, scope_id, certificate, expiration_time, endpoint)
+	values
+		(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, []interface{}{sessionId, uId, hostId, targetId, hostSetId, at.GetPublicId(), proj.GetPublicId(), cert, expirationTime, "tcp://127.0.0.1:22"})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	num, err = rw.Exec(ctx, `
+insert into session_credential_dynamic
+	(session_id, library_id, credential_purpose)
+values
+	(?, ?, ?),
+	(?, ?, ?);
+`, []interface{}{
+		sessionId, dynCreds[0].LibraryId, dynCreds[0].CredentialPurpose,
+		sessionId, dynCreds[1].LibraryId, dynCreds[1].CredentialPurpose,
 	})
+	require.NoError(t, err)
+	assert.Equal(t, 2, num)
+
+	num, err = rw.Exec(ctx, `
+insert into session_credential_static
+	(session_id, credential_static_id, credential_purpose)
+values
+	(?, ?, ?),
+	(?, ?, ?);
+`, []interface{}{
+		sessionId, staticCreds[0].CredentialStaticId, staticCreds[0].CredentialPurpose,
+		sessionId, staticCreds[1].CredentialStaticId, staticCreds[1].CredentialPurpose,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 2, num)
 
 	// now we're ready for the migration we want to test.
 	m, err = schema.NewManager(ctx, schema.Dialect(dialect), d, schema.WithEditions(
@@ -145,7 +242,8 @@ values
 	))
 	require.NoError(t, err)
 
-	require.NoError(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(t, err)
 	state, err = m.CurrentState(ctx)
 	require.NoError(t, err)
 	want = &schema.State{
@@ -183,22 +281,22 @@ values
 	assert.Equal(t, "injected_application", lookupCred.CredentialPurpose)
 
 	lookupDynCred := &session.DynamicCredential{}
-	err = rw.LookupWhere(ctx, lookupDynCred, "session_id = ? and library_id = ?", []interface{}{sess.GetPublicId(), appCredLib.GetCredentialLibraryId()})
+	err = rw.LookupWhere(ctx, lookupDynCred, "session_id = ? and library_id = ?", []interface{}{sessionId, appCredLib.GetCredentialLibraryId()})
 	require.NoError(t, err)
 	assert.Equal(t, "brokered", lookupDynCred.CredentialPurpose)
 
 	lookupDynCred = &session.DynamicCredential{}
-	err = rw.LookupWhere(ctx, lookupDynCred, "session_id = ? and library_id = ?", []interface{}{sess.GetPublicId(), egressCredLib.GetCredentialLibraryId()})
+	err = rw.LookupWhere(ctx, lookupDynCred, "session_id = ? and library_id = ?", []interface{}{sessionId, egressCredLib.GetCredentialLibraryId()})
 	require.NoError(t, err)
 	assert.Equal(t, "injected_application", lookupDynCred.CredentialPurpose)
 
 	lookupStaticCred := &session.StaticCredential{}
-	err = rw.LookupWhere(ctx, lookupStaticCred, "session_id = ? and credential_static_id = ?", []interface{}{sess.GetPublicId(), appCred.GetCredentialId()})
+	err = rw.LookupWhere(ctx, lookupStaticCred, "session_id = ? and credential_static_id = ?", []interface{}{sessionId, appCred.GetCredentialId()})
 	require.NoError(t, err)
 	assert.Equal(t, "brokered", lookupStaticCred.CredentialPurpose)
 
 	lookupStaticCred = &session.StaticCredential{}
-	err = rw.LookupWhere(ctx, lookupStaticCred, "session_id = ? and credential_static_id = ?", []interface{}{sess.GetPublicId(), egressCred.GetCredentialId()})
+	err = rw.LookupWhere(ctx, lookupStaticCred, "session_id = ? and credential_static_id = ?", []interface{}{sessionId, egressCred.GetCredentialId()})
 	require.NoError(t, err)
 	assert.Equal(t, "injected_application", lookupStaticCred.CredentialPurpose)
 }

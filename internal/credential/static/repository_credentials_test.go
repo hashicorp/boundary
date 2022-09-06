@@ -40,8 +40,8 @@ func TestRepository_Retrieve(t *testing.T) {
 		WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
 
 	type args struct {
-		credIds []string
-		scopeId string
+		credIds    []string
+		projectIds string
 	}
 	tests := []struct {
 		name      string
@@ -50,25 +50,25 @@ func TestRepository_Retrieve(t *testing.T) {
 		wantCreds []credential.Static
 	}{
 		{
-			name: "no-scope",
+			name: "no-project-id",
 			args: args{
 				credIds: []string{upCred1.GetPublicId()},
 			},
 			wantErr: true,
 		},
 		{
-			name: "invalid-scope",
+			name: "invalid-project-id",
 			args: args{
-				scopeId: org.GetPublicId(),
-				credIds: []string{upCred1.GetPublicId()},
+				projectIds: org.GetPublicId(),
+				credIds:    []string{upCred1.GetPublicId()},
 			},
 			wantErr: true,
 		},
 		{
 			name: "valid-one-up-cred",
 			args: args{
-				scopeId: prj.GetPublicId(),
-				credIds: []string{upCred1.GetPublicId()},
+				projectIds: prj.GetPublicId(),
+				credIds:    []string{upCred1.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
 				upCred1,
@@ -77,8 +77,8 @@ func TestRepository_Retrieve(t *testing.T) {
 		{
 			name: "valid-multiple-up-creds",
 			args: args{
-				scopeId: prj.GetPublicId(),
-				credIds: []string{upCred1.GetPublicId(), upCred2.GetPublicId()},
+				projectIds: prj.GetPublicId(),
+				credIds:    []string{upCred1.GetPublicId(), upCred2.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
 				upCred1, upCred2,
@@ -87,8 +87,8 @@ func TestRepository_Retrieve(t *testing.T) {
 		{
 			name: "valid-ssh-pk-cred",
 			args: args{
-				scopeId: prj.GetPublicId(),
-				credIds: []string{spkCred1.GetPublicId()},
+				projectIds: prj.GetPublicId(),
+				credIds:    []string{spkCred1.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
 				spkCred1,
@@ -97,8 +97,8 @@ func TestRepository_Retrieve(t *testing.T) {
 		{
 			name: "valid-multiple-ssh-pk-creds",
 			args: args{
-				scopeId: prj.GetPublicId(),
-				credIds: []string{spkCred1.GetPublicId(), spkCred2.GetPublicId(), spkCredWithPass.GetPublicId()},
+				projectIds: prj.GetPublicId(),
+				credIds:    []string{spkCred1.GetPublicId(), spkCred2.GetPublicId(), spkCredWithPass.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
 				spkCred1, spkCred2, spkCredWithPass,
@@ -107,8 +107,8 @@ func TestRepository_Retrieve(t *testing.T) {
 		{
 			name: "valid-mixed-creds",
 			args: args{
-				scopeId: prj.GetPublicId(),
-				credIds: []string{upCred1.GetPublicId(), spkCred1.GetPublicId(), spkCredWithPass.GetPublicId(), spkCred2.GetPublicId(), upCred2.GetPublicId()},
+				projectIds: prj.GetPublicId(),
+				credIds:    []string{upCred1.GetPublicId(), spkCred1.GetPublicId(), spkCredWithPass.GetPublicId(), spkCred2.GetPublicId(), upCred2.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
 				upCred1, spkCred1, spkCred2, upCred2, spkCredWithPass,
@@ -118,7 +118,7 @@ func TestRepository_Retrieve(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			gotCreds, err := repo.Retrieve(context.Background(), tt.args.scopeId, tt.args.credIds)
+			gotCreds, err := repo.Retrieve(context.Background(), tt.args.projectIds, tt.args.credIds)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(gotCreds)

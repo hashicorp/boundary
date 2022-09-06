@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 )
 
 // CreateGroup will create a group in the repository and return the written
@@ -69,7 +69,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			"name":        group.Name,
 			"description": group.Description,

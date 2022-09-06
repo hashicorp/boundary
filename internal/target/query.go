@@ -51,7 +51,7 @@ order by action, source_id;
 `
 
 	targetPublicIdList = `
-select public_id, scope_id from target
+select public_id, project_id from target
 %s
 ;
 `

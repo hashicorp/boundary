@@ -8,11 +8,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-dbw"
 )
 
 // Cloneable provides a cloning interface
@@ -70,31 +70,31 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	var where []string
 	var whereArgs []interface{}
 	nameEmpty := opts.WithName == ""
-	scopeIdEmpty := opts.WithScopeId == ""
-	scopeNameEmpty := opts.WithScopeName == ""
+	projectIdEmpty := opts.WithProjectId == ""
+	projectNameEmpty := opts.WithProjectName == ""
 	if !nameEmpty {
 		if opts.WithName != publicIdOrName {
 			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "name passed in but does not match publicId")
 		}
 		where, whereArgs = append(where, "lower(name) = lower(?)"), append(whereArgs, opts.WithName)
 		switch {
-		case scopeIdEmpty && scopeNameEmpty:
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "using name but both scope ID and scope name are empty")
-		case !scopeIdEmpty && !scopeNameEmpty:
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "using name but both scope ID and scope name are set")
-		case !scopeIdEmpty:
-			where, whereArgs = append(where, "scope_id = ?"), append(whereArgs, opts.WithScopeId)
-		case !scopeNameEmpty:
-			where, whereArgs = append(where, "scope_id = (select public_id from iam_scope where lower(name) = lower(?))"), append(whereArgs, opts.WithScopeName)
+		case projectIdEmpty && projectNameEmpty:
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "using name but both project ID and project name are empty")
+		case !projectIdEmpty && !projectNameEmpty:
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "using name but both project ID and project name are set")
+		case !projectIdEmpty:
+			where, whereArgs = append(where, "project_id = ?"), append(whereArgs, opts.WithProjectId)
+		case !projectNameEmpty:
+			where, whereArgs = append(where, "project_id = (select public_id from iam_scope where lower(name) = lower(?))"), append(whereArgs, opts.WithProjectName)
 		default:
 			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "unknown combination of parameters")
 		}
 	} else {
 		switch {
-		case !scopeIdEmpty:
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "passed in scope ID when using target ID for lookup")
-		case !scopeNameEmpty:
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "passed in scope name when using target ID for lookup")
+		case !projectIdEmpty:
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "passed in project ID when using target ID for lookup")
+		case !projectNameEmpty:
+			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "passed in project name when using target ID for lookup")
 		}
 	}
 
@@ -142,7 +142,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 }
 
 // FetchAuthzProtectedEntitiesByScope implements boundary.AuthzProtectedEntityProvider
-func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, scopeIds []string) (map[string][]boundary.AuthzProtectedEntity, error) {
+func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, projectIds []string) (map[string][]boundary.AuthzProtectedEntity, error) {
 	const op = "target.(Repository).FetchAuthzProtectedEntitiesByScope"
 
 	var where string
@@ -150,21 +150,21 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, sco
 
 	inClauseCnt := 0
 
-	switch len(scopeIds) {
+	switch len(projectIds) {
 	case 0:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no projects given")
 	case 1:
-		if scopeIds[0] != scope.Global.String() {
+		if projectIds[0] != scope.Global.String() {
 			inClauseCnt += 1
-			where, args = fmt.Sprintf("where scope_id = @%d", inClauseCnt), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), scopeIds[0]))
+			where, args = fmt.Sprintf("where project_id = @%d", inClauseCnt), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), projectIds[0]))
 		}
 	default:
-		idsInClause := make([]string, 0, len(scopeIds))
-		for _, id := range scopeIds {
+		idsInClause := make([]string, 0, len(projectIds))
+		for _, id := range projectIds {
 			inClauseCnt += 1
 			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 		}
-		where = fmt.Sprintf("where scope_id in (%s)", strings.Join(idsInClause, ","))
+		where = fmt.Sprintf("where project_id in (%s)", strings.Join(idsInClause, ","))
 	}
 
 	q := targetPublicIdList
@@ -182,36 +182,36 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, sco
 		if err := r.reader.ScanRows(ctx, rows, &tv); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
-		targetsMap[tv.GetScopeId()] = append(targetsMap[tv.GetScopeId()], tv)
+		targetsMap[tv.GetProjectId()] = append(targetsMap[tv.GetProjectId()], tv)
 	}
 
 	return targetsMap, nil
 }
 
-// ListTargets in targets in a scope.  Supports the WithScopeId, WithLimit, WithType options.
+// ListTargets in targets in a project.  Supports the WithProjectId, WithLimit, WithType options.
 func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
 	const op = "target.(Repository).ListTargets"
 	opts := GetOpts(opt...)
-	if len(opts.WithScopeIds) == 0 && opts.WithUserId == "" && len(opts.WithTargetIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "must specify either scope ids, target ids, or user id")
+	if len(opts.WithProjectIds) == 0 && opts.WithUserId == "" && len(opts.WithTargetIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "must specify either project ids, target ids, or user id")
 	}
 	// TODO (jimlambrt 8/2020) - implement WithUserId() optional filtering.
 	var where []string
 	var args []interface{}
 	inClauseCnt := 0
 
-	switch len(opts.WithScopeIds) {
+	switch len(opts.WithProjectIds) {
 	case 0:
 	case 1:
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithScopeIds[0]))
+		where, args = append(where, fmt.Sprintf("project_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithProjectIds[0]))
 	default:
-		idsInClause := make([]string, 0, len(opts.WithScopeIds))
-		for _, id := range opts.WithScopeIds {
+		idsInClause := make([]string, 0, len(opts.WithProjectIds))
+		for _, id := range opts.WithProjectIds {
 			inClauseCnt += 1
 			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 		}
-		where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
+		where = append(where, fmt.Sprintf("project_id in (%s)", strings.Join(idsInClause, ",")))
 	}
 
 	switch len(opts.WithTargetIds) {
@@ -291,7 +291,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 	deleteTarget.SetPublicId(ctx, publicId)
 	metadata = deleteTarget.Oplog(oplog.OpType_OP_TYPE_DELETE)
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, t.ScopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, t.ProjectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -342,16 +342,16 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 	dbOpts := []db.Option{
 		db.WithVersion(&version),
 	}
-	scopeId := target.GetScopeId()
-	if scopeId == "" {
+	projectId := target.GetProjectId()
+	if projectId == "" {
 		t := allocTargetView()
 		t.PublicId = target.GetPublicId()
 		if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
 			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("lookup failed for %s", t.PublicId)))
 		}
-		scopeId = t.ScopeId
+		projectId = t.ProjectId
 	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -416,8 +416,8 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 	if err := vet(ctx, target); err != nil {
 		return nil, nil, nil, err
 	}
-	if target.GetScopeId() == "" {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	if target.GetProjectId() == "" {
+		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	if target.GetName() == "" {
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing name")
@@ -444,7 +444,7 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		t.SetPublicId(ctx, id)
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, target.GetScopeId(), kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -518,7 +518,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			"Name":                   target.GetName(),
 			"Description":            target.GetDescription(),
@@ -553,7 +553,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("target %s already exists in scope %s", target.GetName(), target.GetScopeId()))
+			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("target %s already exists in project %s", target.GetName(), target.GetProjectId()))
 		}
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.GetPublicId())))
 	}

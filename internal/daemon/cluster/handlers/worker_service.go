@@ -25,8 +25,8 @@ import (
 const ManagedWorkerTagKey = "boundary.cloud.hashicorp.com:managed"
 
 type workerServiceServer struct {
-	pbs.UnimplementedServerCoordinationServiceServer
-	pbs.UnimplementedSessionServiceServer
+	pbs.UnsafeServerCoordinationServiceServer
+	pbs.UnsafeSessionServiceServer
 
 	serversRepoFn    common.ServersRepoFactory
 	sessionRepoFn    common.SessionRepoFactory
@@ -34,6 +34,11 @@ type workerServiceServer struct {
 	updateTimes      *sync.Map
 	kms              *kms.Kms
 }
+
+var (
+	_ pbs.SessionServiceServer            = &workerServiceServer{}
+	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
+)
 
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
@@ -50,11 +55,6 @@ func NewWorkerServiceServer(
 		kms:              kms,
 	}
 }
-
-var (
-	_ pbs.SessionServiceServer            = &workerServiceServer{}
-	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
-)
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	const op = "workers.(workerServiceServer).Status"
@@ -297,7 +297,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		}
 	}
 
-	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ScopeId, sessionInfo.PublicId)
+	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ProjectId, sessionInfo.PublicId)
 	if err != nil {
 		return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
 			fmt.Sprintf("Error retrieving session credentials: %s", err))
@@ -335,7 +335,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
 	}
 
-	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ScopeId, kms.KeyPurposeSessions, kms.WithKeyId(sessionInfo.KeyId))
+	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ProjectId, kms.KeyPurposeSessions, kms.WithKeyId(sessionInfo.KeyId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
 	}

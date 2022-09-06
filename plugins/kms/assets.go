@@ -8,6 +8,7 @@ import (
 const contentDir = "assets"
 
 // content is our static web server content.
+//
 //go:embed assets
 var content embed.FS
 

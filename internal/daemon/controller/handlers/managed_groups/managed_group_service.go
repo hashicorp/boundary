@@ -63,10 +63,12 @@ func init() {
 
 // Service handles request as described by the pbs.ManagedGroupServiceServer interface.
 type Service struct {
-	pbs.UnimplementedManagedGroupServiceServer
+	pbs.UnsafeManagedGroupServiceServer
 
 	oidcRepoFn common.OidcAuthRepoFactory
 }
+
+var _ pbs.ManagedGroupServiceServer = (*Service)(nil)
 
 // NewService returns a managed group service which handles managed group related requests to boundary.
 func NewService(oidcRepo common.OidcAuthRepoFactory) (Service, error) {
@@ -76,8 +78,6 @@ func NewService(oidcRepo common.OidcAuthRepoFactory) (Service, error) {
 	}
 	return Service{oidcRepoFn: oidcRepo}, nil
 }
-
-var _ pbs.ManagedGroupServiceServer = Service{}
 
 // ListManagedGroups implements the interface pbs.ManagedGroupsServiceServer.
 func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGroupsRequest) (*pbs.ListManagedGroupsResponse, error) {
@@ -572,9 +572,9 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetManagedGroupRequest) error {
 	const op = "managed_groups.validateGetRequest"
 	if req == nil {
@@ -601,12 +601,13 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 			attrs := req.GetItem().GetOidcManagedGroupAttributes()
 			if attrs == nil {
 				badFields[globals.AttributesField] = "Attribute fields is required."
-			}
-			if attrs.Filter == "" {
-				badFields[attrFilterField] = "This field is required."
 			} else {
-				if _, err := bexpr.CreateEvaluator(attrs.Filter); err != nil {
-					badFields[attrFilterField] = fmt.Sprintf("Error evaluating submitted filter expression: %v.", err)
+				if attrs.Filter == "" {
+					badFields[attrFilterField] = "This field is required."
+				} else {
+					if _, err := bexpr.CreateEvaluator(attrs.Filter); err != nil {
+						badFields[attrFilterField] = fmt.Sprintf("Error evaluating submitted filter expression: %v.", err)
+					}
 				}
 			}
 		default:

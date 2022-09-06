@@ -228,7 +228,7 @@ func TestGet(t *testing.T) {
 				Item: &pb.Credential{
 					Id:                upCred.GetPublicId(),
 					CredentialStoreId: upCred.GetStoreId(),
-					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:              credential.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       upCred.CreateTime.GetTimestamp(),
@@ -250,7 +250,7 @@ func TestGet(t *testing.T) {
 				Item: &pb.Credential{
 					Id:                upCredPrev.GetPublicId(),
 					CredentialStoreId: upCred.GetStoreId(),
-					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:              credential.UsernamePasswordSubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       upCredPrev.CreateTime.GetTimestamp(),
@@ -272,7 +272,7 @@ func TestGet(t *testing.T) {
 				Item: &pb.Credential{
 					Id:                spkCred.GetPublicId(),
 					CredentialStoreId: spkCred.GetStoreId(),
-					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:              credential.SshPrivateKeySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       spkCred.CreateTime.GetTimestamp(),
@@ -294,7 +294,7 @@ func TestGet(t *testing.T) {
 				Item: &pb.Credential{
 					Id:                spkCredWithPass.GetPublicId(),
 					CredentialStoreId: spkCredWithPass.GetStoreId(),
-					Scope:             &scopepb.ScopeInfo{Id: store.GetScopeId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
 					Type:              credential.SshPrivateKeySubtype.String(),
 					AuthorizedActions: testAuthorizedActions,
 					CreatedTime:       spkCredWithPass.CreateTime.GetTimestamp(),

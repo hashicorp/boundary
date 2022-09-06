@@ -50,7 +50,7 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 			wantErrCode: errors.InvalidParameter,
 		},
 		{
-			name: "missing-scope-id",
+			name: "missing-project-id",
 			store: &CredentialStore{
 				CredentialStore: &store.CredentialStore{},
 			},
@@ -61,8 +61,8 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 			name: "public-id-set",
 			store: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					ScopeId:  prj.PublicId,
-					PublicId: "bad-dont-set-this",
+					ProjectId: prj.PublicId,
+					PublicId:  "bad-dont-set-this",
 				},
 			},
 			wantErr:     true,
@@ -72,7 +72,7 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 			name: "valid",
 			store: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					ScopeId: prj.PublicId,
+					ProjectId: prj.PublicId,
 				},
 			},
 		},
@@ -80,8 +80,8 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 			name: "valid-with-name",
 			store: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					ScopeId: prj.PublicId,
-					Name:    "test-store",
+					ProjectId: prj.PublicId,
+					Name:      "test-store",
 				},
 			},
 		},
@@ -89,7 +89,7 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 			name: "valid-with-description",
 			store: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					ScopeId:     prj.PublicId,
+					ProjectId:   prj.PublicId,
 					Description: "test-store-description",
 				},
 			},
@@ -129,6 +129,7 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.GetPublicId())
 		require.NoError(err)
 
 		in, err := NewCredentialStore(prj.GetPublicId(), WithName("my-name"), WithDescription("desc"))
@@ -145,9 +146,8 @@ func TestRepository_CreateCredentialStore(t *testing.T) {
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 
-		// Creating credential in different scope should not conflict
-		in3, err := NewCredentialStore(org.GetPublicId(), WithName("my-name"), WithDescription("desc"))
-		require.NoError(err)
+		// Creating credential in different project should not conflict
+		in3, err := NewCredentialStore(prj2.GetPublicId(), WithName("my-name"), WithDescription("desc"))
 		got3, err := repo.CreateCredentialStore(ctx, in3)
 		require.NoError(err)
 		assert.Equal(in.Name, got3.Name)
@@ -337,7 +337,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 				},
 			},
 			chgFn:   changeName("test-update-name-repo"),
-			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ProjectId"},
 			wantErr: errors.InvalidFieldMask,
 		},
 		{
@@ -484,7 +484,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 			require.NotNil(repo)
 
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-			tt.orig.ScopeId = prj.GetPublicId()
+			tt.orig.ProjectId = prj.GetPublicId()
 
 			orig, err := repo.CreateCredentialStore(ctx, tt.orig)
 			assert.NoError(err)
@@ -506,7 +506,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 			assertPublicId(t, CredentialStorePrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
-			assert.Equal(tt.orig.ScopeId, got.ScopeId)
+			assert.Equal(tt.orig.ProjectId, got.ProjectId)
 			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
@@ -558,7 +558,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
 	})
 
-	t.Run("valid-duplicate-names-diff-scopes", func(t *testing.T) {
+	t.Run("valid-duplicate-names-diff-projects", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
@@ -567,6 +567,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		require.NotNil(repo)
 
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.GetPublicId())
 		in := &CredentialStore{
 			CredentialStore: &store.CredentialStore{
 				Name: "test-name-repo",
@@ -574,7 +575,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		}
 		in2 := in.clone()
 
-		in.ScopeId = prj.GetPublicId()
+		in.ProjectId = prj.GetPublicId()
 		got, err := repo.CreateCredentialStore(ctx, in)
 		assert.NoError(err)
 		require.NotNil(got)
@@ -583,7 +584,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
 
-		in2.ScopeId = org.GetPublicId()
+		in2.ProjectId = prj2.GetPublicId()
 		in2.Name = "first-name"
 		got2, err := repo.CreateCredentialStore(ctx, in2)
 		assert.NoError(err)
@@ -598,7 +599,7 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		assert.Equal(1, gotCount3, "row count")
 	})
 
-	t.Run("change-scope-id", func(t *testing.T) {
+	t.Run("change-project-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
@@ -610,17 +611,17 @@ func TestRepository_UpdateCredentialStore(t *testing.T) {
 		_, prj1 := iam.TestScopes(t, iamRepo)
 		_, prj2 := iam.TestScopes(t, iamRepo)
 		csA, csB := TestCredentialStores(t, conn, wrapper, prj1.PublicId, 1)[0], TestCredentialStores(t, conn, wrapper, prj2.PublicId, 1)[0]
-		assert.NotEqual(csA.ScopeId, csB.ScopeId)
+		assert.NotEqual(csA.ProjectId, csB.ProjectId)
 		orig := csA.clone()
 
-		csA.ScopeId = csB.ScopeId
-		assert.Equal(csA.ScopeId, csB.ScopeId)
+		csA.ProjectId = csB.ProjectId
+		assert.Equal(csA.ProjectId, csB.ProjectId)
 
 		got1, gotCount1, err := repo.UpdateCredentialStore(ctx, csA, 1, []string{"Name"})
 
 		assert.NoError(err)
 		require.NotNil(got1)
-		assert.Equal(orig.ScopeId, got1.ScopeId)
+		assert.Equal(orig.ProjectId, got1.ProjectId)
 		assert.Equal(1, gotCount1, "row count")
 	})
 }
@@ -648,8 +649,8 @@ func TestRepository_ListCredentialStores(t *testing.T) {
 	}
 
 	type args struct {
-		scopeIds []string
-		opt      []Option
+		projectIds []string
+		opt        []Option
 	}
 	tests := []struct {
 		name    string
@@ -659,36 +660,36 @@ func TestRepository_ListCredentialStores(t *testing.T) {
 		{
 			name: "no-limit",
 			args: args{
-				scopeIds: prjs,
-				opt:      []Option{WithLimit(-1)},
+				projectIds: prjs,
+				opt:        []Option{WithLimit(-1)},
 			},
 			wantCnt: total,
 		},
 		{
 			name: "default-limit",
 			args: args{
-				scopeIds: prjs,
+				projectIds: prjs,
 			},
 			wantCnt: total,
 		},
 		{
 			name: "custom-limit",
 			args: args{
-				scopeIds: prjs,
-				opt:      []Option{WithLimit(3)},
+				projectIds: prjs,
+				opt:        []Option{WithLimit(3)},
 			},
 			wantCnt: 3,
 		},
 		{
-			name: "bad-scope",
+			name: "bad-project",
 			args: args{
-				scopeIds: []string{"bad-id"},
+				projectIds: []string{"bad-id"},
 			},
 			wantCnt: 0,
 		},
 	}
 	for _, tt := range tests {
-		got, err := repo.ListCredentialStores(context.Background(), tt.args.scopeIds, tt.args.opt...)
+		got, err := repo.ListCredentialStores(context.Background(), tt.args.projectIds, tt.args.opt...)
 		require.NoError(err)
 		assert.Equal(tt.wantCnt, len(got))
 	}

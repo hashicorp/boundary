@@ -64,18 +64,18 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.WithUserId = "testId"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithScopeId", func(t *testing.T) {
+	t.Run("WithProjectId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := GetOpts(WithScopeId("testId"))
+		opts := GetOpts(WithProjectId("testId"))
 		testOpts := getDefaultOptions()
-		testOpts.WithScopeId = "testId"
+		testOpts.WithProjectId = "testId"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithScopeName", func(t *testing.T) {
+	t.Run("WithProjectName", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := GetOpts(WithScopeName("testName"))
+		opts := GetOpts(WithProjectName("testName"))
 		testOpts := getDefaultOptions()
-		testOpts.WithScopeName = "testName"
+		testOpts.WithProjectName = "testName"
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithPublicId", func(t *testing.T) {

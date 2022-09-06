@@ -80,19 +80,19 @@ func TestRepository_ListSession(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:      "withScopeId",
+			name:      "withProjectIds",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				opt: []Option{WithScopeIds([]string{composedOf.ScopeId})},
+				opt: []Option{WithProjectIds([]string{composedOf.ProjectId})},
 			},
 			wantCnt: repo.defaultLimit,
 			wantErr: false,
 		},
 		{
-			name:      "bad-withScopeId",
+			name:      "bad-withProjectId",
 			createCnt: repo.defaultLimit + 1,
 			args: args{
-				opt: []Option{WithScopeIds([]string{"o_thisIsNotValid"})},
+				opt: []Option{WithProjectIds([]string{"o_thisIsNotValid"})},
 			},
 			wantCnt: 0,
 			wantErr: false,
@@ -190,11 +190,11 @@ func TestRepository_ListSession(t *testing.T) {
 		coDiffUser.UserId = s.UserId
 		wantS := TestSession(t, conn, wrapper, coDiffUser)
 
-		got, err := repo.ListSessions(context.Background(), WithUserId(coDiffUser.UserId), WithScopeIds([]string{coDiffUser.ScopeId}))
+		got, err := repo.ListSessions(context.Background(), WithUserId(coDiffUser.UserId), WithProjectIds([]string{coDiffUser.ProjectId}))
 		require.NoError(err)
 		assert.Equal(1, len(got))
 		assert.Equal(wantS.UserId, got[0].UserId)
-		assert.Equal(wantS.ScopeId, got[0].ScopeId)
+		assert.Equal(wantS.ProjectId, got[0].ProjectId)
 	})
 	t.Run("WithSessionIds", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -231,12 +231,12 @@ func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
 	var projs []string
 	for i := 0; i < numPerScope; i++ {
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-		projs = append(projs, composedOf.ScopeId)
+		projs = append(projs, composedOf.ProjectId)
 		s := TestSession(t, conn, wrapper, composedOf)
 		_ = TestState(t, conn, s.PublicId, StatusActive)
 	}
 
-	got, err := repo.ListSessions(context.Background(), WithScopeIds(projs))
+	got, err := repo.ListSessions(context.Background(), WithProjectIds(projs))
 	require.NoError(t, err)
 	assert.Equal(t, len(projs), len(got))
 }
@@ -344,11 +344,11 @@ func TestRepository_CreateSession(t *testing.T) {
 			wantIsError: errors.InvalidParameter,
 		},
 		{
-			name: "empty-scopeId",
+			name: "empty-projectId",
 			args: args{
 				composedOf: func() ComposedOf {
 					c := TestSessionParams(t, conn, wrapper, iamRepo)
-					c.ScopeId = ""
+					c.ProjectId = ""
 					return c
 				}(),
 				workerAddresses: workerAddresses,
@@ -377,7 +377,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				TargetId:           tt.args.composedOf.TargetId,
 				HostSetId:          tt.args.composedOf.HostSetId,
 				AuthTokenId:        tt.args.composedOf.AuthTokenId,
-				ScopeId:            tt.args.composedOf.ScopeId,
+				ProjectId:          tt.args.composedOf.ProjectId,
 				Endpoint:           "tcp://127.0.0.1:22",
 				ExpirationTime:     tt.args.composedOf.ExpirationTime,
 				ConnectionLimit:    tt.args.composedOf.ConnectionLimit,
@@ -954,7 +954,7 @@ func TestRepository_CancelSession(t *testing.T) {
 					TargetId:        tcpTarget.GetPublicId(),
 					HostSetId:       sets[0].PublicId,
 					AuthTokenId:     at.PublicId,
-					ScopeId:         tcpTarget.GetScopeId(),
+					ProjectId:       tcpTarget.GetProjectId(),
 					Endpoint:        "tcp://127.0.0.1:22",
 					ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
 					ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),
@@ -1175,7 +1175,7 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 
 				t := &iam.Scope{
 					Scope: &iamStore.Scope{
-						PublicId: s.ScopeId,
+						PublicId: s.ProjectId,
 					},
 				}
 				return cancelFk{
@@ -1463,11 +1463,11 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	require.NoError(err)
 	require.NotNil(tar)
 
-	vaultStore := vault.TestCredentialStores(t, conn, wrapper, params.ScopeId, 1)[0]
+	vaultStore := vault.TestCredentialStores(t, conn, wrapper, params.ProjectId, 1)[0]
 	libIds := vault.TestCredentialLibraries(t, conn, wrapper, vaultStore.GetPublicId(), 2)
 
-	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, params.ScopeId)
-	upCreds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", staticStore.GetPublicId(), params.ScopeId, 2)
+	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, params.ProjectId)
+	upCreds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", staticStore.GetPublicId(), params.ProjectId, 2)
 
 	ids := target.CredentialSources{
 		BrokeredCredentialIds: []string{libIds[0].GetPublicId(), libIds[1].GetPublicId(), upCreds[0].GetPublicId(), upCreds[1].GetPublicId()},
@@ -1649,7 +1649,7 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 		TargetId:    tarOther.GetPublicId(),
 		HostSetId:   hsOther.GetPublicId(),
 		AuthTokenId: composedOf.AuthTokenId,
-		ScopeId:     pWithOtherSessions.GetPublicId(),
+		ProjectId:   pWithOtherSessions.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	}
 
@@ -1670,21 +1670,21 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 		{
 			name:      "NonTerminated/none",
 			createCnt: 0,
-			reqScopes: []string{composedOf.ScopeId},
+			reqScopes: []string{composedOf.ProjectId},
 			wantCnt:   0,
 			wantErr:   false,
 		},
 		{
 			name:      "NonTerminated/one",
 			createCnt: 1,
-			reqScopes: []string{composedOf.ScopeId},
+			reqScopes: []string{composedOf.ProjectId},
 			wantCnt:   1,
 			wantErr:   false,
 		},
 		{
 			name:      "NonTerminated/many",
 			createCnt: 5,
-			reqScopes: []string{composedOf.ScopeId},
+			reqScopes: []string{composedOf.ProjectId},
 			wantCnt:   5,
 			wantErr:   false,
 		},
@@ -1692,7 +1692,7 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 			name:         "NonTerminated/many one terminated",
 			createCnt:    5,
 			terminateCnt: 1,
-			reqScopes:    []string{composedOf.ScopeId},
+			reqScopes:    []string{composedOf.ProjectId},
 			wantCnt:      4,
 			wantErr:      false,
 		},
@@ -1700,31 +1700,31 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 			name:         "NonTerminated/many terminated",
 			createCnt:    5,
 			terminateCnt: 3,
-			reqScopes:    []string{composedOf.ScopeId},
+			reqScopes:    []string{composedOf.ProjectId},
 			wantCnt:      2,
 			wantErr:      false,
 		},
 		{
-			name:         "NonTerminated/many multiple scopes",
+			name:         "NonTerminated/many multiple projects",
 			createCnt:    5,
 			terminateCnt: 3,
-			reqScopes:    []string{composedOf.ScopeId, composedOfOther.ScopeId},
+			reqScopes:    []string{composedOf.ProjectId, composedOfOther.ProjectId},
 			wantCnt:      2,
 			wantErr:      false,
 		},
 		{
-			name:              "NonTerminated/many multiple scopes",
+			name:              "NonTerminated/many multiple projects",
 			createCnt:         5,
 			terminateCnt:      3,
 			otherCnt:          3,
 			otherTerminateCnt: 1,
-			reqScopes:         []string{composedOf.ScopeId, composedOfOther.ScopeId},
+			reqScopes:         []string{composedOf.ProjectId, composedOfOther.ProjectId},
 			wantCnt:           2,
 			wantOtherCnt:      2,
 			wantErr:           false,
 		},
 		{
-			name:              "NonTerminated/no scopes",
+			name:              "NonTerminated/no projects",
 			createCnt:         2,
 			terminateCnt:      1,
 			otherCnt:          2,
@@ -1736,7 +1736,7 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 			name:      "none",
 			opts:      []Option{WithTerminated(true)},
 			createCnt: 0,
-			reqScopes: []string{composedOf.ScopeId},
+			reqScopes: []string{composedOf.ProjectId},
 			wantCnt:   0,
 			wantErr:   false,
 		},
@@ -1744,7 +1744,7 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 			name:      "one",
 			opts:      []Option{WithTerminated(true)},
 			createCnt: 1,
-			reqScopes: []string{composedOf.ScopeId},
+			reqScopes: []string{composedOf.ProjectId},
 			wantCnt:   1,
 			wantErr:   false,
 		},
@@ -1752,7 +1752,7 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 			name:      "many",
 			opts:      []Option{WithTerminated(true)},
 			createCnt: 5,
-			reqScopes: []string{composedOf.ScopeId},
+			reqScopes: []string{composedOf.ProjectId},
 			wantCnt:   5,
 			wantErr:   false,
 		},
@@ -1761,7 +1761,7 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 			opts:         []Option{WithTerminated(true)},
 			createCnt:    5,
 			terminateCnt: 1,
-			reqScopes:    []string{composedOf.ScopeId},
+			reqScopes:    []string{composedOf.ProjectId},
 			wantCnt:      5,
 			wantErr:      false,
 		},
@@ -1770,33 +1770,33 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 			opts:         []Option{WithTerminated(true)},
 			createCnt:    5,
 			terminateCnt: 3,
-			reqScopes:    []string{composedOf.ScopeId},
+			reqScopes:    []string{composedOf.ProjectId},
 			wantCnt:      5,
 			wantErr:      false,
 		},
 		{
-			name:         "many multiple scopes",
+			name:         "many multiple projects",
 			opts:         []Option{WithTerminated(true)},
 			createCnt:    5,
 			terminateCnt: 3,
-			reqScopes:    []string{composedOf.ScopeId, composedOfOther.ScopeId},
+			reqScopes:    []string{composedOf.ProjectId, composedOfOther.ProjectId},
 			wantCnt:      5,
 			wantErr:      false,
 		},
 		{
-			name:              "many multiple scopes",
+			name:              "many multiple projects",
 			opts:              []Option{WithTerminated(true)},
 			createCnt:         5,
 			terminateCnt:      3,
 			otherCnt:          3,
 			otherTerminateCnt: 1,
-			reqScopes:         []string{composedOf.ScopeId, composedOfOther.ScopeId},
+			reqScopes:         []string{composedOf.ProjectId, composedOfOther.ProjectId},
 			wantCnt:           5,
 			wantOtherCnt:      3,
 			wantErr:           false,
 		},
 		{
-			name:              "no scopes",
+			name:              "no projects",
 			opts:              []Option{WithTerminated(true)},
 			createCnt:         2,
 			terminateCnt:      1,
@@ -1841,14 +1841,14 @@ func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
 
 			assert.Equal(tt.otherCnt, len(otherTestSessions))
 
-			got, err := repo.fetchAuthzProtectedSessionsByScope(ctx, tt.reqScopes, tt.opts...)
+			got, err := repo.fetchAuthzProtectedSessionsByProject(ctx, tt.reqScopes, tt.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				return
 			}
 			require.NoError(err)
-			assert.Equal(tt.wantCnt, len(got[composedOf.ScopeId]))
-			assert.Equal(tt.wantOtherCnt, len(got[composedOfOther.ScopeId]))
+			assert.Equal(tt.wantCnt, len(got[composedOf.ProjectId]))
+			assert.Equal(tt.wantOtherCnt, len(got[composedOfOther.ProjectId]))
 		})
 	}
 }

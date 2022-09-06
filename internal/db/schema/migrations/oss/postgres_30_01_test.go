@@ -39,7 +39,8 @@ func TestMigrations_KMS_Refactor(t *testing.T) {
 	))
 	require.NoError(t, err)
 
-	require.NoError(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(t, err)
 	state, err := m.CurrentState(ctx)
 	require.NoError(t, err)
 	want := &schema.State{
@@ -77,7 +78,8 @@ func TestMigrations_KMS_Refactor(t *testing.T) {
 	))
 	require.NoError(t, err)
 
-	require.NoError(t, m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(t, err)
 	state, err = m.CurrentState(ctx)
 	require.NoError(t, err)
 	want = &schema.State{

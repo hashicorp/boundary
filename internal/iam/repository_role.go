@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/go-dbw"
 )
 
 // CreateRole will create a role in the repository and return the written
@@ -69,7 +69,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			"name":         role.Name,
 			"description":  role.Description,

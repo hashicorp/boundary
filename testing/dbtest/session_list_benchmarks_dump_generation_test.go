@@ -33,9 +33,10 @@ import (
 // to predictable files for use in benchmarking.
 //
 // Each database dump contains:
-// * N number of sessions, with each session having M connections.
-// * P users, each owning an even amount of the sessions. All users
-//   use the password "testpassword" to login.
+//   - N number of sessions, with each session having M connections.
+//   - P users, each owning an even amount of the sessions. All users
+//     use the password "testpassword" to login.
+//
 // It is safe for users of these dumps to assume all of this, for the variables
 // N, M and P defined in the "scenarios" struct below.
 func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
@@ -185,7 +186,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 						TargetId:    users[userIndex].targetId,
 						HostSetId:   users[userIndex].hostSetId,
 						AuthTokenId: users[userIndex].authTokenId,
-						ScopeId:     users[userIndex].scopeId,
+						ProjectId:   users[userIndex].scopeId,
 						Endpoint:    "tcp://127.0.0.1:22",
 					})
 					cycleSessionStates(t, ctx, sess, sessRepo, connRepo, conn, scenario.connsPerSession)

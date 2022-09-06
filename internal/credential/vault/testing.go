@@ -30,20 +30,20 @@ import (
 )
 
 // TestCredentialStore creates a vault credential store in the provided DB with
-// the provided scope, vault address, token, and accessor and any values passed
+// the provided project, vault address, token, and accessor and any values passed
 // in through the Options vargs.  If any errors are encountered during the
 // creation of the store, the test will fail.
-func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId, vaultAddr, vaultToken, accessor string, opts ...Option) *CredentialStore {
+func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projectId, vaultAddr, vaultToken, accessor string, opts ...Option) *CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	w := db.New(conn)
 
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
-	cs, err := NewCredentialStore(scopeId, vaultAddr, []byte(vaultToken), opts...)
+	cs, err := NewCredentialStore(projectId, vaultAddr, []byte(vaultToken), opts...)
 	assert.NoError(t, err)
 	require.NotNil(t, cs)
 	id, err := newCredentialStoreId()
@@ -65,28 +65,28 @@ func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, sc
 	)
 	require.NoError(t, err2)
 
-	cs.outputToken = createTestToken(t, conn, wrapper, scopeId, id, vaultToken, accessor)
+	cs.outputToken = createTestToken(t, conn, wrapper, projectId, id, vaultToken, accessor)
 
 	return cs
 }
 
 // TestCredentialStores creates count number of vault credential stores in
-// the provided DB with the provided scope id. If any errors are
+// the provided DB with the provided project id. If any errors are
 // encountered during the creation of the credential stores, the test will
 // fail.
-func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId string, count int) []*CredentialStore {
+func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projectId string, count int) []*CredentialStore {
 	t.Helper()
 	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	w := db.New(conn)
 
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 	require.NotNil(t, databaseWrapper)
 
 	var css []*CredentialStore
 	for i := 0; i < count; i++ {
-		cs := TestCredentialStore(t, conn, wrapper, scopeId, fmt.Sprintf("http://vault%d", i), fmt.Sprintf("vault-token-%s-%d", scopeId, i), fmt.Sprintf("accessor-%s-%d", scopeId, i))
+		cs := TestCredentialStore(t, conn, wrapper, projectId, fmt.Sprintf("http://vault%d", i), fmt.Sprintf("vault-token-%s-%d", projectId, i), fmt.Sprintf("accessor-%s-%d", projectId, i))
 
 		inCert := testClientCert(t, testCaCert(t))
 		clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
@@ -187,12 +187,12 @@ func TestCredentials(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, librar
 	return credentials
 }
 
-func createTestToken(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId, storeId, token, accessor string) *Token {
+func createTestToken(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projectId, storeId, token, accessor string) *Token {
 	t.Helper()
 	w := db.New(conn)
 	ctx := context.Background()
 	kkms := kms.TestKms(t, conn, wrapper)
-	databaseWrapper, err := kkms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kkms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
 	inToken, err := newToken(storeId, []byte(token), []byte(accessor), 5*time.Minute)
@@ -209,14 +209,14 @@ func createTestToken(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeI
 	return inToken
 }
 
-func testTokens(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId, storeId string, count int) []*Token {
+func testTokens(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projectId, storeId string, count int) []*Token {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
 
 	ctx := context.Background()
 	kkms := kms.TestKms(t, conn, wrapper)
-	databaseWrapper, err := kkms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kkms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	assert.NoError(err)
 	require.NotNil(databaseWrapper)
 
@@ -224,7 +224,7 @@ func testTokens(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, scopeId, st
 	var tokens []*Token
 	for i := 0; i < count; i++ {
 		num := r.Int31()
-		inToken := createTestToken(t, conn, wrapper, scopeId, storeId, fmt.Sprintf("vault-token-%s-%d-%v", storeId, i, num), fmt.Sprintf("accessor-%s-%d-%v", storeId, i, num))
+		inToken := createTestToken(t, conn, wrapper, projectId, storeId, fmt.Sprintf("vault-token-%s-%d-%v", storeId, i, num), fmt.Sprintf("accessor-%s-%d-%v", storeId, i, num))
 		outToken := allocToken()
 		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", []interface{}{inToken.TokenHmac}))
 		require.NoError(outToken.decrypt(ctx, databaseWrapper))
@@ -620,13 +620,28 @@ func TestRenewableToken(b bool) TestOption {
 	}
 }
 
-func (v *TestVaultServer) client(t testing.TB) *client {
-	t.Helper()
-	return v.clientUsingToken(t, v.RootToken)
+// TestClientConfig returns a client config, using the
+// provided Vault Server and token
+func TestClientConfig(v *TestVaultServer, token string) *clientConfig {
+	clientConfig := &clientConfig{
+		Addr:       v.Addr,
+		Token:      TokenSecret(token),
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+	}
+
+	return clientConfig
 }
 
-func (v *TestVaultServer) clientUsingToken(t testing.TB, token string) *client {
+func (v *TestVaultServer) client(t testing.TB) *client {
 	t.Helper()
+	return v.ClientUsingToken(t, v.RootToken)
+}
+
+func (v *TestVaultServer) ClientUsingToken(t testing.TB, token string) *client {
+	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 	conf := &clientConfig{
 		Addr:       v.Addr,
@@ -636,10 +651,10 @@ func (v *TestVaultServer) clientUsingToken(t testing.TB, token string) *client {
 		ClientKey:  v.ClientKey,
 	}
 
-	client, err := newClient(conf)
+	client, err := newClient(ctx, conf)
 	require.NoError(err)
 	require.NotNil(client)
-	require.NoError(client.ping())
+	require.NoError(client.ping(ctx))
 	return client
 }
 
@@ -672,6 +687,17 @@ func (v *TestVaultServer) CreateToken(t testing.TB, opt ...TestOption) (*vault.S
 	require.NotNil(token)
 
 	return secret, token
+}
+
+// RevokeToken calls /auth/token/revoke-self on v for the token. See
+// https://www.vaultproject.io/api-docs/auth/token#revoke-a-token-self.
+func (v *TestVaultServer) RevokeToken(t testing.TB, token string) {
+	t.Helper()
+	require := require.New(t)
+	vc := v.client(t).cl
+	vc.SetToken(token)
+	err := vc.Auth().Token().RevokeSelf("")
+	require.NoError(err)
 }
 
 // LookupToken calls /auth/token/lookup on v for the token. See
@@ -738,9 +764,9 @@ func (v *TestVaultServer) addPolicy(t testing.TB, name string, pc pathCapabiliti
 // standard set of polices attached to tokens created with v.CreateToken.
 // The policy is defined as:
 //
-//   path "mountPath/*" {
-//     capabilities = ["create", "read", "update", "delete", "list"]
-//   }
+//	path "mountPath/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
 func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
@@ -802,9 +828,9 @@ func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secre
 // standard set of polices attached to tokens created with v.CreateToken.
 // The policy is defined as:
 //
-//   path "secret/*" {
-//     capabilities = ["create", "read", "update", "delete", "list"]
-//   }
+//	path "secret/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
 //
 // All options are ignored.
 func (v *TestVaultServer) AddKVPolicy(t testing.TB, _ ...TestOption) {
@@ -823,10 +849,11 @@ func (v *TestVaultServer) AddKVPolicy(t testing.TB, _ ...TestOption) {
 // https://www.vaultproject.io/api-docs/secret/kv/kv-v2#create-update-secret
 func (v *TestVaultServer) CreateKVSecret(t testing.TB, p string, data []byte) *vault.Secret {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 
 	vc := v.client(t)
-	cred, err := vc.post(path.Join("secret", "data", p), data)
+	cred, err := vc.post(ctx, path.Join("secret", "data", p), data)
 	require.NoError(err)
 	return cred
 }
@@ -872,9 +899,9 @@ func NewTestVaultServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 // to the standard set of polices attached to tokens created with
 // v.CreateToken. The policy is defined as:
 //
-//   path "mountPath/*" {
-//     capabilities = ["create", "read", "update", "delete", "list"]
-//   }
+//	path "mountPath/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
 //
 // MountDatabase returns a TestDatabase for testing credentials from the
 // mount.

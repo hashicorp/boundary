@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 )
 
 // CreateHost inserts h into the repository and returns a new Host
@@ -21,7 +21,7 @@ import (
 //
 // Both h.Name and h.Description are optional. If h.Name is set, it must be
 // unique within h.CatalogId.
-func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, opt ...Option) (*Host, error) {
+func (r *Repository) CreateHost(ctx context.Context, projectId string, h *Host, opt ...Option) (*Host, error) {
 	const op = "static.(Repository).CreateHost"
 	if h == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil Host")
@@ -35,8 +35,8 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 	if h.PublicId != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
-	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 	h.Address = strings.TrimSpace(h.Address)
 	if len(h.Address) < MinHostAddressLength || len(h.Address) > MaxHostAddressLength {
@@ -63,7 +63,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 		h.PublicId = id
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -109,7 +109,7 @@ func (r *Repository) CreateHost(ctx context.Context, scopeId string, h *Host, op
 //
 // An attribute of h will be set to NULL in the database if the attribute
 // in h is the zero value and it is included in fieldMaskPaths.
-func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, version uint32, fieldMaskPaths []string, opt ...Option) (*Host, int, error) {
+func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, version uint32, fieldMaskPaths []string, opt ...Option) (*Host, int, error) {
 	const op = "static.(Repository).UpdateHost"
 	if h == nil {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil Host")
@@ -123,8 +123,8 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 	if version == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no version")
 	}
-	if scopeId == "" {
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
+	if projectId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 
 	for _, f := range fieldMaskPaths {
@@ -141,7 +141,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			"Name":        h.Name,
 			"Description": h.Description,
@@ -154,7 +154,7 @@ func (r *Repository) UpdateHost(ctx context.Context, scopeId string, h *Host, ve
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
@@ -251,7 +251,7 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 // DeleteHost deletes the host for the provided id from the repository
 // returning a count of the number of records deleted. All options are
 // ignored.
-func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId string, opt ...Option) (int, error) {
+func (r *Repository) DeleteHost(ctx context.Context, projectId string, publicId string, opt ...Option) (int, error) {
 	const op = "static.(Repository).DeleteHost"
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no public id")
@@ -259,7 +259,7 @@ func (r *Repository) DeleteHost(ctx context.Context, scopeId string, publicId st
 	h := allocHost()
 	h.PublicId = publicId
 
-	oplogWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeOplog)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
 	if err != nil {
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}

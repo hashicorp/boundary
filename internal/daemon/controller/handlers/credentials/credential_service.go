@@ -70,11 +70,13 @@ func init() {
 
 // Service handles request as described by the pbs.CredentialServiceServer interface.
 type Service struct {
-	pbs.UnimplementedCredentialServiceServer
+	pbs.UnsafeCredentialServiceServer
 
 	iamRepoFn common.IamRepoFactory
 	repoFn    common.StaticCredentialRepoFactory
 }
+
+var _ pbs.CredentialServiceServer = (*Service)(nil)
 
 // NewService returns a credential service which handles credential related requests to boundary.
 func NewService(repo common.StaticCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
@@ -87,8 +89,6 @@ func NewService(repo common.StaticCredentialRepoFactory, iamRepo common.IamRepoF
 	}
 	return Service{iamRepoFn: iamRepo, repoFn: repo}, nil
 }
-
-var _ pbs.CredentialServiceServer = Service{}
 
 // ListCredentials implements the interface pbs.CredentialServiceServer
 func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRequest) (*pbs.ListCredentialsResponse, error) {
@@ -502,7 +502,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		res.Error = handlers.NotFoundError()
 		return res
 	}
-	opts = append(opts, auth.WithScopeId(cs.GetScopeId()))
+	opts = append(opts, auth.WithScopeId(cs.GetProjectId()))
 
 	return auth.Verify(ctx, opts...)
 }
@@ -627,9 +627,9 @@ func toSshPrivateKeyStorageCredential(ctx context.Context, storeId string, in *p
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetCredentialRequest) error {
 	return handlers.ValidateGetRequest(
 		handlers.NoopValidatorFn,

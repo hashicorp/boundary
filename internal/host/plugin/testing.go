@@ -22,26 +22,26 @@ import (
 )
 
 // TestCatalogs creates count number of static host catalogs to the provided DB
-// with the provided scope id.  If any errors are encountered during the creation of
+// with the provided project id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
-func TestCatalogs(t testing.TB, conn *db.DB, scopeId, pluginId string, count int) []*HostCatalog {
+func TestCatalogs(t testing.TB, conn *db.DB, projectId, pluginId string, count int) []*HostCatalog {
 	t.Helper()
 	var cats []*HostCatalog
 	for i := 0; i < count; i++ {
-		cats = append(cats, TestCatalog(t, conn, scopeId, pluginId))
+		cats = append(cats, TestCatalog(t, conn, projectId, pluginId))
 	}
 	return cats
 }
 
 // TestCatalog creates a plugin host catalogs to the provided DB
-// with the provided scope id.  If any errors are encountered during the creation of
+// with the provided project id.  If any errors are encountered during the creation of
 // the host catalog, the test will fail.
-func TestCatalog(t testing.TB, conn *db.DB, scopeId, pluginId string, opt ...Option) *HostCatalog {
+func TestCatalog(t testing.TB, conn *db.DB, projectId, pluginId string, opt ...Option) *HostCatalog {
 	t.Helper()
 	ctx := context.Background()
 	w := db.New(conn)
 
-	cat, err := NewHostCatalog(ctx, scopeId, pluginId, opt...)
+	cat, err := NewHostCatalog(ctx, projectId, pluginId, opt...)
 	require.NoError(t, err)
 	assert.NotNil(t, cat)
 
@@ -82,7 +82,7 @@ func TestSet(t testing.TB, conn *db.DB, kmsCache *kms.Kms, sched *scheduler.Sche
 	require.NoError(err)
 	require.NotEmpty(id)
 
-	set, _, err = repo.CreateSet(ctx, hc.ScopeId, set, opt...)
+	set, _, err = repo.CreateSet(ctx, hc.ProjectId, set, opt...)
 	require.NoError(err)
 
 	return set

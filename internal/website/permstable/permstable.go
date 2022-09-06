@@ -847,6 +847,14 @@ var worker = &Resource{
 			Actions: append(
 				lActions("a worker"),
 				&Action{
+					Name:        "create:controller-led",
+					Description: "Create a worker using the controller-led workflow",
+					Examples: []string{
+						"type=<type>;actions=create",
+						"type=<type>;actions=create:controller-led",
+					},
+				},
+				&Action{
 					Name:        "create:worker-led",
 					Description: "Create a worker using the worker-led workflow",
 					Examples: []string{

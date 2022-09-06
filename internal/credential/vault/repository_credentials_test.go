@@ -64,6 +64,22 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, origStore)
 
+	_, expToken := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "database", "pki", "secret"}))
+	expCredStoreIn, err := vault.NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(expToken), opts...)
+	assert.NoError(t, err)
+	require.NotNil(t, expCredStoreIn)
+	expStore, err := repo.CreateCredentialStore(ctx, expCredStoreIn)
+	assert.NoError(t, err)
+	require.NotNil(t, expStore)
+
+	// Set previous token to expired in the database and revoke in Vault to validate a
+	// credential store with an expired token is correctly returned over the API
+	num, err := rw.Exec(context.Background(), "update credential_vault_token set status = ? where store_id = ?",
+		[]interface{}{vault.ExpiredToken, expStore.PublicId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+	v.RevokeToken(t, expToken)
+
 	type libT int
 	const (
 		libDB libT = iota
@@ -75,6 +91,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		libErrKV
 		libUsrPassKV
 		libSshPkKV
+		libExpiredToken
 	)
 
 	libs := make(map[libT]string)
@@ -184,6 +201,19 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
 		libs[libSshPkKV] = lib.GetPublicId()
+	}
+	{
+		libPath := path.Join("secret", "data", "my-up-secret")
+		opts := []vault.Option{
+			vault.WithCredentialType(credential.UsernamePasswordType),
+		}
+		libIn, err := vault.NewCredentialLibrary(expStore.GetPublicId(), libPath, opts...)
+		assert.NoError(t, err)
+		require.NotNil(t, libIn)
+		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+		assert.NoError(t, err)
+		require.NotNil(t, lib)
+		libs[libExpiredToken] = lib.GetPublicId()
 	}
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
@@ -327,6 +357,17 @@ func TestRepository_IssueCredentials(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "invalid-expired-token",
+			convertFn: rc2dc,
+			requests: []credential.Request{
+				{
+					SourceId: libs[libExpiredToken],
+					Purpose:  credential.BrokeredPurpose,
+				},
+			},
+			wantErr: errors.InvalidParameter,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -338,7 +379,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 				TargetId:           tar.GetPublicId(),
 				HostSetId:          hs.GetPublicId(),
 				AuthTokenId:        at.GetPublicId(),
-				ScopeId:            prj.GetPublicId(),
+				ProjectId:          prj.GetPublicId(),
 				Endpoint:           "tcp://127.0.0.1:22",
 				DynamicCredentials: tt.convertFn(tt.requests),
 			})
@@ -410,7 +451,7 @@ func TestRepository_Revoke(t *testing.T) {
 			TargetId:    tar.GetPublicId(),
 			HostSetId:   hs.GetPublicId(),
 			AuthTokenId: at.GetPublicId(),
-			ScopeId:     prj.GetPublicId(),
+			ProjectId:   prj.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
 		sessionIds[i] = sess.GetPublicId()
@@ -528,7 +569,7 @@ func Test_TerminateSession(t *testing.T) {
 			TargetId:    tar.GetPublicId(),
 			HostSetId:   hs.GetPublicId(),
 			AuthTokenId: at.GetPublicId(),
-			ScopeId:     prj.GetPublicId(),
+			ProjectId:   prj.GetPublicId(),
 			Endpoint:    "tcp://127.0.0.1:22",
 		})
 		sessionIds[i] = sess.GetPublicId()

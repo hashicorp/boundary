@@ -13,7 +13,8 @@ import (
 )
 
 // Tests migration:
-//   migrations/oss/12/01_timestamp_sub_funcs.up.sql
+//
+//	migrations/oss/12/01_timestamp_sub_funcs.up.sql
 func TestWtSubSeconds(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
@@ -51,7 +52,8 @@ func testSetupDb(ctx context.Context, t *testing.T) *sql.DB {
 	))
 	require.NoError(err)
 
-	require.NoError(m.ApplyMigrations(ctx))
+	_, err = m.ApplyMigrations(ctx)
+	require.NoError(err)
 	state, err := m.CurrentState(ctx)
 	require.NoError(err)
 	want := &schema.State{

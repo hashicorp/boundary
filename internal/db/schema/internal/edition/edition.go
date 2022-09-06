@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/hashicorp/boundary/internal/db/schema/migration"
 )
 
 // Dialect is a specific SQL language variant. This generally is the same as
@@ -34,7 +36,7 @@ type Edition struct {
 
 	// The set of migrations that should be applied to a database to reach the latest version.
 	// This is a map of schema versions to sql.
-	Migrations map[int][]byte
+	Migrations migration.Migrations
 
 	// Priority is used to determine the order that multiple Editions should be applied.
 	Priority int
@@ -56,29 +58,32 @@ func (e Editions) Sort() {
 // lower number indicates a higher priority. New will panic if the structure
 // of the embed.FS is not correct. The files must be structured as follows:
 //
-//   <majorVersion>/
-//       <minorVersion>_<description>.up.sql
+//	<majorVersion>/
+//	    <minorVersion>_<description>.up.sql
 //
 // Where majorVersion and minorVersion are integers. There can be any number of
 // leading directories prior to the major versions. For example a directory
 // structure like the following is correct:
 //
-//   migrations/oss/postgres/
-//    0/
-//      01_initial.up.sql
-//    1/
-//      01_add_columns.up.sql
-//      02_rename_table.up.sql
-//    2/
-//      01_add_new_table.up.sql
-//      02_refactor_views.up.sql
-func New(name string, dialect Dialect, m embed.FS, priority int) Edition {
+//	migrations/oss/postgres/
+//	 0/
+//	   01_initial.up.sql
+//	 1/
+//	   01_add_columns.up.sql
+//	   02_rename_table.up.sql
+//	 2/
+//	   01_add_new_table.up.sql
+//	   02_refactor_views.up.sql
+func New(name string, dialect Dialect, m embed.FS, priority int, opt ...Option) (Edition, error) {
 	var largestSchemaVersion int
-	migrations := make(map[int][]byte)
+	migrations := make(migration.Migrations)
 
-	fs.WalkDir(m, ".", func(path string, d fs.DirEntry, err error) error {
+	opts := getOpts(opt...)
+	prehook := opts.withPreHooks
+
+	err := fs.WalkDir(m, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			panic(fmt.Sprintf("unable to process migration files: %s", err))
+			return fmt.Errorf("unable to process migration files: %s", err)
 		}
 
 		if d.IsDir() {
@@ -94,12 +99,12 @@ func New(name string, dialect Dialect, m embed.FS, priority int) Edition {
 
 		verMajor, err := strconv.Atoi(verMajorDir)
 		if err != nil {
-			panic(fmt.Sprintf("migration file does not have valid major version directory: %s", path))
+			return fmt.Errorf("migration file does not have valid major version directory: %s", path)
 		}
 
 		verMinor, err := strconv.Atoi(strings.SplitN(file, "_", 2)[0])
 		if err != nil {
-			panic(fmt.Sprintf("migration file does not have valid minor version prefix: %s", path))
+			return fmt.Errorf("migration file does not have valid minor version prefix: %s", path)
 		}
 
 		fullV := (verMajor * 1000) + verMinor
@@ -109,7 +114,7 @@ func New(name string, dialect Dialect, m embed.FS, priority int) Edition {
 
 		cbts, err := m.ReadFile(path)
 		if err != nil {
-			panic(fmt.Sprintf("unable to read migration file: %s", path))
+			return fmt.Errorf("unable to read migration file: %s", path)
 		}
 
 		contents := strings.TrimSpace(string(cbts))
@@ -122,12 +127,27 @@ func New(name string, dialect Dialect, m embed.FS, priority int) Edition {
 		contents = strings.TrimSpace(contents)
 
 		if _, exists := migrations[fullV]; exists {
-			panic(fmt.Sprintf("migration file for version %d already exists", fullV))
+			return fmt.Errorf("migration file for version %d already exists", fullV)
 		}
-		migrations[fullV] = []byte(contents)
+		migrations[fullV] = migration.Migration{
+			Edition:    name,
+			Statements: []byte(contents),
+			Version:    fullV,
+			PreHook:    prehook[fullV],
+		}
 
 		return nil
 	})
+	if err != nil {
+		return Edition{}, err
+	}
+
+	for k := range prehook {
+		_, ok := migrations[k]
+		if !ok {
+			return Edition{}, fmt.Errorf("prehook for version %d does not correspond with a migration", k)
+		}
+	}
 
 	return Edition{
 		Name:          name,
@@ -135,5 +155,5 @@ func New(name string, dialect Dialect, m embed.FS, priority int) Edition {
 		LatestVersion: largestSchemaVersion,
 		Migrations:    migrations,
 		Priority:      priority,
-	}
+	}, nil
 }

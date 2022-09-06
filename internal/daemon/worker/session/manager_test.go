@@ -406,11 +406,13 @@ func TestWorkerSetCloseTimeForResponse(t *testing.T) {
 					connInfoMap: map[string]*ConnInfo{
 						"foo": {Id: "foo"},
 					},
+					sessionId: "one",
 				})
 				m.Store("two", &sess{
 					resp: &pbs.LookupSessionResponse{Authorization: &targets.SessionAuthorizationData{
 						SessionId: "two",
 					}},
+					sessionId: "two",
 				})
 
 				return m

@@ -11,7 +11,7 @@ begin;
 
   -- insert first session, should result in a new user dimension
   insert into session
-    ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
+    ( project_id    ,  target_id     ,  host_set_id   ,  host_id       ,  user_id       ,  auth_token_id ,  certificate ,  endpoint , public_id)
   values
     ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__01' , 'u_____walter' , 'tok___walter' , 'abc'::bytea , 'ep1'    , 's1____walter');
 
@@ -23,7 +23,7 @@ begin;
   --  * same host
   -- should result in a new user dimension
   insert into session
-    ( scope_id      , target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
+    ( project_id    ,  target_id     ,  host_set_id   ,  host_id       ,  user_id       ,  auth_token_id ,  certificate ,  endpoint , public_id)
   values
     ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__01' , 'u_____walter' , 'tok1__walter' , 'abc'::bytea , 'ep1'    , 's4____walter');
 

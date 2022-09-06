@@ -212,6 +212,11 @@ type Worker struct {
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
+
+	// ControllerGeneratedActivationToken is a controller-generated activation
+	// token used to register this worker to the cluster. It can be a path, env
+	// var, or direct value.
+	ControllerGeneratedActivationToken string `hcl:"controller_generated_activation_token"`
 }
 
 type Database struct {
@@ -454,6 +459,11 @@ func Parse(d string) (*Config, error) {
 			return nil, errors.New("Worker description contains non-printable characters")
 		}
 
+		result.Worker.ControllerGeneratedActivationToken, err = parseutil.ParsePath(result.Worker.ControllerGeneratedActivationToken)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing worker activation token: %w", err)
+		}
+
 		if result.Worker.TagsRaw != nil {
 			switch t := result.Worker.TagsRaw.(type) {
 			// We allow `tags` to be a simple string containing a URL with schema.
@@ -546,12 +556,18 @@ func Parse(d string) (*Config, error) {
 			if !strutil.Printable(k) {
 				return nil, fmt.Errorf("Tag key %q contains non-printable characters", k)
 			}
+			if strings.Contains(k, ",") {
+				return nil, fmt.Errorf("Tag key %q cannot contain commas", k)
+			}
 			for _, val := range v {
 				if val != strings.ToLower(val) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q is not all lower-case letters", val, k)
 				}
 				if !strutil.Printable(k) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q contains non-printable characters", v, k)
+				}
+				if strings.Contains(val, ",") {
+					return nil, fmt.Errorf("Tag value %q for tag key %q cannot contain commas", val, k)
 				}
 			}
 		}
@@ -619,7 +635,6 @@ func Parse(d string) (*Config, error) {
 }
 
 // supportControllersRawConfig returns either initialUpstreamsRaw or controllersRaw depending on which is populated. Errors when both fields are populated.
-//
 func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, error) {
 	switch {
 	case initialUpstreamsRaw == nil && controllersRaw != nil:

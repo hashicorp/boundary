@@ -1,6 +1,9 @@
 package schema
 
-import "github.com/hashicorp/boundary/internal/db/schema/internal/edition"
+import (
+	"github.com/hashicorp/boundary/internal/db/schema/internal/edition"
+	"github.com/hashicorp/boundary/internal/db/schema/migration"
+)
 
 // PartialEditions is used by TestCreatePartialEditions. It is a map of edition
 // names to the max version that should be included.
@@ -20,7 +23,7 @@ func TestCreatePartialEditions(dialect Dialect, p PartialEditions) edition.Editi
 				Dialect:       ee.Dialect,
 				Priority:      ee.Priority,
 				LatestVersion: nilVersion,
-				Migrations:    make(map[int][]byte),
+				Migrations:    make(migration.Migrations),
 			}
 
 			for k, b := range ee.Migrations {

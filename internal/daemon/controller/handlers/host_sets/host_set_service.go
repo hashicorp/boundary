@@ -75,13 +75,13 @@ func init() {
 }
 
 type Service struct {
-	pbs.UnimplementedHostSetServiceServer
+	pbs.UnsafeHostSetServiceServer
 
 	staticRepoFn common.StaticRepoFactory
 	pluginRepoFn common.PluginHostRepoFactory
 }
 
-var _ pbs.HostSetServiceServer = Service{}
+var _ pbs.HostSetServiceServer = (*Service)(nil)
 
 // NewService returns a host set Service which handles host set related requests to boundary and uses the provided
 // repositories for storage and retrieval.
@@ -474,7 +474,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 	return hs, hl, plg, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, item *pb.HostSet) (host.Set, *plugins.PluginInfo, error) {
+func (s Service) createInRepo(ctx context.Context, projectId, catalogId string, item *pb.HostSet) (host.Set, *plugins.PluginInfo, error) {
 	const op = "host_sets.(Service).createInRepo"
 	if item == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
@@ -491,7 +491,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 		if err != nil {
 			return nil, nil, err
 		}
-		out, err := repo.CreateSet(ctx, scopeId, h)
+		out, err := repo.CreateSet(ctx, projectId, h)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create host set"))
 		}
@@ -508,7 +508,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 		if err != nil {
 			return nil, nil, err
 		}
-		out, hsplg, err := repo.CreateSet(ctx, scopeId, h)
+		out, hsplg, err := repo.CreateSet(ctx, projectId, h)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create host set"))
 		}
@@ -523,7 +523,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId, catalogId string, it
 	return hSet, plg, nil
 }
 
-func (s Service) updateStaticInRepo(ctx context.Context, scopeId, catalogId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, error) {
+func (s Service) updateStaticInRepo(ctx context.Context, projectId, catalogId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, error) {
 	const op = "host_sets.(Service).updateStaticInRepo"
 	item := req.GetItem()
 	h, err := toStorageStaticSet(ctx, catalogId, item)
@@ -539,7 +539,7 @@ func (s Service) updateStaticInRepo(ctx context.Context, scopeId, catalogId stri
 	if err != nil {
 		return nil, nil, err
 	}
-	out, m, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
+	out, m, rowsUpdated, err := repo.UpdateSet(ctx, projectId, h, item.GetVersion(), dbMask)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host set"))
 	}
@@ -553,7 +553,7 @@ func (s Service) updateStaticInRepo(ctx context.Context, scopeId, catalogId stri
 	return out, hl, nil
 }
 
-func (s Service) updatePluginInRepo(ctx context.Context, scopeId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, *plugins.PluginInfo, error) {
+func (s Service) updatePluginInRepo(ctx context.Context, projectId string, req *pbs.UpdateHostSetRequest) (host.Set, []host.Host, *plugins.PluginInfo, error) {
 	const op = "host_sets.(Service).updatePluginInRepo"
 	item := req.GetItem()
 	h, err := toStoragePluginSet(ctx, "", item)
@@ -569,7 +569,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, scopeId string, req *pb
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, hosts, plg, rowsUpdated, err := repo.UpdateSet(ctx, scopeId, h, item.GetVersion(), dbMask)
+	out, hosts, plg, rowsUpdated, err := repo.UpdateSet(ctx, projectId, h, item.GetVersion(), dbMask)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update host set"))
 	}
@@ -583,18 +583,18 @@ func (s Service) updatePluginInRepo(ctx context.Context, scopeId string, req *pb
 	return out, hl, toPluginInfo(plg), nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, catalogId string, req *pbs.UpdateHostSetRequest) (hs host.Set, hosts []host.Host, plg *plugins.PluginInfo, err error) {
+func (s Service) updateInRepo(ctx context.Context, projectId, catalogId string, req *pbs.UpdateHostSetRequest) (hs host.Set, hosts []host.Host, plg *plugins.PluginInfo, err error) {
 	const op = "host_sets.(Service).updateInRepo"
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
 	case static.Subtype:
-		hs, hosts, err = s.updateStaticInRepo(ctx, scopeId, catalogId, req)
+		hs, hosts, err = s.updateStaticInRepo(ctx, projectId, catalogId, req)
 	case plugin.Subtype:
-		hs, hosts, plg, err = s.updatePluginInRepo(ctx, scopeId, req)
+		hs, hosts, plg, err = s.updatePluginInRepo(ctx, projectId, req)
 	}
 	return
 }
 
-func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, error) {
+func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool, error) {
 	const op = "host_sets.(Service).deleteFromRepo"
 	rows := 0
 	switch subtypes.SubtypeFromId(domain, id) {
@@ -603,7 +603,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if err != nil {
 			return false, err
 		}
-		rows, err = repo.DeleteSet(ctx, scopeId, id)
+		rows, err = repo.DeleteSet(ctx, projectId, id)
 		if err != nil {
 			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 		}
@@ -612,7 +612,7 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 		if err != nil {
 			return false, err
 		}
-		rows, err = repo.DeleteSet(ctx, scopeId, id)
+		rows, err = repo.DeleteSet(ctx, projectId, id)
 		if err != nil {
 			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 		}
@@ -654,13 +654,13 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host
 	return sets, plg, nil
 }
 
-func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*static.HostSet, []host.Host, error) {
+func (s Service) addInRepo(ctx context.Context, projectId, setId string, hostIds []string, version uint32) (*static.HostSet, []host.Host, error) {
 	const op = "host_sets.(Service).addInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, nil, err
 	}
-	_, err = repo.AddSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
+	_, err = repo.AddSetMembers(ctx, projectId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to add hosts to host set"))
 	}
@@ -678,13 +678,13 @@ func (s Service) addInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	return out, hl, nil
 }
 
-func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*static.HostSet, []host.Host, error) {
+func (s Service) setInRepo(ctx context.Context, projectId, setId string, hostIds []string, version uint32) (*static.HostSet, []host.Host, error) {
 	const op = "host_sets.(Service).setInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	_, _, err = repo.SetSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
+	_, _, err = repo.SetSetMembers(ctx, projectId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to set hosts in host set"))
 	}
@@ -703,13 +703,13 @@ func (s Service) setInRepo(ctx context.Context, scopeId, setId string, hostIds [
 	return out, hl, nil
 }
 
-func (s Service) removeInRepo(ctx context.Context, scopeId, setId string, hostIds []string, version uint32) (*static.HostSet, []host.Host, error) {
+func (s Service) removeInRepo(ctx context.Context, projectId, setId string, hostIds []string, version uint32) (*static.HostSet, []host.Host, error) {
 	const op = "host_sets.(Service).removeInRepo"
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	_, err = repo.DeleteSetMembers(ctx, scopeId, setId, version, strutil.RemoveDuplicates(hostIds, false))
+	_, err = repo.DeleteSetMembers(ctx, projectId, setId, version, strutil.RemoveDuplicates(hostIds, false))
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to remove hosts from host set"))
 	}
@@ -801,7 +801,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 		}
 		cat = pc
 	}
-	opts = append(opts, auth.WithScopeId(cat.GetScopeId()), auth.WithPin(parentId))
+	opts = append(opts, auth.WithScopeId(cat.GetProjectId()), auth.WithPin(parentId))
 	return cat, auth.Verify(ctx, opts...)
 }
 
@@ -937,11 +937,11 @@ func toStoragePluginSet(ctx context.Context, catalogId string, item *pb.HostSet)
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
-//  * The type asserted by the ID and/or field is known
-//  * If relevant, the type derived from the id prefix matches what is claimed by the type field
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
+//   - The type asserted by the ID and/or field is known
+//   - If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostSetRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix)
 }

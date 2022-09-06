@@ -35,12 +35,12 @@ func TestRepository_LookupTarget(t *testing.T) {
 	tgt := tcp.TestTarget(ctx, t, conn, proj.PublicId, "target-name")
 
 	tests := []struct {
-		testName  string
-		id        string
-		name      string
-		scopeId   string
-		scopeName string
-		wantErr   bool
+		testName    string
+		id          string
+		name        string
+		projectId   string
+		projectName string
+		wantErr     bool
 	}{
 		{
 			testName: "id",
@@ -53,58 +53,58 @@ func TestRepository_LookupTarget(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			testName: "scope id only",
-			scopeId:  proj.PublicId,
-			wantErr:  true,
-		},
-		{
-			testName:  "scope name only",
-			scopeName: proj.Name,
+			testName:  "project id only",
+			projectId: proj.PublicId,
 			wantErr:   true,
 		},
 		{
-			testName:  "scope name and id",
-			scopeId:   proj.PublicId,
-			scopeName: proj.Name,
-			wantErr:   true,
+			testName:    "project name only",
+			projectName: proj.Name,
+			wantErr:     true,
 		},
 		{
-			testName:  "everything",
+			testName:    "project name and id",
+			projectId:   proj.PublicId,
+			projectName: proj.Name,
+			wantErr:     true,
+		},
+		{
+			testName:    "everything",
+			name:        tgt.GetName(),
+			projectId:   proj.PublicId,
+			projectName: proj.Name,
+			wantErr:     true,
+		},
+		{
+			testName:    "name and project name",
+			name:        tgt.GetName(),
+			projectName: proj.Name,
+			wantErr:     false,
+		},
+		{
+			testName:  "name and project id",
 			name:      tgt.GetName(),
-			scopeId:   proj.PublicId,
-			scopeName: proj.Name,
-			wantErr:   true,
-		},
-		{
-			testName:  "name and scope name",
-			name:      tgt.GetName(),
-			scopeName: proj.Name,
+			projectId: proj.PublicId,
 			wantErr:   false,
 		},
 		{
-			testName: "name and scope id",
-			name:     tgt.GetName(),
-			scopeId:  proj.PublicId,
-			wantErr:  false,
-		},
-		{
-			testName: "id and name",
-			id:       tgt.GetPublicId(),
-			name:     tgt.GetName(),
-			scopeId:  proj.PublicId,
-			wantErr:  true,
-		},
-		{
-			testName:  "id and scope name",
+			testName:  "id and name",
 			id:        tgt.GetPublicId(),
-			scopeName: proj.Name,
+			name:      tgt.GetName(),
+			projectId: proj.PublicId,
 			wantErr:   true,
 		},
 		{
-			testName: "id and scope id",
-			id:       tgt.GetPublicId(),
-			scopeId:  proj.PublicId,
-			wantErr:  true,
+			testName:    "id and project name",
+			id:          tgt.GetPublicId(),
+			projectName: proj.Name,
+			wantErr:     true,
+		},
+		{
+			testName:  "id and project id",
+			id:        tgt.GetPublicId(),
+			projectId: proj.PublicId,
+			wantErr:   true,
 		},
 	}
 	for _, tt := range tests {
@@ -118,11 +118,11 @@ func TestRepository_LookupTarget(t *testing.T) {
 			if tt.name != "" {
 				opts = append(opts, target.WithName(tt.name))
 			}
-			if tt.scopeId != "" {
-				opts = append(opts, target.WithScopeId(tt.scopeId))
+			if tt.projectId != "" {
+				opts = append(opts, target.WithProjectId(tt.projectId))
 			}
-			if tt.scopeName != "" {
-				opts = append(opts, target.WithScopeName(tt.scopeName))
+			if tt.projectName != "" {
+				opts = append(opts, target.WithProjectName(tt.projectName))
 			}
 			got, _, _, err := repo.LookupTarget(ctx, id, opts...)
 			if tt.wantErr {
@@ -151,61 +151,61 @@ func TestRepository_ListTargets(t *testing.T) {
 		opt []target.Option
 	}
 	tests := []struct {
-		name           string
-		createCnt      int
-		createScopeId  string
-		createScopeId2 string
-		grantUserId    string
-		args           args
-		wantCnt        int
-		wantErr        bool
+		name             string
+		createCnt        int
+		createProjectId  string
+		createProjectId2 string
+		grantUserId      string
+		args             args
+		wantCnt          int
+		wantErr          bool
 	}{
 		{
-			name:          "tcp-target",
-			createCnt:     5,
-			createScopeId: proj.PublicId,
+			name:            "tcp-target",
+			createCnt:       5,
+			createProjectId: proj.PublicId,
 			args: args{
-				opt: []target.Option{target.WithType(tcp.Subtype), target.WithScopeIds([]string{proj.PublicId})},
+				opt: []target.Option{target.WithType(tcp.Subtype), target.WithProjectIds([]string{proj.PublicId})},
 			},
 			wantCnt: 5,
 			wantErr: false,
 		},
 		{
-			name:          "no-limit",
-			createCnt:     testLimit + 1,
-			createScopeId: proj.PublicId,
+			name:            "no-limit",
+			createCnt:       testLimit + 1,
+			createProjectId: proj.PublicId,
 			args: args{
-				opt: []target.Option{target.WithLimit(-1), target.WithScopeIds([]string{proj.PublicId})},
+				opt: []target.Option{target.WithLimit(-1), target.WithProjectIds([]string{proj.PublicId})},
 			},
 			wantCnt: testLimit + 1,
 			wantErr: false,
 		},
 		{
-			name:          "default-limit",
-			createCnt:     testLimit + 1,
-			createScopeId: proj.PublicId,
+			name:            "default-limit",
+			createCnt:       testLimit + 1,
+			createProjectId: proj.PublicId,
 			args: args{
-				opt: []target.Option{target.WithScopeIds([]string{proj.PublicId})},
+				opt: []target.Option{target.WithProjectIds([]string{proj.PublicId})},
 			},
 			wantCnt: testLimit,
 			wantErr: false,
 		},
 		{
-			name:          "custom-limit",
-			createCnt:     testLimit + 1,
-			createScopeId: proj.PublicId,
+			name:            "custom-limit",
+			createCnt:       testLimit + 1,
+			createProjectId: proj.PublicId,
 			args: args{
-				opt: []target.Option{target.WithLimit(3), target.WithScopeIds([]string{proj.PublicId})},
+				opt: []target.Option{target.WithLimit(3), target.WithProjectIds([]string{proj.PublicId})},
 			},
 			wantCnt: 3,
 			wantErr: false,
 		},
 		{
-			name:          "bad-org",
-			createCnt:     1,
-			createScopeId: proj.PublicId,
+			name:            "bad-org",
+			createCnt:       1,
+			createProjectId: proj.PublicId,
 			args: args{
-				opt: []target.Option{target.WithScopeIds([]string{"bad-id"})},
+				opt: []target.Option{target.WithProjectIds([]string{"bad-id"})},
 			},
 			wantCnt: 0,
 			wantErr: false,
@@ -219,10 +219,10 @@ func TestRepository_ListTargets(t *testing.T) {
 			testGroups := []target.Target{}
 			for i := 0; i < tt.createCnt; i++ {
 				switch {
-				case tt.createScopeId2 != "" && i%2 == 0:
-					testGroups = append(testGroups, tcp.TestTarget(ctx, t, conn, tt.createScopeId2, strconv.Itoa(i)))
+				case tt.createProjectId2 != "" && i%2 == 0:
+					testGroups = append(testGroups, tcp.TestTarget(ctx, t, conn, tt.createProjectId2, strconv.Itoa(i)))
 				default:
-					testGroups = append(testGroups, tcp.TestTarget(ctx, t, conn, tt.createScopeId, strconv.Itoa(i)))
+					testGroups = append(testGroups, tcp.TestTarget(ctx, t, conn, tt.createProjectId, strconv.Itoa(i)))
 				}
 			}
 			assert.Equal(tt.createCnt, len(testGroups))
@@ -261,7 +261,7 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 		total++
 	}
 
-	got, err := repo.ListTargets(ctx, target.WithScopeIds([]string{"global", proj1.GetPublicId(), proj2.GetPublicId()}))
+	got, err := repo.ListTargets(ctx, target.WithProjectIds([]string{"global", proj1.GetPublicId(), proj2.GetPublicId()}))
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 }

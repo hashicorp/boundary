@@ -24,9 +24,9 @@ type options struct {
 	WithDescription            string
 	WithDefaultPort            uint32
 	WithLimit                  int
-	WithScopeId                string
-	WithScopeIds               []string
-	WithScopeName              string
+	WithProjectId              string
+	WithProjectIds             []string
+	WithProjectName            string
 	WithUserId                 string
 	WithType                   subtypes.Subtype
 	WithHostSources            []string
@@ -45,9 +45,9 @@ func getDefaultOptions() options {
 		WithDescription:            "",
 		WithLimit:                  0,
 		WithDefaultPort:            0,
-		WithScopeId:                "",
-		WithScopeIds:               nil,
-		WithScopeName:              "",
+		WithProjectId:              "",
+		WithProjectIds:             nil,
+		WithProjectName:            "",
 		WithUserId:                 "",
 		WithType:                   "",
 		WithHostSources:            nil,
@@ -90,24 +90,24 @@ func WithDefaultPort(p uint32) Option {
 	}
 }
 
-// WithScopeId provides an option to search by a scope id
-func WithScopeId(scopeId string) Option {
+// WithProjectId provides an option to search by a project id
+func WithProjectId(projectId string) Option {
 	return func(o *options) {
-		o.WithScopeId = scopeId
+		o.WithProjectId = projectId
 	}
 }
 
-// WithScopeId provides an option to search by multiple scope id
-func WithScopeIds(scopeIds []string) Option {
+// WithProjectId provides an option to search by multiple project id
+func WithProjectIds(projectIds []string) Option {
 	return func(o *options) {
-		o.WithScopeIds = scopeIds
+		o.WithProjectIds = projectIds
 	}
 }
 
-// WithScopeId provides an option to search by a scope name
-func WithScopeName(scopeName string) Option {
+// WithProjectId provides an option to search by a project name
+func WithProjectName(projectName string) Option {
 	return func(o *options) {
-		o.WithScopeName = scopeName
+		o.WithProjectName = projectName
 	}
 }
 

@@ -9,22 +9,22 @@ import (
 )
 
 // AddSessionCredentials encrypts the credData and adds the credentials to the repository. The credentials are linked
-// to the sessionID provided, and encrypted using the sessScopeId. Session credentials are only valid for pending and
+// to the sessionID provided, and encrypted using the sessProjectId. Session credentials are only valid for pending and
 // active sessions, once a session ends, all session credentials are deleted.
 // All options are ignored.
-func (r *Repository) AddSessionCredentials(ctx context.Context, sessScopeId, sessionId string, credData []Credential, _ ...Option) error {
+func (r *Repository) AddSessionCredentials(ctx context.Context, sessProjectId, sessionId string, credData []Credential, _ ...Option) error {
 	const op = "session.(Repository).AddSessionCredentials"
 	if sessionId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
-	if sessScopeId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing session scope id")
+	if sessProjectId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session project id")
 	}
 	if len(credData) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing credentials")
 	}
 
-	databaseWrapper, err := r.kms.GetWrapper(ctx, sessScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, sessProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
@@ -59,16 +59,16 @@ func (r *Repository) AddSessionCredentials(ctx context.Context, sessScopeId, ses
 
 // ListSessionCredentials returns all Credential attached to the sessionId.
 // All options are ignored.
-func (r *Repository) ListSessionCredentials(ctx context.Context, sessScopeId, sessionId string, _ ...Option) ([]Credential, error) {
+func (r *Repository) ListSessionCredentials(ctx context.Context, sessProjectId, sessionId string, _ ...Option) ([]Credential, error) {
 	const op = "session.(Repository).ListSessionCredentials"
 	if sessionId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
-	if sessScopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session scope id")
+	if sessProjectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session project id")
 	}
 
-	databaseWrapper, err := r.kms.GetWrapper(ctx, sessScopeId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := r.kms.GetWrapper(ctx, sessProjectId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}

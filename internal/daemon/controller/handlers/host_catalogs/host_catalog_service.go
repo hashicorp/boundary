@@ -81,7 +81,7 @@ func init() {
 }
 
 type Service struct {
-	pbs.UnimplementedHostCatalogServiceServer
+	pbs.UnsafeHostCatalogServiceServer
 
 	staticRepoFn     common.StaticRepoFactory
 	pluginHostRepoFn common.PluginHostRepoFactory
@@ -89,7 +89,7 @@ type Service struct {
 	iamRepoFn        common.IamRepoFactory
 }
 
-var _ pbs.HostCatalogServiceServer = Service{}
+var _ pbs.HostCatalogServiceServer = (*Service)(nil)
 
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
@@ -118,7 +118,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
-		// may have authorization on downstream scopes. Or, if they've not
+		// may have authorization on downstream projects. Or, if they've not
 		// authenticated, still process in case u_anon has permissions.
 		if (authResults.Error == handlers.ForbiddenError() || authResults.Error == handlers.UnauthenticatedError()) &&
 			req.GetRecursive() &&
@@ -156,7 +156,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	}
 	for _, item := range items {
 		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetScopeId()
+		res.ScopeId = item.GetProjectId()
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
 			continue
@@ -166,7 +166,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetProjectId()]))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
@@ -436,12 +436,12 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Catalog, *plu
 	return cat, plg, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]host.Catalog, map[string]*plugins.PluginInfo, error) {
+func (s Service) listFromRepo(ctx context.Context, projectIds []string) ([]host.Catalog, map[string]*plugins.PluginInfo, error) {
 	repo, err := s.staticRepoFn()
 	if err != nil {
 		return nil, nil, err
 	}
-	ul, err := repo.ListCatalogs(ctx, scopeIds)
+	ul, err := repo.ListCatalogs(ctx, projectIds)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -453,7 +453,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]host.Ca
 	if err != nil {
 		return nil, nil, err
 	}
-	pl, plgs, err := pluginRepo.ListCatalogs(ctx, scopeIds)
+	pl, plgs, err := pluginRepo.ListCatalogs(ctx, projectIds)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -664,7 +664,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 				res.Error = handlers.NotFoundError()
 				return res
 			}
-			parentId = cat.GetScopeId()
+			parentId = cat.GetProjectId()
 			opts = append(opts, auth.WithId(id))
 		case plugin.Subtype:
 			repo, err := s.pluginHostRepoFn()
@@ -681,7 +681,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 				res.Error = handlers.NotFoundError()
 				return res
 			}
-			parentId = cat.GetScopeId()
+			parentId = cat.GetProjectId()
 			opts = append(opts, auth.WithId(id))
 		}
 	}
@@ -713,7 +713,7 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 		out.Id = in.GetPublicId()
 	}
 	if outputFields.Has(globals.ScopeIdField) {
-		out.ScopeId = in.GetScopeId()
+		out.ScopeId = in.GetProjectId()
 	}
 	if outputFields.Has(globals.TypeField) {
 		switch in.(type) {
@@ -774,7 +774,7 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 	return &out, nil
 }
 
-func toStorageStaticCatalog(ctx context.Context, scopeId string, item *pb.HostCatalog) (*static.HostCatalog, error) {
+func toStorageStaticCatalog(ctx context.Context, projectId string, item *pb.HostCatalog) (*static.HostCatalog, error) {
 	const op = "host_catalog_service.toStorageStaticCatalog"
 	var opts []static.Option
 	if name := item.GetName(); name != nil {
@@ -783,14 +783,14 @@ func toStorageStaticCatalog(ctx context.Context, scopeId string, item *pb.HostCa
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
 	}
-	hc, err := static.NewHostCatalog(scopeId, opts...)
+	hc, err := static.NewHostCatalog(projectId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog"))
 	}
 	return hc, nil
 }
 
-func toStoragePluginCatalog(ctx context.Context, scopeId, plgId string, item *pb.HostCatalog) (*plugin.HostCatalog, error) {
+func toStoragePluginCatalog(ctx context.Context, projectId, plgId string, item *pb.HostCatalog) (*plugin.HostCatalog, error) {
 	const op = "host_catalog_service.toStoragePluginCatalog"
 	var opts []plugin.Option
 	if name := item.GetName(); name != nil {
@@ -805,7 +805,7 @@ func toStoragePluginCatalog(ctx context.Context, scopeId, plgId string, item *pb
 	if secrets := item.GetSecrets(); secrets != nil {
 		opts = append(opts, plugin.WithSecrets(secrets))
 	}
-	hc, err := plugin.NewHostCatalog(ctx, scopeId, plgId, opts...)
+	hc, err := plugin.NewHostCatalog(ctx, projectId, plgId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for creation"))
 	}
@@ -814,11 +814,11 @@ func toStoragePluginCatalog(ctx context.Context, scopeId, plgId string, item *pb
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
-//  * The type asserted by the ID and/or field is known
-//  * If relevant, the type derived from the id prefix matches what is claimed by the type field
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
+//   - The type asserted by the ID and/or field is known
+//   - If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix, plugin.HostCatalogPrefix, plugin.PreviousHostCatalogPrefix)
 }

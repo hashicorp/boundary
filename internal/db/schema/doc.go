@@ -7,16 +7,15 @@
 // prior to creating a schema.Manager. This is generally done in an init
 // function of another package, i.e.:
 //
-//     //go:embed postgres
-//     var postgres embed.FS
+//	//go:embed postgres
+//	var postgres embed.FS
 //
-//     func init() {
-//         schema.RegisterEdition("oss", schema.Postgres, postgres, 0)
-//     }
+//	func init() {
+//	    schema.RegisterEdition("oss", schema.Postgres, postgres, 0)
+//	}
 //
 // Then a manager can be created and used to apply the migrations:
 //
-//     m := schema.NewManager(ctx, schema.Postgres, db)
-//     m.ApplyMigrations()
-//
+//	m := schema.NewManager(ctx, schema.Postgres, db)
+//	m.ApplyMigrations()
 package schema

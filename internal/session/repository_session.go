@@ -47,8 +47,8 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	if newSession.AuthTokenId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
 	}
-	if newSession.ScopeId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	if newSession.ProjectId == "" {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	if newSession.CtTofuToken != nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "ct is not empty")
@@ -210,7 +210,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	if len(session.CtTofuToken) > 0 {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ScopeId, kms.KeyPurposeDatabase)
+		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ProjectId, kms.KeyPurposeDatabase)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}
@@ -229,23 +229,23 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 	return &session, authzSummary, nil
 }
 
-// fetchAuthzProtectedSessionsByScope fetches sessions for the given scopes.
+// fetchAuthzProtectedSessionsByProject fetches sessions for the given projects.
 // Note that the sessions are not fully populated, and only contain the
 // necessary information to implement the boundary.AuthzProtectedEntity
 // interface. Supports the WithTerminated option.
-func (r *Repository) fetchAuthzProtectedSessionsByScope(
-	ctx context.Context, scopeIds []string, opt ...Option,
+func (r *Repository) fetchAuthzProtectedSessionsByProject(
+	ctx context.Context, projectIds []string, opt ...Option,
 ) (map[string][]boundary.AuthzProtectedEntity, error) {
-	const op = "session.(Repository).fetchAuthzProtectedSessionsByScope"
+	const op = "session.(Repository).fetchAuthzProtectedSessionsByProject"
 
 	opts := getOpts(opt...)
 
-	if len(scopeIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scopes given")
+	if len(projectIds) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project ids given")
 	}
 
 	args := []interface{}{
-		sql.Named("scope_ids", "{"+strings.Join(scopeIds, ",")+"}"),
+		sql.Named("project_ids", "{"+strings.Join(projectIds, ",")+"}"),
 	}
 
 	var query string
@@ -267,13 +267,13 @@ func (r *Repository) fetchAuthzProtectedSessionsByScope(
 		if err := r.reader.ScanRows(ctx, rows, &ses); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
-		sessionsMap[ses.GetScopeId()] = append(sessionsMap[ses.GetScopeId()], ses)
+		sessionsMap[ses.GetProjectId()] = append(sessionsMap[ses.GetProjectId()], ses)
 	}
 
 	return sessionsMap, nil
 }
 
-// ListSessions lists sessions.  Supports the WithLimit, WithScopeId, and WithSessionIds options.
+// ListSessions lists sessions.  Supports the WithLimit, WithProjectId, and WithSessionIds options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).ListSessions"
 	opts := getOpts(opt...)
@@ -281,18 +281,18 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	var args []interface{}
 
 	inClauseCnt := 0
-	switch len(opts.withScopeIds) {
+	switch len(opts.withProjectIds) {
 	case 0:
 	case 1:
 		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("scope_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withScopeIds[0]))
+		where, args = append(where, fmt.Sprintf("project_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.withProjectIds[0]))
 	default:
-		idsInClause := make([]string, 0, len(opts.withScopeIds))
-		for _, id := range opts.withScopeIds {
+		idsInClause := make([]string, 0, len(opts.withProjectIds))
+		for _, id := range opts.withProjectIds {
 			inClauseCnt += 1
 			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
 		}
-		where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(idsInClause, ",")))
+		where = append(where, fmt.Sprintf("project_id in (%s)", strings.Join(idsInClause, ",")))
 	}
 
 	if opts.withUserId != "" {
@@ -424,9 +424,10 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 }
 
 // TerminateCompletedSessions will terminate sessions in the repo based on:
-//  * sessions that have exhausted their connection limit and all their connections are closed.
-//	* sessions that are expired and all their connections are closed.
-//	* sessions that are canceling and all their connections are closed
+//   - sessions that have exhausted their connection limit and all their connections are closed.
+//   - sessions that are expired and all their connections are closed.
+//   - sessions that are canceling and all their connections are closed
+//
 // This function should called on a periodic basis a Controllers via it's
 // "ticker" pattern.
 func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error) {
@@ -453,9 +454,9 @@ func (r *Repository) TerminateCompletedSessions(ctx context.Context) (int, error
 
 // terminateSessionIfPossible is called on connection close and will attempt to close the connection's
 // session if the following conditions are met:
-//  * sessions that have exhausted their connection limit and all their connections are closed.
-//	* sessions that are expired and all their connections are closed.
-//	* sessions that are canceling and all their connections are closed
+//   - sessions that have exhausted their connection limit and all their connections are closed.
+//   - sessions that are expired and all their connections are closed.
+//   - sessions that are canceling and all their connections are closed
 func (r *Repository) terminateSessionIfPossible(ctx context.Context, sessionId string) (int, error) {
 	const op = "session.(Repository).terminateSessionIfPossible"
 	rowsAffected := 0
@@ -547,7 +548,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			if err := reader.LookupById(ctx, &foundSession); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
 			}
-			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ScopeId, kms.KeyPurposeDatabase)
+			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ProjectId, kms.KeyPurposeDatabase)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 			}
@@ -619,7 +620,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated session and %d rows updated", rowsUpdated))
 			}
 			if len(updatedSession.CtTofuToken) > 0 {
-				databaseWrapper, err := r.kms.GetWrapper(ctx, updatedSession.ScopeId, kms.KeyPurposeDatabase)
+				databaseWrapper, err := r.kms.GetWrapper(ctx, updatedSession.ProjectId, kms.KeyPurposeDatabase)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 				}

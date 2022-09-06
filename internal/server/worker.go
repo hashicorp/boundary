@@ -67,13 +67,16 @@ type Worker struct {
 	// other based on the context in which the worker is passed.  As such
 	// inputTags should only be read when performing mutations on the database.
 	inputTags []*Tag `gorm:"-"`
+
+	// This is used to pass the token back to the calling function
+	ControllerGeneratedActivationToken string `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
 // WithAddress, and WithWorkerTags. All other options are ignored.  This does
 // not set any of the worker reported values.
 func NewWorker(scopeId string, opt ...Option) *Worker {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	return &Worker{
 		Worker: &store.Worker{
 			ScopeId:     scopeId,

@@ -16,13 +16,15 @@ import (
 )
 
 type multihopServiceServer struct {
-	multihop.UnimplementedMultihopServiceServer
+	multihop.UnsafeMultihopServiceServer
 
 	storage nodeenrollment.Storage
 	direct  bool
 	client  *atomic.Value
 	options []nodeenrollment.Option
 }
+
+var _ multihop.MultihopServiceServer = (*multihopServiceServer)(nil)
 
 // NewMultihopServiceServer creates a new service implementing
 // MultihopServiceServer, storing values used for the implementing functions.
@@ -43,8 +45,6 @@ func NewMultihopServiceServer(storage nodeenrollment.Storage, direct bool, clien
 		options: opt,
 	}, nil
 }
-
-var _ multihop.MultihopServiceServer = (*multihopServiceServer)(nil)
 
 // FetchNodeCredentials implements the MultihopServiceServer interface. If it's
 // direct (e.g. running on a controller) it handles the request directly,

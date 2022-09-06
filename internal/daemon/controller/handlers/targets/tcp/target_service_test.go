@@ -666,7 +666,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
@@ -702,7 +702,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("name"),
 					Description: wrapperspb.String("desc"),
@@ -802,7 +802,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("default"),
 					CreatedTime: tar.GetCreateTime().GetTimestamp(),
@@ -836,7 +836,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("updated"),
 					Description: wrapperspb.String("default"),
@@ -871,7 +871,7 @@ func TestUpdate(t *testing.T) {
 			res: &pbs.UpdateTargetResponse{
 				Item: &pb.Target{
 					Id:          tar.GetPublicId(),
-					ScopeId:     tar.GetScopeId(),
+					ScopeId:     tar.GetProjectId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 					Name:        wrapperspb.String("default"),
 					Description: wrapperspb.String("notignored"),
@@ -2448,7 +2448,7 @@ func TestAuthorizeSession(t *testing.T) {
 	shsWithPort := static.TestSets(t, conn, hcWithPort.GetPublicId(), 1)[0]
 	_ = static.TestSetMembers(t, conn, shsWithPort.GetPublicId(), []*static.Host{hWithPort})
 	hWithPort.Address = fmt.Sprintf("%s:54321", hWithPort.GetAddress())
-	hWithPort, _, err = staticRepo.UpdateHost(ctx, hcWithPort.GetScopeId(), hWithPort, hWithPort.GetVersion(), []string{"address"})
+	hWithPort, _, err = staticRepo.UpdateHost(ctx, hcWithPort.GetProjectId(), hWithPort, hWithPort.GetVersion(), []string{"address"})
 	require.NoError(t, err)
 
 	phc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
@@ -3257,6 +3257,17 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "database"}))
 	store := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
 
+	sec1, tok1 := v.CreateToken(t, vault.WithPolicies([]string{"default", "database"}))
+	expiredStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok1, sec1.Auth.Accessor)
+
+	// Set previous token to expired in the database and revoke in Vault to validate a
+	// credential store with an expired token is correctly returned over the API
+	num, err := rw.Exec(context.Background(), "update credential_vault_token set status = ? where store_id = ?",
+		[]interface{}{vault.ExpiredToken, expiredStore.PublicId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+	v.RevokeToken(t, tok1)
+
 	workerExists := func(tar target.Target) (version uint32) {
 		server.TestKmsWorker(t, conn, wrapper)
 		return tar.GetVersion()
@@ -3289,7 +3300,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		h.Address = fmt.Sprintf("%s:54321", h.GetAddress())
 		repo, err := staticHostRepoFn()
 		require.NoError(t, err)
-		h, _, err = repo.UpdateHost(ctx, hc.GetScopeId(), h, h.GetVersion(), []string{"address"})
+		h, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
 		require.NoError(t, err)
 		return apiTar.GetItem().GetVersion()
 	}
@@ -3356,6 +3367,30 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return tr.GetItem().GetVersion()
 	}
 
+	expiredTokenLibrary := func(tar target.Target) (version uint32) {
+		credService, err := credentiallibraries.NewService(vaultCredRepoFn, iamRepoFn)
+		require.NoError(t, err)
+		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
+			CredentialStoreId: expiredStore.GetPublicId(),
+			Description:       wrapperspb.String(fmt.Sprintf("Library Description for target %q", tar.GetName())),
+			Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
+				VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
+					Path: wrapperspb.String(path.Join("database", "creds", "opened")),
+				},
+			},
+		}})
+		require.NoError(t, err)
+
+		tr, err := s.AddTargetCredentialSources(ctx,
+			&pbs.AddTargetCredentialSourcesRequest{
+				Id:                          tar.GetPublicId(),
+				BrokeredCredentialSourceIds: []string{clsResp.GetItem().GetId()},
+				Version:                     tar.GetVersion(),
+			})
+		require.NoError(t, err)
+		return tr.GetItem().GetVersion()
+	}
+
 	cases := []struct {
 		name  string
 		setup []func(target.Target) uint32
@@ -3384,6 +3419,11 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		{
 			name:  "bad library configuration",
 			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
+			err:   true,
+		},
+		{
+			name:  "expired token library",
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
 			err:   true,
 		},
 	}
