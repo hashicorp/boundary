@@ -50,9 +50,11 @@ type Command struct {
 	SighupCh  chan struct{}
 	SigUSR2Ch chan struct{}
 
-	Config     *config.Config
-	controller *controller.Controller
-	worker     *worker.Worker
+	Config *config.Config
+
+	schemaManager *schema.Manager
+	controller    *controller.Controller
+	worker        *worker.Worker
 
 	flagConfig      string
 	flagConfigKms   string
@@ -429,8 +431,14 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Failed to acquire database shared lock: %w", err).Error())
 			return base.CommandCliError
 		}
+		c.schemaManager = sm
 
 		defer func() {
+			if c.schemaManager == nil {
+				c.UI.Error("no schema manager to unlock database with")
+				return
+			}
+
 			// The base context has already been canceled so we shouldn't use it here.
 			// 1 second is chosen so the shutdown is still responsive and this is a mostly
 			// non critical step since the lock should be released when the session with the
@@ -438,12 +446,13 @@ func (c *Command) Run(args []string) int {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			if err := sm.Close(ctx); err != nil {
+			err := c.schemaManager.Close(ctx)
+			if err != nil {
 				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
 			}
 		}()
 
-		err = verifyDatabaseState(c.Context, c.Server.Database, sm)
+		err = verifyDatabaseState(c.Context, c.Server.Database, c.schemaManager)
 		if err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
