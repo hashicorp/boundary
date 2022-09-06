@@ -77,8 +77,8 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 	}
 }
 
-// InitializeGRpcCollectorsFromServer registers and zeroes a Prometheus
-// histogram, finding all service and method labels  from the provided gRPC
+// InitializeGrpcCollectorsFromServer registers and zeroes a Prometheus
+// histogram, finding all service and method labels from the provided gRPC
 // server.
 func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, server *grpc.Server, codes []codes.Code) {
 	if r == nil {
@@ -97,6 +97,9 @@ func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.Ob
 
 /* The following methods are used to initialize Prometheus histogram vectors for http requests. */
 
+// InitializeApiCollectors registers and zeroes a Prometheus
+// histogram, populating all path, code, and method labels from the
+// provided maps in its parameters.
 func InitializeApiCollectors(r prometheus.Registerer, v prometheus.ObserverVec, expectedPathsToMethods map[string][]string, expectedStatusCodesPerMethod map[string][]int) {
 	if r == nil {
 		return
