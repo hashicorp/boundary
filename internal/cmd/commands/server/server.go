@@ -450,29 +450,10 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
 			}
 		}()
-		ckState, err := sMan.CurrentState(c.Context)
+
+		err = verifyDatabaseState(c.Context, c.Server.Database, sMan)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
-			return base.CommandCliError
-		}
-		if !ckState.Initialized {
-			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
-			return base.CommandCliError
-		}
-		if !ckState.MigrationsApplied() {
-			for _, e := range ckState.Editions {
-				if e.DatabaseSchemaState == schema.Ahead {
-					c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%s %d) "+
-						"than this binary expects. Please use a newer version of the boundary "+
-						"binary.", e.Name, e.DatabaseSchemaVersion)))
-					return base.CommandCliError
-				}
-			}
-			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database. NOTE: Boundary does not currently support live migration; ensure all controllers are shut down before running the migration command."))
-			return base.CommandCliError
-		}
-		if err := c.verifyKmsSetup(); err != nil {
-			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
+			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}
 	}
@@ -855,9 +836,9 @@ func (c *Command) Reload(newConf *config.Config) error {
 	return reloadErrors.ErrorOrNil()
 }
 
-func (c *Command) verifyKmsSetup() error {
+func verifyKmsSetup(dbase *db.DB) error {
 	const op = "server.(Command).verifyKmsExists"
-	rw := db.New(c.Database)
+	rw := db.New(dbase)
 
 	ctx := context.Background()
 	kmsCache, err := kms.New(ctx, rw, rw)
@@ -867,6 +848,45 @@ func (c *Command) verifyKmsSetup() error {
 	if err := kmsCache.VerifyGlobalRoot(ctx); err != nil {
 		return err
 	}
+	return nil
+}
+
+// verifyDatabaseState checks that the migrations and kms setup for the given database are correctly setup.
+func verifyDatabaseState(ctx context.Context, db *db.DB, schemaManager *schema.Manager) error {
+	if db == nil {
+		return fmt.Errorf("nil database")
+	}
+	if schemaManager == nil {
+		return fmt.Errorf("nil schema manager")
+	}
+
+	s, err := schemaManager.CurrentState(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get current schema state: %w", err)
+	}
+	if !s.Initialized {
+		return fmt.Errorf("The database has not been initialized. Please run 'boundary database init'.")
+	}
+	if !s.MigrationsApplied() {
+		for _, e := range s.Editions {
+			if e.DatabaseSchemaState == schema.Ahead {
+				return fmt.Errorf("Newer schema version (%s %d) "+
+					"than this binary expects. Please use a newer version of the boundary "+
+					"binary.", e.Name, e.DatabaseSchemaVersion)
+			}
+		}
+		return fmt.Errorf("Database schema must be updated to use this version. " +
+			"Run 'boundary database migrate' to update the database. " +
+			"NOTE: Boundary does not currently support live migration; " +
+			"Ensure all controllers are shut down before running the migration command.")
+	}
+
+	err = verifyKmsSetup(db)
+	if err != nil {
+		return fmt.Errorf("Database is in a bad state. Please revert the database "+
+			"into the last known good state. (Failed to verify kms setup: %w)", err)
+	}
+
 	return nil
 }
 
