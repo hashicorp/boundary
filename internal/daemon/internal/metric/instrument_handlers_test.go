@@ -8,19 +8,13 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
 )
 
-func TestStatsHandler(t *testing.T) {
-	bkpLatency := gRpcRequestLatency
-	defer func() {
-		gRpcRequestLatency = bkpLatency
-	}()
-
-	handler := InstrumentClusterStatsHandler()
-
+func TestNewStatsHandler(t *testing.T) {
 	cases := []struct {
 		name           string
 		stats          []stats.RPCStats
@@ -38,9 +32,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "OK",
-				labelGRpcMethod:  "method",
-				labelGRpcService: "some.service.path",
+				LabelGrpcCode:    "OK",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -68,9 +62,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "OK",
-				labelGRpcMethod:  "method",
-				labelGRpcService: "some.service.path",
+				LabelGrpcCode:    "OK",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -84,9 +78,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "OK",
-				labelGRpcMethod:  "unknown",
-				labelGRpcService: "unknown",
+				LabelGrpcCode:    "OK",
+				LabelGrpcMethod:  "unknown",
+				LabelGrpcService: "unknown",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -101,9 +95,9 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "Canceled",
-				labelGRpcMethod:  "method",
-				labelGRpcService: "some.service.path",
+				LabelGrpcCode:    "Canceled",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
@@ -118,19 +112,20 @@ func TestStatsHandler(t *testing.T) {
 				},
 			},
 			wantedLabels: map[string]string{
-				labelGRpcCode:    "InvalidArgument",
-				labelGRpcMethod:  "method",
-				labelGRpcService: "some.service.path",
+				LabelGrpcCode:    "InvalidArgument",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
 			},
 			wantedLatency: (4 * time.Second).Seconds(),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			testableLatency := &testableObserverVec{}
-			gRpcRequestLatency = testableLatency
-
 			ctx := context.Background()
+			testableLatency := &TestableObserverVec{}
+			handler, err := NewStatsHandler(ctx, testableLatency)
+			require.NoError(t, err)
+
 			ctx = handler.TagRPC(ctx, &stats.RPCTagInfo{
 				FullMethodName: tc.fullMethodName,
 			})
@@ -139,31 +134,9 @@ func TestStatsHandler(t *testing.T) {
 				handler.HandleRPC(ctx, i)
 			}
 
-			assert.Len(t, testableLatency.observations, 1)
-			assert.Equal(t, testableLatency.observations[0].observation, tc.wantedLatency)
-			assert.Equal(t, testableLatency.observations[0].labels, tc.wantedLabels)
+			assert.Len(t, testableLatency.Observations, 1)
+			assert.Equal(t, testableLatency.Observations[0].Observation, tc.wantedLatency)
+			assert.Equal(t, testableLatency.Observations[0].Labels, tc.wantedLabels)
 		})
 	}
-}
-
-// testableObserverVec allows us to assert which observations are being made
-// with which labels.
-type testableObserverVec struct {
-	observations []*testableObserver
-	prometheus.ObserverVec
-}
-
-func (v *testableObserverVec) With(l prometheus.Labels) prometheus.Observer {
-	ret := &testableObserver{labels: l}
-	v.observations = append(v.observations, ret)
-	return ret
-}
-
-type testableObserver struct {
-	labels      prometheus.Labels
-	observation float64
-}
-
-func (o *testableObserver) Observe(f float64) {
-	o.observation = f
 }

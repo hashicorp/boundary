@@ -195,9 +195,13 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	if err != nil {
 		return nil, fmt.Errorf("error getting request interceptor for worker proto: %w", err)
 	}
+	statsHandler, err := metric.InstrumentClusterStatsHandler(c.baseContext)
+	if err != nil {
+		return nil, errors.Wrap(c.baseContext, err, op)
+	}
 
 	workerServer := grpc.NewServer(
-		grpc.StatsHandler(metric.InstrumentClusterStatsHandler()),
+		grpc.StatsHandler(statsHandler),
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 		grpc.UnaryInterceptor(
