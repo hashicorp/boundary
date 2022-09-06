@@ -114,8 +114,7 @@ func InitializeApiCollectors(r prometheus.Registerer, v prometheus.ObserverVec, 
 		}
 	}
 
-	// When an invalid path is found, any method is possible, but we expect
-	// an error response.
+	// When an invalid path is found, any method is possible, but we expect an error response.
 	p := invalidPathValue
 	for m := range expectedStatusCodesPerMethod {
 		for _, sc := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
