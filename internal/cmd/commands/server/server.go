@@ -424,21 +424,12 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		underlyingDB, err := c.Database.SqlDB(c.Context)
+		sm, err := acquireDatabaseSharedLock(c.Context, c.Server.Database)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Can't get db: %w.", err).Error())
+			c.UI.Error(fmt.Errorf("Failed to acquire database shared lock: %w", err).Error())
 			return base.CommandCliError
 		}
-		sMan, err := schema.NewManager(c.Context, "postgres", underlyingDB)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
-			return base.CommandCliError
-		}
-		// This is an advisory locks on the DB which is released when the db session ends.
-		if err := sMan.SharedLock(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Unable to gain shared access to the database: %w", err).Error())
-			return base.CommandCliError
-		}
+
 		defer func() {
 			// The base context has already been canceled so we shouldn't use it here.
 			// 1 second is chosen so the shutdown is still responsive and this is a mostly
@@ -446,12 +437,13 @@ func (c *Command) Run(args []string) int {
 			// database is closed.
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
-			if err := sMan.Close(ctx); err != nil {
+
+			if err := sm.Close(ctx); err != nil {
 				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
 			}
 		}()
 
-		err = verifyDatabaseState(c.Context, c.Server.Database, sMan)
+		err = verifyDatabaseState(c.Context, c.Server.Database, sm)
 		if err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
@@ -849,6 +841,33 @@ func verifyKmsSetup(dbase *db.DB) error {
 		return err
 	}
 	return nil
+}
+
+// acquireDatabaseSharedLock uses the schema manager to acquire a shared lock on
+// the database. This is done as a mechanism to disallow running migration commands
+// while the database is in use.
+func acquireDatabaseSharedLock(ctx context.Context, db *db.DB) (*schema.Manager, error) {
+	if db == nil {
+		return nil, fmt.Errorf("nil database")
+	}
+
+	underlyingDb, err := db.SqlDB(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain sql db: %w", err)
+	}
+
+	manager, err := schema.NewManager(ctx, "postgres", underlyingDb)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new schema manager: %w", err)
+	}
+
+	// This is an advisory locks on the DB which is released when the db session ends.
+	err = manager.SharedLock(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to gain shared access to the database: %w", err)
+	}
+
+	return manager, nil
 }
 
 // verifyDatabaseState checks that the migrations and kms setup for the given database are correctly setup.
