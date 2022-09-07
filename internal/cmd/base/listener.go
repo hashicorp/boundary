@@ -100,6 +100,10 @@ func NewListener(l *listenerutil.ListenerConfig, ui cli.Ui) (net.Listener, map[s
 		return ln, props, nil, nil
 	}
 
+	if l.TLSCertFile == "" {
+		return nil, nil, nil, fmt.Errorf("tls not disabled for listener at address %q with purpose %q but no certificate file supplied", finalAddr, purpose)
+	}
+
 	// Don't request a client cert unless they've explicitly configured it to do
 	// so
 	if !l.TLSRequireAndVerifyClientCert {
