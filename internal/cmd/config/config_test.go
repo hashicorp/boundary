@@ -1722,7 +1722,7 @@ func TestDatabaseSkipSharedLockAcquisition(t *testing.T) {
 			require.NotNil(t, c)
 			require.NotNil(t, c.Controller)
 			require.NotNil(t, c.Controller.Database)
-			require.Equal(t, tt.expSkipSharedLockAcquisition, *&c.Controller.Database.SkipSharedLockAcquisition)
+			require.Equal(t, tt.expSkipSharedLockAcquisition, c.Controller.Database.SkipSharedLockAcquisition)
 		})
 	}
 }

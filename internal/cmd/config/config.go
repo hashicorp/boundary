@@ -230,7 +230,9 @@ type Database struct {
 	ConnMaxIdleTimeDuration *time.Duration `hcl:"-"`
 
 	// SkipSharedLockAcquisition allows skipping grabbing the database shared
-	// lock. This is dangerous unless you know what you're doing.
+	// lock. This is dangerous unless you know what you're doing, and you should
+	// not set it unless you are the reason it's here in the first place, as not
+	// only it dangerous but it will be removed at some point in the future.
 	SkipSharedLockAcquisition bool `hcl:"skip_shared_lock_acquisition"`
 }
 
