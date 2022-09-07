@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/common"
+	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
@@ -171,7 +172,12 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
 	}
 
+	statsHandler, err := metric.InstrumentClusterStatsHandler(w.baseContext)
+	if err != nil {
+		return nil, errors.Wrap(w.baseContext, err, op)
+	}
 	downstreamServer := grpc.NewServer(
+		grpc.StatsHandler(statsHandler),
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 	)
@@ -181,6 +187,8 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 			return nil, err
 		}
 	}
+
+	metric.InitializeClusterServerCollectors(w.conf.PrometheusRegisterer, downstreamServer)
 
 	ln.GrpcServer = downstreamServer
 
