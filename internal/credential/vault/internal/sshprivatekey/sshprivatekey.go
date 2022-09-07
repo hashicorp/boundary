@@ -97,10 +97,12 @@ func defaultExtract(sd data, usernameAttr, privateKeyAttr, passphraseAttr string
 // 'data' field within the data map.
 //
 // Additionaly it validates the data is in the expected KV-v2 format:
-// {
-// 	"data": {},
-//	"metadata: {}
-// }
+//
+//	{
+//		"data": {},
+//		"metadata: {}
+//	}
+//
 // If the format does not match, it returns ("", ""). See:
 // https://www.vaultproject.io/api/secret/kv/kv-v2#sample-response-1
 func kv2Extract(sd data, usernameAttr, privateKeyAttr, passphraseAttr string) (

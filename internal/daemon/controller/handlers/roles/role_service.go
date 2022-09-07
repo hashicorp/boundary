@@ -60,10 +60,12 @@ func init() {
 
 // Service handles request as described by the pbs.RoleServiceServer interface.
 type Service struct {
-	pbs.UnimplementedRoleServiceServer
+	pbs.UnsafeRoleServiceServer
 
 	repoFn common.IamRepoFactory
 }
+
+var _ pbs.RoleServiceServer = (*Service)(nil)
 
 // NewService returns a role service which handles role related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
@@ -73,8 +75,6 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	}
 	return Service{repoFn: repo}, nil
 }
-
-var _ pbs.RoleServiceServer = Service{}
 
 // ListRoles implements the interface pbs.RoleServiceServer.
 func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs.ListRolesResponse, error) {
@@ -509,7 +509,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 	return &pbs.RemoveRoleGrantsResponse{Item: item}, nil
 }
 
-func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Role, []iam.PrincipalRole, []*iam.RoleGrant, error) {
+func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, error) {
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, err
@@ -557,7 +557,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	return out, nil
 }
 
-func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Role) (*iam.Role, []iam.PrincipalRole, []*iam.RoleGrant, error) {
+func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Role) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, error) {
 	const op = "roles.(Service).updateInRepo"
 	var opts []iam.Option
 	if desc := item.GetDescription(); desc != nil {
@@ -622,7 +622,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Ro
 	return rl, nil
 }
 
-func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*iam.Role, []iam.PrincipalRole, []*iam.RoleGrant, error) {
+func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, error) {
 	const op = "roles.(Service).addPrincpleInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -643,7 +643,7 @@ func (s Service) addPrinciplesInRepo(ctx context.Context, roleId string, princip
 	return out, pr, roleGrants, nil
 }
 
-func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*iam.Role, []iam.PrincipalRole, []*iam.RoleGrant, error) {
+func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, error) {
 	const op = "roles.(Service).setPrinciplesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -664,7 +664,7 @@ func (s Service) setPrinciplesInRepo(ctx context.Context, roleId string, princip
 	return out, pr, roleGrants, nil
 }
 
-func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*iam.Role, []iam.PrincipalRole, []*iam.RoleGrant, error) {
+func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, principalIds []string, version uint32) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, error) {
 	const op = "roles.(Service).removePrinciplesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -685,7 +685,7 @@ func (s Service) removePrinciplesInRepo(ctx context.Context, roleId string, prin
 	return out, pr, roleGrants, nil
 }
 
-func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*iam.Role, []iam.PrincipalRole, []*iam.RoleGrant, error) {
+func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, error) {
 	const op = "service.(Service).addGrantsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -706,7 +706,7 @@ func (s Service) addGrantsInRepo(ctx context.Context, roleId string, grants []st
 	return out, pr, roleGrants, nil
 }
 
-func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*iam.Role, []iam.PrincipalRole, []*iam.RoleGrant, error) {
+func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, error) {
 	const op = "roles.(Service).setGrantsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -731,7 +731,7 @@ func (s Service) setGrantsInRepo(ctx context.Context, roleId string, grants []st
 	return out, pr, roleGrants, nil
 }
 
-func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*iam.Role, []iam.PrincipalRole, []*iam.RoleGrant, error) {
+func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants []string, version uint32) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, error) {
 	const op = "roles.(Service).removeGrantsInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
@@ -791,7 +791,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(ctx context.Context, in *iam.Role, principals []iam.PrincipalRole, grants []*iam.RoleGrant, opt ...handlers.Option) (*pb.Role, error) {
+func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole, grants []*iam.RoleGrant, opt ...handlers.Option) (*pb.Role, error) {
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building role proto")
@@ -880,9 +880,9 @@ func toProto(ctx context.Context, in *iam.Role, principals []iam.PrincipalRole, 
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetRoleRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.RolePrefix)
 }

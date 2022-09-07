@@ -24,7 +24,7 @@ import (
 // the function that handles a secondary connection over a provided listener
 var handleSecondaryConnection = closeListener
 
-func closeListener(_ context.Context, l net.Listener) error {
+func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
 	if l != nil {
 		return l.Close()
 	}
@@ -195,9 +195,13 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	if err != nil {
 		return nil, fmt.Errorf("error getting request interceptor for worker proto: %w", err)
 	}
+	statsHandler, err := metric.InstrumentClusterStatsHandler(c.baseContext)
+	if err != nil {
+		return nil, errors.Wrap(c.baseContext, err, op)
+	}
 
 	workerServer := grpc.NewServer(
-		grpc.StatsHandler(metric.InstrumentClusterStatsHandler()),
+		grpc.StatsHandler(statsHandler),
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 		grpc.UnaryInterceptor(
@@ -221,7 +225,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 
 	return func() {
 		go splitListener.Start()
-		go handleSecondaryConnection(c.baseContext, multiplexingReverseGrpcListener)
+		go handleSecondaryConnection(c.baseContext, multiplexingReverseGrpcListener, c.downstreamRoutes, -1)
 		go ln.GrpcServer.Serve(multiplexingAuthedListener)
 	}, nil
 }

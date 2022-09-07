@@ -38,8 +38,7 @@ begin;
 
   -- revoke_credentials revokes any active credentials for a session when the
   -- session enters the canceling or terminated states.
-  create function revoke_credentials()
-    returns trigger
+  create function revoke_credentials() returns trigger
   as $$
   begin
     if new.state in ('canceling', 'terminated') then
@@ -51,6 +50,7 @@ begin;
     return new;
   end;
   $$ language plpgsql;
+
   create trigger revoke_credentials after insert on session_state
     for each row execute procedure revoke_credentials();
 

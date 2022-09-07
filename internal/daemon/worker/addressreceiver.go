@@ -13,12 +13,30 @@ func noopAddressReceivers(context.Context, *Worker) ([]addressReceiver, error) {
 	return nil, nil
 }
 
+type receiverType uint
+
+const (
+	UnknownReceiverType         receiverType = 0
+	grpcResolverReceiverType    receiverType = 1
+	dialingListenerReceiverType receiverType = 2
+)
+
+// String returns a string representation of the receiverType
+func (s receiverType) String() string {
+	return [...]string{
+		"unknown",
+		"grpcResolver",
+		"dialingListener",
+	}[s]
+}
+
 // addressReceiver allows the initializing and setting of addresses. Since a
 // main use case of this interface is to use it in grpc dialing it satisfies
 // a grpc resolver.Builder interface as well.
 type addressReceiver interface {
 	InitialAddresses([]string)
 	SetAddresses([]string)
+	Type() receiverType
 }
 
 // grpcResolverReceiver is an addressReceiver which wraps a grpc manual.Resolver
@@ -26,6 +44,11 @@ type addressReceiver interface {
 // SetAddresses  is passed onto the Resolver's UpdateState call.
 type grpcResolverReceiver struct {
 	*manual.Resolver
+}
+
+// IsDialingListener always returns
+func (_ *grpcResolverReceiver) Type() receiverType {
+	return grpcResolverReceiverType
 }
 
 func (r grpcResolverReceiver) getState(addrs []string) resolver.State {

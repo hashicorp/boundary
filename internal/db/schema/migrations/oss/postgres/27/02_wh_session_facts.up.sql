@@ -3,11 +3,11 @@ begin;
 -- Remove call to wh_rollup_connections(new.session_id) from function
 drop trigger wh_insert_session_connection on session_connection;
 drop function wh_insert_session_connection();
-create function wh_insert_session_connection()
-    returns trigger
+
+create function wh_insert_session_connection() returns trigger
 as $$
 declare
-new_row wh_session_connection_accumulating_fact%rowtype;
+  new_row wh_session_connection_accumulating_fact%rowtype;
 begin
 with
     authorized_timestamp (date_dim_key, time_dim_key, ts) as (
@@ -58,20 +58,18 @@ return null;
 end;
 $$ language plpgsql;
 
-create trigger wh_insert_session_connection
-    after insert on session_connection
-    for each row
-    execute function wh_insert_session_connection();
+create trigger wh_insert_session_connection after insert on session_connection
+    for each row execute function wh_insert_session_connection();
 
 -- Updating definition from 0/69_wh_session_facts.up.sql
 -- Remove call to wh_rollup_connections(new.session_id) from function
 drop trigger wh_update_session_connection on session_connection;
 drop function wh_update_session_connection;
-create function wh_update_session_connection()
-    returns trigger
+
+create function wh_update_session_connection() returns trigger
 as $$
 declare
-updated_row wh_session_connection_accumulating_fact%rowtype;
+  updated_row wh_session_connection_accumulating_fact%rowtype;
 begin
 update wh_session_connection_accumulating_fact
 set client_tcp_address       = new.client_tcp_address,
@@ -86,14 +84,10 @@ return null;
 end;
 $$ language plpgsql;
 
-create trigger wh_update_session_connection
-    after update on session_connection
-    for each row
-    execute function wh_update_session_connection();
+create trigger wh_update_session_connection after update on session_connection
+    for each row execute function wh_update_session_connection();
 
-create function
-    wh_session_rollup()
-    returns trigger
+create function wh_session_rollup() returns trigger
 as $$
 begin
     if new.termination_reason is not null then
@@ -106,9 +100,7 @@ return null;
 end;
 $$ language plpgsql;
 
-create trigger
-    wh_rollup_connections_on_session_termination
-    after update of termination_reason on session
+create trigger wh_rollup_connections_on_session_termination after update of termination_reason on session
     for each row execute procedure wh_session_rollup();
 
 commit;

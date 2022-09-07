@@ -478,7 +478,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		}
 	}()
 
-	targetRepo, err := target.NewRepository(rw, rw, kmsCache)
+	targetRepo, err := target.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
 		return nil, fmt.Errorf("error creating target repository: %w", err)
 	}

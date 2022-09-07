@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/common"
+	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
@@ -30,7 +31,7 @@ import (
 // the function that handles a secondary connection over a provided listener
 var handleSecondaryConnection = closeListener
 
-func closeListener(_ context.Context, l net.Listener) error {
+func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
 	if l != nil {
 		return l.Close()
 	}
@@ -171,7 +172,12 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
 	}
 
+	statsHandler, err := metric.InstrumentClusterStatsHandler(w.baseContext)
+	if err != nil {
+		return nil, errors.Wrap(w.baseContext, err, op)
+	}
 	downstreamServer := grpc.NewServer(
+		grpc.StatsHandler(statsHandler),
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
 	)
@@ -181,6 +187,8 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 			return nil, err
 		}
 	}
+
+	metric.InitializeClusterServerCollectors(w.conf.PrometheusRegisterer, downstreamServer)
 
 	ln.GrpcServer = downstreamServer
 
@@ -193,7 +201,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(proxyListener)
 		go ln.GrpcServer.Serve(eventingListener)
-		go handleSecondaryConnection(cancelCtx, reverseGrpcListener)
+		go handleSecondaryConnection(cancelCtx, reverseGrpcListener, w.downstreamRoutes, -1)
 	}, nil
 }
 

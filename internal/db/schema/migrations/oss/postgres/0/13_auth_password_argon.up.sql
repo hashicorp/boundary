@@ -35,24 +35,17 @@ begin;
       deferrable initially deferred
   );
 
-  create or replace function
-    read_only_auth_password_argon2_conf()
-    returns trigger
+  create or replace function read_only_auth_password_argon2_conf() returns trigger
   as $$
   begin
     raise exception 'auth_password_argon2_conf is read-only';
   end;
   $$ language plpgsql;
 
-  create trigger
-    read_only_auth_password_argon2_conf
-  before
-  update on auth_password_argon2_conf
+  create trigger read_only_auth_password_argon2_conf before update on auth_password_argon2_conf
     for each row execute procedure read_only_auth_password_argon2_conf();
 
-  create trigger
-    insert_auth_password_conf_subtype
-  before insert on auth_password_argon2_conf
+  create trigger insert_auth_password_conf_subtype before insert on auth_password_argon2_conf
     for each row execute procedure insert_auth_password_conf_subtype();
 
   create table auth_password_argon2_cred (
@@ -89,53 +82,32 @@ begin;
       deferrable initially deferred
   );
 
-  create trigger
-    insert_auth_password_credential_subtype
-  before insert on auth_password_argon2_cred
+  create trigger insert_auth_password_credential_subtype before insert on auth_password_argon2_cred
     for each row execute procedure insert_auth_password_credential_subtype();
 
-  create trigger
-    update_auth_password_credential_subtype
-  after update on auth_password_argon2_cred
+  create trigger update_auth_password_credential_subtype after update on auth_password_argon2_cred
     for each row execute procedure update_auth_password_credential_subtype();
 
-  create trigger
-    delete_auth_password_credential_subtype
-  after delete on auth_password_argon2_cred
+  create trigger delete_auth_password_credential_subtype after delete on auth_password_argon2_cred
     for each row execute procedure delete_auth_password_credential_subtype();
 
   --
   -- triggers for time columns
   --
 
-  create trigger
-    immutable_columns
-  before
-  update on auth_password_argon2_conf
+  create trigger immutable_columns before update on auth_password_argon2_conf
     for each row execute procedure immutable_columns('create_time');
 
-  create trigger
-    default_create_time_column
-  before
-  insert on auth_password_argon2_conf
+  create trigger default_create_time_column before insert on auth_password_argon2_conf
     for each row execute procedure default_create_time();
 
-  create trigger
-    update_time_column
-  before
-  update on auth_password_argon2_cred
+  create trigger update_time_column before update on auth_password_argon2_cred
     for each row execute procedure update_time_column();
 
-  create trigger
-    immutable_columns
-  before
-  update on auth_password_argon2_cred
+  create trigger immutable_columns before update on auth_password_argon2_cred
     for each row execute procedure immutable_columns('create_time');
 
-  create trigger
-    default_create_time_column
-  before
-  insert on auth_password_argon2_cred
+  create trigger default_create_time_column before insert on auth_password_argon2_cred
     for each row execute procedure default_create_time();
 
   -- The tickets for oplog are the subtypes not the base types because no updates

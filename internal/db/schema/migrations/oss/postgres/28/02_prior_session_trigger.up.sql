@@ -78,9 +78,7 @@ end; $$;
 drop trigger insert_session_state on session_state;
 drop function insert_session_state();
 
-create function
-    insert_session_state()
-    returns trigger
+create function insert_session_state() returns trigger
 as $$
 declare
     old_col_state text;

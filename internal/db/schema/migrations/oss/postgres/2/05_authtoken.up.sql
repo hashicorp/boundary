@@ -21,9 +21,7 @@ insert into auth_token_status_enm(name)
 
 -- add the state column with a default to the auth_token table.
 alter table auth_token
-add column status text 
-not null
-default 'token issued' -- safest default
+add column status text not null default 'token issued' -- safest default
 references auth_token_status_enm(name)
   on update cascade
   on delete restrict;

@@ -24,7 +24,7 @@ type WorkerKeys struct {
 
 func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, opt ...Option) (*WorkerAuth, error) {
 	const op = "server.newWorkerAuth"
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	if workerKeyIdentifier == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no workerKeyIdentifier")

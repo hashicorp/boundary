@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
@@ -24,6 +25,38 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+// normalizeCatalogAttributes allows a plugin to normalize set attributes before
+// they are saved
+func normalizeSetAttributes(ctx context.Context, plgClient plgpb.HostPluginServiceClient, plgHs *pb.HostSet) error {
+	const op = "plugin.(Repository).normalizeSetAttributes"
+	switch {
+	case util.IsNil(plgClient):
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin client is nil")
+	case plgHs == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "host set is nil")
+	case plgHs.GetAttributes() == nil:
+		return nil
+	}
+
+	ret, err := plgClient.NormalizeSetData(ctx, &plgpb.NormalizeSetDataRequest{
+		Attributes: plgHs.GetAttributes(),
+	})
+	switch {
+	case err == nil:
+		if ret.Attributes != nil {
+			plgHs.Attrs = &pb.HostSet_Attributes{
+				Attributes: ret.Attributes,
+			}
+		}
+	case status.Code(err) == codes.Unimplemented:
+		// Do nothing
+	default:
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error asking plugin to normalize set data"))
+	}
+
+	return nil
+}
 
 // CreateSet inserts s into the repository and returns a new HostSet
 // containing the host set's PublicId. s is not changed. s must contain a
@@ -90,6 +123,12 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 	plgHs, err := toPluginSet(ctx, s)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
+	}
+
+	if plgHs.GetAttributes() != nil {
+		if err := normalizeSetAttributes(ctx, plgClient, plgHs); err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	var preferredEndpoints []interface{}
@@ -332,6 +371,17 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 	newPlgSet, err := toPluginSet(ctx, newSet)
 	if err != nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	if updateAttributes {
+		if newPlgSet.GetAttributes() != nil {
+			if err := normalizeSetAttributes(ctx, plgClient, newPlgSet); err != nil {
+				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+			if newSet.Attributes, err = proto.Marshal(newPlgSet.GetAttributes()); err != nil {
+				return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+		}
 	}
 
 	// Get the preferred endpoints to write out.

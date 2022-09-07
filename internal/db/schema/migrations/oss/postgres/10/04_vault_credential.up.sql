@@ -64,8 +64,7 @@ begin;
   -- and an update contains a value for delete_time different from the current
   -- value, this trigger will raise an error with error code 23602 which is a
   -- class 23 integrity constraint violation: set_once_violation.
-  create function before_soft_delete_credential_vault_store()
-    returns trigger
+  create function before_soft_delete_credential_vault_store() returns trigger
   as $$
   begin
     if new.delete_time is distinct from old.delete_time then
@@ -92,8 +91,7 @@ begin;
   -- When a credential store is soft deleted, this trigger:
   --  * marks any active Vault tokens owned by the credential store for revocation
   --  * deletes any credential library owned by the credential store
-  create function after_soft_delete_credential_vault_store()
-    returns trigger
+  create function after_soft_delete_credential_vault_store() returns trigger
   as $$
   begin
     if new.delete_time is distinct from old.delete_time then
@@ -198,8 +196,7 @@ begin;
   -- insert_credential_vault_token() is a before insert trigger
   -- function for credential_vault_token that changes the status of the current
   -- token to 'maintaining'
-  create function insert_credential_vault_token()
-    returns trigger
+  create function insert_credential_vault_token() returns trigger
   as $$
   begin
     update credential_vault_token
@@ -327,8 +324,7 @@ begin;
   -- before_insert_credential_vault_library is a before insert trigger for
   -- the credential_vault_library table that prevents a library from being
   -- inserted for a soft deleted credential store.
-  create function before_insert_credential_vault_library()
-    returns trigger
+  create function before_insert_credential_vault_library() returns trigger
   as $$
   declare
     delete_time_val timestamp with time zone;
@@ -427,8 +423,7 @@ begin;
   -- update_credential_status_column() is a before update trigger function for
   -- credential_vault_credential that changes the status of the credential to 'revoke' if
   -- the session_id is updated to null
-  create function update_credential_status_column()
-      returns trigger
+  create function update_credential_status_column() returns trigger
   as $$
   begin
     if new.session_id is distinct from old.session_id then
@@ -446,8 +441,7 @@ begin;
   -- not_null_columns() will make the column names not null which are passed as
   -- parameters when the trigger is created. It raises error code 23502 which is a
   -- class 23 integrity constraint violation: not null column
-  create function not_null_columns()
-    returns trigger
+  create function not_null_columns() returns trigger
   as $$
   declare
       col_name  text;
@@ -466,7 +460,6 @@ begin;
       return new;
   end;
   $$ language plpgsql;
-
   comment on function not_null_columns() is
     'function used in before insert triggers to make columns not null on insert, but are allowed be updated to null';
 

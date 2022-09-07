@@ -96,10 +96,12 @@ func init() {
 
 // Service handles requests as described by the pbs.ScopeServiceServer interface.
 type Service struct {
-	pbs.UnimplementedScopeServiceServer
+	pbs.UnsafeScopeServiceServer
 
 	repoFn common.IamRepoFactory
 }
+
+var _ pbs.ScopeServiceServer = (*Service)(nil)
 
 // NewService returns a project service which handles project related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
@@ -109,8 +111,6 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	}
 	return Service{repoFn: repo}, nil
 }
-
-var _ pbs.ScopeServiceServer = Service{}
 
 // ListScopes implements the interface pbs.ScopeServiceServer.
 func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*pbs.ListScopesResponse, error) {
@@ -591,9 +591,9 @@ func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Sc
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetScopeRequest) error {
 	badFields := map[string]string{}
 	id := req.GetId()

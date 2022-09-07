@@ -37,7 +37,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(err)
-	sessionRepo, err := NewRepository(rw, rw, kms)
+	sessionRepo, err := NewRepository(ctx, rw, rw, kms)
 	connectionRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 
@@ -180,7 +180,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	gracePeriod := 1 * time.Second
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
@@ -306,7 +306,7 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 		t.Helper()
 
 		var conns []*Connection
-		require.NoError(repo.list(ctx, &conns, "", nil))
+		require.NoError(rw.SearchWhere(ctx, &conns, "", nil))
 		for i, connId := range connIds {
 			var expected ConnectionStatus
 			switch {
@@ -443,7 +443,7 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(err)

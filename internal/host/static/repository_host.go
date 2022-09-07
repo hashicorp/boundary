@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/go-dbw"
 )
 
 // CreateHost inserts h into the repository and returns a new Host
@@ -141,7 +141,7 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			"Name":        h.Name,
 			"Description": h.Description,

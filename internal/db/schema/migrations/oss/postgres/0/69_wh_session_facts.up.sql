@@ -3,8 +3,7 @@ begin;
   -- wh_rollup_connections calculates the aggregate values from
   -- wh_session_connection_accumulating_fact for p_session_id and updates
   -- wh_session_accumulating_fact for p_session_id with those values.
-  create or replace function wh_rollup_connections(p_session_id wt_public_id)
-    returns void
+  create or replace function wh_rollup_connections(p_session_id wt_public_id) returns void
   as $$
   declare
     session_row wh_session_accumulating_fact%rowtype;
@@ -38,8 +37,7 @@ begin;
   -- wh_insert_session also calls the wh_upsert_host and wh_upsert_user
   -- functions which can result in new rows in wh_host_dimension and
   -- wh_user_dimension respectively.
-  create or replace function wh_insert_session()
-    returns trigger
+  create or replace function wh_insert_session() returns trigger
   as $$
   declare
     new_row wh_session_accumulating_fact%rowtype;
@@ -73,10 +71,8 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger wh_insert_session
-    after insert on session
-    for each row
-    execute function wh_insert_session();
+  create trigger wh_insert_session after insert on session
+    for each row execute function wh_insert_session();
 
   --
   -- Session Connection triggers
@@ -87,8 +83,7 @@ begin;
   -- wh_session_connection_accumulating_fact for the new session connection.
   -- wh_insert_session_connection also calls wh_rollup_connections which can
   -- result in updates to wh_session_accumulating_fact.
-  create or replace function wh_insert_session_connection()
-    returns trigger
+  create or replace function wh_insert_session_connection() returns trigger
   as $$
   declare
     new_row wh_session_connection_accumulating_fact%rowtype;
@@ -141,10 +136,8 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger wh_insert_session_connection
-    after insert on session_connection
-    for each row
-    execute function wh_insert_session_connection();
+  create trigger wh_insert_session_connection after insert on session_connection
+    for each row execute function wh_insert_session_connection();
 
   -- Updated in 27/01_disable_terminate_session.up.sql
   -- wh_update_session_connection returns an after update trigger for the
@@ -152,8 +145,7 @@ begin;
   -- wh_session_connection_accumulating_fact for the session connection.
   -- wh_update_session_connection also calls wh_rollup_connections which can
   -- result in updates to wh_session_accumulating_fact.
-  create or replace function wh_update_session_connection()
-    returns trigger
+  create or replace function wh_update_session_connection() returns trigger
   as $$
   declare
     updated_row wh_session_connection_accumulating_fact%rowtype;
@@ -172,10 +164,8 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger wh_update_session_connection
-    after update on session_connection
-    for each row
-    execute function wh_update_session_connection();
+  create trigger wh_update_session_connection after update on session_connection
+    for each row execute function wh_update_session_connection();
 
   --
   -- Session State trigger
@@ -183,8 +173,7 @@ begin;
 
   -- wh_insert_session_state returns an after insert trigger for the
   -- session_state table which updates wh_session_accumulating_fact.
-  create or replace function wh_insert_session_state()
-    returns trigger
+  create or replace function wh_insert_session_state() returns trigger
   as $$
   declare
     date_col text;
@@ -218,10 +207,8 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger wh_insert_session_state
-    after insert on session_state
-    for each row
-    execute function wh_insert_session_state();
+  create trigger wh_insert_session_state after insert on session_state
+    for each row execute function wh_insert_session_state();
 
   --
   -- Session Connection State trigger
@@ -230,8 +217,7 @@ begin;
   -- wh_insert_session_connection_state returns an after insert trigger for the
   -- session_connection_state table which updates
   -- wh_session_connection_accumulating_fact.
-  create or replace function wh_insert_session_connection_state()
-    returns trigger
+  create or replace function wh_insert_session_connection_state() returns trigger
   as $$
   declare
     date_col text;
@@ -266,9 +252,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger wh_insert_session_connection_state
-    after insert on session_connection_state
-    for each row
-    execute function wh_insert_session_connection_state();
+  create trigger wh_insert_session_connection_state after insert on session_connection_state
+    for each row execute function wh_insert_session_connection_state();
 
 commit;

@@ -1,10 +1,10 @@
 begin;
+
   -- wh_upsert_credential_dimension compares the current vaules in the wh_credential_dimension
   -- with the current values in the operational tables for the given parameters. IF the values
   -- between operational tables and the wh_credential_dimension differ, a new row is inserted in
   -- the wh_credential_dimension to match the current values in the operational tables.
-  create function wh_upsert_credential_dimension(p_session_id wt_public_id, p_library_id wt_public_id, p_credential_purpose wh_dim_text)
-    returns wh_dim_key
+  create function wh_upsert_credential_dimension(p_session_id wt_public_id, p_library_id wt_public_id, p_credential_purpose wh_dim_text) returns wh_dim_key
   as $$
   declare
     src     whx_credential_dimension_target%rowtype;
@@ -76,24 +76,21 @@ begin;
   $$ language plpgsql;
 
   -- Run wh_upsert_credential_dimension for session_credential_dynamic row that is inserted.
-  create function wh_insert_session_credential_dynamic()
-    returns trigger
+  create function wh_insert_session_credential_dynamic() returns trigger
   as $$
   begin
     perform wh_upsert_credential_dimension(new.session_id, new.library_id, new.credential_purpose);
     return null;
   end;
   $$ language plpgsql;
-  create trigger wh_insert_session_credential_dynamic
-    after insert on session_credential_dynamic
-    for each row
-    execute function wh_insert_session_credential_dynamic();
+
+  create trigger wh_insert_session_credential_dynamic after insert on session_credential_dynamic
+    for each row execute function wh_insert_session_credential_dynamic();
 
   -- wh_upsert_credentail_group determines if a new wh_credential_group needs to be
   -- created due to changes to the coresponding wh_credential_dimensions. It then
   -- updates the wh_session_accumulating_fact to associate it with the correct wh_credential_group.
-  create function wh_upsert_credentail_group()
-    returns trigger
+  create function wh_upsert_credentail_group() returns trigger
   as $$
   declare
     cg_key wh_dim_key;
@@ -162,9 +159,8 @@ begin;
   -- the wh_insert_session_credential_dynamic trigger ran for each row and updated
   -- the wh_credential_dimensions. Then this statement trigger can run to update the
   -- bridge tables and wh_session_accumulating_fact.
-  create trigger wh_insert_stmt_session_credential_dynamic
-    after insert on session_credential_dynamic
+  create trigger wh_insert_stmt_session_credential_dynamic after insert on session_credential_dynamic
     referencing new table as new_table
-    for each statement
-    execute function wh_upsert_credentail_group();
+    for each statement execute function wh_upsert_credentail_group();
+
 commit;

@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -224,6 +225,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 
 func TestNewVaultServer(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	t.Run("TestNoTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		v := NewTestVaultServer(t, WithTestVaultTLS(TestNoTLS))
@@ -237,10 +239,10 @@ func TestNewVaultServer(t *testing.T) {
 			Token: TokenSecret(v.RootToken),
 		}
 
-		client, err := newClient(conf)
+		client, err := newClient(ctx, conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.ping())
+		require.NoError(client.ping(ctx))
 	})
 	t.Run("TestServerTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -257,10 +259,10 @@ func TestNewVaultServer(t *testing.T) {
 			CaCert: v.CaCert,
 		}
 
-		client, err := newClient(conf)
+		client, err := newClient(ctx, conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.ping())
+		require.NoError(client.ping(ctx))
 	})
 	t.Run("TestClientTLS", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -281,10 +283,10 @@ func TestNewVaultServer(t *testing.T) {
 			ClientKey:  v.ClientKey,
 		}
 
-		client, err := newClient(conf)
+		client, err := newClient(ctx, conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.ping())
+		require.NoError(client.ping(ctx))
 	})
 	t.Run("TestClientTLS-with-client-key", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -313,10 +315,10 @@ func TestNewVaultServer(t *testing.T) {
 			ClientKey:  v.ClientKey,
 		}
 
-		client, err := newClient(conf)
+		client, err := newClient(ctx, conf)
 		require.NoError(err)
 		require.NotNil(client)
-		require.NoError(client.ping())
+		require.NoError(client.ping(ctx))
 	})
 }
 
@@ -457,6 +459,7 @@ func TestTestVaultServer_MountDatabase(t *testing.T) {
 
 func TestTestVaultServer_LookupLease(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 	v.MountDatabase(t)
@@ -469,14 +472,14 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 		Token:      TokenSecret(v.RootToken),
 	}
 
-	client, err := newClient(conf)
+	client, err := newClient(ctx, conf)
 	require.NoError(err)
 	require.NotNil(client)
-	assert.NoError(client.ping())
+	assert.NoError(client.ping(ctx))
 
 	// Create secret
 	credPath := path.Join("database", "creds", "opened")
-	cred, err := client.get(credPath)
+	cred, err := client.get(ctx, credPath)
 	require.NoError(err)
 
 	// Sleep to move ttl
@@ -499,17 +502,27 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 
 func TestTestVaultServer_VerifyTokenInvalid(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 
 	_, token := v.CreateToken(t)
-	client := v.clientUsingToken(t, token)
-	err := client.revokeToken()
-	require.NoError(err)
+	v.RevokeToken(t, token)
 	v.VerifyTokenInvalid(t, token)
 
 	// Verify fake token is not valid
 	v.VerifyTokenInvalid(t, "fake-token")
+}
+
+func TestTestVaultServer_RevokeToken(t *testing.T) {
+	t.Parallel()
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+
+	_, token := v.CreateToken(t)
+
+	// Validate we can lookup the token
+	v.LookupToken(t, token)
+
+	v.RevokeToken(t, token)
+	v.VerifyTokenInvalid(t, token)
 }
 
 func Test_testClientCert(t *testing.T) {
@@ -546,6 +559,7 @@ func Test_testClientCert(t *testing.T) {
 func TestTestVaultServer_AddKVPolicy(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) {
 		t.Parallel()
+		ctx := context.Background()
 		assert, require := assert.New(t), require.New(t)
 		v := NewTestVaultServer(t)
 
@@ -554,9 +568,9 @@ func TestTestVaultServer_AddKVPolicy(t *testing.T) {
 
 		_, token := v.CreateToken(t, WithPolicies([]string{"default", "secret"}))
 		require.NotNil(token)
-		client := v.clientUsingToken(t, token)
+		client := v.ClientUsingToken(t, token)
 
-		_, err := client.get("/secret/data/my-secret")
+		_, err := client.get(ctx, "/secret/data/my-secret")
 		assert.Error(err)
 
 		// An attempt to get my-secret should now fail with a 403
@@ -569,9 +583,9 @@ func TestTestVaultServer_AddKVPolicy(t *testing.T) {
 		v.AddKVPolicy(t)
 		_, token = v.CreateToken(t, WithPolicies([]string{"default", "secret"}))
 		require.NotNil(token)
-		client = v.clientUsingToken(t, token)
+		client = v.ClientUsingToken(t, token)
 
-		_, err = client.get("/secret/data/my-secret")
+		_, err = client.get(ctx, "/secret/data/my-secret")
 		assert.NoError(err)
 	})
 }

@@ -97,6 +97,7 @@ func testVaultCred(t *testing.T,
 	expiration time.Duration,
 ) (*vault.Secret, *Credential) {
 	t.Helper()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
 
@@ -105,9 +106,9 @@ func testVaultCred(t *testing.T,
 	var err error
 	switch Method(cl.HttpMethod) {
 	case MethodGet:
-		secret, err = client.get(cl.VaultPath)
+		secret, err = client.get(ctx, cl.VaultPath)
 	case MethodPost:
-		secret, err = client.post(cl.VaultPath, cl.HttpRequestBody)
+		secret, err = client.post(ctx, cl.VaultPath, cl.HttpRequestBody)
 	}
 	require.NoError(err)
 	require.NotNil(secret)
@@ -2030,7 +2031,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, r.numStores)
 
 	// Lookup of cs1 and its token should fail
-	agg := allocPublicStore()
+	agg := allocListLookupStore()
 	agg.PublicId = cs1.PublicId
 	err = rw.LookupByPublicId(context.Background(), agg)
 	require.Error(err)
@@ -2075,7 +2076,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, r.numStores)
 
 	// Lookup of cs2 and its token should fail
-	agg = allocPublicStore()
+	agg = allocListLookupStore()
 	agg.PublicId = cs2.PublicId
 	err = rw.LookupByPublicId(context.Background(), agg)
 	require.Error(err)

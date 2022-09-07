@@ -14,12 +14,14 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -37,6 +39,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplg.TestPlugin(t, conn, "test")
 	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
+
+	const normalizeToSliceKey = "normalize_to_slice"
 
 	tests := []struct {
 		name             string
@@ -181,8 +185,9 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
 						st, err := structpb.NewStruct(map[string]interface{}{
-							"k1":     "foo",
-							"nilkey": nil,
+							"k1":                "foo",
+							"nilkey":            nil,
+							normalizeToSliceKey: "normalizeme",
 						})
 						require.NoError(t, err)
 						b, err := proto.Marshal(st)
@@ -249,16 +254,38 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require, assert := require.New(t), assert.New(t)
 			kmsCache := kms.TestKms(t, conn, wrapper)
 
 			// gotPluginAttrs tracks which attributes a plugin has received through a closure and can be compared in the
 			// test against the expected values sent to the plugin.
-			var gotPluginAttrs *structpb.Struct
+			var origPluginAttrs, gotPluginAttrs *structpb.Struct
+			if tt.in != nil && tt.in.HostCatalog != nil && len(tt.in.Attributes) > 0 {
+				origPluginAttrs = new(structpb.Struct)
+				require.NoError(proto.Unmarshal(tt.in.Attributes, origPluginAttrs))
+			}
+
 			var pluginCalled bool
 			plgm := map[string]plgpb.HostPluginServiceClient{
 				plg.GetPublicId(): &WrappingPluginClient{
 					Server: &TestPluginServer{
+						NormalizeCatalogDataFn: func(_ context.Context, req *plgpb.NormalizeCatalogDataRequest) (*plgpb.NormalizeCatalogDataResponse, error) {
+							if req.Attributes == nil {
+								return new(plgpb.NormalizeCatalogDataResponse), nil
+							}
+							var attrs struct {
+								NormalizeToSlice string `mapstructure:"normalize_to_slice"`
+							}
+							require.NoError(mapstructure.Decode(req.Attributes.AsMap(), &attrs))
+							if attrs.NormalizeToSlice == "" {
+								return new(plgpb.NormalizeCatalogDataResponse), nil
+							}
+							retAttrs := proto.Clone(req.Attributes).(*structpb.Struct)
+							retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
+								Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
+							})
+							return &plgpb.NormalizeCatalogDataResponse{Attributes: retAttrs}, nil
+						},
 						OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 							pluginCalled = true
 							gotPluginAttrs = req.GetCatalog().GetAttributes()
@@ -284,7 +311,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				assert.Nil(got)
 				return
 			}
-			require.NoError(t, err)
+			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			assert.NotNil(got)
 			assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
@@ -293,11 +320,25 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 
-			// wantedPluginAttributes := &structpb.Struct{}
-			// require.NoError(t, proto.Unmarshal(tt.want.GetAttributes(), wantedPluginAttributes))
-			gotB, err := proto.Marshal(gotPluginAttrs)
-			require.NoError(t, err)
-			assert.Equal(tt.want.GetAttributes(), gotB)
+			if origPluginAttrs != nil {
+				if normalizeVal := origPluginAttrs.Fields[normalizeToSliceKey]; normalizeVal != nil {
+					gotVal := gotPluginAttrs.Fields[normalizeToSliceKey]
+					require.NotNil(gotVal)
+					listVal := gotVal.GetListValue()
+					require.NotNil(listVal)
+					require.Len(listVal.Values, 1)
+					assert.Equal(normalizeVal.GetStringValue(), listVal.Values[0].GetStringValue())
+					origPluginAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(listVal)
+					tt.want.Attributes, err = proto.Marshal(origPluginAttrs)
+					require.NoError(err)
+					tt.want.Attributes, err = patchstruct.PatchBytes([]byte{}, tt.want.Attributes)
+					require.NoError(err)
+				}
+			}
+
+			wantedPluginAttributes := &structpb.Struct{}
+			require.NoError(proto.Unmarshal(tt.want.GetAttributes(), wantedPluginAttributes))
+			assert.Empty(cmp.Diff(wantedPluginAttributes, gotPluginAttrs, protocmp.Transform()))
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
@@ -305,20 +346,20 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			err = rw.LookupWhere(ctx, &cSecret, "catalog_id=?", []interface{}{got.GetPublicId()})
 			if tt.wantSecret == nil {
 				assert.Nil(got.Secrets)
-				require.Error(t, err)
-				require.True(t, errors.IsNotFoundError(err))
+				require.Error(err)
+				require.True(errors.IsNotFoundError(err))
 				return
 			}
-			require.NoError(t, err)
-			require.Empty(t, cSecret.Secret)
-			require.NotEmpty(t, cSecret.CtSecret)
+			require.NoError(err)
+			require.Empty(cSecret.Secret)
+			require.NotEmpty(cSecret.CtSecret)
 
 			dbWrapper, err := kmsCache.GetWrapper(ctx, got.GetProjectId(), kms.KeyPurposeDatabase)
-			require.NoError(t, err)
-			require.NoError(t, cSecret.decrypt(ctx, dbWrapper))
+			require.NoError(err)
+			require.NoError(cSecret.decrypt(ctx, dbWrapper))
 
 			st := &structpb.Struct{}
-			require.NoError(t, proto.Unmarshal(cSecret.Secret, st))
+			require.NoError(proto.Unmarshal(cSecret.Secret, st))
 			assert.Empty(cmp.Diff(tt.wantSecret, st, protocmp.Transform()))
 		})
 	}
@@ -432,6 +473,15 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
 	_, projectScopeAlt := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
 
+	// Set up two existing catalogs for duplicate tests, one in the
+	// same scope that we are working in mostly, and another in a
+	// different one. Both are project scopes.
+	const (
+		testDuplicateCatalogNameProjectScope = "duplicate-catalog-name-project-scope"
+		testDuplicateCatalogNameAltScope     = "duplicate-catalog-name-alt-scope"
+		normalizeToSliceKey                  = "normalize_to_slice"
+	)
+
 	// Define a plugin "manager", basically just a map with a mock
 	// plugin in it.  This also includes functionality to capture the
 	// state, and set an error and the returned secrets to nil. Note
@@ -445,6 +495,23 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	testPluginMap := map[string]plgpb.HostPluginServiceClient{
 		testPlugin.GetPublicId(): &WrappingPluginClient{
 			Server: &TestPluginServer{
+				NormalizeCatalogDataFn: func(_ context.Context, req *plgpb.NormalizeCatalogDataRequest) (*plgpb.NormalizeCatalogDataResponse, error) {
+					if req.Attributes == nil {
+						return new(plgpb.NormalizeCatalogDataResponse), nil
+					}
+					var attrs struct {
+						NormalizeToSlice string `mapstructure:"normalize_to_slice"`
+					}
+					require.NoError(t, mapstructure.Decode(req.Attributes.AsMap(), &attrs))
+					if attrs.NormalizeToSlice == "" {
+						return new(plgpb.NormalizeCatalogDataResponse), nil
+					}
+					retAttrs := proto.Clone(req.Attributes).(*structpb.Struct)
+					retAttrs.Fields[normalizeToSliceKey] = structpb.NewListValue(&structpb.ListValue{
+						Values: []*structpb.Value{structpb.NewStringValue(attrs.NormalizeToSlice)},
+					})
+					return &plgpb.NormalizeCatalogDataResponse{Attributes: retAttrs}, nil
+				},
 				OnUpdateCatalogFn: func(_ context.Context, req *plgpb.OnUpdateCatalogRequest) (*plgpb.OnUpdateCatalogResponse, error) {
 					gotOnUpdateCatalogRequest = req
 					respSecrets := req.GetNewCatalog().GetSecrets()
@@ -458,14 +525,6 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			},
 		},
 	}
-
-	// Set up two existing catalogs for duplicate tests, one in the
-	// same scope that we are working in mostly, and another in a
-	// different one. Both are project scopes.
-	const (
-		testDuplicateCatalogNameProjectScope = "duplicate-catalog-name-project-scope"
-		testDuplicateCatalogNameAltScope     = "duplicate-catalog-name-alt-scope"
-	)
 
 	// Project scope
 	existingProjectScopeCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
@@ -598,6 +657,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			require := require.New(t)
 			st := &structpb.Struct{}
 			require.NoError(proto.Unmarshal(gotCatalog.Attributes, st))
+			assert.Equal(want, st.AsMap())
 			assert.Empty(cmp.Diff(mustStruct(want), st, protocmp.Transform()))
 		}
 	}
@@ -933,7 +993,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		{
 			name: "update attributes (overwrite)",
 			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]interface{}{
-				"foo": "baz",
+				"foo":               "baz",
+				normalizeToSliceKey: "normalizeme",
 			})},
 			version:   2,
 			fieldMask: []string{"attributes"},
@@ -944,10 +1005,12 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 					"foo": "bar",
 				}),
 				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{
-					"foo": "baz",
+					"foo":               "baz",
+					normalizeToSliceKey: []any{"normalizeme"},
 				}),
 				checkAttributes(map[string]interface{}{
-					"foo": "baz",
+					"foo":               "baz",
+					normalizeToSliceKey: []any{"normalizeme"},
 				}),
 				checkSecrets(map[string]interface{}{
 					"one": "two",

@@ -345,13 +345,13 @@ func Test_Callback(t *testing.T) {
 				assert.Contains(err.Error(), tt.wantErrContains)
 
 				// make sure there are no tokens in the db..
-				var tokens []authtoken.AuthToken
+				var tokens []*authtoken.AuthToken
 				err := rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
 				require.NoError(err)
 				assert.Equal(0, len(tokens))
 
 				// make sure there weren't any oplog entries written.
-				var entries []oplog.Entry
+				var entries []*oplog.Entry
 				err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
 				require.NoError(err)
 				amId := ""
@@ -365,7 +365,7 @@ func Test_Callback(t *testing.T) {
 			assert.Equal(tt.wantFinalRedirect, gotRedirect)
 
 			// make sure a pending token was created.
-			var tokens []authtoken.AuthToken
+			var tokens []*authtoken.AuthToken
 			err = rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
 			require.NoError(err)
 			require.Equal(1, len(tokens))
@@ -383,14 +383,14 @@ func Test_Callback(t *testing.T) {
 
 			// make sure the token is properly assoc with the
 			// logged in user
-			var users []iam.User
+			var users []*iam.User
 			err = rw.SearchWhere(ctx, &users, "public_id not in(?, ?, ?)", excludeUsers)
 			require.NoError(err)
 			require.Equal(1, len(users))
 			assert.Equal(tk.IamUserId, users[0].PublicId)
 
 			// check the oplog entries.
-			var entries []oplog.Entry
+			var entries []*oplog.Entry
 			err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
 			require.NoError(err)
 			oplogWrapper, err := kmsCache.GetWrapper(ctx, tt.am.ScopeId, kms.KeyPurposeOplog)
@@ -589,7 +589,7 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 		require.Containsf(string(contents), "Congratulations", "expected \"Congratulations\" on successful oidc authentication and got: %s", string(contents))
 
 		// check to make sure there's a pending token, after the successful callback
-		var tokens []authtoken.AuthToken
+		var tokens []*authtoken.AuthToken
 		err = rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
 		require.NoError(err)
 		require.Equal(1, len(tokens))

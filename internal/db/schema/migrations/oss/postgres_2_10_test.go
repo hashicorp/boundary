@@ -15,7 +15,8 @@ import (
 )
 
 // Tests migration:
-//   migrations/oss/2/10_auth.up.sql
+//
+//	migrations/oss/2/10_auth.up.sql
 func Test_AuthMethodSubtypes(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)

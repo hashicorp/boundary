@@ -12,9 +12,7 @@ alter table credential_static_ssh_private_key_credential
   ;
 
 alter table credential_vault_library_ssh_private_key_mapping_override
-  add column private_key_passphrase_attribute wt_sentinel
-    default wt_to_sentinel('no override')
-    not null;
+  add column private_key_passphrase_attribute wt_sentinel default wt_to_sentinel('no override') not null;
 
 -- Replaces view from 41/01_worker_filter_vault_cred_store.up.sql
 drop view credential_vault_library_public;

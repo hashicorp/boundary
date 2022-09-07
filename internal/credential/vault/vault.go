@@ -14,15 +14,39 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+type vaultClient interface {
+	ping(context.Context) error
+	renewToken(context.Context) (*vault.Secret, error)
+	revokeToken(context.Context) error
+	renewLease(context.Context, string, time.Duration) (*vault.Secret, error)
+	revokeLease(context.Context, string) error
+	lookupToken(context.Context) (*vault.Secret, error)
+	swapToken(context.Context, TokenSecret) (old TokenSecret)
+	get(context.Context, string) (*vault.Secret, error)
+	post(context.Context, string, []byte) (*vault.Secret, error)
+	capabilities(context.Context, []string) (pathCapabilities, error)
+}
+
+var vaultClientFactoryFn = vaultClientFactory
+
+func vaultClientFactory(ctx context.Context, c *clientConfig, opt ...Option) (vaultClient, error) {
+	const op = "vault.vaultClientFactory"
+	nc, err := newClient(ctx, c)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return nc, nil
+}
+
 type clientConfig struct {
-	Addr          string
-	Token         TokenSecret
-	CaCert        []byte
-	ClientCert    []byte
-	ClientKey     KeySecret
-	TlsServerName string
-	TlsSkipVerify bool
-	Namespace     string
+	Addr          string `json:"addr"`
+	Token         []byte `json:"token"`
+	CaCert        []byte `json:"ca_cert"`
+	ClientCert    []byte `json:"client_cert"`
+	ClientKey     []byte `json:"client_key"`
+	TlsServerName string `json:"tls_server_name"`
+	TlsSkipVerify bool   `json:"tls_skip_verify"`
+	Namespace     string `json:"namespace"`
 }
 
 func (c *clientConfig) isValid() bool {
@@ -31,6 +55,8 @@ func (c *clientConfig) isValid() bool {
 	}
 	return true
 }
+
+var _ vaultClient = (*client)(nil)
 
 func (c *clientConfig) isClientTLS() bool {
 	if len(c.ClientCert) > 0 && len(c.ClientKey) > 0 {
@@ -44,10 +70,10 @@ type client struct {
 	token TokenSecret
 }
 
-func newClient(c *clientConfig) (*client, error) {
+func newClient(ctx context.Context, c *clientConfig) (*client, error) {
 	const op = "vault.newClient"
 	if !c.isValid() {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "invalid configuration")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid configuration")
 	}
 	vc := vault.DefaultConfig()
 	vc.Address = c.Addr
@@ -58,14 +84,14 @@ func newClient(c *clientConfig) (*client, error) {
 		tlsConfig := vc.HttpClient.Transport.(*http.Transport).TLSClientConfig
 		tlsConfig.InsecureSkipVerify = c.TlsSkipVerify
 		if err := rootcerts.ConfigureTLS(tlsConfig, rootConfig); err != nil {
-			return nil, errors.WrapDeprecated(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
 	if c.isClientTLS() {
 		clientCert, err := tls.X509KeyPair(c.ClientCert, c.ClientKey)
 		if err != nil {
-			return nil, errors.WrapDeprecated(err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		tlsConfig := vc.HttpClient.Transport.(*http.Transport).TLSClientConfig
 		tlsConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
@@ -75,7 +101,7 @@ func newClient(c *clientConfig) (*client, error) {
 
 	vClient, err := vault.NewClient(vc)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	vClient.SetToken(string(c.Token))
 
@@ -93,16 +119,16 @@ func newClient(c *clientConfig) (*client, error) {
 // response is returned. This endpoint is accessible with the default
 // policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/system/health#read-health-information.
-func (c *client) ping() error {
+func (c *client) ping(ctx context.Context) error {
 	const op = "vault.(client).ping"
 	h, err := c.cl.Sys().Health()
 	switch {
 	case err != nil:
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	case h == nil:
-		return errors.NewDeprecated(errors.Unavailable, op, fmt.Sprintf("no response: vault: %s", c.cl.Address()))
+		return errors.New(ctx, errors.Unavailable, op, fmt.Sprintf("no response: vault: %s", c.cl.Address()))
 	case !h.Initialized || h.Sealed:
-		return errors.NewDeprecated(errors.Unavailable, op, fmt.Sprintf("vault (%s): initialized: %t, sealed: %t ", c.cl.Address(), h.Initialized, h.Sealed))
+		return errors.New(ctx, errors.Unavailable, op, fmt.Sprintf("vault (%s): initialized: %t, sealed: %t ", c.cl.Address(), h.Initialized, h.Sealed))
 	}
 
 	return nil
@@ -112,11 +138,11 @@ func (c *client) ping() error {
 // the vault.Secret response. This endpoint is accessible with the default
 // policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/auth/token#renew-a-token-self.
-func (c *client) renewToken() (*vault.Secret, error) {
+func (c *client) renewToken(ctx context.Context) (*vault.Secret, error) {
 	const op = "vault.(client).renewToken"
 	t, err := c.cl.Auth().Token().RenewSelf(0)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return t, nil
 }
@@ -124,11 +150,11 @@ func (c *client) renewToken() (*vault.Secret, error) {
 // revokeToken calls the /auth/token/revoke-self Vault endpoint. This
 // endpoint is accessible with the default policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/auth/token#revoke-a-token-self.
-func (c *client) revokeToken() error {
+func (c *client) revokeToken(ctx context.Context) error {
 	const op = "vault.(client).revokeToken"
 	// The `token` parameter is kept for backwards compatibility but is ignored, so use ""
 	if err := c.cl.Auth().Token().RevokeSelf(""); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return nil
 }
@@ -137,11 +163,11 @@ func (c *client) revokeToken() error {
 // vault.Secret response. This endpoint is accessible with the default
 // policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/system/leases#renew-lease.
-func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault.Secret, error) {
+func (c *client) renewLease(ctx context.Context, leaseId string, leaseDuration time.Duration) (*vault.Secret, error) {
 	const op = "vault.(client).renewLease"
 	t, err := c.cl.Sys().Renew(leaseId, int(leaseDuration.Round(time.Second).Seconds()))
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return t, nil
 }
@@ -149,10 +175,10 @@ func (c *client) renewLease(leaseId string, leaseDuration time.Duration) (*vault
 // revokeLease calls the /sys/leases/revoke Vault endpoint. This endpoint
 // is NOT accessible with the default policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/system/leases#revoke-lease.
-func (c *client) revokeLease(leaseId string) error {
+func (c *client) revokeLease(ctx context.Context, leaseId string) error {
 	const op = "vault.(client).revokeLease"
 	if err := c.cl.Sys().Revoke(leaseId); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return nil
 }
@@ -161,33 +187,33 @@ func (c *client) revokeLease(leaseId string) error {
 // the vault.Secret response. This endpoint is accessible with the default
 // policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token-self.
-func (c *client) lookupToken() (*vault.Secret, error) {
+func (c *client) lookupToken(ctx context.Context) (*vault.Secret, error) {
 	const op = "vault.(client).lookupToken"
 	t, err := c.cl.Auth().Token().LookupSelf()
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Unknown), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return t, nil
 }
 
 // swapToken replaces the token in the Vault client with t and returns the
 // token that was replaced.
-func (c *client) swapToken(new TokenSecret) (old TokenSecret) {
+func (c *client) swapToken(ctx context.Context, new TokenSecret) (old TokenSecret) {
 	old = TokenSecret(c.cl.Token())
 	c.cl.SetToken(string(new))
 	return
 }
 
-func (c *client) get(path string) (*vault.Secret, error) {
+func (c *client) get(ctx context.Context, path string) (*vault.Secret, error) {
 	const op = "vault.(client).get"
 	s, err := c.cl.Logical().Read(path)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return s, nil
 }
 
-func (c *client) post(path string, data []byte) (*vault.Secret, error) {
+func (c *client) post(ctx context.Context, path string, data []byte) (*vault.Secret, error) {
 	const op = "vault.(client).post"
 
 	if len(data) == 0 {
@@ -197,7 +223,7 @@ func (c *client) post(path string, data []byte) (*vault.Secret, error) {
 	}
 	s, err := c.cl.Logical().WriteBytes(path, data)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.VaultCredentialRequest), errors.WithMsg(fmt.Sprintf("vault: %s", c.cl.Address())))
 	}
 	return s, nil
 }
@@ -206,10 +232,10 @@ func (c *client) post(path string, data []byte) (*vault.Secret, error) {
 // the vault.Secret response. This endpoint is accessible with the default
 // policy in Vault 1.7.2. See
 // https://www.vaultproject.io/api-docs/system/capabilities-self.
-func (c *client) capabilities(paths []string) (pathCapabilities, error) {
+func (c *client) capabilities(ctx context.Context, paths []string) (pathCapabilities, error) {
 	const op = "vault.(client).capabilities"
 	if len(paths) == 0 {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "empty paths")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty paths")
 	}
 	body := map[string]string{
 		"paths": strings.Join(paths, ","),
@@ -234,7 +260,7 @@ func (c *client) capabilities(paths []string) (pathCapabilities, error) {
 		return nil, err
 	}
 	if secret == nil || secret.Data == nil {
-		return nil, errors.NewDeprecated(errors.Unknown, op, "data from Vault is empty")
+		return nil, errors.New(ctx, errors.Unknown, op, "data from Vault is empty")
 	}
 
 	var res map[string][]string

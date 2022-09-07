@@ -99,13 +99,13 @@ func convertAttributesToDefault(msg proto.Message, st Subtype) error {
 // that there is a structpb.Struct field named "attributes" as part of the
 // oneof. Thus the message must be like:
 //
-//    message Foo {
-//      // other fields
-//      oneof attrs {
-//        google.protobuf.Struct attributes = 100;
-//        // other attribute fields
-//      }
-//    }
+//	message Foo {
+//	  // other fields
+//	  oneof attrs {
+//	    google.protobuf.Struct attributes = 100;
+//	    // other attribute fields
+//	  }
+//	}
 //
 // If the message does not conform to this structure,
 // the original message is returned.

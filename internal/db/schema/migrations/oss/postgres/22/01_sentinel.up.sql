@@ -1,7 +1,6 @@
 begin;
 
-  create function wt_to_sentinel(string text)
-    returns text
+  create function wt_to_sentinel(string text) returns text
   as $$
     select concat(
       u&'\fffe',

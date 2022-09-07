@@ -6,22 +6,37 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-	"strconv"
-	"strings"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/daemon/internal/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const (
-	invalidPathValue = "invalid"
+	proxySubSystem   = "worker_proxy"
 	proxyPathValue   = "/v1/proxy"
+	invalidPathValue = "invalid"
+)
 
-	labelHttpCode   = "code"
-	labelHttpPath   = "path"
-	labelHttpMethod = "method"
-	proxySubSystem  = "worker_proxy"
+var (
+	expectedPathsToMethods = map[string][]string{
+		proxyPathValue: {http.MethodGet},
+	}
+
+	expectedHttpErrCodes = []int{
+		http.StatusUpgradeRequired,
+		http.StatusMethodNotAllowed,
+		http.StatusBadRequest,
+		http.StatusForbidden,
+		http.StatusNotImplemented,
+		http.StatusSwitchingProtocols,
+		http.StatusInternalServerError,
+	}
+
+	expectedCodesPerMethod = map[string][]int{
+		http.MethodGet: expectedHttpErrCodes,
+	}
 )
 
 // httpTimeUntilHeader collects measurements of how long it takes
@@ -34,18 +49,8 @@ var httpTimeUntilHeader prometheus.ObserverVec = prometheus.NewHistogramVec(
 		Help:      "Histogram of time elapsed after the TLS connection is established to when the first http header is written back from the server.",
 		Buckets:   prometheus.DefBuckets,
 	},
-	[]string{labelHttpCode, labelHttpPath, labelHttpMethod},
+	metric.ListHttpLabels,
 )
-
-var expectedHttpErrCodes = []int{
-	http.StatusUpgradeRequired,
-	http.StatusMethodNotAllowed,
-	http.StatusBadRequest,
-	http.StatusForbidden,
-	http.StatusNotImplemented,
-	http.StatusSwitchingProtocols,
-	http.StatusInternalServerError,
-}
 
 // pathLabel maps the requested path to the label value recorded for metric
 func pathLabel(incomingPath string) string {
@@ -66,7 +71,7 @@ func pathLabel(incomingPath string) string {
 func InstrumentHttpHandler(wrapped http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		l := prometheus.Labels{
-			labelHttpPath: pathLabel(req.URL.Path),
+			metric.LabelHttpPath: pathLabel(req.URL.Path),
 		}
 		promhttp.InstrumentHandlerTimeToWriteHeader(
 			httpTimeUntilHeader.MustCurryWith(l),
@@ -79,23 +84,5 @@ func InstrumentHttpHandler(wrapped http.Handler) http.Handler {
 // prometheus register and initializes them to 0 for the most likely label
 // combinations.
 func InitializeHttpCollectors(r prometheus.Registerer) {
-	if r == nil {
-		return
-	}
-	r.MustRegister(httpTimeUntilHeader)
-
-	p := proxyPathValue
-	method := http.MethodGet
-	for _, sc := range expectedHttpErrCodes {
-		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(method)}
-		httpTimeUntilHeader.With(l)
-	}
-
-	// When an invalid path is found, any method is possible, but we expect
-	// an error response.
-	p = invalidPathValue
-	for _, sc := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
-		l := prometheus.Labels{labelHttpCode: strconv.Itoa(sc), labelHttpPath: p, labelHttpMethod: strings.ToLower(method)}
-		httpTimeUntilHeader.With(l)
-	}
+	metric.InitializeApiCollectors(r, httpTimeUntilHeader, expectedPathsToMethods, expectedCodesPerMethod)
 }

@@ -17,7 +17,7 @@ import (
 // roleVersion or an error will be returned.  The list of current PrincipalRoles
 // after the adds will be returned on success. Zero is not a valid value for
 // the WithVersion option and will return an error.
-func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, _ ...Option) ([]PrincipalRole, error) {
+func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, _ ...Option) ([]*PrincipalRole, error) {
 	const op = "iam.(Repository).AddPrincipalRoles"
 	if roleId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
@@ -70,7 +70,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var currentPrincipals []PrincipalRole
+	var currentPrincipals []*PrincipalRole
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -149,7 +149,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 // requested. If both userIds and groupIds are empty, the principal roles will
 // be cleared. Zero is not a valid value for the WithVersion option and will
 // return an error.
-func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, _ ...Option) ([]PrincipalRole, int, error) {
+func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleVersion uint32, principalIds []string, _ ...Option) ([]*PrincipalRole, int, error) {
 	const op = "iam.(Repository).SetPrincipalRoles"
 	if roleId == "" {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
@@ -186,7 +186,7 @@ func (r *Repository) SetPrincipalRoles(ctx context.Context, roleId string, roleV
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var currentPrincipals []PrincipalRole
+	var currentPrincipals []*PrincipalRole
 	var totalRowsAffected int
 	_, err = r.writer.DoTx(
 		ctx,
@@ -447,16 +447,16 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 }
 
 // ListPrincipalRoles returns the principal roles for the roleId and supports the WithLimit option.
-func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt ...Option) ([]PrincipalRole, error) {
+func (r *Repository) ListPrincipalRoles(ctx context.Context, roleId string, opt ...Option) ([]*PrincipalRole, error) {
 	const op = "iam.(Repository).ListPrincipalRoles"
 	if roleId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
-	var roles []PrincipalRole
+	var roles []*PrincipalRole
 	if err := r.list(ctx, &roles, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup roles"))
 	}
-	principals := make([]PrincipalRole, 0, len(roles))
+	principals := make([]*PrincipalRole, 0, len(roles))
 	principals = append(principals, roles...)
 	return principals, nil
 }
@@ -470,7 +470,7 @@ type PrincipalSet struct {
 	DeleteManagedGroupRoles []interface{}
 	// unchangedPrincipalRoles is set iff there are no changes, that is, the
 	// length of all other members is zero
-	UnchangedPrincipalRoles []PrincipalRole
+	UnchangedPrincipalRoles []*PrincipalRole
 }
 
 // TODO: Should this be moved inside the transaction, at this point?
@@ -485,9 +485,9 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to list existing principal role %s", role.PublicId)))
 	}
-	existingUsers := map[string]PrincipalRole{}
-	existingGroups := map[string]PrincipalRole{}
-	existingManagedGroups := map[string]PrincipalRole{}
+	existingUsers := map[string]*PrincipalRole{}
+	existingGroups := map[string]*PrincipalRole{}
+	existingManagedGroups := map[string]*PrincipalRole{}
 	for _, p := range existing {
 		switch p.GetType() {
 		case UserRoleType.String():

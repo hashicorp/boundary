@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     enos = {
-      source = "hashicorp.com/qti/enos"
+      source = "app.terraform.io/hashicorp-qti/enos"
     }
   }
 }
@@ -62,9 +62,9 @@ resource "enos_local_exec" "create_account" {
   environment = {
     BOUNDARY_ADDR  = var.alb_boundary_api_addr,
     BOUNDARY_TOKEN = local.auth_token,
-    BP = local.test_password
+    BP             = local.test_password
   }
-  inline      = ["${var.local_boundary_dir}/boundary accounts create password -auth-method-id ${var.auth_method_id} -login-name ${local.test_user} -name ${local.test_user} -password env://BP -description 'test user' -format json"]
+  inline = ["${var.local_boundary_dir}/boundary accounts create password -auth-method-id ${var.auth_method_id} -login-name ${local.test_user} -name ${local.test_user} -password env://BP -description 'test user' -format json"]
 }
 
 resource "enos_local_exec" "create_role" {

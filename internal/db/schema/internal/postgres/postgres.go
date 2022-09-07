@@ -451,7 +451,7 @@ func (p *Postgres) EnsureMigrationLogTable(ctx context.Context) error {
 
 // GetMigrationLog will retrieve the migration logs from the db for the last
 // migration.
-//  The WithDeleteLog option is supported and will remove all log entries,
+// The WithDeleteLog option is supported and will remove all log entries,
 // after reading the entries, when provided.
 func (p *Postgres) GetMigrationLog(ctx context.Context, opt ...log.Option) ([]*log.Entry, error) {
 	const op = "postgres.(Postgres).GetMigrationLog"

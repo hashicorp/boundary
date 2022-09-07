@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pbset "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -24,6 +25,38 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+// normalizeCatalogAttributes allows a plugin to normalize attributes before
+// they are saved
+func normalizeCatalogAttributes(ctx context.Context, plgClient plgpb.HostPluginServiceClient, plgHc *pb.HostCatalog) error {
+	const op = "plugin.(Repository).normalizeCatalogAttributes"
+	switch {
+	case util.IsNil(plgClient):
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin client is nil")
+	case plgHc == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "host catalog is nil")
+	case plgHc.GetAttributes() == nil:
+		return nil
+	}
+
+	ret, err := plgClient.NormalizeCatalogData(ctx, &plgpb.NormalizeCatalogDataRequest{
+		Attributes: plgHc.GetAttributes(),
+	})
+	switch {
+	case err == nil:
+		if ret.Attributes != nil {
+			plgHc.Attrs = &pb.HostCatalog_Attributes{
+				Attributes: ret.Attributes,
+			}
+		}
+	case status.Code(err) == codes.Unimplemented:
+		// Do nothing
+	default:
+		return errors.Wrap(ctx, err, op, errors.WithMsg("error asking plugin to normalize catalog data"))
+	}
+
+	return nil
+}
 
 // CreateCatalog inserts c into the repository and returns a new
 // HostCatalog containing the catalog's PublicId. c must contain a valid
@@ -88,6 +121,12 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 	plgClient, ok := r.plugins[c.GetPluginId()]
 	if !ok || plgClient == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("plugin %q not available", c.GetPluginId()))
+	}
+
+	if plgHc.GetAttributes() != nil {
+		if err := normalizeCatalogAttributes(ctx, plgClient, plgHc); err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeOplog)
@@ -319,6 +358,17 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 	newPlgHc, err := toPluginCatalog(ctx, newCatalog)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+
+	if updateAttributes {
+		if newPlgHc.GetAttributes() != nil {
+			if err := normalizeCatalogAttributes(ctx, plgClient, newPlgHc); err != nil {
+				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+			if newCatalog.Attributes, err = proto.Marshal(newPlgHc.GetAttributes()); err != nil {
+				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+		}
 	}
 
 	dbWrapper, err := r.kms.GetWrapper(ctx, newCatalog.ProjectId, kms.KeyPurposeDatabase)

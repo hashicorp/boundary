@@ -291,7 +291,10 @@ func executeExtraOidcActionsImpl(c *OidcCommand, origResp *api.Response, origIte
 			opts = append(opts, authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(true))
 		}
 		result, err := amClient.ChangeState(c.Context, c.FlagId, version, c.flagState, opts...)
-		return result.GetResponse(), result.GetItem(), err
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil
 	}
 	return origResp, origItem, origError
 }

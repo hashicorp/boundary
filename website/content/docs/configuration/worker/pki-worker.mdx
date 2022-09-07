@@ -22,6 +22,59 @@ worker {
 }
 ```
 
+## Authorization Methods
+There are two mechanisms that can be used to register a worker to the cluster.
+
+### Controller-Led Authorization Flow
+In this flow, the operator fetches an activation token from the controller's
+`workers:create:controller-led` action (on the CLI, this is via `boundary
+workers create controller-led`). That activation token is given to the worker
+via the `controller_generated_activation_token` parameter. This can be done
+either directly or via an env var or file by using `env://` or `file://` syntax:
+
+```hcl
+worker {
+  worker {
+  auth_storage_path="/boundary/demo-worker-1"
+  initial_upstreams = ["10.0.0.1"]
+  controller_generated_activation_token = "neslat_........."
+  # controller_generated_activation_token = "env://ACT_TOKEN"
+  # controller_generated_activation_token = "file:///tmp/worker_act_token"
+}
+```
+
+Once the worker starts, it will read this token and use it to authorize to the
+cluster. Note that this token is one-time-use; it is safe to keep it here even
+after the worker has successfully authorized and authenticated, as it will be
+unusable at that point.
+
+Note: If this value is not present at worker startup time and the worker is not
+authorized, it will print and write out suitable information for the worker-led
+flow, described below. So long as the worker-led flow has not been used to
+authorize the worker, if the controller-generated activation token is provided
+and the worker restarted, it will make use of it.
+
+### Worker-Led Authorization Flow
+In this flow, the worker prints out an authorization request token to two
+places: the startup information printed to stdout, and a file called
+`auth_request_token` in the base of the configured `auth_storage_path`. This
+token can be submitted to a controller at the `workers:create:worker-led` path;
+on the CLI this would be via `boundary workers create worker-led
+-worker-generated-auth-token`. No values are needed in the configuration file.
+
+## KMS Configuration
+PKI Workers credentials can be encrypted by including an optional KMS stanza with the purpose `worker-auth-storage`.
+
+Example (not safe for production!):
+```hcl
+kms "aead" {
+  purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "worker-auth-storage"
+}
+```
+
 ~> **Note:** `name` and `description` fields are not valid config fields for PKI
 workers. These fields are only valid for [KMS Workers][]. `name` and
 `description` can only be set for PKI workers through the API.
@@ -52,6 +105,15 @@ worker {
     type   = ["prod", "webservers"]
     region = ["us-east-1"]
   }
+}
+
+# The following KMS config is an example only
+# Use a production KMS such as AWS KMS for production installs
+kms "aead" {
+  purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key_id = "worker-auth-storage"
 }
 
 

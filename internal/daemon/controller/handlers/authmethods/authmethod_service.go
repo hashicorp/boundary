@@ -76,7 +76,7 @@ var (
 
 // Service handles request as described by the pbs.AuthMethodServiceServer interface.
 type Service struct {
-	pbs.UnimplementedAuthMethodServiceServer
+	pbs.UnsafeAuthMethodServiceServer
 
 	kms        *kms.Kms
 	pwRepoFn   common.PasswordAuthRepoFactory
@@ -84,6 +84,8 @@ type Service struct {
 	iamRepoFn  common.IamRepoFactory
 	atRepoFn   common.AuthTokenRepoFactory
 }
+
+var _ pbs.AuthMethodServiceServer = (*Service)(nil)
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
 func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, opt ...handlers.Option) (Service, error) {
@@ -107,8 +109,6 @@ func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoF
 
 	return s, nil
 }
-
-var _ pbs.AuthMethodServiceServer = Service{}
 
 // ListAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRequest) (*pbs.ListAuthMethodsResponse, error) {
@@ -818,9 +818,9 @@ func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 	const op = "authmethod.validateGetRequest"
 	if req == nil {

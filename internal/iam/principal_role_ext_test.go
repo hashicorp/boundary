@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 // This is in an iam_test package because managed groups are an abstract type so
@@ -246,7 +248,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 			found := iam.AllocManagedGroupRole()
 			err = w.LookupWhere(context.Background(), &found, "role_id = ? and principal_id = ?", []interface{}{r.RoleId, r.PrincipalId})
 			require.NoError(err)
-			assert.Equal(r, &found)
+			assert.Empty(cmp.Diff(r, &found, protocmp.Transform()))
 		})
 	}
 }

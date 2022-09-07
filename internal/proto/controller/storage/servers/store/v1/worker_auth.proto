@@ -51,3 +51,29 @@ message WorkerCertBundle {
   // @inject_tag: `gorm:"not_null"`
   bytes cert_bundle = 30;
 }
+
+// WorkerAuthServerLedActivationToken contains all fields related to a
+// WorkerAuthServerLedActivationToken resource
+message WorkerAuthServerLedActivationToken {
+  // The worker_id of the worker that this activates
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // The token identifier, which is used for lookup
+  // @inject_tag: `gorm:"not_null"`
+  string token_id = 15;
+
+  // The creation time, encrypted to prevent tampering, as the time plus
+  // existence of the record allows authorization
+  // @inject_tag: `gorm:"not_null" wrapping:"ct,creation_time_data"`
+  bytes creation_time_encrypted = 20;
+
+  // The plaintext bytes of the creation time, which are never stored. This is a
+  // marshaled timestamppb.Timestamp.
+  // @inject_tag: `gorm:"-" wrapping:"pt,creation_time_data"`
+  bytes creation_time = 21;
+
+  // The key ID of the encrypting key
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 40;
+}

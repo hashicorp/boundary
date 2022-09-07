@@ -1,6 +1,5 @@
 begin;
 
-
 -- insert_target_subtype() is a before insert trigger
 -- function for subtypes of target
 -- Replaced in 44/03_targets.up.sql
@@ -17,8 +16,7 @@ $$ language plpgsql;
 
 -- delete_target_subtype() is an after delete trigger
 -- function for subtypes of host
-create or replace function delete_target_subtype()
-  returns trigger
+create or replace function delete_target_subtype() returns trigger
 as $$
 begin
   delete from target

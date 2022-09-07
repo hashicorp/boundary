@@ -2,13 +2,72 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+## 0.10.4 (Unreleased)
+
+### Known Issues
+
+* Migration to this version may fail if the cluster contains credential
+  libraries. This will be fixed shortly in 0.10.1.
+
+### New and Improved
+
+* Controller-led worker authorization: This is a second authorization option for
+  the workers using PKI-based authentication that was introduced in Boundary
+  0.10. In 0.10, the only mode available was "worker-led", in which a worker
+  generates an authorization request which can be submitted to a controller to
+  authorize the worker. With this new controller-led flow, a worker can be
+  created via the controller API first and return a one-time-use authorization
+  token. This token can then be made available to the worker at startup time via
+  its configuration file, env var, or a file with the value. If the worker is
+  not authorized and this token is provided, it will use the token to authorize
+  itself to the controller and set up PKI-based authentication.
+  ([PR](https://github.com/hashicorp/boundary/pull/2413))
+* Initial upstreams reloading on `SIGHUP`: Workers will now re-read the
+  `initial_upstreams` value from the configuration file when given a SIGHUP.
+  This allows a worker to reconnect to controllers if the full set of
+  controllers has been changed over at the same time, without having to restart
+  the worker. ([PR](https://github.com/hashicorp/boundary/pull/2417))
+
+### Bug Fixes
+
+* vault: Correctly handle Vault credential stores and libraries that are linked to an
+  expired Vault token. ([Issue](https://github.com/hashicorp/boundary/issues/2179),
+  [PR](https://github.com/hashicorp/boundary/pull/2399)).
+* aws host catalog: Fix an issue where the request to list hosts could timeout
+  on a large number of hosts
+  ([Issue](https://github.com/hashicorp/boundary/issues/2224),
+  [PR](https://github.com/hashicorp/boundary-plugin-host-aws/pull/17))
+* aws host catalog: Fix an issue where filters could become unreadable in the UI
+  if only one filter was created and was set by the CLI or directly via the API
+  ([PR1](https://github.com/hashicorp/boundary/pull/2376),
+  [PR2](https://github.com/hashicorp/boundary-plugin-host-aws/pull/16))
+* aws host catalog: Use provided region for IAM calls in addition to EC2
+  ([Issue](https://github.com/hashicorp/boundary/issues/2233),
+  [PR](https://github.com/hashicorp/boundary-plugin-host-aws/pull/18))
+* azure host catalog: Fix hosts not being found depending on the exact filter
+  used because different filters return values with different casing
+  ([PR](https://github.com/hashicorp/boundary-plugin-host-azure/pull/8))
+* sessions: Fix an issue where sessions could not have more than one connection
+  ([Issue](https://github.com/hashicorp/boundary/issues/2362),
+  [PR](https://github.com/hashicorp/boundary/pull/2369))
+* workers: Fix repeating error in logs when connected to HCP Boundary about an
+  unimplemented HcpbWorkers call
+  ([PR](https://github.com/hashicorp/boundary/pull/2361))
+* workers: Fix a panic that could occur when `workers:create:worker-led` (e.g.
+  via `boundary workers create worker-led`) was given an invalid token
+  ([PR](https://github.com/hashicorp/boundary/pull/2388))
+* workers: Add the ability to set API-based worker tags via the CLI
+  ([PR](https://github.com/hashicorp/boundary/pull/2266))
+
 ## 0.10.3 (2022/08/30)
 
 ### Bug Fixes
 
 * db: Fix an issue with migrations failing due to not updating the project_id value for the host plugin set
-  ([Issue](https://github.com/hashicorp/boundary/issues/2349#issuecomment-1229953874)),
-  ([PR](https://github.com/hashicorp/boundary/pull/2407)).
+  ([Issue](https://github.com/hashicorp/boundary/issues/2349#issuecomment-1229953874),
+  [PR](https://github.com/hashicorp/boundary/pull/2407)).
 
 ## 0.10.2 (2022/08/23)
 
@@ -25,17 +84,17 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * db: Fix an issue with migrations affecting clusters that contain 
   credential libraries or static credentials.
-  ([Issue](https://github.com/hashicorp/boundary/issues/2349)),
-  ([PR](https://github.com/hashicorp/boundary/pull/2351)).
-* Managed Groups: Fix an issue where the `filter` field is not sent by
+  ([Issue](https://github.com/hashicorp/boundary/issues/2349),
+  [PR](https://github.com/hashicorp/boundary/pull/2351)).
+* managed groups: Fix an issue where the `filter` field is not sent by
   admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
-* Host Sets: Fix an issue causing host sets to not display in UI when using the aws plugin 
+* host sets: Fix an issue causing host sets to not display in UI when using the aws plugin 
   ([PR](https://github.com/hashicorp/boundary-ui/pull/1251))
-* Plugins: Fixes regression from 0.9.0 causing a failure to start when using
+* plugins: Fixes regression from 0.9.0 causing a failure to start when using
   multiple KMS blocks of the same type
   ([PR1](https://github.com/hashicorp/go-secure-stdlib/pull/43),
   [PR2](https://github.com/hashicorp/boundary/pull/2346))
-* CLI: Fixed errors related to URL detection when passing in `-attr` or
+* cli: Fixed errors related to URL detection when passing in `-attr` or
   `-secret` values that contained colons
   ([PR](https://github.com/hashicorp/boundary/pull/2353))
 

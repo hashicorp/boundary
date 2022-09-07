@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -42,6 +43,38 @@ import (
 	"google.golang.org/grpc"
 )
 
+// downstreamRouter defines a min interface which must be met by a
+// Controller.downstreamRoutes field
+type downstreamRouter interface {
+	// StartRouteMgmtTicking starts a ticker which manages the router's
+	// connections.
+	StartRouteMgmtTicking(context.Context, func() string, int) error
+}
+
+// downstreamWorkersTicker defines an interface for a ticker that maintains the
+// graph of the controller's downstream workers
+type downstreamWorkersTicker interface {
+	// StartDownstreamWorkersTicking is used by a Controller to maintain their
+	// graph of downstream workers.
+	StartDownstreamWorkersTicking(context.Context, int) error
+}
+
+// downstreamers provides at least a minimum interface that must be met by a
+// Controller.downstreamWorkers field which is far better than allowing any (empty
+// interface)
+type downstreamers interface {
+	// Root returns the root of the downstreamers' graph
+	Root() string
+}
+
+var (
+	downstreamRouterFactory func() downstreamRouter
+
+	downstreamersFactory           func(context.Context, string) (downstreamers, error)
+	downstreamWorkersTickerFactory func(context.Context, string, downstreamers, downstreamRouter) (downstreamWorkersTicker, error)
+	commandClientFactory           func(context.Context, *Controller) error
+)
+
 type Controller struct {
 	conf   *Config
 	logger hclog.Logger
@@ -54,6 +87,10 @@ type Controller struct {
 	schedulerWg *sync.WaitGroup
 
 	workerAuthCache *sync.Map
+
+	// downstream workers and routes to those workers
+	downstreamWorkers downstreamers
+	downstreamRoutes  downstreamRouter
 
 	apiListeners    []*base.ServerListener
 	clusterListener *base.ServerListener
@@ -73,12 +110,12 @@ type Controller struct {
 	OidcRepoFn              common.OidcAuthRepoFactory
 	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
 	ServersRepoFn           common.ServersRepoFactory
-	SessionRepoFn           common.SessionRepoFactory
+	SessionRepoFn           session.RepositoryFactory
 	ConnectionRepoFn        common.ConnectionRepoFactory
 	StaticHostRepoFn        common.StaticRepoFactory
 	PluginHostRepoFn        common.PluginHostRepoFactory
 	HostPluginRepoFn        common.HostPluginRepoFactory
-	TargetRepoFn            common.TargetRepoFactory
+	TargetRepoFn            target.RepositoryFactory
 	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
@@ -104,6 +141,10 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		workerStatusUpdateTimes: new(sync.Map),
 		enabledPlugins:          conf.Server.EnabledPlugins,
 		apiListeners:            make([]*base.ServerListener, 0),
+	}
+
+	if downstreamRouterFactory != nil {
+		c.downstreamRoutes = downstreamRouterFactory()
 	}
 
 	c.started.Store(false)
@@ -292,11 +333,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(dbase, dbase, c.kms)
 	}
-	c.TargetRepoFn = func() (*target.Repository, error) {
-		return target.NewRepository(dbase, dbase, c.kms)
+	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
+		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
 	}
-	c.SessionRepoFn = func() (*session.Repository, error) {
-		return session.NewRepository(dbase, dbase, c.kms)
+	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, dbase, dbase, c.kms, opt...)
 	}
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)
@@ -314,6 +355,19 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	err = server.RotateRoots(ctx, serversRepo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
+	}
+
+	if downstreamersFactory != nil {
+		c.downstreamWorkers, err = downstreamersFactory(ctx, "root")
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialize downstream workers graph: %w", err)
+		}
+		if commandClientFactory != nil {
+			err := commandClientFactory(ctx, c)
+			if err != nil {
+				return nil, fmt.Errorf("unable to initialize issue command factory: %w", err)
+			}
+		}
 	}
 
 	return c, nil
@@ -364,6 +418,44 @@ func (c *Controller) Start() error {
 		defer c.tickerWg.Done()
 		c.started.Store(true)
 	}()
+
+	if c.downstreamRoutes != nil {
+		c.tickerWg.Add(1)
+		go func() {
+			defer c.tickerWg.Done()
+			err := c.downstreamRoutes.StartRouteMgmtTicking(
+				c.baseContext,
+				func() string {
+					switch {
+					case c.conf.RawConfig.Controller.Name != "":
+						return c.conf.RawConfig.Controller.Name
+					default:
+						return "unknown controller name"
+					}
+				},
+				-1,
+			)
+			if err != nil {
+				errors.Wrap(c.baseContext, err, op)
+			}
+		}()
+	}
+	if downstreamWorkersTickerFactory != nil {
+		// we'll use "root" to designate that this is the root of the graph (aka
+		// a controller)
+		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", c.downstreamWorkers, c.downstreamRoutes)
+		if err != nil {
+			return fmt.Errorf("error creating downstream workers ticker: %w", err)
+		}
+		c.tickerWg.Add(1)
+		go func() {
+			defer c.tickerWg.Done()
+			err := dswTicker.StartDownstreamWorkersTicking(c.baseContext, -1)
+			if err != nil {
+				event.WriteSysEvent(c.baseContext, op, "error starting/running downstream workers ticker", "err", err.Error())
+			}
+		}()
+	}
 
 	return nil
 }

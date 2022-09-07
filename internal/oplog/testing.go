@@ -121,6 +121,7 @@ type constraintResults struct {
 func testListConstraints(t testing.TB, db *dbw.DB, tableName string) []constraintResults {
 	t.Helper()
 	require := require.New(t)
+	require.NotEmpty(tableName)
 	testCtx := context.Background()
 	const constraintSql = `select pgc.conname as name,
 	ccu.table_schema as table_schema,
@@ -134,6 +135,7 @@ left join information_schema.constraint_column_usage ccu
 	   on pgc.conname = ccu.constraint_name
 	   and nsp.nspname = ccu.constraint_schema 
 -- where contype ='c'
+where ccu.table_name = ?
 order by ccu.table_name,pgc.conname `
 
 	rw := dbw.New(db)

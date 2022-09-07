@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	ua "go.uber.org/atomic"
@@ -38,6 +39,26 @@ import (
 )
 
 type randFn func(length int) (string, error)
+
+// downstreamRouter defines a min interface which must be met by a
+// Worker.downstreamRoutes field
+type downstreamRouter interface {
+	// StartRouteMgmtTicking starts a ticker which manages the router's
+	// connections.
+	StartRouteMgmtTicking(context.Context, func() string, int) error
+}
+
+// downstreamers provides at least a minimum interface that must be met by a
+// Worker.downstreamWorkers field which is far better than allowing any (empty
+// interface)
+type downstreamers interface {
+	// Root returns the root of the downstreamers' graph
+	Root() string
+}
+
+// downstreamRouterFactory provides a simple factory which a Worker can use to
+// create its downstreamRouter
+var downstreamRouterFactory func() downstreamRouter
 
 const (
 	authenticationStatusNeverAuthenticated uint32 = iota
@@ -91,10 +112,16 @@ type Worker struct {
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
 
+	// downstream workers and routes to those workers
+	downstreamWorkers downstreamers
+	downstreamRoutes  downstreamRouter
+
 	// Test-specific options (and possibly hidden dev-mode flags)
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
 	TestOverrideAuthRotationPeriod time.Duration
+
+	statusLock sync.Mutex
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -117,6 +144,10 @@ func New(conf *Config) (*Worker, error) {
 		WorkerAuthCurrentKeyId: new(ua.String),
 	}
 
+	if downstreamRouterFactory != nil {
+		w.downstreamRoutes = downstreamRouterFactory()
+	}
+
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
@@ -126,7 +157,7 @@ func New(conf *Config) (*Worker, error) {
 		conf.RawConfig.Worker = new(config.Worker)
 	}
 
-	w.ParseAndStoreTags(conf.RawConfig.Worker.Tags)
+	w.parseAndStoreTags(conf.RawConfig.Worker.Tags)
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
@@ -172,6 +203,35 @@ func New(conf *Config) (*Worker, error) {
 	return w, nil
 }
 
+// Reload will update a worker with a new Config. The worker will only use
+// relevant parts of the new config, specifically:
+// - Worker Tags
+// - Initial Upstream addresses
+func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
+	const op = "worker.(Worker).Reload"
+
+	w.parseAndStoreTags(newConf.Worker.Tags)
+
+	if !strutil.EquivalentSlices(newConf.Worker.InitialUpstreams, w.conf.RawConfig.Worker.InitialUpstreams) {
+		w.statusLock.Lock()
+		defer w.statusLock.Unlock()
+
+		upstreamsMessage := fmt.Sprintf(
+			"Initial Upstreams has changed; old upstreams were: %s, new upstreams are: %s",
+			w.conf.RawConfig.Worker.InitialUpstreams,
+			newConf.Worker.InitialUpstreams,
+		)
+		event.WriteSysEvent(ctx, op, upstreamsMessage)
+		w.conf.RawConfig.Worker.InitialUpstreams = newConf.Worker.InitialUpstreams
+
+		for _, ar := range w.addressReceivers {
+			ar.SetAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
+			// set InitialAddresses in case the worker has not successfully dialed yet
+			ar.InitialAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
+		}
+	}
+}
+
 func (w *Worker) Start() error {
 	const op = "worker.(Worker).Start"
 
@@ -182,12 +242,6 @@ func (w *Worker) Start() error {
 		return nil
 	}
 
-	extraAddrReceivers, err := extraAddressReceivers(w.baseContext, w)
-	if err != nil {
-		return errors.Wrap(w.baseContext, err, op)
-	}
-	w.addressReceivers = append(w.addressReceivers, extraAddrReceivers...)
-
 	if w.conf.WorkerAuthKms == nil || w.conf.DevUsePkiForUpstream {
 		// In this section, we look for existing worker credentials. The two
 		// variables below store whether to create new credentials and whether
@@ -197,6 +251,10 @@ func (w *Worker) Start() error {
 		// the controller, we don't want to invalidate that request on restart
 		// by generating a new set of credentials. However it's safe to output a
 		// new fetch request so we do in fact do that.
+		//
+		// Note that if a controller-generated activation token has been
+		// supplied, we do not output a fetch request; we attempt to use that
+		// directly later.
 		var err error
 		w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
 			nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
@@ -257,6 +315,15 @@ func (w *Worker) Start() error {
 			return fmt.Errorf("error loading worker auth creds: %w", err)
 		}
 
+		// Don't output a fetch request if an activation token has been
+		// provided. Technically we _could_ still output a fetch request, and it
+		// would be valid to do so, but if a token was provided it may well be
+		// confusing to a user if it seems like it was ignored because a fetch
+		// request was still output.
+		if actToken := w.conf.RawConfig.Worker.ControllerGeneratedActivationToken; actToken != "" {
+			createFetchRequest = false
+		}
+
 		// NOTE: this block _must_ be before the `if createFetchRequest` block
 		// or the fetch request may have no credentials to work with
 		if createNodeAuthCreds {
@@ -305,6 +372,7 @@ func (w *Worker) Start() error {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error making controller connections"))
 	}
 
+	var err error
 	w.sessionManager, err = session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
 	if err != nil {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error creating session manager"))
@@ -316,16 +384,33 @@ func (w *Worker) Start() error {
 
 	// Rather than deal with some of the potential error conditions for Add on
 	// the waitgroup vs. Done (in case a function exits immediately), we will
-	// always start rotation and simply exit early if we're using KMS, and
-	// always add 2 here.
-	w.tickerWg.Add(2)
+	// always start rotation and simply exit early if we're using KMS
+	w.tickerWg.Add(3)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext, w.sessionManager, w.addressReceivers)
+		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
 		w.startAuthRotationTicking(w.baseContext)
+	}()
+	go func() {
+		defer w.tickerWg.Done()
+		if w.downstreamRoutes != nil {
+			err := w.downstreamRoutes.StartRouteMgmtTicking(
+				w.baseContext,
+				func() string {
+					if s := w.LastStatusSuccess(); s != nil {
+						return s.WorkerId
+					}
+					return "unknown worker id"
+				},
+				-1, // indicates the ticker should run until cancelled.
+			)
+			if err != nil {
+				errors.Wrap(w.baseContext, err, op)
+			}
+		}
 	}()
 
 	w.workerStartTime = time.Now()
@@ -391,7 +476,7 @@ func (w *Worker) Shutdown() error {
 	return nil
 }
 
-func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
+func (w *Worker) parseAndStoreTags(incoming map[string][]string) {
 	if len(incoming) == 0 {
 		w.tags.Store([]*pb.TagPair{})
 		return

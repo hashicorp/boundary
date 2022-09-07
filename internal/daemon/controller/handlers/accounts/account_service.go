@@ -96,11 +96,13 @@ func init() {
 
 // Service handles request as described by the pbs.AccountServiceServer interface.
 type Service struct {
-	pbs.UnimplementedAccountServiceServer
+	pbs.UnsafeAccountServiceServer
 
 	pwRepoFn   common.PasswordAuthRepoFactory
 	oidcRepoFn common.OidcAuthRepoFactory
 }
+
+var _ pbs.AccountServiceServer = (*Service)(nil)
 
 // NewService returns a account service which handles account related requests to boundary.
 func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory) (Service, error) {
@@ -113,8 +115,6 @@ func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthR
 	}
 	return Service{pwRepoFn: pwRepo, oidcRepoFn: oidcRepo}, nil
 }
-
-var _ pbs.AccountServiceServer = Service{}
 
 // ListAccounts implements the interface pbs.AccountServiceServer.
 func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest) (*pbs.ListAccountsResponse, error) {
@@ -936,9 +936,9 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAccountRequest) error {
 	const op = "accounts.validateGetRequest"
 	if req == nil {
