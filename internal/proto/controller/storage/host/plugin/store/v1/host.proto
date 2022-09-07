@@ -145,10 +145,10 @@ message HostCatalogSecret {
   // @inject_tag: `gorm:"column:secret;not_null" wrapping:"ct,secret_data"`
   bytes ct_secret = 5;
 
-  // The key_id of the kms database key used for encrypting this entry.
+  // The key_version_id of the kms database key version used for encrypting this entry.
   // It must be set.
   // @inject_tag: `gorm:"not_null"`
-  string key_id = 6;
+  string key_version_id = 6;
 }
 
 // TODO: Add a field which tracks if the host in cache should be considered

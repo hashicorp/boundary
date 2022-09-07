@@ -28,9 +28,9 @@ message WorkerAuth {
   // @inject_tag: `gorm:"not_null"`
   bytes controller_encryption_priv_key = 50;
 
-  // The id of the kms database key used for encrypting this entry.
+  // The id of the kms database key version used for encrypting this entry.
   // @inject_tag: `gorm:"not_null"`
-  string key_id = 60;
+  string key_version_id = 60;
 
   // Nonce used by a worker in authenticating
   // @inject_tag: `gorm:"default:null"`

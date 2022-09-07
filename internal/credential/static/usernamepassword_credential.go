@@ -90,11 +90,11 @@ func (c *UsernamePasswordCredential) encrypt(ctx context.Context, cipher wrappin
 	if err := structwrapping.WrapStruct(ctx, cipher, c.UsernamePasswordCredential, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	keyId, err := cipher.KeyId(ctx)
+	keyVersionId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
 	}
-	c.KeyId = keyId
+	c.KeyVersionId = keyVersionId
 	if err := c.hmacPassword(ctx, cipher); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

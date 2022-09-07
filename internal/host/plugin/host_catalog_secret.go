@@ -74,7 +74,7 @@ func (c *HostCatalogSecret) encrypt(ctx context.Context, cipher wrapping.Wrapper
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	var err error
-	c.KeyId, err = cipher.KeyId(ctx)
+	c.KeyVersionId, err = cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to discover wrapper key id"))
 	}

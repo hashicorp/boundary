@@ -32,7 +32,7 @@ type options struct {
 	withWorkerKeyIdentifier                string
 	withWorkerKeys                         WorkerKeys
 	withControllerEncryptionPrivateKey     []byte
-	withKeyId                              string
+	withKeyVersionId                       string
 	withNonce                              []byte
 	withNewIdFunc                          func(context.Context) (string, error)
 	WithFetchNodeCredentialsRequest        *types.FetchNodeCredentialsRequest
@@ -130,9 +130,9 @@ func WithControllerEncryptionPrivateKey(controllerKey []byte) Option {
 	}
 }
 
-func WithKeyId(keyId string) Option {
+func WithKeyVersionId(keyVersionId string) Option {
 	return func(o *options) {
-		o.withKeyId = keyId
+		o.withKeyVersionId = keyVersionId
 	}
 }
 

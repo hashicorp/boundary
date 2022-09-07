@@ -141,7 +141,7 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 	ctx := context.Background()
 
 	ts := db.TestWrapper(t)
-	keyId, err := ts.KeyId(ctx)
+	keyVersionId, err := ts.KeyId(ctx)
 	require.NoError(t, err)
 
 	// First, just test the key ID is populated
@@ -157,9 +157,9 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 	err = tw.Worker().Start()
 	require.NoError(t, err)
 
-	wKeyId, err := tw.Config().WorkerAuthStorageKms.KeyId(ctx)
+	wKeyVersionId, err := tw.Config().WorkerAuthStorageKms.KeyId(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, keyId, wKeyId)
+	assert.Equal(t, keyVersionId, wKeyVersionId)
 
 	// Create a fresh persistent dir for the following tests
 	tmpDir, err = os.MkdirTemp("", "")

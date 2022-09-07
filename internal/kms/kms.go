@@ -111,7 +111,7 @@ func (k *Kms) AddExternalWrappers(ctx context.Context, opt ...Option) error {
 	return nil
 }
 
-// GetWrapper returns a wrapper for the given scope and purpose. When a keyId is
+// GetWrapper returns a wrapper for the given scope and purpose. When a key version ID is
 // passed, it will ensure that the returning wrapper has that key ID in the
 // multiwrapper. This is not necessary for encryption but should be supplied for
 // decryption.

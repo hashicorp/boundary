@@ -37,7 +37,7 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithKeyId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithKeyId("100"))
+		opts := getOpts(WithKeyVersionId("100"))
 		testOpts := getDefaultOptions()
 		testOpts.withKeyId = "100"
 		assert.Equal(opts, testOpts)

@@ -45,8 +45,8 @@ func (w *Wrapper) Validate(ctx context.Context) error {
 	if w.ScopeId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	if w.WrapperKeyId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing wrapper key id")
+	if w.WrapperKeyVersionId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing wrapper key version id")
 	}
 	if len(w.Ct) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing ct")

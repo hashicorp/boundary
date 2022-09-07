@@ -73,7 +73,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	}
 	newSession.Certificate = certBytes
 	newSession.PublicId = id
-	newSession.KeyId, err = sessionWrapper.KeyId(ctx)
+	newSession.KeyVersionId, err = sessionWrapper.KeyId(ctx)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to get session wrapper key id"))
 	}

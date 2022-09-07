@@ -189,11 +189,11 @@ func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper)
 	if err := structwrapping.WrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
 		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
-	keyId, err := cipher.KeyId(ctx)
+	keyVersionId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
 	}
-	c.KeyId = keyId
+	c.KeyVersionId = keyVersionId
 	return nil
 }
 

@@ -76,11 +76,11 @@ func (at *AuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	if err := structwrapping.WrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
 		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
-	keyId, err := cipher.KeyId(ctx)
+	keyVersionId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get cipher key id"))
 	}
-	at.KeyId = keyId
+	at.KeyVersionId = keyVersionId
 	return nil
 }
 

@@ -120,11 +120,11 @@ func (t *Token) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	if err := structwrapping.WrapStruct(ctx, cipher, t.Token, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	keyId, err := cipher.KeyId(ctx)
+	keyVersionId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error fetching wrapper key id"))
 	}
-	t.KeyId = keyId
+	t.KeyVersionId = keyVersionId
 	return nil
 }
 
@@ -144,7 +144,7 @@ func (t *Token) insertQuery() (query string, queryValues []interface{}) {
 		sql.Named("1", t.TokenHmac),
 		sql.Named("2", t.CtToken),
 		sql.Named("3", t.StoreId),
-		sql.Named("4", t.KeyId),
+		sql.Named("4", t.KeyVersionId),
 		sql.Named("5", t.Status),
 		sql.Named("6", "now()"),
 		sql.Named("7", exp),

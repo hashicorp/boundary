@@ -86,11 +86,11 @@ func WithOrderByVersion(orderBy db.OrderBy) Option {
 	}
 }
 
-// WithKeyId allows specifying a key ID that should be found in a scope's
+// WithKeyVersionId allows specifying a key ID that should be found in a scope's
 // multiwrapper; if it is not found, keys will be refreshed
-func WithKeyId(keyId string) Option {
+func WithKeyVersionId(keyVersionId string) Option {
 	return func(o *options) {
-		o.withKeyId = keyId
+		o.withKeyId = keyVersionId
 	}
 }
 

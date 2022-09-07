@@ -47,8 +47,8 @@ func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, op
 	if &opts.withControllerEncryptionPrivateKey != nil {
 		l.ControllerEncryptionPrivKey = opts.withControllerEncryptionPrivateKey
 	}
-	if opts.withKeyId != "" {
-		l.KeyId = opts.withKeyId
+	if opts.withKeyVersionId != "" {
+		l.KeyVersionId = opts.withKeyVersionId
 	}
 	if opts.withNonce != nil {
 		l.Nonce = opts.withNonce
@@ -87,8 +87,8 @@ func (w *WorkerAuth) ValidateNewWorkerAuth(ctx context.Context) error {
 	if w.ControllerEncryptionPrivKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing ControllerEncryptionPrivKey")
 	}
-	if w.KeyId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing KeyId")
+	if w.KeyVersionId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing KeyVersionId")
 	}
 	if w.Nonce == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing Nonce")

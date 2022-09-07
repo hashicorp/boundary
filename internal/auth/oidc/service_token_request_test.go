@@ -185,13 +185,13 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, []byte("not-valid-request-token"), wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
-				keyId, err := testRequestWrapper.KeyId(ctx)
+				keyVersionId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
-					ScopeId:      testAuthMethod.ScopeId,
-					AuthMethodId: testAuthMethod.PublicId,
-					WrapperKeyId: keyId,
-					Ct:           marshaledBlob,
+					ScopeId:             testAuthMethod.ScopeId,
+					AuthMethodId:        testAuthMethod.PublicId,
+					WrapperKeyVersionId: keyVersionId,
+					Ct:                  marshaledBlob,
 				}
 				require.NoError(t, err)
 				b, err := proto.Marshal(&w)
@@ -217,13 +217,13 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
-				keyId, err := testRequestWrapper.KeyId(ctx)
+				keyVersionId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
-					ScopeId:      testAuthMethod.ScopeId,
-					AuthMethodId: testAuthMethod.PublicId,
-					WrapperKeyId: keyId,
-					Ct:           marshaledBlob,
+					ScopeId:             testAuthMethod.ScopeId,
+					AuthMethodId:        testAuthMethod.PublicId,
+					WrapperKeyVersionId: keyVersionId,
+					Ct:                  marshaledBlob,
 				}
 				require.NoError(t, err)
 				b, err := proto.Marshal(&w)
@@ -248,13 +248,13 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
-				keyId, err := testRequestWrapper.KeyId(ctx)
+				keyVersionId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
-					ScopeId:      testAuthMethod.ScopeId,
-					AuthMethodId: testAuthMethod.PublicId,
-					WrapperKeyId: keyId,
-					Ct:           marshaledBlob,
+					ScopeId:             testAuthMethod.ScopeId,
+					AuthMethodId:        testAuthMethod.PublicId,
+					WrapperKeyVersionId: keyVersionId,
+					Ct:                  marshaledBlob,
 				}
 				require.NoError(t, err)
 				b, err := proto.Marshal(&w)
@@ -280,13 +280,13 @@ func Test_TokenRequest(t *testing.T) {
 				blobInfo, err := testRequestWrapper.Encrypt(ctx, marshaledReqTk, wrapping.WithAad([]byte(fmt.Sprintf("%s%s", testAuthMethod.PublicId, testAuthMethod.ScopeId))))
 				require.NoError(t, err)
 				marshaledBlob, err := proto.Marshal(blobInfo)
-				keyId, err := testRequestWrapper.KeyId(ctx)
+				keyVersionId, err := testRequestWrapper.KeyId(ctx)
 				require.NoError(t, err)
 				w := request.Wrapper{
-					ScopeId:      testAuthMethod.ScopeId,
-					AuthMethodId: testAuthMethod.PublicId,
-					WrapperKeyId: keyId,
-					Ct:           marshaledBlob,
+					ScopeId:             testAuthMethod.ScopeId,
+					AuthMethodId:        testAuthMethod.PublicId,
+					WrapperKeyVersionId: keyVersionId,
+					Ct:                  marshaledBlob,
 				}
 				require.NoError(t, err)
 				b, err := proto.Marshal(&w)

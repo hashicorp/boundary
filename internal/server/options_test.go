@@ -114,9 +114,9 @@ func Test_GetOpts(t *testing.T) {
 		assert := assert.New(t)
 		testOpts := getDefaultOptions()
 
-		opts := GetOpts(WithKeyId("hi i'm another key id"))
+		opts := GetOpts(WithKeyVersionId("hi i'm another key id"))
 		testOpts = getDefaultOptions()
-		testOpts.withKeyId = "hi i'm another key id"
+		testOpts.withKeyVersionId = "hi i'm another key id"
 		opts.withNewIdFunc = nil
 		testOpts.withNewIdFunc = nil
 		assert.Equal(opts, testOpts)

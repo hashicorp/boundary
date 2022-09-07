@@ -75,7 +75,7 @@ func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *W
 	controllerKey := populateBytes(defaultLength)
 	nonce := populateBytes(defaultLength)
 	opt := []Option{
-		WithKeyId(kmsKey),
+		WithKeyVersionId(kmsKey),
 		WithWorkerKeys(workerKeys),
 		WithControllerEncryptionPrivateKey(controllerKey),
 		WithNonce(nonce),

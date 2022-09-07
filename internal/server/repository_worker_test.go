@@ -294,7 +294,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	t.Run("update status for pki worker", func(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("pki_address"), server.WithDescription("pki_description2"))
-		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, server.WithKeyId(pkiWorkerKeyId))
+		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, server.WithKeyVersionId(pkiWorkerKeyId))
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
@@ -356,7 +356,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			status: server.NewWorker(scope.Global.String(),
 				server.WithName("name and key id provided"),
 				server.WithAddress("someaddress")),
-			options: []server.Option{server.WithKeyId(pkiWorkerKeyId)},
+			options: []server.Option{server.WithKeyVersionId(pkiWorkerKeyId)},
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err), err)

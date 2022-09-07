@@ -211,8 +211,8 @@ func TestSshPrivateKeyCredential_New(t *testing.T) {
 			tt.want.UpdateTime = got2.UpdateTime
 			tt.want.Version = got2.Version
 
-			// KeyId is allocated via kms no need to validate in this test
-			tt.want.KeyId = got2.KeyId
+			// KeyVersionId is allocated via kms no need to validate in this test
+			tt.want.KeyVersionId = got2.KeyVersionId
 			got2.PrivateKeyEncrypted = nil
 			got2.PrivateKeyPassphraseEncrypted = nil
 

@@ -427,14 +427,14 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.NotNil(ses.CreateTime)
 			assert.NotNil(ses.States[0].StartTime)
 			assert.Equal(ses.States[0].Status, StatusPending)
-			keyId, err := wrapper.KeyId(context.Background())
+			keyVersionId, err := wrapper.KeyId(context.Background())
 			require.NoError(err)
-			assert.Equal(keyId, ses.KeyId)
+			assert.Equal(keyVersionId, ses.KeyVersionId)
 			assert.Len(ses.DynamicCredentials, len(s.DynamicCredentials))
 			assert.Len(ses.StaticCredentials, len(s.StaticCredentials))
 			foundSession, _, err := repo.LookupSession(context.Background(), ses.PublicId)
 			assert.NoError(err)
-			assert.Equal(keyId, foundSession.KeyId)
+			assert.Equal(keyVersionId, foundSession.KeyVersionId)
 
 			// Account for slight offsets in nanos
 			assert.True(foundSession.ExpirationTime.Timestamp.AsTime().Sub(ses.ExpirationTime.Timestamp.AsTime()) < time.Second)

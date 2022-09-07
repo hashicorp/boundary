@@ -130,7 +130,7 @@ func StoreNodeInformationTx(ctx context.Context, writer db.Writer, databaseWrapp
 	nodeAuth.Nonce = node.RegistrationNonce
 
 	var err error
-	nodeAuth.KeyId, err = databaseWrapper.KeyId(ctx)
+	nodeAuth.KeyVersionId, err = databaseWrapper.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -236,7 +236,7 @@ func (r *WorkerAuthRepositoryStorage) convertRootCertificate(ctx context.Context
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	rootCert.KeyId, err = databaseWrapper.KeyId(ctx)
+	rootCert.KeyVersionId, err = databaseWrapper.KeyId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -393,7 +393,7 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	node.ServerEncryptionPrivateKeyType = types.KEYTYPE_X25519
 
 	// Decrypt private key
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(authorizedWorker.KeyId))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyVersionId(authorizedWorker.KeyVersionId))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -446,7 +446,7 @@ func (r *WorkerAuthRepositoryStorage) loadServerLedActivationToken(ctx context.C
 	}
 
 	// Decrypt marshaled creation time
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(activationTokenEntry.KeyId))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyVersionId(activationTokenEntry.KeyId))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -555,7 +555,7 @@ func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, 
 		rootCert.PrivateKeyType = types.KEYTYPE_ED25519
 
 		// decrypt private key
-		databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(rootCertificate.KeyId))
+		databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyVersionId(rootCertificate.KeyVersionId))
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}

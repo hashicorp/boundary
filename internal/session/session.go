@@ -100,11 +100,11 @@ type Session struct {
 	// Worker filter
 	WorkerFilter string `json:"-" gorm:"default:null"`
 
-	// key_id is the key ID that was used for the encryption operation. It can be
+	// KeyVersionId is the key version ID that was used for the encryption operation. It can be
 	// used to identify a specific version of the key needed to decrypt the value,
 	// which is useful for caching purposes.
 	// @inject_tag: `gorm:"not_null"`
-	KeyId string `json:"key_id,omitempty" gorm:"not_null"`
+	KeyVersionId string `json:"key_version_id,omitempty" gorm:"not_null"`
 
 	// States for the session which are for read only and are ignored during
 	// write operations
@@ -183,7 +183,7 @@ func (s *Session) Clone() interface{} {
 		Endpoint:          s.Endpoint,
 		ConnectionLimit:   s.ConnectionLimit,
 		WorkerFilter:      s.WorkerFilter,
-		KeyId:             s.KeyId,
+		KeyVersionId:      s.KeyVersionId,
 	}
 	if len(s.States) > 0 {
 		clone.States = make([]*State, 0, len(s.States))
@@ -432,11 +432,11 @@ func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	if err := structwrapping.WrapStruct(ctx, cipher, s, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	keyId, err := cipher.KeyId(ctx)
+	keyVersionId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error getting cipher key id"))
 	}
-	s.KeyId = keyId
+	s.KeyVersionId = keyVersionId
 	return nil
 }
 
@@ -467,7 +467,7 @@ type sessionListView struct {
 	Version           uint32               `json:"version,omitempty" gorm:"default:null"`
 	Endpoint          string               `json:"-" gorm:"default:null"`
 	ConnectionLimit   int32                `json:"connection_limit,omitempty" gorm:"default:null"`
-	KeyId             string               `json:"key_id,omitempty" gorm:"not_null"`
+	KeyVersionId      string               `json:"key_version_id,omitempty" gorm:"not_null"`
 
 	// State fields
 	Status          string               `json:"state,omitempty" gorm:"column:state"`

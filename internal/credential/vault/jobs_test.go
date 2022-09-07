@@ -60,7 +60,7 @@ func testVaultToken(t *testing.T,
 		sql.Named("1", inToken.TokenHmac),
 		sql.Named("2", inToken.CtToken),
 		sql.Named("3", inToken.StoreId),
-		sql.Named("4", inToken.KeyId),
+		sql.Named("4", inToken.KeyVersionId),
 		sql.Named("5", inToken.Status),
 	}
 	expire := int(expiration.Seconds())

@@ -143,7 +143,7 @@ type catalogAgg struct {
 	SecretsHmac         []byte
 	Attributes          []byte
 	Secret              []byte
-	KeyId               string
+	KeyVersionId        string
 	PersistedCreateTime *timestamp.Timestamp
 	PersistedUpdateTime *timestamp.Timestamp
 }
@@ -169,7 +169,7 @@ func (agg *catalogAgg) toCatalogAndPersisted() (*HostCatalog, *HostCatalogSecret
 		s = allocHostCatalogSecret()
 		s.CatalogId = agg.PublicId
 		s.CtSecret = agg.Secret
-		s.KeyId = agg.KeyId
+		s.KeyVersionId = agg.KeyVersionId
 		s.CreateTime = agg.PersistedCreateTime
 		s.UpdateTime = agg.PersistedUpdateTime
 	}

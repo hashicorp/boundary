@@ -239,7 +239,7 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 	}
 
 	// We don't pass a wrapper in here because for ecryption we want to indicate the expected key ID
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyId(acct.GetKeyId()))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase, kms.WithKeyVersionId(acct.GetKeyVersionId()))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 	}

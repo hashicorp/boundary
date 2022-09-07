@@ -133,7 +133,7 @@ func TestGet(t *testing.T) {
 			})),
 		server.WithUpdateTags(true),
 		server.WithPublicId(pkiWorker.GetPublicId()),
-		server.WithKeyId(pkiWorkerKeyId))
+		server.WithKeyVersionId(pkiWorkerKeyId))
 	require.NoError(t, err)
 
 	wantPkiWorker := &pb.Worker{

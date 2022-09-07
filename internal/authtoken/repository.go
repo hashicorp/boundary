@@ -168,7 +168,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 
 	at := atv.toAuthToken()
 	if opts.withTokenValue {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(at.GetKeyId()))
+		databaseWrapper, err := r.kms.GetWrapper(ctx, at.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyVersionId(at.GetKeyVersionId()))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("unable to get database wrapper"))
 		}
@@ -178,7 +178,7 @@ func (r *Repository) LookupAuthToken(ctx context.Context, id string, opt ...Opti
 	}
 
 	at.CtToken = nil
-	at.KeyId = ""
+	at.KeyVersionId = ""
 	return at, nil
 }
 
@@ -306,7 +306,7 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 	for _, atv := range atvs {
 		atv.Token = ""
 		atv.CtToken = nil
-		atv.KeyId = ""
+		atv.KeyVersionId = ""
 		authTokens = append(authTokens, atv.toAuthToken())
 	}
 	return authTokens, nil

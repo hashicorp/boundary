@@ -102,7 +102,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))
 	}
 	if wStat.GetKeyId() != "" {
-		opts = append(opts, server.WithKeyId(wStat.GetKeyId()))
+		opts = append(opts, server.WithKeyVersionId(wStat.GetKeyId()))
 	}
 	wrk, err := serverRepo.UpsertWorkerStatus(ctx, wConf, opts...)
 	if err != nil {
@@ -335,7 +335,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
 	}
 
-	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ProjectId, kms.KeyPurposeSessions, kms.WithKeyId(sessionInfo.KeyId))
+	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ProjectId, kms.KeyPurposeSessions, kms.WithKeyVersionId(sessionInfo.KeyVersionId))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
 	}

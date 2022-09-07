@@ -151,12 +151,12 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 				Version:           sv.Version,
 				Endpoint:          sv.Endpoint,
 				ConnectionLimit:   sv.ConnectionLimit,
-				KeyId:             sv.KeyId,
+				KeyVersionId:      sv.KeyVersionId,
 			}
 			if opts.withListingConvert {
 				workingSession.CtTofuToken = nil // CtTofuToken should not returned in lists
 				workingSession.TofuToken = nil   // TofuToken should not returned in lists
-				workingSession.KeyId = ""        // KeyId should not be returned in lists
+				workingSession.KeyVersionId = "" // KeyVersionId should not be returned in lists
 			} else {
 				if len(workingSession.CtTofuToken) > 0 {
 					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ProjectId, kms.KeyPurposeDatabase)

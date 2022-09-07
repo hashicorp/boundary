@@ -302,7 +302,7 @@ func TestRepository_LookupAuthToken(t *testing.T) {
 	at := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at.Token = ""
 	at.CtToken = nil
-	at.KeyId = ""
+	at.KeyVersionId = ""
 
 	badId, err := NewAuthTokenId()
 	require.NoError(t, err)
@@ -389,7 +389,7 @@ func TestRepository_ValidateToken(t *testing.T) {
 	atToken := at.GetToken()
 	at.Token = ""
 	at.CtToken = nil
-	at.KeyId = ""
+	at.KeyVersionId = ""
 	atTime, err := ptypes.Timestamp(at.GetApproximateLastAccessTime().GetTimestamp())
 	require.NoError(t, err)
 	require.NotNil(t, atTime)
@@ -637,13 +637,13 @@ func TestRepository_ListAuthTokens(t *testing.T) {
 	org, _ := iam.TestScopes(t, repo)
 	at1 := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at1.Token = ""
-	at1.KeyId = ""
+	at1.KeyVersionId = ""
 	at2 := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at2.Token = ""
-	at2.KeyId = ""
+	at2.KeyVersionId = ""
 	at3 := TestAuthToken(t, conn, kms, org.GetPublicId())
 	at3.Token = ""
-	at3.KeyId = ""
+	at3.KeyVersionId = ""
 
 	emptyOrg, _ := iam.TestScopes(t, repo)
 
@@ -806,9 +806,9 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 			at.ExpirationTime = &timestamp.Timestamp{Timestamp: exp}
 			at.Status = string(status)
 			at.AuthAccountId = accts[i].PublicId
-			keyId, err := databaseWrapper.KeyId(ctx)
+			keyVersionId, err := databaseWrapper.KeyId(ctx)
 			require.NoError(t, err)
-			at.KeyId = keyId
+			at.KeyVersionId = keyVersionId
 			at.CtToken = []byte(id)
 			err = rw.Create(ctx, at)
 			require.NoError(t, err)

@@ -123,7 +123,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 
 	authMethods := make([]*AuthMethod, 0, len(aggAuthMethods))
 	for _, agg := range aggAuthMethods {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, agg.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(agg.KeyId))
+		databaseWrapper, err := r.kms.GetWrapper(ctx, agg.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyVersionId(agg.KeyVersionId))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 		}
@@ -146,7 +146,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		am.CtClientSecret = agg.CtClientSecret
 		am.ClientSecret = agg.ClientSecret
 		am.ClientSecretHmac = agg.ClientSecretHmac
-		am.KeyId = agg.KeyId
+		am.KeyVersionId = agg.KeyVersionId
 		am.MaxAge = int32(agg.MaxAge)
 		am.ApiUrl = agg.ApiUrl
 		if agg.Algs != "" {
@@ -187,7 +187,7 @@ type authMethodAgg struct {
 	CtClientSecret                    []byte `gorm:"column:client_secret;not_null" wrapping:"ct,client_secret"`
 	ClientSecret                      string `gorm:"-" wrapping:"pt,client_secret"`
 	ClientSecretHmac                  string
-	KeyId                             string
+	KeyVersionId                      string
 	MaxAge                            int
 	Algs                              string
 	ApiUrl                            string

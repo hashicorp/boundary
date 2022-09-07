@@ -121,11 +121,11 @@ func (c *SshPrivateKeyCredential) encrypt(ctx context.Context, cipher wrapping.W
 		return errors.New(ctx, errors.InvalidParameter, op, "no private key defined")
 	}
 
-	keyId, err := cipher.KeyId(ctx)
+	keyVersionId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
 	}
-	c.KeyId = keyId
+	c.KeyVersionId = keyVersionId
 
 	// Encrypt private key
 	blobInfo, err := cipher.Encrypt(ctx, c.PrivateKey)

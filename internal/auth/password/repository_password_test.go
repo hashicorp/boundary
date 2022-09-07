@@ -235,7 +235,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	assert.Equal(origCred.CreateTime, auth2Cred.CreateTime, "the create time should not change")
 
 	// Verify fields that should change
-	decryptWrapper, err := kmsCache.GetWrapper(ctx, o.GetPublicId(), kms.KeyPurposeDatabase, kms.WithKeyId(auth2Cred.GetKeyId()))
+	decryptWrapper, err := kmsCache.GetWrapper(ctx, o.GetPublicId(), kms.KeyPurposeDatabase, kms.WithKeyVersionId(auth2Cred.GetKeyVersionId()))
 	require.NoError(err)
 	require.NoError(auth2Cred.decrypt(ctx, decryptWrapper))
 	assert.NotEqual(origCred.UpdateTime, auth2Cred.UpdateTime, "the update time should be different")

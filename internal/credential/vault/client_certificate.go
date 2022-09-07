@@ -80,11 +80,11 @@ func (c *ClientCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper
 	if err := structwrapping.WrapStruct(ctx, cipher, c.ClientCertificate, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
-	keyId, err := cipher.KeyId(ctx)
+	keyVersionId, err := cipher.KeyId(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
 	}
-	c.KeyId = keyId
+	c.KeyVersionId = keyVersionId
 	if err := c.hmacCertificateKey(ctx, cipher); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -122,7 +122,7 @@ func (c *ClientCertificate) insertQuery() (query string, queryValues []interface
 		sql.Named("certificate", c.Certificate),
 		sql.Named("certificate_key", c.CtCertificateKey),
 		sql.Named("certificate_key_hmac", c.CertificateKeyHmac),
-		sql.Named("key_id", c.KeyId),
+		sql.Named("key_version_id", c.KeyVersionId),
 	}
 	return
 }

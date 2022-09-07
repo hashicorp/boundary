@@ -55,11 +55,11 @@ message AuthToken {
   // @inject_tag: gorm:"->"
   string iam_user_id = 13;
 
-  // key_id is the key ID that was used for the encryption operation. It can be
+  // key_version_id is the key version ID that was used for the encryption operation. It can be
   // used to identify a specific version of the key needed to decrypt the value,
   // which is useful for caching purposes.
   // @inject_tag: `gorm:"not_null"`
-  string key_id = 14;
+  string key_version_id = 14;
 
   // status is the auth token's status. It will default of "token issued" in the
   // database.

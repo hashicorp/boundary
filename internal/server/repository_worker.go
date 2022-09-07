@@ -245,9 +245,9 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope id is empty")
 	case worker.PublicId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
-	case worker.GetName() == "" && opts.withKeyId == "":
+	case worker.GetName() == "" && opts.withKeyVersionId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
-	case worker.GetName() != "" && opts.withKeyId != "":
+	case worker.GetName() != "" && opts.withKeyVersionId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both set; no more than one is allowed")
 	}
 
@@ -256,8 +256,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 	switch {
 	case opts.withPublicId != "":
 		workerId = opts.withPublicId
-	case opts.withKeyId != "":
-		workerId, err = r.LookupWorkerIdByKeyId(ctx, opts.withKeyId)
+	case opts.withKeyVersionId != "":
+		workerId, err = r.LookupWorkerIdByKeyId(ctx, opts.withKeyVersionId)
 		if err != nil || workerId == "" {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error finding worker by keyId"))
 		}
@@ -282,7 +282,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			workerClone := worker.clone()
 			workerClone.PublicId = workerId
 			switch {
-			case opts.withKeyId != "":
+			case opts.withKeyVersionId != "":
 				// This case goes first in case we want to relax the restriction
 				// around both name and key ID being supplied to account for
 				// e.g. config processing bugs. In that case, a key ID being
@@ -300,7 +300,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				}
 				switch n {
 				case 0:
-					return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("failed to find worker with key id %q", opts.withKeyId))
+					return errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("failed to find worker with key id %q", opts.withKeyVersionId))
 				case 1:
 					break
 				default:

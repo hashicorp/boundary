@@ -90,11 +90,11 @@ message AuthMethod {
   // @inject_tag: `gorm:"not_null"`
   string client_secret_hmac = 130;
 
-  // key_id is the key ID that was used for the encryption operation. It can be
+  // key_version_id is the key version ID that was used for the encryption operation. It can be
   // used to identify a specific version of the key needed to decrypt the value,
   // which is useful for caching purposes.
   // @inject_tag: `gorm:"not_null"`
-  string key_id = 140;
+  string key_version_id = 140;
 
   // max_age is the allowed elapsed time in seconds since the last time the user
   // was actively authenticated by the OIDC provider. -1 indicates the user

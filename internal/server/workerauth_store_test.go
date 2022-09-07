@@ -29,7 +29,7 @@ func TestRootCertStore(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	testKey, err := databaseWrapper.KeyId(ctx)
+	testKeyVersionId, err := databaseWrapper.KeyId(ctx)
 	require.NoError(t, err)
 
 	beforeTimestamp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(-1 * time.Hour))}
@@ -63,7 +63,7 @@ func TestRootCertStore(t *testing.T) {
 				certificate:    certificate,
 				notValidBefore: beforeTimestamp,
 				notValidAfter:  afterTimestamp,
-				keyId:          testKey,
+				keyId:          testKeyVersionId,
 				state:          NextState,
 			},
 			expectedRootCert: &store.RootCertificate{
@@ -73,7 +73,7 @@ func TestRootCertStore(t *testing.T) {
 				Certificate:    certificate,
 				NotValidBefore: beforeTimestamp,
 				NotValidAfter:  afterTimestamp,
-				KeyId:          testKey,
+				KeyVersionId:   testKeyVersionId,
 				State:          "next",
 				IssuingCa:      ca_id,
 			},
@@ -87,7 +87,7 @@ func TestRootCertStore(t *testing.T) {
 				certificate:    certificate,
 				notValidBefore: beforeTimestamp,
 				notValidAfter:  afterTimestamp,
-				keyId:          testKey,
+				keyId:          testKeyVersionId,
 				state:          CurrentState,
 			},
 			expectedRootCert: &store.RootCertificate{
@@ -97,7 +97,7 @@ func TestRootCertStore(t *testing.T) {
 				Certificate:    certificate,
 				NotValidBefore: beforeTimestamp,
 				NotValidAfter:  afterTimestamp,
-				KeyId:          testKey,
+				KeyVersionId:   testKeyVersionId,
 				State:          "current",
 				IssuingCa:      ca_id,
 			},
@@ -111,7 +111,7 @@ func TestRootCertStore(t *testing.T) {
 				certificate:    certificate,
 				notValidBefore: beforeTimestamp,
 				notValidAfter:  afterTimestamp,
-				keyId:          testKey,
+				keyId:          testKeyVersionId,
 				state:          NextState,
 			},
 			wantErr: true,
@@ -123,7 +123,7 @@ func TestRootCertStore(t *testing.T) {
 				certificate:    certificate,
 				notValidBefore: beforeTimestamp,
 				notValidAfter:  afterTimestamp,
-				keyId:          testKey,
+				keyId:          testKeyVersionId,
 				state:          NextState,
 			},
 			wantErr: true,
@@ -135,7 +135,7 @@ func TestRootCertStore(t *testing.T) {
 				rootCertKeys:   RootCertificateKeys{publicKey: publicKey, privateKey: privateKey},
 				notValidBefore: beforeTimestamp,
 				notValidAfter:  afterTimestamp,
-				keyId:          testKey,
+				keyId:          testKeyVersionId,
 				state:          NextState,
 			},
 			wantErr: true,
@@ -148,7 +148,7 @@ func TestRootCertStore(t *testing.T) {
 				certificate:    certificate,
 				notValidBefore: afterTimestamp,
 				notValidAfter:  beforeTimestamp,
-				keyId:          testKey,
+				keyId:          testKeyVersionId,
 				state:          NextState,
 			},
 			wantCreateErr: true,
@@ -161,7 +161,7 @@ func TestRootCertStore(t *testing.T) {
 				certificate:    certificate,
 				notValidBefore: afterTimestamp,
 				notValidAfter:  afterTimestamp,
-				keyId:          testKey,
+				keyId:          testKeyVersionId,
 				state:          NextState,
 			},
 			wantCreateErr: true,
@@ -174,7 +174,7 @@ func TestRootCertStore(t *testing.T) {
 				certificate:    certificate,
 				notValidBefore: beforeTimestamp,
 				notValidAfter:  afterTimestamp,
-				keyId:          testKey,
+				keyId:          testKeyVersionId,
 				state:          UnknownState,
 			},
 			wantErr: true,
@@ -288,7 +288,7 @@ func TestWorkerAuthStore(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	testKey, err := databaseWrapper.KeyId(ctx)
+	testKeyVersionId, err := databaseWrapper.KeyId(ctx)
 	require.NoError(t, err)
 
 	worker := TestPkiWorker(t, conn, wrapper)
@@ -321,7 +321,7 @@ func TestWorkerAuthStore(t *testing.T) {
 				WithWorkerKeys(workerKeys),
 				WithControllerEncryptionPrivateKey(controllerKey),
 				WithNonce(nonce),
-				WithKeyId(testKey),
+				WithKeyVersionId(testKeyVersionId),
 			},
 			expectedWorkerAuth: &store.WorkerAuth{
 				WorkerKeyIdentifier:         "worker-auth-id-123",
@@ -329,7 +329,7 @@ func TestWorkerAuthStore(t *testing.T) {
 				WorkerSigningPubKey:         wSignPubKey,
 				WorkerEncryptionPubKey:      wEncPubKey,
 				ControllerEncryptionPrivKey: controllerKey,
-				KeyId:                       testKey,
+				KeyVersionId:                testKeyVersionId,
 				Nonce:                       nonce,
 			},
 			wantErr: false,
@@ -344,7 +344,7 @@ func TestWorkerAuthStore(t *testing.T) {
 				WithWorkerKeys(workerKeys),
 				WithControllerEncryptionPrivateKey(controllerKey),
 				WithNonce(nonce),
-				WithKeyId("fakeyityfake"),
+				WithKeyVersionId("fakeyityfake"),
 			},
 			wantCreateErr: true,
 		},
@@ -357,7 +357,7 @@ func TestWorkerAuthStore(t *testing.T) {
 				WithWorkerKeys(workerKeys),
 				WithControllerEncryptionPrivateKey(controllerKey),
 				WithNonce(nonce),
-				WithKeyId(testKey),
+				WithKeyVersionId(testKeyVersionId),
 			},
 			wantErr: true,
 		},
@@ -371,7 +371,7 @@ func TestWorkerAuthStore(t *testing.T) {
 				WithWorkerKeys(workerKeys),
 				WithControllerEncryptionPrivateKey(controllerKey),
 				WithNonce(nonce),
-				WithKeyId(testKey),
+				WithKeyVersionId(testKeyVersionId),
 			},
 			wantErr: true,
 		},
@@ -385,7 +385,7 @@ func TestWorkerAuthStore(t *testing.T) {
 				WithWorkerKeys(workerKeys),
 				WithControllerEncryptionPrivateKey(controllerKey),
 				WithNonce(nonce),
-				WithKeyId(testKey),
+				WithKeyVersionId(testKeyVersionId),
 			},
 			wantCreateErr: true,
 		},

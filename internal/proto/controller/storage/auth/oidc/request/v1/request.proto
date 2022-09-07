@@ -66,9 +66,9 @@ message Wrapper {
   // scope_id is the auth method's scope
   string scope_id = 20;
 
-  // wrapper_key_id is the DEK wrapper key id which was used to derive the
+  // wrapper_key_version_id is the DEK wrapper key version id which was used to derive the
   // cipher's key
-  string wrapper_key_id = 30;
+  string wrapper_key_version_id = 30;
 
   // ct is the encrypted cipher text
   bytes ct = 40;

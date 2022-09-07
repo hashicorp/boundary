@@ -57,7 +57,7 @@ type RootCertificateKeys struct {
 }
 
 func newRootCertificate(ctx context.Context, serialNumber uint64, certificate []byte, notValidBefore, notValidAfter *timestamp.Timestamp,
-	rootCertificateKeys RootCertificateKeys, keyId string, state CertificateState,
+	rootCertificateKeys RootCertificateKeys, keyVersionId string, state CertificateState,
 ) (*RootCertificate, error) {
 	const op = "server.newRootCertificate"
 
@@ -79,8 +79,8 @@ func newRootCertificate(ctx context.Context, serialNumber uint64, certificate []
 	if rootCertificateKeys.privateKey == nil || len(rootCertificateKeys.privateKey) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty privateKey")
 	}
-	if keyId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no keyId")
+	if keyVersionId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no keyVersionId")
 	}
 	if !validState(state) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid certificate state", state))
@@ -94,7 +94,7 @@ func newRootCertificate(ctx context.Context, serialNumber uint64, certificate []
 			NotValidBefore: notValidBefore,
 			PublicKey:      rootCertificateKeys.publicKey,
 			PrivateKey:     rootCertificateKeys.privateKey,
-			KeyId:          keyId,
+			KeyVersionId:   keyVersionId,
 			State:          string(state),
 			IssuingCa:      ca_id,
 		},
@@ -136,8 +136,8 @@ func (r *RootCertificate) ValidateNewRootCertificate(ctx context.Context) error 
 	if r.PrivateKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing private key")
 	}
-	if r.KeyId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing key id")
+	if r.KeyVersionId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing key version id")
 	}
 	if r.State == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing state")

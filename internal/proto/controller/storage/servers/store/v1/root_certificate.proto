@@ -42,9 +42,9 @@ message RootCertificate {
   // @inject_tag: `gorm:"not_null"`
   bytes private_key = 60;
 
-  // The id of the kms database key used for encrypting this entry.
+  // The id of the kms database key version used for encrypting this entry.
   // @inject_tag: `gorm:"not_null"`
-  string key_id = 70;
+  string key_version_id = 70;
 
   // State is an enum value indicating if this is the next or current root cert
   // @inject_tag: `gorm:"not_null"`
