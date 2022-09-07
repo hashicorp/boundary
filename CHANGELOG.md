@@ -6,11 +6,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.10.4 (Unreleased)
 
-### Known Issues
-
-* Migration to this version may fail if the cluster contains credential
-  libraries. This will be fixed shortly in 0.10.1.
-
 ### New and Improved
 
 * Controller-led worker authorization: This is a second authorization option for
