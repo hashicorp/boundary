@@ -92,12 +92,18 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		})
 	}
 
+	// If not reported (in the case of an older worker), default to an active operational state
+	if wStat.OperationalState == "" {
+		wStat.OperationalState = server.ActiveOperationalState.String()
+	}
+
 	wConf := server.NewWorker(scope.Global.String(),
 		server.WithName(wStat.GetName()),
 		server.WithDescription(wStat.GetDescription()),
 		server.WithAddress(wStat.GetAddress()),
 		server.WithWorkerTags(workerTags...),
-		server.WithReleaseVersion(wStat.ReleaseVersion))
+		server.WithReleaseVersion(wStat.ReleaseVersion),
+		server.WithOperationalState(wStat.OperationalState))
 	opts := []server.Option{server.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
 		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))

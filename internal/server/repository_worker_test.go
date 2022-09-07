@@ -288,6 +288,27 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "test-version", wStatus2.ReleaseVersion)
 		assert.Equal(t, "new_address", worker.GetAddress())
+
+		// Expect this worker to be returned as it is active
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithExcludeShutdownWorkers(true))
+		require.NoError(t, err)
+		assert.Len(t, workers, 1)
+
+		// update again with a shutdown state
+		wStatus3 := server.NewWorker(scope.Global.String(),
+			server.WithAddress("new_address"), server.WithName("config_name1"),
+			server.WithOperationalState("shutdown"))
+		worker, err = repo.UpsertWorkerStatus(ctx, wStatus3)
+		require.NoError(t, err)
+		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
+		// Version does not change for status updates
+		assert.Equal(t, uint32(1), worker.Version)
+		assert.Equal(t, "shutdown", worker.GetOperationalState())
+
+		// Should no longer see this worker in listing if we exclude shutdown workers
+		workers, err = repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithExcludeShutdownWorkers(true))
+		require.NoError(t, err)
+		assert.Len(t, workers, 0)
 	})
 
 	// Setup and use a pki worker
@@ -424,7 +445,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			assert.Error(t, err)
 			tc.errAssert(t, err)
 
-			// Still only the original worker exists.
+			// Still only the original PKI and KMS workers exist.
 			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 			require.NoError(t, err)
 			assert.Len(t, workers, 2)
@@ -441,6 +462,20 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
 		require.NoError(t, err)
 		assert.Len(t, workers, 3)
+	})
+
+	t.Run("send shutdown status", func(t *testing.T) {
+		anotherStatus := server.NewWorker(scope.Global.String(),
+			server.WithName("another_test_worker"),
+			server.WithAddress("address"),
+			server.WithOperationalState("shutdown"))
+		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
+		require.NoError(t, err)
+
+		// Filtering out shutdown workers will remove the shutdown KMS and this shutdown worker, resulting in 1
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithExcludeShutdownWorkers(true))
+		require.NoError(t, err)
+		assert.Len(t, workers, 1)
 	})
 }
 
@@ -608,6 +643,62 @@ func TestListWorkers(t *testing.T) {
 	}
 }
 
+func TestListWorkers_WithExcludeShutdown(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	serversRepo, err := server.NewRepository(rw, rw, kms)
+	require.NoError(err)
+	ctx := context.Background()
+
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
+	worker2 := server.TestKmsWorker(t, conn, wrapper)
+	worker3 := server.TestKmsWorker(t, conn, wrapper)
+
+	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
+	require.NoError(err)
+	require.Len(result, 3)
+
+	// Push an upsert to the first worker so that its status has been
+	// updated.
+	_, err = serversRepo.UpsertWorkerStatus(ctx,
+		server.NewWorker(scope.Global.String(),
+			server.WithName(worker1.GetName()),
+			server.WithAddress(worker1.GetAddress()),
+			server.WithOperationalState(server.ShutdownOperationalState.String()),
+			server.WithPublicId(worker1.GetPublicId())))
+	require.NoError(err)
+
+	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithExcludeShutdownWorkers(true))
+	require.NoError(err)
+	require.Len(result, 2)
+
+	_, err = serversRepo.UpsertWorkerStatus(ctx,
+		server.NewWorker(scope.Global.String(),
+			server.WithName(worker2.GetName()),
+			server.WithAddress(worker2.GetAddress()),
+			server.WithOperationalState(server.ShutdownOperationalState.String())),
+		server.WithPublicId(worker2.GetPublicId()))
+	require.NoError(err)
+	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithExcludeShutdownWorkers(true))
+	require.NoError(err)
+	require.Len(result, 1)
+
+	_, err = serversRepo.UpsertWorkerStatus(ctx,
+		server.NewWorker(scope.Global.String(),
+			server.WithName(worker3.GetName()),
+			server.WithAddress(worker3.GetAddress()),
+			server.WithOperationalState(server.ShutdownOperationalState.String())),
+		server.WithPublicId(worker3.GetPublicId()))
+	require.NoError(err)
+	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithExcludeShutdownWorkers(true))
+	require.NoError(err)
+	require.Len(result, 0)
+}
+
 func TestListWorkers_WithLiveness(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
@@ -772,6 +863,18 @@ func TestRepository_CreateWorker(t *testing.T) {
 			wantErrContains: "testNewIdFn-error",
 		},
 		{
+			name: "invalid-state-error",
+			setup: func() *server.Worker {
+				w := server.NewWorker(scope.Global.String())
+				return w
+			},
+			repo:            testRepo,
+			opt:             []server.Option{server.WithOperationalState("fake-state")},
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "server.CreateWorker: invalid operational state: parameter violation: error #100",
+		},
+		{
 			name: "create-error",
 			setup: func() *server.Worker {
 				w := server.NewWorker(scope.Global.String())
@@ -894,6 +997,16 @@ func TestRepository_CreateWorker(t *testing.T) {
 			repo:      testRepo,
 			wantErr:   true,
 			wantErrIs: errors.NotUnique,
+		},
+		{
+			name: "success-with-state",
+			setup: func() *server.Worker {
+				w := server.NewWorker(scope.Global.String())
+				return w
+			},
+			reader: rw,
+			opt:    []server.Option{server.WithOperationalState("shutdown")},
+			repo:   testRepo,
 		},
 		{
 			name: "success-with-fetch-node-req",
