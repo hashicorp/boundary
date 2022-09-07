@@ -2,11 +2,12 @@ package oss_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 const (

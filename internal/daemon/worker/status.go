@@ -16,6 +16,7 @@ import (
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
