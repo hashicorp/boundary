@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
+	"github.com/hashicorp/boundary/internal/iam"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -640,6 +641,15 @@ func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) p
 	return r.v.acl.Allowed(res, act, r.UserId).OutputFields
 }
 
+// ACL returns the perms.ACL of the verifier.
+func (r *VerifyResults) ACL() perms.ACL {
+	if r.v == nil {
+		return perms.ACL{}
+	}
+
+	return r.v.acl
+}
+
 // GetTokenFromRequest pulls the token from either the Authorization header or
 // split cookies and parses it. If it cannot be parsed successfully, the issue
 // is logged and we return blank, so logic will continue as the anonymous user.
@@ -693,4 +703,124 @@ func GetTokenFromRequest(ctx context.Context, kmsCache *kms.Kms, req *http.Reque
 	encryptedToken := splitFullToken[2]
 
 	return publicId, encryptedToken, uint32(receivedTokenType)
+}
+
+// ScopesAuthorizedForList retrieves and returns all scopes where a user is authorized
+// to perform a *list* action on. It looks recursively from `rootScopeId`.
+func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId string, resourceType resource.Type) (map[string]*scopes.ScopeInfo, error) {
+	const op = "auth.(VerifyResults).ScopesAuthorizedForList"
+
+	// Validation
+	switch {
+	case resourceType == resource.Unknown:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown resource")
+	case r.v.iamRepoFn == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil iam repo")
+	case rootScopeId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing root scope id")
+	case r.Scope == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil scope in auth results")
+	}
+
+	repo, err := r.v.iamRepoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	// Get all scopes recursively. Start at global because we need to take into
+	// account permissions in parent scopes even if they want to scale back the
+	// returned information to a child scope and its children.
+	scps, err := repo.ListScopesRecursively(ctx, scope.Global.String())
+	if err != nil {
+		return nil, err
+	}
+
+	var deferredScopes []*iam.Scope
+	var globalHasList bool                                 // Store whether global has list permission
+	scopeResourceMap := make(map[string]*scopes.ScopeInfo) // Scope data per scope id
+
+	// For each scope, see if we have permission to list that resource in that scope
+	for _, scp := range scps {
+		scpId := scp.GetPublicId()
+		aSet := r.FetchActionSetForType(ctx,
+			resource.Unknown, // This is overridden by `WithResource` option.
+			action.ActionSet{action.List},
+			WithResource(&perms.Resource{Type: resourceType, ScopeId: scpId}),
+		)
+
+		// We only expect the action set to be nothing, or list. In case
+		// this is not the case, we bail out.
+		switch len(aSet) {
+		case 0:
+			// Defer until we've read all scopes. We do this because if the
+			// ordering coming back isn't in parent-first ordering our map
+			// lookup might fail.
+			deferredScopes = append(deferredScopes, scp)
+		case 1:
+			if aSet[0] != action.List {
+				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
+			}
+			if scopeResourceMap[scpId] == nil {
+				scopeResourceMap[scpId] = &scopes.ScopeInfo{
+					Id:            scp.GetPublicId(),
+					Type:          scp.GetType(),
+					Name:          scp.GetName(),
+					Description:   scp.GetDescription(),
+					ParentScopeId: scp.GetParentId(),
+				}
+			}
+			if scpId == scope.Global.String() {
+				globalHasList = true
+			}
+		default:
+			return nil, errors.New(ctx, errors.Internal, op, "unexpected number of actions back in set")
+		}
+	}
+
+	// Now go through the deferred scopes and see if a parent matches
+	for _, scp := range deferredScopes {
+		// If they had list on global scope anything else is automatically
+		// included; otherwise if they had list on the parent scope, this
+		// scope is included in the map and is sufficient here.
+		if globalHasList || scopeResourceMap[scp.GetParentId()] != nil {
+			scpId := scp.GetPublicId()
+			if scopeResourceMap[scpId] == nil {
+				scopeResourceMap[scpId] = &scopes.ScopeInfo{
+					Id:            scp.GetPublicId(),
+					Type:          scp.GetType(),
+					Name:          scp.GetName(),
+					Description:   scp.GetDescription(),
+					ParentScopeId: scp.GetParentId(),
+				}
+			}
+		}
+	}
+
+	// Elide out any that aren't under the root scope id
+	elideScopes := make([]string, 0, len(scopeResourceMap))
+	for scpId, scp := range scopeResourceMap {
+		switch rootScopeId {
+		// If the root is global, it matches
+		case scope.Global.String():
+		// If the current scope matches the root, it matches
+		case scpId:
+			// Or if the parent of this scope is the root (for orgs that would mean
+			// a root scope ID which is covered in the case above, so this is really
+			// projects matching an org used as the root)
+		case scp.ParentScopeId:
+		default:
+			elideScopes = append(elideScopes, scpId)
+		}
+	}
+	for _, scpId := range elideScopes {
+		delete(scopeResourceMap, scpId)
+	}
+
+	// If we have nothing in scopeInfoMap at this point, we aren't authorized
+	// anywhere so return 403.
+	if len(scopeResourceMap) == 0 {
+		return nil, handlers.ForbiddenError()
+	}
+
+	return scopeResourceMap, nil
 }

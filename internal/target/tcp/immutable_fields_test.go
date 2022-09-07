@@ -158,14 +158,15 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
+
+	ctx := context.Background()
 	rw := db.New(conn)
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	ctx := context.Background()
 	projTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestId(t))
 	testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 	hsets := static.TestSets(t, conn, testCats[0].GetPublicId(), 2)

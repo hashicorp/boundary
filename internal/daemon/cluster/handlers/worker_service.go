@@ -29,7 +29,7 @@ type workerServiceServer struct {
 	pbs.UnsafeSessionServiceServer
 
 	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    common.SessionRepoFactory
+	sessionRepoFn    session.RepositoryFactory
 	connectionRepoFn common.ConnectionRepoFactory
 	updateTimes      *sync.Map
 	kms              *kms.Kms
@@ -42,7 +42,7 @@ var (
 
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
-	sessionRepoFn common.SessionRepoFactory,
+	sessionRepoFn session.RepositoryFactory,
 	connectionRepoFn common.ConnectionRepoFactory,
 	updateTimes *sync.Map,
 	kms *kms.Kms,

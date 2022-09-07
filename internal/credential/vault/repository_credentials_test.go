@@ -640,7 +640,7 @@ group by session_id, status;
 		cc[id].active = credentialCount
 	}
 
-	sessionRepo, err := session.NewRepository(rw, rw, kms)
+	sessionRepo, err := session.NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 
 	count, err := sessionRepo.TerminateCompletedSessions(ctx)

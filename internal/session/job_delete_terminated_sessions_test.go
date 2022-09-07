@@ -20,7 +20,7 @@ func TestDeleteTermiantedSessionsJob(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 	require.NoError(t, err)

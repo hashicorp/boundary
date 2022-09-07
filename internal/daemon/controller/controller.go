@@ -110,12 +110,12 @@ type Controller struct {
 	OidcRepoFn              common.OidcAuthRepoFactory
 	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
 	ServersRepoFn           common.ServersRepoFactory
-	SessionRepoFn           common.SessionRepoFactory
+	SessionRepoFn           session.RepositoryFactory
 	ConnectionRepoFn        common.ConnectionRepoFactory
 	StaticHostRepoFn        common.StaticRepoFactory
 	PluginHostRepoFn        common.PluginHostRepoFactory
 	HostPluginRepoFn        common.HostPluginRepoFactory
-	TargetRepoFn            common.TargetRepoFactory
+	TargetRepoFn            target.RepositoryFactory
 	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
@@ -333,11 +333,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(dbase, dbase, c.kms)
 	}
-	c.TargetRepoFn = func() (*target.Repository, error) {
-		return target.NewRepository(dbase, dbase, c.kms)
+	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
+		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
 	}
-	c.SessionRepoFn = func() (*session.Repository, error) {
-		return session.NewRepository(dbase, dbase, c.kms)
+	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, dbase, dbase, c.kms, opt...)
 	}
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)
