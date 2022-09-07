@@ -228,6 +228,10 @@ type Database struct {
 	MaxIdleConnectionsRaw   interface{}    `hcl:"max_idle_connections"`
 	ConnMaxIdleTime         interface{}    `hcl:"max_idle_time"`
 	ConnMaxIdleTimeDuration *time.Duration `hcl:"-"`
+
+	// SkipSharedLockAcquisition allows skipping grabbing the database shared
+	// lock. This is dangerous unless you know what you're doing.
+	SkipSharedLockAcquisition bool `hcl:"skip_shared_lock_acquisition"`
 }
 
 type Plugins struct {
