@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.10.4 (Unreleased)
+
 ### New and Improved
 
 * Controller-led worker authorization: This is a second authorization option for
@@ -59,8 +61,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### Bug Fixes
 
 * db: Fix an issue with migrations failing due to not updating the project_id value for the host plugin set
-  ([Issue](https://github.com/hashicorp/boundary/issues/2349#issuecomment-1229953874)),
-  ([PR](https://github.com/hashicorp/boundary/pull/2407)).
+  ([Issue](https://github.com/hashicorp/boundary/issues/2349#issuecomment-1229953874),
+  [PR](https://github.com/hashicorp/boundary/pull/2407)).
 
 ## 0.10.2 (2022/08/23)
 
@@ -77,8 +79,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * db: Fix an issue with migrations affecting clusters that contain 
   credential libraries or static credentials.
-  ([Issue](https://github.com/hashicorp/boundary/issues/2349)),
-  ([PR](https://github.com/hashicorp/boundary/pull/2351)).
+  ([Issue](https://github.com/hashicorp/boundary/issues/2349),
+  [PR](https://github.com/hashicorp/boundary/pull/2351)).
 * managed groups: Fix an issue where the `filter` field is not sent by
   admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
 * host sets: Fix an issue causing host sets to not display in UI when using the aws plugin 
