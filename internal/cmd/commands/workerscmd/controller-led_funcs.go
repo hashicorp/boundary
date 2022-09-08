@@ -19,7 +19,7 @@ func (c *ControllerLedCommand) extraControllerLedHelpFunc(helpMap map[string]fun
 			"",
 			"  Create a worker using the controller-led approach, receiving an activation token for a worker. Example:",
 			"",
-			`    $ boundary workers create controller-led -name us-east-1-1 "`,
+			`    $ boundary workers create controller-led -name us-east-1-1 `,
 			"",
 			"",
 		})
