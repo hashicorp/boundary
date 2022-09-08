@@ -6,7 +6,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,9 +54,7 @@ func Test_New(t *testing.T) {
 					purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()),
 						wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String()), wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
 
-					r := dbw.New(rw.UnderlyingDB())
-					w := dbw.New(rw.UnderlyingDB())
-					wrapped, err := wrappingKms.New(r, w, purposes)
+					wrapped, err := wrappingKms.New(db.NewChangeSafeDbwReader(rw), db.NewChangeSafeDbwWriter(rw), purposes)
 					require.NoError(t, err)
 					return wrapped
 				}(),
@@ -119,7 +116,7 @@ func Test_NewUsingReaderWriter(t *testing.T) {
 			r:               &invalidReader{},
 			w:               rw,
 			wantErr:         true,
-			wantErrContains: "unable to convert to db.DB",
+			wantErrContains: "unable to convert reader to db.Db",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 		},
 		{
@@ -127,7 +124,7 @@ func Test_NewUsingReaderWriter(t *testing.T) {
 			r:               rw,
 			w:               &invalidWriter{},
 			wantErr:         true,
-			wantErrContains: "unable to convert to db.DB",
+			wantErrContains: "unable to convert writer to db.Db",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 		},
 		{
@@ -138,9 +135,7 @@ func Test_NewUsingReaderWriter(t *testing.T) {
 				reader: rw,
 				underlying: func() *wrappingKms.Kms {
 					purposes := stdNewKmsPurposes()
-					r := dbw.New(rw.UnderlyingDB())
-					w := dbw.New(rw.UnderlyingDB())
-					wrapped, err := wrappingKms.New(r, w, purposes)
+					wrapped, err := wrappingKms.New(db.NewChangeSafeDbwReader(rw), db.NewChangeSafeDbwWriter(rw), purposes)
 					require.NoError(t, err)
 					return wrapped
 				}(),

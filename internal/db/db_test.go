@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 
 	"github.com/hashicorp/boundary/testing/dbtest"
@@ -81,57 +82,83 @@ func TestOpen(t *testing.T) {
 func TestSwap(t *testing.T) {
 	tests := []struct {
 		name      string
-		db        *DB
-		newDB     *DB
+		db        func() *DB
+		newDB     func() *DB
 		expErr    bool
 		expErrStr string
 	}{
 		{
-			name:      "nilNewDB",
-			db:        &DB{wrapped: &dbw.DB{}},
+			name: "nilNewDB",
+			db: func() *DB {
+				ret := &DB{wrapped: new(atomic.Pointer[dbw.DB])}
+				return ret
+			},
 			newDB:     nil,
 			expErr:    true,
 			expErrStr: "no new db object present",
 		},
 		{
-			name:      "nilNewDBWrapped",
-			db:        &DB{wrapped: &dbw.DB{}},
-			newDB:     &DB{wrapped: nil},
+			name: "nilNewDBWrapped",
+			db: func() *DB {
+				ret := &DB{wrapped: new(atomic.Pointer[dbw.DB])}
+				return ret
+			},
+			newDB: func() *DB {
+				ret := &DB{}
+				return ret
+			},
 			expErr:    true,
 			expErrStr: "no new db object present",
 		},
 		{
-			name:      "nilCurrentDBWrapped",
-			db:        &DB{wrapped: nil},
-			newDB:     &DB{wrapped: &dbw.DB{}},
+			name: "nilCurrentDBWrapped",
+			db: func() *DB {
+				ret := &DB{}
+				return ret
+			},
+			newDB: func() *DB {
+				db, _ := dbw.TestSetupWithMock(t)
+				ret := &DB{wrapped: new(atomic.Pointer[dbw.DB])}
+				ret.wrapped.Store(db)
+				return ret
+			},
 			expErr:    true,
 			expErrStr: "no current db is present to swap, aborting",
 		},
 		{
 			name: "dbReplace",
-			db: &DB{wrapped: func() *dbw.DB {
+			db: func() *DB {
 				db, _ := dbw.TestSetupWithMock(t)
-				return db
-			}()},
-			newDB: &DB{wrapped: func() *dbw.DB {
+				ret := &DB{wrapped: new(atomic.Pointer[dbw.DB])}
+				ret.wrapped.Store(db)
+				return ret
+			},
+			newDB: func() *DB {
 				db, _ := dbw.TestSetupWithMock(t)
-				return db
-			}()},
+				ret := &DB{wrapped: new(atomic.Pointer[dbw.DB])}
+				ret.wrapped.Store(db)
+				return ret
+			},
 			expErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var oldWrappedPtr *dbw.DB
+			var oldDb, newDb *DB
+			if tt.db != nil {
+				oldDb = tt.db()
+			}
+			if tt.newDB != nil {
+				newDb = tt.newDB()
+			}
 			var oldWrappedVal dbw.DB
 			if !tt.expErr {
-				oldWrappedPtr = tt.db.wrapped
-				oldWrappedVal = *tt.db.wrapped
+				oldWrappedVal = *oldDb.wrapped.Load()
 			}
 
 			ctx := context.Background()
-			closeFn, err := tt.db.Swap(ctx, tt.newDB)
+			closeFn, err := oldDb.Swap(ctx, newDb)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrStr)
 				require.Nil(t, closeFn)
@@ -142,12 +169,8 @@ func TestSwap(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, closeFn)
 
-			// Assert that the `wrapped` pointer didn't change, but its value did.
-			if oldWrappedPtr != tt.db.wrapped {
-				t.Fatalf("expected pointers to not have changed, but they did. old ptr: %p, new ptr %p", oldWrappedVal, tt.db.wrapped)
-			}
-			require.NotEqual(t, oldWrappedVal, tt.db.wrapped)
-			require.EqualValues(t, tt.newDB.wrapped, tt.db.wrapped) // For pointer values, require tests the underlying values' equality.
+			require.NotEqual(t, oldWrappedVal, oldDb.wrapped.Load())
+			require.EqualValues(t, newDb.wrapped.Load(), oldDb.wrapped.Load()) // For pointer values, require tests the underlying values' equality.
 		})
 	}
 }

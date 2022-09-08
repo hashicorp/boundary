@@ -911,7 +911,7 @@ func (c *Command) reloadControllerDatabase(newConfig *config.Config) error {
 
 	// Release old database shared lock and close old database object.
 	_ = oldDbSchemaManager.Close(c.Context)
-	_ = oldDbCloseFn(c.Context)
+	oldDbCloseFn(c.Context)
 
 	return nil
 }
