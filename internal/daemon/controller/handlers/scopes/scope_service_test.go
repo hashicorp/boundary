@@ -100,6 +100,8 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("create:controller-led"),
 			structpb.NewStringValue("create:worker-led"),
 			structpb.NewStringValue("list"),
+			structpb.NewStringValue("read-certificate-authority"),
+			structpb.NewStringValue("reinitialize-certificate-authority"),
 		},
 	},
 }

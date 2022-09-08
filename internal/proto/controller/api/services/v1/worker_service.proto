@@ -141,6 +141,28 @@ service WorkerService {
       summary: "Removes api tags from an existing Worker."
     };
   }
+
+  // ReadCertificateAuthority returns the current and next set of root certificates
+  rpc ReadCertificateAuthority(ReadCertificateAuthorityRequest) returns (ReadCertificateAuthorityResponse) {
+    option (google.api.http) = {
+      get: "/v1/workers:read-certificate-authority"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Retrieves root certificates used for worker authentication."
+    };
+  }
+
+  // ReinitializeCas removes both current and next root certs and replaces them with a new set
+  rpc ReinitializeCertificateAuthority(ReinitializeCertificateAuthorityRequest) returns (ReinitializeCertificateAuthorityResponse) {
+    option (google.api.http) = {
+      post: "/v1/workers:reinitialize-certificate-authority"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Reinitializes root certificates used for worker authentication."
+    };
+  }
 }
 
 message GetWorkerRequest {
@@ -229,4 +251,20 @@ message RemoveWorkerTagsRequest {
 
 message RemoveWorkerTagsResponse {
   resources.workers.v1.Worker item = 1;
+}
+
+message ReadCertificateAuthorityRequest {
+  string scope_id = 1; // @gotags: `class:"public"`
+}
+
+message ReadCertificateAuthorityResponse {
+  resources.workers.v1.CertificateAuthority item = 1;
+}
+
+message ReinitializeCertificateAuthorityRequest {
+  string scope_id = 1; // @gotags: `class:"public"`
+}
+
+message ReinitializeCertificateAuthorityResponse {
+  resources.workers.v1.CertificateAuthority item = 1;
 }

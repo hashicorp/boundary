@@ -86,6 +86,27 @@ message Worker {
   // Output only. The api tags set for the worker.
   map<string, google.protobuf.ListValue> api_tags = 180 [json_name = "api_tags"]; // @gotags: `class:"public"`
 
+  // Output only. The version of the Boundary binary the worker is running.
+  string release_version = 190 [json_name = "release_version"]; // @gotags: `class:"public"`
+
   // Output only. The available actions on this resource for the requester.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+}
+
+message Certificate {
+  // Output only. The ID of the certificate
+  string id = 10; // @gotags: `class:"public"`
+
+  // Output only. The public key of the cert authority
+  string public_key_sha256 = 20; // @gotags: `class:"public"`
+
+  // Output only. The time before which this CA is invalid
+  google.protobuf.Timestamp not_before_time = 30; // @gotags: `class:"public"`
+
+  // Output only. The time after which this CA is invalid
+  google.protobuf.Timestamp not_after_time = 40; // @gotags: `class:"public"`
+}
+
+message CertificateAuthority {
+  repeated Certificate certs = 10; // @gotags: `class:"public"`
 }

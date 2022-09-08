@@ -72,6 +72,7 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, "address", got.GetAddress())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
+		assert.NotNil(t, got.GetReleaseVersion())
 		assert.Empty(t, got.CanonicalTags())
 	})
 
@@ -90,6 +91,7 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
+		assert.NotNil(t, got.GetReleaseVersion())
 		assert.Equal(t, strings.ToLower(id), got.GetName())
 		assert.Equal(t, "address", got.GetAddress())
 	})
@@ -115,6 +117,7 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
+		assert.NotNil(t, got.GetReleaseVersion())
 		assert.Empty(t, got.apiTags)
 		assert.Equal(t, got.configTags, []*Tag{{Key: "key", Value: "val"}})
 	})

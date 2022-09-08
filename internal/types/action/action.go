@@ -8,112 +8,117 @@ import (
 type Type uint
 
 const (
-	Unknown                   Type = 0
-	List                      Type = 1
-	Create                    Type = 2
-	Update                    Type = 3
-	Read                      Type = 4
-	Delete                    Type = 5
-	Authenticate              Type = 6
-	All                       Type = 7
-	AuthorizeSession          Type = 8
-	AddGrants                 Type = 9
-	RemoveGrants              Type = 10
-	SetGrants                 Type = 11
-	AddPrincipals             Type = 12
-	SetPrincipals             Type = 13
-	RemovePrincipals          Type = 14
-	Deauthenticate            Type = 15
-	AddMembers                Type = 16
-	SetMembers                Type = 17
-	RemoveMembers             Type = 18
-	SetPassword               Type = 19
-	ChangePassword            Type = 20
-	AddHosts                  Type = 21
-	SetHosts                  Type = 22
-	RemoveHosts               Type = 23
-	AddHostSets               Type = 24 // DEPRECATED
-	SetHostSets               Type = 25 // DEPRECATED
-	RemoveHostSets            Type = 26 // DEPRECATED
-	Cancel                    Type = 27
-	AddAccounts               Type = 28
-	SetAccounts               Type = 29
-	RemoveAccounts            Type = 30
-	ReadSelf                  Type = 31
-	CancelSelf                Type = 32
-	ChangeState               Type = 33
-	DeleteSelf                Type = 34
-	NoOp                      Type = 35
-	AddCredentialLibraries    Type = 36 // DEPRECATED
-	SetCredentialLibraries    Type = 37 // DEPRECATED
-	RemoveCredentialLibraries Type = 38 // DEPRECATED
-	AddCredentialSources      Type = 39
-	SetCredentialSources      Type = 40
-	RemoveCredentialSources   Type = 41
-	AddHostSources            Type = 42
-	SetHostSources            Type = 43
-	RemoveHostSources         Type = 44
-	CreateWorkerLed           Type = 45
-	AddWorkerTags             Type = 46
-	SetWorkerTags             Type = 47
-	RemoveWorkerTags          Type = 48
-	CreateControllerLed       Type = 49
+	Unknown                          Type = 0
+	List                             Type = 1
+	Create                           Type = 2
+	Update                           Type = 3
+	Read                             Type = 4
+	Delete                           Type = 5
+	Authenticate                     Type = 6
+	All                              Type = 7
+	AuthorizeSession                 Type = 8
+	AddGrants                        Type = 9
+	RemoveGrants                     Type = 10
+	SetGrants                        Type = 11
+	AddPrincipals                    Type = 12
+	SetPrincipals                    Type = 13
+	RemovePrincipals                 Type = 14
+	Deauthenticate                   Type = 15
+	AddMembers                       Type = 16
+	SetMembers                       Type = 17
+	RemoveMembers                    Type = 18
+	SetPassword                      Type = 19
+	ChangePassword                   Type = 20
+	AddHosts                         Type = 21
+	SetHosts                         Type = 22
+	RemoveHosts                      Type = 23
+	AddHostSets                      Type = 24 // DEPRECATED
+	SetHostSets                      Type = 25 // DEPRECATED
+	RemoveHostSets                   Type = 26 // DEPRECATED
+	Cancel                           Type = 27
+	AddAccounts                      Type = 28
+	SetAccounts                      Type = 29
+	RemoveAccounts                   Type = 30
+	ReadSelf                         Type = 31
+	CancelSelf                       Type = 32
+	ChangeState                      Type = 33
+	DeleteSelf                       Type = 34
+	NoOp                             Type = 35
+	AddCredentialLibraries           Type = 36 // DEPRECATED
+	SetCredentialLibraries           Type = 37 // DEPRECATED
+	RemoveCredentialLibraries        Type = 38 // DEPRECATED
+	AddCredentialSources             Type = 39
+	SetCredentialSources             Type = 40
+	RemoveCredentialSources          Type = 41
+	AddHostSources                   Type = 42
+	SetHostSources                   Type = 43
+	RemoveHostSources                Type = 44
+	CreateWorkerLed                  Type = 45
+	AddWorkerTags                    Type = 46
+	SetWorkerTags                    Type = 47
+	RemoveWorkerTags                 Type = 48
+	CreateControllerLed              Type = 49
+	ReinitializeCertificateAuthority Type = 50
+	ReadCertificateAuthority         Type = 51
 
 	// When adding new actions, be sure to update:
 	//
-	// * The Test_AnonRestrictions test
+	// * The Test_AnonRestrictions test: update the following line to include the last action:
+	// 		for j := action.Type(1); j <= action.<action>; j++ {
 )
 
 var Map = map[string]Type{
-	Create.String():                    Create,
-	List.String():                      List,
-	Update.String():                    Update,
-	Read.String():                      Read,
-	Delete.String():                    Delete,
-	Authenticate.String():              Authenticate,
-	All.String():                       All,
-	AuthorizeSession.String():          AuthorizeSession,
-	AddGrants.String():                 AddGrants,
-	RemoveGrants.String():              RemoveGrants,
-	SetGrants.String():                 SetGrants,
-	AddPrincipals.String():             AddPrincipals,
-	SetPrincipals.String():             SetPrincipals,
-	RemovePrincipals.String():          RemovePrincipals,
-	Deauthenticate.String():            Deauthenticate,
-	AddMembers.String():                AddMembers,
-	SetMembers.String():                SetMembers,
-	RemoveMembers.String():             RemoveMembers,
-	SetPassword.String():               SetPassword,
-	ChangePassword.String():            ChangePassword,
-	AddHosts.String():                  AddHosts,
-	SetHosts.String():                  SetHosts,
-	RemoveHosts.String():               RemoveHosts,
-	AddHostSets.String():               AddHostSets,
-	SetHostSets.String():               SetHostSets,
-	RemoveHostSets.String():            RemoveHostSets,
-	Cancel.String():                    Cancel,
-	AddAccounts.String():               AddAccounts,
-	SetAccounts.String():               SetAccounts,
-	RemoveAccounts.String():            RemoveAccounts,
-	ReadSelf.String():                  ReadSelf,
-	CancelSelf.String():                CancelSelf,
-	ChangeState.String():               ChangeState,
-	DeleteSelf.String():                DeleteSelf,
-	NoOp.String():                      NoOp,
-	AddCredentialLibraries.String():    AddCredentialLibraries,
-	SetCredentialLibraries.String():    SetCredentialLibraries,
-	RemoveCredentialLibraries.String(): RemoveCredentialLibraries,
-	AddCredentialSources.String():      AddCredentialSources,
-	SetCredentialSources.String():      SetCredentialSources,
-	RemoveCredentialSources.String():   RemoveCredentialSources,
-	AddHostSources.String():            AddHostSources,
-	SetHostSources.String():            SetHostSources,
-	RemoveHostSources.String():         RemoveHostSources,
-	CreateWorkerLed.String():           CreateWorkerLed,
-	AddWorkerTags.String():             AddWorkerTags,
-	SetWorkerTags.String():             SetWorkerTags,
-	RemoveWorkerTags.String():          RemoveWorkerTags,
-	CreateControllerLed.String():       CreateControllerLed,
+	Create.String():                           Create,
+	List.String():                             List,
+	Update.String():                           Update,
+	Read.String():                             Read,
+	Delete.String():                           Delete,
+	Authenticate.String():                     Authenticate,
+	All.String():                              All,
+	AuthorizeSession.String():                 AuthorizeSession,
+	AddGrants.String():                        AddGrants,
+	RemoveGrants.String():                     RemoveGrants,
+	SetGrants.String():                        SetGrants,
+	AddPrincipals.String():                    AddPrincipals,
+	SetPrincipals.String():                    SetPrincipals,
+	RemovePrincipals.String():                 RemovePrincipals,
+	Deauthenticate.String():                   Deauthenticate,
+	AddMembers.String():                       AddMembers,
+	SetMembers.String():                       SetMembers,
+	RemoveMembers.String():                    RemoveMembers,
+	SetPassword.String():                      SetPassword,
+	ChangePassword.String():                   ChangePassword,
+	AddHosts.String():                         AddHosts,
+	SetHosts.String():                         SetHosts,
+	RemoveHosts.String():                      RemoveHosts,
+	AddHostSets.String():                      AddHostSets,
+	SetHostSets.String():                      SetHostSets,
+	RemoveHostSets.String():                   RemoveHostSets,
+	Cancel.String():                           Cancel,
+	AddAccounts.String():                      AddAccounts,
+	SetAccounts.String():                      SetAccounts,
+	RemoveAccounts.String():                   RemoveAccounts,
+	ReadSelf.String():                         ReadSelf,
+	CancelSelf.String():                       CancelSelf,
+	ChangeState.String():                      ChangeState,
+	DeleteSelf.String():                       DeleteSelf,
+	NoOp.String():                             NoOp,
+	AddCredentialLibraries.String():           AddCredentialLibraries,
+	SetCredentialLibraries.String():           SetCredentialLibraries,
+	RemoveCredentialLibraries.String():        RemoveCredentialLibraries,
+	AddCredentialSources.String():             AddCredentialSources,
+	SetCredentialSources.String():             SetCredentialSources,
+	RemoveCredentialSources.String():          RemoveCredentialSources,
+	AddHostSources.String():                   AddHostSources,
+	SetHostSources.String():                   SetHostSources,
+	RemoveHostSources.String():                RemoveHostSources,
+	CreateWorkerLed.String():                  CreateWorkerLed,
+	AddWorkerTags.String():                    AddWorkerTags,
+	SetWorkerTags.String():                    SetWorkerTags,
+	RemoveWorkerTags.String():                 RemoveWorkerTags,
+	CreateControllerLed.String():              CreateControllerLed,
+	ReinitializeCertificateAuthority.String(): ReinitializeCertificateAuthority,
+	ReadCertificateAuthority.String():         ReadCertificateAuthority,
 }
 
 func (a Type) String() string {
@@ -168,6 +173,8 @@ func (a Type) String() string {
 		"set-worker-tags",
 		"remove-worker-tags",
 		"create:controller-led",
+		"reinitialize-certificate-authority",
+		"read-certificate-authority",
 	}[a]
 }
 

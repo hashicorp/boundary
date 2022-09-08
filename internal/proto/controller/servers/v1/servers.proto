@@ -29,4 +29,7 @@ message ServerWorkerStatus {
 
   // The key id for this worker, if applicable (optional)
   string key_id = 50; // @gotags: `class:"public"`
+
+  // The version of Boundary the worker binary is running
+  string release_version = 60 [json_name = "release_version"]; // @gotags: `class:"public"`
 }

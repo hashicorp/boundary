@@ -30,6 +30,7 @@ type Worker struct {
 	ActiveConnectionCount              uint32              `json:"active_connection_count,omitempty"`
 	Type                               string              `json:"type,omitempty"`
 	ApiTags                            map[string][]string `json:"api_tags,omitempty"`
+	ReleaseVersion                     string              `json:"release_version,omitempty"`
 	AuthorizedActions                  []string            `json:"authorized_actions,omitempty"`
 
 	response *api.Response

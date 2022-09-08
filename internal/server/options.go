@@ -42,6 +42,7 @@ type options struct {
 	withRoot                               string
 	withStopAfter                          uint
 	WithCreateControllerLedActivationToken bool
+	withReleaseVersion                     string
 }
 
 func getDefaultOptions() options {
@@ -194,5 +195,12 @@ func WithStopAfter(stopAfter uint) Option {
 func WithCreateControllerLedActivationToken(with bool) Option {
 	return func(o *options) {
 		o.WithCreateControllerLedActivationToken = with
+	}
+}
+
+// WithRelease version provides an optional release version
+func WithReleaseVersion(version string) Option {
+	return func(o *options) {
+		o.withReleaseVersion = version
 	}
 }
