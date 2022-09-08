@@ -23,9 +23,10 @@ func Test_TestTcpTarget(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, proj := iam.TestScopes(t, iamRepo)
-	repo, err := target.NewRepository(rw, rw, testKms)
-	require.NoError(err)
+
 	ctx := context.Background()
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
+	require.NoError(err)
 
 	cats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 	hsets := static.TestSets(t, conn, cats[0].GetPublicId(), 2)
@@ -56,9 +57,10 @@ func Test_TestCredentialLibrary(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, proj := iam.TestScopes(t, iamRepo)
-	repo, err := target.NewRepository(rw, rw, testKms)
-	require.NoError(err)
+
 	ctx := context.Background()
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
+	require.NoError(err)
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, t.Name())
 	store := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]

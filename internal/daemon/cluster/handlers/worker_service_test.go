@@ -39,8 +39,8 @@ func TestLookupSession(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kms)
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	connectionRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
@@ -214,8 +214,8 @@ func TestHcpbWorkers(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kmsCache)
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kmsCache)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kmsCache, opts...)
 	}
 	connectionRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kmsCache)

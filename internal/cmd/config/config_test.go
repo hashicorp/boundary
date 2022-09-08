@@ -1686,3 +1686,43 @@ func TestDatabaseConnMaxIdleTimeDuration(t *testing.T) {
 		})
 	}
 }
+
+func TestDatabaseSkipSharedLockAcquisition(t *testing.T) {
+	tests := []struct {
+		name                         string
+		in                           string
+		expSkipSharedLockAcquisition bool
+	}{
+		{
+			name: "not set",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+			  	}
+			}`,
+			expSkipSharedLockAcquisition: false,
+		},
+		{
+			name: "set",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					skip_shared_lock_acquisition = true
+			  	}
+			}`,
+			expSkipSharedLockAcquisition: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := Parse(tt.in)
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.NotNil(t, c.Controller.Database)
+			require.Equal(t, tt.expSkipSharedLockAcquisition, c.Controller.Database.SkipSharedLockAcquisition)
+		})
+	}
+}

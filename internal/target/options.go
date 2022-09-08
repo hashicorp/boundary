@@ -3,6 +3,7 @@ package target
 import (
 	"time"
 
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
@@ -34,6 +35,7 @@ type options struct {
 	WithStaticCredentials      []*StaticCredential
 	WithSessionMaxSeconds      uint32
 	WithSessionConnectionLimit int32
+	WithPermissions            []perms.Permission
 	WithPublicId               string
 	WithWorkerFilter           string
 	WithTargetIds              []string
@@ -55,6 +57,7 @@ func getDefaultOptions() options {
 		WithStaticCredentials:      nil,
 		WithSessionMaxSeconds:      uint32((8 * time.Hour).Seconds()),
 		WithSessionConnectionLimit: -1,
+		WithPermissions:            nil,
 		WithPublicId:               "",
 		WithWorkerFilter:           "",
 	}
@@ -176,5 +179,13 @@ func WithWorkerFilter(filter string) Option {
 func WithTargetIds(with []string) Option {
 	return func(o *options) {
 		o.WithTargetIds = with
+	}
+}
+
+// WithPermissions is used by this repo to restrict a list
+// request's results based on the given set of permissions.
+func WithPermissions(perms []perms.Permission) Option {
+	return func(o *options) {
+		o.WithPermissions = perms
 	}
 }

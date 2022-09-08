@@ -11,7 +11,6 @@ import (
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/boundary/internal/target"
 )
 
 type (
@@ -25,8 +24,6 @@ type (
 	StaticRepoFactory            func() (*static.Repository, error)
 	PluginHostRepoFactory        func() (*pluginhost.Repository, error)
 	HostPluginRepoFactory        func() (*hostplugin.Repository, error)
-	SessionRepoFactory           func() (*session.Repository, error)
 	ConnectionRepoFactory        func() (*session.ConnectionRepository, error)
-	TargetRepoFactory            func() (*target.Repository, error)
 	WorkerAuthRepoStorageFactory func() (*server.WorkerAuthRepositoryStorage, error)
 )

@@ -28,7 +28,9 @@ func TestRepository_CreateTarget(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	repo, err := target.NewRepository(rw, rw, testKms)
+
+	ctx := context.Background()
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
@@ -37,8 +39,6 @@ func TestRepository_CreateTarget(t *testing.T) {
 
 	cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 2)
-
-	ctx := context.Background()
 
 	type args struct {
 		target target.Target
@@ -165,7 +165,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(context.Background(), rw, rw, testKms)
 	require.NoError(t, err)
 	id := tcp.TestId(t)
 

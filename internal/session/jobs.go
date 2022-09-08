@@ -24,7 +24,7 @@ func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, w db.Writ
 		return fmt.Errorf("error registering session cleanup job: %w", err)
 	}
 
-	repo, err := NewRepository(r, w, k)
+	repo, err := NewRepository(ctx, r, w, k)
 	if err != nil {
 		return fmt.Errorf("error creating repository: %w", err)
 	}
