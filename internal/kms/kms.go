@@ -2,6 +2,7 @@ package kms
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"reflect"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"golang.org/x/exp/slices"
 )
 
 // Kms is a way to access wrappers for a given scope and purpose. Since keys can
@@ -22,6 +24,7 @@ import (
 type Kms struct {
 	underlying          *wrappingKms.Kms
 	reader              db.Reader
+	writer              db.Writer
 	derivedPurposeCache sync.Map
 }
 
@@ -44,6 +47,7 @@ func New(ctx context.Context, reader *db.Db, writer *db.Db, _ ...Option) (*Kms, 
 	return &Kms{
 		underlying: k,
 		reader:     reader,
+		writer:     writer,
 	}, nil
 }
 
@@ -282,6 +286,288 @@ func (k *Kms) VerifyGlobalRoot(ctx context.Context) error {
 		}
 	}
 	return errors.New(ctx, errors.MigrationIntegrity, op, "can't find global scoped root key")
+}
+
+// DestroyKeyVersion starts the process of destroying a key version in the scope.
+// If the key version is a KEK, this simply rewraps any existing DEK version's encrypted with
+// the KEK and destroys the key version. If the key version is a DEK, this creates a
+// key version destruction job, which will rewrap existing data and destroy the key
+// asynchronously.
+// Options are ignored.
+func (k *Kms) DestroyKeyVersion(ctx context.Context, scopeId string, keyVersionId string, _ ...Option) (wrappingKms.Key, error) {
+	const op = "kms.(Kms).DestroyKeyVersion"
+
+	scopeKeys, err := k.underlying.ListKeys(ctx, scopeId)
+	if err != nil {
+		return wrappingKms.Key{}, errors.Wrap(ctx, err, op)
+	}
+	foundKey := wrappingKms.Key{}
+	found := false
+keyLoop:
+	for _, key := range scopeKeys {
+		for _, version := range key.Versions {
+			if version.Id == keyVersionId {
+				foundKey = key
+				found = true
+				break keyLoop
+			}
+		}
+	}
+	if !found {
+		return wrappingKms.Key{}, errors.New(ctx, errors.KeyNotFound, op, "key version was not found in the scope")
+	}
+	switch foundKey.Purpose {
+	case wrappingKms.KeyPurpose(KeyPurposeOplog.String()):
+		return wrappingKms.Key{}, errors.New(ctx, errors.InvalidParameter, op, "oplog key versions cannot be destroyed")
+	case wrappingKms.KeyPurposeRootKey:
+		// Simple case, just rewrap and destroy synchronously
+		if err := k.underlying.RewrapKeys(ctx, scopeId); err != nil {
+			return wrappingKms.Key{}, errors.Wrap(ctx, err, op)
+		}
+		if err := k.underlying.RevokeKeyVersion(ctx, keyVersionId); err != nil {
+			return wrappingKms.Key{}, errors.Wrap(ctx, err, op)
+		}
+		return foundKey, nil
+	}
+	// Sort versions just in case they aren't already sorted
+	slices.SortFunc(foundKey.Versions, func(i, j wrappingKms.KeyVersion) bool {
+		return i.Version < j.Version
+	})
+	if foundKey.Versions[len(foundKey.Versions)-1].Id == keyVersionId {
+		// Attempted to destroy currently active key
+		return wrappingKms.Key{}, errors.New(ctx, errors.KeyVersionActive, op, "cannot destroy a currently active key version")
+	}
+
+	if _, err := k.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		if _, err := w.Exec(
+			ctx,
+			"insert into kms_data_key_version_destruction_job(key_id) values (?)",
+			[]interface{}{
+				keyVersionId,
+			},
+		); err != nil {
+			// Unique error means the key version ID already existing
+			if errors.Match(errors.T(errors.NotUnique), err) {
+				return errors.New(ctx, errors.KeyVersionDestroying, op, "key version is already destroying", errors.WithWrap(err))
+			}
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to insert new key version destruction job"))
+		}
+		rrw, err := convertToRW(ctx, r)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert reader"))
+		}
+		wrw, err := convertToRW(ctx, w)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert writer"))
+		}
+		tableNames, err := k.underlying.ListDataKeyVersionReferencers(ctx, wrappingKms.WithReaderWriter(rrw, wrw))
+		if err != nil {
+			errors.Wrap(ctx, err, op)
+		}
+		for _, tableName := range tableNames {
+			if tableName == "oplog_entry" || tableName == "kms_data_key_version_destruction_job" {
+				// Don't support rewrapping the oplog, and don't need to worry about the jobs table
+				continue
+			}
+			rows, err := w.Query(ctx, fmt.Sprintf("select count(*) from %q where key_id=?", tableName), []interface{}{keyVersionId})
+			if err != nil {
+				errors.Wrap(ctx, err, op, errors.WithMsg("failed to get affected rows for %q", tableName))
+			}
+			defer rows.Close()
+			if !rows.Next() {
+				errors.Wrap(ctx, err, op, errors.WithMsg("failed to iterate rows for %q", tableName))
+			}
+			var numRows uint
+			if err := w.ScanRows(ctx, rows, &numRows); err != nil {
+				errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan number of rows for %q", tableName))
+			}
+			if numRows == 0 {
+				// No rows to rewrap 🎉
+				continue
+			}
+			if _, err := w.Exec(
+				ctx,
+				"insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values (?, ?, ?)",
+				[]interface{}{
+					keyVersionId,
+					tableName,
+					numRows,
+				},
+			); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to insert new key version destruction job"))
+			}
+		}
+		return nil
+	}); err != nil {
+		return wrappingKms.Key{}, err
+	}
+	return foundKey, err
+}
+
+func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context) ([]string, error) {
+	return k.underlying.ListDataKeyVersionReferencers(ctx)
+}
+
+// MonitorTableRewrappingJobs rewraps all data encrypted in the table if there are any
+// destructions requested. This may be a long running operation.
+// Options are ignored.
+func (k *Kms) MonitorTableRewrappingJobs(ctx context.Context, tableName string, _ ...Option) (retErr error) {
+	const op = "kms.(Kms).MonitorTableRewrappingJobs"
+
+	rewrapFn, ok := tableNameToRewrapFn[tableName]
+	if !ok {
+		return errors.E(ctx, errors.WithMsg("no rewrapper for table %q", tableName))
+	}
+
+	var dataKeyVersionId string
+	if _, err := k.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(r db.Reader, w db.Writer) error {
+			// Find any pending runs for our table (which haven't already finished)
+			rows, err := r.Query(
+				ctx,
+				"select key_id, is_running from kms_data_key_version_destruction_job_run where table_name=? and completed_count!=total_count",
+				[]interface{}{tableName},
+			)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			var isRunning bool
+			for rows.Next() {
+				if err := rows.Scan(&dataKeyVersionId, &isRunning); err != nil {
+					return err
+				}
+				if isRunning {
+					// A job was already running for our table name, we must've been
+					// stopped unexpectedly mid-execution. Lets resume.
+					break
+				}
+			}
+			if err := rows.Err(); err != nil {
+				return err
+			}
+			if dataKeyVersionId == "" {
+				// No queued runs, lets try again later
+				return nil
+			}
+			if !isRunning {
+				// No running job, lets try to become the running job
+				if _, err := w.Exec(
+					ctx,
+					"update kms_data_key_version_destruction_job_run set is_running=true where key_id=? and table_name=?",
+					[]interface{}{
+						dataKeyVersionId,
+						tableName,
+					},
+				); err != nil {
+					// Unique error means some other job started running instead of us
+					if errors.Match(errors.T(errors.NotUnique), err) {
+						return nil
+					}
+					return err
+				}
+			}
+			return nil
+		},
+	); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to become the running job for %q", tableName))
+	}
+
+	if dataKeyVersionId == "" {
+		// No queued runs, let try again later
+		return nil
+	}
+
+	defer func() {
+		if retErr != nil {
+			// Create new context in case we failed because the context was canceled
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+		}
+		// Update the progress of this run
+		if _, err := k.writer.Exec(
+			ctx,
+			fmt.Sprintf(
+				`
+with progress as (
+	select count(*) as total_count from %q where key_id=@key_id
+)
+update kms_data_key_version_destruction_job_run
+set
+	is_running=false,
+	completed_count=(total_count-(select total_count from progress))
+where
+	key_id=@key_id and table_name=@table_name
+`,
+				tableName,
+			),
+			[]interface{}{
+				sql.Named("key_id", dataKeyVersionId),
+				sql.Named("table_name", tableName),
+			},
+		); err != nil {
+			if retErr != nil {
+				// Just emit an error, don't mutate the returned error
+				_ = errors.E(ctx, errors.WithWrap(err))
+			} else {
+				retErr = err
+			}
+		}
+	}()
+
+	// Call the function to rewrap the data in the table. The progress will be automatically
+	// updated by the deferred function.
+	return rewrapFn(ctx, dataKeyVersionId, k.reader, k.writer, k)
+}
+
+func (k *Kms) MonitorDataKeyVersionDestruction(ctx context.Context) error {
+	const op = "kms.(Kms).MonitorDataKeyVersionDestruction"
+
+	rows, err := k.reader.Query(
+		ctx,
+		`
+select
+	j.key_id
+from kms_data_key_version_destruction_job           j
+	inner join kms_data_key_version_destruction_job_run r
+		on j.key_id = r.key_id
+group by (j.key_id)
+having sum(r.total_count) = sum(r.completed_count)
+`,
+		nil,
+	)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	var completedDataKeyVersionIds []string
+	if !rows.Next() {
+		// No running destruction jobs
+		return nil
+	}
+	if err := k.reader.ScanRows(ctx, rows, &completedDataKeyVersionIds); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	for _, dataKeyVersionId := range completedDataKeyVersionIds {
+		// Finally, revoke the key, deleting it from the database.
+		// This will error if anything still references it that isn't
+		// meant to be cascade deleted.
+		if err := k.underlying.RevokeKeyVersion(ctx, dataKeyVersionId); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
+	return nil
+}
+
+// ListDataKeyVersionDestructionJobs lists any in-progress key destruction jobs in the scope.
+// Options are ignored.
+func (k *Kms) ListDataKeyVersionDestructionJobs(ctx context.Context, scopeId string, _ ...Option) ([]*DataKeyVersionDestructionJobProgress, error) {
+	var kr []*DataKeyVersionDestructionJobProgress
+	if err := k.reader.SearchWhere(ctx, &kr, "scope_id=?", []interface{}{scopeId}); err != nil {
+		return nil, err
+	}
+	return kr, nil
 }
 
 func stdNewKmsPurposes() []wrappingKms.KeyPurpose {

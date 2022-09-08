@@ -34,7 +34,7 @@ message RootCertificate {
   storage.timestamp.v1.Timestamp not_valid_after = 40;
 
   // The public key associated with this certificate
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"primary_key;not_null"`
   bytes public_key = 50;
 
   // The private key associated with this certificate

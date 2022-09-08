@@ -124,7 +124,7 @@ func TestAction(t *testing.T) {
 			want:   "rotate-keys",
 		},
 		{
-			action: RevokeScopeKeys,
+			action: DestroyScopeKeyVersion,
 			want:   "revoke-keys",
 		},
 	}

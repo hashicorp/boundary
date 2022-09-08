@@ -168,6 +168,11 @@ var inputStructs = []*structInfo{
 		skipOptions: true,
 	},
 	{
+		inProto:     &scopes.KeyVersionDestructionJob{},
+		outFile:     "scopes/key_version_destruction_job.gen.go",
+		skipOptions: true,
+	},
+	{
 		inProto: &scopes.Scope{},
 		outFile: "scopes/scope.gen.go",
 		templates: []*template.Template{

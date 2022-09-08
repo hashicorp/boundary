@@ -36,6 +36,7 @@ const (
 	AccountClaimMapsField                  = "AccountClaimMaps"
 	TokenClaimsField                       = "TokenClaims"
 	UserinfoClaimsField                    = "UserinfoClaims"
+	KeyIdField                             = "KeyId"
 )
 
 // UpdateAuthMethod will retrieve the auth method from the repository,

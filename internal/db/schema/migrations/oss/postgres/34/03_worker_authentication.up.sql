@@ -71,6 +71,7 @@ create table worker_auth_ca_certificate(
       references worker_auth_ca(private_id)
 );
 
+-- Updated in 51/05_mutable_ciphertext_columns.up.sql
 create trigger immutable_columns before update on worker_auth_ca_certificate
   for each row execute procedure immutable_columns('serial_number', 'certificate', 'not_valid_before', 'not_valid_after', 'public_key', 'private_key', 'key_id', 'state', 'issuing_ca');
 

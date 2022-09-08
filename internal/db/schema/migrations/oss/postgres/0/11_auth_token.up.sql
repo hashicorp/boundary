@@ -57,6 +57,7 @@ begin;
   comment on function update_last_access_time() is
     'function used in before update triggers to properly set last_access_time columns';
 
+  -- Dropped in 51/05_mutable_ciphertext_columns.up.sql
   create or replace function immutable_auth_token_columns() returns trigger
   as $$
   begin
@@ -98,9 +99,11 @@ begin;
   create trigger update_last_access_time before update on auth_token
     for each row execute procedure update_last_access_time();
 
+  -- Dropped in 51/05_mutable_ciphertext_columns.up.sql
   create trigger immutable_auth_token_columns before update on auth_token
     for each row execute procedure immutable_auth_token_columns();
 
+  -- Updated in 51/05_mutable_ciphertext_columns.up.sql
   create trigger immutable_columns before update on auth_token
     for each row execute procedure immutable_columns('public_id', 'auth_account_id', 'create_time');
 

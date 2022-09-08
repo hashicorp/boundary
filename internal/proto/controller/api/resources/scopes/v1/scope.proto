@@ -118,3 +118,24 @@ message Key {
   // The versions of the key.
   repeated KeyVersion versions = 60;
 }
+
+// KeyVersionDestructionJob holds information about an in-progress key version destruction job.
+message KeyVersionDestructionJob {
+  // The ID of the Key version this job relates to.
+  string key_version_id = 10; // @gotags: `class:"public"`
+
+  // Scope information for this resource.
+  ScopeInfo scope = 20;
+
+  // The current status of the key version destruction job. One of "pending", "running" or "completed".
+  string status = 30; // @gotags: `class:"public"`
+
+  // The time this key version destruction job was created.
+  google.protobuf.Timestamp created_time = 40 [json_name = "created_time"]; // @gotags: `class:"public"`
+
+  // The number of rows that have been successfully re-encrypted with a new key version.
+  uint32 completed_count = 50;
+
+  // The total number of rows that need re-encrypting.
+  uint32 total_count = 60;
+}

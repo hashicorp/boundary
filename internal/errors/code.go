@@ -40,11 +40,13 @@ const (
 	InvalidDynamicCredential      Code = 116 // InvalidDynamicCredential represents that a dynamic credential for a session was in an invalid state
 	JobAlreadyRunning             Code = 117 // JobAlreadyRunning represents that a Job is already running when an attempt to run again was made
 	SubtypeAlreadyRegistered      Code = 118 // SubtypeAlreadyRegistered represents that a value has already been registered in the subtype registry system.
-	NoPathFound                        = 119 // NoPathFound represents an error when no path is found to a worker
-	WorkerNotFound                     = 120 // WorkerNotFound represents an error when a worker is not found in the graph of downstream workers
-	CycleFound                         = 121 // CycleFound represents an error when a cycle is found between a parent and child worker
-	WorkerConnNotFound                 = 122 // WorkerConnNotFound represents an error when a connection to a worker is not found
-	KmsWorkerUnsupportedOperation      = 123 // KmsWorkerUnsupportedOperation represents an error when a KMS worker is not supported for an operation
+	NoPathFound                   Code = 119 // NoPathFound represents an error when no path is found to a worker
+	WorkerNotFound                Code = 120 // WorkerNotFound represents an error when a worker is not found in the graph of downstream workers
+	CycleFound                    Code = 121 // CycleFound represents an error when a cycle is found between a parent and child worker
+	WorkerConnNotFound            Code = 122 // WorkerConnNotFound represents an error when a connection to a worker is not found
+	KmsWorkerUnsupportedOperation Code = 123 // KmsWorkerUnsupportedOperation represents an error when a KMS worker is not supported for an operation
+	KeyVersionActive              Code = 124 // KeyVersionActive is returned if the key version could not be destroyed because it was the active key version
+	KeyVersionDestroying          Code = 125 // KeyVersionDestroying is returned if a key version is already in the process of being destroyed
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.

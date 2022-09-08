@@ -87,3 +87,22 @@ func ValidDekPurposes() []KeyPurpose {
 		KeyPurposeAudit,
 	}
 }
+
+// DataKeyVersionDestructionJobStatus defines the possible states a data key version destruction job can take.
+type DataKeyVersionDestructionJobStatus uint
+
+const (
+	DataKeyVersionDestructionJobStatusUnspecified DataKeyVersionDestructionJobStatus = iota
+	DataKeyVersionDestructionJobStatusPending
+	DataKeyVersionDestructionJobStatusRunning
+	DataKeyVersionDestructionJobStatusCompleted
+)
+
+func (k DataKeyVersionDestructionJobStatus) String() string {
+	return [...]string{
+		"unspecified",
+		"pending",
+		"running",
+		"completed",
+	}[k]
+}

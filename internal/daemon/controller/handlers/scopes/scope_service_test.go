@@ -2,6 +2,23 @@ package scopes_test
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httputil"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+/*
+import (
+
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -32,7 +49,101 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
 )
+*/
+func TestKeyDestruction(t *testing.T) {
+	ctx := context.Background()
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: time.Second})
+	t.Cleanup(tc.Shutdown)
+	c := tc.Client()
+	c.SetToken(tc.Token().Token)
+	sc := scopes.NewClient(c)
+
+	keys, err := sc.ListKeys(ctx, "global")
+	require.NoError(t, err)
+	assert.Len(t, keys.Items, 7)
+	for _, key := range keys.Items {
+		assert.Len(t, key.Versions, 1)
+	}
+
+	_, err = sc.RotateKeys(ctx, "global", false)
+	require.NoError(t, err)
+
+	keys, err = sc.ListKeys(ctx, "global")
+	require.NoError(t, err)
+	assert.Len(t, keys.Items, 7)
+	for _, key := range keys.Items {
+		assert.Len(t, key.Versions, 2)
+	}
+
+	// Root key is always last, by virtue of sorting by ID
+	rootKeyVersion := keys.Items[len(keys.Items)-1].Versions[0]
+	var destroyKeyVersion *scopes.KeyVersion
+	for _, key := range keys.Items {
+		if key.Purpose == "database" {
+			destroyKeyVersion = key.Versions[0]
+		}
+	}
+
+	req, err := http.NewRequest(http.MethodGet, tc.ApiAddrs()[0]+"/v1/scopes/global:list-key-version-destruction-jobs", nil)
+	require.NoError(t, err)
+	req.Header.Add("Authorization", "Bearer "+tc.Token().Token)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	out, _ := httputil.DumpResponse(resp, true)
+	t.Log(string(out))
+
+	req, err = http.NewRequest(http.MethodPost, tc.ApiAddrs()[0]+"/v1/scopes:destroy-key-version", strings.NewReader(fmt.Sprintf(`{"scope_id":"global", "key_version_id":%q}`, rootKeyVersion.Id)))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", "Bearer "+tc.Token().Token)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	out, _ = httputil.DumpResponse(resp, true)
+	t.Log(string(out))
+
+	req, err = http.NewRequest(http.MethodGet, tc.ApiAddrs()[0]+"/v1/scopes/global:list-key-version-destruction-jobs", nil)
+	require.NoError(t, err)
+	req.Header.Add("Authorization", "Bearer "+tc.Token().Token)
+	resp, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	out, _ = httputil.DumpResponse(resp, true)
+	t.Log(string(out))
+
+	req, err = http.NewRequest(http.MethodPost, tc.ApiAddrs()[0]+"/v1/scopes:destroy-key-version", strings.NewReader(fmt.Sprintf(`{"scope_id":"global", "key_version_id":%q}`, destroyKeyVersion.Id)))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", "Bearer "+tc.Token().Token)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	out, _ = httputil.DumpResponse(resp, true)
+	t.Log(string(out))
+
+	req, err = http.NewRequest(http.MethodGet, tc.ApiAddrs()[0]+"/v1/scopes/global:list-key-version-destruction-jobs", nil)
+	require.NoError(t, err)
+	req.Header.Add("Authorization", "Bearer "+tc.Token().Token)
+	resp, err = http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	out, _ = httputil.DumpResponse(resp, true)
+	t.Log(string(out))
+
+	for {
+		time.Sleep(time.Second)
+		req, err = http.NewRequest(http.MethodGet, tc.ApiAddrs()[0]+"/v1/scopes/global:list-key-version-destruction-jobs", nil)
+		require.NoError(t, err)
+		req.Header.Add("Authorization", "Bearer "+tc.Token().Token)
+		resp, err = http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		out, _ = httputil.DumpResponse(resp, true)
+		t.Log(string(out))
+		if strings.HasSuffix(strings.TrimSpace(string(out)), "{}") {
+			break
+		}
+	}
+}
+
+/*
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
@@ -1950,3 +2061,4 @@ func TestRotateKeys(t *testing.T) {
 		})
 	}
 }
+*/
