@@ -130,7 +130,7 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]workers.Op
 			c.UI.Error("No tags supplied via -tag")
 			return false
 		case 1:
-			if c.FlagTags["null"] == nil {
+			if v, found := c.FlagTags["null"]; found && v == nil {
 				c.FlagTags = nil
 			}
 		}
