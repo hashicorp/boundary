@@ -1380,12 +1380,16 @@ func TestCreateControllerLed(t *testing.T) {
 	}
 	testCtx := context.Background()
 
-	testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+	rootStorage, err := server.NewRepositoryStorage(testCtx, rw, rw, testKms)
+	require.NoError(t, err)
+	authRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return rootStorage, nil
+	}
+
+	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn)
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	// Get an initial set of authorized node credentials
-	rootStorage, err := server.NewRepositoryStorage(testCtx, rw, rw, testKms)
-	require.NoError(t, err)
 	_, err = rotation.RotateRootCertificates(testCtx, rootStorage)
 	require.NoError(t, err)
 
@@ -1596,7 +1600,7 @@ func TestCreateControllerLed(t *testing.T) {
 				repoFn := func() (*server.Repository, error) {
 					return server.NewRepository(rw, &db.Db{}, testKms)
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1628,7 +1632,7 @@ func TestCreateControllerLed(t *testing.T) {
 						return server.NewRepository(rw, rw, testKms)
 					}
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),

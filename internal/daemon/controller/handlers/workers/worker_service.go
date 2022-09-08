@@ -691,7 +691,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Worker), auth.WithAction(a)}
 	switch a {
-	case action.List, action.CreateWorkerLed, action.ReadCertificateAuthority, action.ReinitializeCertificateAuthority:
+	case action.List, action.CreateWorkerLed, action.CreateControllerLed, action.ReadCertificateAuthority, action.ReinitializeCertificateAuthority:
 		parentId = id
 	default:
 		w, err := repo.LookupWorker(ctx, id)
