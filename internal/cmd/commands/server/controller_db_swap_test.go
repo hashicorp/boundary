@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 	"testing"
@@ -81,9 +80,12 @@ where
 `
 
 func TestReloadControllerDatabase(t *testing.T) {
-	td, err := ioutil.TempDir("", "boundary-test-")
+	td, err := os.MkdirTemp("", "boundary-test-")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(td)) })
+
+	// Set the close time to something small
+	db.CloseSwappedDbDuration = 5 * time.Second
 
 	// Create and migrate database A and B.
 	controllerKey := config.DevKeyGeneration()
@@ -177,6 +179,9 @@ func TestReloadControllerDatabase(t *testing.T) {
 	}
 	require.EqualValues(t, oldDB, cmd.Server.Database)
 
+	// Wait for the old connection to be closed
+	time.Sleep(db.CloseSwappedDbDuration)
+
 	// `sqlDB` still points to database A here. Assert that the object
 	// is Closed.
 	row = sqlDB.QueryRow("select 1")
@@ -215,7 +220,7 @@ func TestReloadControllerDatabase(t *testing.T) {
 }
 
 func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
-	td, err := ioutil.TempDir("", "boundary-test-")
+	td, err := os.MkdirTemp("", "boundary-test-")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, os.RemoveAll(td)) })
 

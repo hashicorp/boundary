@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-dbw"
 	_ "github.com/jackc/pgx/v4"
 	"gorm.io/driver/postgres"
@@ -42,42 +44,68 @@ func StringToDbType(dialect string) (DbType, error) {
 
 // DB is a wrapper around the ORM
 type DB struct {
-	mu      sync.Mutex
-	wrapped *dbw.DB
+	wrapped *atomic.Pointer[dbw.DB]
 }
 
-type closeDbFn func(context.Context) error
+type closeDbFn func(context.Context)
+
+var CloseSwappedDbDuration = 5 * time.Minute
 
 // Swap replaces *DB's underlying database object with the one from `newDB`.
 // It returns a function that calls Close() on the outgoing database object.
 // Note: Swap does not verify the incoming *DB object is correctly set-up.
 func (db *DB) Swap(ctx context.Context, newDB *DB) (closeDbFn, error) {
-	if newDB == nil || newDB.wrapped == nil {
+	const op = "db.(DB).Swap"
+	if newDB == nil || newDB.wrapped == nil || newDB.wrapped.Load() == nil {
 		return nil, fmt.Errorf("no new db object present")
 	}
-	if db.wrapped == nil {
+	if db == nil || db.wrapped == nil || db.wrapped.Load() == nil {
 		// TBD: We could be helpful here and set the new DB instead of err?
 		return nil, fmt.Errorf("no current db is present to swap, aborting")
 	}
 
 	// Grab the old db to allow for cleanup after swap.
-	oldDbw := *db.wrapped
-	closeOldDbFn := func(ctx context.Context) error { return oldDbw.Close(ctx) }
+	oldDbw := db.wrapped.Swap(newDB.wrapped.Load())
+	closeOldDbFn := func(ctx context.Context) {
+		go func() {
+			maxTime := time.Now().Add(CloseSwappedDbDuration)
+			t := time.NewTicker(time.Second)
+			var done bool
+			for {
+				select {
+				case <-t.C:
+					if time.Now().After(maxTime) || done {
+						t.Stop()
+						if err := oldDbw.Close(ctx); err != nil {
+							event.WriteError(ctx, op, errors.Wrap(ctx, err, op))
+						}
+						return
+					}
+					sqlDb, err := oldDbw.SqlDB(ctx)
+					if err != nil {
+						event.WriteError(ctx, op, fmt.Errorf("unable to load old sqldb to check stats"))
+						continue
+					}
+					stats := sqlDb.Stats()
+					if stats.InUse == 0 {
+						done = true
+					}
 
-	// Replace the current DB value with the new one.
-	// Note: It's important that the pointer doesn't change, rather the value
-	// the pointer points to. Changing the pointer itself does not update the
-	// references in the other objects (repo functions, etc).
-	db.mu.Lock()
-	*db.wrapped = *newDB.wrapped
-	db.mu.Unlock()
+				case <-ctx.Done():
+					t.Stop()
+					event.WriteError(ctx, op, fmt.Errorf("context canceled before old database connection was closed, aborting"))
+					return
+				}
+			}
+		}()
+	}
 
 	return closeOldDbFn, nil
 }
 
 // Debug will enable/disable debug info for the connection
 func (db *DB) Debug(on bool) {
-	db.wrapped.Debug(on)
+	db.wrapped.Load().Debug(on)
 }
 
 // SqlDB returns the underlying sql.DB
@@ -90,7 +118,7 @@ func (d *DB) SqlDB(ctx context.Context) (*sql.DB, error) {
 	if d.wrapped == nil {
 		return nil, errors.New(ctx, errors.Internal, op, "missing underlying database")
 	}
-	return d.wrapped.SqlDB(ctx)
+	return d.wrapped.Load().SqlDB(ctx)
 }
 
 // Close the underlying sql.DB
@@ -99,7 +127,7 @@ func (d *DB) Close(ctx context.Context) error {
 	if d.wrapped == nil {
 		return errors.New(ctx, errors.Internal, op, "missing underlying database")
 	}
-	return d.wrapped.Close(ctx)
+	return d.wrapped.Load().Close(ctx)
 }
 
 // Open a database connection which is long-lived. The options of
@@ -150,5 +178,7 @@ func Open(ctx context.Context, dbType DbType, connectionUrl string, opt ...Optio
 		sdb.SetConnMaxIdleTime(*opts.withConnMaxIdleTimeDuration)
 	}
 
-	return &DB{wrapped: wrapped}, nil
+	ret := &DB{wrapped: new(atomic.Pointer[dbw.DB])}
+	ret.wrapped.Store(wrapped)
+	return ret, nil
 }

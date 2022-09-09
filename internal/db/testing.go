@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -64,7 +65,7 @@ func TestSetup(t testing.TB, dialect string, opt ...TestOption) (*DB, string) {
 	}
 	switch {
 	case opts.withLogLevel != DefaultTestLogLevel:
-		db.wrapped.LogLevel(dbw.LogLevel(opts.withLogLevel))
+		db.wrapped.Load().LogLevel(dbw.LogLevel(opts.withLogLevel))
 	default:
 		var defaultLevel dbw.LogLevel
 		switch strings.ToLower(os.Getenv("DEFAULT_TEST_LOG_LEVEL")) {
@@ -79,7 +80,7 @@ func TestSetup(t testing.TB, dialect string, opt ...TestOption) (*DB, string) {
 		default:
 			defaultLevel = dbw.Silent
 		}
-		db.wrapped.LogLevel(defaultLevel)
+		db.wrapped.Load().LogLevel(defaultLevel)
 	}
 	t.Cleanup(func() {
 		sqlDB, err := db.SqlDB(ctx)
@@ -97,13 +98,15 @@ func TestSetupWithMock(t *testing.T) (*DB, sqlmock.Sqlmock) {
 	db, mock, err := sqlmock.New()
 	require.NoError(err)
 	require.NoError(err)
-	dbw, err := dbw.OpenWith(pgDriver.New(pgDriver.Config{
+	dbWith, err := dbw.OpenWith(pgDriver.New(pgDriver.Config{
 		Conn: db,
 	}))
 	require.NoError(err)
-	return &DB{
-		wrapped: dbw,
-	}, mock
+	ret := &DB{
+		wrapped: new(atomic.Pointer[dbw.DB]),
+	}
+	ret.wrapped.Store(dbWith)
+	return ret, mock
 }
 
 // TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
@@ -148,7 +151,7 @@ func TestDeleteWhere(t testing.TB, conn *DB, i interface{}, whereClause string, 
 		TableName() string
 	})
 	require.True(ok)
-	_, err := dbw.New(conn.wrapped).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), args)
+	_, err := dbw.New(conn.wrapped.Load()).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), args)
 	require.NoError(err)
 }
 
