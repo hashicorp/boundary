@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"strings"
 	"testing"
@@ -143,6 +144,7 @@ func TestLookupWorkerIdByKeyId(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 	repo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 	ctx := context.Background()
@@ -187,7 +189,7 @@ func TestLookupWorker(t *testing.T) {
 		server.WithWorkerTags(&server.Tag{"key", "val"}))
 	require.NoError(t, err)
 
-	sessRepo, err := session.NewRepository(rw, rw, kms)
+	sessRepo, err := session.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	connRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms, session.WithWorkerStateDelay(0))
 	require.NoError(t, err)
@@ -252,6 +254,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 	repo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 
@@ -260,7 +263,8 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	t.Run("create an initial kms worker and update status", func(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("address"), server.WithName("config_name1"),
-			server.WithDescription("kms_description1"))
+			server.WithDescription("kms_description1"),
+		)
 		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1)
 		require.NoError(t, err)
 
@@ -271,16 +275,18 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "address", worker.GetAddress())
+		assert.NotNil(t, worker.ReleaseVersion)
 
 		// update again and see updated last status time
 		wStatus2 := server.NewWorker(scope.Global.String(),
-			server.WithAddress("new_address"), server.WithName("config_name1"))
+			server.WithAddress("new_address"), server.WithName("config_name1"), server.WithReleaseVersion("test-version"))
 		worker, err = repo.UpsertWorkerStatus(ctx, wStatus2)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
 		assert.Equal(t, "config_name1", worker.Name)
 		// Version does not change for status updates
 		assert.Equal(t, uint32(1), worker.Version)
+		assert.Equal(t, "test-version", wStatus2.ReleaseVersion)
 		assert.Equal(t, "new_address", worker.GetAddress())
 	})
 
@@ -290,8 +296,9 @@ func TestUpsertWorkerStatus(t *testing.T) {
 
 	t.Run("update status for pki worker", func(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
-			server.WithAddress("pki_address"), server.WithDescription("pki_description2"))
-		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, server.WithKeyId(pkiWorkerKeyId))
+			server.WithAddress("pki_address"), server.WithDescription("pki_description2"),
+			server.WithReleaseVersion("test-version"))
+		worker, err := repo.UpsertWorkerStatus(ctx, wStatus1, server.WithKeyId(pkiWorkerKeyId), server.WithReleaseVersion("test-version"))
 		require.NoError(t, err)
 
 		assert.True(t, strings.HasPrefix(worker.GetPublicId(), "w_"))
@@ -302,6 +309,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, worker.GetLastStatusTime().AsTime(), worker.GetUpdateTime().AsTime())
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "pki_address", worker.GetAddress())
+		assert.Equal(t, "test-version", worker.ReleaseVersion)
 	})
 
 	failureCases := []struct {
@@ -496,9 +504,11 @@ func TestListWorkers(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
 	const testLimit = 10
-	repo, err := server.NewRepository(rw, rw, kms, server.WithLimit(testLimit))
+	repo, err := server.NewRepository(rw, rw, kmsCache, server.WithLimit(testLimit))
 	require.NoError(t, err)
 	ctx := context.Background()
 
@@ -696,7 +706,6 @@ func TestRepository_CreateWorker(t *testing.T) {
 		name            string
 		setup           func() *server.Worker
 		repo            *server.Repository
-		fetchReq        *types.FetchNodeCredentialsRequest
 		reader          db.Reader
 		opt             []server.Option
 		wantErr         bool
@@ -812,19 +821,21 @@ func TestRepository_CreateWorker(t *testing.T) {
 				return w
 			},
 			reader: rw,
-			fetchReq: func() *types.FetchNodeCredentialsRequest {
-				// This happens on the worker
-				fileStorage, err := file.New(testCtx)
-				require.NoError(t, err)
-				defer fileStorage.Cleanup()
+			opt: []server.Option{server.WithFetchNodeCredentialsRequest(
+				func() *types.FetchNodeCredentialsRequest {
+					// This happens on the worker
+					fileStorage, err := file.New(testCtx)
+					require.NoError(t, err)
+					defer fileStorage.Cleanup()
 
-				nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
-				require.NoError(t, err)
-				// Create request using worker id
-				fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
-				require.NoError(t, err)
-				return fetchReq
-			}(),
+					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+					require.NoError(t, err)
+					// Create request using worker id
+					fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
+					require.NoError(t, err)
+					return fetchReq
+				}(),
+			)},
 			repo: func() *server.Repository {
 				mockConn, mock := db.TestSetupWithMock(t)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
@@ -844,7 +855,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 				return w
 			},
 			reader:          rw,
-			fetchReq:        &types.FetchNodeCredentialsRequest{},
+			opt:             []server.Option{server.WithFetchNodeCredentialsRequest(&types.FetchNodeCredentialsRequest{})},
 			repo:            testRepo,
 			wantErr:         true,
 			wantErrContains: "unable to authorize node",
@@ -862,7 +873,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			wantErrIs: errors.NotUnique,
 		},
 		{
-			name: "success",
+			name: "success-no-options",
 			setup: func() *server.Worker {
 				w := server.NewWorker(scope.Global.String())
 				w.Name = "success"
@@ -892,28 +903,39 @@ func TestRepository_CreateWorker(t *testing.T) {
 				return w
 			},
 			reader: rw,
-			fetchReq: func() *types.FetchNodeCredentialsRequest {
-				// This happens on the worker
-				fileStorage, err := file.New(testCtx)
-				require.NoError(t, err)
-				defer fileStorage.Cleanup()
+			opt: []server.Option{server.WithFetchNodeCredentialsRequest(
+				func() *types.FetchNodeCredentialsRequest {
+					// This happens on the worker
+					fileStorage, err := file.New(testCtx)
+					require.NoError(t, err)
+					defer fileStorage.Cleanup()
 
-				nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
-				require.NoError(t, err)
-				// Create request using worker id
-				fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
-				require.NoError(t, err)
-				return fetchReq
-			}(),
+					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+					require.NoError(t, err)
+					// Create request using worker id
+					fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
+					require.NoError(t, err)
+					return fetchReq
+				}(),
+			)},
 			repo: testRepo,
+		},
+		{
+			name: "success-with-controller-activation-token",
+			setup: func() *server.Worker {
+				w := server.NewWorker(scope.Global.String())
+				w.Name = "success-with-controller-activation-token"
+				return w
+			},
+			reader: rw,
+			opt:    []server.Option{server.WithCreateControllerLedActivationToken(true)},
+			repo:   testRepo,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testWorker := tc.setup()
-
-			tc.opt = append(tc.opt, server.WithFetchNodeCredentialsRequest(tc.fetchReq))
 
 			got, err := tc.repo.CreateWorker(testCtx, testWorker, tc.opt...)
 			if tc.wantErr {
@@ -942,11 +964,18 @@ func TestRepository_CreateWorker(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(cmp.Diff(got, found, protocmp.Transform()))
 
-			if tc.fetchReq != nil {
+			opts := server.GetOpts(tc.opt...)
+			if opts.WithFetchNodeCredentialsRequest != nil {
 				worker := &server.WorkerAuth{
 					WorkerAuth: &store.WorkerAuth{},
 				}
 				require.NoError(tc.reader.LookupWhere(testCtx, worker, "worker_id = ?", []any{found.PublicId}))
+			}
+			if opts.WithCreateControllerLedActivationToken {
+				activationToken := &server.WorkerAuthServerLedActivationToken{
+					WorkerAuthServerLedActivationToken: &store.WorkerAuthServerLedActivationToken{},
+				}
+				require.NoError(tc.reader.LookupWhere(testCtx, activationToken, "worker_id = ?", []any{found.PublicId}))
 			}
 		})
 	}
@@ -959,6 +988,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
 	repo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)

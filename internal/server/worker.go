@@ -67,19 +67,23 @@ type Worker struct {
 	// other based on the context in which the worker is passed.  As such
 	// inputTags should only be read when performing mutations on the database.
 	inputTags []*Tag `gorm:"-"`
+
+	// This is used to pass the token back to the calling function
+	ControllerGeneratedActivationToken string `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
 // WithAddress, and WithWorkerTags. All other options are ignored.  This does
 // not set any of the worker reported values.
 func NewWorker(scopeId string, opt ...Option) *Worker {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	return &Worker{
 		Worker: &store.Worker{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			Address:     opts.withAddress,
+			ScopeId:        scopeId,
+			Name:           opts.withName,
+			Description:    opts.withDescription,
+			Address:        opts.withAddress,
+			ReleaseVersion: opts.withReleaseVersion,
 		},
 		inputTags: opts.withWorkerTags,
 	}
@@ -189,6 +193,7 @@ type workerAggregate struct {
 	Address               string
 	Version               uint32
 	Type                  string
+	ReleaseVersion        string
 	ApiTags               string
 	ActiveConnectionCount uint32
 	// Config Fields
@@ -210,6 +215,7 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 			Version:        a.Version,
 			LastStatusTime: a.LastStatusTime,
 			Type:           a.Type,
+			ReleaseVersion: a.ReleaseVersion,
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 	}

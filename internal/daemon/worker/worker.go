@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	ua "go.uber.org/atomic"
@@ -119,6 +120,8 @@ type Worker struct {
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
 	TestOverrideAuthRotationPeriod time.Duration
+
+	statusLock sync.Mutex
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -154,7 +157,7 @@ func New(conf *Config) (*Worker, error) {
 		conf.RawConfig.Worker = new(config.Worker)
 	}
 
-	w.ParseAndStoreTags(conf.RawConfig.Worker.Tags)
+	w.parseAndStoreTags(conf.RawConfig.Worker.Tags)
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
@@ -200,6 +203,35 @@ func New(conf *Config) (*Worker, error) {
 	return w, nil
 }
 
+// Reload will update a worker with a new Config. The worker will only use
+// relevant parts of the new config, specifically:
+// - Worker Tags
+// - Initial Upstream addresses
+func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
+	const op = "worker.(Worker).Reload"
+
+	w.parseAndStoreTags(newConf.Worker.Tags)
+
+	if !strutil.EquivalentSlices(newConf.Worker.InitialUpstreams, w.conf.RawConfig.Worker.InitialUpstreams) {
+		w.statusLock.Lock()
+		defer w.statusLock.Unlock()
+
+		upstreamsMessage := fmt.Sprintf(
+			"Initial Upstreams has changed; old upstreams were: %s, new upstreams are: %s",
+			w.conf.RawConfig.Worker.InitialUpstreams,
+			newConf.Worker.InitialUpstreams,
+		)
+		event.WriteSysEvent(ctx, op, upstreamsMessage)
+		w.conf.RawConfig.Worker.InitialUpstreams = newConf.Worker.InitialUpstreams
+
+		for _, ar := range w.addressReceivers {
+			ar.SetAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
+			// set InitialAddresses in case the worker has not successfully dialed yet
+			ar.InitialAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
+		}
+	}
+}
+
 func (w *Worker) Start() error {
 	const op = "worker.(Worker).Start"
 
@@ -219,6 +251,10 @@ func (w *Worker) Start() error {
 		// the controller, we don't want to invalidate that request on restart
 		// by generating a new set of credentials. However it's safe to output a
 		// new fetch request so we do in fact do that.
+		//
+		// Note that if a controller-generated activation token has been
+		// supplied, we do not output a fetch request; we attempt to use that
+		// directly later.
 		var err error
 		w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
 			nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
@@ -277,6 +313,15 @@ func (w *Worker) Start() error {
 		default:
 			// Some other type of error happened, bail out
 			return fmt.Errorf("error loading worker auth creds: %w", err)
+		}
+
+		// Don't output a fetch request if an activation token has been
+		// provided. Technically we _could_ still output a fetch request, and it
+		// would be valid to do so, but if a token was provided it may well be
+		// confusing to a user if it seems like it was ignored because a fetch
+		// request was still output.
+		if actToken := w.conf.RawConfig.Worker.ControllerGeneratedActivationToken; actToken != "" {
+			createFetchRequest = false
 		}
 
 		// NOTE: this block _must_ be before the `if createFetchRequest` block
@@ -431,7 +476,7 @@ func (w *Worker) Shutdown() error {
 	return nil
 }
 
-func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
+func (w *Worker) parseAndStoreTags(incoming map[string][]string) {
 	if len(incoming) == 0 {
 		w.tags.Store([]*pb.TagPair{})
 		return

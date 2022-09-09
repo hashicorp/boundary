@@ -203,6 +203,99 @@ func (x *WorkerCertBundle) GetCertBundle() []byte {
 	return nil
 }
 
+// WorkerAuthServerLedActivationToken contains all fields related to a
+// WorkerAuthServerLedActivationToken resource
+type WorkerAuthServerLedActivationToken struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The worker_id of the worker that this activates
+	// @inject_tag: `gorm:"primary_key"`
+	WorkerId string `protobuf:"bytes,10,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty" gorm:"primary_key"`
+	// The token identifier, which is used for lookup
+	// @inject_tag: `gorm:"not_null"`
+	TokenId string `protobuf:"bytes,15,opt,name=token_id,json=tokenId,proto3" json:"token_id,omitempty" gorm:"not_null"`
+	// The creation time, encrypted to prevent tampering, as the time plus
+	// existence of the record allows authorization
+	// @inject_tag: `gorm:"not_null" wrapping:"ct,creation_time_data"`
+	CreationTimeEncrypted []byte `protobuf:"bytes,20,opt,name=creation_time_encrypted,json=creationTimeEncrypted,proto3" json:"creation_time_encrypted,omitempty" gorm:"not_null" wrapping:"ct,creation_time_data"`
+	// The plaintext bytes of the creation time, which are never stored. This is a
+	// marshaled timestamppb.Timestamp.
+	// @inject_tag: `gorm:"-" wrapping:"pt,creation_time_data"`
+	CreationTime []byte `protobuf:"bytes,21,opt,name=creation_time,json=creationTime,proto3" json:"creation_time,omitempty" gorm:"-" wrapping:"pt,creation_time_data"`
+	// The key ID of the encrypting key
+	// @inject_tag: `gorm:"not_null"`
+	KeyId string `protobuf:"bytes,40,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" gorm:"not_null"`
+}
+
+func (x *WorkerAuthServerLedActivationToken) Reset() {
+	*x = WorkerAuthServerLedActivationToken{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_storage_servers_store_v1_worker_auth_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *WorkerAuthServerLedActivationToken) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkerAuthServerLedActivationToken) ProtoMessage() {}
+
+func (x *WorkerAuthServerLedActivationToken) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_storage_servers_store_v1_worker_auth_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkerAuthServerLedActivationToken.ProtoReflect.Descriptor instead.
+func (*WorkerAuthServerLedActivationToken) Descriptor() ([]byte, []int) {
+	return file_controller_storage_servers_store_v1_worker_auth_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *WorkerAuthServerLedActivationToken) GetWorkerId() string {
+	if x != nil {
+		return x.WorkerId
+	}
+	return ""
+}
+
+func (x *WorkerAuthServerLedActivationToken) GetTokenId() string {
+	if x != nil {
+		return x.TokenId
+	}
+	return ""
+}
+
+func (x *WorkerAuthServerLedActivationToken) GetCreationTimeEncrypted() []byte {
+	if x != nil {
+		return x.CreationTimeEncrypted
+	}
+	return nil
+}
+
+func (x *WorkerAuthServerLedActivationToken) GetCreationTime() []byte {
+	if x != nil {
+		return x.CreationTime
+	}
+	return nil
+}
+
+func (x *WorkerAuthServerLedActivationToken) GetKeyId() string {
+	if x != nil {
+		return x.KeyId
+	}
+	return ""
+}
+
 var File_controller_storage_servers_store_v1_worker_auth_proto protoreflect.FileDescriptor
 
 var file_controller_storage_servers_store_v1_worker_auth_proto_rawDesc = []byte{
@@ -242,11 +335,24 @@ var file_controller_storage_servers_store_v1_worker_auth_proto_rawDesc = []byte{
 	0x09, 0x52, 0x13, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x4b, 0x65, 0x79, 0x49, 0x64, 0x65, 0x6e,
 	0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x12, 0x1f, 0x0a, 0x0b, 0x63, 0x65, 0x72, 0x74, 0x5f, 0x62,
 	0x75, 0x6e, 0x64, 0x6c, 0x65, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0a, 0x63, 0x65, 0x72,
-	0x74, 0x42, 0x75, 0x6e, 0x64, 0x6c, 0x65, 0x42, 0x3b, 0x5a, 0x39, 0x67, 0x69, 0x74, 0x68, 0x75,
-	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f,
-	0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61,
-	0x6c, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73,
-	0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x42, 0x75, 0x6e, 0x64, 0x6c, 0x65, 0x22, 0xd0, 0x01, 0x0a, 0x22, 0x57, 0x6f, 0x72, 0x6b,
+	0x65, 0x72, 0x41, 0x75, 0x74, 0x68, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x4c, 0x65, 0x64, 0x41,
+	0x63, 0x74, 0x69, 0x76, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x12, 0x1b,
+	0x0a, 0x09, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x08, 0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x49, 0x64, 0x12, 0x19, 0x0a, 0x08, 0x74,
+	0x6f, 0x6b, 0x65, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x0f, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x74,
+	0x6f, 0x6b, 0x65, 0x6e, 0x49, 0x64, 0x12, 0x36, 0x0a, 0x17, 0x63, 0x72, 0x65, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x5f, 0x65, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65,
+	0x64, 0x18, 0x14, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x15, 0x63, 0x72, 0x65, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x54, 0x69, 0x6d, 0x65, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x12, 0x23,
+	0x0a, 0x0d, 0x63, 0x72, 0x65, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18,
+	0x15, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0c, 0x63, 0x72, 0x65, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54,
+	0x69, 0x6d, 0x65, 0x12, 0x15, 0x0a, 0x06, 0x6b, 0x65, 0x79, 0x5f, 0x69, 0x64, 0x18, 0x28, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x05, 0x6b, 0x65, 0x79, 0x49, 0x64, 0x42, 0x3b, 0x5a, 0x39, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f,
+	0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65,
+	0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x2f, 0x73, 0x74, 0x6f, 0x72,
+	0x65, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -261,10 +367,11 @@ func file_controller_storage_servers_store_v1_worker_auth_proto_rawDescGZIP() []
 	return file_controller_storage_servers_store_v1_worker_auth_proto_rawDescData
 }
 
-var file_controller_storage_servers_store_v1_worker_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_controller_storage_servers_store_v1_worker_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_controller_storage_servers_store_v1_worker_auth_proto_goTypes = []interface{}{
-	(*WorkerAuth)(nil),       // 0: controller.storage.servers.store.v1.WorkerAuth
-	(*WorkerCertBundle)(nil), // 1: controller.storage.servers.store.v1.WorkerCertBundle
+	(*WorkerAuth)(nil),                         // 0: controller.storage.servers.store.v1.WorkerAuth
+	(*WorkerCertBundle)(nil),                   // 1: controller.storage.servers.store.v1.WorkerCertBundle
+	(*WorkerAuthServerLedActivationToken)(nil), // 2: controller.storage.servers.store.v1.WorkerAuthServerLedActivationToken
 }
 var file_controller_storage_servers_store_v1_worker_auth_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -304,6 +411,18 @@ func file_controller_storage_servers_store_v1_worker_auth_proto_init() {
 				return nil
 			}
 		}
+		file_controller_storage_servers_store_v1_worker_auth_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*WorkerAuthServerLedActivationToken); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -311,7 +430,7 @@ func file_controller_storage_servers_store_v1_worker_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_storage_servers_store_v1_worker_auth_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

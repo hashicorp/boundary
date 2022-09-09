@@ -689,6 +689,17 @@ func (v *TestVaultServer) CreateToken(t testing.TB, opt ...TestOption) (*vault.S
 	return secret, token
 }
 
+// RevokeToken calls /auth/token/revoke-self on v for the token. See
+// https://www.vaultproject.io/api-docs/auth/token#revoke-a-token-self.
+func (v *TestVaultServer) RevokeToken(t testing.TB, token string) {
+	t.Helper()
+	require := require.New(t)
+	vc := v.client(t).cl
+	vc.SetToken(token)
+	err := vc.Auth().Token().RevokeSelf("")
+	require.NoError(err)
+}
+
 // LookupToken calls /auth/token/lookup on v for the token. See
 // https://www.vaultproject.io/api-docs/auth/token#lookup-a-token.
 func (v *TestVaultServer) LookupToken(t testing.TB, token string) *vault.Secret {

@@ -502,18 +502,27 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 
 func TestTestVaultServer_VerifyTokenInvalid(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	require := require.New(t)
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 
 	_, token := v.CreateToken(t)
-	client := v.ClientUsingToken(t, token)
-	err := client.revokeToken(ctx)
-	require.NoError(err)
+	v.RevokeToken(t, token)
 	v.VerifyTokenInvalid(t, token)
 
 	// Verify fake token is not valid
 	v.VerifyTokenInvalid(t, "fake-token")
+}
+
+func TestTestVaultServer_RevokeToken(t *testing.T) {
+	t.Parallel()
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+
+	_, token := v.CreateToken(t)
+
+	// Validate we can lookup the token
+	v.LookupToken(t, token)
+
+	v.RevokeToken(t, token)
+	v.VerifyTokenInvalid(t, token)
 }
 
 func Test_testClientCert(t *testing.T) {

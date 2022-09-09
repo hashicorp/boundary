@@ -25,6 +25,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	ReadResponseType   = "read"
+	UpdateResponseType = "update"
+	CreateResponseType = "create"
+	ListResponseType   = "list"
+	DeleteResponseType = "delete"
+)
+
 type sliceSubtypeInfo struct {
 	SliceType string
 	VarName   string
@@ -95,9 +103,6 @@ type structInfo struct {
 	// useful to avoid collisions
 	nameOverride string
 
-	// extraRequiredParams allows adding extra required parameters to templates
-	extraRequiredParams []requiredParam
-
 	// recursiveListing indicates that the collection supports recursion when
 	// listing
 	recursiveListing bool
@@ -112,7 +117,7 @@ type structInfo struct {
 	fieldOverrides []fieldInfo
 
 	// createResponseTypes controls for which structs response types are created
-	createResponseTypes bool
+	createResponseTypes []string
 
 	// fieldFilter is a set of field names that will not result in generated API
 	// fields
@@ -178,7 +183,7 @@ var inputStructs = []*structInfo{
 			},
 		},
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// User related resources
@@ -206,7 +211,7 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName:  "users",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Group related resources
@@ -234,7 +239,7 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName:  "groups",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Role related resources
@@ -276,7 +281,7 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName:  "roles",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Auth Methods related resources
@@ -308,22 +313,34 @@ var inputStructs = []*structInfo{
 		outFile: "authmethods/authmethods.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName: "auth-methods",
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
-		},
+		pluralResourceName:  "auth-methods",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Accounts
@@ -359,7 +376,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "accounts",
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	// Managed Groups
 	{
@@ -391,7 +408,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "managed-groups",
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	// Auth Tokens
 	{
@@ -404,7 +421,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pluralResourceName:  "auth-tokens",
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Credentials
@@ -422,23 +439,35 @@ var inputStructs = []*structInfo{
 		outFile: "credentialstores/credential_store.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
 		},
-		pluralResourceName: "credential-stores",
-		parentTypeName:     "scope",
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
-		},
+		pluralResourceName:  "credential-stores",
+		parentTypeName:      "scope",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 		fieldOverrides: []fieldInfo{
 			{
@@ -480,7 +509,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "credential-libraries",
 		parentTypeName:      "credential-store",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	{
 		inProto:     &credentials.UsernamePasswordAttributes{},
@@ -525,23 +554,35 @@ var inputStructs = []*structInfo{
 		outFile: "credentials/credential.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
 		},
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
-		},
 		pluralResourceName:  "credentials",
 		parentTypeName:      "credential-store",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 
 	// Host related resources
@@ -550,7 +591,26 @@ var inputStructs = []*structInfo{
 		outFile: "hostcatalogs/host_catalog.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -571,16 +631,9 @@ var inputStructs = []*structInfo{
 				SkipDefault: true,
 			},
 		},
-		pluralResourceName: "host-catalogs",
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
-		},
+		pluralResourceName:  "host-catalogs",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	{
@@ -597,7 +650,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "hosts",
 		parentTypeName:      "host-catalog",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	{
 		inProto:        &hosts.StaticHostAttributes{},
@@ -628,7 +681,7 @@ var inputStructs = []*structInfo{
 			},
 		},
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	{
 		inProto: &targets.HostSet{},
@@ -689,7 +742,26 @@ var inputStructs = []*structInfo{
 		outFile: "targets/target.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
@@ -742,15 +814,8 @@ var inputStructs = []*structInfo{
 				FieldType: "[]string",
 			},
 		},
-		versionEnabled: true,
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "resourceType",
-				Typ:      "string",
-				PostType: "type",
-			},
-		},
-		createResponseTypes: true,
+		versionEnabled:      true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	{
@@ -778,9 +843,18 @@ var inputStructs = []*structInfo{
 			},
 		},
 		pluralResourceName:  "sessions",
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		fieldFilter:         []string{"private_key"},
 		recursiveListing:    true,
+	},
+	{
+		inProto: &workers.Certificate{},
+		outFile: "workers/certificate.gen.go",
+	},
+	{
+		inProto:             &workers.CertificateAuthority{},
+		outFile:             "workers/certificate_authority.gen.go",
+		createResponseTypes: []string{ReadResponseType},
 	},
 	{
 		inProto: &workers.Worker{},
@@ -796,19 +870,35 @@ var inputStructs = []*structInfo{
 					"apiAction": func() string {
 						return ":create:worker-led"
 					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "workerGeneratedAuthToken",
+								Typ:      "string",
+								PostType: "worker_generated_auth_token",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "CreateControllerLed"
+					},
+					"apiAction": func() string {
+						return ":create:controller-led"
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return nil
+					},
 				},
 			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
 			listTemplate,
-		},
-		extraRequiredParams: []requiredParam{
-			{
-				Name:     "workerGeneratedAuthToken",
-				Typ:      "string",
-				PostType: "worker_generated_auth_token",
-			},
 		},
 		pluralResourceName: "workers",
 		sliceSubtypes: map[string]sliceSubtypeInfo{
@@ -817,7 +907,7 @@ var inputStructs = []*structInfo{
 				VarName:   "apiTags",
 			},
 		},
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 		versionEnabled:      true,
 	},

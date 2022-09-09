@@ -47,8 +47,8 @@ func TestStatus(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
@@ -233,8 +233,8 @@ func TestStatusSessionClosed(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
@@ -414,8 +414,8 @@ func TestStatusDeadConnection(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms, session.WithWorkerStateDelay(0))
@@ -554,8 +554,8 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)

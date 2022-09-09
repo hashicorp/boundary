@@ -212,6 +212,11 @@ type Worker struct {
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
+
+	// ControllerGeneratedActivationToken is a controller-generated activation
+	// token used to register this worker to the cluster. It can be a path, env
+	// var, or direct value.
+	ControllerGeneratedActivationToken string `hcl:"controller_generated_activation_token"`
 }
 
 type Database struct {
@@ -223,6 +228,12 @@ type Database struct {
 	MaxIdleConnectionsRaw   interface{}    `hcl:"max_idle_connections"`
 	ConnMaxIdleTime         interface{}    `hcl:"max_idle_time"`
 	ConnMaxIdleTimeDuration *time.Duration `hcl:"-"`
+
+	// SkipSharedLockAcquisition allows skipping grabbing the database shared
+	// lock. This is dangerous unless you know what you're doing, and you should
+	// not set it unless you are the reason it's here in the first place, as not
+	// only it dangerous but it will be removed at some point in the future.
+	SkipSharedLockAcquisition bool `hcl:"skip_shared_lock_acquisition"`
 }
 
 type Plugins struct {
@@ -452,6 +463,11 @@ func Parse(d string) (*Config, error) {
 		}
 		if !strutil.Printable(result.Worker.Description) {
 			return nil, errors.New("Worker description contains non-printable characters")
+		}
+
+		result.Worker.ControllerGeneratedActivationToken, err = parseutil.ParsePath(result.Worker.ControllerGeneratedActivationToken)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing worker activation token: %w", err)
 		}
 
 		if result.Worker.TagsRaw != nil {

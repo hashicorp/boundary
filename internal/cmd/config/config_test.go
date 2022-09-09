@@ -301,6 +301,24 @@ func TestDevWorker(t *testing.T) {
 
 	_, err = Parse(devConfig + devWorkerKeyValueConfig)
 	assert.Error(t, err)
+
+	// Check activation token parsing
+	devWorkerActivationTokenConfig := `
+		listener "tcp" {
+			purpose = "proxy"
+		}
+	
+		worker {
+			name = "dev-worker"
+			description = "A default worker created in dev mode"
+			initial_upstreams = ["127.0.0.1"]
+			controller_generated_activation_token = "foobar"
+		}
+		`
+
+	actual, err = Parse(devConfig + devWorkerActivationTokenConfig)
+	require.NoError(t, err)
+	assert.Equal(t, "foobar", actual.Worker.ControllerGeneratedActivationToken)
 }
 
 func TestDevCombined(t *testing.T) {
@@ -1665,6 +1683,46 @@ func TestDatabaseConnMaxIdleTimeDuration(t *testing.T) {
 			require.NotNil(t, c.Controller)
 			require.NotNil(t, c.Controller.Database)
 			require.Equal(t, tt.expConnMaxIdleTimeDuration, *c.Controller.Database.ConnMaxIdleTimeDuration)
+		})
+	}
+}
+
+func TestDatabaseSkipSharedLockAcquisition(t *testing.T) {
+	tests := []struct {
+		name                         string
+		in                           string
+		expSkipSharedLockAcquisition bool
+	}{
+		{
+			name: "not set",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+			  	}
+			}`,
+			expSkipSharedLockAcquisition: false,
+		},
+		{
+			name: "set",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					skip_shared_lock_acquisition = true
+			  	}
+			}`,
+			expSkipSharedLockAcquisition: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := Parse(tt.in)
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.NotNil(t, c.Controller.Database)
+			require.Equal(t, tt.expSkipSharedLockAcquisition, c.Controller.Database.SkipSharedLockAcquisition)
 		})
 	}
 }

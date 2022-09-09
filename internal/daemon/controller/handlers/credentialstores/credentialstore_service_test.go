@@ -96,6 +96,7 @@ func TestList(t *testing.T) {
 				VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 					Address:                  wrapperspb.String(s.GetVaultAddress()),
 					TokenHmac:                base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
+					TokenStatus:              s.Token().GetStatus(),
 					ClientCertificate:        wrapperspb.String(string(s.ClientCertificate().GetCertificate())),
 					ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(s.ClientCertificate().GetCertificateKeyHmac()),
 					// TODO: Add all fields including tls related fields, namespace, etc...
@@ -471,6 +472,7 @@ func TestCreateVault(t *testing.T) {
 							CaCert:                   wrapperspb.String(string(v.CaCert)),
 							Address:                  wrapperspb.String(v.Addr),
 							TokenHmac:                "<hmac>",
+							TokenStatus:              "current",
 							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
 							ClientCertificateKeyHmac: "<hmac>",
 						},
@@ -512,6 +514,7 @@ func TestCreateVault(t *testing.T) {
 							CaCert:                   wrapperspb.String(string(v.CaCert)),
 							Address:                  wrapperspb.String(v.Addr),
 							TokenHmac:                "<hmac>",
+							TokenStatus:              "current",
 							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
 							ClientCertificateKeyHmac: "<hmac>",
 						},
@@ -795,6 +798,7 @@ func TestGet(t *testing.T) {
 						VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 							Address:                  wrapperspb.String(vaultStore.GetVaultAddress()),
 							TokenHmac:                base64.RawURLEncoding.EncodeToString(vaultStore.Token().GetTokenHmac()),
+							TokenStatus:              vaultStore.Token().GetStatus(),
 							ClientCertificate:        wrapperspb.String(string(vaultStore.ClientCertificate().GetCertificate())),
 							ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(vaultStore.ClientCertificate().GetCertificateKeyHmac()),
 						},
@@ -1068,6 +1072,7 @@ func TestUpdateVault(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.GetVaultCredentialStoreAttributes().TokenHmac = "<hmac>"
+				out.GetVaultCredentialStoreAttributes().TokenStatus = "current"
 				return out
 			},
 		},

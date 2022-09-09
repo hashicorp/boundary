@@ -29,7 +29,7 @@ type workerServiceServer struct {
 	pbs.UnsafeSessionServiceServer
 
 	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    common.SessionRepoFactory
+	sessionRepoFn    session.RepositoryFactory
 	connectionRepoFn common.ConnectionRepoFactory
 	updateTimes      *sync.Map
 	kms              *kms.Kms
@@ -42,7 +42,7 @@ var (
 
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
-	sessionRepoFn common.SessionRepoFactory,
+	sessionRepoFn session.RepositoryFactory,
 	connectionRepoFn common.ConnectionRepoFactory,
 	updateTimes *sync.Map,
 	kms *kms.Kms,
@@ -96,7 +96,8 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		server.WithName(wStat.GetName()),
 		server.WithDescription(wStat.GetDescription()),
 		server.WithAddress(wStat.GetAddress()),
-		server.WithWorkerTags(workerTags...))
+		server.WithWorkerTags(workerTags...),
+		server.WithReleaseVersion(wStat.ReleaseVersion))
 	opts := []server.Option{server.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
 		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))
