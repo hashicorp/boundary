@@ -1,0 +1,137 @@
+name: Boundary E2E Scenario
+
+on:
+  workflow_dispatch:
+    inputs:
+      instance_type:
+        description: 'A stringified list of AWS instance types used by the Boundary controller and worker nodes'
+        default: '["t3.small"]'
+      controller_instance_type:
+        description: 'The name of the instance type used by Boundary controllers'
+        default: 't3a.small'
+      worker_instance_type:
+        description: 'The name of the instance type used by Boundary workers'
+        default: 't3a.small'
+      builder:
+        description: 'The type of builder'
+        default: 'local'
+      boundary_install_dir:
+        description: 'The directory where Boundary is installed remotely'
+        default: '/opt/boundary/bin'
+      local_boundary_dir:
+        description: 'The directory where Boundary is installed on the GHA workflow runner'
+      countroller_count:
+        description: 'The amount of Boundary controllers to deploy per tenant'
+        default: '1'
+      worker_count:
+        description: 'The amount of Boundary workers to deploy per tenant'
+        default: '1'
+      target_instance_type:
+        description: 'The instance type for test target nodes'
+        default: 't2.micro'
+      aws_region:
+        # The default value is hardcoded to be the same as the scenario's provider configuration.
+        # If the scenario every changes what region the provider is in, this will need to be sync'd up with that.
+        description: 'The AWS region the Nomad instances will be created in'
+        default: 'us-east-1'
+
+jobs:
+  enos:
+    name: Boundary E2E
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        # The E2E scenario execs "go test" locally
+      - name: Setup go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          # The Terraform wrapper will break Terraform execution in Enos because
+          # it changes the output to text when we expect it to be JSON.
+          terraform_wrapper: false
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          role-duration-seconds: 3600
+      - name: Setup Enos
+        uses: hashicorp/action-setup-enos@v1
+        with:
+          github-token: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
+      - name: Set up AWS SSH private key
+        run: |
+          mkdir -p ./enos/support
+          echo "${{ secrets.ENOS_CI_SSH_KEY }}" > ./enos/support/private_key.pem
+          chmod 600 ./enos/support/private_key.pem
+      - name: Run Enos
+        id: run
+        # Continue workflow on step failure
+        continue-on-error: true
+        run: |
+          enos scenario run e2e_target builder:local --chdir ./enos
+        env:
+          ENOS_VAR_aws_ssh_private_key_path: './support/private_key.pem'
+          ENOS_VAR_aws_ssh_keypair_name: 'enos-ci-ssh-key'
+          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
+          ENOS_VAR_enos_user: ${{ format('{0}/{1}', github.run_id, github.run_number) }}
+          ENOS_VAR_instance_type: ${{ inputs.instance_type }}
+          ENOS_VAR_controller_instance_type: ${{ inputs.controller_instance_type }}
+          ENOS_VAR_worker_instance_type: ${{ inputs.worker_instance_type }}
+          ENOS_VAR_builder: ${{ inputs.builder }}
+          ENOS_VAR_boundary_install_dir: ${{ inputs.boundary_install_dir }}
+          ENOS_VAR_local_boundary_dir: ${{ inputs.local_boundary_dir }}
+          ENOS_VAR_controller_count: ${{ inputs.controller_count }}
+          ENOS_VAR_worker_count: ${{ inputs.worker_count }}
+          ENOS_VAR_target_instance_type: ${{ inputs.target_instance_type }}
+      - name: Retry
+        id: run_retry
+        continue-on-error: true
+        if: steps.run.outcome == 'failure'
+        run: |
+          enos scenario run e2e_target builder:local --timeout 60m0s --chdir ./enos
+        env:
+          ENOS_VAR_aws_ssh_private_key_path: './support/private_key.pem'
+          ENOS_VAR_aws_ssh_keypair_name: 'enos-ci-ssh-key'
+          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
+          ENOS_VAR_enos_user: ${{ format('{0}/{1}', github.run_id, github.run_number) }}
+          ENOS_VAR_instance_type: ${{ inputs.instance_type }}
+          ENOS_VAR_controller_instance_type: ${{ inputs.controller_instance_type }}
+          ENOS_VAR_worker_instance_type: ${{ inputs.worker_instance_type }}
+          ENOS_VAR_builder: ${{ inputs.builder }}
+          ENOS_VAR_boundary_install_dir: ${{ inputs.boundary_install_dir }}
+          ENOS_VAR_local_boundary_dir: ${{ inputs.local_boundary_dir }}
+          ENOS_VAR_controller_count: ${{ inputs.controller_count }}
+          ENOS_VAR_worker_count: ${{ inputs.worker_count }}
+          ENOS_VAR_target_instance_type: ${{ inputs.target_instance_type }}
+      - name: Destroy
+        id: destroy
+        if: ${{ always() }}
+        run: |
+          enos scenario destroy e2e_target builder:local --timeout 30m0s --chdir ./enos
+        env:
+          ENOS_VAR_aws_ssh_private_key_path: './support/private_key.pem'
+          ENOS_VAR_aws_ssh_keypair_name: 'enos-ci-ssh-key'
+          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
+          ENOS_VAR_enos_user: ${{ format('{0}/{1}', github.run_id, github.run_number) }}
+          ENOS_VAR_instance_type: ${{ inputs.instance_type }}
+          ENOS_VAR_controller_instance_type: ${{ inputs.controller_instance_type }}
+          ENOS_VAR_worker_instance_type: ${{ inputs.worker_instance_type }}
+          ENOS_VAR_builder: ${{ inputs.builder }}
+          ENOS_VAR_boundary_install_dir: ${{ inputs.boundary_install_dir }}
+          ENOS_VAR_local_boundary_dir: ${{ inputs.local_boundary_dir }}
+          ENOS_VAR_controller_count: ${{ inputs.controller_count }}
+          ENOS_VAR_worker_count: ${{ inputs.worker_count }}
+          ENOS_VAR_target_instance_type: ${{ inputs.target_instance_type }}
+      - name: Failure Info
+        if: ${{ failure() }}
+        run: |
+          env
+          cat ./enos/.enos/*/scenario.tf
