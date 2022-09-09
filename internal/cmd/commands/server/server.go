@@ -818,7 +818,22 @@ func (c *Command) Reload(newConf *config.Config) error {
 	}
 
 	if newConf != nil && c.worker != nil {
-		c.worker.Reload(c.Context, newConf)
+		workerReloadErr := func() error {
+			if newConf.Controller != nil {
+				if err := newConf.SetupControllerPublicClusterAddress(""); err != nil {
+					return err
+				}
+			}
+
+			if err := newConf.SetupWorkerInitialUpstreams(); err != nil {
+				return err
+			}
+			c.worker.Reload(c.Context, newConf)
+			return nil
+		}()
+		if workerReloadErr != nil {
+			reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
+		}
 	}
 
 	// Send a message that we reloaded. This prevents "guessing" sleep times
