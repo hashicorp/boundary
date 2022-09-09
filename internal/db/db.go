@@ -68,15 +68,34 @@ func (db *DB) Swap(ctx context.Context, newDB *DB) (closeDbFn, error) {
 	oldDbw := db.wrapped.Swap(newDB.wrapped.Load())
 	closeOldDbFn := func(ctx context.Context) {
 		go func() {
-			t := time.NewTimer(CloseSwappedDbDuration)
-			select {
-			case <-t.C:
-				if err := oldDbw.Close(ctx); err != nil {
-					event.WriteError(ctx, op, errors.Wrap(ctx, err, op))
+			maxTime := time.Now().Add(CloseSwappedDbDuration)
+			t := time.NewTicker(time.Second)
+			var done bool
+			for {
+				select {
+				case <-t.C:
+					if time.Now().After(maxTime) || done {
+						t.Stop()
+						if err := oldDbw.Close(ctx); err != nil {
+							event.WriteError(ctx, op, errors.Wrap(ctx, err, op))
+						}
+						return
+					}
+					sqlDb, err := oldDbw.SqlDB(ctx)
+					if err != nil {
+						event.WriteError(ctx, op, fmt.Errorf("unable to load old sqldb to check stats"))
+						continue
+					}
+					stats := sqlDb.Stats()
+					if stats.InUse == 0 {
+						done = true
+					}
+
+				case <-ctx.Done():
+					t.Stop()
+					event.WriteError(ctx, op, fmt.Errorf("context canceled before old database connection was closed, aborting"))
+					return
 				}
-			case <-ctx.Done():
-				t.Stop()
-				event.WriteError(ctx, op, fmt.Errorf("context canceled before old database connection was closed, aborting"))
 			}
 		}()
 	}
