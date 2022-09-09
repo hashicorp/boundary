@@ -840,3 +840,72 @@ func (c *Config) SetupControllerPublicClusterAddress(flagValue string) error {
 	c.Controller.PublicClusterAddr = net.JoinHostPort(host, port)
 	return nil
 }
+
+// SetupWorkerInitialUpstreams will set the worker initial upstreams in cases
+// where both a worker and controller stanza are provided. The initial upstreams
+// will be:
+// - The initialily provided value, if it is the same as the controller's cluster address
+// - The controller's public cluster address if it it was set
+// - The controller's cluster listener's address
+//
+// Any other value already set for iniital upstream will result in an error.
+func (c *Config) SetupWorkerInitialUpstreams() error {
+	// nothing to do here
+	if c.Worker == nil || c.Controller == nil {
+		return nil
+	}
+
+	var clusterAddr string
+	for _, lnConfig := range c.Listeners {
+		switch len(lnConfig.Purpose) {
+		case 0:
+			return fmt.Errorf("Listener specified without a purpose")
+		case 1:
+			purpose := lnConfig.Purpose[0]
+			switch purpose {
+			case "cluster":
+				clusterAddr = lnConfig.Address
+				if clusterAddr == "" {
+					clusterAddr = "127.0.0.1:9201"
+					lnConfig.Address = clusterAddr
+				}
+			}
+		default:
+			return fmt.Errorf("Specifying a listener with more than one purpose is not supported")
+		}
+	}
+
+	switch len(c.Worker.InitialUpstreams) {
+	case 0:
+		if c.Controller.PublicClusterAddr != "" {
+			clusterAddr = c.Controller.PublicClusterAddr
+		}
+		c.Worker.InitialUpstreams = []string{clusterAddr}
+	case 1:
+		if c.Worker.InitialUpstreams[0] == clusterAddr {
+			break
+		}
+		if c.Controller.PublicClusterAddr != "" &&
+			c.Worker.InitialUpstreams[0] == c.Controller.PublicClusterAddr {
+			break
+		}
+		// Best effort see if it's a domain name and if not assume it must match
+		host, _, err := net.SplitHostPort(c.Worker.InitialUpstreams[0])
+		if err != nil && strings.Contains(err.Error(), "missing port in address") {
+			err = nil
+			host = c.Worker.InitialUpstreams[0]
+		}
+		if err == nil {
+			ip := net.ParseIP(host)
+			if ip == nil {
+				// Assume it's a domain name
+				break
+			}
+		}
+		fallthrough
+	default:
+		return fmt.Errorf(`When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`)
+	}
+
+	return nil
+}

@@ -2035,3 +2035,205 @@ func TestSetupControllerPublicClusterAddress(t *testing.T) {
 		})
 	}
 }
+
+func TestSetupWorkerInitialUpstreams(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                string
+		inputConfig         *Config
+		stateFn             func(t *testing.T)
+		expErr              bool
+		expErrStr           string
+		expInitialUpstreams []string
+	}{
+		{
+			name: "NilController",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: nil,
+				Worker: &Worker{
+					InitialUpstreams: []string{"192.168.0.2:9201"},
+				},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"192.168.0.2:9201"},
+		},
+		{
+			name: "NilWorker",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "192.168.0.3:9201",
+				},
+				Worker: nil,
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: nil,
+		},
+		{
+			name: "PublicClusterAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "192.168.0.4:9201",
+				},
+				Worker: &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"192.168.0.4:9201"},
+		},
+		{
+			name: "ListenerNoAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"127.0.0.1:9201"},
+		},
+		{
+			name: "ListenerAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "192.168.0.5:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"192.168.0.5:9201"},
+		},
+		{
+			name: "ListenerAddrDomain",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "foo.test",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"foo.test"},
+		},
+		{
+			name: "ListenerAddrMultiplePurpose",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster", "api"},
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              true,
+			expErrStr:           "Specifying a listener with more than one purpose is not supported",
+			expInitialUpstreams: nil,
+		},
+		{
+			name: "ListenerAddrNoPurposes",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{},
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              true,
+			expErrStr:           "Listener specified without a purpose",
+			expInitialUpstreams: nil,
+		},
+		{
+			name: "ListenerAddrMismatchAddress",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "192.168.0.5:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker: &Worker{
+					InitialUpstreams: []string{"192.168.0.2:9201"},
+				},
+			},
+			expErr:              true,
+			expErrStr:           `When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`,
+			expInitialUpstreams: nil,
+		},
+		{
+			name: "ClusterAddrMismatchAddress",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "192.168.0.3:9201",
+				},
+				Worker: &Worker{
+					InitialUpstreams: []string{"192.168.0.2:9201"},
+				},
+			},
+			expErr:              true,
+			expErrStr:           `When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`,
+			expInitialUpstreams: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.stateFn != nil {
+				tt.stateFn(t)
+			}
+			err := tt.inputConfig.SetupWorkerInitialUpstreams()
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.inputConfig.Worker == nil {
+				require.Empty(t, tt.expInitialUpstreams)
+			} else {
+				require.ElementsMatch(t, tt.expInitialUpstreams, tt.inputConfig.Worker.InitialUpstreams)
+			}
+		})
+	}
+}
