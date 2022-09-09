@@ -742,49 +742,6 @@ func (b *Server) DestroyDevDatabase(ctx context.Context) error {
 	return nil
 }
 
-func (b *Server) SetupControllerPublicClusterAddress(conf *config.Config, flagValue string) error {
-	if conf.Controller == nil {
-		conf.Controller = new(config.Controller)
-	}
-	if flagValue != "" {
-		conf.Controller.PublicClusterAddr = flagValue
-	}
-	if conf.Controller.PublicClusterAddr == "" {
-	FindAddr:
-		for _, listener := range conf.Listeners {
-			for _, purpose := range listener.Purpose {
-				if purpose == "cluster" {
-					conf.Controller.PublicClusterAddr = listener.Address
-					break FindAddr
-				}
-			}
-		}
-	} else {
-		var err error
-		conf.Controller.PublicClusterAddr, err = parseutil.ParsePath(conf.Controller.PublicClusterAddr)
-		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
-			return fmt.Errorf("Error parsing public cluster addr: %w", err)
-		}
-
-		conf.Controller.PublicClusterAddr, err = listenerutil.ParseSingleIPTemplate(conf.Controller.PublicClusterAddr)
-		if err != nil {
-			return fmt.Errorf("Error parsing IP template on controller public cluster addr: %w", err)
-		}
-	}
-
-	host, port, err := net.SplitHostPort(conf.Controller.PublicClusterAddr)
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			port = "9201"
-			host = conf.Controller.PublicClusterAddr
-		} else {
-			return fmt.Errorf("Error splitting public cluster adddress host/port: %w", err)
-		}
-	}
-	conf.Controller.PublicClusterAddr = net.JoinHostPort(host, port)
-	return nil
-}
-
 func (b *Server) SetupWorkerPublicAddress(conf *config.Config, flagValue string) error {
 	if conf.Worker == nil {
 		conf.Worker = new(config.Worker)

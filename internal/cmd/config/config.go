@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"reflect"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
@@ -787,4 +789,54 @@ func (c *Config) Sanitized() map[string]interface{} {
 	}
 
 	return result
+}
+
+// SetupControllerPublicClusterAddress will set the controller public address.
+// If the flagValue is provided it will be used. Otherwise this will use the
+// address from cluster listener. In either case it will check to see if no port
+// is included, and if not it will set the default port of 9201.
+//
+// If there are any errors parsing the address from the flag or listener,
+// and error is returned.
+func (c *Config) SetupControllerPublicClusterAddress(flagValue string) error {
+	if c.Controller == nil {
+		c.Controller = new(Controller)
+	}
+	if flagValue != "" {
+		c.Controller.PublicClusterAddr = flagValue
+	}
+	if c.Controller.PublicClusterAddr == "" {
+	FindAddr:
+		for _, listener := range c.Listeners {
+			for _, purpose := range listener.Purpose {
+				if purpose == "cluster" {
+					c.Controller.PublicClusterAddr = listener.Address
+					break FindAddr
+				}
+			}
+		}
+	} else {
+		var err error
+		c.Controller.PublicClusterAddr, err = parseutil.ParsePath(c.Controller.PublicClusterAddr)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return fmt.Errorf("Error parsing public cluster addr: %w", err)
+		}
+
+		c.Controller.PublicClusterAddr, err = listenerutil.ParseSingleIPTemplate(c.Controller.PublicClusterAddr)
+		if err != nil {
+			return fmt.Errorf("Error parsing IP template on controller public cluster addr: %w", err)
+		}
+	}
+
+	host, port, err := net.SplitHostPort(c.Controller.PublicClusterAddr)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			port = "9201"
+			host = c.Controller.PublicClusterAddr
+		} else {
+			return fmt.Errorf("Error splitting public cluster adddress host/port: %w", err)
+		}
+	}
+	c.Controller.PublicClusterAddr = net.JoinHostPort(host, port)
+	return nil
 }

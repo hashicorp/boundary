@@ -279,7 +279,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates controller but no listener with "cluster" purpose found`)
 			return base.CommandUserError
 		}
-		if err := c.SetupControllerPublicClusterAddress(c.Config, ""); err != nil {
+		if err := c.Config.SetupControllerPublicClusterAddress(""); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandUserError
 		}
