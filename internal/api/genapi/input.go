@@ -25,6 +25,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	ReadResponseType   = "read"
+	UpdateResponseType = "update"
+	CreateResponseType = "create"
+	ListResponseType   = "list"
+	DeleteResponseType = "delete"
+)
+
 type sliceSubtypeInfo struct {
 	SliceType string
 	VarName   string
@@ -109,7 +117,7 @@ type structInfo struct {
 	fieldOverrides []fieldInfo
 
 	// createResponseTypes controls for which structs response types are created
-	createResponseTypes bool
+	createResponseTypes []string
 
 	// fieldFilter is a set of field names that will not result in generated API
 	// fields
@@ -175,7 +183,7 @@ var inputStructs = []*structInfo{
 			},
 		},
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// User related resources
@@ -203,7 +211,7 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName:  "users",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Group related resources
@@ -231,7 +239,7 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName:  "groups",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Role related resources
@@ -273,7 +281,7 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName:  "roles",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Auth Methods related resources
@@ -332,7 +340,7 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName:  "auth-methods",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Accounts
@@ -368,7 +376,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "accounts",
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	// Managed Groups
 	{
@@ -400,7 +408,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "managed-groups",
 		parentTypeName:      "auth-method",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	// Auth Tokens
 	{
@@ -413,7 +421,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pluralResourceName:  "auth-tokens",
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Credentials
@@ -459,7 +467,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "credential-stores",
 		parentTypeName:      "scope",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 		fieldOverrides: []fieldInfo{
 			{
@@ -501,7 +509,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "credential-libraries",
 		parentTypeName:      "credential-store",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	{
 		inProto:     &credentials.UsernamePasswordAttributes{},
@@ -574,7 +582,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "credentials",
 		parentTypeName:      "credential-store",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 
 	// Host related resources
@@ -625,7 +633,7 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName:  "host-catalogs",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	{
@@ -642,7 +650,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "hosts",
 		parentTypeName:      "host-catalog",
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	{
 		inProto:        &hosts.StaticHostAttributes{},
@@ -673,7 +681,7 @@ var inputStructs = []*structInfo{
 			},
 		},
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	{
 		inProto: &targets.HostSet{},
@@ -807,7 +815,7 @@ var inputStructs = []*structInfo{
 			},
 		},
 		versionEnabled:      true,
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	{
@@ -835,9 +843,18 @@ var inputStructs = []*structInfo{
 			},
 		},
 		pluralResourceName:  "sessions",
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		fieldFilter:         []string{"private_key"},
 		recursiveListing:    true,
+	},
+	{
+		inProto: &workers.Certificate{},
+		outFile: "workers/certificate.gen.go",
+	},
+	{
+		inProto:             &workers.CertificateAuthority{},
+		outFile:             "workers/certificate_authority.gen.go",
+		createResponseTypes: []string{ReadResponseType},
 	},
 	{
 		inProto: &workers.Worker{},
@@ -890,7 +907,7 @@ var inputStructs = []*structInfo{
 				VarName:   "apiTags",
 			},
 		},
-		createResponseTypes: true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 		versionEnabled:      true,
 	},

@@ -2,6 +2,8 @@ package workers
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -56,6 +58,8 @@ var (
 		action.CreateControllerLed,
 		action.CreateWorkerLed,
 		action.List,
+		action.ReadCertificateAuthority,
+		action.ReinitializeCertificateAuthority,
 	}
 )
 
@@ -70,14 +74,17 @@ func init() {
 type Service struct {
 	pbs.UnsafeWorkerServiceServer
 
-	repoFn    common.ServersRepoFactory
-	iamRepoFn common.IamRepoFactory
+	repoFn       common.ServersRepoFactory
+	workerAuthFn common.WorkerAuthRepoStorageFactory
+	iamRepoFn    common.IamRepoFactory
 }
 
 var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
-func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory,
+	workerAuthFn common.WorkerAuthRepoStorageFactory,
+) (Service, error) {
 	const op = "workers.NewService"
 	if repo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing server repository")
@@ -85,7 +92,10 @@ func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn c
 	if iamRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
-	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
+	if workerAuthFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing worker auth repository")
+	}
+	return Service{repoFn: repo, iamRepoFn: iamRepoFn, workerAuthFn: workerAuthFn}, nil
 }
 
 // ListWorkers implements the interface pbs.WorkerServiceServer.
@@ -448,6 +458,54 @@ func (s Service) RemoveWorkerTags(ctx context.Context, req *pbs.RemoveWorkerTags
 	return &pbs.RemoveWorkerTagsResponse{Item: item}, nil
 }
 
+// ReadCertificateAuthority will list the next and current certificates for the worker certificate authority
+func (s Service) ReadCertificateAuthority(ctx context.Context, req *pbs.ReadCertificateAuthorityRequest) (*pbs.ReadCertificateAuthorityResponse, error) {
+	const op = "workers.(Service).ReadCertificateAuthority"
+	if err := validateReadCaRequest(req); err != nil {
+		return nil, err
+	}
+
+	authResults := s.authResult(ctx, req.GetScopeId(), action.ReadCertificateAuthority)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	caProto, err := s.listCertificateAuthorityFromRepo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ca := certificateAuthorityToProto(caProto)
+	return &pbs.ReadCertificateAuthorityResponse{Item: ca}, nil
+}
+
+// ReinitializeCertificateAuthority will delete and regenerate the next and current certificates for the worker certificate authority
+func (s Service) ReinitializeCertificateAuthority(ctx context.Context, req *pbs.ReinitializeCertificateAuthorityRequest) (*pbs.ReinitializeCertificateAuthorityResponse, error) {
+	const op = "workers.(Service).ReinitializeCertificateAuthority"
+	if err := validateReinitCaRequest(req); err != nil {
+		return nil, err
+	}
+
+	authResults := s.authResult(ctx, req.GetScopeId(), action.ReinitializeCertificateAuthority)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	repo, err := s.workerAuthFn()
+	if err != nil {
+		return nil, err
+	}
+
+	rootCerts, err := server.ReinitializeRoots(ctx, repo)
+	if err != nil {
+		return nil, err
+	}
+
+	ca := certificateAuthorityToProto(rootCerts)
+
+	return &pbs.ReinitializeCertificateAuthorityResponse{Item: ca}, nil
+}
+
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*server.Worker, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -633,7 +691,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Worker), auth.WithAction(a)}
 	switch a {
-	case action.List, action.CreateWorkerLed, action.CreateControllerLed:
+	case action.List, action.CreateWorkerLed, action.CreateControllerLed, action.ReadCertificateAuthority, action.ReinitializeCertificateAuthority:
 		parentId = id
 	default:
 		w, err := repo.LookupWorker(ctx, id)
@@ -650,6 +708,47 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	}
 	opts = append(opts, auth.WithScopeId(parentId))
 	return auth.Verify(ctx, opts...)
+}
+
+func (s Service) listCertificateAuthorityFromRepo(ctx context.Context) (*types.RootCertificates, error) {
+	repo, err := s.workerAuthFn()
+	if err != nil {
+		return nil, err
+	}
+
+	certs := &types.RootCertificates{Id: server.CaId}
+	err = repo.Load(ctx, certs)
+	if err != nil {
+		return nil, err
+	}
+
+	return certs, nil
+}
+
+func certificateAuthorityToProto(in *types.RootCertificates) *pb.CertificateAuthority {
+	certs := make([]*pb.Certificate, 0)
+
+	current := in.GetCurrent()
+	currentSha := sha256.Sum256(current.PublicKeyPkix)
+	currentCert := &pb.Certificate{
+		Id:              string(server.CurrentState),
+		PublicKeySha256: hex.EncodeToString(currentSha[:]),
+		NotBeforeTime:   current.NotBefore,
+		NotAfterTime:    current.NotAfter,
+	}
+	certs = append(certs, currentCert)
+
+	next := in.GetNext()
+	nextSha := sha256.Sum256(next.PublicKeyPkix)
+	nextCert := &pb.Certificate{
+		Id:              string(server.NextState),
+		PublicKeySha256: hex.EncodeToString(nextSha[:]),
+		NotBeforeTime:   next.NotBefore,
+		NotAfterTime:    next.NotAfter,
+	}
+	certs = append(certs, nextCert)
+
+	return &pb.CertificateAuthority{Certs: certs}
 }
 
 func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*pb.Worker, error) {
@@ -678,6 +777,9 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 	}
 	if outputFields.Has(globals.UpdatedTimeField) {
 		out.UpdatedTime = in.GetUpdateTime().GetTimestamp()
+	}
+	if outputFields.Has(globals.ReleaseVersionField) {
+		out.ReleaseVersion = in.GetReleaseVersion()
 	}
 	if outputFields.Has(globals.VersionField) {
 		out.Version = in.GetVersion()
@@ -988,5 +1090,28 @@ func validateRemoveTagsRequest(req *pbs.RemoveWorkerTagsRequest) error {
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
+	return nil
+}
+
+func validateReadCaRequest(req *pbs.ReadCertificateAuthorityRequest) error {
+	badFields := map[string]string{}
+	if req.GetScopeId() != scope.Global.String() {
+		badFields["scope_id"] = "Must be 'global' when reading."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
+	}
+	return nil
+}
+
+func validateReinitCaRequest(req *pbs.ReinitializeCertificateAuthorityRequest) error {
+	badFields := map[string]string{}
+	if req.GetScopeId() != scope.Global.String() {
+		badFields["scope_id"] = "Must be 'global' when reinitializing certs."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
+	}
+
 	return nil
 }

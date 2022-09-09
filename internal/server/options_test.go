@@ -182,4 +182,10 @@ func Test_GetOpts(t *testing.T) {
 		opts = GetOpts(WithCreateControllerLedActivationToken(true))
 		assert.True(t, opts.WithCreateControllerLedActivationToken)
 	})
+	t.Run("WithReleaseVersion", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.Empty(t, opts.withReleaseVersion)
+		opts = GetOpts(WithReleaseVersion("version"))
+		assert.Equal(t, "version", opts.withReleaseVersion)
+	})
 }
