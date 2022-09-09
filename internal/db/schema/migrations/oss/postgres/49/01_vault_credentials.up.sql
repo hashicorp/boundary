@@ -6,7 +6,7 @@ begin;
   drop view credential_vault_library_private;
   drop view credential_vault_store_private;
 
-  -- Recreated in 51/01_add_data_key_foreign_key_references.up.sql
+  -- Recreated in 51/02_add_data_key_foreign_key_references.up.sql
   create view credential_vault_token_renewal_revocation as
   with
     tokens as (
@@ -78,7 +78,7 @@ begin;
     'If the Vault token has expired this view will return an empty token_hmac and a token_status of ''expired'' '
     'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
-  -- Recreated in 51/01_add_data_key_foreign_key_references.up.sql
+  -- Recreated in 51/02_add_data_key_foreign_key_references.up.sql
   create view credential_vault_store_client as
   select store.public_id                   as public_id,
          store.project_id                  as project_id,
@@ -107,7 +107,7 @@ begin;
     'The view returns the current token for the store, if the Vault token has expired this view will return an empty token_hmac and a token_status of ''expired''  '
     'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
-  -- Recreated in 51/01_add_data_key_foreign_key_references.up.sql
+  -- Recreated in 51/02_add_data_key_foreign_key_references.up.sql
   create view credential_vault_library_issue_credentials as
   with
     password_override (library_id, username_attribute, password_attribute) as (
