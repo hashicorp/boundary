@@ -160,7 +160,6 @@ func Test_Repository_delete(t *testing.T) {
 		err = db.TestVerifyOplog(t, rw, s.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(5*time.Second))
 		require.NoError(err)
 	})
-	oplog.TestOplogDeleteAllEntries(t, db.New(conn).UnderlyingDB())
 	kms.TestKmsDeleteAllKeys(t, conn)
 
 	t.Run("nil-resource", func(t *testing.T) {
