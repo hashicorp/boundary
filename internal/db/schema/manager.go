@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/hashicorp/boundary/internal/db/schema/internal/edition"
 	"github.com/hashicorp/boundary/internal/db/schema/internal/log"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema/internal/provider"
 	"github.com/hashicorp/boundary/internal/db/schema/migration"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 )
 
 // driver provides functionality to a database.
@@ -59,11 +61,13 @@ type driver interface {
 // the underlying boundary database schema.
 // Manager is not thread safe.
 type Manager struct {
-	db              *sql.DB
-	driver          driver
-	dialect         string
-	editions        edition.Editions
-	selectedRepairs RepairMigrations
+	db                 *sql.DB
+	driver             driver
+	dialect            string
+	editions           edition.Editions
+	selectedRepairs    RepairMigrations
+	sharedLockAcquired bool
+	sharedLockMutex    *sync.Mutex
 }
 
 // NewManager creates a new schema manager. An error is returned
@@ -79,6 +83,7 @@ func NewManager(ctx context.Context, dialect Dialect, db *sql.DB, opt ...Option)
 		db:              db,
 		dialect:         string(dialect),
 		selectedRepairs: opts.withRepairMigrations,
+		sharedLockMutex: new(sync.Mutex),
 	}
 	if opts.withEditions != nil {
 		dbM.editions = opts.withEditions
@@ -128,12 +133,16 @@ func (b *Manager) CurrentState(ctx context.Context) (*State, error) {
 // database connection afterwards.
 func (b *Manager) Close(ctx context.Context) error {
 	const op = "schema.(Manager).Close"
-	err := b.SharedUnlock(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
+
+	if err := b.SharedUnlock(ctx); err != nil {
+		event.WriteError(ctx, op, fmt.Errorf("error unlocking shared database lock: %w", err))
 	}
 
-	return b.driver.Close()
+	if err := b.driver.Close(); err != sql.ErrConnDone {
+		return err
+	}
+
+	return nil
 }
 
 // SharedLock attempts to obtain a shared lock on the database.  This can fail
@@ -141,9 +150,17 @@ func (b *Manager) Close(ctx context.Context) error {
 // error is returned.
 func (b *Manager) SharedLock(ctx context.Context) error {
 	const op = "schema.(Manager).SharedLock"
-	if err := b.driver.TrySharedLock(ctx); err != nil {
-		return errors.Wrap(ctx, err, op)
+
+	b.sharedLockMutex.Lock()
+	defer b.sharedLockMutex.Unlock()
+
+	if !b.sharedLockAcquired {
+		if err := b.driver.TrySharedLock(ctx); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		b.sharedLockAcquired = true
 	}
+
 	return nil
 }
 
@@ -152,9 +169,17 @@ func (b *Manager) SharedLock(ctx context.Context) error {
 // that is not held is not an error.
 func (b *Manager) SharedUnlock(ctx context.Context) error {
 	const op = "schema.(Manager).SharedUnlock"
-	if err := b.driver.UnlockShared(ctx); err != nil {
-		return errors.Wrap(ctx, err, op)
+
+	b.sharedLockMutex.Lock()
+	defer b.sharedLockMutex.Unlock()
+
+	if b.sharedLockAcquired {
+		if err := b.driver.UnlockShared(ctx); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		b.sharedLockAcquired = false
 	}
+
 	return nil
 }
 
