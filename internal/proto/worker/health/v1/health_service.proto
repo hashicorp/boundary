@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package worker.health.v1;
+
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/worker/health;health";
+
+message HealthInfo {
+  string status = 1;
+  google.protobuf.UInt32Value active_session_count = 2 [json_name = "active_connection_count"];
+  map<string, uint32> session_connections = 3 [json_name = "session_connections"];
+}

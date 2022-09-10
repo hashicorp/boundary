@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"net"
@@ -17,16 +18,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
+	"github.com/hashicorp/boundary/internal/daemon/worker"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/ops/services"
+	pbhealth "github.com/hashicorp/boundary/internal/gen/worker/health"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/cli"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestNewServer(t *testing.T) {
@@ -34,6 +43,7 @@ func TestNewServer(t *testing.T) {
 		name       string
 		logger     hclog.Logger
 		c          *controller.Controller
+		w          *worker.Worker
 		listeners  []*base.ServerListener
 		assertions func(t *testing.T, s *Server)
 		expErr     bool
@@ -93,7 +103,7 @@ func TestNewServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := NewServer(tt.logger, tt.c, tt.listeners...)
+			s, err := NewServer(tt.logger, tt.c, tt.w, tt.listeners...)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, s)
@@ -265,7 +275,7 @@ func TestNewServerIntegration(t *testing.T) {
 			err := bs.SetupListeners(nil, &configutil.SharedConfig{Listeners: tt.listeners}, []string{"ops"})
 			require.NoError(t, err)
 
-			s, err := NewServer(hclog.Default(), nil, bs.Listeners...)
+			s, err := NewServer(hclog.Default(), nil, nil, bs.Listeners...)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, s)
@@ -562,7 +572,7 @@ func TestHealthEndpointLifecycle(t *testing.T) {
 	t.Cleanup(tc.Shutdown)
 
 	// Controller has started and is set onto our Command object, start ops.
-	opsServer, err := NewServer(hclog.Default(), tc.Controller(), tc.Config().Listeners...)
+	opsServer, err := NewServer(hclog.Default(), tc.Controller(), nil, tc.Config().Listeners...)
 	require.NoError(t, err)
 	opsServer.Start()
 
@@ -570,14 +580,6 @@ func TestHealthEndpointLifecycle(t *testing.T) {
 	rsp, err := http.Get("http://" + tc.Config().Listeners[0].OpsListener.Addr().String() + "/health")
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, rsp.StatusCode)
-
-	// Start replying with 503 Service Unavailable from the health endpoint.
-	tc.Controller().HealthService.StartServiceUnavailableReplies()
-
-	// Assert we're receiving 503 Service Unavailable now instead of 200 OK.
-	rsp, err = http.Get("http://" + tc.Config().Listeners[0].OpsListener.Addr().String() + "/health")
-	require.NoError(t, err)
-	require.Equal(t, http.StatusServiceUnavailable, rsp.StatusCode)
 }
 
 func TestWaitIfHealthExists(t *testing.T) {
@@ -655,6 +657,7 @@ func TestCreateOpsHandler(t *testing.T) {
 	tests := []struct {
 		name            string
 		setupController bool
+		setupWorker     bool
 		lncfg           *listenerutil.ListenerConfig
 		expErr          bool
 		expErrMsg       string
@@ -678,6 +681,62 @@ func TestCreateOpsHandler(t *testing.T) {
 				rsp, err := http.Get("http://" + addr + "/health")
 				require.NoError(t, err)                         // We can do the GET request
 				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
+				body, err := io.ReadAll(rsp.Body)
+				require.NoError(t, err)
+				assert.EqualValues(t, []byte("{}"), body)
+
+				rsp, err = http.Get("http://" + addr + "/health?worker_info=1")
+				require.NoError(t, err)                         // We can do the GET request
+				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
+				body, err = io.ReadAll(rsp.Body)
+				require.NoError(t, err)
+				assert.EqualValues(t, []byte("{}"), body)
+			},
+		},
+		{
+			name:        "worker set",
+			setupWorker: true,
+			lncfg:       &listenerutil.ListenerConfig{},
+			assertions: func(t *testing.T, addr string) {
+				rsp, err := http.Get("http://" + addr + "/health")
+				require.NoError(t, err)                         // We can do the GET request
+				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
+				body, err := io.ReadAll(rsp.Body)
+				require.NoError(t, err)
+				assert.EqualValues(t, []byte("{}"), body)
+
+				rsp, err = http.Get("http://" + addr + "/health?worker_info=1")
+				require.NoError(t, err)                         // We can do the GET request
+				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
+				pbResp := &pbs.GetHealthResponse{}
+				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
+				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
+					ActiveSessionCount: wrapperspb.UInt32(0),
+				}}
+				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
+			},
+		},
+		{
+			name:            "worker and controller set",
+			setupController: true,
+			setupWorker:     true,
+			lncfg:           &listenerutil.ListenerConfig{},
+			assertions: func(t *testing.T, addr string) {
+				rsp, err := http.Get("http://" + addr + "/health")
+				require.NoError(t, err)                         // We can do the GET request
+				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
+				body, err := io.ReadAll(rsp.Body)
+				require.NoError(t, err)
+				assert.EqualValues(t, []byte("{}"), body)
+				rsp, err = http.Get("http://" + addr + "/health?worker_info=1")
+				require.NoError(t, err)                         // We can do the GET request
+				require.Equal(t, http.StatusOK, rsp.StatusCode) // And the endpoint exists
+				pbResp := &pbs.GetHealthResponse{}
+				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
+				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
+					ActiveSessionCount: wrapperspb.UInt32(0),
+				}}
+				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
 			},
 		},
 		{
@@ -698,8 +757,14 @@ func TestCreateOpsHandler(t *testing.T) {
 
 				c = tc.Controller()
 			}
+			var w *worker.Worker
+			if tt.setupWorker {
+				tc := worker.NewTestWorker(t, &worker.TestWorkerOpts{})
+				t.Cleanup(tc.Shutdown)
+				w = tc.Worker()
+			}
 
-			h, err := createOpsHandler(tt.lncfg, c)
+			h, err := createOpsHandler(tt.lncfg, c, w)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, h)

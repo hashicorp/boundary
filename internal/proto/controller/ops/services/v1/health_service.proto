@@ -3,6 +3,7 @@ syntax = "proto3";
 package controller.ops.services.v1;
 
 import "google/api/annotations.proto";
+import "worker/health/v1/health_service.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/ops/services;services";
 
@@ -14,6 +15,10 @@ service HealthService {
   }
 }
 
-message GetHealthRequest {}
+message GetHealthRequest {
+  bool worker_info = 1 [json_name = "worker_info"];
+}
 
-message GetHealthResponse {}
+message GetHealthResponse {
+  worker.health.v1.HealthInfo worker_process_info = 1 [json_name = "worker_process_info"];
+}

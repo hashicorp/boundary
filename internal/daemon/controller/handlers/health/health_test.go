@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/gen/controller/ops/services"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -27,29 +26,11 @@ func TestGetHealth(t *testing.T) {
 			expGetHealthResponse: &services.GetHealthResponse{},
 			expErr:               false,
 		},
-		{
-			name:                 "service unavailable reply",
-			ctx:                  grpc.NewContextWithServerTransportStream(context.Background(), &testServerTransportStream{expHttpCode: "503"}),
-			serviceUnavailable:   true,
-			expGetHealthResponse: &services.GetHealthResponse{},
-			expErr:               false,
-		},
-		{
-			name:               "get health error",
-			ctx:                context.Background(),
-			serviceUnavailable: true,
-			expErr:             true,
-			expErrMsg:          "handlers.SetHttpStatusCode: internal error, unknown: error #500: rpc error: code = Internal desc = grpc: failed to fetch the stream from the context context.Background",
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hs := NewService()
-
-			if tt.serviceUnavailable {
-				hs.StartServiceUnavailableReplies()
-			}
 
 			rsp, err := hs.GetHealth(tt.ctx, &services.GetHealthRequest{})
 			if tt.expErr {
