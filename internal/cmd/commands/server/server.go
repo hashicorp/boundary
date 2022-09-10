@@ -533,7 +533,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.worker, c.Listeners...)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError

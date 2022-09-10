@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
@@ -36,7 +37,7 @@ type opsBundle struct {
 
 // NewServer iterates through all the listeners and sets up HTTP Servers for each, along with individual handlers.
 // If Controller is set-up, NewServer will set-up a health endpoint for it.
-func NewServer(l hclog.Logger, c *controller.Controller, listeners ...*base.ServerListener) (*Server, error) {
+func NewServer(l hclog.Logger, c *controller.Controller, w *worker.Worker, listeners ...*base.ServerListener) (*Server, error) {
 	const op = "ops.NewServer()"
 	if l == nil {
 		return nil, fmt.Errorf("%s: missing logger", op)
@@ -54,7 +55,7 @@ func NewServer(l hclog.Logger, c *controller.Controller, listeners ...*base.Serv
 			return nil, fmt.Errorf("%s: missing ops listener", op)
 		}
 
-		h, err := createOpsHandler(ln.Config, c)
+		h, err := createOpsHandler(ln.Config, c, w)
 		if err != nil {
 			return nil, err
 		}
@@ -128,16 +129,28 @@ func (s *Server) WaitIfHealthExists(d time.Duration, ui cli.Ui) {
 	<-time.After(d)
 }
 
-func createOpsHandler(lncfg *listenerutil.ListenerConfig, c *controller.Controller) (http.Handler, error) {
+func createOpsHandler(lncfg *listenerutil.ListenerConfig, c *controller.Controller, w *worker.Worker) (http.Handler, error) {
+	const op = "ops.createOpsHandler"
 	mux := http.NewServeMux()
-	if c != nil && c.HealthService != nil {
-		h, err := c.GetHealthHandler(lncfg)
+	var h http.Handler
+	switch {
+	case c != nil && c.HealthService != nil:
+		var err error
+		h, err = c.GetHealthHandler(lncfg)
 		if err != nil {
 			return nil, err
 		}
+		if w != nil {
+			c.HealthService.ReportCurrentWorkerConnections(w.HealthInformation)
+		}
+	case w != nil:
+		h = w.HealthHandler()
+	}
+	if h != nil {
+		// Shouldn't happen since this function should only be called when
+		// either a controller or worker is starting up, but just to be safe.
 		mux.Handle("/health", h)
 	}
-
 	mux.Handle("/metrics", promhttp.Handler())
 	return cleanhttp.PrintablePathCheckHandler(mux, nil), nil
 }
