@@ -723,3 +723,108 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 		})
 	}
 }
+
+func TestWorkerOperationalStatus(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
+	serverRepo.UpsertController(ctx, &store.Controller{
+		PrivateId: "test_controller1",
+		Address:   "127.0.0.1",
+	})
+	serversRepoFn := func() (*server.Repository, error) {
+		return serverRepo, nil
+	}
+	sessionRepoFn := func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms)
+	}
+	connRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
+
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
+
+	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	require.NotNil(t, s)
+
+	cases := []struct {
+		name       string
+		wantErr    bool
+		wantErrMsg string
+		req        *pbs.StatusRequest
+		wantState  string
+	}{
+		{
+			name:    "Active worker",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:         worker1.GetPublicId(),
+					Name:             worker1.GetName(),
+					Address:          worker1.GetAddress(),
+					OperationalState: "active",
+				},
+			},
+			wantState: "active",
+		},
+		{
+			name:    "Worker in shutdown",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:         worker1.GetPublicId(),
+					Name:             worker1.GetName(),
+					Address:          worker1.GetAddress(),
+					OperationalState: "shutdown",
+				},
+			},
+			wantState: "shutdown",
+		},
+		{
+			name:    "No operational state- default to unknown",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:       worker1.GetPublicId(),
+					Name:           worker1.GetName(),
+					Address:        worker1.GetAddress(),
+					ReleaseVersion: "Boundary v0.11.0",
+				},
+			},
+			wantState: "unknown",
+		},
+		{
+			name:    "Old worker (empty release version) and  no operational state- default to active",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetName(),
+					Address:  worker1.GetAddress(),
+				},
+			},
+			wantState: "active",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := s.Status(ctx, tc.req)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Equal(tc.wantErrMsg, err.Error())
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			repoWorker, err := serverRepo.LookupWorkerByName(ctx, worker1.Name)
+			require.NoError(err)
+			assert.Equal(tc.wantState, repoWorker.OperationalState)
+		})
+	}
+}

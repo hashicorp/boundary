@@ -14,7 +14,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 * Controller-led worker authorization: This is a second authorization option for
   the workers using PKI-based authentication that was introduced in Boundary
-  0.10. In 0.10, the only mode available was "worker-led", in which a worker
+  0.10.0. In 0.10.0, the only mode available was "worker-led", in which a worker
   generates an authorization request which can be submitted to a controller to
   authorize the worker. With this new controller-led flow, a worker can be
   created via the controller API first and return a one-time-use authorization

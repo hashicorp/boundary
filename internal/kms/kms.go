@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
@@ -37,9 +36,7 @@ func New(ctx context.Context, reader *db.Db, writer *db.Db, _ ...Option) (*Kms, 
 	}
 	purposes := stdNewKmsPurposes()
 
-	r := dbw.New(reader.UnderlyingDB())
-	w := dbw.New(writer.UnderlyingDB())
-	k, err := wrappingKms.New(r, w, purposes)
+	k, err := wrappingKms.New(db.NewChangeSafeDbwReader(reader), db.NewChangeSafeDbwWriter(writer), purposes)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
 	}
@@ -61,15 +58,15 @@ func NewUsingReaderWriter(ctx context.Context, reader db.Reader, writer db.Write
 	}
 	purposes := stdNewKmsPurposes()
 
-	r, err := convertToRW(ctx, reader)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	r, ok := reader.(*db.Db)
+	if !ok {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to convert reader to db.Db")
 	}
-	w, err := convertToRW(ctx, writer)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	w, ok := writer.(*db.Db)
+	if !ok {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to convert writer to db.Db")
 	}
-	k, err := wrappingKms.New(r, w, purposes)
+	k, err := wrappingKms.New(db.NewChangeSafeDbwReader(r), db.NewChangeSafeDbwWriter(w), purposes)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating new in-memory kms"))
 	}
@@ -77,15 +74,6 @@ func NewUsingReaderWriter(ctx context.Context, reader db.Reader, writer db.Write
 		underlying: k,
 		reader:     reader,
 	}, nil
-}
-
-func convertToRW(ctx context.Context, r interface{}) (*dbw.RW, error) {
-	const op = "kms.convertToDb"
-	d, ok := r.(*db.Db)
-	if !ok {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to convert to db.DB")
-	}
-	return dbw.New(d.UnderlyingDB()), nil
 }
 
 // AddExternalWrappers allows setting the external keys.
@@ -208,15 +196,15 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	case isNil(opts.withReader) && !isNil(opts.withWriter):
 		return errors.New(ctx, errors.InvalidParameter, op, "missing reader")
 	case !isNil(opts.withReader) && !isNil(opts.withWriter):
-		r, err := convertToRW(ctx, opts.withReader)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert reader"))
+		r, ok := opts.withReader.(*db.Db)
+		if !ok {
+			return errors.New(ctx, errors.InvalidParameter, op, "unable to convert reader to db.Db")
 		}
-		w, err := convertToRW(ctx, opts.withWriter)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert writer"))
+		w, ok := opts.withWriter.(*db.Db)
+		if !ok {
+			return errors.New(ctx, errors.InvalidParameter, op, "unable to convert writer to db.Db")
 		}
-		kmsOpts = append(kmsOpts, wrappingKms.WithReaderWriter(r, w))
+		kmsOpts = append(kmsOpts, wrappingKms.WithReaderWriter(db.NewChangeSafeDbwReader(r), db.NewChangeSafeDbwWriter(w)))
 	}
 	purposes := make([]wrappingKms.KeyPurpose, 0, len(ValidDekPurposes()))
 	for _, p := range ValidDekPurposes() {

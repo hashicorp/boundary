@@ -517,7 +517,7 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	if err := c.SetupControllerPublicClusterAddress(c.Config, c.flagControllerPublicClusterAddr); err != nil {
+	if err := c.Config.SetupControllerPublicClusterAddress(c.flagControllerPublicClusterAddr); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}

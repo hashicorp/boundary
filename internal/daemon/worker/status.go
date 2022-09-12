@@ -7,13 +7,13 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/hashicorp/boundary/version"
-
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 
@@ -165,12 +165,13 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		WorkerStatus: &pb.ServerWorkerStatus{
-			Name:           w.conf.RawConfig.Worker.Name,
-			Description:    w.conf.RawConfig.Worker.Description,
-			Address:        w.conf.RawConfig.Worker.PublicAddr,
-			Tags:           tags,
-			KeyId:          keyId,
-			ReleaseVersion: versionInfo.FullVersionNumber(false),
+			Name:             w.conf.RawConfig.Worker.Name,
+			Description:      w.conf.RawConfig.Worker.Description,
+			Address:          w.conf.RawConfig.Worker.PublicAddr,
+			Tags:             tags,
+			KeyId:            keyId,
+			ReleaseVersion:   versionInfo.FullVersionNumber(false),
+			OperationalState: w.operationalState.Load().(server.OperationalState).String(),
 		},
 		UpdateTags: w.updateTags.Load(),
 	})
