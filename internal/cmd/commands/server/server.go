@@ -279,7 +279,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates controller but no listener with "cluster" purpose found`)
 			return base.CommandUserError
 		}
-		if err := c.SetupControllerPublicClusterAddress(c.Config, ""); err != nil {
+		if err := c.Config.SetupControllerPublicClusterAddress(""); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandUserError
 		}
@@ -304,36 +304,8 @@ func (c *Command) Run(args []string) int {
 		c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
 
 		if c.Config.Controller != nil {
-			switch len(c.Config.Worker.InitialUpstreams) {
-			case 0:
-				if c.Config.Controller.PublicClusterAddr != "" {
-					clusterAddr = c.Config.Controller.PublicClusterAddr
-				}
-				c.Config.Worker.InitialUpstreams = []string{clusterAddr}
-			case 1:
-				if c.Config.Worker.InitialUpstreams[0] == clusterAddr {
-					break
-				}
-				if c.Config.Controller.PublicClusterAddr != "" &&
-					c.Config.Worker.InitialUpstreams[0] == c.Config.Controller.PublicClusterAddr {
-					break
-				}
-				// Best effort see if it's a domain name and if not assume it must match
-				host, _, err := net.SplitHostPort(c.Config.Worker.InitialUpstreams[0])
-				if err != nil && strings.Contains(err.Error(), "missing port in address") {
-					err = nil
-					host = c.Config.Worker.InitialUpstreams[0]
-				}
-				if err == nil {
-					ip := net.ParseIP(host)
-					if ip == nil {
-						// Assume it's a domain name
-						break
-					}
-				}
-				fallthrough
-			default:
-				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`)
+			if err := c.Config.SetupWorkerInitialUpstreams(); err != nil {
+				c.UI.Error(err.Error())
 				return base.CommandUserError
 			}
 		}
@@ -846,7 +818,22 @@ func (c *Command) Reload(newConf *config.Config) error {
 	}
 
 	if newConf != nil && c.worker != nil {
-		c.worker.Reload(c.Context, newConf)
+		workerReloadErr := func() error {
+			if newConf.Controller != nil {
+				if err := newConf.SetupControllerPublicClusterAddress(""); err != nil {
+					return err
+				}
+			}
+
+			if err := newConf.SetupWorkerInitialUpstreams(); err != nil {
+				return err
+			}
+			c.worker.Reload(c.Context, newConf)
+			return nil
+		}()
+		if workerReloadErr != nil {
+			reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
+		}
 	}
 
 	// Send a message that we reloaded. This prevents "guessing" sleep times
