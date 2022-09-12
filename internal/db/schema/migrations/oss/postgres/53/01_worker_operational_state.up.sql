@@ -27,7 +27,7 @@ alter table server_worker
       on update cascade;
 
 drop view server_worker_aggregate;
--- Updates view created in 34/04_views.up.sql
+-- Updates view created in 34/04_views.up.sql  to add the worker operational state
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (
   select

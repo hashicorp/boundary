@@ -533,7 +533,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 	case opts.withOperationalState != "":
 		worker.OperationalState = opts.withOperationalState
 	default:
-		worker.OperationalState = ActiveOperationalState.String()
+		worker.OperationalState = UnknownOperationalState.String()
 	}
 
 	var err error

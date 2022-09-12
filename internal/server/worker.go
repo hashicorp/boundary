@@ -18,12 +18,12 @@ type (
 )
 
 const (
-	UnknownWorkerType           WorkerType       = "unknown"
-	KmsWorkerType               WorkerType       = "kms"
-	PkiWorkerType               WorkerType       = "pki"
-	ActiveOperationalState      OperationalState = "active"
-	ShutdownOperationalState    OperationalState = "shutdown"
-	UnsupportedOperationalState OperationalState = "unsupported"
+	UnknownWorkerType        WorkerType       = "unknown"
+	KmsWorkerType            WorkerType       = "kms"
+	PkiWorkerType            WorkerType       = "pki"
+	ActiveOperationalState   OperationalState = "active"
+	ShutdownOperationalState OperationalState = "shutdown"
+	UnknownOperationalState  OperationalState = "unknown"
 )
 
 func (t WorkerType) Valid() bool {
@@ -35,7 +35,11 @@ func (t WorkerType) Valid() bool {
 }
 
 func (t WorkerType) String() string {
-	return string(t)
+	switch t {
+	case UnknownWorkerType, KmsWorkerType, PkiWorkerType:
+		return string(t)
+	}
+	return ""
 }
 
 type workerAuthWorkerId struct {
@@ -51,7 +55,11 @@ func ValidOperationalState(s string) bool {
 }
 
 func (t OperationalState) String() string {
-	return string(t)
+	switch t {
+	case ActiveOperationalState, ShutdownOperationalState, UnknownOperationalState:
+		return string(t)
+	}
+	return ""
 }
 
 // AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib
