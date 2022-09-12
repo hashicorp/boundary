@@ -15,8 +15,8 @@ import (
 
 func TestMigrations_DeprecatedGrants(t *testing.T) {
 	const (
-		priorMigration   = 47001
-		currentMigration = 48001
+		priorMigration   = 51001
+		currentMigration = 52001
 	)
 
 	t.Parallel()
