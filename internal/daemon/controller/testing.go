@@ -650,7 +650,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster", "ops"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := tc.b.SetupControllerPublicClusterAddress(opts.Config, ""); err != nil {
+	if err := opts.Config.SetupControllerPublicClusterAddress(""); err != nil {
 		t.Fatal(err)
 	}
 
