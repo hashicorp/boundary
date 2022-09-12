@@ -7,16 +7,13 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/server"
-
-	"github.com/hashicorp/boundary/version"
-
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
 

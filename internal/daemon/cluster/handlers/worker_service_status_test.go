@@ -739,8 +739,8 @@ func TestWorkerOperationalStatus(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
-	sessionRepoFn := func() (*session.Repository, error) {
-		return session.NewRepository(rw, rw, kms)
+	sessionRepoFn := func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms)
 	}
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)

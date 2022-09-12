@@ -23,8 +23,8 @@ type testWorker struct {
 func Test_WorkerOperationalStateChanges(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
-	const priorMigration = 52001
-	const serverEnumMigration = 53001
+	const priorMigration = 51001
+	const serverEnumMigration = 52001
 	dialect := dbtest.Postgres
 	ctx := context.Background()
 
