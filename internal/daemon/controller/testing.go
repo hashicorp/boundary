@@ -650,7 +650,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster", "ops"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := tc.b.SetupControllerPublicClusterAddress(opts.Config, ""); err != nil {
+	if err := opts.Config.SetupControllerPublicClusterAddress(""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -664,7 +664,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		if _, err := schema.MigrateStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
-		if err := tc.b.ConnectToDatabase(tc.ctx, "postgres"); err != nil {
+		if err := tc.b.OpenAndSetServerDatabase(tc.ctx, "postgres"); err != nil {
 			t.Fatal(err)
 		}
 		if !opts.DisableKmsKeyCreation {

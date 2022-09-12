@@ -118,21 +118,6 @@ select expiration_time, connection_limit, current_connection_count
 from
 	session_connection_limit, session_connection_count;
 `
-	nonTerminatedSessionPublicIdList = `
-select public_id, project_id, user_id from session
-where
-	session.termination_reason is null
-and
-	project_id = any(@project_ids)
-;
-`
-
-	sessionPublicIdList = `
-select public_id, project_id, user_id from session
-where
-	project_id = any(@project_ids)
-;
-`
 
 	sessionList = `
 with

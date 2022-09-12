@@ -28,7 +28,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 
 // ListAuthMethods returns a slice of AuthMethods for the scopeId. The
 // WithUnauthenticatedUser, WithLimit and WithOrder options are supported and
-//  all other options are ignored.
+// all other options are ignored.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
 	const op = "oidc.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {

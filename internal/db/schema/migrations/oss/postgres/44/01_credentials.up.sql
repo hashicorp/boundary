@@ -45,7 +45,7 @@ begin;
   drop view credential_vault_store_private;
   drop view credential_vault_credential_private;
 
-  -- Replaces view from  41/01_worker_filter_vault_cred_store.up.sql
+  -- Replaced in 49/01_vault_credentials.up.sql
   create view credential_vault_store_private as
   with
     active_tokens as (
@@ -101,7 +101,7 @@ begin;
       'The view returns a separate row for each current, maintaining and revoke token; maintaining tokens should only be used for token/credential renewal and revocation. '
       'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
-  -- Replaces view from 41/01_worker_filter_vault_cred_store.up.sql
+  -- Replaced in 49/01_vault_credentials.up.sql
   create view credential_vault_store_public as
   select public_id,
         project_id,
@@ -130,7 +130,7 @@ begin;
     'credential_vault_store_public is a view where each row contains a credential store. '
       'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
-  -- Replaces view from 42/01_ssh_private_key_passphrase.up.sql
+  -- Replaced in 49/01_vault_credentials.up.sql
   create view credential_vault_library_private as
   with
     password_override (library_id, username_attribute, password_attribute) as (
@@ -188,7 +188,7 @@ begin;
     'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
       'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
-  -- Replaces view from 42/01_ssh_private_key_passphrase.up.sql
+  -- Replaced in 49/01_vault_credentials.up.sql
   create view credential_vault_library_public as
   select public_id,
         store_id,

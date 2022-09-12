@@ -22,7 +22,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no requests")
 	}
 
-	libs, err := r.getPrivateLibraries(ctx, requests)
+	libs, err := r.getIssueCredLibraries(ctx, requests)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

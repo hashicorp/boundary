@@ -205,6 +205,7 @@ var keySubstMap = map[string]string{
 	"tls_server_name":             "TLS Server Name",
 	"tls_skip_verify":             "Skip TLS Verification",
 	"token_hmac":                  "Token HMAC",
+	"token_status":                "Token Status",
 	"client_certificate":          "Client Certificate",
 	"client_certificate_key_hmac": "Client Certificate Key HMAC",
 	"worker_filter":               "Worker Filter",

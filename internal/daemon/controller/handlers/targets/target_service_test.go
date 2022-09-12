@@ -1,10 +1,13 @@
 package targets
 
 import (
+	"context"
+	"crypto/rand"
 	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
@@ -35,6 +38,8 @@ func TestWorkerList_Addresses(t *testing.T) {
 func TestWorkerList_Filter(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 	var workers []*server.Worker
 	for i := 0; i < 5; i++ {
 		switch {

@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -100,7 +101,7 @@ func TestCrud(t *testing.T) {
 	client.SetToken(token.Token)
 	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
 
-	checkResource := func(step string, cs *credentialstores.CredentialStore, err error, wantedName string, wantVersion uint32) {
+	checkResource := func(step string, cs *credentialstores.CredentialStore, err error, wantedName string, wantedTokenStatus vault.TokenStatus, wantVersion uint32) {
 		assert.NotNil(cs, "returned no resource", step)
 		gotName := ""
 		if cs.Name != "" {
@@ -108,6 +109,9 @@ func TestCrud(t *testing.T) {
 		}
 		assert.Equal(wantedName, gotName, step)
 		assert.Equal(wantVersion, cs.Version)
+		status, ok := cs.Attributes["token_status"].(string)
+		require.True(ok)
+		assert.Equal(string(wantedTokenStatus), status)
 	}
 
 	csClient := credentialstores.NewClient(client)
@@ -116,16 +120,34 @@ func TestCrud(t *testing.T) {
 		credentialstores.WithVaultCredentialStoreAddress(vaultServ.Addr), credentialstores.WithVaultCredentialStoreToken(vaultTok))
 	require.NoError(err)
 	require.NotNil(cs)
-	checkResource("create", cs.Item, err, "foo", 1)
+	checkResource("create", cs.Item, err, "foo", vault.CurrentToken, 1)
 
 	cs, err = csClient.Read(tc.Context(), cs.Item.Id)
-	checkResource("read", cs.Item, err, "foo", 1)
+	checkResource("read", cs.Item, err, "foo", vault.CurrentToken, 1)
 
 	cs, err = csClient.Update(tc.Context(), cs.Item.Id, cs.Item.Version, credentialstores.WithName("bar"))
-	checkResource("update", cs.Item, err, "bar", 2)
+	checkResource("update", cs.Item, err, "bar", vault.CurrentToken, 2)
 
 	cs, err = csClient.Update(tc.Context(), cs.Item.Id, cs.Item.Version, credentialstores.DefaultName())
-	checkResource("update", cs.Item, err, "", 3)
+	checkResource("update", cs.Item, err, "", vault.CurrentToken, 3)
+
+	// Set previous token to expired in the database and revoke in Vault to validate a
+	// credential store with an expired token is correctly returned over the API
+	rw := db.New(tc.DbConn())
+	num, err := rw.Exec(tc.Context(), "update credential_vault_token set status = ? where store_id = ?",
+		[]interface{}{vault.ExpiredToken, cs.GetItem().Id})
+	require.NoError(err)
+	assert.Equal(1, num)
+	vaultServ.RevokeToken(t, vaultTok)
+
+	cs, err = csClient.Read(tc.Context(), cs.Item.Id)
+	checkResource("read", cs.Item, err, "", vault.ExpiredToken, 3)
+
+	// Create a new token and update cred store
+	_, newVaultTok := vaultServ.CreateToken(t)
+	cs, err = csClient.Update(tc.Context(), cs.Item.Id, cs.Item.Version, credentialstores.WithName("bar"),
+		credentialstores.WithVaultCredentialStoreToken(newVaultTok))
+	checkResource("update", cs.Item, err, "bar", vault.CurrentToken, 4)
 
 	_, err = csClient.Delete(tc.Context(), cs.Item.Id)
 	assert.NoError(err)

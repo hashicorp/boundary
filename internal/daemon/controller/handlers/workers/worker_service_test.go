@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -22,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -71,6 +73,7 @@ func equalTags(t *testing.T, expected map[string]*structpb.ListValue, actual map
 }
 
 func TestGet(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -83,6 +86,12 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err)
 	repoFn := func() (*server.Repository, error) {
 		return repo, nil
+	}
+
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
 	}
 
 	kmsWorker := server.TestKmsWorker(t, conn, wrap,
@@ -107,6 +116,7 @@ func TestGet(t *testing.T) {
 		ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
 		AuthorizedActions:     strutil.StrListDelete(kmsAuthzActions, action.Update.String()),
 		LastStatusTime:        kmsWorker.GetLastStatusTime().GetTimestamp(),
+		ReleaseVersion:        kmsWorker.ReleaseVersion,
 		CanonicalTags: map[string]*structpb.ListValue{
 			"key": structListValue(t, "val"),
 		},
@@ -147,6 +157,7 @@ func TestGet(t *testing.T) {
 		AuthorizedActions:     testAuthorizedActions,
 		ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
 		LastStatusTime:        pkiWorker.GetLastStatusTime().GetTimestamp(),
+		ReleaseVersion:        pkiWorker.ReleaseVersion,
 		CanonicalTags: map[string]*structpb.ListValue{
 			"config": structListValue(t, "test"),
 		},
@@ -196,7 +207,7 @@ func TestGet(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(context.Background(), repoFn, iamRepoFn)
+			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
 			require.NoError(t, err, "Couldn't create new worker service.")
 
 			got, err := s.GetWorker(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
@@ -212,6 +223,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -222,6 +234,12 @@ func TestList(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kms)
+	}
+
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
 	}
 
 	var wantKmsWorkers []*pb.Worker
@@ -242,6 +260,7 @@ func TestList(t *testing.T) {
 			Address:               w.GetAddress(),
 			Type:                  KmsWorkerType,
 			LastStatusTime:        w.GetLastStatusTime().GetTimestamp(),
+			ReleaseVersion:        w.ReleaseVersion,
 		})
 	}
 
@@ -261,6 +280,7 @@ func TestList(t *testing.T) {
 			Address:               w.GetAddress(),
 			Type:                  PkiWorkerType,
 			LastStatusTime:        w.GetLastStatusTime().GetTimestamp(),
+			ReleaseVersion:        w.ReleaseVersion,
 		})
 	}
 
@@ -310,7 +330,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := NewService(context.Background(), repoFn, iamRepoFn)
+			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
 			require.NoError(err, "Couldn't create new worker service.")
 
 			// Test with a non-anon user
@@ -357,7 +377,13 @@ func TestDelete(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	s, err := NewService(ctx, repoFn, iamRepoFn)
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+
+	s, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	w := server.TestKmsWorker(t, conn, wrap)
@@ -424,6 +450,12 @@ func TestUpdate(t *testing.T) {
 		return repo, nil
 	}
 
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+
 	wkr := server.TestPkiWorker(t, conn, wrapper,
 		server.WithName("default"),
 		server.WithDescription("default"))
@@ -441,7 +473,7 @@ func TestUpdate(t *testing.T) {
 	toMerge := &pbs.UpdateWorkerRequest{
 		Id: wkr.GetPublicId(),
 	}
-	workerService, err := NewService(ctx, repoFn, iamRepoFn)
+	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
 	require.NoError(t, err)
 	expectedScope := &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
 
@@ -835,6 +867,12 @@ func TestUpdate_KMS(t *testing.T) {
 		return repo, nil
 	}
 
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+
 	wkr := server.TestKmsWorker(t, conn, wrapper,
 		server.WithName("default"),
 		server.WithDescription("default"))
@@ -842,7 +880,7 @@ func TestUpdate_KMS(t *testing.T) {
 	toMerge := &pbs.UpdateWorkerRequest{
 		Id: wkr.GetPublicId(),
 	}
-	workerService, err := NewService(ctx, repoFn, iamRepoFn)
+	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -899,7 +937,9 @@ func TestUpdate_KMS(t *testing.T) {
 
 func TestUpdate_BadVersion(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
@@ -907,18 +947,21 @@ func TestUpdate_BadVersion(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
 
 	_, proj := iam.TestScopes(t, iamRepo)
 
-	rw := db.New(conn)
 	repo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err, "Couldn't create new worker repo.")
 	repoFn := func() (*server.Repository, error) {
 		return repo, nil
 	}
-	ctx := context.Background()
 
-	workerService, err := NewService(ctx, repoFn, iamRepoFn)
+	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	wkr := server.TestPkiWorker(t, conn, wrapper)
@@ -949,9 +992,15 @@ func TestCreateWorkerLed(t *testing.T) {
 	repoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, testKms)
 	}
-	testCtx := context.Background()
 
-	testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+	testCtx := context.Background()
+	workerAuthRepo, err := server.NewRepositoryStorage(testCtx, rw, rw, testKms)
+	require.NoError(t, err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+
+	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn)
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	// Get an initial set of authorized node credentials
@@ -1203,7 +1252,7 @@ func TestCreateWorkerLed(t *testing.T) {
 				repoFn := func() (*server.Repository, error) {
 					return server.NewRepository(rw, &db.Db{}, testKms)
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1236,7 +1285,7 @@ func TestCreateWorkerLed(t *testing.T) {
 						return server.NewRepository(rw, rw, testKms)
 					}
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1316,8 +1365,357 @@ func TestCreateWorkerLed(t *testing.T) {
 	}
 }
 
+func TestCreateControllerLed(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	testRootWrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, testRootWrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	rw := db.New(conn)
+	testKms := kms.TestKms(t, conn, testRootWrapper)
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, testKms)
+	}
+	testCtx := context.Background()
+
+	rootStorage, err := server.NewRepositoryStorage(testCtx, rw, rw, testKms)
+	require.NoError(t, err)
+	authRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return rootStorage, nil
+	}
+
+	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn)
+	require.NoError(t, err, "Error when getting new worker service.")
+
+	// Get an initial set of authorized node credentials
+	_, err = rotation.RotateRootCertificates(testCtx, rootStorage)
+	require.NoError(t, err)
+
+	fetchReqFn := func() string {
+		// This happens on the worker
+		fileStorage, err := file.New(testCtx)
+		require.NoError(t, err)
+		defer fileStorage.Cleanup()
+
+		nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+		require.NoError(t, err)
+		// Create request using worker id
+		fetchReq, err := nodeCreds.CreateFetchNodeCredentialsRequest(testCtx)
+		require.NoError(t, err)
+
+		fetchEncoded, err := proto.Marshal(fetchReq)
+		require.NoError(t, err)
+
+		return base58.Encode(fetchEncoded)
+	}
+
+	tests := []struct {
+		name            string
+		scopeId         string
+		service         Service
+		req             *pbs.CreateControllerLedRequest
+		res             *pbs.CreateControllerLedResponse
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:    "invalid-scope",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: "invalid-scope",
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "Must be 'global'",
+		},
+		{
+			name:    "supplied-node-auth-request",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:                  scope.Global.String(),
+					WorkerGeneratedAuthToken: &wrapperspb.StringValue{Value: fetchReqFn()},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.WorkerGeneratedAuthTokenField,
+		},
+		{
+			name:    "invalid-id",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					Id:      "invalid-id",
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.IdField,
+		},
+		{
+			name:    "invalid-address",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					Address: "invalid-address",
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.AddressField,
+		},
+		{
+			name:    "invalid-config-tags",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					ConfigTags: map[string]*structpb.ListValue{
+						"invalid": {Values: []*structpb.Value{
+							structpb.NewStringValue("invalid-tags"),
+						}},
+					},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.ConfigTagsField,
+		},
+		{
+			name:    "invalid-canonical-tags",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					CanonicalTags: map[string]*structpb.ListValue{
+						"invalid": {Values: []*structpb.Value{
+							structpb.NewStringValue("invalid-canonical-tags"),
+						}},
+					},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.CanonicalTagsField,
+		},
+		{
+			name:    "invalid-last-status-time",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:        scope.Global.String(),
+					LastStatusTime: timestamppb.Now(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.LastStatusTimeField,
+		},
+		{
+			name:    "invalid-authorized-actions",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:           scope.Global.String(),
+					AuthorizedActions: []string{"invalid-authorized-actions"},
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.AuthorizedActionsField,
+		},
+		{
+			name:    "invalid-create-time",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					CreatedTime: timestamppb.Now(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.CreatedTimeField,
+		},
+		{
+			name:    "invalid-update-time",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					UpdatedTime: timestamppb.Now(),
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.UpdatedTimeField,
+		},
+		{
+			name:    "invalid-version",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+					Version: 1,
+				},
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: globals.VersionField,
+		},
+		{
+			name:    "invalid-auth",
+			service: testSrv,
+			scopeId: "splat-auth-scope",
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId: scope.Global.String(),
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "non-existent scope \"splat-auth-scope\"",
+		},
+		{
+			name: "create-error",
+			service: func() Service {
+				repoFn := func() (*server.Repository, error) {
+					return server.NewRepository(rw, &db.Db{}, testKms)
+				}
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn)
+				require.NoError(t, err, "Error when getting new worker service.")
+				return testSrv
+			}(),
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					Name:        &wrapperspb.StringValue{Value: "success"},
+					Description: &wrapperspb.StringValue{Value: "success-description"},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "error creating worker",
+		},
+		{
+			name: "bad-repo-function-in-create",
+			service: func() Service {
+				// var cnt gives us a way for the repoFn to fail the 2nd time
+				// it's called so we can get past the AuthRequest check in
+				// CreateWorker(...) and test the createInRepo(...) failure
+				// path if the repoFn returns and err.
+				cnt := 0
+				repoFn := func() (*server.Repository, error) {
+					cnt = cnt + 1
+					switch {
+					case cnt > 1:
+						return nil, errors.New(testCtx, errors.Internal, "bad-repo-function", "error creating repo")
+					default:
+						return server.NewRepository(rw, rw, testKms)
+					}
+				}
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn)
+				require.NoError(t, err, "Error when getting new worker service.")
+				return testSrv
+			}(),
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					Name:        &wrapperspb.StringValue{Value: "success"},
+					Description: &wrapperspb.StringValue{Value: "success-description"},
+				},
+			},
+			wantErr:         true,
+			wantErrContains: "error creating worker: bad-repo-function: error creating repo",
+		},
+		{
+			name:    "success",
+			service: testSrv,
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateControllerLedRequest{
+				Item: &workers.Worker{
+					ScopeId:     scope.Global.String(),
+					Name:        &wrapperspb.StringValue{Value: "success"},
+					Description: &wrapperspb.StringValue{Value: "success-description"},
+				},
+			},
+			res: &pbs.CreateControllerLedResponse{
+				Item: &workers.Worker{
+					ScopeId:               scope.Global.String(),
+					Name:                  &wrapperspb.StringValue{Value: "success"},
+					Description:           &wrapperspb.StringValue{Value: "success-description"},
+					ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
+					Version:               1,
+					Type:                  PkiWorkerType,
+				},
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := tc.service.CreateControllerLed(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			{
+				// we only need to check that these "read-only" fields were set
+				// outbound. Other portions of the domain is responsible for
+				// testing that these values are correct and there's no reason
+				// to repeat those tests here.
+				assert.NotEmpty(got.GetItem().GetId())
+				assert.NotEmpty(got.GetItem().CreatedTime)
+				assert.NotEmpty(got.GetItem().UpdatedTime)
+				assert.NotEmpty(got.GetItem().Scope)
+				assert.NotEmpty(got.GetItem().AuthorizedActions)
+				assert.NotEmpty(got.GetItem().ControllerGeneratedActivationToken)
+				assert.True(strings.HasPrefix(got.GetItem().ControllerGeneratedActivationToken.GetValue(), nodeenrollment.ServerLedActivationTokenPrefix))
+				{
+					tc.res.Item.Id = got.GetItem().GetId()
+					tc.res.Item.CreatedTime = got.GetItem().GetCreatedTime()
+					tc.res.Item.UpdatedTime = got.GetItem().GetUpdatedTime()
+					tc.res.Item.Scope = got.GetItem().Scope
+					tc.res.Item.AuthorizedActions = got.GetItem().GetAuthorizedActions()
+					tc.res.Item.ControllerGeneratedActivationToken = got.GetItem().GetControllerGeneratedActivationToken()
+				}
+			}
+			assert.Equal(tc.res, got)
+		})
+	}
+}
+
 func TestService_AddWorkerTags(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -1332,7 +1730,12 @@ func TestService_AddWorkerTags(t *testing.T) {
 	repoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, testKms)
 	}
-	s, err := NewService(context.Background(), repoFn, iamRepoFn)
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, testKms)
+	require.NoError(err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
 	require.NoError(err)
 	worker := server.TestKmsWorker(t, conn, wrapper)
 
@@ -1463,7 +1866,7 @@ func TestService_AddWorkerTags(t *testing.T) {
 func TestService_SetWorkerTags(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
-
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -1476,7 +1879,12 @@ func TestService_SetWorkerTags(t *testing.T) {
 	repoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, testKms)
 	}
-	s, err := NewService(context.Background(), repoFn, iamRepoFn)
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, testKms)
+	require.NoError(err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
 	require.NoError(err)
 	worker := server.TestKmsWorker(t, conn, wrapper)
 
@@ -1610,7 +2018,7 @@ func TestService_SetWorkerTags(t *testing.T) {
 func TestService_RemoveWorkerTags(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
-
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -1623,7 +2031,12 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 	repoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, testKms)
 	}
-	s, err := NewService(context.Background(), repoFn, iamRepoFn)
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, testKms)
+	require.NoError(err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
 	require.NoError(err)
 	worker := server.TestKmsWorker(t, conn, wrapper)
 
@@ -1662,8 +2075,9 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 			name: "remove-valid-tag",
 			req: func() *pbs.RemoveWorkerTagsRequest {
 				worker := server.TestKmsWorker(t, conn, wrapper)
-				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
+				_, err := s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
 					worker.Version, map[string]*structpb.ListValue{"key": {Values: []*structpb.Value{structpb.NewStringValue("value")}}})
+				require.NoError(err)
 				return &pbs.RemoveWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version + 1,
@@ -1676,7 +2090,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 			name: "remove-many-valid-tags",
 			req: func() *pbs.RemoveWorkerTagsRequest {
 				worker := server.TestKmsWorker(t, conn, wrapper)
-				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
+				_, err := s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
 					worker.Version, map[string]*structpb.ListValue{
 						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value"), structpb.NewStringValue("value1")}},
 						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
@@ -1685,6 +2099,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 						"key5": {Values: []*structpb.Value{structpb.NewStringValue("value5")}},
 						"key6": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
 					})
+				require.NoError(err)
 				return &pbs.RemoveWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version + 1,
@@ -1738,7 +2153,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 			name: "remove-nonexistent-tags",
 			req: func() *pbs.RemoveWorkerTagsRequest {
 				worker := server.TestKmsWorker(t, conn, wrapper)
-				s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
+				_, err := s.addTagsInRepo(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), worker.PublicId,
 					worker.Version, map[string]*structpb.ListValue{
 						"key":  {Values: []*structpb.Value{structpb.NewStringValue("value")}},
 						"key2": {Values: []*structpb.Value{structpb.NewStringValue("value2")}},
@@ -1747,6 +2162,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 						"key5": {Values: []*structpb.Value{structpb.NewStringValue("value5")}},
 						"key6": {Values: []*structpb.Value{structpb.NewStringValue("value")}},
 					})
+				require.NoError(err)
 				return &pbs.RemoveWorkerTagsRequest{
 					Id:      worker.PublicId,
 					Version: worker.Version + 1,
@@ -1788,6 +2204,160 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 				assert.False(equalTags(t, tc.wantDeletedTags, got.GetItem().GetApiTags()))
 				assert.Equal(tc.req.Version+1, got.GetItem().GetVersion())
 			}
+		})
+	}
+}
+
+func TestReadCertificateAuthority(t *testing.T) {
+	t.Parallel()
+	require, assert := require.New(t), assert.New(t)
+	ctx := context.Background()
+	wrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kmsCache)
+	}
+
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+
+	// Store CA and check that initial version updates
+	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
+	require.NoError(err)
+
+	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
+	require.NoError(err, "Error when getting new worker service.")
+
+	tests := []struct {
+		name            string
+		scopeId         string
+		req             *pbs.ReadCertificateAuthorityRequest
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:    "invalid-scope",
+			scopeId: scope.Global.String(),
+			req: &pbs.ReadCertificateAuthorityRequest{
+				ScopeId: "invalid-scope",
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "Must be 'global'",
+		},
+		{
+			name:    "success",
+			scopeId: scope.Global.String(),
+			req: &pbs.ReadCertificateAuthorityRequest{
+				ScopeId: "global",
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := testSrv.ReadCertificateAuthority(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+		})
+	}
+}
+
+func TestReinitializeCertificateAuthority(t *testing.T) {
+	t.Parallel()
+	require, assert := require.New(t), assert.New(t)
+	ctx := context.Background()
+	wrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+
+	repoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kmsCache)
+	}
+
+	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return workerAuthRepo, nil
+	}
+
+	// Store CA and check that initial version updates
+	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
+	require.NoError(err)
+
+	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
+	require.NoError(err, "Error when getting new worker service.")
+
+	tests := []struct {
+		name            string
+		scopeId         string
+		req             *pbs.ReinitializeCertificateAuthorityRequest
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:    "invalid-id",
+			scopeId: scope.Global.String(),
+			req: &pbs.ReinitializeCertificateAuthorityRequest{
+				ScopeId: "bogus",
+			},
+			wantErr:         true,
+			wantErrIs:       handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "Must be 'global'",
+		},
+		{
+			name:    "success",
+			scopeId: scope.Global.String(),
+			req: &pbs.ReinitializeCertificateAuthorityRequest{
+				ScopeId: "global",
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := testSrv.ReinitializeCertificateAuthority(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
 		})
 	}
 }

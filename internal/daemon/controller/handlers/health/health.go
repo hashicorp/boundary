@@ -9,10 +9,12 @@ import (
 )
 
 type Service struct {
-	pbs.UnimplementedHealthServiceServer
+	pbs.UnsafeHealthServiceServer
 
 	replyWithServiceUnavailable bool
 }
+
+var _ pbs.HealthServiceServer = (*Service)(nil)
 
 func NewService() *Service {
 	s := Service{}

@@ -301,6 +301,24 @@ func TestDevWorker(t *testing.T) {
 
 	_, err = Parse(devConfig + devWorkerKeyValueConfig)
 	assert.Error(t, err)
+
+	// Check activation token parsing
+	devWorkerActivationTokenConfig := `
+		listener "tcp" {
+			purpose = "proxy"
+		}
+	
+		worker {
+			name = "dev-worker"
+			description = "A default worker created in dev mode"
+			initial_upstreams = ["127.0.0.1"]
+			controller_generated_activation_token = "foobar"
+		}
+		`
+
+	actual, err = Parse(devConfig + devWorkerActivationTokenConfig)
+	require.NoError(t, err)
+	assert.Equal(t, "foobar", actual.Worker.ControllerGeneratedActivationToken)
 }
 
 func TestDevCombined(t *testing.T) {
@@ -665,6 +683,28 @@ func TestWorkerTags(t *testing.T) {
 				"typetwo": {"devtwo", "localtwo"},
 			},
 			expErr: false,
+		},
+		{
+			name: "comma in tag key string",
+			in: `
+			worker {
+				tags {
+					"key,"= ["value"],
+				}
+			}`,
+			expErr:    true,
+			expErrStr: `Tag key "key," cannot contain commas`,
+		},
+		{
+			name: "comma in tag value string",
+			in: `
+			worker {
+				tags {
+					"key"= ["va,lue","value2"],
+				}
+			}`,
+			expErr:    true,
+			expErrStr: `Tag value "va,lue" for tag key "key" cannot contain commas`,
 		},
 		{
 			name: "json tags - entire tags block",
@@ -1643,6 +1683,557 @@ func TestDatabaseConnMaxIdleTimeDuration(t *testing.T) {
 			require.NotNil(t, c.Controller)
 			require.NotNil(t, c.Controller.Database)
 			require.Equal(t, tt.expConnMaxIdleTimeDuration, *c.Controller.Database.ConnMaxIdleTimeDuration)
+		})
+	}
+}
+
+func TestDatabaseSkipSharedLockAcquisition(t *testing.T) {
+	tests := []struct {
+		name                         string
+		in                           string
+		expSkipSharedLockAcquisition bool
+	}{
+		{
+			name: "not set",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+			  	}
+			}`,
+			expSkipSharedLockAcquisition: false,
+		},
+		{
+			name: "set",
+			in: `
+			controller {
+				name = "example-controller"
+				database {
+					skip_shared_lock_acquisition = true
+			  	}
+			}`,
+			expSkipSharedLockAcquisition: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := Parse(tt.in)
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.NotNil(t, c.Controller.Database)
+			require.Equal(t, tt.expSkipSharedLockAcquisition, c.Controller.Database.SkipSharedLockAcquisition)
+		})
+	}
+}
+
+func TestSetupControllerPublicClusterAddress(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                    string
+		inputConfig             *Config
+		inputFlagValue          string
+		stateFn                 func(t *testing.T)
+		expErr                  bool
+		expErrStr               string
+		expPublicClusterAddress string
+	}{
+		{
+			name: "nil controller",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: nil,
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: ":9201",
+		},
+		{
+			name: "setting public cluster address directly with ip",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "127.0.0.1",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:9201",
+		},
+		{
+			name: "setting public cluster address directly with ip:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "127.0.0.1:8080",
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "setting public cluster address to env var",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "env://TEST_ENV_VAR_FOR_CONTROLLER_ADDR",
+				},
+			},
+			inputFlagValue: "",
+			stateFn: func(t *testing.T) {
+				t.Setenv("TEST_ENV_VAR_FOR_CONTROLLER_ADDR", "127.0.0.1:8080")
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "setting public cluster address to env var that points to template",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "env://TEST_ENV_VAR_FOR_CONTROLLER_ADDR",
+				},
+			},
+			inputFlagValue: "",
+			stateFn: func(t *testing.T) {
+				t.Setenv("TEST_ENV_VAR_FOR_CONTROLLER_ADDR", `{{ GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" | join "address" " " }}`)
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:9201",
+		},
+		{
+			name: "setting public cluster address to ip template",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: `{{ GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" | join "address" " " }}`,
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:9201",
+		},
+		{
+			name: "setting public cluster address to multiline ip template",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: `{{ with $local := GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" -}}
+					{{- $local | join "address" " " -}}
+				  {{- end }}`,
+				},
+			},
+			inputFlagValue:          "",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:9201",
+		},
+		{
+			name: "using flag value with ip only",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{},
+			},
+			inputFlagValue:          "127.0.0.1",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:9201",
+		},
+		{
+			name: "using flag value with ip:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{},
+			},
+			inputFlagValue:          "127.0.0.1:8080",
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "using flag value with ip template",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{},
+			},
+			inputFlagValue:          `{{ GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" | join "address" " " }}`,
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:9201",
+		},
+		{
+			name: "using flag value with multiline ip template",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{},
+			},
+			inputFlagValue: `{{ with $local := GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" -}}
+			  {{- $local | join "address" " " -}}
+			{{- end }}`,
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:9201",
+		},
+		{
+			name: "using flag value to point to env var with ip only",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{},
+			},
+			inputFlagValue: "env://TEST_ENV_VAR_FOR_CONTROLLER_ADDR",
+			stateFn: func(t *testing.T) {
+				t.Setenv("TEST_ENV_VAR_FOR_CONTROLLER_ADDR", "127.0.0.1")
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:9201",
+		},
+		{
+			name: "using flag value to point to env var with ip:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{},
+			},
+			inputFlagValue: "env://TEST_ENV_VAR_FOR_CONTROLLER_ADDR",
+			stateFn: func(t *testing.T) {
+				t.Setenv("TEST_ENV_VAR_FOR_CONTROLLER_ADDR", "127.0.0.1:8080")
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "read address from listeners ip only",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "127.0.0.1"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:9201",
+		},
+		{
+			name: "read address from listeners ip:port",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"cluster"}, Address: "127.0.0.1:8080"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: "127.0.0.1:8080",
+		},
+		{
+			name: "read address from listeners is ignored on different purpose",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{Purpose: []string{"somethingelse"}, Address: "127.0.0.1:8080"},
+					},
+				},
+				Controller: &Controller{},
+			},
+			expErr:                  false,
+			expErrStr:               "",
+			expPublicClusterAddress: ":9201",
+		},
+		{
+			name: "using flag value to point to nonexistent file",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{},
+			},
+			inputFlagValue:          "file://this_doesnt_exist_for_sure",
+			expErr:                  true,
+			expErrStr:               "Error parsing public cluster addr: error reading file at file://this_doesnt_exist_for_sure: open this_doesnt_exist_for_sure: no such file or directory",
+			expPublicClusterAddress: "",
+		},
+		{
+			name: "using flag value to provoke error in SplitHostPort",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{},
+			},
+			inputFlagValue:          "abc::123",
+			expErr:                  true,
+			expErrStr:               "Error splitting public cluster adddress host/port: address abc::123: too many colons in address",
+			expPublicClusterAddress: "",
+		},
+		{
+			name: "bad ip template",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{},
+			},
+			inputFlagValue:          "{{ somethingthatdoesntexist }}",
+			expErr:                  true,
+			expErrStr:               "Error parsing IP template on controller public cluster addr: unable to parse address template \"{{ somethingthatdoesntexist }}\": unable to parse template \"{{ somethingthatdoesntexist }}\": template: sockaddr.Parse:1: function \"somethingthatdoesntexist\" not defined",
+			expPublicClusterAddress: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.stateFn != nil {
+				tt.stateFn(t)
+			}
+			err := tt.inputConfig.SetupControllerPublicClusterAddress(tt.inputFlagValue)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, tt.inputConfig.Controller)
+			require.Equal(t, tt.expPublicClusterAddress, tt.inputConfig.Controller.PublicClusterAddr)
+		})
+	}
+}
+
+func TestSetupWorkerInitialUpstreams(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                string
+		inputConfig         *Config
+		stateFn             func(t *testing.T)
+		expErr              bool
+		expErrStr           string
+		expInitialUpstreams []string
+	}{
+		{
+			name: "NilController",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: nil,
+				Worker: &Worker{
+					InitialUpstreams: []string{"192.168.0.2:9201"},
+				},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"192.168.0.2:9201"},
+		},
+		{
+			name: "NilWorker",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "192.168.0.3:9201",
+				},
+				Worker: nil,
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: nil,
+		},
+		{
+			name: "PublicClusterAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "192.168.0.4:9201",
+				},
+				Worker: &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"192.168.0.4:9201"},
+		},
+		{
+			name: "ListenerNoAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"127.0.0.1:9201"},
+		},
+		{
+			name: "ListenerAddr",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "192.168.0.5:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"192.168.0.5:9201"},
+		},
+		{
+			name: "ListenerAddrDomain",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "foo.test",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              false,
+			expErrStr:           "",
+			expInitialUpstreams: []string{"foo.test"},
+		},
+		{
+			name: "ListenerAddrMultiplePurpose",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster", "api"},
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              true,
+			expErrStr:           "Specifying a listener with more than one purpose is not supported",
+			expInitialUpstreams: nil,
+		},
+		{
+			name: "ListenerAddrNoPurposes",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{},
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker:     &Worker{},
+			},
+			expErr:              true,
+			expErrStr:           "Listener specified without a purpose",
+			expInitialUpstreams: nil,
+		},
+		{
+			name: "ListenerAddrMismatchAddress",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{
+						{
+							Purpose: []string{"cluster"},
+							Address: "192.168.0.5:9201",
+						},
+					},
+				},
+				Controller: &Controller{},
+				Worker: &Worker{
+					InitialUpstreams: []string{"192.168.0.2:9201"},
+				},
+			},
+			expErr:              true,
+			expErrStr:           `When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`,
+			expInitialUpstreams: nil,
+		},
+		{
+			name: "ClusterAddrMismatchAddress",
+			inputConfig: &Config{
+				SharedConfig: &configutil.SharedConfig{
+					Listeners: []*listenerutil.ListenerConfig{},
+				},
+				Controller: &Controller{
+					PublicClusterAddr: "192.168.0.3:9201",
+				},
+				Worker: &Worker{
+					InitialUpstreams: []string{"192.168.0.2:9201"},
+				},
+			},
+			expErr:              true,
+			expErrStr:           `When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`,
+			expInitialUpstreams: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.stateFn != nil {
+				tt.stateFn(t)
+			}
+			err := tt.inputConfig.SetupWorkerInitialUpstreams()
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.inputConfig.Worker == nil {
+				require.Empty(t, tt.expInitialUpstreams)
+			} else {
+				require.ElementsMatch(t, tt.expInitialUpstreams, tt.inputConfig.Worker.InitialUpstreams)
+			}
 		})
 	}
 }

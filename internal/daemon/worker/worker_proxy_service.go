@@ -9,12 +9,17 @@ import (
 )
 
 type workerProxyServiceServer struct {
-	pbs.UnimplementedServerCoordinationServiceServer
-	pbs.UnimplementedSessionServiceServer
+	pbs.UnsafeServerCoordinationServiceServer
+	pbs.UnsafeSessionServiceServer
 
 	scsClient *atomic.Value
 	ssClient  pbs.SessionServiceClient
 }
+
+var (
+	_ pbs.ServerCoordinationServiceServer = (*workerProxyServiceServer)(nil)
+	_ pbs.SessionServiceServer            = (*workerProxyServiceServer)(nil)
+)
 
 func NewWorkerProxyServiceServer(
 	cc *grpc.ClientConn,
@@ -26,11 +31,6 @@ func NewWorkerProxyServiceServer(
 	}
 }
 
-var (
-	_ pbs.ServerCoordinationServiceServer = &workerProxyServiceServer{}
-	_ pbs.SessionServiceServer            = &workerProxyServiceServer{}
-)
-
 func (ws *workerProxyServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	resp, err := ws.scsClient.Load().(pbs.ServerCoordinationServiceClient).Status(ctx, req)
 
@@ -41,6 +41,10 @@ func (ws *workerProxyServiceServer) Status(ctx context.Context, req *pbs.StatusR
 	}
 
 	return resp, err
+}
+
+func (ws *workerProxyServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.ListHcpbWorkersRequest) (*pbs.ListHcpbWorkersResponse, error) {
+	return ws.scsClient.Load().(pbs.ServerCoordinationServiceClient).ListHcpbWorkers(ctx, req)
 }
 
 func (ws *workerProxyServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {

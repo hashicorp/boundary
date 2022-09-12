@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
-	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -33,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -93,12 +93,12 @@ var (
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
-	pbs.UnimplementedTargetServiceServer
+	pbs.UnsafeTargetServiceServer
 
-	repoFn           common.TargetRepoFactory
+	repoFn           target.RepositoryFactory
 	iamRepoFn        common.IamRepoFactory
 	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    common.SessionRepoFactory
+	sessionRepoFn    session.RepositoryFactory
 	pluginHostRepoFn common.PluginHostRepoFactory
 	staticHostRepoFn common.StaticRepoFactory
 	vaultCredRepoFn  common.VaultCredentialRepoFactory
@@ -106,14 +106,16 @@ type Service struct {
 	kmsCache         *kms.Kms
 }
 
+var _ pbs.TargetServiceServer = (*Service)(nil)
+
 // NewService returns a target service which handles target related requests to boundary.
 func NewService(
 	ctx context.Context,
 	kmsCache *kms.Kms,
-	repoFn common.TargetRepoFactory,
+	repoFn target.RepositoryFactory,
 	iamRepoFn common.IamRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
-	sessionRepoFn common.SessionRepoFactory,
+	sessionRepoFn session.RepositoryFactory,
 	pluginHostRepoFn common.PluginHostRepoFactory,
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
@@ -157,8 +159,6 @@ func NewService(
 	}, nil
 }
 
-var _ pbs.TargetServiceServer = Service{}
-
 // ListTargets implements the interface pbs.TargetServiceServer.
 func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (*pbs.ListTargetsResponse, error) {
 	const op = "targets.(Service).ListSessions"
@@ -180,34 +180,24 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		}
 	}
 
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	var err error
+	var authzScopes map[string]*scopes.ScopeInfo
+	if req.GetRecursive() {
+		authzScopes, err = authResults.ScopesAuthorizedForList(ctx, req.GetScopeId(), resource.Target)
+	} else {
+		authzScopes = map[string]*scopes.ScopeInfo{authResults.Scope.Id: authResults.Scope}
 	}
-
-	scopeResourceInfo, err := scopeids.GetListingResourceInformation(
-		ctx,
-		scopeids.GetListingResourceInformationInput{
-			IamRepoFn:                    s.iamRepoFn,
-			AuthResults:                  authResults,
-			RootScopeId:                  req.GetScopeId(),
-			Type:                         resource.Target,
-			Recursive:                    req.GetRecursive(),
-			AuthzProtectedEntityProvider: repo,
-			ActionSet:                    IdActions,
-		},
-	)
 	if err != nil {
 		return nil, err
 	}
 
-	// If no scopes match, return an empty response
-	if len(scopeResourceInfo.ScopeIds) == 0 ||
-		len(scopeResourceInfo.ResourceIds) == 0 {
+	// Get all user permissions for the requested scope(s).
+	userPerms := authResults.ACL().ListPermissions(authzScopes, resource.Target, IdActions)
+	if len(userPerms) == 0 {
 		return &pbs.ListTargetsResponse{}, nil
 	}
 
-	tl, err := s.listFromRepo(ctx, scopeResourceInfo.ResourceIds)
+	tl, err := s.listFromRepo(ctx, userPerms)
 	if err != nil {
 		return nil, err
 	}
@@ -219,19 +209,21 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err != nil {
 		return nil, err
 	}
+
 	finalItems := make([]*pb.Target, 0, len(tl))
-	res := perms.Resource{
-		Type: resource.Target,
-	}
 	for _, item := range tl {
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target}
+		outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
+
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+
 		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeResourceInfo.ScopeResourceMap[item.GetProjectId()].ScopeInfo))
+			outputOpts = append(outputOpts, handlers.WithScope(authzScopes[item.GetProjectId()]))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(scopeResourceInfo.ScopeResourceMap[item.GetProjectId()].Resources[item.GetPublicId()].AuthorizedActions.Strings()))
+			authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&pr)).Strings()
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
 		item, err := toProto(ctx, item, nil, nil, outputOpts...)
@@ -247,6 +239,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 			finalItems = append(finalItems, item)
 		}
 	}
+
 	return &pbs.ListTargetsResponse{Items: finalItems}, nil
 }
 
@@ -1101,12 +1094,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, targetIds []string) ([]target.Target, error) {
-	repo, err := s.repoFn()
+func (s Service) listFromRepo(ctx context.Context, perms []perms.Permission) ([]target.Target, error) {
+	repo, err := s.repoFn(target.WithPermissions(perms))
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListTargets(ctx, target.WithTargetIds(targetIds))
+	ul, err := repo.ListTargets(ctx)
 	if err != nil {
 		return nil, err
 	}

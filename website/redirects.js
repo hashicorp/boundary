@@ -176,6 +176,16 @@ module.exports = [
     destination: '/docs/concepts/filtering/worker-tags#target-worker-filtering',
     permanent: false,
   },
+  {
+    source: '/help/admin-ui/workers',
+    destination: '/docs/configuration/worker',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/workers/manage-workers-on-hcp',
+    destination: 'https://learn.hashicorp.com/tutorials/boundary/hcp-manage-workers',
+    permanent: false,
+  },
 
   ////////////////////////////////////////////
   // Adding sub-resources to existing resource

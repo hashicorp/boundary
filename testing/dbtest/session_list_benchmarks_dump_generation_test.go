@@ -33,9 +33,10 @@ import (
 // to predictable files for use in benchmarking.
 //
 // Each database dump contains:
-// * N number of sessions, with each session having M connections.
-// * P users, each owning an even amount of the sessions. All users
-//   use the password "testpassword" to login.
+//   - N number of sessions, with each session having M connections.
+//   - P users, each owning an even amount of the sessions. All users
+//     use the password "testpassword" to login.
+//
 // It is safe for users of these dumps to assume all of this, for the variables
 // N, M and P defined in the "scenarios" struct below.
 func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
@@ -125,7 +126,7 @@ func TestGenerateSessionBenchmarkTemplateDumps(t *testing.T) {
 			require.NoError(err)
 			pwRepo, err := password.NewRepository(rw, rw, kms)
 			require.NoError(err)
-			sessRepo, err := session.NewRepository(rw, rw, kms)
+			sessRepo, err := session.NewRepository(ctx, rw, rw, kms)
 			require.NoError(err)
 			connRepo, err := session.NewConnectionRepository(ctx, rw, rw, kms)
 			require.NoError(err)

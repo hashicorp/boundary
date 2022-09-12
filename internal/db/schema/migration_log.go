@@ -19,7 +19,7 @@ type LogEntry struct {
 
 // GetMigrationLog will retrieve the migration logs from the db for the last
 // migration. Once it's read the entries, it will delete them from the database.
-//  The WithDeleteLog option is supported and will remove all log entries when provided.
+// The WithDeleteLog option is supported and will remove all log entries when provided.
 func (b *Manager) GetMigrationLog(ctx context.Context, opt ...Option) ([]LogEntry, error) {
 	const op = "schema.GetMigrationLog"
 

@@ -56,10 +56,12 @@ func init() {
 
 // Service handles request as described by the pbs.GroupServiceServer interface.
 type Service struct {
-	pbs.UnimplementedGroupServiceServer
+	pbs.UnsafeGroupServiceServer
 
 	repoFn common.IamRepoFactory
 }
+
+var _ pbs.GroupServiceServer = (*Service)(nil)
 
 // NewService returns a group service which handles group related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
@@ -69,8 +71,6 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	}
 	return Service{repoFn: repo}, nil
 }
-
-var _ pbs.GroupServiceServer = Service{}
 
 // ListGroups implements the interface pbs.GroupServiceServer.
 func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
@@ -651,9 +651,9 @@ func toProto(ctx context.Context, in *iam.Group, members []*iam.GroupMember, opt
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetGroupRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.GroupPrefix)
 }

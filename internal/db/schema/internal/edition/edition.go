@@ -58,22 +58,22 @@ func (e Editions) Sort() {
 // lower number indicates a higher priority. New will panic if the structure
 // of the embed.FS is not correct. The files must be structured as follows:
 //
-//   <majorVersion>/
-//       <minorVersion>_<description>.up.sql
+//	<majorVersion>/
+//	    <minorVersion>_<description>.up.sql
 //
 // Where majorVersion and minorVersion are integers. There can be any number of
 // leading directories prior to the major versions. For example a directory
 // structure like the following is correct:
 //
-//   migrations/oss/postgres/
-//    0/
-//      01_initial.up.sql
-//    1/
-//      01_add_columns.up.sql
-//      02_rename_table.up.sql
-//    2/
-//      01_add_new_table.up.sql
-//      02_refactor_views.up.sql
+//	migrations/oss/postgres/
+//	 0/
+//	   01_initial.up.sql
+//	 1/
+//	   01_add_columns.up.sql
+//	   02_rename_table.up.sql
+//	 2/
+//	   01_add_new_table.up.sql
+//	   02_refactor_views.up.sql
 func New(name string, dialect Dialect, m embed.FS, priority int, opt ...Option) (Edition, error) {
 	var largestSchemaVersion int
 	migrations := make(migration.Migrations)

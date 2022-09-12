@@ -1096,6 +1096,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"workers create controller-led": func() (cli.Command, error) {
+			return &workerscmd.ControllerLedCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"workers read": func() (cli.Command, error) {
 			return &workerscmd.Command{
 				Command: base.NewCommand(ui),
@@ -1118,6 +1124,41 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
+			}, nil
+		},
+		"workers add-worker-tags": func() (cli.Command, error) {
+			return &workerscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-worker-tags",
+			}, nil
+		},
+		"workers set-worker-tags": func() (cli.Command, error) {
+			return &workerscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-worker-tags",
+			}, nil
+		},
+		"workers remove-worker-tags": func() (cli.Command, error) {
+			return &workerscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-worker-tags",
+			}, nil
+		},
+		"workers certificate-authority": func() (cli.Command, error) {
+			return &workerscmd.WorkerCACommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"workers certificate-authority read": func() (cli.Command, error) {
+			return &workerscmd.WorkerCACommand{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"workers certificate-authority reinitialize": func() (cli.Command, error) {
+			return &workerscmd.WorkerCACommand{
+				Command: base.NewCommand(ui),
+				Func:    "reinitialize",
 			}, nil
 		},
 	}

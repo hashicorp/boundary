@@ -17,8 +17,9 @@ import (
 // be nil.
 //
 // Example:
+//
 //	reader, _ := NewDerivedReader(wrapper, userId, jobId)
-// 	key := ed25519.GenerateKey(reader)
+//	key := ed25519.GenerateKey(reader)
 func NewDerivedReader(ctx context.Context, wrapper wrapping.Wrapper, lenLimit int64, salt, info []byte) (*io.LimitedReader, error) {
 	const op = "crypto.NewDerivedReader"
 	if wrapper == nil {

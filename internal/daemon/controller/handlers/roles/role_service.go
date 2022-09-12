@@ -60,10 +60,12 @@ func init() {
 
 // Service handles request as described by the pbs.RoleServiceServer interface.
 type Service struct {
-	pbs.UnimplementedRoleServiceServer
+	pbs.UnsafeRoleServiceServer
 
 	repoFn common.IamRepoFactory
 }
+
+var _ pbs.RoleServiceServer = (*Service)(nil)
 
 // NewService returns a role service which handles role related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
@@ -73,8 +75,6 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	}
 	return Service{repoFn: repo}, nil
 }
-
-var _ pbs.RoleServiceServer = Service{}
 
 // ListRoles implements the interface pbs.RoleServiceServer.
 func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs.ListRolesResponse, error) {

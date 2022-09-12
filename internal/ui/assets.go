@@ -13,6 +13,7 @@ import (
 const contentDir = ".tmp/boundary-ui/ui/admin/dist"
 
 // content is our static web server content.
+//
 //go:embed .tmp/boundary-ui/ui/admin/dist
 var content embed.FS
 
