@@ -483,22 +483,9 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	if c.Config.Controller != nil {
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
-		if err := c.StartController(c.Context); err != nil {
-			c.UI.Error(err.Error())
-			return base.CommandCliError
-		}
-	}
-
 	if c.Config.Worker != nil {
 		if err := c.StartWorker(); err != nil {
 			c.UI.Error(err.Error())
-			if c.controller != nil {
-				if err := c.controller.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-				}
-			}
 			return base.CommandCliError
 		}
 
@@ -517,13 +504,21 @@ func (c *Command) Run(args []string) int {
 					retErr = fmt.Errorf("Error shutting down worker: %w", err)
 				}
 				c.UI.Error(retErr.Error())
-				if c.controller != nil {
-					if err := c.controller.Shutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-					}
-				}
 				return base.CommandCliError
 			}
+		}
+	}
+
+	if c.Config.Controller != nil {
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
+		if err := c.StartController(c.Context); err != nil {
+			c.UI.Error(err.Error())
+			if c.worker != nil {
+				if err := c.worker.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with worker shutdown: %w", err).Error())
+				}
+			}
+			return base.CommandCliError
 		}
 	}
 

@@ -580,14 +580,6 @@ func TestHealthEndpointLifecycle(t *testing.T) {
 	rsp, err := http.Get("http://" + tc.Config().Listeners[0].OpsListener.Addr().String() + "/health")
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, rsp.StatusCode)
-
-	// Start replying with 503 Service Unavailable from the health endpoint.
-	tc.Controller().HealthService.StartServiceUnavailableReplies()
-
-	// Assert we're receiving 503 Service Unavailable now instead of 200 OK.
-	rsp, err = http.Get("http://" + tc.Config().Listeners[0].OpsListener.Addr().String() + "/health")
-	require.NoError(t, err)
-	require.Equal(t, http.StatusServiceUnavailable, rsp.StatusCode)
 }
 
 func TestWaitIfHealthExists(t *testing.T) {

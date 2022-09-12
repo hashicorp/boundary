@@ -125,7 +125,6 @@ func (s *Server) WaitIfHealthExists(d time.Duration, ui cli.Ui) {
 	// This is to give time for health to report unhealthy and for external
 	// systems to pick up on that.
 	ui.Output(fmt.Sprintf("==> Health is enabled, waiting %s before shutdown", d.String()))
-	s.controller.HealthService.StartServiceUnavailableReplies()
 	<-time.After(d)
 }
 

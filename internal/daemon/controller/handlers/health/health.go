@@ -1,7 +1,6 @@
 package health
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"sync"
