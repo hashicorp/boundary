@@ -287,7 +287,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 	// Everything after is done with normal database URL and is affecting actual data
-	if err := c.ConnectToDatabase(c.Context, dialect); err != nil {
+	if err := c.OpenAndSetServerDatabase(c.Context, dialect); err != nil {
 		c.UI.Error(fmt.Errorf("Error connecting to database after migrations: %w", err).Error())
 		return base.CommandCliError
 	}
