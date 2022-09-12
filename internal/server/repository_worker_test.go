@@ -863,18 +863,6 @@ func TestRepository_CreateWorker(t *testing.T) {
 			wantErrContains: "testNewIdFn-error",
 		},
 		{
-			name: "invalid-state-error",
-			setup: func() *server.Worker {
-				w := server.NewWorker(scope.Global.String())
-				return w
-			},
-			repo:            testRepo,
-			opt:             []server.Option{server.WithOperationalState("fake-state")},
-			wantErr:         true,
-			wantErrIs:       errors.InvalidParameter,
-			wantErrContains: "server.CreateWorker: invalid operational state: parameter violation: error #100",
-		},
-		{
 			name: "create-error",
 			setup: func() *server.Worker {
 				w := server.NewWorker(scope.Global.String())
