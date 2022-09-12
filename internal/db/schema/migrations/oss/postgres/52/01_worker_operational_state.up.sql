@@ -7,7 +7,7 @@ create table server_worker_operational_state_enm (
       state in (
         'active',
         'shutdown',
-        'unsupported'
+        'unknown'
       )
     )
 );
@@ -17,7 +17,7 @@ comment on table server_worker_operational_state_enm is
 insert into server_worker_operational_state_enm (state) values
   ('active'),
   ('shutdown'),
-  ('unsupported');
+  ('unknown');
 
 alter table server_worker
   add column operational_state text not null default 'active'

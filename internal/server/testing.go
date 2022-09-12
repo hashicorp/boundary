@@ -118,8 +118,7 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 		WithName(name),
 		WithAddress(address),
 		WithDescription(opts.withDescription),
-		WithReleaseVersion(relVer),
-		WithOperationalState(opts.withOperationalState))
+		WithReleaseVersion(relVer))
 	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)

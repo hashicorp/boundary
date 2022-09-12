@@ -36,10 +36,10 @@ func (t WorkerType) Valid() bool {
 
 func (t WorkerType) String() string {
 	switch t {
-	case UnknownWorkerType, KmsWorkerType, PkiWorkerType:
+	case KmsWorkerType, PkiWorkerType:
 		return string(t)
 	}
-	return ""
+	return string(UnknownWorkerType)
 }
 
 type workerAuthWorkerId struct {
@@ -56,10 +56,10 @@ func ValidOperationalState(s string) bool {
 
 func (t OperationalState) String() string {
 	switch t {
-	case ActiveOperationalState, ShutdownOperationalState, UnknownOperationalState:
+	case ActiveOperationalState, ShutdownOperationalState:
 		return string(t)
 	}
-	return ""
+	return string(UnknownOperationalState)
 }
 
 // AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib

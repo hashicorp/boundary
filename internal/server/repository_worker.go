@@ -502,7 +502,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 // included).  Currently, a worker can only be created in the global scope
 //
 // Options supported: WithNewIdFunc (this option is likely only useful for
-// tests), WithOperationalState, WithFetchNodeCredentialsRequest,
+// tests), WithFetchNodeCredentialsRequest,
 // WithCreateControllerLedActivationToken. The latter two are mutually
 // exclusive.
 func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
@@ -525,16 +525,9 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "last status time is not nil")
 	case opts.WithFetchNodeCredentialsRequest != nil && opts.WithCreateControllerLedActivationToken:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "fetch node credentials request and controller led activation token option cannot both be set")
-	case opts.withOperationalState != "" && !ValidOperationalState(opts.withOperationalState):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid operational state")
 	}
 
-	switch {
-	case opts.withOperationalState != "":
-		worker.OperationalState = opts.withOperationalState
-	default:
-		worker.OperationalState = UnknownOperationalState.String()
-	}
+	worker.OperationalState = UnknownOperationalState.String()
 
 	var err error
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {

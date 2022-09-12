@@ -785,7 +785,7 @@ func TestWorkerOperationalStatus(t *testing.T) {
 			wantState: "shutdown",
 		},
 		{
-			name:    "No operational state- default to active",
+			name:    "No operational state- default to unknown",
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				WorkerStatus: &pb.ServerWorkerStatus{
@@ -794,7 +794,7 @@ func TestWorkerOperationalStatus(t *testing.T) {
 					Address:  worker1.GetAddress(),
 				},
 			},
-			wantState: "active",
+			wantState: "unknown",
 		},
 	}
 
