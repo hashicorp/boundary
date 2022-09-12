@@ -27,7 +27,7 @@ alter table server_worker
       on update cascade;
 
 drop view server_worker_aggregate;
--- Updates view created in 34/04_views.up.sql  to add the worker operational state
+-- Updates view created in 51/01_server_worker_release_version.up.sql to add the worker operational state
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (
   select
@@ -57,6 +57,7 @@ select
   w.version,
   w.last_status_time,
   w.type,
+  w.release_version,
   w.operational_state,
   cc.count as active_connection_count,
   -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
