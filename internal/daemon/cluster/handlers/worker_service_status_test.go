@@ -789,12 +789,25 @@ func TestWorkerOperationalStatus(t *testing.T) {
 			wantErr: false,
 			req: &pbs.StatusRequest{
 				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId:       worker1.GetPublicId(),
+					Name:           worker1.GetName(),
+					Address:        worker1.GetAddress(),
+					ReleaseVersion: "Boundary v0.11.0",
+				},
+			},
+			wantState: "unknown",
+		},
+		{
+			name:    "Old worker (empty release version) and  no operational state- default to active",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
 					PublicId: worker1.GetPublicId(),
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
 			},
-			wantState: "unknown",
+			wantState: "active",
 		},
 	}
 
