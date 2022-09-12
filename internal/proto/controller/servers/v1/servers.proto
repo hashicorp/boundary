@@ -32,4 +32,7 @@ message ServerWorkerStatus {
 
   // The version of Boundary the worker binary is running
   string release_version = 60 [json_name = "release_version"]; // @gotags: `class:"public"`
+
+  // The state of the worker, to indicate if the worker is active or in shutdown.
+  string operational_state = 70; // @gotags: `class:"public"`
 }
