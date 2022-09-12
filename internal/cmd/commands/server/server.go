@@ -402,7 +402,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		sm, err := acquireDatabaseSharedLock(c.Context, c.Server.Database)
+		sm, err := acquireSchemaManager(c.Context, c.Server.Database, c.Config.Controller.Database.SkipSharedLockAcquisition)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Failed to acquire database shared lock: %w", err).Error())
 			return base.CommandCliError
@@ -432,6 +432,13 @@ func (c *Command) Run(args []string) int {
 		if err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
+		}
+
+		if c.Config.Controller.Database.SkipSharedLockAcquisition {
+			if err := c.schemaManager.Close(c.Context); err != nil {
+				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
+				return base.CommandCliError
+			}
 		}
 	}
 
@@ -874,7 +881,7 @@ func (c *Command) reloadControllerDatabase(newConfig *config.Config) error {
 	}
 
 	// Acquire new lock on the new database and verify that it's in a good state to be used.
-	newDbSchemaManager, err := acquireDatabaseSharedLock(c.Context, newDb)
+	newDbSchemaManager, err := acquireSchemaManager(c.Context, newDb, c.Config.Controller.Database.SkipSharedLockAcquisition)
 	if err != nil {
 		_ = newDb.Close(c.Context)
 		return fmt.Errorf("failed to acquire shared lock on new database: %w", err)
@@ -885,6 +892,12 @@ func (c *Command) reloadControllerDatabase(newConfig *config.Config) error {
 		_ = newDbSchemaManager.Close(c.Context)
 		_ = newDb.Close(c.Context)
 		return fmt.Errorf("invalid new database state: %w", err)
+	}
+
+	if newConfig.Controller.Database.SkipSharedLockAcquisition {
+		if err := newDbSchemaManager.Close(c.Context); err != nil {
+			return fmt.Errorf("unable to release shared lock to the database for new schema manager: %w", err)
+		}
 	}
 
 	oldDbSchemaManager := c.schemaManager
@@ -907,10 +920,10 @@ func (c *Command) reloadControllerDatabase(newConfig *config.Config) error {
 	return nil
 }
 
-// acquireDatabaseSharedLock uses the schema manager to acquire a shared lock on
+// acquireSchemaManager returns a schema manager and generally acquires a shared lock on
 // the database. This is done as a mechanism to disallow running migration commands
 // while the database is in use.
-func acquireDatabaseSharedLock(ctx context.Context, db *db.DB) (*schema.Manager, error) {
+func acquireSchemaManager(ctx context.Context, db *db.DB, skipSharedLock bool) (*schema.Manager, error) {
 	if db == nil {
 		return nil, fmt.Errorf("nil database")
 	}
@@ -926,9 +939,11 @@ func acquireDatabaseSharedLock(ctx context.Context, db *db.DB) (*schema.Manager,
 	}
 
 	// This is an advisory locks on the DB which is released when the db session ends.
-	err = manager.SharedLock(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to gain shared access to the database: %w", err)
+	if !skipSharedLock {
+		err = manager.SharedLock(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to gain shared access to the database: %w", err)
+		}
 	}
 
 	return manager, nil
