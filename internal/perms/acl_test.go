@@ -619,18 +619,18 @@ func TestACL_ListPermissions(t *testing.T) {
 				{
 					scope: "o_1",
 					grants: []string{
-						"id=*;type=session;actions=read:self",
-						"id=*;type=*;actions=list,read",
+						"id=*;type=*;actions=*",
+						"id=*;type=session;actions=cancel:self,list,read:self",
 					},
 				},
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
-			resourceType: resource.Target,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			resourceType: resource.Session,
+			actionSet:    action.ActionSet{action.NoOp, action.Read, action.ReadSelf, action.Cancel, action.CancelSelf},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
-					Resource:    resource.Target,
+					Resource:    resource.Session,
 					Action:      action.List,
 					ResourceIds: nil,
 					OnlySelf:    false,
