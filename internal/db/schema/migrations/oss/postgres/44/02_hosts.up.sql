@@ -70,8 +70,8 @@ begin;
   $$ language plpgsql;
 
   -- update views
-  -- Replace view from 20/10_plugin_host_secrets_hmac.up.sql
   drop view host_plugin_catalog_with_secret;
+  -- Recreated in 51/02_add_data_key_foreign_key_references.up.sql
   create view host_plugin_catalog_with_secret as
   select
     hc.public_id,
