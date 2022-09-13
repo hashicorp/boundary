@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/internal/gen/controller/ops/services"
+	"github.com/hashicorp/boundary/internal/gen/ops/services"
 	pbhealth "github.com/hashicorp/boundary/internal/gen/worker/health"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

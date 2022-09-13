@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package controller.ops.services.v1;
+package ops.services.v1;
 
 import "google/api/annotations.proto";
 import "worker/health/v1/health_service.proto";
 
-option go_package = "github.com/hashicorp/boundary/internal/gen/controller/ops/services;services";
+option go_package = "github.com/hashicorp/boundary/internal/gen/ops/services;services";
 
 service HealthService {
   rpc GetHealth(GetHealthRequest) returns (GetHealthResponse) {

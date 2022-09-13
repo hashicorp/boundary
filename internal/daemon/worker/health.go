@@ -1,31 +1,65 @@
 package worker
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
 	pbhealth "github.com/hashicorp/boundary/internal/gen/worker/health"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/util"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var healthCheckMarshaler = &runtime.JSONPb{
-	MarshalOptions: protojson.MarshalOptions{EmitUnpopulated: true},
+	MarshalOptions: protojson.MarshalOptions{
+		// Ensures the json marshaler uses the snake casing as defined in the proto field names.
+		UseProtoNames: true,
+		// Do not add fields set to zero value to json.
+		EmitUnpopulated: false,
+	},
+	UnmarshalOptions: protojson.UnmarshalOptions{
+		// Allows requests to contain unknown fields.
+		DiscardUnknown: true,
+	},
+}
+
+type workerHealthServer struct {
+	worker *Worker
+	opsservices.UnimplementedHealthServiceServer
+}
+
+// GetHealth satisfies the opsservices.HealthServiceServer interface.
+// This implementation will always return 200.
+func (w workerHealthServer) GetHealth(ctx context.Context, req *opsservices.GetHealthRequest) (*opsservices.GetHealthResponse, error) {
+	resp := &opsservices.GetHealthResponse{}
+	if req.GetWorkerInfo() {
+		resp.WorkerProcessInfo = w.worker.HealthInformation()
+	}
+	return resp, nil
 }
 
 // HealthInformation returns the current worker process health information.
 func (w *Worker) HealthInformation() *pbhealth.HealthInfo {
+	state := server.UnknownOperationalState
+	if v := w.operationalState.Load(); !util.IsNil(v) {
+		state = v.(server.OperationalState)
+	}
+	healthInfo := &pbhealth.HealthInfo{
+		State: state.String(),
+	}
+
 	if w.sessionManager == nil {
 		// This is assigned in worker Start() which is called prior to the ops
 		// listener so this should always be set.  This check is here just to
 		// be safe in case that changes.
-		return &pbhealth.HealthInfo{}
+		return healthInfo
 	}
-	// TODO(toddknight): Attach the worker's current state.
+
 	sessionConns := make(map[string]uint32)
 	w.sessionManager.ForEachLocalSession(
 		func(s session.Session) bool {
@@ -34,42 +68,23 @@ func (w *Worker) HealthInformation() *pbhealth.HealthInfo {
 			}
 			return true
 		})
-	return &pbhealth.HealthInfo{
-		ActiveSessionCount: wrapperspb.UInt32(uint32(len(sessionConns))),
-		SessionConnections: sessionConns,
-	}
+	healthInfo.ActiveSessionCount = wrapperspb.UInt32(uint32(len(sessionConns)))
+	healthInfo.SessionConnections = sessionConns
+	return healthInfo
 }
 
-// HealthHandler returns an http.Handler that can be used for handling
-// health check requests for just the worker.  The worker will always
-// return healthy as long as the process is running
-func (w *Worker) HealthHandler() http.Handler {
-	const op = "worker.(Worker).HealthHandler"
-	return http.HandlerFunc(func(wr http.ResponseWriter, r *http.Request) {
-		// Set the Cache-Control header for all responses returned
-		wr.Header().Set("Cache-Control", "no-store")
-		const (
-			workerInfoQueryParam = "worker_info"
-			workerProcessInfoKey = "worker_process_info"
-		)
-		ctx := r.Context()
-		if r.Method != http.MethodGet {
-			wr.WriteHeader(http.StatusMethodNotAllowed)
-			event.WriteError(ctx, op, fmt.Errorf("received a non get request method"))
-			return
-		}
-		respJson := make(map[string]*pbhealth.HealthInfo)
-		if s := r.URL.Query().Get(workerInfoQueryParam); s == "1" || strings.EqualFold(s, "true") {
-			respJson[workerProcessInfoKey] = w.HealthInformation()
-		}
-		b, err := healthCheckMarshaler.Marshal(respJson)
-		if err != nil {
-			wr.WriteHeader(http.StatusInternalServerError)
-			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to marshal health endpoint json"))
-			return
-		}
+// GetHealthHandler returns an http.Handler that can be used for handling
+// health check requests for just the worker.
+func (w *Worker) GetHealthHandler() (http.Handler, error) {
+	const op = "worker.(Worker).GetHealthHandler"
+	mux := runtime.NewServeMux(
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
+			Marshaler: healthCheckMarshaler,
+		}))
+	err := opsservices.RegisterHealthServiceHandlerServer(w.baseContext, mux, workerHealthServer{worker: w})
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to register health service handler: %w", op, err)
+	}
 
-		wr.Header().Add("Content-Type", "application/json")
-		wr.Write(b)
-	})
+	return mux, nil
 }

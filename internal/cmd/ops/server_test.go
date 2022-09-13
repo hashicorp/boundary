@@ -24,8 +24,9 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/ops/services"
+	pbs "github.com/hashicorp/boundary/internal/gen/ops/services"
 	pbhealth "github.com/hashicorp/boundary/internal/gen/worker/health"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
@@ -711,6 +712,7 @@ func TestCreateOpsHandler(t *testing.T) {
 				pbResp := &pbs.GetHealthResponse{}
 				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
+					State:              server.ActiveOperationalState.String(),
 					ActiveSessionCount: wrapperspb.UInt32(0),
 				}}
 				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
@@ -734,6 +736,7 @@ func TestCreateOpsHandler(t *testing.T) {
 				pbResp := &pbs.GetHealthResponse{}
 				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
+					State:              server.ActiveOperationalState.String(),
 					ActiveSessionCount: wrapperspb.UInt32(0),
 				}}
 				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))

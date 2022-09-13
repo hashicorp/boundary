@@ -129,12 +129,11 @@ func (s *Server) WaitIfHealthExists(d time.Duration, ui cli.Ui) {
 }
 
 func createOpsHandler(lncfg *listenerutil.ListenerConfig, c *controller.Controller, w *worker.Worker) (http.Handler, error) {
-	const op = "ops.createOpsHandler"
 	mux := http.NewServeMux()
 	var h http.Handler
+	var err error
 	switch {
 	case c != nil && c.HealthService != nil:
-		var err error
 		h, err = c.GetHealthHandler(lncfg)
 		if err != nil {
 			return nil, err
@@ -143,7 +142,10 @@ func createOpsHandler(lncfg *listenerutil.ListenerConfig, c *controller.Controll
 			c.HealthService.ReportCurrentWorkerConnections(w.HealthInformation)
 		}
 	case w != nil:
-		h = w.HealthHandler()
+		h, err = w.GetHealthHandler()
+		if err != nil {
+			return nil, err
+		}
 	}
 	if h != nil {
 		// Shouldn't happen since this function should only be called when

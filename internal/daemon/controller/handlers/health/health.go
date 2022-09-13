@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/ops/services"
+	pbs "github.com/hashicorp/boundary/internal/gen/ops/services"
 	pbhealth "github.com/hashicorp/boundary/internal/gen/worker/health"
 )
 
