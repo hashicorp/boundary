@@ -8,7 +8,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Workers: Added the ability to read and reinitialize the Worker certificate authority ([PR1](https://github.com/hashicorp/boundary/pull/2312), [PR2](https://github.com/hashicorp/boundary/pull/2387))
 * Workers: Return the worker Boundary binary version on worker list and read ([PR](https://github.com/hashicorp/boundary/pull/2377))
 
-## 0.10.4 (Unreleased)
+## 0.10.4 (2022/09/13)
 
 ### New and Improved
 
@@ -28,6 +28,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   This allows a worker to reconnect to controllers if the full set of
   controllers has been changed over at the same time, without having to restart
   the worker. ([PR](https://github.com/hashicorp/boundary/pull/2417))
+* Database URL reloading on `SIGHUP`: Controllers will now re-read the database
+    url value from the configuration file when given a SIGHUP. This is
+    particularly useful for allowing database credentials to rotate and
+    signaling the controller to use the new credentials without the need for a
+    restart. ([PR](https://github.com/hashicorp/boundary/pull/2422))
+* Additional improvements to response time for listing sessions and targets
+    ([PR](https://github.com/hashicorp/boundary/pull/2342)).
 
 ### Bug Fixes
 
