@@ -539,6 +539,96 @@ func TestParsingName(t *testing.T) {
 	}
 }
 
+func TestParsingSchedulerIntervals(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name                string
+		config              string
+		wantErr             bool
+		wantMonitorInterval time.Duration
+		wantRunJobInterval  time.Duration
+	}{
+		{
+			name: "invalid-run-interval",
+			config: `
+controller {
+  scheduler {
+    job_run_interval = "hello"
+  }
+}
+`,
+			wantErr: true,
+		},
+		{
+			name: "invalid-monitor-interval",
+			config: `
+controller {
+  scheduler {
+    monitor_interval = "hello"
+  }
+}
+`,
+			wantErr: true,
+		},
+		{
+			name:                "valid-undefined",
+			config:              `controller { scheduler {} }`,
+			wantMonitorInterval: 0,
+			wantRunJobInterval:  0,
+		},
+		{
+			name: "run-job-interval",
+			config: `
+controller {
+  scheduler {
+    job_run_interval = "10m"
+  }
+}
+`,
+			wantMonitorInterval: 0,
+			wantRunJobInterval:  10 * time.Minute,
+		},
+		{
+			name: "monitor-interval",
+			config: `
+controller {
+  scheduler {
+    monitor_interval = "6h"
+  }
+}
+`,
+			wantMonitorInterval: 6 * time.Hour,
+			wantRunJobInterval:  0,
+		},
+		{
+			name: "both",
+			config: `
+controller {
+  scheduler {
+    monitor_interval = "7d"
+    job_run_interval = "20s"
+  }
+}
+`,
+			wantMonitorInterval: 7 * 24 * time.Hour,
+			wantRunJobInterval:  20 * time.Second,
+		},
+	}
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := Parse(tt.config)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantMonitorInterval, out.Controller.Scheduler.MonitorIntervalDuration)
+			assert.Equal(t, tt.wantRunJobInterval, out.Controller.Scheduler.JobRunIntervalDuration)
+		})
+	}
+}
+
 func TestWorkerTags(t *testing.T) {
 	defaultStateFn := func(t *testing.T, tags string) {
 		t.Setenv("BOUNDARY_WORKER_TAGS", tags)

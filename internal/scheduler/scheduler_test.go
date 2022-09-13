@@ -28,10 +28,11 @@ func TestScheduler_New(t *testing.T) {
 	}
 
 	type args struct {
-		serverId    string
-		jobRepo     jobRepoFactory
-		runLimit    int
-		runInterval time.Duration
+		serverId        string
+		jobRepo         jobRepoFactory
+		runLimit        int
+		runInterval     time.Duration
+		monitorInterval time.Duration
 	}
 	tests := []struct {
 		name        string
@@ -64,9 +65,10 @@ func TestScheduler_New(t *testing.T) {
 				jobRepo:  jobRepoFn,
 			},
 			want: args{
-				serverId:    "test-server",
-				runLimit:    1,
-				runInterval: time.Minute,
+				serverId:        "test-server",
+				runLimit:        defaultRunJobsLimit,
+				runInterval:     defaultRunJobsInterval,
+				monitorInterval: defaultMonitorInterval,
 			},
 		},
 		{
@@ -79,9 +81,10 @@ func TestScheduler_New(t *testing.T) {
 				WithRunJobsInterval(time.Hour),
 			},
 			want: args{
-				serverId:    "test-server",
-				runLimit:    1,
-				runInterval: time.Hour,
+				serverId:        "test-server",
+				runLimit:        defaultRunJobsLimit,
+				monitorInterval: defaultMonitorInterval,
+				runInterval:     time.Hour,
 			},
 		},
 		{
@@ -94,9 +97,10 @@ func TestScheduler_New(t *testing.T) {
 				WithRunJobsLimit(-1),
 			},
 			want: args{
-				serverId:    "test-server",
-				runLimit:    -1,
-				runInterval: time.Minute,
+				serverId:        "test-server",
+				runLimit:        -1,
+				runInterval:     defaultRunJobsInterval,
+				monitorInterval: defaultMonitorInterval,
 			},
 		},
 		{
@@ -109,13 +113,30 @@ func TestScheduler_New(t *testing.T) {
 				WithRunJobsLimit(20),
 			},
 			want: args{
-				serverId:    "test-server",
-				runLimit:    20,
-				runInterval: time.Minute,
+				serverId:        "test-server",
+				runLimit:        20,
+				runInterval:     defaultRunJobsInterval,
+				monitorInterval: defaultMonitorInterval,
 			},
 		},
 		{
-			name: "valid-with-limit-and-interval",
+			name: "valid-with-monitor",
+			args: args{
+				serverId: "test-server",
+				jobRepo:  jobRepoFn,
+			},
+			opts: []Option{
+				WithMonitorInterval(time.Hour),
+			},
+			want: args{
+				serverId:        "test-server",
+				runLimit:        defaultRunJobsLimit,
+				runInterval:     defaultRunJobsInterval,
+				monitorInterval: time.Hour,
+			},
+		},
+		{
+			name: "valid-with-all",
 			args: args{
 				serverId: "test-server",
 				jobRepo:  jobRepoFn,
@@ -123,11 +144,13 @@ func TestScheduler_New(t *testing.T) {
 			opts: []Option{
 				WithRunJobsInterval(time.Hour),
 				WithRunJobsLimit(20),
+				WithMonitorInterval(2 * time.Hour),
 			},
 			want: args{
-				serverId:    "test-server",
-				runLimit:    20,
-				runInterval: time.Hour,
+				serverId:        "test-server",
+				runLimit:        20,
+				runInterval:     time.Hour,
+				monitorInterval: 2 * time.Hour,
 			},
 		},
 	}
@@ -149,6 +172,7 @@ func TestScheduler_New(t *testing.T) {
 			assert.Equal(tt.want.serverId, got.serverId)
 			assert.Equal(tt.want.runLimit, got.runJobsLimit)
 			assert.Equal(tt.want.runInterval, got.runJobsInterval)
+			assert.Equal(tt.want.monitorInterval, got.monitorInterval)
 			assert.NotNil(got.jobRepoFn)
 			assert.NotNil(got.runningJobs)
 			assert.NotNil(got.registeredJobs)
