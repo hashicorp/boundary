@@ -2,45 +2,50 @@ package oss_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
 )
 
-func TestMigrations_DeprecatedGrants(t *testing.T) {
-	const (
-		priorMigration   = 51001
-		currentMigration = 52001
-	)
+const (
+	insertWorkerQuery = "insert into server_worker (public_id, scope_id, type) values ($1, 'global', 'pki')"
+	selectWorkerQuery = "select public_id, operational_state from server_worker where public_id = $1"
+)
 
+type testWorker struct {
+	OperationalState string
+	PublicId         string
+}
+
+func Test_WorkerOperationalStateChanges(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	require := require.New(t)
+	const priorMigration = 51001
+	const serverEnumMigration = 52001
 	dialect := dbtest.Postgres
+	ctx := context.Background()
 
 	c, u, _, err := dbtest.StartUsingTemplate(dialect, dbtest.WithTemplate(dbtest.Template1))
-	require.NoError(t, err)
+	require.NoError(err)
 	t.Cleanup(func() {
-		require.NoError(t, c())
+		require.NoError(c())
 	})
 	d, err := common.SqlOpen(dialect, u)
-	require.NoError(t, err)
+	require.NoError(err)
 
 	// migration to the prior migration (before the one we want to test)
 	m, err := schema.NewManager(ctx, schema.Dialect(dialect), d, schema.WithEditions(
 		schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": priorMigration}),
 	))
-	require.NoError(t, err)
+	require.NoError(err)
 
 	_, err = m.ApplyMigrations(ctx)
-	require.NoError(t, err)
+	require.NoError(err)
 	state, err := m.CurrentState(ctx)
-	require.NoError(t, err)
+	require.NoError(err)
 	want := &schema.State{
 		Initialized: true,
 		Editions: []schema.EditionState{
@@ -52,88 +57,45 @@ func TestMigrations_DeprecatedGrants(t *testing.T) {
 			},
 		},
 	}
-	require.Equal(t, want, state)
+	require.Equal(want, state)
 
-	// Get a connection
-	dbType, err := db.StringToDbType(dialect)
-	require.NoError(t, err)
-	conn, err := db.Open(ctx, dbType, u)
-	require.NoError(t, err)
-
-	// Create project
-	wrapper := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-	_, proj := iam.TestScopes(t, iamRepo)
-
-	role := iam.TestRole(t, conn, proj.GetPublicId())
-
-	initialGrants := map[string]bool{
-		"id=*;type=target;actions=read,authorize-session,add-host-sets,add-host-sets":            true,
-		"id=*;type=target;actions=set-host-sets,update,delete,remove-credential-libraries":       true,
-		"id=*;type=host-set;actions=read,update,set-credential-sources,set-credential-libraries": true,
-		"id=*;type=target;actions=add-host-sources,remove-host-sets,add-credential-libraries":    true,
-	}
-
-	// Insert grants
-	for grant := range initialGrants {
-		iam.TestRoleGrant(t, conn, role.GetPublicId(), grant)
-	}
-
-	// Fetch the role
-	_, _, initialRoleGrants, err := iamRepo.LookupRole(ctx, role.GetPublicId())
-	require.NoError(t, err)
-	require.Len(t, initialRoleGrants, len(initialGrants))
-
-	// Initial grant check
-	for _, grant := range initialRoleGrants {
-		if !initialGrants[grant.RawGrant] {
-			require.FailNow(t, "raw grant not found", grant.RawGrant)
-		}
-	}
+	// Seed the data
+	execResult, err := d.ExecContext(ctx, insertWorkerQuery, "test-worker")
+	require.NoError(err)
+	rowsAffected, err := execResult.RowsAffected()
+	require.NoError(err)
+	require.Equal(int64(1), rowsAffected)
 
 	// now we're ready for the migration we want to test.
 	m, err = schema.NewManager(ctx, schema.Dialect(dialect), d, schema.WithEditions(
-		schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": currentMigration}),
+		schema.TestCreatePartialEditions(schema.Dialect(dialect), schema.PartialEditions{"oss": serverEnumMigration}),
 	))
-	require.NoError(t, err)
+	require.NoError(err)
 
 	_, err = m.ApplyMigrations(ctx)
-	require.NoError(t, err)
+	require.NoError(err)
 	state, err = m.CurrentState(ctx)
-	require.NoError(t, err)
+	require.NoError(err)
+
 	want = &schema.State{
 		Initialized: true,
 		Editions: []schema.EditionState{
 			{
 				Name:                  "oss",
-				BinarySchemaVersion:   currentMigration,
-				DatabaseSchemaVersion: currentMigration,
+				BinarySchemaVersion:   serverEnumMigration,
+				DatabaseSchemaVersion: serverEnumMigration,
 				DatabaseSchemaState:   schema.Equal,
 			},
 		},
 	}
-	require.Equal(t, want, state)
+	require.Equal(want, state)
 
-	updatedGrants := make(map[string]bool, len(initialGrants))
-	for grant := range initialGrants {
-		updatedGrant := strings.ReplaceAll(grant, "add-host-sets", "add-host-sources")
-		updatedGrant = strings.ReplaceAll(updatedGrant, "set-host-sets", "set-host-sources")
-		updatedGrant = strings.ReplaceAll(updatedGrant, "remove-host-sets", "remove-host-sources")
-		updatedGrant = strings.ReplaceAll(updatedGrant, "add-credential-libraries", "add-credential-sources")
-		updatedGrant = strings.ReplaceAll(updatedGrant, "set-credential-libraries", "set-credential-sources")
-		updatedGrant = strings.ReplaceAll(updatedGrant, "remove-credential-libraries", "remove-credential-sources")
-		updatedGrants[updatedGrant] = true
-	}
-
-	// Fetch the role again
-	_, _, updatedRoleGrants, err := iamRepo.LookupRole(ctx, role.GetPublicId())
-	require.NoError(t, err)
-	require.Len(t, updatedRoleGrants, len(updatedGrants))
-
-	// Check updated grants
-	for _, grant := range updatedRoleGrants {
-		if !updatedGrants[grant.RawGrant] {
-			require.FailNow(t, "raw grant not found in migrated state", grant.RawGrant)
-		}
-	}
+	// Assert worker has been migrated and received default state of 'active'
+	actualWorker := new(testWorker)
+	row := d.QueryRowContext(ctx, selectWorkerQuery, "test-worker")
+	require.NoError(row.Scan(
+		&actualWorker.PublicId,
+		&actualWorker.OperationalState,
+	))
+	require.Equal("active", actualWorker.OperationalState)
 }

@@ -43,11 +43,14 @@ type options struct {
 	withStopAfter                          uint
 	WithCreateControllerLedActivationToken bool
 	withReleaseVersion                     string
+	withOperationalState                   string
+	withExcludeShutdownWorkers             bool
 }
 
 func getDefaultOptions() options {
 	return options{
-		withNewIdFunc: newWorkerId,
+		withNewIdFunc:        newWorkerId,
+		withOperationalState: ActiveOperationalState.String(),
 	}
 }
 
@@ -202,5 +205,19 @@ func WithCreateControllerLedActivationToken(with bool) Option {
 func WithReleaseVersion(version string) Option {
 	return func(o *options) {
 		o.withReleaseVersion = version
+	}
+}
+
+// WithOperationalState provides an optional operational state.
+func WithOperationalState(state string) Option {
+	return func(o *options) {
+		o.withOperationalState = state
+	}
+}
+
+// WithExcludeShutdownWorkers provides an optional to filter out workers in shutdown
+func WithExcludeShutdownWorkers(exclude bool) Option {
+	return func(o *options) {
+		o.withExcludeShutdownWorkers = exclude
 	}
 }

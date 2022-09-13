@@ -164,7 +164,7 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 // then the last status update time is ignored.
 // If WithLimit < 0, then unlimited results are returned. If WithLimit == 0, then
 // default limits are used for results.
-// Also supports: WithWorkerType
+// Also supports: WithWorkerType, WithExcludeShutdownWorkers
 func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
 	const op = "server.(Repository).ListWorkers"
 	switch {
@@ -195,6 +195,11 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 		whereArgs = append(whereArgs, opts.withWorkerType.String())
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown worker type %v", opts.withWorkerType))
+	}
+
+	if opts.withExcludeShutdownWorkers {
+		where = append(where, "operational_state not in (?)")
+		whereArgs = append(whereArgs, ShutdownOperationalState.String())
 	}
 
 	limit := r.defaultLimit
@@ -249,6 +254,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
 	case worker.GetName() != "" && opts.withKeyId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both set; no more than one is allowed")
+	case worker.OperationalState == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker operational state is empty")
 	}
 
 	var workerId string
@@ -294,7 +301,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				// "description" since we want description changes for PKI-based
 				// workers to come via API only. We can't really guard on this
 				// in the DB so we need to be sure to not include it here.
-				n, err := w.Update(ctx, workerClone, []string{"address", "ReleaseVersion"}, nil)
+				n, err := w.Update(ctx, workerClone, []string{"address", "ReleaseVersion", "OperationalState"}, nil)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update status of pki worker"))
 				}
@@ -311,7 +318,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				workerClone.Type = KmsWorkerType.String()
 				workerCreateConflict := &db.OnConflict{
 					Target: db.Columns{"public_id"},
-					Action: append(db.SetColumns([]string{"address", "release_version"}),
+					Action: append(db.SetColumns([]string{"address", "release_version", "operational_state"}),
 						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
 				}
 				var withRowsAffected int64
@@ -519,6 +526,8 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 	case opts.WithFetchNodeCredentialsRequest != nil && opts.WithCreateControllerLedActivationToken:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "fetch node credentials request and controller led activation token option cannot both be set")
 	}
+
+	worker.OperationalState = UnknownOperationalState.String()
 
 	var err error
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {

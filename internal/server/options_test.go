@@ -188,4 +188,18 @@ func Test_GetOpts(t *testing.T) {
 		opts = GetOpts(WithReleaseVersion("version"))
 		assert.Equal(t, "version", opts.withReleaseVersion)
 	})
+	t.Run("WithOperationalState", func(t *testing.T) {
+		opts := GetOpts(WithOperationalState("test state"))
+		testOpts := getDefaultOptions()
+		testOpts.withOperationalState = "test state"
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithExcludeShutdown", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.Empty(t, opts.withExcludeShutdownWorkers)
+		opts = GetOpts(WithExcludeShutdownWorkers(true))
+		assert.Equal(t, true, opts.withExcludeShutdownWorkers)
+	})
 }

@@ -104,7 +104,7 @@ locals {
 
 resource "enos_local_exec" "add_hosts_to_target" {
   environment = local.base_environment
-  inline      = ["${var.local_boundary_dir}/boundary targets add-host-sets -id=${local.target_id} -host-set=${local.host_set_id} -format=json"]
+  inline      = ["${var.local_boundary_dir}/boundary targets add-host-sources -id=${local.target_id} -host-source=${local.host_set_id} -format=json"]
 }
 
 resource "enos_local_exec" "connect_target" {
