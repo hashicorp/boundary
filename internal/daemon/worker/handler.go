@@ -184,7 +184,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		endpointUrl, err := url.Parse(sess.GetEndpoint())
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("worker failed to parse target endpoint", "endpoint", sess.GetEndpoint()))
-			if err = conn.Close(websocket.StatusProtocolError, "unsupported-protocol"); err != nil {
+			if err = conn.Close(websocket.StatusProtocolError, "unable to parse endpoint"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return
@@ -192,7 +192,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		handleProxyFn, err := proxyHandlers.GetHandler(endpointUrl.Scheme)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("worker received request for unsupported protocol", "protocol", endpointUrl.Scheme))
-			if err = conn.Close(websocket.StatusProtocolError, "unsupported-protocol"); err != nil {
+			if err = conn.Close(websocket.StatusProtocolError, fmt.Sprintf("worker does not support %q type", endpointUrl.Scheme)); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return
