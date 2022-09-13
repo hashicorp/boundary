@@ -333,3 +333,7 @@ func (s *Scheduler) updateRunningJobProgress(ctx context.Context, j *runningJob)
 
 	return nil
 }
+
+func (s *Scheduler) GetRunJobsInterval() time.Duration {
+	return s.runJobsInterval
+}

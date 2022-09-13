@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -114,6 +115,11 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	token, err := newToken(id, cs.inputToken, []byte(accessor), tokenExpires)
 	if err != nil {
 		return nil, err
+	}
+
+	runJobsInterval := r.scheduler.GetRunJobsInterval()
+	if token.expiration <= runJobsInterval {
+		return nil, errors.Wrap(ctx, fmt.Errorf("scheduler interval must be greater than token ttl. scheduler jobs interval value: %s seconds", strconv.FormatFloat(runJobsInterval.Seconds(), 'f', -1, 64)), op)
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, cs.ProjectId, kms.KeyPurposeOplog)
@@ -504,6 +510,10 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		}
 		if token, err = newToken(cs.GetPublicId(), cs.inputToken, []byte(accessor), tokenExpires); err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		}
+		runJobsInterval := r.scheduler.GetRunJobsInterval()
+		if token.expiration <= runJobsInterval {
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, fmt.Errorf("scheduler interval must be greater than token ttl. scheduler jobs interval value: %s seconds", strconv.FormatFloat(runJobsInterval.Seconds(), 'f', -1, 64)), op)
 		}
 		// encrypt token
 		if err := token.encrypt(ctx, databaseWrapper); err != nil {
