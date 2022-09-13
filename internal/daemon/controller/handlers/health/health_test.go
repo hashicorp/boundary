@@ -70,7 +70,7 @@ func TestGetHealth(t *testing.T) {
 			expErr:               false,
 		},
 		{
-			name:                 "service unavailable withworker info reply",
+			name:                 "service unavailable with worker info reply",
 			ctx:                  grpc.NewContextWithServerTransportStream(context.Background(), &testServerTransportStream{expHttpCode: "503"}),
 			workerInfoFn:         func() *pbhealth.HealthInfo { return workerInfo },
 			serviceUnavailable:   true,

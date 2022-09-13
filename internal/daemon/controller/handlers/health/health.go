@@ -15,7 +15,6 @@ type Service struct {
 	pbs.UnsafeHealthServiceServer
 	replyWithServiceUnavailable bool
 
-	// workerInfoLock
 	workerInfoLock sync.RWMutex
 	workerInfoOnce sync.Once
 	workerInfoFn   func() *pbhealth.HealthInfo
