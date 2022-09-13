@@ -334,6 +334,9 @@ func (s *Scheduler) updateRunningJobProgress(ctx context.Context, j *runningJob)
 	return nil
 }
 
+// GetRunJobsInterval returns the value runJobsInterval,
+// which represents an interval at which the scheduler
+// will query the repository for jobs to run.
 func (s *Scheduler) GetRunJobsInterval() time.Duration {
 	return s.runJobsInterval
 }
