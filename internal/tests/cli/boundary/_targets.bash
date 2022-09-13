@@ -28,7 +28,7 @@ function list_targets() {
 function assoc_host_sets() {
   local id=$1
   local hst=$2
-  boundary targets add-host-sources -id $id -host-set $hst
+  boundary targets add-host-sources -id $id -host-source $hst
 }
 
 function target_id_from_name() {
