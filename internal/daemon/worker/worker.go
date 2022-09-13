@@ -13,28 +13,28 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/errors"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
-	"github.com/hashicorp/nodeenrollment"
-	nodeenet "github.com/hashicorp/nodeenrollment/net"
-	"github.com/mr-tron/base58"
-	"google.golang.org/grpc/resolver/manual"
-
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	"github.com/hashicorp/boundary/internal/errors"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment"
+	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/mr-tron/base58"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -90,6 +90,7 @@ type Worker struct {
 	everAuthenticated    *ua.Uint32
 	lastStatusSuccess    *atomic.Value
 	workerStartTime      time.Time
+	operationalState     *atomic.Value
 
 	controllerMultihopConn *atomic.Value
 
@@ -142,6 +143,7 @@ func New(conf *Config) (*Worker, error) {
 		updateTags:             ua.NewBool(false),
 		nonceFn:                base62.Random,
 		WorkerAuthCurrentKeyId: new(ua.String),
+		operationalState:       new(atomic.Value),
 	}
 
 	if downstreamRouterFactory != nil {
@@ -382,6 +384,8 @@ func (w *Worker) Start() error {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error starting worker listeners"))
 	}
 
+	w.operationalState.Store(server.ActiveOperationalState)
+
 	// Rather than deal with some of the potential error conditions for Add on
 	// the waitgroup vs. Done (in case a function exits immediately), we will
 	// always start rotation and simply exit early if we're using KMS
@@ -430,6 +434,8 @@ func (w *Worker) Shutdown() error {
 		return nil
 	}
 
+	// Set state to shutdown
+	w.operationalState.Store(server.ShutdownOperationalState)
 	// Stop listeners first to prevent new connections to the
 	// controller.
 	defer w.started.Store(false)

@@ -166,7 +166,7 @@ func (rw *Db) getTicketFor(ctx context.Context, aggregateName string) (*store.Ti
 	if rw.underlying == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s: underlying db missing", aggregateName), errors.WithoutEvent())
 	}
-	ticketer, err := oplog.NewTicketer(ctx, rw.underlying.wrapped, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewTicketer(ctx, rw.UnderlyingDB()(), oplog.WithAggregateNames(true))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("%s: unable to get Ticketer", aggregateName)), errors.WithoutEvent())
 	}
@@ -246,7 +246,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("oplog validation failed"), errors.WithoutEvent())
 	}
-	ticketer, err := oplog.NewTicketer(ctx, rw.underlying.wrapped, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewTicketer(ctx, rw.UnderlyingDB()(), oplog.WithAggregateNames(true))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"), errors.WithoutEvent())
 	}
@@ -262,7 +262,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	}
 	if err := entry.WriteEntryWith(
 		ctx,
-		&oplog.Writer{DB: rw.underlying.wrapped},
+		&oplog.Writer{DB: rw.UnderlyingDB()()},
 		ticket,
 		oplogMsgs...,
 	); err != nil {
@@ -281,7 +281,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	if ticket == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket", errors.WithoutEvent())
 	}
-	ticketer, err := oplog.NewTicketer(ctx, rw.underlying.wrapped, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewTicketer(ctx, rw.UnderlyingDB()(), oplog.WithAggregateNames(true))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"), errors.WithoutEvent())
 	}
@@ -301,7 +301,7 @@ func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket 
 	}
 	err = entry.WriteEntryWith(
 		ctx,
-		&oplog.Writer{DB: rw.underlying.wrapped},
+		&oplog.Writer{DB: rw.UnderlyingDB()()},
 		ticket,
 		msg,
 	)
@@ -330,7 +330,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 	if len(metadata) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing metadata")
 	}
-	ticketer, err := oplog.NewTicketer(ctx, rw.underlying.wrapped, oplog.WithAggregateNames(true))
+	ticketer, err := oplog.NewTicketer(ctx, rw.UnderlyingDB()(), oplog.WithAggregateNames(true))
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get Ticketer"))
 	}
@@ -347,7 +347,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 	}
 	err = entry.WriteEntryWith(
 		ctx,
-		&oplog.Writer{DB: rw.underlying.wrapped},
+		&oplog.Writer{DB: rw.UnderlyingDB()()},
 		ticket,
 		msgs...,
 	)
