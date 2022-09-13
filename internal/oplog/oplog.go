@@ -47,10 +47,18 @@ type Metadata map[string][]string
 // NewEntry creates a new Entry
 func NewEntry(ctx context.Context, aggregateName string, metadata Metadata, cipherer wrapping.Wrapper, ticketer Ticketer) (*Entry, error) {
 	const op = "oplog.NewEntry"
+	if cipherer == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil cipherer")
+	}
+	keyId, err := cipherer.KeyId(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	entry := Entry{
 		Entry: &store.Entry{
 			AggregateName: aggregateName,
 			Version:       Version,
+			KeyId:         keyId,
 		},
 		Cipherer: cipherer,
 		Ticketer: ticketer,
@@ -92,6 +100,9 @@ func (e *Entry) validate(ctx context.Context) error {
 	if e.Entry.AggregateName == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing entry aggregate name")
 	}
+	if e.Entry.KeyId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing entry key id")
+	}
 	return nil
 }
 
@@ -123,6 +134,7 @@ func (e *Entry) UnmarshalData(ctx context.Context, types *TypeCatalog) ([]Messag
 		}
 		dbwOpts, err := convertToDbwOpts(ctx, item.operationOptions)
 		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		msgs = append(msgs, Message{
 			Message:        item.msg,

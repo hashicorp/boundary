@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	dbassert "github.com/hashicorp/dbassert/gorm"
 	"github.com/hashicorp/go-dbw"
-
-	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -18,12 +17,13 @@ import (
 
 // Test_BasicOplog provides some basic unit tests for oplogs
 func Test_BasicOplog(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, cipherer := setup(testCtx, t)
 
 	t.Run("EncryptData/DecryptData/UnmarshalData", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		cipherer := testWrapper(t)
+		keyId, err := cipherer.KeyId(testCtx)
+		require.NoError(err)
 
 		// now let's us optimistic locking via a ticketing system for a serialized oplog
 		ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
@@ -67,6 +67,8 @@ func Test_BasicOplog(t *testing.T) {
 		foundEntry.Cipherer = cipherer
 		err = foundEntry.DecryptData(context.Background())
 		require.NoError(err)
+		require.Equal(keyId, foundEntry.KeyId)
+		require.Equal("global", foundEntry.ScopeId)
 
 		foundUsers, err := foundEntry.UnmarshalData(testCtx, types)
 		require.NoError(err)
@@ -78,8 +80,6 @@ func Test_BasicOplog(t *testing.T) {
 
 	t.Run("write entry", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		cipherer := testWrapper(t)
-
 		// now let's us optimistic locking via a ticketing system for a serialized oplog
 		ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 		require.NoError(err)
@@ -118,16 +118,17 @@ func Test_BasicOplog(t *testing.T) {
 
 // Test_NewEntry provides some basic unit tests for NewEntry
 func Test_NewEntry(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, cipherer := setup(testCtx, t)
 
 	t.Run("valid", func(t *testing.T) {
 		require := require.New(t)
-		cipherer := testWrapper(t)
 		ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 		require.NoError(err)
+		keyId, err := cipherer.KeyId(testCtx)
+		require.NoError(err)
 
-		_, err = NewEntry(
+		entry, err := NewEntry(
 			testCtx,
 			"test-users",
 			Metadata{
@@ -139,10 +140,10 @@ func Test_NewEntry(t *testing.T) {
 			ticketer,
 		)
 		require.NoError(err)
+		require.Equal(keyId, entry.KeyId)
 	})
 	t.Run("no metadata success", func(t *testing.T) {
 		require := require.New(t)
-		cipherer := testWrapper(t)
 		ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 		require.NoError(err)
 
@@ -157,7 +158,6 @@ func Test_NewEntry(t *testing.T) {
 	})
 	t.Run("no aggregateName", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		cipherer := testWrapper(t)
 		ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 		require.NoError(err)
 
@@ -192,11 +192,10 @@ func Test_NewEntry(t *testing.T) {
 			ticketer,
 		)
 		require.Error(err)
-		assert.Equal("oplog.NewEntry: oplog.(Entry).validate: nil cipherer: parameter violation: error #100", err.Error())
+		assert.Equal("oplog.NewEntry: nil cipherer: parameter violation: error #100", err.Error())
 	})
 	t.Run("bad ticket", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		cipherer := testWrapper(t)
 		_, err := NewEntry(
 			testCtx,
 			"test-users",
@@ -214,10 +213,8 @@ func Test_NewEntry(t *testing.T) {
 }
 
 func Test_UnmarshalData(t *testing.T) {
-	db := setup(t)
-
-	cipherer := testWrapper(t)
 	testCtx := context.Background()
+	db, cipherer := setup(testCtx, t)
 
 	// now let's us optimistic locking via a ticketing system for a serialized oplog
 	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
@@ -338,10 +335,9 @@ func Test_UnmarshalData(t *testing.T) {
 
 // Test_Replay provides some basic unit tests for replaying entries
 func Test_Replay(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, cipherer := setup(testCtx, t)
 
-	cipherer := testWrapper(t)
 	id := testId(t)
 
 	// setup new tables for replay
@@ -583,9 +579,8 @@ func Test_Replay(t *testing.T) {
 
 // Test_WriteEntryWith provides unit tests for oplog.WriteEntryWith
 func Test_WriteEntryWith(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
-	cipherer := testWrapper(t)
+	db, cipherer := setup(testCtx, t)
 
 	id := testId(t)
 	u := oplog_test.TestUser{
@@ -697,9 +692,9 @@ func Test_WriteEntryWith(t *testing.T) {
 }
 
 func TestEntry_WriteEntryWith(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
 	testCtx := context.Background()
-	db := setup(t)
-	cipherer := testWrapper(t)
+	db, cipherer := setup(testCtx, t)
 	db.Debug(true)
 
 	// setup new tables for replay
@@ -707,7 +702,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 	tableSuffix := "_" + id
 
 	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
-	require.NoError(t, err)
+	require.NoError(err)
 
 	newEntryFn := func() *Entry {
 		testEntry, err := NewEntry(
@@ -721,7 +716,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 			cipherer,
 			ticketer,
 		)
-		require.NoError(t, err)
+		require.NoError(err)
 		return testEntry
 	}
 
@@ -851,7 +846,6 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
 			ticket, err := ticketer.GetTicket(testCtx, "default")
 			require.NoError(err)
 			err = tt.e.WriteEntryWith(
@@ -913,14 +907,12 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 
 // Test_TicketSerialization provides unit tests for making sure oplog.Tickets properly serialize writes to oplog entries
 func Test_TicketSerialization(t *testing.T) {
-	db := setup(t)
 	assert, require := assert.New(t), require.New(t)
 	testCtx := context.Background()
+	db, cipherer := setup(testCtx, t)
 
 	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 	require.NoError(err)
-
-	cipherer := testWrapper(t)
 
 	id := testId(t)
 	firstTx, err := dbw.New(db).Begin(testCtx)

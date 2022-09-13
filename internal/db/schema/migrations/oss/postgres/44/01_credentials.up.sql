@@ -212,6 +212,7 @@ begin;
       'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
   -- Replaces view from 41/01_worker_filter_vault_cred_store.up.sql
+  -- Recreated in 51/02_add_data_key_foreign_key_references.up.sql
   create view credential_vault_credential_private as
   select credential.public_id         as public_id,
         credential.library_id        as library_id,
