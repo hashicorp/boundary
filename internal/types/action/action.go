@@ -32,9 +32,9 @@ const (
 	AddHosts                         Type = 21
 	SetHosts                         Type = 22
 	RemoveHosts                      Type = 23
-	AddHostSets                      Type = 24 // DEPRECATED
-	SetHostSets                      Type = 25 // DEPRECATED
-	RemoveHostSets                   Type = 26 // DEPRECATED
+	AddHostSets                      Type = 24 // OBSOLETE
+	SetHostSets                      Type = 25 // OBSOLETE
+	RemoveHostSets                   Type = 26 // OBSOLETE
 	Cancel                           Type = 27
 	AddAccounts                      Type = 28
 	SetAccounts                      Type = 29

@@ -318,27 +318,10 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 	}
 
 	switch c.Func {
-	case "add-host-sets", "remove-host-sets":
-		if len(c.flagHostSets) == 0 {
-			c.UI.Error("No host-sets supplied via -host-set")
-			return false
-		}
-
 	case "add-host-sources", "remove-host-sources":
 		if len(c.flagHostSources) == 0 {
 			c.UI.Error("No host sources supplied via -host-source")
 			return false
-		}
-
-	case "set-host-sets":
-		switch len(c.flagHostSets) {
-		case 0:
-			c.UI.Error("No host-sets supplied via -host-set")
-			return false
-		case 1:
-			if c.flagHostSets[0] == "null" {
-				c.flagHostSets = nil
-			}
 		}
 
 	case "set-host-sources":

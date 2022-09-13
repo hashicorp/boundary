@@ -28,7 +28,7 @@ function list_targets() {
 function assoc_host_sets() {
   local id=$1
   local hst=$2
-  boundary targets add-host-sets -id $id -host-set $hst
+  boundary targets add-host-sources -id $id -host-set $hst
 }
 
 function target_id_from_name() {
@@ -57,7 +57,7 @@ function target_has_host_set_id() {
 
 function has_default_target_actions() {
   local out=$1
-  local actions=('read' 'update' 'delete' 'add-host-sets' 'set-host-sets' 'remove-host-sets' 'authorize-session')
+  local actions=('read' 'update' 'delete' 'add-host-sources' 'set-host-sources' 'remove-host-sources' 'authorize-session')
 
   for action in ${actions[@]}; do
     $(has_authorized_action "$out" "$action") || {
