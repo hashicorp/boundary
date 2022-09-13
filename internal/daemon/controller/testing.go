@@ -569,7 +569,11 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	if opts.Config.Controller.Name == "" {
 		require.NoError(t, opts.Config.Controller.InitNameIfEmpty())
 	}
-	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
+
+	if opts.Config.Controller.Scheduler == nil {
+		opts.Config.Controller.Scheduler = new(config.Scheduler)
+	}
+	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
 
 	switch {
 	case opts.DisableEventing:

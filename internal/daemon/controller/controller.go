@@ -294,8 +294,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	// TODO: Allow setting run jobs limit from config
 	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
-	if c.conf.RawConfig.Controller.SchedulerRunJobInterval > 0 {
-		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.SchedulerRunJobInterval))
+	if sche := c.conf.RawConfig.Controller.Scheduler; sche != nil {
+		if sche.JobRunIntervalDuration > 0 {
+			schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(sche.JobRunIntervalDuration))
+		}
+		if sche.MonitorIntervalDuration > 0 {
+			schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(sche.MonitorIntervalDuration))
+		}
 	}
 	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
