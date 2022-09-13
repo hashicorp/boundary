@@ -46,7 +46,7 @@ function target_has_host_source_id() {
   local tid=$1
   local hsid=$2
 
-  ids=$(target_host_sources_ids $tid)  
+  ids=$(target_host_source_ids $tid)  
   for id in $ids; do
     if [ $(strip "$id") == "$hsid" ]; then
       return 0 
