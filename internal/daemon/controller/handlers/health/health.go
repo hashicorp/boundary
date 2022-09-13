@@ -15,9 +15,10 @@ type Service struct {
 	pbs.UnsafeHealthServiceServer
 	replyWithServiceUnavailable bool
 
-	workerCountLock sync.RWMutex
-	workerCountOnce sync.Once
-	workerInfo      func() *pbhealth.HealthInfo
+	// workerInfoLock
+	workerInfoLock sync.RWMutex
+	workerInfoOnce sync.Once
+	workerInfoFn   func() *pbhealth.HealthInfo
 }
 
 var _ pbs.HealthServiceServer = (*Service)(nil)
@@ -32,10 +33,10 @@ func (s *Service) GetHealth(ctx context.Context, req *pbs.GetHealthRequest) (*pb
 
 	if req.GetWorkerInfo() {
 		func() {
-			s.workerCountLock.RLock()
-			defer s.workerCountLock.RUnlock()
-			if s.workerInfo != nil {
-				resp.WorkerProcessInfo = s.workerInfo()
+			s.workerInfoLock.RLock()
+			defer s.workerInfoLock.RUnlock()
+			if s.workerInfoFn != nil {
+				resp.WorkerProcessInfo = s.workerInfoFn()
 			}
 		}()
 	}
@@ -55,16 +56,16 @@ func (s *Service) StartServiceUnavailableReplies() {
 	s.replyWithServiceUnavailable = true
 }
 
-// ReportCurrentWorkerConnections sets the gauge function that can be used
-// to get the current number of active proxy connections the worker is handling.
-func (s *Service) ReportCurrentWorkerConnections(fn func() *pbhealth.HealthInfo) error {
+// SetWorkerProcessInformationFunc sets the function that can be used to get the
+// current worker related process information.
+func (s *Service) SetWorkerProcessInformationFunc(fn func() *pbhealth.HealthInfo) error {
 	if fn == nil {
 		return fmt.Errorf("CurrentWorkerConnection function was nil")
 	}
-	s.workerCountLock.Lock()
-	defer s.workerCountLock.Unlock()
-	s.workerCountOnce.Do(func() {
-		s.workerInfo = fn
+	s.workerInfoLock.Lock()
+	defer s.workerInfoLock.Unlock()
+	s.workerInfoOnce.Do(func() {
+		s.workerInfoFn = fn
 	})
 	return nil
 }

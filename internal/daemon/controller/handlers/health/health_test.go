@@ -93,7 +93,7 @@ func TestGetHealth(t *testing.T) {
 			hs := NewService()
 
 			if tt.workerInfoFn != nil {
-				require.NoError(t, hs.ReportCurrentWorkerConnections(tt.workerInfoFn))
+				require.NoError(t, hs.SetWorkerProcessInformationFunc(tt.workerInfoFn))
 			}
 
 			if tt.serviceUnavailable {

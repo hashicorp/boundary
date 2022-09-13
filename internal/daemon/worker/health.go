@@ -28,6 +28,8 @@ var healthCheckMarshaler = &runtime.JSONPb{
 	},
 }
 
+// workerHealthServer is the HealthServer for the worker process. This server
+// will always return a 200.
 type workerHealthServer struct {
 	worker *Worker
 	opsservices.UnimplementedHealthServiceServer

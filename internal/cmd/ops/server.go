@@ -140,7 +140,7 @@ func createOpsHandler(lncfg *listenerutil.ListenerConfig, c *controller.Controll
 			return nil, err
 		}
 		if w != nil {
-			c.HealthService.ReportCurrentWorkerConnections(w.HealthInformation)
+			c.HealthService.SetWorkerProcessInformationFunc(w.HealthInformation)
 		}
 	case w != nil:
 		h, err = w.GetHealthHandler()
