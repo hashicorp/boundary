@@ -2,7 +2,6 @@ begin;
 
 -- Remove immutable property
 drop trigger immutable_role_grant on iam_role_grant;
-drop function iam_immutable_role_grant;
 
 -- Swap add-host-sets to add-host-sources
 update iam_role_grant
@@ -105,14 +104,6 @@ set
     'remove-credential-libraries',
     'remove-credential-sources'
   );
-
--- Add immutable property back
-create or replace function iam_immutable_role_grant() returns trigger
-as $$
-begin
-  raise exception 'role grants are immutable';
-end;
-$$ language plpgsql;
 
 create trigger immutable_role_grant before update on iam_role_grant
   for each row execute procedure iam_immutable_role_grant();
