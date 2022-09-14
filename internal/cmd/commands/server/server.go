@@ -679,7 +679,6 @@ func (c *Command) WaitForInterrupt() int {
 	runShutdownLogic := func() {
 		go func() {
 			for {
-				event.WriteSysEvent(c.Context, op, "waiting in this dang loop")
 				select {
 				case <-c.ShutdownCh:
 					if !workerShutdownTriggered && c.Config.Worker != nil {

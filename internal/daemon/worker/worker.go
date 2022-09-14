@@ -467,6 +467,8 @@ func (w *Worker) Shutdown() error {
 		return nil
 	}
 	event.WriteSysEvent(w.baseContext, op, "worker shutting down")
+
+	// Set state to shutdown
 	w.operationalState.Store(server.ShutdownOperationalState)
 
 	// Stop listeners first to prevent new connections to the
