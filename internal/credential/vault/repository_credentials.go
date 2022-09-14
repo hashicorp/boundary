@@ -2,11 +2,13 @@ package vault
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 )
 
 var _ credential.Issuer = (*Repository)(nil)
@@ -33,11 +35,22 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 
 	var creds []credential.Dynamic
 	var minLease time.Duration
+	runJobsInterval := r.scheduler.GetRunJobsInterval()
 	for _, lib := range libs {
 		cred, err := lib.retrieveCredential(ctx, op, sessionId)
 		if err != nil {
 			return nil, err
 		}
+
+		if cred.getExpiration() < runJobsInterval {
+			event.WriteError(ctx, op,
+				fmt.Errorf("WARNING: credential will expire before job scheduler can run"),
+				event.WithInfo("credential_public_id", cred.GetPublicId()),
+				event.WithInfo("credential_library_public_id", lib.GetPublicId()),
+				event.WithInfo("runJobsInterval", runJobsInterval),
+			)
+		}
+
 		if minLease > cred.getExpiration() {
 			minLease = cred.getExpiration()
 		}
