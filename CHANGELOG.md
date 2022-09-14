@@ -2,18 +2,18 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## 0.10.5 (2022/09/14)
+## 0.10.5 (2022/09/13)
 
 ### Bug Fixes
 
-* grants: Properly resolve "only self" for permissions.
-  When generating permissions from the grants, if a single grant was
-  limited to the set of "self" actions, the permission would be marked as
-  only self, even if additional grants were given for non-self actions.
-  This would result in the generated permissions being more limiting then
-  they should be based on the grants. This only impacts the sessions list
-  endpoint. It would result in users that have been granted access to list
-  other user's sessions to be unable to see these results in the list
+* grants: Properly resolve "only self" for permissions. When generating
+  permissions from grants, if a single grant was limited only to a set of "self"
+  actions and that was the last grant parsed (which would be semi-random
+  depending on a number of factors), the overall set of permissions would be
+  marked as only-self. This would result in the generated permissions being more
+  limiting then they should be based on the grants. This only impacts the
+  sessions list endpoint. It would result in users that have been granted access
+  to list other user's sessions to be unable to see these sessions in the list
   results ([PR](https://github.com/hashicorp/boundary/pull/2448)).
 
 ## 0.10.4 (2022/09/13)
