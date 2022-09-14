@@ -3,7 +3,6 @@ package connect
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -45,7 +44,7 @@ func (s *sshFlags) defaultExec() string {
 	return strings.ToLower(s.flagSshStyle)
 }
 
-func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credentials) (args, envs []string, retCreds credentials, retErr error) {
+func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) (args, envs []string, retCreds credentials, retErr error) {
 	var username string
 	retCreds = creds
 
@@ -97,7 +96,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 	}
 
 	// Check if we got credentials to attempt to use for ssh or putty,
-	// sshpass style has already be handled above as username password.
+	// sshpass style has already been handled above as username password.
 	switch strings.ToLower(s.flagSshStyle) {
 	case "putty", "ssh":
 
@@ -120,8 +119,9 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 				delete(cred.raw.Credential, "username")
 				delete(cred.raw.Credential, "private_key")
 			}
+			retCreds.sshPrivateKey[0] = cred
 
-			pkFile, err := ioutil.TempFile("", "*")
+			pkFile, err := os.CreateTemp("", "*")
 			if err != nil {
 				return nil, nil, credentials{}, fmt.Errorf("Error saving ssh private key to tmp file: %w", err)
 			}
