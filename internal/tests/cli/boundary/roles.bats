@@ -50,9 +50,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
 }
 
 @test "boundary/role/add-principals: $NEW_ROLE role contains default principal" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
   run role_has_principal_id $rid $DEFAULT_USER
   echo "$output"
@@ -63,9 +60,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
 @test "boundary/role/remove-principals: can remove default principal from $NEW_ROLE role" {
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
   run remove_role_principal $DEFAULT_USER $rid
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -87,9 +81,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
 @test "boundary/role/add-grantss: $NEW_ROLE role contains $NEW_GRANT grant" {
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
   run role_has_grant $rid $NEW_GRANT
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
   echo "$output"
   diag "$output"
   [ "$status" -eq 0 ]
@@ -103,9 +94,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
 }
 
 @test "boundary/role/remove-grants: $NEW_ROLE role no longer contains $NEW_GRANT grant" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
   run role_has_grant $rid $NEW_GRANT
   echo "$output"
@@ -122,9 +110,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
 }
 
 @test "boundary/roles: can not read deleted $NEW_ROLE role" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
 	run read_role $rid
   echo "$output"

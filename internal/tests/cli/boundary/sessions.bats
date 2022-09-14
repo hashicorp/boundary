@@ -20,10 +20,6 @@ load _helpers
 }
 
 @test "boundary/session/connect: unpriv user can connect to default target" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
-
   run login $DEFAULT_UNPRIVILEGED_LOGIN
   [ "$status" -eq 0 ]
 
@@ -85,10 +81,6 @@ load _helpers
 }
 
 @test "boundary/session: verify read and cancellation permissions on unpriv session" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
-
   # Find an unpriv session
   run login $DEFAULT_UNPRIVILEGED_LOGIN
   [ "$status" -eq 0 ]
