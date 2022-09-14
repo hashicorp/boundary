@@ -5,8 +5,26 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## Next
 
 ### New and Improved
-* Workers: Added the ability to read and reinitialize the Worker certificate authority ([PR1](https://github.com/hashicorp/boundary/pull/2312), [PR2](https://github.com/hashicorp/boundary/pull/2387))
-* Workers: Return the worker Boundary binary version on worker list and read ([PR](https://github.com/hashicorp/boundary/pull/2377))
+
+* Workers: Added the ability to read and reinitialize the Worker certificate
+  authority ([PR1](https://github.com/hashicorp/boundary/pull/2312),
+  [PR2](https://github.com/hashicorp/boundary/pull/2387))
+* Workers: Return the worker Boundary binary version on worker list and read
+  ([PR](https://github.com/hashicorp/boundary/pull/2377))
+
+## 0.10.5 (2022/09/13)
+
+### Bug Fixes
+
+* grants: Properly resolve "only self" for permissions. When generating
+  permissions from grants, if a single grant was limited only to a set of "self"
+  actions and that was the last grant parsed (which would be semi-random
+  depending on a number of factors), the overall set of permissions would be
+  marked as only-self. This would result in the generated permissions being more
+  limiting then they should be based on the grants. This only impacts the
+  sessions list endpoint. It would result in users that have been granted access
+  to list other user's sessions to be unable to see these sessions in the list
+  results ([PR](https://github.com/hashicorp/boundary/pull/2448)).
 
 ## 0.10.4 (2022/09/13)
 

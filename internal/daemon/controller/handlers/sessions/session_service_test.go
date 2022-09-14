@@ -185,7 +185,24 @@ func TestList_Self(t *testing.T) {
 
 	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
 	uId := at.GetIamUserId()
-	otherAt := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+
+	otherPrivAuthToken := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	unprivAuthToken := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+
+	// See https://github.com/hashicorp/boundary/pull/2448 -- these roles both
+	// test functionality and serve as a regression test
+
+	// Create a "privileged" role that gives admin on the scope
+	privProjRole := iam.TestRole(t, conn, pWithSessions.GetPublicId())
+	iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, privProjRole.GetPublicId(), otherPrivAuthToken.GetIamUserId())
+
+	// Create an "unprivileged" role that only grants self variants and add the
+	// unprivileged user and other privileged users
+	unPrivProjRole := iam.TestRole(t, conn, pWithSessions.GetPublicId())
+	iam.TestRoleGrant(t, conn, unPrivProjRole.GetPublicId(), "id=*;type=session;actions=read:self,list,cancel:self")
+	iam.TestUserRole(t, conn, unPrivProjRole.GetPublicId(), unprivAuthToken.GetIamUserId())
+	iam.TestUserRole(t, conn, unPrivProjRole.GetPublicId(), otherPrivAuthToken.GetIamUserId())
 
 	hc := static.TestCatalogs(t, conn, pWithSessions.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -218,8 +235,13 @@ func TestList_Self(t *testing.T) {
 			count:     1,
 		},
 		{
-			name:      "Can't List Others Sessions",
-			requester: otherAt,
+			name:      "Can List Others Sessions when Authorized",
+			requester: otherPrivAuthToken,
+			count:     1,
+		},
+		{
+			name:      "Can't List Others Sessions When Not Authorized",
+			requester: unprivAuthToken,
 			count:     0,
 		},
 	}
