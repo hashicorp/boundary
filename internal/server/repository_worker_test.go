@@ -297,7 +297,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		// update again with a shutdown state
 		wStatus3 := server.NewWorker(scope.Global.String(),
 			server.WithAddress("new_address"), server.WithName("config_name1"),
-			server.WithOperationalState("shutdown"))
+			server.WithOperationalState("shutdown"), server.WithReleaseVersion("Boundary v0.11.0"))
 		worker, err = repo.UpsertWorkerStatus(ctx, wStatus3)
 		require.NoError(t, err)
 		assert.Greater(t, worker.GetLastStatusTime().AsTime(), worker.GetCreateTime().AsTime())
@@ -455,7 +455,8 @@ func TestUpsertWorkerStatus(t *testing.T) {
 	t.Run("add another status", func(t *testing.T) {
 		anotherStatus := server.NewWorker(scope.Global.String(),
 			server.WithName("another_test_worker"),
-			server.WithAddress("address"))
+			server.WithAddress("address"),
+			server.WithReleaseVersion("Boundary v0.11.0"))
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 
@@ -468,7 +469,8 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		anotherStatus := server.NewWorker(scope.Global.String(),
 			server.WithName("another_test_worker"),
 			server.WithAddress("address"),
-			server.WithOperationalState("shutdown"))
+			server.WithOperationalState("shutdown"),
+			server.WithReleaseVersion("Boundary v0.11.0"))
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 

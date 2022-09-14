@@ -200,7 +200,7 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 	if opts.withExcludeShutdownWorkers {
 		// If a worker has a version, it must be active. If it's an older worker (no release version), we'll include it for
 		// backwards compatibilty
-		where = append(where, fmt.Sprintf("(operational_state = '%s' or (release_version = '') IS NOT FALSE)", ActiveOperationalState.String()))
+		where = append(where, fmt.Sprintf("(operational_state = '%s' or length(trim(release_version)) = 0 or release_version is null)", ActiveOperationalState.String()))
 	}
 
 	limit := r.defaultLimit
