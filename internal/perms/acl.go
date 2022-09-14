@@ -241,6 +241,7 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, reque
 			ScopeId:  scopeId,
 			Resource: requestedType,
 			Action:   action.List,
+			OnlySelf: true, // default to only self to be restrictive
 		}
 
 		// Get grants for a specific scope id from the source of truth.
@@ -275,7 +276,7 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, reque
 					excludeList = append(excludeList, aa)
 				}
 			}
-			p.OnlySelf = excludeList.OnlySelf()
+			p.OnlySelf = p.OnlySelf && excludeList.OnlySelf()
 
 			switch grant.id {
 			case "*":
