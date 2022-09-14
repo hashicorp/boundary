@@ -136,21 +136,21 @@ Following are some examples of using these values in filters:
 
 # Target Worker Filtering
 
-Once workers have tags, it is possible to use these tags to control which
-workers are allowed to handle a given session by specifying a `worker_filter`
+Once workers have tags, these tags may be used to control which
+workers are allowed to manage a given session by specifying a `worker_filter`
 attribute when configuring [targets](/docs/concepts/domain-model/targets).
 
 
 # Vault Worker Filtering <sup>HCP Only</sup>
-Tags can be used to control which [PKI workers] can handle Vault requests by specifying
+Tags are used to control which [PKI workers] can manage Vault requests by specifying
 a `worker_filter`attribute when configuring [credential stores].
 
-This allows for the use of private Vault instances with Boundary. PKI workers
+This allows the use of private Vault instances with Boundary. PKI workers
 deployed in the same network as a private Vault instance can access and relay
 Vault requests to Boundary controllers.
 
  ~> **Note:** A PKI worker that matches the worker filter must exist before defining the Vault credential store, as it
- will perform the Vault calls needed to set up the credential store with Boundary
+ will perform the Vault calls needed to set up the credential store with Boundary.
 
 [PKI workers]: /docs/configuration/worker/pki-worker
 [credential stores]: /docs/concepts/domain-model/credential-stores#vault-credential-store-attributes
