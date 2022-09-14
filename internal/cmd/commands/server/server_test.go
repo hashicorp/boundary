@@ -46,7 +46,7 @@ func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
 	require := require.New(t)
 	t.Helper()
 	cmd := &Command{
-		Server:     base.NewServer(base.NewCommand(cli.NewMockUi())),
+		Server:     base.NewServer(base.NewServerCommand(cli.NewMockUi())),
 		SighupCh:   base.MakeSighupCh(),
 		startedCh:  make(chan struct{}),
 		reloadedCh: make(chan struct{}, 5),

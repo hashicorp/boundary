@@ -215,7 +215,7 @@ func TestReloadControllerDatabase(t *testing.T) {
 	require.NoError(t, row.Scan(&lock))
 	require.Equal(t, 1, lock)
 
-	close(cmd.ShutdownCh)
+	cmd.ShutdownCh <- struct{}{}
 	wg.Wait()
 }
 
@@ -316,8 +316,8 @@ func TestReloadControllerDatabase_InvalidNewDatabaseState(t *testing.T) {
 	require.NoError(t, row.Err())
 	require.NoError(t, row.Scan(&lock))
 	require.Equal(t, 1, lock)
-
-	close(cmd.ShutdownCh)
+	
+	cmd.ShutdownCh <- struct{}{}
 	wg.Wait()
 }
 

@@ -7,10 +7,8 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"os/signal"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -824,8 +822,11 @@ func (c *Command) Run(args []string) int {
 	c.opsServer = opsServer
 	c.opsServer.Start()
 
-	// Wait for shutdown
-	shutdownTriggered := false
+	// On first interrupt, enter graceful shutdown for controllers and workers (workers wait for connections to drain)
+	// On second interrupt, force controller shutdown and send workers into shutdown (stop all connections)
+	// On third interrupt, force worker shutdown
+	gracefulShutdownTriggered := false
+	workerShutdownTriggered := false
 
 	// Add a force-shutdown goroutine to consume more interrupts
 	abortForceShutdownCh := make(chan struct{})
@@ -833,11 +834,15 @@ func (c *Command) Run(args []string) int {
 
 	runShutdownLogic := func() {
 		go func() {
-			shutdownCh := make(chan os.Signal, 4)
-			signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
 			for {
 				select {
-				case <-shutdownCh:
+				case <-c.ShutdownCh:
+					if !workerShutdownTriggered && !c.flagControllerOnly {
+						workerShutdownTriggered = true
+						if err := c.worker.Shutdown(); err != nil {
+							c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+						}
+					}
 					c.UI.Error("Forcing shutdown")
 					os.Exit(base.CommandUserError)
 
@@ -851,10 +856,10 @@ func (c *Command) Run(args []string) int {
 			}
 		}()
 
-		shutdownTriggered = true
+		gracefulShutdownTriggered = true
 	}
 
-	for !shutdownTriggered && !errorEncountered.Load() {
+	for !gracefulShutdownTriggered && !errorEncountered.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary dev environment self-terminating")
@@ -870,7 +875,7 @@ func (c *Command) Run(args []string) int {
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 		}
 
-		if shutdownTriggered {
+		if gracefulShutdownTriggered {
 			if c.Config.Controller != nil {
 				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
 			}
@@ -879,8 +884,14 @@ func (c *Command) Run(args []string) int {
 				if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
 					c.worker.WorkerAuthStorage.Cleanup()
 				}
-				if err := c.worker.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+				if err := c.worker.GracefulShutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error shutting down worker gracefully: %w", err).Error())
+				}
+				if !workerShutdownTriggered {
+					workerShutdownTriggered = true
+					if err := c.worker.Shutdown(); err != nil {
+						c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+					}
 				}
 			}
 

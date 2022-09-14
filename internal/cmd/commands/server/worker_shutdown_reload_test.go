@@ -98,13 +98,13 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	t.Log("running initial send/recv test")
 	sConn.TestSendRecvAll(t)
 
-	// Now, shut the worker down.
-	close(workerCmd.ShutdownCh)
+	// Shutdown the worker and close the connection, as the worker will otherwise wait for it to close.
+	sConn.Close()
+	workerCmd.ShutdownCh <- struct{}{}
 	if <-workerCodeChan != 0 {
 		output := workerCmd.UI.(*cli.MockUi).ErrorWriter.String() + workerCmd.UI.(*cli.MockUi).OutputWriter.String()
 		require.FailNow(output, "command exited with non-zero error code")
 	}
-
 	// Connection should fail, and the session should be closed on the DB.
 	sConn.TestSendRecvFail(t)
 	sess.ExpectConnectionStateOnController(ctx, t, testController.Controller().ConnectionRepoFn, session.StatusClosed)

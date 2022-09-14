@@ -428,19 +428,22 @@ func (w *Worker) activeConnectionCount() int {
 	activeConnectionCount := 0
 	w.sessionManager.ForEachLocalSession(
 		func(s session.Session) bool {
-			if connCount := len(s.GetLocalConnections()); connCount > 0 {
-				activeConnectionCount += connCount
+			conns := s.GetLocalConnections()
+			for _, v := range conns {
+				if v.Status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED {
+					activeConnectionCount++
+				}
 			}
 			return true
 		})
 	return activeConnectionCount
 }
 
+// Graceful shutdown sets the worker state to "shutdown" and will wait to return until there
+// are no longer any active connections.
 func (w *Worker) GracefulShutdown() error {
 	const op = "worker.(Worker).GracefulShutdown"
 	event.WriteSysEvent(w.baseContext, op, "worker entering graceful shutdown")
-
-	// Set state to shutdown
 	w.operationalState.Store(server.ShutdownOperationalState)
 
 	// Wait for connections to drain
@@ -449,9 +452,7 @@ func (w *Worker) GracefulShutdown() error {
 		time.Sleep(time.Second)
 		activeConnectionCount = w.activeConnectionCount()
 	}
-
 	event.WriteSysEvent(w.baseContext, op, "worker connections have drained")
-
 	return nil
 }
 
@@ -466,6 +467,7 @@ func (w *Worker) Shutdown() error {
 		return nil
 	}
 	event.WriteSysEvent(w.baseContext, op, "worker shutting down")
+	w.operationalState.Store(server.ShutdownOperationalState)
 
 	// Stop listeners first to prevent new connections to the
 	// controller.
@@ -477,12 +479,27 @@ func (w *Worker) Shutdown() error {
 	// Shut down all connections.
 	w.cleanupConnections(w.baseContext, true, w.sessionManager)
 
-	// Cancel the status ticker and send a status update
-	w.baseCancel()
-	ctx, cancel := context.WithTimeout(context.Background(), w.conf.StatusGracePeriodDuration)
-	defer cancel()
-	w.sendWorkerStatus(ctx, w.sessionManager, &w.addressReceivers)
+	// Wait for next status request to succeed. Don't wait too long;
+	// wrap the base context in a timeout equal to our status grace
+	// period.
+	waitStatusStart := time.Now()
+	nextStatusCtx, nextStatusCancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
+	defer nextStatusCancel()
+	for {
+		if err := nextStatusCtx.Err(); err != nil {
+			event.WriteError(w.baseContext, op, err, event.WithInfoMsg("error waiting for next status report to controller"))
+			break
+		}
 
+		if w.lastSuccessfulStatusTime().Sub(waitStatusStart) > 0 {
+			break
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	// Proceed with remainder of shutdown.
+	w.baseCancel()
 	for _, ar := range w.addressReceivers {
 		ar.SetAddresses(nil)
 	}
