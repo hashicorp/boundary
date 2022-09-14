@@ -132,10 +132,11 @@ type Config struct {
 }
 
 type Controller struct {
-	Name              string    `hcl:"name"`
-	Description       string    `hcl:"description"`
-	Database          *Database `hcl:"database"`
-	PublicClusterAddr string    `hcl:"public_cluster_addr"`
+	Name              string     `hcl:"name"`
+	Description       string     `hcl:"description"`
+	Database          *Database  `hcl:"database"`
+	PublicClusterAddr string     `hcl:"public_cluster_addr"`
+	Scheduler         *Scheduler `hcl:"scheduler"`
 
 	// AuthTokenTimeToLive is the total valid lifetime of a token denoted by time.Duration
 	AuthTokenTimeToLive         interface{} `hcl:"auth_token_time_to_live"`
@@ -158,12 +159,6 @@ type Controller struct {
 	//
 	// TODO: This field is currently internal.
 	StatusGracePeriodDuration time.Duration `hcl:"-"`
-
-	// SchedulerRunJobInterval is the time interval between waking up the
-	// scheduler to run pending jobs.
-	//
-	// TODO: This field is currently internal.
-	SchedulerRunJobInterval time.Duration `hcl:"-"`
 }
 
 func (c *Controller) InitNameIfEmpty() error {
@@ -236,6 +231,21 @@ type Database struct {
 	// not set it unless you are the reason it's here in the first place, as not
 	// only it dangerous but it will be removed at some point in the future.
 	SkipSharedLockAcquisition bool `hcl:"skip_shared_lock_acquisition"`
+}
+
+// Scheduler is the configuration block that specifies the job scheduler behavior on the controller
+type Scheduler struct {
+	// JobRunInterval is the time interval between waking up the
+	// scheduler to run pending jobs.
+	//
+	JobRunInterval         interface{} `hcl:"job_run_interval"`
+	JobRunIntervalDuration time.Duration
+
+	// MonitorInterval is the time interval between waking up the
+	// scheduler to monitor for jobs that are defunct.
+	//
+	MonitorInterval         interface{} `hcl:"monitor_interval"`
+	MonitorIntervalDuration time.Duration
 }
 
 type Plugins struct {
@@ -385,6 +395,24 @@ func Parse(d string) (*Config, error) {
 				return result, err
 			}
 			result.Controller.GracefulShutdownWaitDuration = t
+		}
+
+		if result.Controller.Scheduler != nil {
+			if result.Controller.Scheduler.JobRunInterval != "" {
+				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.JobRunInterval)
+				if err != nil {
+					return result, err
+				}
+				result.Controller.Scheduler.JobRunIntervalDuration = t
+			}
+
+			if result.Controller.Scheduler.MonitorInterval != "" {
+				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.MonitorInterval)
+				if err != nil {
+					return result, err
+				}
+				result.Controller.Scheduler.MonitorIntervalDuration = t
+			}
 		}
 
 		if result.Controller.Database != nil {
