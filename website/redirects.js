@@ -155,6 +155,11 @@ module.exports = [
     permanent: false,
   },
   {
+    source: '/help/admin-ui/worker-filters',
+    destination: '/docs/concepts/filtering/worker-tags',
+    permanent: false,
+  },
+  {
     source: '/help/admin-ui/managed-groups',
     destination: '/docs/concepts/domain-model/managed-groups',
     permanent: false,
