@@ -664,81 +664,106 @@ func TestListWorkers_WithExcludeShutdown(t *testing.T) {
 	require.NoError(err)
 	require.Len(result, 3)
 
-	// Push an upsert to the first worker so that its status has been
-	// updated.
-	_, err = serversRepo.UpsertWorkerStatus(ctx,
-		server.NewWorker(scope.Global.String(),
-			server.WithName(worker1.GetName()),
-			server.WithAddress(worker1.GetAddress()),
-			server.WithOperationalState(server.ShutdownOperationalState.String()),
-			server.WithReleaseVersion("Boundary v.0.11"),
-			server.WithPublicId(worker1.GetPublicId())))
-	require.NoError(err)
-
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
-	require.NoError(err)
-	require.Len(result, 2)
-
-	_, err = serversRepo.UpsertWorkerStatus(ctx,
-		server.NewWorker(scope.Global.String(),
-			server.WithName(worker2.GetName()),
-			server.WithAddress(worker2.GetAddress()),
-			server.WithReleaseVersion("Boundary v.0.11"),
-			server.WithOperationalState(server.ShutdownOperationalState.String())),
-		server.WithPublicId(worker2.GetPublicId()))
-	require.NoError(err)
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
-	require.NoError(err)
-	require.Len(result, 1)
-
-	_, err = serversRepo.UpsertWorkerStatus(ctx,
-		server.NewWorker(scope.Global.String(),
-			server.WithName(worker3.GetName()),
-			server.WithAddress(worker3.GetAddress()),
-			server.WithReleaseVersion("Boundary v.0.11"),
-			server.WithOperationalState(server.ShutdownOperationalState.String())),
-		server.WithPublicId(worker3.GetPublicId()))
-	require.NoError(err)
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
-	require.NoError(err)
-	require.Len(result, 0)
-
-	// Upsert without a release version or state and expect to get a hit- test backwards compatibility
-	// Pre 0.11 workers will default to Active
-	upserted, err := serversRepo.UpsertWorkerStatus(ctx,
-		server.NewWorker(scope.Global.String(),
-			server.WithName(worker3.GetName()),
-			server.WithAddress(worker3.GetAddress())),
-		server.WithPublicId(worker3.GetPublicId()))
-	require.NoError(err)
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
-	require.NoError(err)
-	assert.Equal(t, server.ActiveOperationalState.String(), upserted.OperationalState)
-	require.Len(result, 1)
-
-	// Upsert with active status and no version and expect to get a hit- test backwards compatibility
-	_, err = serversRepo.UpsertWorkerStatus(ctx,
-		server.NewWorker(scope.Global.String(),
-			server.WithName(worker3.GetName()),
-			server.WithAddress(worker3.GetAddress()),
-			server.WithOperationalState(server.ActiveOperationalState.String())),
-		server.WithPublicId(worker3.GetPublicId()))
-	require.NoError(err)
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
-	require.NoError(err)
-	require.Len(result, 1)
-
-	// Upsert with unknown status and do not expect to get a hit- test worker create before status
-	_, err = serversRepo.UpsertWorkerStatus(ctx,
-		server.NewWorker(scope.Global.String(),
-			server.WithName(worker3.GetName()),
-			server.WithAddress(worker3.GetAddress()),
-			server.WithOperationalState(server.UnknownOperationalState.String())),
-		server.WithPublicId(worker3.GetPublicId()))
-	require.NoError(err)
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
-	require.NoError(err)
-	require.Len(result, 0)
+	tests := []struct {
+		name      string
+		upsertFn  func() (*server.Worker, error)
+		wantCnt   int
+		wantState string
+	}{
+		{
+			name: "upsert-worker1-to-shutdown",
+			upsertFn: func() (*server.Worker, error) {
+				return serversRepo.UpsertWorkerStatus(ctx,
+					server.NewWorker(scope.Global.String(),
+						server.WithName(worker1.GetName()),
+						server.WithAddress(worker1.GetAddress()),
+						server.WithOperationalState(server.ShutdownOperationalState.String()),
+						server.WithReleaseVersion("Boundary v.0.11"),
+						server.WithPublicId(worker1.GetPublicId())))
+			},
+			wantCnt:   2,
+			wantState: server.ShutdownOperationalState.String(),
+		},
+		{
+			name: "upsert-worker2-to-shutdown",
+			upsertFn: func() (*server.Worker, error) {
+				return serversRepo.UpsertWorkerStatus(ctx,
+					server.NewWorker(scope.Global.String(),
+						server.WithName(worker2.GetName()),
+						server.WithAddress(worker2.GetAddress()),
+						server.WithOperationalState(server.ShutdownOperationalState.String()),
+						server.WithReleaseVersion("Boundary v.0.11"),
+						server.WithPublicId(worker2.GetPublicId())))
+			},
+			wantCnt:   1,
+			wantState: server.ShutdownOperationalState.String(),
+		},
+		{
+			name: "upsert-worker3-to-shutdown",
+			upsertFn: func() (*server.Worker, error) {
+				return serversRepo.UpsertWorkerStatus(ctx,
+					server.NewWorker(scope.Global.String(),
+						server.WithName(worker3.GetName()),
+						server.WithAddress(worker3.GetAddress()),
+						server.WithOperationalState(server.ShutdownOperationalState.String()),
+						server.WithReleaseVersion("Boundary v.0.11"),
+						server.WithPublicId(worker3.GetPublicId())))
+			},
+			wantCnt:   0,
+			wantState: server.ShutdownOperationalState.String(),
+		},
+		{ // Upsert without a release version or state and expect to get a hit- test backwards compatibility
+			// Pre 0.11 workers will default to Active
+			name: "upsert-no-release-version-no-state",
+			upsertFn: func() (*server.Worker, error) {
+				return serversRepo.UpsertWorkerStatus(ctx,
+					server.NewWorker(scope.Global.String(),
+						server.WithName(worker3.GetName()),
+						server.WithAddress(worker3.GetAddress())),
+					server.WithPublicId(worker3.GetPublicId()))
+			},
+			wantCnt:   1,
+			wantState: server.ActiveOperationalState.String(),
+		},
+		{ // Upsert with active status and no version and expect to get a hit- test backwards compatibility
+			name: "upsert-no-release-version-active-state",
+			upsertFn: func() (*server.Worker, error) {
+				return serversRepo.UpsertWorkerStatus(ctx,
+					server.NewWorker(scope.Global.String(),
+						server.WithName(worker3.GetName()),
+						server.WithAddress(worker3.GetAddress()),
+						server.WithOperationalState(server.ActiveOperationalState.String())),
+					server.WithPublicId(worker3.GetPublicId()))
+			},
+			wantCnt:   1,
+			wantState: server.ActiveOperationalState.String(),
+		},
+		{ // Upsert with unknown status and do not expect to get a hit- test worker create before status
+			name: "upsert-unknown-status",
+			upsertFn: func() (*server.Worker, error) {
+				return serversRepo.UpsertWorkerStatus(ctx,
+					server.NewWorker(scope.Global.String(),
+						server.WithName(worker3.GetName()),
+						server.WithAddress(worker3.GetAddress()),
+						server.WithOperationalState(server.UnknownOperationalState.String())),
+					server.WithPublicId(worker3.GetPublicId()))
+			},
+			wantCnt:   0,
+			wantState: server.UnknownOperationalState.String(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			worker, err := tt.upsertFn()
+			require.NoError(err)
+			got, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
+			require.NoError(err)
+			assert.Len(t, got, tt.wantCnt)
+			if len(tt.wantState) > 0 {
+				assert.Equal(t, tt.wantState, worker.OperationalState)
+			}
+		})
+	}
 }
 
 func TestListWorkers_WithLiveness(t *testing.T) {
