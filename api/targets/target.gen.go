@@ -22,8 +22,6 @@ type Target struct {
 	UpdatedTime                            time.Time              `json:"updated_time,omitempty"`
 	Version                                uint32                 `json:"version,omitempty"`
 	Type                                   string                 `json:"type,omitempty"`
-	HostSetIds                             []string               `json:"host_set_ids,omitempty"`
-	HostSets                               []*HostSet             `json:"host_sets,omitempty"`
 	HostSourceIds                          []string               `json:"host_source_ids,omitempty"`
 	HostSources                            []*HostSource          `json:"host_sources,omitempty"`
 	SessionMaxSeconds                      uint32                 `json:"session_max_seconds,omitempty"`
@@ -401,76 +399,6 @@ func (c *Client) AddCredentialSources(ctx context.Context, id string, version ui
 	return target, nil
 }
 
-func (c *Client) AddHostSets(ctx context.Context, id string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
-	if id == "" {
-		return nil, fmt.Errorf("empty id value passed into AddHostSets request")
-	}
-
-	if len(hostSetIds) == 0 {
-		return nil, errors.New("empty hostSetIds passed into AddHostSets request")
-	}
-
-	if c.client == nil {
-		return nil, errors.New("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, errors.New("zero version number passed into AddHostSets request")
-		}
-		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
-		if existingErr != nil {
-			if api.AsServerError(existingErr) != nil {
-				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
-			}
-			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingTarget == nil {
-			return nil, errors.New("nil resource response found when performing initial check-and-set read")
-		}
-		if existingTarget.Item == nil {
-			return nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Item.Version
-	}
-
-	opts.postMap["version"] = version
-
-	opts.postMap["host_set_ids"] = hostSetIds
-
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:add-host-sets", url.PathEscape(id)), opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating AddHostSets request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error performing client request during AddHostSets call: %w", err)
-	}
-
-	target := new(TargetUpdateResult)
-	target.Item = new(Target)
-	apiErr, err := resp.Decode(target.Item)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding AddHostSets response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr
-	}
-	target.response = resp
-	return target, nil
-}
-
 func (c *Client) AddHostSources(ctx context.Context, id string, version uint32, hostSourceIds []string, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into AddHostSources request")
@@ -605,72 +533,6 @@ func (c *Client) SetCredentialSources(ctx context.Context, id string, version ui
 	return target, nil
 }
 
-func (c *Client) SetHostSets(ctx context.Context, id string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
-	if id == "" {
-		return nil, fmt.Errorf("empty id value passed into SetHostSets request")
-	}
-
-	if c.client == nil {
-		return nil, errors.New("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, errors.New("zero version number passed into SetHostSets request")
-		}
-		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
-		if existingErr != nil {
-			if api.AsServerError(existingErr) != nil {
-				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
-			}
-			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingTarget == nil {
-			return nil, errors.New("nil resource response found when performing initial check-and-set read")
-		}
-		if existingTarget.Item == nil {
-			return nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Item.Version
-	}
-
-	opts.postMap["version"] = version
-
-	opts.postMap["host_set_ids"] = hostSetIds
-
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:set-host-sets", url.PathEscape(id)), opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating SetHostSets request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error performing client request during SetHostSets call: %w", err)
-	}
-
-	target := new(TargetUpdateResult)
-	target.Item = new(Target)
-	apiErr, err := resp.Decode(target.Item)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding SetHostSets response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr
-	}
-	target.response = resp
-	return target, nil
-}
-
 func (c *Client) SetHostSources(ctx context.Context, id string, version uint32, hostSourceIds []string, opt ...Option) (*TargetUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into SetHostSources request")
@@ -793,76 +655,6 @@ func (c *Client) RemoveCredentialSources(ctx context.Context, id string, version
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding RemoveCredentialSources response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr
-	}
-	target.response = resp
-	return target, nil
-}
-
-func (c *Client) RemoveHostSets(ctx context.Context, id string, version uint32, hostSetIds []string, opt ...Option) (*TargetUpdateResult, error) {
-	if id == "" {
-		return nil, fmt.Errorf("empty id value passed into RemoveHostSets request")
-	}
-
-	if len(hostSetIds) == 0 {
-		return nil, errors.New("empty hostSetIds passed into RemoveHostSets request")
-	}
-
-	if c.client == nil {
-		return nil, errors.New("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, errors.New("zero version number passed into RemoveHostSets request")
-		}
-		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
-		if existingErr != nil {
-			if api.AsServerError(existingErr) != nil {
-				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
-			}
-			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingTarget == nil {
-			return nil, errors.New("nil resource response found when performing initial check-and-set read")
-		}
-		if existingTarget.Item == nil {
-			return nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Item.Version
-	}
-
-	opts.postMap["version"] = version
-
-	opts.postMap["host_set_ids"] = hostSetIds
-
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("targets/%s:remove-host-sets", url.PathEscape(id)), opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating RemoveHostSets request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error performing client request during RemoveHostSets call: %w", err)
-	}
-
-	target := new(TargetUpdateResult)
-	target.Item = new(Target)
-	apiErr, err := resp.Decode(target.Item)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding RemoveHostSets response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr

@@ -32,9 +32,9 @@ const (
 	AddHosts                         Type = 21
 	SetHosts                         Type = 22
 	RemoveHosts                      Type = 23
-	AddHostSets                      Type = 24 // DEPRECATED
-	SetHostSets                      Type = 25 // DEPRECATED
-	RemoveHostSets                   Type = 26 // DEPRECATED
+	AddHostSets                      Type = 24 // OBSOLETE
+	SetHostSets                      Type = 25 // OBSOLETE
+	RemoveHostSets                   Type = 26 // OBSOLETE
 	Cancel                           Type = 27
 	AddAccounts                      Type = 28
 	SetAccounts                      Type = 29
@@ -119,6 +119,15 @@ var Map = map[string]Type{
 	CreateControllerLed.String():              CreateControllerLed,
 	ReinitializeCertificateAuthority.String(): ReinitializeCertificateAuthority,
 	ReadCertificateAuthority.String():         ReadCertificateAuthority,
+}
+
+var DeprecatedMap = map[string]Type{
+	AddHostSets.String():               AddHostSources,
+	SetHostSets.String():               SetHostSources,
+	RemoveHostSets.String():            RemoveHostSources,
+	AddCredentialLibraries.String():    AddCredentialSources,
+	SetCredentialLibraries.String():    SetCredentialSources,
+	RemoveCredentialLibraries.String(): RemoveCredentialSources,
 }
 
 func (a Type) String() string {

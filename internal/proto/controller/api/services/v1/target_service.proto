@@ -97,59 +97,6 @@ service TargetService {
     };
   }
 
-  // AddTargetHostSets adds Host Sets to this Target. The provided request must
-  // include the Target ID to which the Host Sets will be added.
-  // All Host Sets added to the provided Target must be a child of a Catalog that
-  // is a child of the same scope as this Target. If the scope or Target IDs are
-  // missing, malformed, or reference non-existing resources, an error is
-  // returned. An error is returned if a Host Set is attempted to be added
-  // to a target that is already present on the Target.
-  rpc AddTargetHostSets(AddTargetHostSetsRequest) returns (AddTargetHostSetsResponse) {
-    option (google.api.http) = {
-      post: "/v1/targets/{id}:add-host-sets"
-      body: "*"
-      response_body: "item"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds existing Host Sets to a Target."
-    };
-  }
-
-  // SetTargetHostSets sets the Target's Host Sets. Any existing Host Sets on the
-  // Target are deleted if they are not included in this request. The
-  // provided request must include the scope, and the Target ID on which the
-  // Host Sets will be set.  All Host Sets in the request must be a child of
-  // a Catalog that is in the same scope as the provided Target. If any
-  // IDs are missing, malformed, or references a non-existing resource, an
-  // error is returned.
-  rpc SetTargetHostSets(SetTargetHostSetsRequest) returns (SetTargetHostSetsResponse) {
-    option (google.api.http) = {
-      post: "/v1/targets/{id}:set-host-sets"
-      body: "*"
-      response_body: "item"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Sets the Host Sets on the Target."
-    };
-  }
-
-  // RemoveTargetHostSets removes the Host Sets from the specified Target. The
-  // provided request must include the Target ID for the Target
-  // from which the Host Sets will be removed. If the ID is missing,
-  // malformed, or references a non-existing scope or Catalog, an error is
-  // returned.  An error is returned if a Host Set is attempted to be
-  // removed from the Target when the Target does not have the Host Set.
-  rpc RemoveTargetHostSets(RemoveTargetHostSetsRequest) returns (RemoveTargetHostSetsResponse) {
-    option (google.api.http) = {
-      post: "/v1/targets/{id}:remove-host-sets"
-      body: "*"
-      response_body: "item"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes Host Sets from the Target."
-    };
-  }
-
   // AddTargetHostSources adds Host Sources to this Target. The provided request
   // must include the Target ID to which the Host Sources will be added. All
   // Host Sources added to the provided Target must be a child of a Catalog that
@@ -300,42 +247,6 @@ message DeleteTargetRequest {
 }
 
 message DeleteTargetResponse {}
-
-message AddTargetHostSetsRequest {
-  string id = 1; // @gotags: `class:"public"`
-  // Version is used to ensure this resource has not changed.
-  // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2; // @gotags: `class:"public"`
-  repeated string host_set_ids = 3 [json_name = "host_set_ids"]; // @gotags: `class:"public"`
-}
-
-message AddTargetHostSetsResponse {
-  api.resources.targets.v1.Target item = 1;
-}
-
-message SetTargetHostSetsRequest {
-  string id = 1; // @gotags: `class:"public"`
-  // Version is used to ensure this resource has not changed.
-  // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2; // @gotags: `class:"public"`
-  repeated string host_set_ids = 3 [json_name = "host_set_ids"]; // @gotags: `class:"public"`
-}
-
-message SetTargetHostSetsResponse {
-  api.resources.targets.v1.Target item = 1;
-}
-
-message RemoveTargetHostSetsRequest {
-  string id = 1; // @gotags: `class:"public"`
-  // Version is used to ensure this resource has not changed.
-  // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2; // @gotags: `class:"public"`
-  repeated string host_set_ids = 3 [json_name = "host_set_ids"]; // @gotags: `class:"public"`
-}
-
-message RemoveTargetHostSetsResponse {
-  api.resources.targets.v1.Target item = 1;
-}
 
 message AddTargetHostSourcesRequest {
   string id = 1; // @gotags: `class:"public"`
