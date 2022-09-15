@@ -714,11 +714,24 @@ func TestListWorkers_WithExcludeShutdown(t *testing.T) {
 	require.NoError(err)
 	require.Len(result, 1)
 
-	// Upsert with an empty string release version and no state
+	// Upsert with an empty string release version and no state and expect to get a hit- test backwards compatibility
 	_, err = serversRepo.UpsertWorkerStatus(ctx,
 		server.NewWorker(scope.Global.String(),
 			server.WithName(worker3.GetName()),
 			server.WithAddress(worker3.GetAddress()),
+			server.WithReleaseVersion("")),
+		server.WithPublicId(worker3.GetPublicId()))
+	require.NoError(err)
+	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithExcludeShutdownWorkers(true))
+	require.NoError(err)
+	require.Len(result, 1)
+
+	// Upsert with active status and empty string version and expect to get a hit- test backwards compatibility
+	_, err = serversRepo.UpsertWorkerStatus(ctx,
+		server.NewWorker(scope.Global.String(),
+			server.WithName(worker3.GetName()),
+			server.WithAddress(worker3.GetAddress()),
+			server.WithOperationalState(server.ActiveOperationalState.String()),
 			server.WithReleaseVersion("")),
 		server.WithPublicId(worker3.GetPublicId()))
 	require.NoError(err)
