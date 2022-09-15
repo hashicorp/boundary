@@ -645,7 +645,7 @@ func TestListWorkers(t *testing.T) {
 	}
 }
 
-func TestListWorkers_WithExcludeShutdown(t *testing.T) {
+func TestListWorkers_WithActiveWorkers(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
