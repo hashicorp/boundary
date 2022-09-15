@@ -44,7 +44,7 @@ type options struct {
 	WithCreateControllerLedActivationToken bool
 	withReleaseVersion                     string
 	withOperationalState                   string
-	withExcludeShutdownWorkers             bool
+	withActiveWorkers                      bool
 }
 
 func getDefaultOptions() options {
@@ -215,9 +215,9 @@ func WithOperationalState(state string) Option {
 	}
 }
 
-// WithExcludeShutdownWorkers provides an optional to filter out workers in shutdown
-func WithExcludeShutdownWorkers(exclude bool) Option {
+// WithActiveWorkers provides an optional filter to only include active workers
+func WithActiveWorkers(withActive bool) Option {
 	return func(o *options) {
-		o.withExcludeShutdownWorkers = exclude
+		o.withActiveWorkers = withActive
 	}
 }

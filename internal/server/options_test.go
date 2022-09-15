@@ -198,8 +198,8 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithExcludeShutdown", func(t *testing.T) {
 		opts := getDefaultOptions()
-		assert.Empty(t, opts.withExcludeShutdownWorkers)
-		opts = GetOpts(WithExcludeShutdownWorkers(true))
-		assert.Equal(t, true, opts.withExcludeShutdownWorkers)
+		assert.Empty(t, opts.withActiveWorkers)
+		opts = GetOpts(WithActiveWorkers(true))
+		assert.Equal(t, true, opts.withActiveWorkers)
 	})
 }
