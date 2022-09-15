@@ -57,8 +57,13 @@
             "path": "configuration/worker/pki-worker"
           },
           {
-            "title": "KMS Workers <sup>OSS Only</sup>",
-            "path": "configuration/worker/kms-worker"
+            "title": "KMS Workers",
+            "path": "configuration/worker/kms-worker",
+            "badge": {
+              "text": "OSS Only",
+              "type": "outlined",
+              "color": "neutral"
+            }
           }
         ]
       },
@@ -138,12 +143,22 @@
         ]
       },
       {
-        "title": "controller <sup>OSS Only</sup>",
-        "path": "configuration/controller"
+        "title": "controller",
+        "path": "configuration/controller",
+        "badge": {
+          "text": "OSS Only",
+          "type": "outlined",
+          "color": "neutral"
+        }
       },
       {
-        "title": "plugins <sup>OSS Only</sup>",
-        "path": "configuration/plugins"
+        "title": "plugins",
+        "path": "configuration/plugins",
+        "badge": {
+          "text": "OSS Only",
+          "type": "outlined",
+          "color": "neutral"
+        }
       }
     ]
   },
