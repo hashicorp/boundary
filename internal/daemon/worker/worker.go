@@ -453,6 +453,8 @@ func (w *Worker) GracefulShutdown() error {
 		activeConnectionCount = w.activeConnectionCount()
 	}
 	event.WriteSysEvent(w.baseContext, op, "worker connections have drained")
+
+	time.Sleep(time.Second * 10)
 	return nil
 }
 

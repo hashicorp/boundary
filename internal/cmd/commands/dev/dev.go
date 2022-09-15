@@ -823,58 +823,84 @@ func (c *Command) Run(args []string) int {
 	c.opsServer = opsServer
 	c.opsServer.Start()
 
-	// On first interrupt, enter graceful shutdown for controllers and workers (workers wait for connections to drain)
-	// On second interrupt, force controller shutdown and send workers into shutdown (stop all connections)
-	// On third+ interrupt, force worker shutdown
-	shutdownDone := false
+	var controllerShutdownDone sync.Bool
+	var workerShutdownDone sync.Bool
+	controllerShutdownDone.Store(false)
+
+	if !c.flagControllerOnly {
+		workerShutdownDone.Store(false)
+	} else {
+		workerShutdownDone.Store(true)
+	}
+
 	shutdownTriggerCount := uint32(0)
 
+	workerShutdownFunc := func() error {
+		if err := c.worker.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+			return err
+		}
+		return nil
+	}
+	workerGracefulShutdownFunc := func() error {
+		if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
+			c.worker.WorkerAuthStorage.Cleanup()
+		}
+		if err := c.worker.GracefulShutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker gracefully: %w", err).Error())
+			return err
+		}
+		return workerShutdownFunc()
+	}
+	controllerShutdownFunc := func() error {
+		if err := c.controller.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
+			return err
+		}
+		return nil
+	}
+
 	runShutdownLogic := func() {
-		if sync.LoadUint32(&shutdownTriggerCount) == 1 {
+		count := sync.LoadUint32(&shutdownTriggerCount)
+		switch {
+		case count == 1:
 			go func() {
 				if c.Config.Controller != nil {
 					c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
 				}
 
 				if !c.flagControllerOnly {
-					if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
-						c.worker.WorkerAuthStorage.Cleanup()
-					}
-					if err := c.worker.GracefulShutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error shutting down worker gracefully: %w", err).Error())
-					}
-					if err := c.worker.Shutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+					result := workerGracefulShutdownFunc()
+					if result == nil {
+						workerShutdownDone.Store(true)
 					}
 				}
 
-				if err := c.controller.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
+				if err := controllerShutdownFunc(); err == nil {
+					controllerShutdownDone.Store(true)
 				}
 
 				err := c.opsServer.Shutdown()
 				if err != nil {
 					c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
 				}
-				shutdownDone = true
 			}()
-		}
-
-		if sync.LoadUint32(&shutdownTriggerCount) == 2 && !c.flagControllerOnly {
+		case count == 2 && !c.flagControllerOnly:
 			go func() {
-				if !c.flagControllerOnly {
-					if err := c.worker.Shutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+				if !c.flagControllerOnly && !workerShutdownDone.Load() {
+					if err := workerShutdownFunc(); err == nil {
+						workerShutdownDone.Store(true)
 					}
-					shutdownDone = true
+				} else if !controllerShutdownDone.Load() {
+					if err := controllerShutdownFunc(); err == nil {
+						controllerShutdownDone.Store(true)
+					}
 				} else {
 					c.UI.Error("Forcing shutdown")
 					os.Exit(base.CommandUserError)
 				}
 			}()
-		}
-
-		if sync.LoadUint32(&shutdownTriggerCount) > 2 {
+		case count > 2:
 			go func() {
 				c.UI.Error("Forcing shutdown")
 				os.Exit(base.CommandUserError)
@@ -882,7 +908,7 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	for !errorEncountered.Load() && !shutdownDone {
+	for !errorEncountered.Load() && (!workerShutdownDone.Load() && !controllerShutdownDone.Load()) {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary dev environment self-terminating")
@@ -898,8 +924,9 @@ func (c *Command) Run(args []string) int {
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
-		default:
-			if shutdownDone {
+
+		case <-time.After(10 * time.Millisecond):
+			if workerShutdownDone.Load() && controllerShutdownDone.Load() {
 				break
 			}
 		}
