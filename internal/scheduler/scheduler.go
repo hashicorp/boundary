@@ -184,12 +184,17 @@ func (s *Scheduler) RunNow() {
 
 func (s *Scheduler) start(ctx context.Context) {
 	const op = "scheduler.(Scheduler).start"
+	event.WriteSysEvent(ctx, op, "scheduling loop running",
+		"server id", s.serverId,
+		"run interval", s.runJobsInterval.String(),
+		"run limit", s.runJobsLimit)
 	timer := time.NewTimer(0)
 	var wg sync.WaitGroup
 	for {
 		select {
 		case <-ctx.Done():
-			event.WriteSysEvent(ctx, op, "scheduling loop received shutdown, waiting for jobs to finish", "server id", s.serverId)
+			event.WriteSysEvent(ctx, op, "scheduling loop received shutdown, waiting for jobs to finish",
+				"server id", s.serverId)
 			wg.Wait()
 			event.WriteSysEvent(ctx, op, "scheduling loop shutting down", "server id", s.serverId)
 			return
@@ -282,6 +287,10 @@ func (s *Scheduler) runJob(ctx context.Context, wg *sync.WaitGroup, r *job.Run) 
 
 func (s *Scheduler) monitorJobs(ctx context.Context) {
 	const op = "scheduler.(Scheduler).monitorJobs"
+	event.WriteSysEvent(ctx, op, "monitor loop running",
+		"server id", s.serverId,
+		"monitor interval", s.monitorInterval.String(),
+		"interrupt threshold", s.interruptThreshold.String())
 	timer := time.NewTimer(0)
 	for {
 		select {
