@@ -870,15 +870,19 @@ func (c *Command) Run(args []string) int {
 				}
 
 				if !c.flagControllerOnly {
-					result := workerGracefulShutdownFunc()
-					if result == nil {
-						workerShutdownDone.Store(true)
-					}
+					go func() {
+						result := workerGracefulShutdownFunc()
+						if result == nil {
+							workerShutdownDone.Store(true)
+						}
+					}()
 				}
 
-				if err := controllerShutdownFunc(); err == nil {
-					controllerShutdownDone.Store(true)
-				}
+				go func() {
+					if err := controllerShutdownFunc(); err == nil {
+						controllerShutdownDone.Store(true)
+					}
+				}()
 
 				err := c.opsServer.Shutdown()
 				if err != nil {
@@ -888,14 +892,20 @@ func (c *Command) Run(args []string) int {
 		case count == 2 && !c.flagControllerOnly:
 			go func() {
 				if !c.flagControllerOnly && !workerShutdownDone.Load() {
-					if err := workerShutdownFunc(); err == nil {
-						workerShutdownDone.Store(true)
-					}
-				} else if !controllerShutdownDone.Load() {
-					if err := controllerShutdownFunc(); err == nil {
-						controllerShutdownDone.Store(true)
-					}
-				} else {
+					go func() {
+						if err := workerShutdownFunc(); err == nil {
+							workerShutdownDone.Store(true)
+						}
+					}()
+				}
+				if !controllerShutdownDone.Load() {
+					go func() {
+						if err := controllerShutdownFunc(); err == nil {
+							controllerShutdownDone.Store(true)
+						}
+					}()
+				}
+				if workerShutdownDone.Load() && controllerShutdownDone.Load() {
 					c.UI.Error("Forcing shutdown")
 					os.Exit(base.CommandUserError)
 				}

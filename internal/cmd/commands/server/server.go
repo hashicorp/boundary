@@ -709,15 +709,19 @@ func (c *Command) WaitForInterrupt() int {
 				}
 
 				if c.Config.Worker != nil {
-					result := workerGracefulShutdownFunc()
-					if result == nil {
-						workerShutdownDone.Store(true)
-					}
+					go func() {
+						result := workerGracefulShutdownFunc()
+						if result == nil {
+							workerShutdownDone.Store(true)
+						}
+					}()
 				}
 
-				if err := controllerShutdownFunc(); err == nil {
-					controllerShutdownDone.Store(true)
-				}
+				go func() {
+					if err := controllerShutdownFunc(); err == nil {
+						controllerShutdownDone.Store(true)
+					}
+				}()
 
 				if c.opsServer != nil {
 					err := c.opsServer.Shutdown()
@@ -731,14 +735,20 @@ func (c *Command) WaitForInterrupt() int {
 		if sync.LoadUint32(&shutdownTriggerCount) == 2 && c.Config.Worker != nil {
 			go func() {
 				if c.Config.Worker != nil && !workerShutdownDone.Load() {
-					if err := workerShutdownFunc(); err == nil {
-						workerShutdownDone.Store(true)
-					}
-				} else if !controllerShutdownDone.Load() {
-					if err := controllerShutdownFunc(); err == nil {
-						controllerShutdownDone.Store(true)
-					}
-				} else {
+					go func() {
+						if err := workerShutdownFunc(); err == nil {
+							workerShutdownDone.Store(true)
+						}
+					}()
+				}
+				if !controllerShutdownDone.Load() {
+					go func() {
+						if err := controllerShutdownFunc(); err == nil {
+							controllerShutdownDone.Store(true)
+						}
+					}()
+				}
+				if workerShutdownDone.Load() && controllerShutdownDone.Load() {
 					c.UI.Error("Forcing shutdown")
 					os.Exit(base.CommandUserError)
 				}
