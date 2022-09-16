@@ -158,18 +158,15 @@ func TestServer_ReloadListener(t *testing.T) {
 	require.NoError(err)
 	require.NoError(os.WriteFile(td+"/bundle.pem", inBytes, 0o777))
 
-	fmt.Println("Invoking sighup ch")
 	cmd.SighupCh <- struct{}{}
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(5 * time.Second):
 		t.Fatalf("timeout")
 	}
-	fmt.Println("after sighup ch")
+
 	testCertificateSerial("193080739105342897219784862820114567438786419504")
 
-	fmt.Println("Invoking shutdown ch")
 	cmd.ShutdownCh <- struct{}{}
-
 	wg.Wait()
 }

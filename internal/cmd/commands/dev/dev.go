@@ -887,7 +887,7 @@ func (c *Command) Run(args []string) int {
 			}()
 		case count == 2 && !c.flagControllerOnly:
 			go func() {
-				if c.Config.Worker != nil && !workerShutdownDone.Load() {
+				if !workerShutdownDone.Load() {
 					workerShutdownOnce.Do(workerShutdownFunc)
 				}
 				if c.Config.Controller != nil && !controllerShutdownDone.Load() {

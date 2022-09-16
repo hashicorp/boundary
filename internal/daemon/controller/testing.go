@@ -286,10 +286,7 @@ func (tc *TestController) buildClient() {
 // done
 func (tc *TestController) Shutdown() {
 	tc.shutdownOnce.Do(func() {
-		// TODO update this as well
-
 		if tc.b != nil {
-			//close(tc.b.ShutdownCh)
 			tc.b.ContextCancel()
 		}
 

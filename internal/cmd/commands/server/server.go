@@ -680,6 +680,7 @@ func (c *Command) WaitForInterrupt() int {
 	}
 
 	shutdownTriggerCount := uint32(0)
+	shutdownTriggered := false
 
 	var workerShutdownOnce sync.Once
 	workerShutdownFunc := func() {
@@ -702,9 +703,11 @@ func (c *Command) WaitForInterrupt() int {
 		} else {
 			controllerShutdownDone.Store(true)
 		}
-		err := c.opsServer.Shutdown()
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
+		if c.opsServer != nil {
+			err := c.opsServer.Shutdown()
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
+			}
 		}
 	}
 
@@ -744,9 +747,10 @@ func (c *Command) WaitForInterrupt() int {
 			c.UI.Error("Forcing shutdown")
 			os.Exit(base.CommandCliError)
 		}
+		shutdownTriggered = true
 	}
 
-	for !workerShutdownDone.Load() && !controllerShutdownDone.Load() {
+	for !shutdownTriggered { //!workerShutdownDone.Load() && !controllerShutdownDone.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary server self-terminating")
