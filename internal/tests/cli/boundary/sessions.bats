@@ -94,7 +94,7 @@ load _helpers
   [ "$status" -eq 0 ]
   run list_sessions $DEFAULT_P_ID
   [ "$status" -eq 0 ]
-  id=$(echo "$output" | jq -r "[.items[]|select(.user_id == \"$DEFAULT_USER\")][0].id")
+  id=$(echo "$output" | jq -r "[.items[]|select(.user_id == \"$DEFAULT_UNPRIVILEGED_USER\")][0].id")
 
   # Check unpriv can read and cancel their own session
   run login $DEFAULT_UNPRIVILEGED_LOGIN
