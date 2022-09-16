@@ -423,20 +423,20 @@ func (w *Worker) Start() error {
 	return nil
 }
 
-func (w *Worker) activeConnectionCount() int {
-	const op = "worker.(Worker).activeConnectionCount"
-	activeConnectionCount := 0
+func (w *Worker) hasActiveConnection() bool {
+	activeConnection := false
 	w.sessionManager.ForEachLocalSession(
 		func(s session.Session) bool {
 			conns := s.GetLocalConnections()
 			for _, v := range conns {
 				if v.Status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED {
-					activeConnectionCount++
+					activeConnection = true
+					return false
 				}
 			}
 			return true
 		})
-	return activeConnectionCount
+	return activeConnection
 }
 
 // Graceful shutdown sets the worker state to "shutdown" and will wait to return until there
@@ -447,12 +447,13 @@ func (w *Worker) GracefulShutdown() error {
 	w.operationalState.Store(server.ShutdownOperationalState)
 
 	// Wait for connections to drain
-	activeConnectionCount := w.activeConnectionCount()
-	for activeConnectionCount > 0 {
+	for w.hasActiveConnection() {
 		time.Sleep(time.Second)
-		activeConnectionCount = w.activeConnectionCount()
 	}
 	event.WriteSysEvent(w.baseContext, op, "worker connections have drained")
+
+	// TODO remove this is jsut for local testing
+	//time.Sleep(time.Second * 10)
 	return nil
 }
 

@@ -9,7 +9,8 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	sync "sync/atomic"
+	"sync"
+	atm "sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -823,8 +824,8 @@ func (c *Command) Run(args []string) int {
 	c.opsServer = opsServer
 	c.opsServer.Start()
 
-	var controllerShutdownDone sync.Bool
-	var workerShutdownDone sync.Bool
+	var controllerShutdownDone atm.Bool
+	var workerShutdownDone atm.Bool
 	controllerShutdownDone.Store(false)
 
 	if !c.flagControllerOnly {
@@ -835,33 +836,34 @@ func (c *Command) Run(args []string) int {
 
 	shutdownTriggerCount := uint32(0)
 
-	workerShutdownFunc := func() error {
+	var workerShutdownOnce sync.Once
+	workerShutdownFunc := func() {
 		if err := c.worker.Shutdown(); err != nil {
 			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
-			return err
+		} else {
+			workerShutdownDone.Store(true)
 		}
-		return nil
 	}
-	workerGracefulShutdownFunc := func() error {
+	workerGracefulShutdownFunc := func() {
 		if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
 			c.worker.WorkerAuthStorage.Cleanup()
 		}
 		if err := c.worker.GracefulShutdown(); err != nil {
 			c.UI.Error(fmt.Errorf("Error shutting down worker gracefully: %w", err).Error())
-			return err
 		}
-		return workerShutdownFunc()
+		workerShutdownOnce.Do(workerShutdownFunc)
 	}
-	controllerShutdownFunc := func() error {
+	var controllerOnce sync.Once
+	controllerShutdownFunc := func() {
 		if err := c.controller.Shutdown(); err != nil {
 			c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
-			return err
+		} else {
+			controllerShutdownDone.Store(true)
 		}
-		return nil
 	}
 
 	runShutdownLogic := func() {
-		count := sync.LoadUint32(&shutdownTriggerCount)
+		count := atm.LoadUint32(&shutdownTriggerCount)
 		switch {
 		case count == 1:
 			go func() {
@@ -870,19 +872,10 @@ func (c *Command) Run(args []string) int {
 				}
 
 				if !c.flagControllerOnly {
-					go func() {
-						result := workerGracefulShutdownFunc()
-						if result == nil {
-							workerShutdownDone.Store(true)
-						}
-					}()
+					workerGracefulShutdownFunc()
 				}
 
-				go func() {
-					if err := controllerShutdownFunc(); err == nil {
-						controllerShutdownDone.Store(true)
-					}
-				}()
+				controllerOnce.Do(controllerShutdownFunc)
 
 				err := c.opsServer.Shutdown()
 				if err != nil {
@@ -892,18 +885,10 @@ func (c *Command) Run(args []string) int {
 		case count == 2 && !c.flagControllerOnly:
 			go func() {
 				if !c.flagControllerOnly && !workerShutdownDone.Load() {
-					go func() {
-						if err := workerShutdownFunc(); err == nil {
-							workerShutdownDone.Store(true)
-						}
-					}()
+					workerShutdownOnce.Do(workerShutdownFunc)
 				}
 				if !controllerShutdownDone.Load() {
-					go func() {
-						if err := controllerShutdownFunc(); err == nil {
-							controllerShutdownDone.Store(true)
-						}
-					}()
+					controllerOnce.Do(controllerShutdownFunc)
 				}
 				if workerShutdownDone.Load() && controllerShutdownDone.Load() {
 					c.UI.Error("Forcing shutdown")
@@ -922,12 +907,12 @@ func (c *Command) Run(args []string) int {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary dev environment self-terminating")
-			sync.AddUint32(&shutdownTriggerCount, 1)
+			atm.AddUint32(&shutdownTriggerCount, 1)
 			runShutdownLogic()
 
 		case <-c.ShutdownCh:
 			c.UI.Output("==> Boundary dev environment shutdown triggered, interrupt again to force")
-			sync.AddUint32(&shutdownTriggerCount, 1)
+			atm.AddUint32(&shutdownTriggerCount, 1)
 			runShutdownLogic()
 
 		case <-c.SigUSR2Ch:
@@ -940,6 +925,7 @@ func (c *Command) Run(args []string) int {
 				break
 			}
 		}
+
 	}
 
 	return base.CommandSuccess
