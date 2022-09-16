@@ -1,5 +1,9 @@
 .DEFAULT_GOAL := website
 
+# "developer" | "io"
+PREVIEW_MODE?=io
+REPO?=boundary
+
 PWD=$$(pwd)
 DOCKER_IMAGE="hashicorp/dev-portal"
 DOCKER_IMAGE_LOCAL="dev-portal-local"
@@ -10,11 +14,12 @@ DOCKER_RUN_FLAGS=-it \
 		--volume "$(PWD)/content:/app/content" \
 		--volume "$(PWD)/public:/app/public" \
 		--volume "$(PWD)/data:/app/data" \
+		--volume "$(PWD)/../internal/gen:/internal/gen" \
 		--volume "$(PWD)/redirects.js:/app/redirects.js" \
 		--volume "next-dir:/app/website-preview/.next" \
 		--volume "$(PWD)/.env:/app/.env" \
-		-e "REPO=boundary" \
-		-e "PREVIEW_MODE=io"
+		-e "REPO=$(REPO)" \
+		-e "PREVIEW_MODE=$(PREVIEW_MODE)"
 
 # Default: run this if working on the website locally to run in watch mode.
 .PHONY: website
