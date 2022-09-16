@@ -167,13 +167,19 @@ module.exports = [
   {
     source: '/help/admin-ui/dynamic-host-catalogs-on-aws',
     destination:
-      'https://learn.hashicorp.com/tutorials/boundary/aws-host-catalogs',
+      'https://learn.hashicorp.com/tutorials/boundary/aws-host-catalogs#configure-an-iam-user',
     permanent: false,
   },
   {
     source: '/help/admin-ui/dynamic-host-catalogs-on-azure',
     destination:
-      'https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs',
+      'https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs#register-a-new-azure-ad-application',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/dynamic-host-catalogs-on-azure-client-secret-value',
+    destination:
+      'https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs#generate-a-client-secret-for-the-application',
     permanent: false,
   },
   {
@@ -188,7 +194,8 @@ module.exports = [
   },
   {
     source: '/help/admin-ui/workers/manage-workers-on-hcp',
-    destination: 'https://learn.hashicorp.com/tutorials/boundary/hcp-manage-workers',
+    destination:
+      'https://learn.hashicorp.com/tutorials/boundary/hcp-manage-workers',
     permanent: false,
   },
 
@@ -210,11 +217,6 @@ module.exports = [
   {
     source: '/help/admin-ui/targets/add-host-sets',
     destination: '/docs/concepts/domain-model/host-sets',
-    permanent: false,
-  },
-  {
-    source: '/help/admin-ui/host-sets/add-hosts',
-    destination: '/docs/concepts/domain-model/hosts',
     permanent: false,
   },
 
@@ -252,6 +254,23 @@ module.exports = [
   {
     source: '/help/admin-ui/host-sets/new',
     destination: '/docs/common-workflows/manage-targets#define-a-host-set',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/host-sets/preferred-endpoints',
+    destination:
+      'https://www.boundaryproject.io/docs/concepts/domain-model/host-sets#preferred_endpoints',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/host-sets/sync-interval-seconds',
+    destination:
+      'https://www.boundaryproject.io/docs/concepts/domain-model/host-sets#sync_interval_seconds',
+    permanent: false,
+  },
+  {
+    source: '/help/admin-ui/host-sets/add-hosts',
+    destination: '/docs/concepts/domain-model/hosts',
     permanent: false,
   },
   {
