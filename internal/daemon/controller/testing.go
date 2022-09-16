@@ -492,7 +492,6 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts = new(TestControllerOpts)
 	}
 
-	// TODO populate context cancel with cancelable context
 	ctxTest, cancel := context.WithCancel(context.Background())
 
 	// Base server
