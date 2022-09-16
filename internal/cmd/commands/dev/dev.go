@@ -924,7 +924,6 @@ func (c *Command) Run(args []string) int {
 				break
 			}
 		}
-
 	}
 
 	return base.CommandSuccess

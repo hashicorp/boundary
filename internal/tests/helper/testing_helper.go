@@ -347,7 +347,6 @@ func (c *TestSessionConnection) testSendRecv(t *testing.T) bool {
 		err := binary.Write(c.conn, binary.LittleEndian, i)
 		if err != nil {
 			t.Log("received error during write", "err", err)
-			fmt.Println(err.Error())
 			if errors.Is(err, net.ErrClosed) ||
 				errors.Is(err, io.EOF) ||
 				errors.Is(err, websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) ||
