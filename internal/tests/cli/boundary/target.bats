@@ -74,14 +74,14 @@ load _helpers
 
 @test "boundary/target: admin user can add default host set to created target" {
   local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-  run assoc_host_sets $id $DEFAULT_HOST_SET
+  run assoc_host_sources $id $DEFAULT_HOST_SET
   echo "$output"
   [ "$status" -eq 0 ]
 }
 
 @test "boundary/target: created target has default host set" {
   local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-  run target_has_host_set_id $id $DEFAULT_HOST_SET
+  run target_has_host_source_id $id $DEFAULT_HOST_SET
   echo "$output"
   [ "$status" -eq 0 ]
 }

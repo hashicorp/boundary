@@ -266,6 +266,10 @@ test-sdk:
 test-api:
 	$(MAKE) -C api/ test
 
+.PHONY: test-cli
+test-cli:
+	$(MAKE) -C internal/tests/cli test
+
 .PHONY: test-all
 test-all: test-sdk test-api test
 

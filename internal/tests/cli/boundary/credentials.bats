@@ -58,3 +58,18 @@ export NEW_CREDENTIAL='test'
   echo "$output"
   [ "$status" -eq 1 ]
 }
+
+@test "boundary/credential-stores: can delete $NEW_STORE static store" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  run delete_credential_store $csid
+  echo "$output"
+  run has_status_code "$output" "204"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/credential-stores: can not read deleted $NEW_STORE static store" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+	run read_credential_store $csid
+  echo "$output"
+	[ "$status" -eq 1 ]
+}

@@ -1053,9 +1053,16 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		if _, err := perms.Parse("p_anything", v); err != nil {
+		grant, err := perms.Parse("p_anything", v)
+		if err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
+		}
+		_, actStrs := grant.Actions()
+		for _, actStr := range actStrs {
+			if depAct := action.DeprecatedMap[actStr]; depAct != action.Unknown {
+				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
+			}
 		}
 	}
 	if len(badFields) > 0 {
@@ -1077,9 +1084,16 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		if _, err := perms.Parse("p_anything", v); err != nil {
+		grant, err := perms.Parse("p_anything", v)
+		if err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
+		}
+		_, actStrs := grant.Actions()
+		for _, actStr := range actStrs {
+			if depAct := action.DeprecatedMap[actStr]; depAct != action.Unknown {
+				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
+			}
 		}
 	}
 	if len(badFields) > 0 {
@@ -1108,6 +1122,7 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
 		}
+		// NOTE: we don't do a deprecation check here because it's fine to allow people to remove deprecated grants.
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
