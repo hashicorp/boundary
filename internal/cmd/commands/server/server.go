@@ -669,12 +669,13 @@ func (c *Command) WaitForInterrupt() int {
 	const op = "server.(Command).WaitForInterrupt"
 
 	var controllerShutdownDone atm.Bool
-	var workerShutdownDone atm.Bool
 	controllerShutdownDone.Store(false)
-
+	if c.Config.Controller == nil {
+		controllerShutdownDone.Store(true)
+	}
+	var workerShutdownDone atm.Bool
+	workerShutdownDone.Store(false)
 	if c.Config.Worker == nil {
-		workerShutdownDone.Store(false)
-	} else {
 		workerShutdownDone.Store(true)
 	}
 
@@ -701,6 +702,10 @@ func (c *Command) WaitForInterrupt() int {
 		} else {
 			controllerShutdownDone.Store(true)
 		}
+		err := c.opsServer.Shutdown()
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
+		}
 	}
 
 	runShutdownLogic := func() {
@@ -708,21 +713,20 @@ func (c *Command) WaitForInterrupt() int {
 		switch {
 		case count == 1:
 			go func() {
+				c.ContextCancel()
 				if c.Config.Controller != nil && c.opsServer != nil {
 					c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
 				}
 
 				if c.Config.Worker != nil {
+					c.UI.Output("==> Boundary server graceful shutdown triggered, interrupt again to enter shutdown")
 					workerGracefulShutdownFunc()
+				} else {
+					c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
 				}
 
-				controllerOnce.Do(controllerShutdownFunc)
-
-				if c.opsServer != nil {
-					err := c.opsServer.Shutdown()
-					if err != nil {
-						c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
-					}
+				if c.Config.Controller != nil {
+					controllerOnce.Do(controllerShutdownFunc)
 				}
 			}()
 
@@ -731,20 +735,14 @@ func (c *Command) WaitForInterrupt() int {
 				if c.Config.Worker != nil && !workerShutdownDone.Load() {
 					workerShutdownOnce.Do(workerShutdownFunc)
 				}
-				if !controllerShutdownDone.Load() {
+				if c.Config.Controller != nil && !controllerShutdownDone.Load() {
 					controllerOnce.Do(controllerShutdownFunc)
-				}
-				if workerShutdownDone.Load() && controllerShutdownDone.Load() {
-					c.UI.Error("Forcing shutdown")
-					os.Exit(base.CommandUserError)
 				}
 			}()
 
-		case count > 2:
-			go func() {
-				c.UI.Error("Forcing shutdown")
-				os.Exit(base.CommandUserError)
-			}()
+		case count >= 2:
+			c.UI.Error("Forcing shutdown")
+			os.Exit(base.CommandCliError)
 		}
 	}
 
@@ -756,7 +754,6 @@ func (c *Command) WaitForInterrupt() int {
 			runShutdownLogic()
 
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
 			atm.AddUint32(&shutdownTriggerCount, 1)
 			runShutdownLogic()
 

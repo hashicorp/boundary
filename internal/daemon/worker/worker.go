@@ -452,8 +452,6 @@ func (w *Worker) GracefulShutdown() error {
 	}
 	event.WriteSysEvent(w.baseContext, op, "worker connections have drained")
 
-	// TODO remove this is jsut for local testing
-	//time.Sleep(time.Second * 10)
 	return nil
 }
 
