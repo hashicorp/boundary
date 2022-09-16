@@ -30,7 +30,13 @@ export E2E_PASSWORD_ADMIN_PASSWORD=  # e.g. "password"
 export E2E_TARGET_IP=  # e.g. 192.168.0.1
 export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
 export E2E_SSH_USER=  # e.g. ubuntu
-export E2E_SSH_PORT=  # e.g. 22
+
+# For e2e/credential/vault
+export VAULT_ADDR=  # e.g. http://127.0.0.1:8200
+export VAULT_TOKEN=
+export E2E_TARGET_IP=  # e.g. 192.168.0.1
+export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
+export E2E_SSH_USER=  # e.g. ubuntu
 ```
 
 Then, run...

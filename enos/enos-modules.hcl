@@ -2,6 +2,10 @@ module "az_finder" {
   source = "./modules/az_finder"
 }
 
+module "binary_finder" {
+  source = "./modules/binary_finder"
+}
+
 module "boundary" {
   source  = "app.terraform.io/hashicorp-qti/aws-boundary/enos"
   version = ">= 0.2.6"
@@ -56,6 +60,21 @@ module "target" {
   project_name = "qti-enos-boundary"
   environment  = var.environment
   enos_user    = var.enos_user
+}
+
+module "vault" {
+  source = "app.terraform.io/hashicorp-qti/aws-vault/enos"
+
+  project_name = "qti-enos-boundary"
+  environment  = var.environment
+  common_tags = {
+    "Project" : "Enos",
+    "Project Name" : "qti-enos-boundary",
+    "Enos User" : var.enos_user,
+    "Environment" : var.environment
+  }
+
+  ssh_aws_keypair = var.aws_ssh_keypair_name
 }
 
 module "test_smoke" {

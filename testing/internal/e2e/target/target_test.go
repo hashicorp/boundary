@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,137 +64,99 @@ func TestConnectTargetCli(t *testing.T) {
 	err = c.validate()
 	require.NoError(t, err)
 
-	output := boundary.AuthenticateCli()
-	require.NoError(t, output.Err, string(output.Stderr))
+	boundary.AuthenticateCli(t)
 
 	// Create an org
-	output = e2e.RunCommand(
-		"boundary", "scopes", "create",
-		"-name", "e2e Automated Test Org",
-		"-format", "json",
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newOrgResult scopes.ScopeCreateResult
-	err = json.Unmarshal(output.Stdout, &newOrgResult)
-	require.NoError(t, err)
-	newOrg := newOrgResult.Item
-	t.Cleanup(func() {
-		output := e2e.RunCommand("boundary", "scopes", "delete", "-id", newOrg.Id)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	t.Logf("Created Org Id: %s", newOrg.Id)
+	newOrgId := boundary.CreateNewOrgCli(t)
+	t.Logf("Created Org Id: %s", newOrgId)
 
 	// Create a project
-	output = e2e.RunCommand(
-		"boundary", "scopes", "create",
-		"-scope-id", newOrg.Id,
-		"-name", "e2e Automated Test Project",
-		"-format", "json",
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newProjectResult scopes.ScopeCreateResult
-	err = json.Unmarshal(output.Stdout, &newProjectResult)
-	require.NoError(t, err)
-	newProject := newProjectResult.Item
-	t.Cleanup(func() {
-		output := e2e.RunCommand("boundary", "scopes", "delete", "-id", newProject.Id)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	t.Logf("Created Project Id: %s", newProject.Id)
+	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
+	t.Logf("Created Project Id: %s", newProjectId)
 
 	// Create a host catalog
-	output = e2e.RunCommand(
-		"boundary", "host-catalogs", "create", "static",
-		"-scope-id", newProject.Id,
+	output := e2e.RunCommand("boundary", e2e.WithArgs("host-catalogs", "create", "static",
+		"-scope-id", newProjectId,
 		"-name", "e2e Automated Test Host Catalog",
 		"-format", "json",
-	)
+	))
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newHostCatalogResult hostcatalogs.HostCatalogCreateResult
 	err = json.Unmarshal(output.Stdout, &newHostCatalogResult)
 	require.NoError(t, err)
 	newHostCatalog := newHostCatalogResult.Item
 	t.Cleanup(func() {
-		output := e2e.RunCommand("boundary", "host-catalogs", "delete", "-id", newHostCatalog.Id)
+		output := e2e.RunCommand("boundary", e2e.WithArgs("host-catalogs", "delete", "-id", newHostCatalog.Id))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	t.Logf("Created Host Catalog: %s", newHostCatalog.Id)
 
 	// Create a host set and add to catalog
-	output = e2e.RunCommand(
-		"boundary", "host-sets", "create", "static",
+	output = e2e.RunCommand("boundary", e2e.WithArgs("host-sets", "create", "static",
 		"-host-catalog-id", newHostCatalog.Id,
 		"-name", "e2e Automated Test Host Set",
 		"-format", "json",
-	)
+	))
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newHostSetResult hostsets.HostSetCreateResult
 	err = json.Unmarshal(output.Stdout, &newHostSetResult)
 	require.NoError(t, err)
 	newHostSet := newHostSetResult.Item
 	t.Cleanup(func() {
-		output := e2e.RunCommand("boundary", "host-sets", "delete", "-id", newHostSet.Id)
+		output := e2e.RunCommand("boundary", e2e.WithArgs("host-sets", "delete", "-id", newHostSet.Id))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	t.Logf("Created Host Set: %s", newHostSet.Id)
 
 	// Create a host
-	output = e2e.RunCommand(
-		"boundary", "hosts", "create", "static",
+	output = e2e.RunCommand("boundary", e2e.WithArgs("hosts", "create", "static",
 		"-host-catalog-id", newHostCatalog.Id,
 		"-name", c.TargetIp,
 		"-address", c.TargetIp,
 		"-format", "json",
-	)
+	))
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newHostResult hosts.HostCreateResult
 	err = json.Unmarshal(output.Stdout, &newHostResult)
 	require.NoError(t, err)
 	newHost := newHostResult.Item
 	t.Cleanup(func() {
-		output := e2e.RunCommand("boundary", "hosts", "delete", "-id", newHost.Id)
+		output := e2e.RunCommand("boundary", e2e.WithArgs("hosts", "delete", "-id", newHost.Id))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	t.Logf("Created Host: %s", newHost.Id)
 
 	// Add host to host set
-	output = e2e.RunCommand(
-		"boundary", "host-sets", "add-hosts",
-		"-id", newHostSet.Id,
-		"-host", newHost.Id,
-	)
+	output = e2e.RunCommand("boundary", e2e.WithArgs("host-sets", "add-hosts", "-id", newHostSet.Id, "-host", newHost.Id))
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Create a target
-	output = e2e.RunCommand(
-		"boundary", "targets", "create", "tcp",
-		"-scope-id", newProject.Id,
+	output = e2e.RunCommand("boundary", e2e.WithArgs("targets", "create", "tcp",
+		"-scope-id", newProjectId,
 		"-default-port", c.TargetPort,
 		"-name", "e2e Automated Test Target",
 		"-format", "json",
-	)
+	))
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newTargetResult targets.TargetCreateResult
 	err = json.Unmarshal(output.Stdout, &newTargetResult)
 	require.NoError(t, err)
 	newTarget := newTargetResult.Item
 	t.Cleanup(func() {
-		output := e2e.RunCommand("boundary", "targets", "delete", "-id", newTarget.Id)
+		output := e2e.RunCommand("boundary", e2e.WithArgs("targets", "delete", "-id", newTarget.Id))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	t.Logf("Created Target: %s", newTarget.Id)
 
 	// Add host set to target
-	output = e2e.RunCommand(
-		"boundary", "targets", "add-host-sources",
+	output = e2e.RunCommand("boundary", e2e.WithArgs("targets", "add-host-sources",
 		"-id", newTarget.Id,
-		"-host-source", newHostSet.Id,
+		"-host-source", newHostSet.Id),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Connect to target and print host's IP address
-	output = e2e.RunCommand(
-		"boundary", "connect",
+	output = e2e.RunCommand("boundary", e2e.WithArgs("connect",
 		"-target-id", newTarget.Id,
 		"-exec", "/usr/bin/ssh", "--",
 		"-l", c.TargetSshUser,
@@ -205,12 +167,12 @@ func TestConnectTargetCli(t *testing.T) {
 		"-p", "{{boundary.port}}", // this is provided by boundary
 		"{{boundary.ip}}",
 		"hostname", "-i",
-	)
+	))
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	parts := strings.Fields(string(output.Stdout))
 	hostIp := parts[len(parts)-1]
-	assert.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 }
 
@@ -225,9 +187,9 @@ func TestCreateTargetApi(t *testing.T) {
 	err = c.validate()
 	require.NoError(t, err)
 
+	// Create boundary api client
 	client, err := boundary.NewApiClient()
 	require.NoError(t, err)
-
 	ctx := context.Background()
 
 	// Create an org
@@ -295,9 +257,10 @@ func TestCreateTargetApi(t *testing.T) {
 
 	// Create a target
 	tClient := targets.NewClient(client)
+	targetPort, err := strconv.ParseInt(c.TargetPort, 10, 32)
 	newTargetResult, err := tClient.Create(ctx, "tcp", newProject.Id,
 		targets.WithName("e2e Automated Test Target"),
-		targets.WithTcpTargetDefaultPort(22),
+		targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 	)
 	require.NoError(t, err)
 	newTarget := newTargetResult.Item
