@@ -445,25 +445,16 @@ func (s Service) DestroyKeyVersion(ctx context.Context, req *pbs.DestroyKeyVersi
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	key, err := s.kmsRepo.DestroyKeyVersion(ctx, req.GetScopeId(), req.GetKeyVersionId())
+	destroyed, err := s.kmsRepo.DestroyKeyVersion(ctx, req.GetScopeId(), req.GetKeyVersionId())
 	if err != nil {
 		return nil, err
 	}
-	res := perms.Resource{
-		Type: resource.Scope,
-	}
-	outputFields := authResults.FetchOutputFields(res, action.DestroyScopeKeyVersion).SelfOrDefaults(authResults.UserId)
-	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
-	if outputFields.Has(globals.ScopeField) {
-		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-	}
-	protoItem, err := keyToProto(ctx, key, outputOpts...)
-	if err != nil {
-		return nil, err
+	state := "completed"
+	if !destroyed {
+		state = "pending"
 	}
 	return &pbs.DestroyKeyVersionResponse{
-		Item: protoItem,
+		State: state,
 	}, nil
 }
 

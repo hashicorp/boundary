@@ -419,7 +419,7 @@ func (x *Key) GetVersions() []*KeyVersion {
 	return nil
 }
 
-// KeyVersionDestructionJob holds information about an in-progress key version destruction job.
+// KeyVersionDestructionJob holds information about a pending key version destruction job.
 type KeyVersionDestructionJob struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

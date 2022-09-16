@@ -119,7 +119,7 @@ message Key {
   repeated KeyVersion versions = 60;
 }
 
-// KeyVersionDestructionJob holds information about an in-progress key version destruction job.
+// KeyVersionDestructionJob holds information about a pending key version destruction job.
 message KeyVersionDestructionJob {
   // The ID of the Key version this job relates to.
   string key_version_id = 10; // @gotags: `class:"public"`

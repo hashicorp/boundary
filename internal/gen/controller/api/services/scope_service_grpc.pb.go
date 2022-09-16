@@ -52,11 +52,10 @@ type ScopeServiceClient interface {
 	// scope specified. If the scope is not found an error is returned. If
 	// the scope is empty, the global scope is used.
 	RotateKeys(ctx context.Context, in *RotateKeysRequest, opts ...grpc.CallOption) (*RotateKeysResponse, error)
-	// DestroyKeyVersion destroys the specified key version. This start an asynchronous
-	// process if the version specifies a DEK. Use ListKeyVersionDestructionJobs to monitor
-	// in-progress destruction jobs.
+	// DestroyKeyVersion destroys the specified key version. Use ListKeyVersionDestructionJobs to monitor
+	// pending destruction jobs.
 	DestroyKeyVersion(ctx context.Context, in *DestroyKeyVersionRequest, opts ...grpc.CallOption) (*DestroyKeyVersionResponse, error)
-	// ListKeyVersionDestructionJobs lists any in-progress DEK version destruction jobs in the scope.
+	// ListKeyVersionDestructionJobs lists any pending key version destruction jobs in the scope.
 	ListKeyVersionDestructionJobs(ctx context.Context, in *ListKeyVersionDestructionJobsRequest, opts ...grpc.CallOption) (*ListKeyVersionDestructionJobsResponse, error)
 }
 
@@ -187,11 +186,10 @@ type ScopeServiceServer interface {
 	// scope specified. If the scope is not found an error is returned. If
 	// the scope is empty, the global scope is used.
 	RotateKeys(context.Context, *RotateKeysRequest) (*RotateKeysResponse, error)
-	// DestroyKeyVersion destroys the specified key version. This start an asynchronous
-	// process if the version specifies a DEK. Use ListKeyVersionDestructionJobs to monitor
-	// in-progress destruction jobs.
+	// DestroyKeyVersion destroys the specified key version. Use ListKeyVersionDestructionJobs to monitor
+	// pending destruction jobs.
 	DestroyKeyVersion(context.Context, *DestroyKeyVersionRequest) (*DestroyKeyVersionResponse, error)
-	// ListKeyVersionDestructionJobs lists any in-progress DEK version destruction jobs in the scope.
+	// ListKeyVersionDestructionJobs lists any pending key version destruction jobs in the scope.
 	ListKeyVersionDestructionJobs(context.Context, *ListKeyVersionDestructionJobsRequest) (*ListKeyVersionDestructionJobsResponse, error)
 	mustEmbedUnimplementedScopeServiceServer()
 }

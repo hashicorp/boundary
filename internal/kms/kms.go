@@ -292,14 +292,16 @@ func (k *Kms) VerifyGlobalRoot(ctx context.Context) error {
 // If the key version is a KEK, this simply rewraps any existing DEK version's encrypted with
 // the KEK and destroys the key version. If the key version is a DEK, this creates a
 // key version destruction job, which will rewrap existing data and destroy the key
-// asynchronously.
+// asynchronously. As a special case, if the DEK currently encrypts no keys, the DEK is
+// immediately destroyed. The boolean return value indicates whether the key was immediately
+// destroyed.
 // Options are ignored.
-func (k *Kms) DestroyKeyVersion(ctx context.Context, scopeId string, keyVersionId string, _ ...Option) (wrappingKms.Key, error) {
+func (k *Kms) DestroyKeyVersion(ctx context.Context, scopeId string, keyVersionId string, _ ...Option) (bool, error) {
 	const op = "kms.(Kms).DestroyKeyVersion"
 
 	scopeKeys, err := k.underlying.ListKeys(ctx, scopeId)
 	if err != nil {
-		return wrappingKms.Key{}, errors.Wrap(ctx, err, op)
+		return false, errors.Wrap(ctx, err, op)
 	}
 	foundKey := wrappingKms.Key{}
 	found := false
@@ -314,20 +316,7 @@ keyLoop:
 		}
 	}
 	if !found {
-		return wrappingKms.Key{}, errors.New(ctx, errors.KeyNotFound, op, "key version was not found in the scope")
-	}
-	switch foundKey.Purpose {
-	case wrappingKms.KeyPurpose(KeyPurposeOplog.String()):
-		return wrappingKms.Key{}, errors.New(ctx, errors.InvalidParameter, op, "oplog key versions cannot be destroyed")
-	case wrappingKms.KeyPurposeRootKey:
-		// Simple case, just rewrap and destroy synchronously
-		if err := k.underlying.RewrapKeys(ctx, scopeId); err != nil {
-			return wrappingKms.Key{}, errors.Wrap(ctx, err, op)
-		}
-		if err := k.underlying.RevokeKeyVersion(ctx, keyVersionId); err != nil {
-			return wrappingKms.Key{}, errors.Wrap(ctx, err, op)
-		}
-		return foundKey, nil
+		return false, errors.New(ctx, errors.KeyNotFound, op, "key version was not found in the scope")
 	}
 	// Sort versions just in case they aren't already sorted
 	slices.SortFunc(foundKey.Versions, func(i, j wrappingKms.KeyVersion) bool {
@@ -335,9 +324,23 @@ keyLoop:
 	})
 	if foundKey.Versions[len(foundKey.Versions)-1].Id == keyVersionId {
 		// Attempted to destroy currently active key
-		return wrappingKms.Key{}, errors.New(ctx, errors.KeyVersionActive, op, "cannot destroy a currently active key version")
+		return false, errors.New(ctx, errors.KeyVersionActive, op, "cannot destroy a currently active key version")
+	}
+	switch foundKey.Purpose {
+	case wrappingKms.KeyPurpose(KeyPurposeOplog.String()):
+		return false, errors.New(ctx, errors.InvalidParameter, op, "oplog key versions cannot be destroyed")
+	case wrappingKms.KeyPurposeRootKey:
+		// Simple case, just rewrap and destroy synchronously
+		if err := k.underlying.RewrapKeys(ctx, scopeId); err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		if err := k.underlying.RevokeKeyVersion(ctx, keyVersionId); err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		return true, nil
 	}
 
+	numRuns := 0
 	if _, err := k.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		if _, err := w.Exec(
 			ctx,
@@ -396,12 +399,34 @@ keyLoop:
 			); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to insert new key version destruction job"))
 			}
+			numRuns++
+		}
+		if numRuns == 0 {
+			// Delete the job again if the key encrypted no data
+			// TODO: Can we somehow just rollback the transaction instead?
+			if _, err := w.Exec(
+				ctx,
+				"delete from kms_data_key_version_destruction_job where key_id=?",
+				[]interface{}{
+					keyVersionId,
+				},
+			); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to delete job"))
+			}
+			return nil
 		}
 		return nil
 	}); err != nil {
-		return wrappingKms.Key{}, err
+		return false, err
 	}
-	return foundKey, err
+	if numRuns == 0 {
+		// DEK encrypted no data, just destroy synchronously
+		if err := k.underlying.RevokeKeyVersion(ctx, keyVersionId); err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		return true, nil
+	}
+	return false, err
 }
 
 func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context) ([]string, error) {

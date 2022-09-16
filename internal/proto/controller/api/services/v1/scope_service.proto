@@ -113,26 +113,25 @@ service ScopeService {
     };
   }
 
-  // DestroyKeyVersion destroys the specified key version. This start an asynchronous
-  // process if the version specifies a DEK. Use ListKeyVersionDestructionJobs to monitor
-  // in-progress destruction jobs.
+  // DestroyKeyVersion destroys the specified key version. Use ListKeyVersionDestructionJobs to monitor
+  // pending destruction jobs.
   rpc DestroyKeyVersion(DestroyKeyVersionRequest) returns (DestroyKeyVersionResponse) {
     option (google.api.http) = {
       post: "/v1/scopes:destroy-key-version"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Destroy the specified key version in the scope. If the version specifies a DEK, this will start an asynchronous job that re-encrypts all data encrypted by the specified version. Use /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor in-progress destruction jobs."
+      summary: "Destroy the specified key version in the scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs."
     };
   }
 
-  // ListKeyVersionDestructionJobs lists any in-progress DEK version destruction jobs in the scope.
+  // ListKeyVersionDestructionJobs lists any pending key version destruction jobs in the scope.
   rpc ListKeyVersionDestructionJobs(ListKeyVersionDestructionJobsRequest) returns (ListKeyVersionDestructionJobsResponse) {
     option (google.api.http) = {
       get: "/v1/scopes/{scope_id}:list-key-version-destruction-jobs"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all in-progress DEK version destruction jobs in the scope."
+      summary: "Lists all pending key version destruction jobs in the scope."
     };
   }
 }
@@ -203,7 +202,10 @@ message DestroyKeyVersionRequest {
 }
 
 message DestroyKeyVersionResponse {
-  resources.scopes.v1.Key item = 1;
+  // Destruction state. One of "pending" or "completed".
+  // Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs
+  // to monitor pending destruction jobs.
+  string state = 1;
 }
 
 message ListKeyVersionDestructionJobsRequest {

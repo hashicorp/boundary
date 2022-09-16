@@ -2667,7 +2667,7 @@
     },
     "/v1/scopes/{scope_id}:list-key-version-destruction-jobs": {
       "get": {
-        "summary": "Lists all in-progress DEK version destruction jobs in the scope.",
+        "summary": "Lists all pending key version destruction jobs in the scope.",
         "operationId": "ScopeService_ListKeyVersionDestructionJobs",
         "responses": {
           "200": {
@@ -2692,7 +2692,7 @@
     },
     "/v1/scopes:destroy-key-version": {
       "post": {
-        "summary": "Destroy the specified key version in the scope. If the version specifies a DEK, this will start an asynchronous job that re-encrypts all data encrypted by the specified version. Use /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor in-progress destruction jobs.",
+        "summary": "Destroy the specified key version in the scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs.",
         "operationId": "ScopeService_DestroyKeyVersion",
         "responses": {
           "200": {
@@ -5134,7 +5134,7 @@
           "description": "The total number of rows that need re-encrypting."
         }
       },
-      "description": "KeyVersionDestructionJob holds information about an in-progress key version destruction job."
+      "description": "KeyVersionDestructionJob holds information about a pending key version destruction job."
     },
     "controller.api.resources.scopes.v1.Scope": {
       "type": "object",
@@ -6321,8 +6321,9 @@
     "controller.api.services.v1.DestroyKeyVersionResponse": {
       "type": "object",
       "properties": {
-        "item": {
-          "$ref": "#/definitions/controller.api.resources.scopes.v1.Key"
+        "state": {
+          "type": "string",
+          "description": "Destruction state. One of \"pending\" or \"completed\".\nUse GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs\nto monitor pending destruction jobs."
         }
       }
     },
