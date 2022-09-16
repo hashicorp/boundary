@@ -550,6 +550,21 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &credentials.JsonAttributes{},
+		outFile:     "credentials/json_attributes.gen.go",
+		subtypeName: "JsonCredential",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Object",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &credentials.Credential{},
 		outFile: "credentials/credential.gen.go",
 		templates: []*template.Template{

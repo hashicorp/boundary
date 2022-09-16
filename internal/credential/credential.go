@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/boundary"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Domain defines the domain for the credential package.
@@ -29,6 +30,7 @@ const (
 	UnspecifiedType      Type = "unspecified"
 	UsernamePasswordType Type = "username_password"
 	SshPrivateKeyType    Type = "ssh_private_key"
+	JsonType             Type = "json"
 )
 
 // A Library is a resource that provides credentials that are of the same
@@ -118,6 +120,11 @@ type Password string
 
 // PrivateKey represents a secret private key.
 type PrivateKey []byte
+
+// JsonObject represents a JSON object that is serialized.
+type JsonObject struct {
+	structpb.Struct
+}
 
 // UsernamePassword is a credential containing a username and a password.
 type UsernamePassword interface {

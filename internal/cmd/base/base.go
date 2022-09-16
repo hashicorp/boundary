@@ -123,6 +123,10 @@ type Command struct {
 	FlagSecrets string
 	FlagScrts   []CombinedSliceFlagValue
 
+	// Object values
+	FlagObject string
+	FlagKv     []CombinedSliceFlagValue
+
 	client *api.Client
 
 	// This will be intialized, if needed, in Config() when instantiating a

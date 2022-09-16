@@ -19,7 +19,8 @@ begin;
     insert into target_static_credential
       (project_id,     target_id,      credential_static_id, credential_purpose)
     values
-      ('p____bwidget', 'test______wb', 'cred____wup1',       'brokered');
+      ('p____bwidget', 'test______wb', 'cred____wup1',       'brokered'),
+      ('p____bwidget', 'test______wb', 'cred____wjson1',       'brokered');
   select lives_ok('insert_valid_target_static_credential', 'insert valid target_static_credential failed');
 
   -- create a credential_static_store and target in a different project

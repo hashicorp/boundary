@@ -15,6 +15,9 @@ func init() {
 	if err := subtypes.Register(Domain, SshPrivateKeySubtype, SshPrivateKeyCredentialPrefix); err != nil {
 		panic(err)
 	}
+	if err := subtypes.Register(Domain, JsonSubtype, JsonCredentialPrefix); err != nil {
+		panic(err)
+	}
 }
 
 const (
@@ -24,6 +27,9 @@ const (
 
 	SshPrivateKeyCredentialPrefix = "credspk"
 	SshPrivateKeySubtype          = subtypes.Subtype("ssh_private_key")
+
+	JsonCredentialPrefix = "credjson"
+	JsonSubtype          = subtypes.Subtype("json")
 )
 
 func NewUsernamePasswordCredentialId(ctx context.Context) (string, error) {
@@ -38,6 +44,14 @@ func NewSshPrivateKeyCredentialId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(SshPrivateKeyCredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "credential.NewSshPrivateKeyCredentialId")
+	}
+	return id, nil
+}
+
+func NewJsonCredentialId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(JsonCredentialPrefix)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "credential.NewJsonCredentialId")
 	}
 	return id, nil
 }

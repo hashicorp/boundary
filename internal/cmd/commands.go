@@ -478,6 +478,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"credentials create json": func() (cli.Command, error) {
+			return &credentialscmd.JsonCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"credentials update": func() (cli.Command, error) {
 			return &credentialscmd.Command{
 				Command: base.NewCommand(ui),
@@ -492,6 +498,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"credentials update ssh-private-key": func() (cli.Command, error) {
 			return &credentialscmd.SshPrivateKeyCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"credentials update json": func() (cli.Command, error) {
+			return &credentialscmd.JsonCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

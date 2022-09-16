@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh/testdata"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestRepository_Retrieve(t *testing.T) {
@@ -39,9 +40,25 @@ func TestRepository_Retrieve(t *testing.T) {
 		string(testdata.PEMEncryptedKeys[0].PEMBytes), staticStore.GetPublicId(), prj.GetPublicId(),
 		WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
 
+	obj, _, err := TestJsonObject()
+	assert.NoError(err)
+
+	secondObj := credential.JsonObject{
+		structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"username": structpb.NewStringValue("new-user"),
+				"password": structpb.NewStringValue("new-password"),
+				"hash":     structpb.NewStringValue("0987654321"),
+			},
+		},
+	}
+
+	jsonCred1 := TestJsonCredential(t, conn, wrapper, staticStore.GetPublicId(), prj.GetPublicId(), obj)
+	jsonCred2 := TestJsonCredential(t, conn, wrapper, staticStore.GetPublicId(), prj.GetPublicId(), secondObj)
+
 	type args struct {
-		credIds    []string
-		projectIds string
+		credIds   []string
+		projectId string
 	}
 	tests := []struct {
 		name      string
@@ -59,16 +76,16 @@ func TestRepository_Retrieve(t *testing.T) {
 		{
 			name: "invalid-project-id",
 			args: args{
-				projectIds: org.GetPublicId(),
-				credIds:    []string{upCred1.GetPublicId()},
+				projectId: org.GetPublicId(),
+				credIds:   []string{upCred1.GetPublicId()},
 			},
 			wantErr: true,
 		},
 		{
 			name: "valid-one-up-cred",
 			args: args{
-				projectIds: prj.GetPublicId(),
-				credIds:    []string{upCred1.GetPublicId()},
+				projectId: prj.GetPublicId(),
+				credIds:   []string{upCred1.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
 				upCred1,
@@ -77,8 +94,8 @@ func TestRepository_Retrieve(t *testing.T) {
 		{
 			name: "valid-multiple-up-creds",
 			args: args{
-				projectIds: prj.GetPublicId(),
-				credIds:    []string{upCred1.GetPublicId(), upCred2.GetPublicId()},
+				projectId: prj.GetPublicId(),
+				credIds:   []string{upCred1.GetPublicId(), upCred2.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
 				upCred1, upCred2,
@@ -87,8 +104,8 @@ func TestRepository_Retrieve(t *testing.T) {
 		{
 			name: "valid-ssh-pk-cred",
 			args: args{
-				projectIds: prj.GetPublicId(),
-				credIds:    []string{spkCred1.GetPublicId()},
+				projectId: prj.GetPublicId(),
+				credIds:   []string{spkCred1.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
 				spkCred1,
@@ -97,28 +114,48 @@ func TestRepository_Retrieve(t *testing.T) {
 		{
 			name: "valid-multiple-ssh-pk-creds",
 			args: args{
-				projectIds: prj.GetPublicId(),
-				credIds:    []string{spkCred1.GetPublicId(), spkCred2.GetPublicId(), spkCredWithPass.GetPublicId()},
+				projectId: prj.GetPublicId(),
+				credIds:   []string{spkCred1.GetPublicId(), spkCred2.GetPublicId(), spkCredWithPass.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
 				spkCred1, spkCred2, spkCredWithPass,
 			},
 		},
 		{
-			name: "valid-mixed-creds",
+			name: "valid-json-cred",
 			args: args{
-				projectIds: prj.GetPublicId(),
-				credIds:    []string{upCred1.GetPublicId(), spkCred1.GetPublicId(), spkCredWithPass.GetPublicId(), spkCred2.GetPublicId(), upCred2.GetPublicId()},
+				projectId: prj.GetPublicId(),
+				credIds:   []string{jsonCred1.GetPublicId()},
 			},
 			wantCreds: []credential.Static{
-				upCred1, spkCred1, spkCred2, upCred2, spkCredWithPass,
+				jsonCred1,
+			},
+		},
+		{
+			name: "valid-multiple-json-creds",
+			args: args{
+				projectId: prj.GetPublicId(),
+				credIds:   []string{jsonCred1.GetPublicId(), jsonCred2.GetPublicId()},
+			},
+			wantCreds: []credential.Static{
+				jsonCred1, jsonCred2,
+			},
+		},
+		{
+			name: "valid-mixed-creds",
+			args: args{
+				projectId: prj.GetPublicId(),
+				credIds:   []string{upCred1.GetPublicId(), spkCred1.GetPublicId(), spkCredWithPass.GetPublicId(), spkCred2.GetPublicId(), upCred2.GetPublicId(), jsonCred1.GetPublicId(), jsonCred2.GetPublicId()},
+			},
+			wantCreds: []credential.Static{
+				upCred1, spkCred1, spkCredWithPass, spkCred2, upCred2, jsonCred1, jsonCred2,
 			},
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			gotCreds, err := repo.Retrieve(context.Background(), tt.args.projectIds, tt.args.credIds)
+			gotCreds, err := repo.Retrieve(context.Background(), tt.args.projectId, tt.args.credIds)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(gotCreds)
@@ -131,7 +168,8 @@ func TestRepository_Retrieve(t *testing.T) {
 					gotCreds,
 					cmpopts.IgnoreUnexported(
 						UsernamePasswordCredential{}, store.UsernamePasswordCredential{},
-						SshPrivateKeyCredential{}, store.SshPrivateKeyCredential{}),
+						SshPrivateKeyCredential{}, store.SshPrivateKeyCredential{},
+						JsonCredential{}, store.JsonCredential{}),
 					cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
 					cmpopts.IgnoreFields(SshPrivateKeyCredential{}, "PassphraseUnneeded"),
 					cmpopts.SortSlices(func(x, y credential.Static) bool {
