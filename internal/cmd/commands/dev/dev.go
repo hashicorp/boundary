@@ -903,7 +903,7 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	for !errorEncountered.Load() && (!workerShutdownDone.Load() && !controllerShutdownDone.Load()) {
+	for !errorEncountered.Load() && (!workerShutdownDone.Load() || !controllerShutdownDone.Load()) {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary dev environment self-terminating")
@@ -919,10 +919,8 @@ func (c *Command) Run(args []string) int {
 			n := runtime.Stack(buf[:], true)
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 
-		case <-time.After(10 * time.Millisecond):
-			if workerShutdownDone.Load() && controllerShutdownDone.Load() {
-				break
-			}
+		case <-c.Context.Done():
+			break
 		}
 	}
 

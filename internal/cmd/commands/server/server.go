@@ -816,10 +816,8 @@ func (c *Command) WaitForInterrupt() int {
 			n := runtime.Stack(buf[:], true)
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 
-		case <-time.After(10 * time.Millisecond):
-			if workerShutdownDone.Load() && controllerShutdownDone.Load() {
-				break
-			}
+		case <-c.Context.Done():
+			break
 		}
 	}
 
