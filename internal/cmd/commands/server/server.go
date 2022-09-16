@@ -668,6 +668,8 @@ func (c *Command) StartWorker() error {
 func (c *Command) WaitForInterrupt() int {
 	const op = "server.(Command).WaitForInterrupt"
 
+	var shutdownCompleted atm.Bool
+	shutdownCompleted.Store(false)
 	var controllerShutdownDone atm.Bool
 	controllerShutdownDone.Store(false)
 	if c.Config.Controller == nil {
@@ -680,7 +682,6 @@ func (c *Command) WaitForInterrupt() int {
 	}
 
 	shutdownTriggerCount := uint32(0)
-	shutdownTriggered := false
 
 	var workerShutdownOnce sync.Once
 	workerShutdownFunc := func() {
@@ -715,8 +716,8 @@ func (c *Command) WaitForInterrupt() int {
 		count := atm.LoadUint32(&shutdownTriggerCount)
 		switch {
 		case count == 1:
+			c.ContextCancel()
 			go func() {
-				c.ContextCancel()
 				if c.Config.Controller != nil && c.opsServer != nil {
 					c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
 				}
@@ -731,6 +732,7 @@ func (c *Command) WaitForInterrupt() int {
 				if c.Config.Controller != nil {
 					controllerOnce.Do(controllerShutdownFunc)
 				}
+				shutdownCompleted.Store(true)
 			}()
 
 		case count == 2 && c.Config.Worker != nil:
@@ -741,16 +743,16 @@ func (c *Command) WaitForInterrupt() int {
 				if c.Config.Controller != nil && !controllerShutdownDone.Load() {
 					controllerOnce.Do(controllerShutdownFunc)
 				}
+				shutdownCompleted.Store(true)
 			}()
 
 		case count >= 2:
 			c.UI.Error("Forcing shutdown")
 			os.Exit(base.CommandCliError)
 		}
-		shutdownTriggered = true
 	}
 
-	for !shutdownTriggered { //!workerShutdownDone.Load() && !controllerShutdownDone.Load() {
+	for !shutdownCompleted.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary server self-terminating")

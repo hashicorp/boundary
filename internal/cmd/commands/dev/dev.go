@@ -870,8 +870,8 @@ func (c *Command) Run(args []string) int {
 		count := atm.LoadUint32(&shutdownTriggerCount)
 		switch {
 		case count == 1:
+			c.ContextCancel()
 			go func() {
-				c.ContextCancel()
 				if c.Config.Controller != nil {
 					c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
 				}
