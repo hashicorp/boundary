@@ -669,26 +669,12 @@ func (c *Command) WaitForInterrupt() int {
 	const op = "server.(Command).WaitForInterrupt"
 
 	var shutdownCompleted atm.Bool
-	shutdownCompleted.Store(false)
-	var controllerShutdownDone atm.Bool
-	controllerShutdownDone.Store(false)
-	if c.Config.Controller == nil {
-		controllerShutdownDone.Store(true)
-	}
-	var workerShutdownDone atm.Bool
-	workerShutdownDone.Store(false)
-	if c.Config.Worker == nil {
-		workerShutdownDone.Store(true)
-	}
-
 	shutdownTriggerCount := uint32(0)
 
 	var workerShutdownOnce sync.Once
 	workerShutdownFunc := func() {
 		if err := c.worker.Shutdown(); err != nil {
 			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
-		} else {
-			workerShutdownDone.Store(true)
 		}
 	}
 	workerGracefulShutdownFunc := func() {
@@ -701,8 +687,6 @@ func (c *Command) WaitForInterrupt() int {
 	controllerShutdownFunc := func() {
 		if err := c.controller.Shutdown(); err != nil {
 			c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
-		} else {
-			controllerShutdownDone.Store(true)
 		}
 		if c.opsServer != nil {
 			err := c.opsServer.Shutdown()
@@ -737,10 +721,10 @@ func (c *Command) WaitForInterrupt() int {
 
 		case count == 2 && c.Config.Worker != nil:
 			go func() {
-				if c.Config.Worker != nil && !workerShutdownDone.Load() {
+				if c.Config.Worker != nil {
 					workerShutdownOnce.Do(workerShutdownFunc)
 				}
-				if c.Config.Controller != nil && !controllerShutdownDone.Load() {
+				if c.Config.Controller != nil {
 					controllerOnce.Do(controllerShutdownFunc)
 				}
 				shutdownCompleted.Store(true)
@@ -816,8 +800,7 @@ func (c *Command) WaitForInterrupt() int {
 			n := runtime.Stack(buf[:], true)
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 
-		case <-c.Context.Done():
-			break
+		case <-time.After(10 * time.Millisecond):
 		}
 	}
 

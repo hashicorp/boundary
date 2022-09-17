@@ -448,7 +448,7 @@ func (w *Worker) GracefulShutdown() error {
 
 	// Wait for connections to drain
 	for w.hasActiveConnection() {
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 250)
 	}
 	event.WriteSysEvent(w.baseContext, op, "worker connections have drained")
 

@@ -824,24 +824,13 @@ func (c *Command) Run(args []string) int {
 	c.opsServer = opsServer
 	c.opsServer.Start()
 
-	var controllerShutdownDone atm.Bool
-	var workerShutdownDone atm.Bool
-	controllerShutdownDone.Store(false)
-
-	if !c.flagControllerOnly {
-		workerShutdownDone.Store(false)
-	} else {
-		workerShutdownDone.Store(true)
-	}
-
+	var shutdownCompleted atm.Bool
 	shutdownTriggerCount := uint32(0)
 
 	var workerShutdownOnce sync.Once
 	workerShutdownFunc := func() {
 		if err := c.worker.Shutdown(); err != nil {
 			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
-		} else {
-			workerShutdownDone.Store(true)
 		}
 	}
 	workerGracefulShutdownFunc := func() {
@@ -857,8 +846,6 @@ func (c *Command) Run(args []string) int {
 	controllerShutdownFunc := func() {
 		if err := c.controller.Shutdown(); err != nil {
 			c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
-		} else {
-			controllerShutdownDone.Store(true)
 		}
 		err := c.opsServer.Shutdown()
 		if err != nil {
@@ -884,15 +871,19 @@ func (c *Command) Run(args []string) int {
 				}
 
 				controllerOnce.Do(controllerShutdownFunc)
+
+				shutdownCompleted.Store(true)
 			}()
 		case count == 2 && !c.flagControllerOnly:
 			go func() {
-				if !workerShutdownDone.Load() {
+				if !c.flagControllerOnly {
 					workerShutdownOnce.Do(workerShutdownFunc)
 				}
-				if c.Config.Controller != nil && !controllerShutdownDone.Load() {
+
+				if c.Config.Controller != nil {
 					controllerOnce.Do(controllerShutdownFunc)
 				}
+				shutdownCompleted.Store(true)
 			}()
 
 		case count >= 2:
@@ -903,7 +894,7 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	for !errorEncountered.Load() && (!workerShutdownDone.Load() || !controllerShutdownDone.Load()) {
+	for !errorEncountered.Load() && !shutdownCompleted.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary dev environment self-terminating")
@@ -919,8 +910,7 @@ func (c *Command) Run(args []string) int {
 			n := runtime.Stack(buf[:], true)
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
 
-		case <-c.Context.Done():
-			break
+		case <-time.After(10 * time.Millisecond):
 		}
 	}
 
