@@ -15,13 +15,13 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
 }
 
 @test "boundary/roles: can add $NEW_ROLE role to global scope granting rights in default org scope" {
-	run create_role 'global' $NEW_ROLE $DEFAULT_O_ID
+	run create_role $DEFAULT_GLOBAL $NEW_ROLE $DEFAULT_O_ID
   echo "$output"
 	[ "$status" -eq 0 ]
 }
 
 @test "boundary/roles: can not add already created $NEW_ROLE role" {
-	run create_role 'global' $NEW_ROLE $DEFAULT_O_ID
+	run create_role $DEFAULT_GLOBAL $NEW_ROLE $DEFAULT_O_ID
   echo "$output"
 	[ "$status" -eq 1 ]
 }
@@ -53,7 +53,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
   run role_has_principal_id $rid $DEFAULT_USER
   echo "$output"
-  diag "$output"
   [ "$status" -eq 0 ]
 }
 
@@ -82,7 +81,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
   run role_has_grant $rid $NEW_GRANT
   echo "$output"
-  diag "$output"
   [ "$status" -eq 0 ]
 }
 
@@ -97,7 +95,6 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
   run role_has_grant $rid $NEW_GRANT
   echo "$output"
-  diag "$output"
   [ "$status" -eq 1 ]
 }
 
@@ -113,6 +110,5 @@ export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
   local rid=$(role_id $NEW_ROLE $DEFAULT_GLOBAL)
 	run read_role $rid
   echo "$output"
-  diag "$output"
 	[ "$status" -eq 1 ]
 }

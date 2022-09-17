@@ -21,15 +21,16 @@ load _helpers
 
 @test "boundary/session/connect: unpriv user can connect to default target" {
   run login $DEFAULT_UNPRIVILEGED_LOGIN
+  echo $output
   [ "$status" -eq 0 ]
 
   run connect_nc $DEFAULT_TARGET
+  echo $output
   [ "$status" -eq 0 ]
 
   # Run twice so we have two values for later testing
   run connect_nc $DEFAULT_TARGET
   echo "$output"
-  diag "$output"
   [ "$status" -eq 0 ]
 }
 
@@ -85,6 +86,7 @@ load _helpers
   run login $DEFAULT_UNPRIVILEGED_LOGIN
   [ "$status" -eq 0 ]
   run list_sessions $DEFAULT_P_ID
+  echo $output
   [ "$status" -eq 0 ]
   id=$(echo "$output" | jq -r "[.items[]|select(.user_id == \"$DEFAULT_UNPRIVILEGED_USER\")][0].id")
 
@@ -103,6 +105,4 @@ load _helpers
   [ "$status" -eq 0 ]
   run cancel_session $id
   [ "$status" -eq 0 ]
-
-  diag "$output"
 }

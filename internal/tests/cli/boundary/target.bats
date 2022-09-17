@@ -29,7 +29,6 @@ load _helpers
 @test "boundary/target/connect: unpriv user can connect to default target" {
   run connect_nc $DEFAULT_TARGET
   [ "$status" -eq 0 ]
-  diag "$output"
 }
 
 @test "boundary/target: unpriv user can not read default target" {
