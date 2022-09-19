@@ -825,18 +825,18 @@ func (c *Command) Run(args []string) int {
 	c.opsServer.Start()
 
 	var shutdownCompleted atm.Bool
-	shutdownTriggerCount := uint32(0)
+	shutdownTriggerCount := 0
 
 	var workerShutdownOnce sync.Once
 	workerShutdownFunc := func() {
 		if err := c.worker.Shutdown(); err != nil {
 			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 		}
-	}
-	workerGracefulShutdownFunc := func() {
 		if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
 			c.worker.WorkerAuthStorage.Cleanup()
 		}
+	}
+	workerGracefulShutdownFunc := func() {
 		if err := c.worker.GracefulShutdown(); err != nil {
 			c.UI.Error(fmt.Errorf("Error shutting down worker gracefully: %w", err).Error())
 		}
@@ -854,9 +854,8 @@ func (c *Command) Run(args []string) int {
 	}
 
 	runShutdownLogic := func() {
-		count := atm.LoadUint32(&shutdownTriggerCount)
 		switch {
-		case count == 1:
+		case shutdownTriggerCount == 1:
 			c.ContextCancel()
 			go func() {
 				if c.Config.Controller != nil {
@@ -874,7 +873,7 @@ func (c *Command) Run(args []string) int {
 
 				shutdownCompleted.Store(true)
 			}()
-		case count == 2 && !c.flagControllerOnly:
+		case shutdownTriggerCount == 2 && !c.flagControllerOnly:
 			go func() {
 				if !c.flagControllerOnly {
 					workerShutdownOnce.Do(workerShutdownFunc)
@@ -886,7 +885,7 @@ func (c *Command) Run(args []string) int {
 				shutdownCompleted.Store(true)
 			}()
 
-		case count >= 2:
+		case shutdownTriggerCount >= 2:
 			go func() {
 				c.UI.Error("Forcing shutdown")
 				os.Exit(base.CommandCliError)
@@ -898,11 +897,11 @@ func (c *Command) Run(args []string) int {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary dev environment self-terminating")
-			atm.AddUint32(&shutdownTriggerCount, 1)
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.ShutdownCh:
-			atm.AddUint32(&shutdownTriggerCount, 1)
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.SigUSR2Ch:
