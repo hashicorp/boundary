@@ -93,6 +93,24 @@ resource "enos_local_exec" "add_to_host_set" {
   inline      = ["${var.local_boundary_dir}/boundary host-sets add-hosts -id=${local.host_set_id} -host=${local.host_ids[each.value]} -format=json"]
 }
 
+resource "enos_local_exec" "create_static_credential_store" {
+  environment = local.base_environment
+  inline      = ["${var.local_boundary_dir}/boundary credential-stores create static -scope-id=${var.project_scope_id} -format=json"]
+}
+
+locals {
+  credential_store_id = jsondecode(enos_local_exec.create_static_credential_store.stdout).item.id
+}
+
+resource "enos_local_exec" "create_ssh_private_key_credential" {
+  environment = local.base_environment
+  inline      = ["${var.local_boundary_dir}/boundary credentials create ssh-private-key -credential-store-id=${local.credential_store_id} -username=ubuntu -private-key=file://${var.aws_ssh_private_key_path} -format=json"]
+}
+
+locals {
+  credential_id = jsondecode(enos_local_exec.create_ssh_private_key_credential.stdout).item.id
+}
+
 resource "enos_local_exec" "create_target" {
   environment = local.base_environment
   inline      = ["${var.local_boundary_dir}/boundary targets create tcp -name='test target' -description='test target' -default-port=22 -scope-id=${var.project_scope_id} -session-connection-limit='-1' -session-max-seconds=900 -format=json"]
@@ -104,7 +122,12 @@ locals {
 
 resource "enos_local_exec" "add_hosts_to_target" {
   environment = local.base_environment
-  inline      = ["${var.local_boundary_dir}/boundary targets add-host-sets -id=${local.target_id} -host-set=${local.host_set_id} -format=json"]
+  inline      = ["${var.local_boundary_dir}/boundary targets add-host-sources -id=${local.target_id} -host-source=${local.host_set_id} -format=json"]
+}
+
+resource "enos_local_exec" "add_credential_to_target" {
+  environment = local.base_environment
+  inline      = ["${var.local_boundary_dir}/boundary targets add-credential-sources -id=${local.target_id} -brokered-credential-source=${local.credential_id} -format=json"]
 }
 
 resource "enos_local_exec" "connect_target" {
@@ -112,8 +135,6 @@ resource "enos_local_exec" "connect_target" {
     {
       BOUNDARY_PATH = var.local_boundary_dir
       TARGET_ID     = local.target_id
-      SSH_KEY_PATH  = var.aws_ssh_private_key_path
-      SSH_USER      = "ubuntu"
   })
   scripts = ["${path.module}/../../templates/connect-target.sh"]
 }

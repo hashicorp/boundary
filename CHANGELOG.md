@@ -4,11 +4,59 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* Fix bug preventing delete of org. ([PR](https://github.com/hashicorp/boundary/pull/2465)
+
 ### New and Improved
-* Workers: Added the ability to read and reinitialize the Worker certificate authority ([PR1](https://github.com/hashicorp/boundary/pull/2312), [PR2](https://github.com/hashicorp/boundary/pull/2387))
-* Workers: Return the worker Boundary binary version on worker list and read ([PR](https://github.com/hashicorp/boundary/pull/2377))
+
+* workers: Added the ability to read and reinitialize the Worker certificate
+  authority ([PR1](https://github.com/hashicorp/boundary/pull/2312),
+  [PR2](https://github.com/hashicorp/boundary/pull/2387))
+* workers: Return the worker Boundary binary version on worker list and read
+  ([PR](https://github.com/hashicorp/boundary/pull/2377))
+
+### Deprecations/Changes
+
+* In 0.5.0, the `add-host-sets`, `remove-host-sets`, and `set-host-sets` actions
+on targets were deprecated in favor of `add-host-sources`,
+`remove-host-sources`, and `set-host-sources`. Originally these actions and API
+calls were to be removed in 0.6, but this was delayed to give extra time for
+clients to switch over. This has now been fully switched over. A database
+migration will modify any grants in roles to have the new actions. This same
+changeover has been made for `add-/remove-/set-credential-libraries` to
+`add-/remove-/set-credential-sources`, although those actions would only be in
+grant strings in very rare circumstances as the `-sources` actions replaced the
+`-libraries` actions very quickly.
+([PR](https://github.com/hashicorp/boundary/pull/2393))
+
+## 0.10.5 (2022/09/13)
+
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
+
+### Bug Fixes
+
+* grants: Properly resolve "only self" for permissions. When generating
+  permissions from grants, if a single grant was limited only to a set of "self"
+  actions and that was the last grant parsed (which would be semi-random
+  depending on a number of factors), the overall set of permissions would be
+  marked as only-self. This would result in the generated permissions being more
+  limiting then they should be based on the grants. This only impacts the
+  sessions list endpoint. It would result in users that have been granted access
+  to list other user's sessions to be unable to see these sessions in the list
+  results ([PR](https://github.com/hashicorp/boundary/pull/2448)).
 
 ## 0.10.4 (2022/09/13)
+
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
 
 ### New and Improved
 
@@ -38,9 +86,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* vault: Correctly handle Vault credential stores and libraries that are linked to an
-  expired Vault token. ([Issue](https://github.com/hashicorp/boundary/issues/2179),
-  [PR](https://github.com/hashicorp/boundary/pull/2399)).
 * aws host catalog: Fix an issue where the request to list hosts could timeout
   on a large number of hosts
   ([Issue](https://github.com/hashicorp/boundary/issues/2224),
@@ -66,36 +111,55 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2388))
 * workers: Add the ability to set API-based worker tags via the CLI
   ([PR](https://github.com/hashicorp/boundary/pull/2266))
+* vault: Correctly handle Vault credential stores and libraries that are linked
+  to an expired Vault token
+  ([Issue](https://github.com/hashicorp/boundary/issues/2179),
+  [PR](https://github.com/hashicorp/boundary/pull/2399))
 
 ## 0.10.3 (2022/08/30)
 
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
+
 ### Bug Fixes
 
-* db: Fix an issue with migrations failing due to not updating the project_id value for the host plugin set
+* db: Fix an issue with migrations failing due to not updating the project_id
+  value for the host plugin set
   ([Issue](https://github.com/hashicorp/boundary/issues/2349#issuecomment-1229953874),
   [PR](https://github.com/hashicorp/boundary/pull/2407)).
 
 ## 0.10.2 (2022/08/23)
 
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
+
 ### Security
 
-* Fix security vulnerability CVE-2022-36130, Boundary up to 0.10.1 did not properly perform  
-  authorization checks to ensure the resources were associated with the correct scopes,  
-  allowing potential privilege escalation for authorized users of another scope.
+* Fix security vulnerability CVE-2022-36130: Boundary up to 0.10.1 did not
+  properly perform data integrity checks to ensure that host-set and
+  credential-source resources being added to a target were associated with the
+  same scope as the target. This could allow privilege escalation via allowing a
+  user able to modify a target to provide connections to unintended hosts.
   [[HCSEC-2022-17](https://discuss.hashicorp.com/t/hcsec-2022017-boundary-allowed-access-to-host-sets-and-credential-sources-for-authorized-users-of-another-scope/43493)]
 
 ## 0.10.1 (2022/08/11)
 
 ### Bug Fixes
 
-* db: Fix an issue with migrations affecting clusters that contain 
-  credential libraries or static credentials.
-  ([Issue](https://github.com/hashicorp/boundary/issues/2349),
-  [PR](https://github.com/hashicorp/boundary/pull/2351)).
-* managed groups: Fix an issue where the `filter` field is not sent by
-  admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
-* host sets: Fix an issue causing host sets to not display in UI when using the aws plugin 
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/1251))
+* db: Fix an issue with migrations affecting clusters that contain credential
+  libraries or static credentials.
+  ([Issue](https://github.com/hashicorp/boundary/issues/2349)),
+  ([PR](https://github.com/hashicorp/boundary/pull/2351)).
+* managed groups: Fix an issue where the `filter` field is not sent by admin UI
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
+* host sets: Fix an issue causing host sets to not display in UI when using the
+  aws plugin ([PR](https://github.com/hashicorp/boundary-ui/pull/1251))
 * plugins: Fixes regression from 0.9.0 causing a failure to start when using
   multiple KMS blocks of the same type
   ([PR1](https://github.com/hashicorp/go-secure-stdlib/pull/43),

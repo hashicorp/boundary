@@ -234,6 +234,102 @@ func TestCrudSpk(t *testing.T) {
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 }
 
+func TestCrudJson(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	cs, err := credentialstores.NewClient(client).Create(tc.Context(), "static", proj.GetPublicId())
+	require.NoError(err)
+	require.NotNil(cs)
+
+	checkResource := func(step string, c *credentials.Credential, wantedName string, wantVersion uint32) {
+		assert.NotNil(c, "returned no resource", step)
+		assert.Equal(wantedName, c.Name, step)
+		assert.Equal(wantVersion, c.Version)
+	}
+	credClient := credentials.NewClient(client)
+
+	obj := map[string]interface{}{
+		"username": "admin",
+		"password": "pass",
+	}
+	cred, err := credClient.Create(tc.Context(), credential.JsonSubtype.String(), cs.Item.Id, credentials.WithName("foo"), credentials.WithJsonCredentialObject(obj))
+	require.NoError(err)
+	require.NotNil(cred)
+	checkResource("create", cred.Item, "foo", 1)
+
+	jsonAttributes, err := cred.GetItem().GetJsonAttributes()
+	require.NoError(err)
+	require.Nil(jsonAttributes.Object)
+	require.NotEmpty(jsonAttributes.ObjectHmac)
+
+	sshAttributes, err := cred.GetItem().GetSshPrivateKeyAttributes()
+	require.Error(err)
+	require.Nil(sshAttributes)
+
+	upAttributes, err := cred.GetItem().GetUsernamePasswordAttributes()
+	require.Error(err)
+	require.Nil(upAttributes)
+
+	// Validate object hmac was set and object is not set
+	originalObjectHmac, ok := cred.GetItem().Attributes["object_hmac"].(string)
+	require.True(ok)
+	require.NotNil(originalObjectHmac)
+	object, ok := cred.GetItem().Attributes["object"].(string)
+	require.False(ok)
+	require.Empty(object)
+
+	cred, err = credClient.Read(tc.Context(), cred.Item.Id)
+	require.NoError(err)
+	require.NotNil(cs)
+	checkResource("read", cred.Item, "foo", 1)
+
+	// Validate object hmac was set and object is not set
+	objectHmac, ok := cred.GetItem().Attributes["object_hmac"].(string)
+	require.True(ok)
+	require.NotNil(objectHmac)
+	object, ok = cred.GetItem().Attributes["object"].(string)
+	require.False(ok)
+	require.Empty(object)
+
+	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.WithName("bar"))
+	require.NoError(err)
+	require.NotNil(cs)
+	checkResource("update", cred.Item, "bar", 2)
+
+	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.WithJsonCredentialObject(map[string]interface{}{
+		"username": "not_admin",
+		"password": "not_password",
+	}))
+	require.NoError(err)
+	require.NotNil(cs)
+	checkResource("update", cred.Item, "bar", 3)
+
+	// Validate secret hmac was set & is not the same as the original value & secret is not set
+	objectHmac, ok = cred.GetItem().Attributes["object_hmac"].(string)
+	require.True(ok)
+	require.NotNil(objectHmac)
+	require.NotEqual(originalObjectHmac, objectHmac)
+	object, ok = cred.GetItem().Attributes["secrets"].(string)
+	require.False(ok)
+	require.Empty(object)
+
+	_, err = credClient.Delete(tc.Context(), cred.Item.Id)
+	assert.NoError(err)
+
+	_, err = credClient.Delete(tc.Context(), cred.Item.Id)
+	require.Error(err)
+	apiErr := api.AsServerError(err)
+	assert.NotNil(apiErr)
+	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
+}
+
 func TestErrors(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)

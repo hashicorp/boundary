@@ -135,7 +135,6 @@ pollSecondController:
 		}
 	}
 
-	close(cmd.ShutdownCh)
-
+	cmd.ShutdownCh <- struct{}{}
 	wg.Wait()
 }

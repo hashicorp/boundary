@@ -14,6 +14,7 @@ const (
 	passwordFlagName             = "password"
 	privateKeyFlagName           = "private-key"
 	privateKeyPassphraseFlagName = "private-key-passphrase"
+	secretFlagName               = "secret"
 )
 
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {

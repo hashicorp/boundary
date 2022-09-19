@@ -11,6 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAuthToken, despite its name, does more than just return an auth token; it
+// also creates an auth method, an account, and a user and binds them together,
+// then creates an auth token against it
 func TestAuthToken(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId string, opt ...Option) *AuthToken {
 	t.Helper()
 	authMethod := password.TestAuthMethods(t, conn, scopeId, 1)[0]

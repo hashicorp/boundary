@@ -2,6 +2,7 @@ package static
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh/testdata"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
@@ -398,6 +400,165 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 	})
 }
 
+func TestRepository_CreateJsonCredential(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	obj, objBytes, err := TestJsonObject()
+	assert.NoError(t, err)
+
+	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
+
+	tests := []struct {
+		name        string
+		projectId   string
+		cred        *JsonCredential
+		wantErr     bool
+		wantErrCode errors.Code
+	}{
+		{
+			name:        "missing-store",
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:        "missing-embedded-cred",
+			cred:        &JsonCredential{},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name: "missing-project-id",
+			cred: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object:  objBytes,
+					StoreId: cs.PublicId,
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:      "missing-secret",
+			projectId: prj.PublicId,
+			cred: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					StoreId: cs.PublicId,
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:      "missing-store-id",
+			projectId: prj.PublicId,
+			cred: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: objBytes,
+				},
+			},
+			wantErr:     true,
+			wantErrCode: errors.InvalidParameter,
+		},
+		{
+			name:      "valid",
+			projectId: prj.PublicId,
+			cred: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object:  objBytes,
+					StoreId: cs.PublicId,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kkms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(ctx, rw, rw, kkms)
+			require.NoError(err)
+			require.NotNil(repo)
+
+			got, err := repo.CreateJsonCredential(ctx, tt.projectId, tt.cred)
+			if tt.wantErr {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Nil(got)
+				return
+			}
+			require.NoError(err)
+			assertPublicId(t, credential.JsonCredentialPrefix, got.PublicId)
+			assert.Nil(got.Object)
+			assert.Nil(got.ObjectEncrypted)
+
+			// Validate secret
+			lookupCred := allocJsonCredential()
+			lookupCred.PublicId = got.PublicId
+			require.NoError(rw.LookupById(ctx, lookupCred))
+
+			databaseWrapper, err := kkms.GetWrapper(context.Background(), tt.projectId, kms.KeyPurposeDatabase)
+			require.NoError(err)
+			require.NoError(lookupCred.decrypt(ctx, databaseWrapper))
+			assert.Equal(tt.cred.Object, lookupCred.Object)
+
+			assert.Empty(got.Object)
+			assert.Empty(got.ObjectEncrypted)
+			assert.NotEmpty(got.ObjectHmac)
+
+			// Validate hmac
+			hm, err := crypto.HmacSha256(ctx, tt.cred.Object, databaseWrapper, []byte(tt.cred.StoreId), nil)
+			require.NoError(err)
+			assert.Equal([]byte(hm), got.ObjectHmac)
+
+			// Validate oplog
+			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
+		})
+	}
+
+	t.Run("duplicate-names", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(ctx, rw, rw, kms)
+		require.NoError(err)
+		require.NotNil(repo)
+		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		prj2 := iam.TestProject(t, iam.TestRepo(t, conn, wrapper), org.PublicId)
+		require.NoError(err)
+
+		prjCs := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+		prj2Cs := TestCredentialStore(t, conn, wrapper, prj2.GetPublicId())
+
+		in, err := NewJsonCredential(ctx, prjCs.GetPublicId(), obj, WithName("my-name"), WithDescription("original"))
+		assert.NoError(err)
+
+		got, err := repo.CreateJsonCredential(ctx, prj.PublicId, in)
+		require.NoError(err)
+		assert.Equal(in.Name, got.Name)
+		assert.Equal(in.Description, got.Description)
+
+		in2, err := NewJsonCredential(ctx, prjCs.GetPublicId(), obj, WithName("my-name"), WithDescription("different"))
+		require.NoError(err)
+		got2, err := repo.CreateJsonCredential(ctx, prj.GetPublicId(), in2)
+		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
+		assert.Nil(got2)
+
+		// Creating credential in different scope should not conflict
+		in3, err := NewJsonCredential(ctx, prj2Cs.GetPublicId(), obj, WithName("my-name"), WithDescription("different"))
+		require.NoError(err)
+		got3, err := repo.CreateJsonCredential(ctx, org.GetPublicId(), in3)
+		require.NoError(err)
+		assert.Equal(in3.Name, got3.Name)
+		assert.Equal(in3.Description, got3.Description)
+
+		assert.NotEqual(got.PublicId, got3.PublicId)
+	})
+}
+
 func TestRepository_LookupCredential(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -410,6 +571,11 @@ func TestRepository_LookupCredential(t *testing.T) {
 	spkCred := TestSshPrivateKeyCredential(t, conn, wrapper, "username", TestSshPrivateKeyPem, store.PublicId, prj.PublicId)
 	spkCredWithPass := TestSshPrivateKeyCredential(t, conn, wrapper, "username", string(testdata.PEMEncryptedKeys[0].PEMBytes),
 		store.PublicId, prj.PublicId, WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
+
+	obj, _, err := TestJsonObject()
+	assert.NoError(t, err)
+
+	jsonCred := TestJsonCredential(t, conn, wrapper, store.PublicId, prj.PublicId, obj)
 
 	tests := []struct {
 		name    string
@@ -431,6 +597,11 @@ func TestRepository_LookupCredential(t *testing.T) {
 			name: "spk-valid-with-passphrase",
 			id:   spkCredWithPass.GetPublicId(),
 			want: spkCredWithPass,
+		},
+		{
+			name: "json-valid",
+			id:   jsonCred.GetPublicId(),
+			want: jsonCred,
 		},
 		{
 			name:    "empty-public-id",
@@ -476,7 +647,6 @@ func TestRepository_LookupCredential(t *testing.T) {
 				assert.Empty(v.PrivateKey)
 				assert.Empty(v.PrivateKeyEncrypted)
 				assert.NotEmpty(v.PrivateKeyHmac)
-
 				want, ok := tt.want.(*SshPrivateKeyCredential)
 				require.True(ok)
 				assert.Empty(v.PrivateKeyPassphrase)
@@ -484,6 +654,10 @@ func TestRepository_LookupCredential(t *testing.T) {
 				if len(want.PrivateKeyPassphrase) > 0 {
 					assert.NotEmpty(v.PrivateKeyPassphraseHmac)
 				}
+			case *JsonCredential:
+				assert.Empty(v.Object)
+				assert.Empty(v.ObjectEncrypted)
+				assert.NotEmpty(v.ObjectHmac)
 			default:
 				require.Fail("unknown type")
 			}
@@ -499,11 +673,16 @@ func TestRepository_ListCredentials(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	defaultLimit := 5
-	total := 20
+	total := 30
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), total/2)
-	TestSshPrivateKeyCredentials(t, conn, wrapper, "user", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), total/2)
+	TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), total/3)
+	TestSshPrivateKeyCredentials(t, conn, wrapper, "user", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), total/3)
+
+	obj, _, err := TestJsonObject()
+	assert.NoError(t, err)
+
+	TestJsonCredentials(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, total/3)
 
 	type args struct {
 		storeId string
@@ -527,7 +706,7 @@ func TestRepository_ListCredentials(t *testing.T) {
 			args: args{
 				storeId: store.PublicId,
 			},
-			wantCnt: defaultLimit * 2,
+			wantCnt: defaultLimit * 3,
 		},
 		{
 			name: "custom-limit",
@@ -535,7 +714,7 @@ func TestRepository_ListCredentials(t *testing.T) {
 				storeId: store.PublicId,
 				opt:     []Option{WithLimit(3)},
 			},
-			wantCnt: 3 * 2,
+			wantCnt: 9,
 		},
 		{
 			name: "bad-store",
@@ -568,6 +747,10 @@ func TestRepository_ListCredentials(t *testing.T) {
 					assert.Empty(v.PrivateKey)
 					assert.Empty(v.PrivateKeyEncrypted)
 					assert.NotEmpty(v.PrivateKeyHmac)
+				case *JsonCredential:
+					assert.Empty(v.Object)
+					assert.Empty(v.ObjectEncrypted)
+					assert.NotEmpty(v.ObjectHmac)
 				default:
 					require.Fail("unknown type")
 				}
@@ -588,6 +771,11 @@ func TestRepository_DeleteCredential(t *testing.T) {
 	store := TestCredentialStore(t, conn, wrapper, prj.PublicId)
 	upCred := TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	spkCred := TestSshPrivateKeyCredential(t, conn, wrapper, "user", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
+
+	obj, _, err := TestJsonObject()
+	assert.NoError(t, err)
+
+	jsonCred := TestJsonCredential(t, conn, wrapper, store.PublicId, prj.PublicId, obj)
 
 	tests := []struct {
 		name        string
@@ -614,6 +802,11 @@ func TestRepository_DeleteCredential(t *testing.T) {
 		{
 			name: "With existing ssh private key id",
 			in:   spkCred.GetPublicId(),
+			want: 1,
+		},
+		{
+			name: "with existing json id",
+			in:   jsonCred.GetPublicId(),
 			want: 1,
 		},
 	}
@@ -1700,14 +1893,14 @@ Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
 }
 
 func TestSshPrivateKeyConstraints(t *testing.T) {
-	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	assert, require := assert.New(t), require.New(t)
-	ctx := context.Background()
 	kkms := kms.TestKms(t, conn, wrapper)
 	repo, err := NewRepository(ctx, rw, rw, kkms)
+
+	assert, require := assert.New(t), require.New(t)
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -1767,6 +1960,443 @@ func TestSshPrivateKeyConstraints(t *testing.T) {
 				assert.NoError(err)
 			default:
 				assert.Error(err)
+			}
+		})
+	}
+}
+
+func TestRepository_UpdateJsonCredential(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	_, objBytes, err := TestJsonObject()
+	assert.NoError(t, err)
+
+	secondJsonSecret := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"username": structpb.NewStringValue("new-user"),
+			"password": structpb.NewStringValue("new-password"),
+			"hash":     structpb.NewStringValue("0987654321"),
+		},
+	}
+	secondBSecret, err := json.Marshal(secondJsonSecret)
+	assert.NoError(t, err)
+
+	changeName := func(n string) func(credential *JsonCredential) *JsonCredential {
+		return func(c *JsonCredential) *JsonCredential {
+			c.Name = n
+			return c
+		}
+	}
+
+	changeDescription := func(d string) func(*JsonCredential) *JsonCredential {
+		return func(c *JsonCredential) *JsonCredential {
+			c.Description = d
+			return c
+		}
+	}
+
+	makeNil := func() func(*JsonCredential) *JsonCredential {
+		return func(_ *JsonCredential) *JsonCredential {
+			return nil
+		}
+	}
+
+	makeEmbeddedNil := func() func(*JsonCredential) *JsonCredential {
+		return func(_ *JsonCredential) *JsonCredential {
+			return &JsonCredential{}
+		}
+	}
+
+	setPublicId := func(n string) func(*JsonCredential) *JsonCredential {
+		return func(c *JsonCredential) *JsonCredential {
+			c.PublicId = n
+			return c
+		}
+	}
+
+	deleteStoreId := func() func(*JsonCredential) *JsonCredential {
+		return func(c *JsonCredential) *JsonCredential {
+			c.StoreId = ""
+			return c
+		}
+	}
+
+	deleteVersion := func() func(*JsonCredential) *JsonCredential {
+		return func(c *JsonCredential) *JsonCredential {
+			c.Version = 0
+			return c
+		}
+	}
+
+	changeObject := func(s []byte) func(*JsonCredential) *JsonCredential {
+		return func(c *JsonCredential) *JsonCredential {
+			c.Object = s
+			return c
+		}
+	}
+
+	combine := func(fns ...func(cs *JsonCredential) *JsonCredential) func(*JsonCredential) *JsonCredential {
+		return func(c *JsonCredential) *JsonCredential {
+			for _, fn := range fns {
+				c = fn(c)
+			}
+			return c
+		}
+	}
+
+	tests := []struct {
+		name      string
+		orig      *JsonCredential
+		chgFn     func(*JsonCredential) *JsonCredential
+		masks     []string
+		want      *JsonCredential
+		wantCount int
+		wantErr   errors.Code
+	}{
+		{
+			name: "nil-credential",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: objBytes,
+				},
+			},
+			chgFn:   makeNil(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "nil-embedded-credential",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: objBytes,
+				},
+			},
+			chgFn:   makeEmbeddedNil(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "no-public-id",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: objBytes,
+				},
+			},
+			chgFn:   setPublicId(""),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidPublicId,
+		},
+		{
+			name: "no-store-id",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: objBytes,
+				},
+			},
+			chgFn:   deleteStoreId(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "no-version",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: objBytes,
+				},
+			},
+			chgFn:   deleteVersion(),
+			masks:   []string{"Name", "Description"},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "updating-non-existent-credential",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:   "test-name-repo",
+					Object: objBytes,
+				},
+			},
+			chgFn:   combine(setPublicId("abcd_OOOOOOOOOO"), changeName("test-update-name-repo")),
+			masks:   []string{"Name"},
+			wantErr: errors.RecordNotFound,
+		},
+		{
+			name: "empty-field-mask",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:   "test-name-repo",
+					Object: objBytes,
+				},
+			},
+			chgFn:   changeName("test-update-name-repo"),
+			wantErr: errors.EmptyFieldMask,
+		},
+		{
+			name: "read-only-fields-in-field-mask",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:   "test-name-repo",
+					Object: objBytes,
+				},
+			},
+			chgFn:   changeName("test-update-name-repo"),
+			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "ScopeId"},
+			wantErr: errors.InvalidFieldMask,
+		},
+		{
+			name: "unknown-field-in-field-mask",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:   "test-name-repo",
+					Object: objBytes,
+				},
+			},
+			chgFn:   changeName("test-update-name-repo"),
+			masks:   []string{"FIELD_DNE"},
+			wantErr: errors.InvalidFieldMask,
+		},
+		{
+			name: "change-name",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:   "test-name-repo",
+					Object: objBytes,
+				},
+			},
+			chgFn: changeName("test-update-name-repo"),
+			masks: []string{"Name"},
+			want: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:   "test-update-name-repo",
+					Object: objBytes,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-description",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Description: "test-description-repo",
+					Object:      objBytes,
+				},
+			},
+			chgFn: changeDescription("test-update-description-repo"),
+			masks: []string{"Description"},
+			want: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Description: "test-update-description-repo",
+					Object:      objBytes,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-name-and-description",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Object:      objBytes,
+				},
+			},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
+			masks: []string{"Name", "Description"},
+			want: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:        "test-update-name-repo",
+					Description: "test-update-description-repo",
+					Object:      objBytes,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-json-secret",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: objBytes,
+				},
+			},
+			chgFn: changeObject(secondBSecret),
+			masks: []string{"attributes.object.username", "attributes.object.password", "attributes.object.hash"},
+			want: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: secondBSecret,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-json-secret",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: objBytes,
+				},
+			},
+			masks: []string{},
+			chgFn: changeObject(nil),
+			want: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Object: objBytes,
+				},
+			},
+			wantErr:   errors.EmptyFieldMask,
+			wantCount: 0,
+		},
+		{
+			name: "delete-name",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Object:      objBytes,
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Description: "test-description-repo",
+					Object:      objBytes,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "delete-description",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Object:      objBytes,
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:   "test-name-repo",
+					Object: objBytes,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-name",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Object:      objBytes,
+				},
+			},
+			masks: []string{"Description"},
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
+			want: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:        "test-name-repo",
+					Description: "test-update-description-repo",
+					Object:      objBytes,
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "do-not-delete-description",
+			orig: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
+					Object:      objBytes,
+				},
+			},
+			masks: []string{"Name"},
+			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
+			want: &JsonCredential{
+				JsonCredential: &store.JsonCredential{
+					Name:        "test-update-name-repo",
+					Description: "test-description-repo",
+					Object:      objBytes,
+				},
+			},
+			wantCount: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
+			kkms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(ctx, rw, rw, kkms)
+			assert.NoError(err)
+			require.NotNil(repo)
+
+			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+			store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+			tt.orig.StoreId = store.PublicId
+
+			orig, err := repo.CreateJsonCredential(ctx, prj.GetPublicId(), tt.orig)
+			assert.NoError(err)
+			require.NotNil(orig)
+
+			if tt.chgFn != nil {
+				orig = tt.chgFn(orig)
+			}
+			var version uint32
+			if orig != nil {
+				version = orig.GetVersion()
+			}
+			got, gotCount, err := repo.UpdateJsonCredential(ctx, prj.GetPublicId(), orig, version, tt.masks)
+			if tt.wantErr != 0 {
+				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
+				assert.Equal(tt.wantCount, gotCount, "row count")
+				assert.Nil(got)
+				return
+			}
+			assert.NoError(err)
+			assert.Empty(tt.orig.PublicId)
+			require.NotNil(got)
+			assertPublicId(t, credential.JsonCredentialPrefix, got.PublicId)
+			assert.Equal(tt.wantCount, gotCount, "row count")
+			assert.NotSame(tt.orig, got)
+			assert.Equal(tt.orig.StoreId, got.StoreId)
+			underlyingDB, err := conn.SqlDB(ctx)
+			require.NoError(err)
+			dbassert := dbassert.New(t, underlyingDB)
+			if tt.want.Name == "" {
+				got := got.clone()
+				dbassert.IsNull(got, "name")
+			} else {
+				assert.Equal(tt.want.Name, got.Name)
+			}
+
+			if tt.want.Description == "" {
+				got := got.clone()
+				dbassert.IsNull(got, "description")
+			} else {
+				assert.Equal(tt.want.Description, got.Description)
+			}
+
+			// Validate only SecretHmac is returned
+			assert.Empty(got.Object)
+			assert.Empty(got.ObjectEncrypted)
+			assert.NotEmpty(got.ObjectHmac)
+
+			// Validate hmac
+			databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
+			require.NoError(err)
+			hm, err := crypto.HmacSha256(ctx, tt.want.Object, databaseWrapper, []byte(store.GetPublicId()), nil)
+			require.NoError(err)
+			assert.Equal([]byte(hm), got.ObjectHmac)
+
+			if tt.wantCount > 0 {
+				assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 			}
 		})
 	}

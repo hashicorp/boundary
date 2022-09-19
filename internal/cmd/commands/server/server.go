@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/signal"
 	"runtime"
 	"strings"
-	"syscall"
+	"sync"
+	atm "sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -667,69 +667,83 @@ func (c *Command) StartWorker() error {
 
 func (c *Command) WaitForInterrupt() int {
 	const op = "server.(Command).WaitForInterrupt"
-	// Wait for shutdown
-	shutdownTriggered := false
 
-	// Add a force-shutdown goroutine to consume another interrupt
-	abortForceShutdownCh := make(chan struct{})
-	defer close(abortForceShutdownCh)
+	var shutdownCompleted atm.Bool
+	shutdownTriggerCount := 0
 
-	runShutdownLogic := func() {
-		go func() {
-			shutdownCh := make(chan os.Signal, 4)
-			signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
-			for {
-				select {
-				case <-shutdownCh:
-					c.UI.Error("Forcing shutdown")
-					os.Exit(base.CommandUserError)
-
-				case <-c.ServerSideShutdownCh:
-					// Drain connections in case this is hit more than once
-
-				case <-abortForceShutdownCh:
-					// No-op, we just use this to shut down the goroutine
-					return
-				}
-			}
-		}()
-
-		if c.Config.Controller != nil && c.opsServer != nil {
-			c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+	var workerShutdownOnce sync.Once
+	workerShutdownFunc := func() {
+		if err := c.worker.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 		}
-
-		// Do worker shutdown
-		if c.Config.Worker != nil {
-			if err := c.worker.Shutdown(); err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
-			}
+	}
+	workerGracefulShutdownFunc := func() {
+		if err := c.worker.GracefulShutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker gracefully: %w", err).Error())
 		}
-
-		// Do controller shutdown
-		if c.Config.Controller != nil {
-			if err := c.controller.Shutdown(); err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
-			}
+		workerShutdownOnce.Do(workerShutdownFunc)
+	}
+	var controllerOnce sync.Once
+	controllerShutdownFunc := func() {
+		if err := c.controller.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
 		}
-
 		if c.opsServer != nil {
 			err := c.opsServer.Shutdown()
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down ops listeners: %w", err).Error())
+				c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
 			}
 		}
-
-		shutdownTriggered = true
 	}
 
-	for !shutdownTriggered {
+	runShutdownLogic := func() {
+		switch {
+		case shutdownTriggerCount == 1:
+			c.ContextCancel()
+			go func() {
+				if c.Config.Controller != nil && c.opsServer != nil {
+					c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+				}
+
+				if c.Config.Worker != nil {
+					c.UI.Output("==> Boundary server graceful shutdown triggered, interrupt again to enter shutdown")
+					workerGracefulShutdownFunc()
+				} else {
+					c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
+				}
+
+				if c.Config.Controller != nil {
+					controllerOnce.Do(controllerShutdownFunc)
+				}
+				shutdownCompleted.Store(true)
+			}()
+
+		case shutdownTriggerCount == 2 && c.Config.Worker != nil:
+			go func() {
+				if c.Config.Worker != nil {
+					workerShutdownOnce.Do(workerShutdownFunc)
+				}
+				if c.Config.Controller != nil {
+					controllerOnce.Do(controllerShutdownFunc)
+				}
+				shutdownCompleted.Store(true)
+			}()
+
+		case shutdownTriggerCount >= 2:
+			c.UI.Error("Forcing shutdown")
+			os.Exit(base.CommandCliError)
+		}
+	}
+
+	for !shutdownCompleted.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary server self-terminating")
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.SighupCh:
@@ -784,6 +798,8 @@ func (c *Command) WaitForInterrupt() int {
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
+
+		case <-time.After(10 * time.Millisecond):
 		}
 	}
 

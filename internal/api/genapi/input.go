@@ -550,6 +550,21 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &credentials.JsonAttributes{},
+		outFile:     "credentials/json_attributes.gen.go",
+		subtypeName: "JsonCredential",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Object",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &credentials.Credential{},
 		outFile: "credentials/credential.gen.go",
 		templates: []*template.Template{
@@ -684,10 +699,6 @@ var inputStructs = []*structInfo{
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 	{
-		inProto: &targets.HostSet{},
-		outFile: "targets/host_set.gen.go",
-	},
-	{
 		inProto: &targets.HostSource{},
 		outFile: "targets/host_source.gen.go",
 	},
@@ -769,10 +780,6 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName: "targets",
 		sliceSubtypes: map[string]sliceSubtypeInfo{
-			"HostSets": {
-				SliceType: "[]string",
-				VarName:   "hostSetIds",
-			},
 			"HostSources": {
 				SliceType: "[]string",
 				VarName:   "hostSourceIds",

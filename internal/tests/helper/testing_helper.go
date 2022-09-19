@@ -301,6 +301,11 @@ type TestSessionConnection struct {
 	conn net.Conn
 }
 
+// Close a test connection
+func (t *TestSessionConnection) Close() error {
+	return t.conn.Close()
+}
+
 // Connect returns a TestSessionConnection for a TestSession. Check
 // the unexported connect method for the lower-level details.
 func (s *TestSession) Connect(
@@ -344,7 +349,8 @@ func (c *TestSessionConnection) testSendRecv(t *testing.T) bool {
 			t.Log("received error during write", "err", err)
 			if errors.Is(err, net.ErrClosed) ||
 				errors.Is(err, io.EOF) ||
-				errors.Is(err, websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) {
+				errors.Is(err, websocket.CloseError{Code: websocket.StatusPolicyViolation, Reason: "timed out"}) ||
+				errors.Is(err, websocket.CloseError{Code: websocket.StatusNormalClosure, Reason: ""}) {
 				return false
 			}
 

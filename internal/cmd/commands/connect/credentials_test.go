@@ -78,6 +78,24 @@ var (
 		},
 	}
 
+	staticKv = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type:              "static",
+			CredentialType:    "json",
+			CredentialStoreId: "csst_id",
+			Description:       "test",
+			Name:              "test unspecified json cred",
+			Id:                "credjson_id",
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]interface{}{
+				"secret": map[string]interface{}{
+					"username": "password",
+				},
+			},
+		},
+	}
+
 	unspecifiedCred = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
 			Type: "static",
@@ -237,10 +255,23 @@ func Test_parseCredentials(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "unspecified-static-json",
+			creds: []*targets.SessionCredential{
+				staticKv,
+			},
+			wantCreds: credentials{
+				unspecified: []*targets.SessionCredential{
+					staticKv,
+				},
+			},
+			wantErr: false,
+		},
+		{
 			name: "mixed",
 			creds: []*targets.SessionCredential{
 				staticSshPrivateKey, unspecifiedCred1, vaultSshPrivateKey, typedUsernamePassword,
 				unspecifiedCred, vaultUsernamePassword, typedSshPrivateKey, staticUsernamePassword,
+				staticKv,
 			},
 			wantCreds: credentials{
 				sshPrivateKey: []sshPrivateKey{
@@ -278,7 +309,7 @@ func Test_parseCredentials(t *testing.T) {
 					},
 				},
 				unspecified: []*targets.SessionCredential{
-					unspecifiedCred, unspecifiedCred1,
+					unspecifiedCred, unspecifiedCred1, staticKv,
 				},
 			},
 			wantErr: false,

@@ -15,6 +15,18 @@ function create_username_password_credential() {
     -password env://BP
 }
 
+function create_json_credential() {
+  local name=$1
+  local sid=$2
+  local args=$3
+
+  boundary credentials create json \
+    -name $name \
+    -description 'test json credential' \
+    -credential-store-id $sid \
+    $args
+}
+
 function read_credential() {
   boundary credentials read -id $1 -format json
 }

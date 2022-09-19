@@ -3,6 +3,7 @@ package credentials
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -30,6 +31,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -100,6 +102,28 @@ func TestList(t *testing.T) {
 				},
 			},
 		})
+
+		obj, objBytes, err := static.TestJsonObject()
+		assert.NoError(t, err)
+
+		credJson := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
+		hm, err = crypto.HmacSha256(context.Background(), objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
+		require.NoError(t, err)
+		wantCreds = append(wantCreds, &pb.Credential{
+			Id:                credJson.GetPublicId(),
+			CredentialStoreId: store.GetPublicId(),
+			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+			CreatedTime:       credJson.GetCreateTime().GetTimestamp(),
+			UpdatedTime:       credJson.GetUpdateTime().GetTimestamp(),
+			Version:           credJson.GetVersion(),
+			Type:              credential.JsonSubtype.String(),
+			AuthorizedActions: testAuthorizedActions,
+			Attrs: &pb.Credential_JsonAttributes{
+				JsonAttributes: &pb.JsonAttributes{
+					ObjectHmac: base64.RawURLEncoding.EncodeToString([]byte(hm)),
+				},
+			},
+		})
 	}
 
 	cases := []struct {
@@ -129,8 +153,8 @@ func TestList(t *testing.T) {
 		},
 		{
 			name:    "Filter on Attribute",
-			req:     &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/username"==%q`, wantCreds[2].GetUsernamePasswordAttributes().GetUsername().Value)},
-			res:     &pbs.ListCredentialsResponse{Items: wantCreds[2:4]},
+			req:     &pbs.ListCredentialsRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/username"==%q`, wantCreds[3].GetUsernamePasswordAttributes().GetUsername().Value)},
+			res:     &pbs.ListCredentialsResponse{Items: wantCreds[3:5]},
 			anonRes: &pbs.ListCredentialsResponse{}, // anonymous user does not have access to attributes
 		},
 		{
@@ -213,6 +237,12 @@ func TestGet(t *testing.T) {
 	spkWithPassHm, err := crypto.HmacSha256(context.Background(), []byte(testdata.PEMEncryptedKeys[0].PEMBytes), databaseWrapper, []byte(store.GetPublicId()), nil)
 	require.NoError(t, err)
 	passHm, err := crypto.HmacSha256(context.Background(), []byte(testdata.PEMEncryptedKeys[0].EncryptionKey), databaseWrapper, []byte(store.GetPublicId()), nil)
+
+	obj, objBytes, err := static.TestJsonObject()
+	assert.NoError(t, err)
+
+	jsonCred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
+	objectHmac, err := crypto.HmacSha256(context.Background(), objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -311,6 +341,27 @@ func TestGet(t *testing.T) {
 			},
 		},
 		{
+			name: "success-json",
+			id:   jsonCred.GetPublicId(),
+			res: &pbs.GetCredentialResponse{
+				Item: &pb.Credential{
+					Id:                jsonCred.GetPublicId(),
+					CredentialStoreId: jsonCred.GetStoreId(),
+					Scope:             &scopepb.ScopeInfo{Id: store.GetProjectId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
+					Type:              credential.JsonSubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+					CreatedTime:       jsonCred.CreateTime.GetTimestamp(),
+					UpdatedTime:       jsonCred.UpdateTime.GetTimestamp(),
+					Version:           1,
+					Attrs: &pb.Credential_JsonAttributes{
+						JsonAttributes: &pb.JsonAttributes{
+							ObjectHmac: base64.RawURLEncoding.EncodeToString([]byte(objectHmac)),
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "not found error",
 			id:   fmt.Sprintf("%s_1234567890", credential.UsernamePasswordCredentialPrefix),
 			err:  handlers.NotFoundError(),
@@ -370,6 +421,11 @@ func TestDelete(t *testing.T) {
 	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
 	spkCred := static.TestSshPrivateKeyCredential(t, conn, wrapper, "user", static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
 
+	obj, _, err := static.TestJsonObject()
+	assert.NoError(t, err)
+
+	jsonCred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
+
 	cases := []struct {
 		name string
 		id   string
@@ -383,6 +439,10 @@ func TestDelete(t *testing.T) {
 		{
 			name: "success-spk",
 			id:   spkCred.GetPublicId(),
+		},
+		{
+			name: "success-json",
+			id:   jsonCred.GetPublicId(),
 		},
 		{
 			name: "not found error",
@@ -428,6 +488,9 @@ func TestCreate(t *testing.T) {
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+
+	obj, objBytes, err := static.TestJsonObject()
+	assert.NoError(t, err)
 
 	cases := []struct {
 		name     string
@@ -556,6 +619,18 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
+			name: "Must provide json secret",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              credential.JsonSubtype.String(),
+				Attrs: &pb.Credential_JsonAttributes{
+					JsonAttributes: &pb.JsonAttributes{},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "valid-up",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
@@ -637,6 +712,32 @@ func TestCreate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-json",
+			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              credential.JsonSubtype.String(),
+				Attrs: &pb.Credential_JsonAttributes{
+					JsonAttributes: &pb.JsonAttributes{
+						Object: &obj.Struct,
+					},
+				},
+			}},
+			idPrefix: credential.JsonCredentialPrefix + "_",
+			res: &pbs.CreateCredentialResponse{
+				Uri: fmt.Sprintf("credentials/%s_", credential.JsonCredentialPrefix),
+				Item: &pb.Credential{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              credential.JsonSubtype.String(),
+					AuthorizedActions: testAuthorizedActions,
+				},
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -701,6 +802,14 @@ func TestCreate(t *testing.T) {
 						assert.Equal(base64.RawURLEncoding.EncodeToString([]byte(hm)), got.GetItem().GetSshPrivateKeyAttributes().GetPrivateKeyPassphraseHmac())
 						assert.Empty(got.GetItem().GetSshPrivateKeyAttributes().GetPrivateKeyPassphrase())
 					}
+
+				case credential.JsonSubtype.String():
+					hm, err := crypto.HmacSha256(context.Background(), objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
+					require.NoError(err)
+
+					// Validate attributes equal
+					assert.Equal(base64.RawURLEncoding.EncodeToString([]byte(hm)), got.GetItem().GetJsonAttributes().GetObjectHmac())
+					assert.Empty(got.GetItem().GetJsonAttributes().GetObject())
 
 				default:
 					require.Fail("unknown type")
@@ -774,6 +883,28 @@ func TestUpdate(t *testing.T) {
 		}
 		return cred, clean
 	}
+
+	freshCredJson := func() (*static.JsonCredential, func()) {
+		t.Helper()
+		obj, _, err := static.TestJsonObject()
+		assert.NoError(t, err)
+		cred := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
+		clean := func() {
+			_, err := s.DeleteCredential(ctx, &pbs.DeleteCredentialRequest{Id: cred.GetPublicId()})
+			require.NoError(t, err)
+		}
+		return cred, clean
+	}
+
+	secondSecret := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"username": structpb.NewStringValue("new-user"),
+			"password": structpb.NewStringValue("new-password"),
+			"hash":     structpb.NewStringValue("0123456789"),
+		},
+	}
+	secondSecretBytes, err := json.Marshal(secondSecret)
+	require.NoError(t, err)
 
 	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -995,6 +1126,27 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
+			name: "update-json",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.object.username", "attributes.object.password", "attributes.object.hash"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_JsonAttributes{
+						JsonAttributes: &pb.JsonAttributes{
+							Object: secondSecret,
+						},
+					},
+				},
+			},
+			res: func(in *pb.Credential) *pb.Credential {
+				out := proto.Clone(in).(*pb.Credential)
+
+				hm, err := crypto.HmacSha256(context.Background(), secondSecretBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
+				require.NoError(t, err)
+				out.GetJsonAttributes().ObjectHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
+				return out
+			},
+		},
+		{
 			name: "update-spk-with-bad-passphrase",
 			req: &pbs.UpdateCredentialRequest{
 				UpdateMask: fieldmask("attributes.private_key", "attributes.private_key_passphrase"),
@@ -1043,6 +1195,7 @@ func TestUpdate(t *testing.T) {
 				require.NoError(t, err)
 				out.GetSshPrivateKeyAttributes().PrivateKeyHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
 				out.GetSshPrivateKeyAttributes().PrivateKeyPassphraseHmac = ""
+
 				return out
 			},
 		},
@@ -1053,10 +1206,12 @@ func TestUpdate(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var cred credential.Static
 			var cleanup func()
-			switch {
-			case strings.Contains(tc.name, "spk"):
+
+			if strings.Contains(tc.name, "spk") {
 				cred, cleanup = freshCredSpk("user")
-			default:
+			} else if strings.Contains(tc.name, "json") {
+				cred, cleanup = freshCredJson()
+			} else {
 				cred, cleanup = freshCredUp("user", "pass")
 			}
 			defer cleanup()
@@ -1095,8 +1250,12 @@ func TestUpdate(t *testing.T) {
 	}
 
 	// cant update read only fields
-	cred, cleanupKv := freshCredUp("user", "pass")
-	defer cleanupKv()
+	credJson, cleanupJson := freshCredJson()
+	defer cleanupJson()
+
+	// cant update read only fields
+	credUp, cleanUp := freshCredUp("user", "pass")
+	defer cleanUp()
 
 	newStore := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
@@ -1129,15 +1288,33 @@ func TestUpdate(t *testing.T) {
 	for _, tc := range roCases {
 		t.Run(fmt.Sprintf("ReadOnlyField/%s", tc.path), func(t *testing.T) {
 			req := &pbs.UpdateCredentialRequest{
-				Id:         cred.GetPublicId(),
+				Id:         credUp.GetPublicId(),
 				Item:       tc.item,
 				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{tc.path}},
 			}
-			req.Item.Version = cred.Version
+			req.Item.Version = credUp.Version
 
 			got, gErr := s.UpdateCredential(ctx, req)
 			assert.Error(t, gErr)
 			matcher := tc.matcher
+			if matcher == nil {
+				matcher = func(t *testing.T, e error) {
+					assert.Truef(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)), "got error %v, wanted invalid argument", gErr)
+				}
+			}
+			matcher(t, gErr)
+			assert.Nil(t, got)
+
+			req = &pbs.UpdateCredentialRequest{
+				Id:         credJson.GetPublicId(),
+				Item:       tc.item,
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{tc.path}},
+			}
+			req.Item.Version = credJson.Version
+
+			got, gErr = s.UpdateCredential(ctx, req)
+			assert.Error(t, gErr)
+			matcher = tc.matcher
 			if matcher == nil {
 				matcher = func(t *testing.T, e error) {
 					assert.Truef(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)), "got error %v, wanted invalid argument", gErr)

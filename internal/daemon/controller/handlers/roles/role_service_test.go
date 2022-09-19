@@ -1653,11 +1653,12 @@ func TestAddGrants(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	addCases := []struct {
-		name     string
-		existing []string
-		add      []string
-		result   []string
-		wantErr  bool
+		name            string
+		existing        []string
+		add             []string
+		result          []string
+		wantErr         bool
+		wantErrContains string
 	}{
 		{
 			name:   "Add grant on empty role",
@@ -1682,6 +1683,13 @@ func TestAddGrants(t *testing.T) {
 			add:      []string{"id=*;type=*;actions=delete"},
 			wantErr:  true,
 		},
+		{
+			name:            "Check deprecation",
+			existing:        []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			add:             []string{"id=*;type=target;actions=add-host-sets"},
+			wantErr:         true,
+			wantErrContains: "Use \\\"add-host-sources\\\" instead",
+		},
 	}
 
 	for _, tc := range addCases {
@@ -1705,6 +1713,9 @@ func TestAddGrants(t *testing.T) {
 				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
+					if tc.wantErrContains != "" {
+						assert.Contains(err.Error(), tc.wantErrContains)
+					}
 					return
 				}
 				require.NoError(err)
@@ -1781,11 +1792,12 @@ func TestSetGrants(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	setCases := []struct {
-		name     string
-		existing []string
-		set      []string
-		result   []string
-		wantErr  bool
+		name            string
+		existing        []string
+		set             []string
+		result          []string
+		wantErr         bool
+		wantErrContains string
 	}{
 		{
 			name:   "Set grant on empty role",
@@ -1816,6 +1828,13 @@ func TestSetGrants(t *testing.T) {
 			set:      nil,
 			result:   nil,
 		},
+		{
+			name:            "Check deprecation",
+			existing:        []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			set:             []string{"id=*;type=target;actions=add-host-sets"},
+			wantErr:         true,
+			wantErrContains: "Use \\\"add-host-sources\\\" instead",
+		},
 	}
 
 	for _, tc := range setCases {
@@ -1839,6 +1858,9 @@ func TestSetGrants(t *testing.T) {
 				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
+					if tc.wantErrContains != "" {
+						assert.Contains(err.Error(), tc.wantErrContains)
+					}
 					return
 				}
 				require.NoError(err, "Got error %v", err)

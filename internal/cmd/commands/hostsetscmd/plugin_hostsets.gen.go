@@ -130,6 +130,11 @@ func (c *PluginCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
+	if c.FlagAttributes != "" && len(c.FlagAttrs) > 0 {
+		c.PrintCliError(errors.New("-attributes flag cannot be used along with the following flags: attr, bool-attr, num-attr, string-attr"))
+		return base.CommandUserError
+	}
+
 	var opts []hostsets.Option
 
 	if strutil.StrListContains(flagsPluginMap[c.Func], "host-catalog-id") {

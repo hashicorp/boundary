@@ -73,6 +73,10 @@ type cmdInfo struct {
 	// -secret, -string-secret, etc.
 	HasGenericSecrets bool
 
+	// HasJsonObject controls whether to generate flags for -object,
+	// -kv, -string-kv, -bool-kv, -num-kv.
+	HasJsonObject bool
+
 	// IsPluginType controls whether standard plugin flags are generated
 	IsPluginType bool
 
@@ -279,6 +283,22 @@ var inputStructs = map[string][]*cmdInfo{
 			NeedsSubtypeInCreate: true,
 			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
 		},
+		{
+			ResourceType:         resource.Credential.String(),
+			Pkg:                  "credentials",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "json",
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "CredentialStore",
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+			PrefixAttributeFieldErrorsWithSubactionPrefix: true,
+			HasJsonObject: true,
+		},
 	},
 	"groups": {
 		{
@@ -478,7 +498,7 @@ var inputStructs = map[string][]*cmdInfo{
 			HasName:             true,
 			HasDescription:      true,
 			Container:           "Scope",
-			VersionedActions:    []string{"add-host-sets", "remove-host-sets", "set-host-sets", "add-host-sources", "remove-host-sources", "set-host-sources", "add-credential-sources", "remove-credential-sources", "set-credential-sources"},
+			VersionedActions:    []string{"add-host-sources", "remove-host-sources", "set-host-sources", "add-credential-sources", "remove-credential-sources", "set-credential-sources"},
 		},
 		{
 			ResourceType:         resource.Target.String(),

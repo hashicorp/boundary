@@ -167,7 +167,6 @@ func TestServer_ReloadListener(t *testing.T) {
 
 	testCertificateSerial("193080739105342897219784862820114567438786419504")
 
-	close(cmd.ShutdownCh)
-
+	cmd.ShutdownCh <- struct{}{}
 	wg.Wait()
 }

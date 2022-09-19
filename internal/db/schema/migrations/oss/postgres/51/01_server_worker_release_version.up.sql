@@ -9,7 +9,7 @@ alter table server_worker
 
 drop view server_worker_aggregate;
 
--- Updates view created in 34/04_views.up.sql
+-- Updated in 52/01_worker_operational_state.up.sql
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (
   select

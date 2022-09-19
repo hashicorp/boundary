@@ -14,6 +14,7 @@ func init() {
 	extraSshActionsFlagsMapFunc = extraSshActionsFlagsMapFuncImpl
 	extraSshFlagsFunc = extraSshFlagsFuncImpl
 	extraSshFlagsHandlingFunc = extraSshFlagsHandlingFuncImpl
+	extraSshSynopsisFunc = extraSshSynopsisFuncImpl
 }
 
 func extraSshActionsFlagsMapFuncImpl() map[string][]string {
@@ -151,4 +152,8 @@ func extraSshFlagsHandlingFuncImpl(c *SshCommand, _ *base.FlagSets, opts *[]targ
 	}
 
 	return true
+}
+
+func extraSshSynopsisFuncImpl(_ *SshCommand) string {
+	return "Create a ssh-type target (HCP only)"
 }

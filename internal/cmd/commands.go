@@ -38,14 +38,14 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 	Commands = map[string]cli.CommandFactory{
 		"server": func() (cli.Command, error) {
 			return &server.Command{
-				Server:    base.NewServer(base.NewCommand(serverCmdUi)),
+				Server:    base.NewServer(base.NewServerCommand(serverCmdUi)),
 				SighupCh:  base.MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
 		"dev": func() (cli.Command, error) {
 			return &dev.Command{
-				Server:    base.NewServer(base.NewCommand(serverCmdUi)),
+				Server:    base.NewServer(base.NewServerCommand(serverCmdUi)),
 				SighupCh:  base.MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
@@ -478,6 +478,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"credentials create json": func() (cli.Command, error) {
+			return &credentialscmd.JsonCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"credentials update": func() (cli.Command, error) {
 			return &credentialscmd.Command{
 				Command: base.NewCommand(ui),
@@ -492,6 +498,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"credentials update ssh-private-key": func() (cli.Command, error) {
 			return &credentialscmd.SshPrivateKeyCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"credentials update json": func() (cli.Command, error) {
+			return &credentialscmd.JsonCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
@@ -986,24 +998,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &targetscmd.SshCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"targets add-host-sets": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "add-host-sets",
-			}, nil
-		},
-		"targets remove-host-sets": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "remove-host-sets",
-			}, nil
-		},
-		"targets set-host-sets": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui),
-				Func:    "set-host-sets",
 			}, nil
 		},
 		"targets add-host-sources": func() (cli.Command, error) {
