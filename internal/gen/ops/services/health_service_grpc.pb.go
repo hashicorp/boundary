@@ -31,7 +31,7 @@ func NewHealthServiceClient(cc grpc.ClientConnInterface) HealthServiceClient {
 
 func (c *healthServiceClient) GetHealth(ctx context.Context, in *GetHealthRequest, opts ...grpc.CallOption) (*GetHealthResponse, error) {
 	out := new(GetHealthResponse)
-	err := c.cc.Invoke(ctx, "/controller.ops.services.v1.HealthService/GetHealth", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ops.services.v1.HealthService/GetHealth", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func _HealthService_GetHealth_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/controller.ops.services.v1.HealthService/GetHealth",
+		FullMethod: "/ops.services.v1.HealthService/GetHealth",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(HealthServiceServer).GetHealth(ctx, req.(*GetHealthRequest))
@@ -88,7 +88,7 @@ func _HealthService_GetHealth_Handler(srv interface{}, ctx context.Context, dec 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var HealthService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "controller.ops.services.v1.HealthService",
+	ServiceName: "ops.services.v1.HealthService",
 	HandlerType: (*HealthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -97,5 +97,5 @@ var HealthService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "controller/ops/services/v1/health_service.proto",
+	Metadata: "ops/services/v1/health_service.proto",
 }

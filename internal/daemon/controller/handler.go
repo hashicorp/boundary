@@ -39,7 +39,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
-	opsservices "github.com/hashicorp/boundary/internal/gen/controller/ops/services"
+	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
