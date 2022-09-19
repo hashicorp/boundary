@@ -11,7 +11,7 @@
 
 
 # Development docker image
-FROM docker.mirror.hashicorp.services/alpine:3.13.6 as dev
+FROM docker.mirror.hashicorp.services/alpine:3.13 as dev
 
 RUN set -eux && \
     addgroup boundary && \
@@ -33,7 +33,7 @@ CMD ["server", "-config", "/boundary/config.hcl"]
 
 
 # Official docker image that uses binaries from releases.hashicorp.com
-FROM docker.mirror.hashicorp.services/alpine:3.13.6 as official
+FROM docker.mirror.hashicorp.services/alpine:3.13 as official
 
 ARG PRODUCT_VERSION
 
@@ -82,7 +82,7 @@ CMD ["server", "-config", "/boundary/config.hcl"]
 
 # Production docker image
 # Remember, this cannot be built locally
-FROM docker.mirror.hashicorp.services/alpine:3.13.6 as default
+FROM docker.mirror.hashicorp.services/alpine:3.13 as default
 
 ARG BIN_NAME
 # NAME and PRODUCT_VERSION are the name of the software in releases.hashicorp.com
