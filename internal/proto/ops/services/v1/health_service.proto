@@ -16,9 +16,11 @@ service HealthService {
 }
 
 message GetHealthRequest {
+  // Experimental: This field may change or be removed without notice.
   bool worker_info = 1 [json_name = "worker_info"];
 }
 
 message GetHealthResponse {
+  // Experimental: This field may change or be removed without notice.
   worker.health.v1.HealthInfo worker_process_info = 1 [json_name = "worker_process_info"];
 }

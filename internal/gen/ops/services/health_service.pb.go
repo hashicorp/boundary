@@ -27,6 +27,7 @@ type GetHealthRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Experimental: This field may change or be removed without notice.
 	WorkerInfo bool `protobuf:"varint,1,opt,name=worker_info,proto3" json:"worker_info,omitempty"`
 }
 
@@ -74,6 +75,7 @@ type GetHealthResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Experimental: This field may change or be removed without notice.
 	WorkerProcessInfo *health.HealthInfo `protobuf:"bytes,1,opt,name=worker_process_info,proto3" json:"worker_process_info,omitempty"`
 }
 
