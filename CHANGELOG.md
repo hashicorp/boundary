@@ -4,6 +4,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* Fix bug preventing delete of org. ([PR](https://github.com/hashicorp/boundary/pull/2465)
+
 ### New and Improved
 
 * workers: Added the ability to read and reinitialize the Worker certificate
@@ -28,6 +32,12 @@ grant strings in very rare circumstances as the `-sources` actions replaced the
 
 ## 0.10.5 (2022/09/13)
 
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
+
 ### Bug Fixes
 
 * grants: Properly resolve "only self" for permissions. When generating
@@ -41,6 +51,12 @@ grant strings in very rare circumstances as the `-sources` actions replaced the
   results ([PR](https://github.com/hashicorp/boundary/pull/2448)).
 
 ## 0.10.4 (2022/09/13)
+
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
 
 ### New and Improved
 
@@ -102,6 +118,12 @@ grant strings in very rare circumstances as the `-sources` actions replaced the
 
 ## 0.10.3 (2022/08/30)
 
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
+
 ### Bug Fixes
 
 * db: Fix an issue with migrations failing due to not updating the project_id
@@ -110,6 +132,12 @@ grant strings in very rare circumstances as the `-sources` actions replaced the
   [PR](https://github.com/hashicorp/boundary/pull/2407)).
 
 ## 0.10.2 (2022/08/23)
+
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
 
 ### Security
 
