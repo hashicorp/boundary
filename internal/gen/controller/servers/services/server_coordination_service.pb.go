@@ -396,7 +396,6 @@ type Job struct {
 
 	Type JOBTYPE `protobuf:"varint,1,opt,name=type,proto3,enum=controller.servers.services.v1.JOBTYPE" json:"type,omitempty"`
 	// Types that are assignable to JobInfo:
-	//
 	//	*Job_SessionInfo
 	JobInfo isJob_JobInfo `protobuf_oneof:"job_info"`
 }

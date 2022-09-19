@@ -52,7 +52,6 @@ type Account struct {
 	// The ID of the Auth Method that is associated with this Account.
 	AuthMethodId string `protobuf:"bytes,90,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
-	//
 	//	*Account_Attributes
 	//	*Account_PasswordAccountAttributes
 	//	*Account_OidcAccountAttributes

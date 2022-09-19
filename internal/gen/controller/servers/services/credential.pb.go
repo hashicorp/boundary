@@ -26,7 +26,6 @@ type Credential struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Types that are assignable to Credential:
-	//
 	//	*Credential_UsernamePassword
 	//	*Credential_SshPrivateKey
 	Credential isCredential_Credential `protobuf_oneof:"credential"`

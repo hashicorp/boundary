@@ -52,7 +52,6 @@ type CredentialLibrary struct {
 	// The Credential Library type.
 	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
-	//
 	//	*CredentialLibrary_Attributes
 	//	*CredentialLibrary_VaultCredentialLibraryAttributes
 	Attrs isCredentialLibrary_Attrs `protobuf_oneof:"attrs"`

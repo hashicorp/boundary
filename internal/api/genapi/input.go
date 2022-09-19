@@ -162,6 +162,11 @@ var inputStructs = []*structInfo{
 		skipOptions: true,
 	},
 	{
+		inProto:     &scopes.KeyVersion{},
+		outFile:     "scopes/key_version.gen.go",
+		skipOptions: true,
+	},
+	{
 		inProto: &scopes.Scope{},
 		outFile: "scopes/scope.gen.go",
 		templates: []*template.Template{

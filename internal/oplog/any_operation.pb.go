@@ -282,14 +282,12 @@ type WithOnConflict struct {
 	// target defines the on conflict target
 	//
 	// Types that are assignable to Target:
-	//
 	//	*WithOnConflict_Constraint
 	//	*WithOnConflict_Columns
 	Target isWithOnConflict_Target `protobuf_oneof:"target"`
 	// action defines the on conflict action
 	//
 	// Types that are assignable to Action:
-	//
 	//	*WithOnConflict_DoNothing
 	//	*WithOnConflict_UpdateAll
 	//	*WithOnConflict_ColumnValues
@@ -480,7 +478,6 @@ type ColumnValue struct {
 	// value of the column
 	//
 	// Types that are assignable to Value:
-	//
 	//	*ColumnValue_Raw
 	//	*ColumnValue_ExprValue
 	//	*ColumnValue_Column

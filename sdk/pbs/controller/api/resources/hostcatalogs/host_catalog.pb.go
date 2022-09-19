@@ -56,7 +56,6 @@ type HostCatalog struct {
 	// The type of Host Catalog.
 	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
-	//
 	//	*HostCatalog_Attributes
 	Attrs isHostCatalog_Attrs `protobuf_oneof:"attrs"`
 	// Secrets specific to the catalog type. These are never output.

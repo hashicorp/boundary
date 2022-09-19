@@ -6,11 +6,10 @@ import (
 )
 
 type Key struct {
-	Id          string     `json:"id,omitempty"`
-	ScopeId     string     `json:"scope_id,omitempty"`
-	Scope       *ScopeInfo `json:"scope,omitempty"`
-	Purpose     string     `json:"purpose,omitempty"`
-	CreatedTime time.Time  `json:"created_time,omitempty"`
-	Version     uint32     `json:"version,omitempty"`
-	Type        string     `json:"type,omitempty"`
+	Id          string        `json:"id,omitempty"`
+	Scope       *ScopeInfo    `json:"scope,omitempty"`
+	Purpose     string        `json:"purpose,omitempty"`
+	CreatedTime time.Time     `json:"created_time,omitempty"`
+	Type        string        `json:"type,omitempty"`
+	Versions    []*KeyVersion `json:"versions,omitempty"`
 }

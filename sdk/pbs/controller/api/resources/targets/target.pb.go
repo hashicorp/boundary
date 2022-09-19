@@ -357,7 +357,6 @@ type Target struct {
 	// Output only. The injected application credential sources associated with this Target.
 	InjectedApplicationCredentialSources []*CredentialSource `protobuf:"bytes,530,rep,name=injected_application_credential_sources,proto3" json:"injected_application_credential_sources,omitempty"`
 	// Types that are assignable to Attrs:
-	//
 	//	*Target_Attributes
 	//	*Target_TcpTargetAttributes
 	//	*Target_SshTargetAttributes
