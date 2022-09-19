@@ -7,10 +7,10 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"os/signal"
 	"runtime"
 	"strings"
-	"syscall"
+	"sync"
+	atm "sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -824,74 +824,92 @@ func (c *Command) Run(args []string) int {
 	c.opsServer = opsServer
 	c.opsServer.Start()
 
-	// Wait for shutdown
-	shutdownTriggered := false
+	var shutdownCompleted atm.Bool
+	shutdownTriggerCount := 0
 
-	// Add a force-shutdown goroutine to consume more interrupts
-	abortForceShutdownCh := make(chan struct{})
-	defer close(abortForceShutdownCh)
-
-	runShutdownLogic := func() {
-		go func() {
-			shutdownCh := make(chan os.Signal, 4)
-			signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
-			for {
-				select {
-				case <-shutdownCh:
-					c.UI.Error("Forcing shutdown")
-					os.Exit(base.CommandUserError)
-
-				case <-c.ServerSideShutdownCh:
-					// Drain connections in case this is hit more than once
-
-				case <-abortForceShutdownCh:
-					// No-op, we just use this to shut down the goroutine
-					return
-				}
-			}
-		}()
-
-		shutdownTriggered = true
+	var workerShutdownOnce sync.Once
+	workerShutdownFunc := func() {
+		if err := c.worker.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+		}
+		if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
+			c.worker.WorkerAuthStorage.Cleanup()
+		}
+	}
+	workerGracefulShutdownFunc := func() {
+		if err := c.worker.GracefulShutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker gracefully: %w", err).Error())
+		}
+		workerShutdownOnce.Do(workerShutdownFunc)
+	}
+	var controllerOnce sync.Once
+	controllerShutdownFunc := func() {
+		if err := c.controller.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
+		}
+		err := c.opsServer.Shutdown()
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
+		}
 	}
 
-	for !shutdownTriggered && !errorEncountered.Load() {
+	runShutdownLogic := func() {
+		switch {
+		case shutdownTriggerCount == 1:
+			c.ContextCancel()
+			go func() {
+				if c.Config.Controller != nil {
+					c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+				}
+
+				if !c.flagControllerOnly {
+					c.UI.Output("==> Boundary dev environment graceful shutdown triggered, interrupt again to enter shutdown")
+					workerGracefulShutdownFunc()
+				} else {
+					c.UI.Output("==> Boundary dev shutdown triggered, interrupt again to force")
+				}
+
+				controllerOnce.Do(controllerShutdownFunc)
+
+				shutdownCompleted.Store(true)
+			}()
+		case shutdownTriggerCount == 2 && !c.flagControllerOnly:
+			go func() {
+				if !c.flagControllerOnly {
+					workerShutdownOnce.Do(workerShutdownFunc)
+				}
+
+				if c.Config.Controller != nil {
+					controllerOnce.Do(controllerShutdownFunc)
+				}
+				shutdownCompleted.Store(true)
+			}()
+
+		case shutdownTriggerCount >= 2:
+			go func() {
+				c.UI.Error("Forcing shutdown")
+				os.Exit(base.CommandCliError)
+			}()
+		}
+	}
+
+	for !errorEncountered.Load() && !shutdownCompleted.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary dev environment self-terminating")
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary dev environment shutdown triggered, interrupt again to force")
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
-		}
 
-		if shutdownTriggered {
-			if c.Config.Controller != nil {
-				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
-			}
-
-			if !c.flagControllerOnly {
-				if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
-					c.worker.WorkerAuthStorage.Cleanup()
-				}
-				if err := c.worker.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
-				}
-			}
-
-			if err := c.controller.Shutdown(); err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
-			}
-
-			err := c.opsServer.Shutdown()
-			if err != nil {
-				c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
-			}
+		case <-time.After(10 * time.Millisecond):
 		}
 	}
 

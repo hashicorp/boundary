@@ -423,6 +423,38 @@ func (w *Worker) Start() error {
 	return nil
 }
 
+func (w *Worker) hasActiveConnection() bool {
+	activeConnection := false
+	w.sessionManager.ForEachLocalSession(
+		func(s session.Session) bool {
+			conns := s.GetLocalConnections()
+			for _, v := range conns {
+				if v.Status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED {
+					activeConnection = true
+					return false
+				}
+			}
+			return true
+		})
+	return activeConnection
+}
+
+// Graceful shutdown sets the worker state to "shutdown" and will wait to return until there
+// are no longer any active connections.
+func (w *Worker) GracefulShutdown() error {
+	const op = "worker.(Worker).GracefulShutdown"
+	event.WriteSysEvent(w.baseContext, op, "worker entering graceful shutdown")
+	w.operationalState.Store(server.ShutdownOperationalState)
+
+	// Wait for connections to drain
+	for w.hasActiveConnection() {
+		time.Sleep(time.Millisecond * 250)
+	}
+	event.WriteSysEvent(w.baseContext, op, "worker connections have drained")
+
+	return nil
+}
+
 // Shutdown shuts down the workers. skipListeners can be used to not stop
 // listeners, useful for tests if we want to stop and start a worker. In order
 // to create new listeners we'd have to migrate listener setup logic here --
@@ -433,9 +465,11 @@ func (w *Worker) Shutdown() error {
 		event.WriteSysEvent(w.baseContext, op, "already shut down, skipping")
 		return nil
 	}
+	event.WriteSysEvent(w.baseContext, op, "worker shutting down")
 
 	// Set state to shutdown
 	w.operationalState.Store(server.ShutdownOperationalState)
+
 	// Stop listeners first to prevent new connections to the
 	// controller.
 	defer w.started.Store(false)
@@ -479,6 +513,7 @@ func (w *Worker) Shutdown() error {
 		}
 	}
 
+	event.WriteSysEvent(w.baseContext, op, "worker finished shutting down")
 	return nil
 }
 

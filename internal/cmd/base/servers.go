@@ -729,17 +729,7 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 		return fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
-
-	if err = kmsCache.CreateKeys(cancelCtx, scope.Global.String(), kms.WithRandomReader(b.SecureRandomReader)); err != nil {
+	if err = kmsCache.CreateKeys(ctx, scope.Global.String(), kms.WithRandomReader(b.SecureRandomReader)); err != nil {
 		return fmt.Errorf("error creating global scope kms keys: %w", err)
 	}
 

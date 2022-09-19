@@ -287,7 +287,7 @@ func (tc *TestController) buildClient() {
 func (tc *TestController) Shutdown() {
 	tc.shutdownOnce.Do(func() {
 		if tc.b != nil {
-			close(tc.b.ShutdownCh)
+			tc.b.ContextCancel()
 		}
 
 		tc.cancel()
@@ -492,10 +492,13 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts = new(TestControllerOpts)
 	}
 
+	ctxTest, cancel := context.WithCancel(context.Background())
+
 	// Base server
 	tc.b = base.NewServer(&base.Command{
-		Context:    ctx,
-		ShutdownCh: make(chan struct{}),
+		Context:       ctxTest,
+		ContextCancel: cancel,
+		ShutdownCh:    make(chan struct{}),
 	})
 
 	// Get dev config, or use a provided one

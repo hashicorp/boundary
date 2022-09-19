@@ -38,14 +38,14 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 	Commands = map[string]cli.CommandFactory{
 		"server": func() (cli.Command, error) {
 			return &server.Command{
-				Server:    base.NewServer(base.NewCommand(serverCmdUi)),
+				Server:    base.NewServer(base.NewServerCommand(serverCmdUi)),
 				SighupCh:  base.MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil
 		},
 		"dev": func() (cli.Command, error) {
 			return &dev.Command{
-				Server:    base.NewServer(base.NewCommand(serverCmdUi)),
+				Server:    base.NewServer(base.NewServerCommand(serverCmdUi)),
 				SighupCh:  base.MakeSighupCh(),
 				SigUSR2Ch: MakeSigUSR2Ch(),
 			}, nil

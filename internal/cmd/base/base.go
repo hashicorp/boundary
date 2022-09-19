@@ -76,9 +76,10 @@ var reRemoveWhitespace = regexp.MustCompile(`[\s]+`)
 var DevOnlyControllerFlags = func(*Command, *FlagSet) {}
 
 type Command struct {
-	Context    context.Context
-	UI         cli.Ui
-	ShutdownCh chan struct{}
+	Context       context.Context
+	ContextCancel context.CancelFunc
+	UI            cli.Ui
+	ShutdownCh    chan struct{}
 
 	flags     *FlagSets
 	flagsOnce sync.Once
@@ -143,11 +144,23 @@ func NewCommand(ui cli.Ui) *Command {
 		ShutdownCh: MakeShutdownCh(),
 		Context:    ctx,
 	}
-
 	go func() {
 		<-ret.ShutdownCh
 		cancel()
 	}()
+
+	return ret
+}
+
+// New returns a new instance of a base.Command type that does not intercept the shutdown channel
+func NewServerCommand(ui cli.Ui) *Command {
+	ctx, cancel := context.WithCancel(context.Background())
+	ret := &Command{
+		UI:            ui,
+		ShutdownCh:    MakeShutdownCh(),
+		Context:       ctx,
+		ContextCancel: cancel,
+	}
 
 	return ret
 }
@@ -161,8 +174,10 @@ func MakeShutdownCh() chan struct{} {
 	shutdownCh := make(chan os.Signal, 4)
 	signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		<-shutdownCh
-		close(resultCh)
+		for {
+			<-shutdownCh
+			resultCh <- struct{}{}
+		}
 	}()
 	return resultCh
 }

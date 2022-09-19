@@ -130,7 +130,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	fetchWorkerTags("test", "foo", []string{"bar", "baz"})
 
-	close(cmd.ShutdownCh)
+	cmd.ShutdownCh <- struct{}{}
 
 	wg.Wait()
 }
