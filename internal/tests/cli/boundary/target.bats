@@ -27,13 +27,8 @@ load _helpers
 }
 
 @test "boundary/target/connect: unpriv user can connect to default target" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
-
   run connect_nc $DEFAULT_TARGET
   [ "$status" -eq 0 ]
-  diag "$output"
 }
 
 @test "boundary/target: unpriv user can not read default target" {
