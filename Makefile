@@ -64,11 +64,10 @@ fmt:
 	buf format -w
 
 # Set env for all UI targets.
-UI_TARGETS := update-ui-version build-ui build-ui-ifne
+UI_TARGETS := update-ui-version build-ui build-ui-ifne clean-ui
 # Note the extra .tmp path segment in UI_CLONE_DIR is significant and required.
 $(UI_TARGETS): export UI_CLONE_DIR      := internal/ui/.tmp/boundary-ui
 $(UI_TARGETS): export UI_VERSION_FILE   := internal/ui/VERSION
-$(UI_TARGETS): export UI_ASSETS_FILE    := internal/ui/assets.go
 $(UI_TARGETS): export UI_DEFAULT_BRANCH := main
 $(UI_TARGETS): export UI_CURRENT_COMMIT := $(shell head -n1 < "$(UI_VERSION_FILE)" | cut -d' ' -f1)
 $(UI_TARGETS): export UI_COMMITISH ?=
@@ -91,7 +90,11 @@ build-ui:
 	else \
 		echo "==> Building custom UI version $(UI_COMMITISH)"; \
 	fi; \
-	./scripts/uiclone.sh && ./scripts/uigen.sh
+	./scripts/build-ui.sh
+
+.PHONY: clean-ui
+clean-ui:
+	rm -rf ${UI_CLONE_DIR}
 
 .PHONY: build-ui-ifne
 build-ui-ifne:
