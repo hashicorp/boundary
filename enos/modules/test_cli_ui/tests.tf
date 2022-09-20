@@ -67,19 +67,6 @@ resource "enos_local_exec" "create_account" {
   inline = ["${var.local_boundary_dir}/boundary accounts create password -auth-method-id ${var.auth_method_id} -login-name ${local.test_user} -name ${local.test_user} -password env://BP -description 'test user' -format json"]
 }
 
-resource "enos_local_exec" "create_role" {
-  environment = local.base_environment
-  inline      = ["${var.local_boundary_dir}/boundary roles create -name='testrolerole' -scope-id='global' -format json"]
-}
-locals {
-  role_id = jsondecode(enos_local_exec.create_role.stdout).item.id
-}
-
-resource "enos_local_exec" "add_grants" {
-  environment = local.base_environment
-  inline      = ["${var.local_boundary_dir}/boundary roles add-grants -id=${local.role_id} -grant='id=hcst_9kF4FooBar;type=*;actions=create,delete,list,update' -format json"]
-}
-
 locals {
   account_id = jsondecode(enos_local_exec.create_account.stdout).item.id
 }
@@ -97,6 +84,23 @@ resource "enos_local_exec" "set_accounts" {
   environment = local.base_environment
   inline      = ["${var.local_boundary_dir}/boundary users set-accounts -id ${local.user_id} -account ${local.account_id}"]
 }
+
+resource "enos_local_exec" "get_role_id" {
+  environment = local.base_environment
+  inline      = ["${var.local_boundary_dir}/boundary roles list -scope-id=${var.project_scope_id} -format json"]
+}
+
+locals {
+  # Get the role used for u_auth within the project
+  role_id = jsondecode(enos_local_exec.get_role_id.stdout).items[1].id
+}
+
+resource "enos_local_exec" "add_grants" {
+  depends_on  = [enos_local_exec.get_role_id]
+  environment = local.base_environment
+  inline      = ["${var.local_boundary_dir}/boundary roles add-grants -id=${local.role_id} -grant='id=*;type=target;actions=authorize-session' -format json"]
+}
+
 
 resource "enos_local_exec" "run_bats" {
   depends_on = [enos_local_exec.create_user]

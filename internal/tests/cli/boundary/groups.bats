@@ -42,24 +42,16 @@ export NEW_GROUP='test'
 }
 
 @test "boundary/group/add-members: can associate $NEW_GROUP group with default user" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
   local gid=$(group_id $NEW_GROUP)
-  run assoc_group_acct 'u_1234567890' $gid
+  run assoc_group_acct $DEFAULT_USER $gid
   echo "$output"
-  diag "$output"
   [ "$status" -eq 0 ]
 }
 
 @test "boundary/group/add-members: $NEW_GROUP group contains default user" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
   local gid=$(group_id $NEW_GROUP)
-  run group_has_member_id 'u_1234567890' $gid
+  run group_has_member_id $DEFAULT_USER $gid
   echo "$output"
-  diag "$output"
   [ "$status" -eq 0 ]
 }
 
