@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/testing/dbtest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,13 +60,33 @@ func TestMigrations_DeprecatedGrants(t *testing.T) {
 	require.NoError(t, err)
 	conn, err := db.Open(ctx, dbType, u)
 	require.NoError(t, err)
+	rw := db.New(conn)
 
 	// Create project
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	_, proj := iam.TestScopes(t, iamRepo)
 
-	role := iam.TestRole(t, conn, proj.GetPublicId())
+	oId := "o_1234567890"
+	pId := "p_1234567890"
+	num, err := rw.Exec(ctx, `
+insert into iam_scope
+	(public_id, type, parent_id)
+values
+	(?, ?, ?)
+	`, []interface{}{oId, "org", "global"})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	num, err = rw.Exec(ctx, `
+insert into iam_scope
+	(public_id, type, parent_id)
+values
+	(?, ?, ?)
+	`, []interface{}{pId, "project", oId})
+	require.NoError(t, err)
+	assert.Equal(t, 1, num)
+
+	role := iam.TestRole(t, conn, pId)
 
 	initialGrants := map[string]bool{
 		"id=*;type=target;actions=read,authorize-session,add-host-sets,add-host-sets":            true,

@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
@@ -250,15 +251,15 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	case isNil(opts.withReader) && !isNil(opts.withWriter):
 		return errors.New(ctx, errors.InvalidParameter, op, "missing reader")
 	case !isNil(opts.withReader) && !isNil(opts.withWriter):
-		r, err := convertToRW(ctx, opts.withReader)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert reader"))
+		r, ok := opts.withReader.(*db.Db)
+		if !ok {
+			return errors.New(ctx, errors.InvalidParameter, op, "unable to convert reader to db.Db")
 		}
-		w, err := convertToRW(ctx, opts.withWriter)
-		if err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to convert writer"))
+		w, ok := opts.withWriter.(*db.Db)
+		if !ok {
+			return errors.New(ctx, errors.InvalidParameter, op, "unable to convert writer to db.Db")
 		}
-		kmsOpts = append(kmsOpts, wrappingKms.WithReaderWriter(r, w))
+		kmsOpts = append(kmsOpts, wrappingKms.WithReaderWriter(db.NewChangeSafeDbwReader(r), db.NewChangeSafeDbwWriter(w)))
 	}
 
 	err := k.underlying.RotateKeys(ctx, scopeId, kmsOpts...)
