@@ -183,6 +183,12 @@ module.exports = [
     permanent: false,
   },
   {
+    source: '/help/admin-ui/dynamic-host-catalogs-on-aws-region',
+    destination:
+      'https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html',
+    permanent: false,
+  },
+  {
     source: '/help/admin-ui/targets/worker-filters',
     destination: '/docs/concepts/filtering/worker-tags#target-worker-filtering',
     permanent: false,
