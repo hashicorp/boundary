@@ -17,6 +17,7 @@ create trigger kms_immutable_columns before update on kms_root_key_version
 -- rewrapping the data key version.
 drop trigger kms_immutable_columns on kms_data_key_version;
 
+-- trigger updated again in migration 51 file 03
 create trigger kms_immutable_columns before update on kms_data_key_version
   for each row execute procedure kms_immutable_columns('private_id', 'data_key_id', 'root_key_version_id', 'create_time');
 
