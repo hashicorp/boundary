@@ -94,7 +94,7 @@ require (
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220914160710-1c6d04de2431
 	github.com/hashicorp/nodeenrollment v0.1.16
 	github.com/kelseyhightower/envconfig v1.4.0
-	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 )
 
 require (
