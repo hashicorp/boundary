@@ -6,7 +6,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* Fix bug preventing delete of org. ([PR](https://github.com/hashicorp/boundary/pull/2465)
+* Fix bug preventing delete of org. ([PR](https://github.com/hashicorp/boundary/pull/2465))
 
 ### New and Improved
 
@@ -15,6 +15,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR2](https://github.com/hashicorp/boundary/pull/2387))
 * workers: Return the worker Boundary binary version on worker list and read
   ([PR](https://github.com/hashicorp/boundary/pull/2377))
+* ui: Add support for workers ([PR](https://github.com/hashicorp/boundary-ui/pull/1229))
+* ui: Add support for Static Credential Stores ([PR](https://github.com/hashicorp/boundary-ui/pull/1193))
+* ui: Add support for Username & Password Credentials ([PR](https://github.com/hashicorp/boundary-ui/pull/1205))
+* ui: Add support for Username & Key Pair Credentials ([PR](https://github.com/hashicorp/boundary-ui/pull/1266))
+* ui (HCP Boundary only): SSH Target creation along with injected application credential support ([PR](https://github.com/hashicorp/boundary-ui/pull/1027))
+* ui (HCP Boundary only): Update vault credential stores to support private vault access ([PR](https://github.com/hashicorp/boundary-ui/pull/1318))
+* ui: Improve quick setup wizard onboarding guide resource names ([PR](https://github.com/hashicorp/boundary-ui/pull/1328))
+* ui: Updates to host catalog and host set forms and “Learn More” links ([PR](https://github.com/hashicorp/boundary-ui/pull/1342))
 
 ### Deprecations/Changes
 
