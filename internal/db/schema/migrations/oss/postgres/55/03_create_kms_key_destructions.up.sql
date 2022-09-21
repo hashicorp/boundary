@@ -75,11 +75,11 @@ begin;
     return new;
   end;
   $$ language plpgsql;
-  comment on function table_name_valid is
+  comment on function kms_data_key_table_name_valid is
     'Function used to determine whether a table name is valid for a destruction job run';
 
-  create trigger table_name_valid before insert on kms_data_key_version_destruction_job_run
-    for each row execute procedure table_name_valid();
+  create trigger kms_data_key_table_name_valid before insert on kms_data_key_version_destruction_job_run
+    for each row execute procedure kms_data_key_table_name_valid();
   
 
   -- Used to list progress of all destruction jobs

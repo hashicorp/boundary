@@ -112,7 +112,7 @@ begin;
     select key_id, scope_id, status, completed_count, total_count from kms_data_key_version_destruction_job_progress;
   select results_eq(
     'list_progress',
-    $$VALUES ('kdkv___widget'::kms_private_id,'o_____widget'::kms_scope_id,'running',100::bigint,200::bigint)$$
+    $$VALUES ('kdkv___widget'::kms_private_id,'o_____widget'::kms_scope_id,'running',100::numeric,200::numeric)$$
   );
 
   -- Should succed when setting completed_count=total_count and is_running=false
@@ -127,7 +127,7 @@ begin;
   -- Progress should report 'completed' as all of the completed_count=total_count
   select results_eq(
     'list_progress',
-    $$VALUES ('kdkv___widget'::kms_private_id,'o_____widget'::kms_scope_id,'completed',200::bigint,200::bigint)$$
+    $$VALUES ('kdkv___widget'::kms_private_id,'o_____widget'::kms_scope_id,'completed',200::numeric,200::numeric)$$
   );
 
   select * from finish();
