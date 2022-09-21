@@ -15,7 +15,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR2](https://github.com/hashicorp/boundary/pull/2387))
 * workers: Return the worker Boundary binary version on worker list and read
   ([PR](https://github.com/hashicorp/boundary/pull/2377))
-* ui: Add support for workers ([PR](https://github.com/hashicorp/boundary-ui/pull/1229))
+* ui: Add support for worker management ([PR](https://github.com/hashicorp/boundary-ui/pull/1229))
+* ui: Add support for PKI worker registration ([PR](https://github.com/hashicorp/boundary-ui/pull/1244))
 * ui: Add support for Static Credential Stores ([PR](https://github.com/hashicorp/boundary-ui/pull/1193))
 * ui: Add support for Username & Password Credentials ([PR](https://github.com/hashicorp/boundary-ui/pull/1205))
 * ui: Add support for Username & Key Pair Credentials ([PR](https://github.com/hashicorp/boundary-ui/pull/1266))
