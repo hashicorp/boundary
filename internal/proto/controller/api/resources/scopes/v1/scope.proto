@@ -88,7 +88,7 @@ message Scope {
 
 // KeyVersion describes a specific version of a key and holds the actual key material
 message KeyVersion {
-  // The ID of the key version (kdkv/krkv).
+  // The ID of the key version.
   string id = 10; // @gotags: `class:"public"`
 
   // The iteration of the Key that this version represents.
