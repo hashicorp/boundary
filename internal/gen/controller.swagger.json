@@ -5036,7 +5036,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "The ID of the key version (kdkv/krkv)."
+          "description": "The ID of the key version."
         },
         "version": {
           "type": "integer",

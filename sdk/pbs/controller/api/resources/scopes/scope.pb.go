@@ -264,7 +264,7 @@ type KeyVersion struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The ID of the key version (kdkv/krkv).
+	// The ID of the key version.
 	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The iteration of the Key that this version represents.
 	Version uint32 `protobuf:"varint,20,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
