@@ -115,6 +115,16 @@ begin;
     values
       ('kdkv___widget', 'kdk____widget', 'krkv___widget',     'kdk____widget'::bytea);
 
+    insert into kms_data_key_version_destruction_job
+      (key_id)
+    values
+      ('kdkv___widget');
+
+    insert into kms_data_key_version_destruction_job_run
+      (key_id, table_name, total_count)
+    values
+      ('kdkv___widget', 'auth_token', 100);
+  
   end;
   $$ language plpgsql;
 
