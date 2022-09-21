@@ -47,7 +47,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 				fmt.Errorf("WARNING: credential will expire before job scheduler can run"),
 				event.WithInfo("credential_public_id", cred.GetPublicId()),
 				event.WithInfo("credential_library_public_id", lib.GetPublicId()),
-				event.WithInfo("runJobsInterval", runJobsInterval),
+				event.WithInfo("runJobsInterval", runJobsInterval.String()),
 			)
 		}
 
