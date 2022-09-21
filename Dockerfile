@@ -23,6 +23,7 @@ ADD bin/boundary /bin/boundary
 RUN mkdir /boundary/
 ADD .release/docker/config.hcl /boundary/config.hcl
 RUN chown -R boundary:boundary /boundary/
+RUN chmod -R 640 /boundary/*
 
 EXPOSE 9200 9201 9202
 VOLUME /boundary/
@@ -71,6 +72,7 @@ RUN set -eux && \
 COPY .release/docker/config.hcl /boundary/config.hcl
 
 RUN chown -R boundary:boundary /boundary/ 
+RUN chmod -R 640 /boundary/*
 
 EXPOSE 9200 9201 9202
 VOLUME /boundary/
@@ -114,6 +116,7 @@ COPY .release/docker/config.hcl /boundary/config.hcl
 COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
 
 RUN chown -R ${NAME}:${NAME} /boundary
+RUN chmod -R 640 /boundary/*
 
 EXPOSE 9200 9201 9202
 VOLUME /boundary/
