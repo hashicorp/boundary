@@ -20,10 +20,10 @@ begin;
         on delete cascade
         on update cascade,
     table_name text not null,
-    total_count int not null
+    total_count bigint not null
       constraint total_count_cannot_be_negative
         check (total_count > 0), -- Must not be 0
-    completed_count int not null default 0
+    completed_count bigint not null default 0
       constraint completed_count_cannot_be_negative
         check (completed_count >= 0),
     is_running boolean not null default false,
@@ -66,10 +66,10 @@ begin;
       -- job run table name.
       r.table_name not in ('oplog_entry', 'kms_data_key_version_destruction_job');
 
-  create function table_name_valid() returns trigger
+  create function kms_data_key_table_name_valid() returns trigger
   as $$
   begin
-    if new.table_name not in (select * from kms_data_key_version_destruction_job_run_allowed_table_name) then
+    if new.table_name not in (select table_name from kms_data_key_version_destruction_job_run_allowed_table_name) then
       raise exception 'invalid table name % (must be table that references kms_data_key_version.private_id)', new.table_name;
     end if;
     return new;
