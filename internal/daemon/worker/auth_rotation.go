@@ -93,7 +93,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 				shouldRotate = true
 			default:
 				delta := latestValid.Sub(earliestValid)
-				shouldRotate = now.Before(earliestValid.Add(delta / 2))
+				shouldRotate = now.After(earliestValid.Add(delta / 2))
 			}
 
 			if !shouldRotate {
@@ -104,6 +104,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 				event.WriteError(cancelCtx, op, err)
 				continue
 			}
+			event.WriteSysEvent(cancelCtx, op, "worker credentials rotated")
 
 			// TODO (maybe): Calculate new delta and set a custom retry time on the timer?
 		}
