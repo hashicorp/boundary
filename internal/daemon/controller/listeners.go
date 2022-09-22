@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
@@ -224,9 +225,24 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	ln.GrpcServer = workerServer
 
 	return func() {
-		go splitListener.Start()
-		go handleSecondaryConnection(c.baseContext, multiplexingReverseGrpcListener, c.downstreamRoutes, -1)
-		go ln.GrpcServer.Serve(multiplexingAuthedListener)
+		go func() {
+			err := splitListener.Start()
+			if err != nil {
+				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("splitListener.Start() error"))
+			}
+		}()
+		go func() {
+			err := handleSecondaryConnection(c.baseContext, multiplexingReverseGrpcListener, c.downstreamRoutes, -1)
+			if err != nil {
+				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
+			}
+		}()
+		go func() {
+			err := ln.GrpcServer.Serve(multiplexingAuthedListener)
+			if err != nil {
+				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("multiplexingAuthedListener error"))
+			}
+		}()
 	}, nil
 }
 
