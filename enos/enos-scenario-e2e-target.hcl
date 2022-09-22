@@ -18,6 +18,11 @@ scenario "e2e_target" {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
     }
+    tags = merge({
+      "Project Name" : var.project_name
+      "Project" : "Enos",
+      "Environment" : "ci"
+    }, var.tags)
   }
 
   step "find_azs" {
@@ -48,6 +53,7 @@ scenario "e2e_target" {
 
     variables {
       availability_zones = step.find_azs.availability_zones
+      common_tags        = local.tags
     }
   }
 
@@ -60,6 +66,7 @@ scenario "e2e_target" {
 
     variables {
       boundary_install_dir     = local.boundary_install_dir
+      common_tags              = local.tags
       controller_instance_type = var.controller_instance_type
       controller_count         = var.controller_count
       db_pass                  = step.create_db_password.string
