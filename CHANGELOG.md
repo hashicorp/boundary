@@ -8,7 +8,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* Fix bug preventing delete of org. ([PR](https://github.com/hashicorp/boundary/pull/2465))
+* Fix bug preventing delete of org ([PR](https://github.com/hashicorp/boundary/pull/2465))
 * Show user warning log when token period is less than jobRunInterval ([PR](https://github.com/hashicorp/boundary/pull/2446))
 * Return an error for vault tokens that will expire before the scheduler can run ([PR](https://github.com/hashicorp/boundary/pull/2444))
 
@@ -19,15 +19,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR2](https://github.com/hashicorp/boundary/pull/2387))
 * workers: Return the worker Boundary binary version on worker list and read
   ([PR](https://github.com/hashicorp/boundary/pull/2377))
-* workers: Addition of graceful shutdown. On first ctrl+c, worker will start graceful shutdown and wait for active connections to drain. 
- Second will cause the worker to begin shutdown. Third will force shutdown immediately.
-  ([PR](https://github.com/hashicorp/boundary/pull/2455))
-* credentials: support json credentials ([PR](https://github.com/hashicorp/boundary/pull/2423))
-* scheduler: log details when starting scheduler ([PR](https://github.com/hashicorp/boundary/pull/2459))
-* scheduler: set intervals from config ([PR](https://github.com/hashicorp/boundary/pull/2443))
+* workers: Addition of worker graceful shutdown ([PR](https://github.com/hashicorp/boundary/pull/2455))
+* credentials: Support json credentials ([PR](https://github.com/hashicorp/boundary/pull/2423))
+* scheduler: Log details when starting scheduler ([PR](https://github.com/hashicorp/boundary/pull/2459))
+* scheduler: Set intervals from config ([PR](https://github.com/hashicorp/boundary/pull/2443))
 * cli(ssh): Do not print private key if consumed
   ([PR](https://github.com/hashicorp/boundary/pull/2451))
-* refactor: eliminate gorm references in favor of go-dbw ([PR](https://github.com/hashicorp/boundary/pull/2386))
+* refactor: Eliminate gorm references in favor of go-dbw ([PR](https://github.com/hashicorp/boundary/pull/2386))
 * ui: Add support for worker management ([PR](https://github.com/hashicorp/boundary-ui/pull/1229))
 * ui: Add support for PKI worker registration ([PR](https://github.com/hashicorp/boundary-ui/pull/1244))
 * ui: Add support for Static Credential Stores ([PR](https://github.com/hashicorp/boundary-ui/pull/1193))
