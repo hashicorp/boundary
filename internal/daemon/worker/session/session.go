@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"crypto"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -55,6 +56,7 @@ type Session interface {
 	GetTofuToken() string
 	GetConnectionLimit() int32
 	GetEndpoint() string
+	GetHostKeys() ([]crypto.Signer, error)
 	GetCredentials() []*pbs.Credential
 	GetExpiration() time.Time
 	GetCertificate() *x509.Certificate
@@ -198,6 +200,28 @@ func (s *sess) GetEndpoint() string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.resp.GetEndpoint()
+}
+
+func (s *sess) GetHostKeys() ([]crypto.Signer, error) {
+	s.lock.RLock()
+	pkcs8Keys := s.resp.GetPkcs8HostKeys()
+	s.lock.RUnlock()
+
+	var hostKeys []crypto.Signer
+	for _, hostKey := range pkcs8Keys {
+		p, err := x509.ParsePKCS8PrivateKey(hostKey)
+		if err != nil {
+			return nil, errors.New("error parsing host keys")
+		}
+
+		hostKey, ok := p.(crypto.Signer)
+		if !ok {
+			return nil, fmt.Errorf("unsupported host key %T", p)
+		}
+		hostKeys = append(hostKeys, hostKey)
+
+	}
+	return hostKeys, nil
 }
 
 func (s *sess) GetCredentials() []*pbs.Credential {

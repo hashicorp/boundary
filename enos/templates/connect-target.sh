@@ -21,4 +21,4 @@ function retry {
   return 0
 }
 
-retry 10 ${BOUNDARY_PATH}/boundary connect ssh -target-id=${TARGET_ID}
+retry 10 ${BOUNDARY_PATH}/boundary connect ssh -target-id=${TARGET_ID} -- -o StrictHostKeyChecking=no
