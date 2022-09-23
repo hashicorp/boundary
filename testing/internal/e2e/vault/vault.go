@@ -37,6 +37,11 @@ func loadConfig() (*config, error) {
 		return nil, err
 	}
 
+	err = c.validate()
+	if err != nil {
+		return nil, err
+	}
+
 	return &c, err
 }
 
@@ -45,18 +50,16 @@ func loadConfig() (*config, error) {
 func Setup(t testing.TB) (string, string) {
 	c, err := loadConfig()
 	require.NoError(t, err)
-	err = c.validate()
-	require.NoError(t, err)
 
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 	policyName := "boundary-controller"
-	output := e2e.RunCommand("vault", e2e.WithArgs("policy", "write", policyName,
-		path.Join(path.Dir(filename), "boundary-controller-policy.hcl")),
+	output := e2e.RunCommand("vault", "policy", "write", policyName,
+		path.Join(path.Dir(filename), "boundary-controller-policy.hcl"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
-		output := e2e.RunCommand("vault", e2e.WithArgs("policy", "delete", policyName))
+		output := e2e.RunCommand("vault", "policy", "delete", policyName)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -80,20 +83,20 @@ func CreateKvPrivateKeyCredential(t testing.TB, secretName string, secretPath st
 
 	// Add policy to vault
 	policyName := "kv-read"
-	output := e2e.RunCommand("vault", e2e.WithArgs("policy", "write", policyName, kvPolicyFilePath))
+	output := e2e.RunCommand("vault", "policy", "write", policyName, kvPolicyFilePath)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
-		output := e2e.RunCommand("vault", e2e.WithArgs("policy", "delete", policyName))
+		output := e2e.RunCommand("vault", "policy", "delete", policyName)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
 	// Create secret
-	output = e2e.RunCommand("vault", e2e.WithArgs("kv", "put",
+	output = e2e.RunCommand("vault", "kv", "put",
 		"-mount", secretPath,
 		secretName,
 		"username="+user,
 		"private_key=@"+keyPath,
-	))
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	return policyName
