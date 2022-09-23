@@ -49,7 +49,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 	retCreds = creds
 
 	var tryConsume bool
-	switch string(target.SubtypeFromId(c.sessionAuthzData.TargetId)) {
+	switch string(target.SubtypeFromId(c.sessionAuthzData.GetTargetId())) {
 	case "tcp":
 		tryConsume = true
 	}
@@ -59,9 +59,14 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 		// Might want -t for ssh or -tt but seems fine without it for now...
 		args = append(args, "-p", port, ip)
 
-		// SSH detects a host key change when localhost proxy port changes, disable localhost
-		// host key verification to avoid 'WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED...'
-		args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
+		switch string(target.SubtypeFromId(c.sessionAuthzData.GetTargetId())) {
+		case "tcp":
+			// SSH detects a host key change when the localhost proxy port changes
+			// This uses the host ID instead of 'localhost:port'.
+			args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthzData.GetHostId()))
+		case "ssh":
+			args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
+		}
 
 	case "sshpass":
 		if !tryConsume {

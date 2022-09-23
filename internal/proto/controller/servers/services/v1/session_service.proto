@@ -54,6 +54,7 @@ message LookupSessionResponse {
   string target_id = 110; // @gotags: `class:"public"`
   string user_id = 120; // @gotags: `class:"public"`
   repeated Credential credentials = 130; // @gotags: `class:"secret"`
+  repeated bytes pkcs8_host_keys = 140; // @gotags: `class:"secret"`
 }
 
 message ActivateSessionRequest {
