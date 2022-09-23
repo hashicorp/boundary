@@ -332,11 +332,14 @@ DEV_DOCKER_GOARCH ?= amd64
 docker-build-dev: export GOOS=$(DEV_DOCKER_GOOS)
 docker-build-dev: export GOARCH=$(DEV_DOCKER_GOARCH)
 docker-build-dev: build
-	docker build \
+	docker buildx build \
+		--load \
+		--platform $(DEV_DOCKER_GOOS)/$(DEV_DOCKER_GOARCH) \
 		--tag $(IMAGE_TAG_DEV) \
 		--target=dev \
 		--build-arg=boundary \
 		.
+	@echo "Successfully built $(IMAGE_TAG_DEV)"
 
 .NOTPARALLEL:
 
