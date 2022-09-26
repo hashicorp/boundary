@@ -4,7 +4,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
-## 0.11.0 (2022/09/19)
+## 0.11.0 (2022/09/26)
 
 ### Bug Fixes
 
@@ -31,7 +31,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * ui: Updates to host catalog and host set forms and “Learn More” links ([PR](https://github.com/hashicorp/boundary-ui/pull/1342))
 
 ### Deprecations/Changes
-
+* Workers: PKI authentication records will only be retained for the current and previous encryption keys. 
+  As part of this change, only the current worker auth record will be migrated.
+  ([PR](https://github.com/hashicorp/boundary/pull/2495))
 * In 0.5.0, the `add-host-sets`, `remove-host-sets`, and `set-host-sets` actions
 on targets were deprecated in favor of `add-host-sources`,
 `remove-host-sources`, and `set-host-sources`. Originally these actions and API
