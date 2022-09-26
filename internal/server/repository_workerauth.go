@@ -935,16 +935,17 @@ func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Conte
 	}
 
 	workerAuthsFound := len(workerAuths)
-	if workerAuthsFound == 0 {
+	switch {
+	case workerAuthsFound == 0:
 		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("did not find worker auth records for worker %s", workerId))
-	} else if workerAuthsFound == 1 {
+	case workerAuthsFound == 1:
 		if workerAuths[0].State != currentWorkerAuthState {
 			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
 				fmt.Sprintf("expected sole worker auth record to be in current state, found %s", workerAuths[0].State))
 		} else {
 			currentWorkerAuth = workerAuths[0]
 		}
-	} else if workerAuthsFound == 2 {
+	case workerAuthsFound == 2:
 		currentStateFound := false
 		previousStateFound := false
 		for _, w := range workerAuths {
@@ -959,7 +960,7 @@ func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Conte
 		if !currentStateFound || !previousStateFound {
 			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("worker auth records in invalid set of states"))
 		}
-	} else if workerAuthsFound > 2 {
+	default:
 		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
 			fmt.Sprintf("expected 2 or fewer worker auth records, found %d", workerAuthsFound))
 	}
