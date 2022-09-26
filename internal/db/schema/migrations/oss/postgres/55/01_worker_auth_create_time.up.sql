@@ -53,7 +53,7 @@ alter table worker_auth_authorized
 
 -- The worker_auth_authorized table may contain multiple rows for the same
 -- worker_id. For each worker_id in the table, we need to pick one row and set
--- it's state to 'current'. There is no way to be sure that we will pick the
+-- its state to 'current'. There is no way to be sure that we will pick the
 -- correct row but we can use the xmin system column and the postgresql age()
 -- function to make an educated guess.
 --
