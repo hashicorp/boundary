@@ -59,7 +59,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 		// Might want -t for ssh or -tt but seems fine without it for now...
 		args = append(args, "-p", port, ip)
 
-		switch string(target.SubtypeFromId(c.sessionAuthzData.GetTargetId())) {
+		switch c.sessionAuthzData.GetType() {
 		case "tcp":
 			// SSH detects a host key change when the localhost proxy port changes
 			// This uses the host ID instead of 'localhost:port'.
