@@ -269,6 +269,16 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	return nil
 }
 
+// ListDataKeyVersionDestructionJobs lists any in-progress data key destruction jobs in the scope.
+// Options are ignored.
+func (k *Kms) ListDataKeyVersionDestructionJobs(ctx context.Context, scopeId string, _ ...Option) ([]*DataKeyVersionDestructionJobProgress, error) {
+	var jobs []*DataKeyVersionDestructionJobProgress
+	if err := k.reader.SearchWhere(ctx, &jobs, "scope_id=?", []interface{}{scopeId}); err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
 // VerifyGlobalRoot will verify that the global root wrapper is reasonable.
 func (k *Kms) VerifyGlobalRoot(ctx context.Context) error {
 	const op = "kms.(Kms).VerifyGlobalRoot"

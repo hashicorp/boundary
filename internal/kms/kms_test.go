@@ -271,6 +271,82 @@ func Test_RotateKeys(t *testing.T) {
 	// other options are passed directly and shouldn't need to be tested
 }
 
+func Test_ListDataKeyVersionDestructionJobs(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	extWrapper := db.TestWrapper(t)
+	kmsCache := TestKms(t, conn, extWrapper)
+	err := kmsCache.CreateKeys(testCtx, "global")
+	require.NoError(t, err)
+	err = kmsCache.RotateKeys(testCtx, "global")
+	require.NoError(t, err)
+	keys, err := kmsCache.ListKeys(testCtx, "global")
+	require.NoError(t, err)
+
+	t.Run("lists-no-jobs-when-there-are-none", func(t *testing.T) {
+		jobs, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "global")
+		require.NoError(t, err)
+		assert.Empty(t, jobs)
+	})
+	t.Run("lists-jobs-when-there-are-some", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		sqldb, err := conn.SqlDB(testCtx)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_oidc_method', 200)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "update kms_data_key_version_destruction_job_run set is_running=true where key_id=$1 and table_name='auth_token'", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "truncate kms_data_key_version_destruction_job, kms_data_key_version_destruction_job_run CASCADE")
+			require.NoError(t, err)
+		})
+		jobs, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "global")
+		require.NoError(t, err)
+		require.Len(t, jobs, 1)
+		job := jobs[0]
+		assert.Equal(t, 0, int(job.CompletedCount))
+		assert.Equal(t, 300, int(job.TotalCount))
+		assert.Equal(t, "running", job.Status)
+		assert.Equal(t, kvToDestroy.Id, job.KeyId)
+		assert.Equal(t, "global", job.ScopeId)
+	})
+	t.Run("lists-no-jobs-when-given-unknown-scope", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		sqldb, err := conn.SqlDB(testCtx)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_oidc_method', 200)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "update kms_data_key_version_destruction_job_run set is_running=true where key_id=$1 and table_name='auth_token'", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "truncate kms_data_key_version_destruction_job, kms_data_key_version_destruction_job_run CASCADE")
+			require.NoError(t, err)
+		})
+		jobs, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "myscope")
+		require.NoError(t, err)
+		assert.Empty(t, jobs)
+	})
+}
+
 type invalidReader struct {
 	db.Reader
 }
