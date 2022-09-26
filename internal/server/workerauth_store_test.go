@@ -415,6 +415,9 @@ func TestWorkerAuthStore(t *testing.T) {
 				assert.Error(err)
 			} else {
 				assert.NoError(err)
+				// Update and create time are automatically set
+				tt.expectedWorkerAuth.CreateTime = wAuth.WorkerAuth.CreateTime
+				tt.expectedWorkerAuth.UpdateTime = wAuth.WorkerAuth.UpdateTime
 				assert.Equal(tt.expectedWorkerAuth, wAuth.WorkerAuth)
 				assert.Empty(cmp.Diff(tt.expectedWorkerAuth, wAuth, protocmp.Transform()))
 			}

@@ -8,12 +8,24 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	previousWorkerAuthState = "previous"
+	currentWorkerAuthState  = "current"
+)
+
 // WorkerAuth contains all fields related to an authorized Worker resource
 // This includes worker public keys, the controller encryption key,
 // and certificate bundles issued by the Boundary CA
 type WorkerAuth struct {
 	*store.WorkerAuth
 	tableName string `gorm:"-"`
+}
+
+// WorkerAuthSet is intended to store a set of WorkerAuth records
+// This set represents the current and previous WorkerAuth records for a worker
+type WorkerAuthSet struct {
+	Previous *WorkerAuth
+	Current  *WorkerAuth
 }
 
 // WorkerKeys contain the signing and encryption keys for a WorkerAuth resource
