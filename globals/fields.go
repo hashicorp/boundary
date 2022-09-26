@@ -87,4 +87,6 @@ const (
 	ControllerGeneratedActivationToken          = "controller_generated_activation_token"
 	ReleaseVersionField                         = "release_version"
 	KeyPurposeField                             = "purpose"
+	KeyVersionsField                            = "key_versions"
+	KeyVersionIdField                           = "key_version_id"
 )

@@ -5002,42 +5002,54 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Key.",
-          "readOnly": true
-        },
-        "scope_id": {
-          "type": "string",
-          "description": "Output only. The ID of the Scope this Key is in.",
-          "readOnly": true
+          "description": "The ID of the Key."
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "Output only. Scope information for this resource.",
-          "readOnly": true
+          "description": "Scope information for this resource."
         },
         "purpose": {
           "type": "string",
-          "description": "Output only. The purpose of the Key.",
-          "readOnly": true
+          "description": "The purpose of the Key."
         },
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this Key was created.",
-          "readOnly": true
+          "description": "The time this Key was created."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the Key."
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyVersion"
+          },
+          "description": "The versions of the key."
+        }
+      },
+      "description": "Key contains all fields related to a Key in a Scope."
+    },
+    "controller.api.resources.scopes.v1.KeyVersion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the key version."
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+          "description": "The iteration of the Key that this version represents."
         },
-        "type": {
+        "created_time": {
           "type": "string",
-          "description": "Output only. The type of the Key.",
-          "readOnly": true
+          "format": "date-time",
+          "description": "When this version was created."
         }
       },
-      "description": "Key contains all fields related to a Key in a Scope."
+      "title": "KeyVersion describes a specific version of a key and holds the actual key material"
     },
     "controller.api.resources.scopes.v1.Scope": {
       "type": "object",
