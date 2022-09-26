@@ -18,8 +18,8 @@ import (
 
 func TestMigrations_NewForeignKeys(t *testing.T) {
 	const (
-		priorMigration   = 55001
-		currentMigration = 55002
+		priorMigration   = 56001
+		currentMigration = 56002
 	)
 
 	t.Parallel()
