@@ -71,7 +71,7 @@ begin;
 
   -- update views
   drop view host_plugin_catalog_with_secret;
-  -- Recreated in 51/02_add_data_key_foreign_key_references.up.sql
+  -- Recreated in 56/02_add_data_key_foreign_key_references.up.sql
   create view host_plugin_catalog_with_secret as
   select
     hc.public_id,
