@@ -112,6 +112,16 @@ service ScopeService {
       summary: "Rotate all keys in a Scope."
     };
   }
+
+  // ListKeyVersionDestructionJobs lists any pending key version destruction jobs in the scope.
+  rpc ListKeyVersionDestructionJobs(ListKeyVersionDestructionJobsRequest) returns (ListKeyVersionDestructionJobsResponse) {
+    option (google.api.http) = {
+      get: "/v1/scopes/{scope_id}:list-key-version-destruction-jobs"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Lists all pending key version destruction jobs in the scope."
+    };
+  }
 }
 
 message GetScopeRequest {
@@ -173,3 +183,11 @@ message RotateKeysRequest {
 }
 
 message RotateKeysResponse {}
+
+message ListKeyVersionDestructionJobsRequest {
+  string scope_id = 1;
+}
+
+message ListKeyVersionDestructionJobsResponse {
+  repeated resources.scopes.v1.KeyVersionDestructionJob items = 1;
+}

@@ -728,6 +728,100 @@ func (*RotateKeysResponse) Descriptor() ([]byte, []int) {
 	return file_controller_api_services_v1_scope_service_proto_rawDescGZIP(), []int{13}
 }
 
+type ListKeyVersionDestructionJobsRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ScopeId string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+}
+
+func (x *ListKeyVersionDestructionJobsRequest) Reset() {
+	*x = ListKeyVersionDestructionJobsRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[14]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListKeyVersionDestructionJobsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListKeyVersionDestructionJobsRequest) ProtoMessage() {}
+
+func (x *ListKeyVersionDestructionJobsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[14]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListKeyVersionDestructionJobsRequest.ProtoReflect.Descriptor instead.
+func (*ListKeyVersionDestructionJobsRequest) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_scope_service_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ListKeyVersionDestructionJobsRequest) GetScopeId() string {
+	if x != nil {
+		return x.ScopeId
+	}
+	return ""
+}
+
+type ListKeyVersionDestructionJobsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Items []*scopes.KeyVersionDestructionJob `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+}
+
+func (x *ListKeyVersionDestructionJobsResponse) Reset() {
+	*x = ListKeyVersionDestructionJobsResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[15]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListKeyVersionDestructionJobsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListKeyVersionDestructionJobsResponse) ProtoMessage() {}
+
+func (x *ListKeyVersionDestructionJobsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_services_v1_scope_service_proto_msgTypes[15]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListKeyVersionDestructionJobsResponse.ProtoReflect.Descriptor instead.
+func (*ListKeyVersionDestructionJobsResponse) Descriptor() ([]byte, []int) {
+	return file_controller_api_services_v1_scope_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ListKeyVersionDestructionJobsResponse) GetItems() []*scopes.KeyVersionDestructionJob {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_controller_api_services_v1_scope_service_proto protoreflect.FileDescriptor
 
 var file_controller_api_services_v1_scope_service_proto_rawDesc = []byte{
@@ -816,8 +910,20 @@ var file_controller_api_services_v1_scope_service_proto_rawDesc = []byte{
 	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49, 0x64,
 	0x12, 0x16, 0x0a, 0x06, 0x72, 0x65, 0x77, 0x72, 0x61, 0x70, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08,
 	0x52, 0x06, 0x72, 0x65, 0x77, 0x72, 0x61, 0x70, 0x22, 0x14, 0x0a, 0x12, 0x52, 0x6f, 0x74, 0x61,
-	0x74, 0x65, 0x4b, 0x65, 0x79, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x32, 0xc0,
-	0x09, 0x0a, 0x0c, 0x53, 0x63, 0x6f, 0x70, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12,
+	0x74, 0x65, 0x4b, 0x65, 0x79, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x41,
+	0x0a, 0x24, 0x4c, 0x69, 0x73, 0x74, 0x4b, 0x65, 0x79, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
+	0x44, 0x65, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f, 0x62, 0x73, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x19, 0x0a, 0x08, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x5f,
+	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49,
+	0x64, 0x22, 0x7b, 0x0a, 0x25, 0x4c, 0x69, 0x73, 0x74, 0x4b, 0x65, 0x79, 0x56, 0x65, 0x72, 0x73,
+	0x69, 0x6f, 0x6e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f,
+	0x62, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x52, 0x0a, 0x05, 0x69, 0x74,
+	0x65, 0x6d, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x3c, 0x2e, 0x63, 0x6f, 0x6e, 0x74,
+	0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75,
+	0x72, 0x63, 0x65, 0x73, 0x2e, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x4b,
+	0x65, 0x79, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x75, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f, 0x62, 0x52, 0x05, 0x69, 0x74, 0x65, 0x6d, 0x73, 0x32, 0xea,
+	0x0b, 0x0a, 0x0c, 0x53, 0x63, 0x6f, 0x70, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12,
 	0x9d, 0x01, 0x0a, 0x08, 0x47, 0x65, 0x74, 0x53, 0x63, 0x6f, 0x70, 0x65, 0x12, 0x2b, 0x2e, 0x63,
 	0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73, 0x65,
 	0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x63, 0x6f,
@@ -893,14 +999,33 @@ var file_controller_api_services_v1_scope_service_proto_rawDesc = []byte{
 	0x6b, 0x65, 0x79, 0x73, 0x20, 0x69, 0x6e, 0x20, 0x61, 0x20, 0x53, 0x63, 0x6f, 0x70, 0x65, 0x2e,
 	0x82, 0xd3, 0xe4, 0x93, 0x02, 0x1b, 0x22, 0x16, 0x2f, 0x76, 0x31, 0x2f, 0x73, 0x63, 0x6f, 0x70,
 	0x65, 0x73, 0x3a, 0x72, 0x6f, 0x74, 0x61, 0x74, 0x65, 0x2d, 0x6b, 0x65, 0x79, 0x73, 0x3a, 0x01,
-	0x2a, 0x42, 0x74, 0x5a, 0x4b, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61,
-	0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f,
-	0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x73,
-	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73,
-	0x92, 0x41, 0x24, 0x12, 0x1e, 0x0a, 0x1c, 0x42, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x20,
-	0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x20, 0x48, 0x54, 0x54, 0x50, 0x20,
-	0x41, 0x50, 0x49, 0x2a, 0x02, 0x02, 0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x2a, 0x12, 0xa7, 0x02, 0x0a, 0x1d, 0x4c, 0x69, 0x73, 0x74, 0x4b, 0x65, 0x79, 0x56, 0x65, 0x72,
+	0x73, 0x69, 0x6f, 0x6e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a,
+	0x6f, 0x62, 0x73, 0x12, 0x40, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72,
+	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e, 0x76, 0x31,
+	0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4b, 0x65, 0x79, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x44,
+	0x65, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f, 0x62, 0x73, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x41, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c,
+	0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2e,
+	0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4b, 0x65, 0x79, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f,
+	0x6e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f, 0x62, 0x73,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x80, 0x01, 0x92, 0x41, 0x3e, 0x12, 0x3c,
+	0x4c, 0x69, 0x73, 0x74, 0x73, 0x20, 0x61, 0x6c, 0x6c, 0x20, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e,
+	0x67, 0x20, 0x6b, 0x65, 0x79, 0x20, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x20, 0x64, 0x65,
+	0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x20, 0x6a, 0x6f, 0x62, 0x73, 0x20, 0x69,
+	0x6e, 0x20, 0x74, 0x68, 0x65, 0x20, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x2e, 0x82, 0xd3, 0xe4, 0x93,
+	0x02, 0x39, 0x12, 0x37, 0x2f, 0x76, 0x31, 0x2f, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x2f, 0x7b,
+	0x73, 0x63, 0x6f, 0x70, 0x65, 0x5f, 0x69, 0x64, 0x7d, 0x3a, 0x6c, 0x69, 0x73, 0x74, 0x2d, 0x6b,
+	0x65, 0x79, 0x2d, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x2d, 0x64, 0x65, 0x73, 0x74, 0x72,
+	0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x2d, 0x6a, 0x6f, 0x62, 0x73, 0x42, 0x74, 0x5a, 0x4b, 0x67,
+	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63,
+	0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74,
+	0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f,
+	0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
+	0x73, 0x3b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x92, 0x41, 0x24, 0x12, 0x1e, 0x0a,
+	0x1c, 0x42, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x20, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f,
+	0x6c, 0x6c, 0x65, 0x72, 0x20, 0x48, 0x54, 0x54, 0x50, 0x20, 0x41, 0x50, 0x49, 0x2a, 0x02, 0x02,
+	0x01, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -915,54 +1040,60 @@ func file_controller_api_services_v1_scope_service_proto_rawDescGZIP() []byte {
 	return file_controller_api_services_v1_scope_service_proto_rawDescData
 }
 
-var file_controller_api_services_v1_scope_service_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_controller_api_services_v1_scope_service_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_controller_api_services_v1_scope_service_proto_goTypes = []interface{}{
-	(*GetScopeRequest)(nil),       // 0: controller.api.services.v1.GetScopeRequest
-	(*GetScopeResponse)(nil),      // 1: controller.api.services.v1.GetScopeResponse
-	(*ListScopesRequest)(nil),     // 2: controller.api.services.v1.ListScopesRequest
-	(*ListScopesResponse)(nil),    // 3: controller.api.services.v1.ListScopesResponse
-	(*CreateScopeRequest)(nil),    // 4: controller.api.services.v1.CreateScopeRequest
-	(*CreateScopeResponse)(nil),   // 5: controller.api.services.v1.CreateScopeResponse
-	(*UpdateScopeRequest)(nil),    // 6: controller.api.services.v1.UpdateScopeRequest
-	(*UpdateScopeResponse)(nil),   // 7: controller.api.services.v1.UpdateScopeResponse
-	(*DeleteScopeRequest)(nil),    // 8: controller.api.services.v1.DeleteScopeRequest
-	(*DeleteScopeResponse)(nil),   // 9: controller.api.services.v1.DeleteScopeResponse
-	(*ListKeysRequest)(nil),       // 10: controller.api.services.v1.ListKeysRequest
-	(*ListKeysResponse)(nil),      // 11: controller.api.services.v1.ListKeysResponse
-	(*RotateKeysRequest)(nil),     // 12: controller.api.services.v1.RotateKeysRequest
-	(*RotateKeysResponse)(nil),    // 13: controller.api.services.v1.RotateKeysResponse
-	(*scopes.Scope)(nil),          // 14: controller.api.resources.scopes.v1.Scope
-	(*fieldmaskpb.FieldMask)(nil), // 15: google.protobuf.FieldMask
-	(*scopes.Key)(nil),            // 16: controller.api.resources.scopes.v1.Key
+	(*GetScopeRequest)(nil),                       // 0: controller.api.services.v1.GetScopeRequest
+	(*GetScopeResponse)(nil),                      // 1: controller.api.services.v1.GetScopeResponse
+	(*ListScopesRequest)(nil),                     // 2: controller.api.services.v1.ListScopesRequest
+	(*ListScopesResponse)(nil),                    // 3: controller.api.services.v1.ListScopesResponse
+	(*CreateScopeRequest)(nil),                    // 4: controller.api.services.v1.CreateScopeRequest
+	(*CreateScopeResponse)(nil),                   // 5: controller.api.services.v1.CreateScopeResponse
+	(*UpdateScopeRequest)(nil),                    // 6: controller.api.services.v1.UpdateScopeRequest
+	(*UpdateScopeResponse)(nil),                   // 7: controller.api.services.v1.UpdateScopeResponse
+	(*DeleteScopeRequest)(nil),                    // 8: controller.api.services.v1.DeleteScopeRequest
+	(*DeleteScopeResponse)(nil),                   // 9: controller.api.services.v1.DeleteScopeResponse
+	(*ListKeysRequest)(nil),                       // 10: controller.api.services.v1.ListKeysRequest
+	(*ListKeysResponse)(nil),                      // 11: controller.api.services.v1.ListKeysResponse
+	(*RotateKeysRequest)(nil),                     // 12: controller.api.services.v1.RotateKeysRequest
+	(*RotateKeysResponse)(nil),                    // 13: controller.api.services.v1.RotateKeysResponse
+	(*ListKeyVersionDestructionJobsRequest)(nil),  // 14: controller.api.services.v1.ListKeyVersionDestructionJobsRequest
+	(*ListKeyVersionDestructionJobsResponse)(nil), // 15: controller.api.services.v1.ListKeyVersionDestructionJobsResponse
+	(*scopes.Scope)(nil),                          // 16: controller.api.resources.scopes.v1.Scope
+	(*fieldmaskpb.FieldMask)(nil),                 // 17: google.protobuf.FieldMask
+	(*scopes.Key)(nil),                            // 18: controller.api.resources.scopes.v1.Key
+	(*scopes.KeyVersionDestructionJob)(nil),       // 19: controller.api.resources.scopes.v1.KeyVersionDestructionJob
 }
 var file_controller_api_services_v1_scope_service_proto_depIdxs = []int32{
-	14, // 0: controller.api.services.v1.GetScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
-	14, // 1: controller.api.services.v1.ListScopesResponse.items:type_name -> controller.api.resources.scopes.v1.Scope
-	14, // 2: controller.api.services.v1.CreateScopeRequest.item:type_name -> controller.api.resources.scopes.v1.Scope
-	14, // 3: controller.api.services.v1.CreateScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
-	14, // 4: controller.api.services.v1.UpdateScopeRequest.item:type_name -> controller.api.resources.scopes.v1.Scope
-	15, // 5: controller.api.services.v1.UpdateScopeRequest.update_mask:type_name -> google.protobuf.FieldMask
-	14, // 6: controller.api.services.v1.UpdateScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
-	16, // 7: controller.api.services.v1.ListKeysResponse.items:type_name -> controller.api.resources.scopes.v1.Key
-	0,  // 8: controller.api.services.v1.ScopeService.GetScope:input_type -> controller.api.services.v1.GetScopeRequest
-	2,  // 9: controller.api.services.v1.ScopeService.ListScopes:input_type -> controller.api.services.v1.ListScopesRequest
-	4,  // 10: controller.api.services.v1.ScopeService.CreateScope:input_type -> controller.api.services.v1.CreateScopeRequest
-	6,  // 11: controller.api.services.v1.ScopeService.UpdateScope:input_type -> controller.api.services.v1.UpdateScopeRequest
-	8,  // 12: controller.api.services.v1.ScopeService.DeleteScope:input_type -> controller.api.services.v1.DeleteScopeRequest
-	10, // 13: controller.api.services.v1.ScopeService.ListKeys:input_type -> controller.api.services.v1.ListKeysRequest
-	12, // 14: controller.api.services.v1.ScopeService.RotateKeys:input_type -> controller.api.services.v1.RotateKeysRequest
-	1,  // 15: controller.api.services.v1.ScopeService.GetScope:output_type -> controller.api.services.v1.GetScopeResponse
-	3,  // 16: controller.api.services.v1.ScopeService.ListScopes:output_type -> controller.api.services.v1.ListScopesResponse
-	5,  // 17: controller.api.services.v1.ScopeService.CreateScope:output_type -> controller.api.services.v1.CreateScopeResponse
-	7,  // 18: controller.api.services.v1.ScopeService.UpdateScope:output_type -> controller.api.services.v1.UpdateScopeResponse
-	9,  // 19: controller.api.services.v1.ScopeService.DeleteScope:output_type -> controller.api.services.v1.DeleteScopeResponse
-	11, // 20: controller.api.services.v1.ScopeService.ListKeys:output_type -> controller.api.services.v1.ListKeysResponse
-	13, // 21: controller.api.services.v1.ScopeService.RotateKeys:output_type -> controller.api.services.v1.RotateKeysResponse
-	15, // [15:22] is the sub-list for method output_type
-	8,  // [8:15] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	16, // 0: controller.api.services.v1.GetScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	16, // 1: controller.api.services.v1.ListScopesResponse.items:type_name -> controller.api.resources.scopes.v1.Scope
+	16, // 2: controller.api.services.v1.CreateScopeRequest.item:type_name -> controller.api.resources.scopes.v1.Scope
+	16, // 3: controller.api.services.v1.CreateScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	16, // 4: controller.api.services.v1.UpdateScopeRequest.item:type_name -> controller.api.resources.scopes.v1.Scope
+	17, // 5: controller.api.services.v1.UpdateScopeRequest.update_mask:type_name -> google.protobuf.FieldMask
+	16, // 6: controller.api.services.v1.UpdateScopeResponse.item:type_name -> controller.api.resources.scopes.v1.Scope
+	18, // 7: controller.api.services.v1.ListKeysResponse.items:type_name -> controller.api.resources.scopes.v1.Key
+	19, // 8: controller.api.services.v1.ListKeyVersionDestructionJobsResponse.items:type_name -> controller.api.resources.scopes.v1.KeyVersionDestructionJob
+	0,  // 9: controller.api.services.v1.ScopeService.GetScope:input_type -> controller.api.services.v1.GetScopeRequest
+	2,  // 10: controller.api.services.v1.ScopeService.ListScopes:input_type -> controller.api.services.v1.ListScopesRequest
+	4,  // 11: controller.api.services.v1.ScopeService.CreateScope:input_type -> controller.api.services.v1.CreateScopeRequest
+	6,  // 12: controller.api.services.v1.ScopeService.UpdateScope:input_type -> controller.api.services.v1.UpdateScopeRequest
+	8,  // 13: controller.api.services.v1.ScopeService.DeleteScope:input_type -> controller.api.services.v1.DeleteScopeRequest
+	10, // 14: controller.api.services.v1.ScopeService.ListKeys:input_type -> controller.api.services.v1.ListKeysRequest
+	12, // 15: controller.api.services.v1.ScopeService.RotateKeys:input_type -> controller.api.services.v1.RotateKeysRequest
+	14, // 16: controller.api.services.v1.ScopeService.ListKeyVersionDestructionJobs:input_type -> controller.api.services.v1.ListKeyVersionDestructionJobsRequest
+	1,  // 17: controller.api.services.v1.ScopeService.GetScope:output_type -> controller.api.services.v1.GetScopeResponse
+	3,  // 18: controller.api.services.v1.ScopeService.ListScopes:output_type -> controller.api.services.v1.ListScopesResponse
+	5,  // 19: controller.api.services.v1.ScopeService.CreateScope:output_type -> controller.api.services.v1.CreateScopeResponse
+	7,  // 20: controller.api.services.v1.ScopeService.UpdateScope:output_type -> controller.api.services.v1.UpdateScopeResponse
+	9,  // 21: controller.api.services.v1.ScopeService.DeleteScope:output_type -> controller.api.services.v1.DeleteScopeResponse
+	11, // 22: controller.api.services.v1.ScopeService.ListKeys:output_type -> controller.api.services.v1.ListKeysResponse
+	13, // 23: controller.api.services.v1.ScopeService.RotateKeys:output_type -> controller.api.services.v1.RotateKeysResponse
+	15, // 24: controller.api.services.v1.ScopeService.ListKeyVersionDestructionJobs:output_type -> controller.api.services.v1.ListKeyVersionDestructionJobsResponse
+	17, // [17:25] is the sub-list for method output_type
+	9,  // [9:17] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_services_v1_scope_service_proto_init() }
@@ -1139,6 +1270,30 @@ func file_controller_api_services_v1_scope_service_proto_init() {
 				return nil
 			}
 		}
+		file_controller_api_services_v1_scope_service_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListKeyVersionDestructionJobsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_controller_api_services_v1_scope_service_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListKeyVersionDestructionJobsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1146,7 +1301,7 @@ func file_controller_api_services_v1_scope_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_api_services_v1_scope_service_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
