@@ -60,6 +60,7 @@ var (
 		action.ListScopeKeys,
 		action.RotateScopeKeys,
 		action.RevokeScopeKeys,
+		action.ListScopeKeyVersionDestructionJobs,
 	}
 
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
@@ -432,6 +433,48 @@ func (s Service) RotateKeys(ctx context.Context, req *pbs.RotateKeysRequest) (*p
 	return nil, nil
 }
 
+// ListKeyVersionDestructionJobs implements the interface pbs.ScopeServiceServer.
+func (s Service) ListKeyVersionDestructionJobs(ctx context.Context, req *pbs.ListKeyVersionDestructionJobsRequest) (*pbs.ListKeyVersionDestructionJobsResponse, error) {
+	if req.GetScopeId() == "" {
+		req.ScopeId = scope.Global.String()
+	}
+	if err := validateListKeyVersionDestructionJobsRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetScopeId(), action.ListScopeKeyVersionDestructionJobs)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	jobs, err := s.kmsRepo.ListDataKeyVersionDestructionJobs(ctx, req.GetScopeId())
+	if err != nil {
+		return nil, err
+	}
+	res := perms.Resource{
+		Type: resource.Scope,
+	}
+	finalJobs := make([]*pb.KeyVersionDestructionJob, 0, len(jobs))
+	for _, job := range jobs {
+		res.Id = job.ScopeId
+		res.ScopeId = job.ScopeId
+
+		outputFields := authResults.FetchOutputFields(res, action.ListScopeKeyVersionDestructionJobs).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+		}
+
+		protoJob, err := destructionJobToProto(ctx, job, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+		finalJobs = append(finalJobs, protoJob)
+	}
+	return &pbs.ListKeyVersionDestructionJobsResponse{
+		Items: finalJobs,
+	}, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -605,7 +648,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Scope), auth.WithAction(a)}
 	switch a {
-	case action.List, action.Create, action.ListScopeKeys:
+	case action.List, action.Create, action.ListScopeKeys, action.ListScopeKeyVersionDestructionJobs:
 		parentId = id
 		s, err := repo.LookupScope(ctx, parentId)
 		if err != nil {
@@ -684,7 +727,7 @@ func ToProto(ctx context.Context, in *iam.Scope, opt ...handlers.Option) (*pb.Sc
 func keyToProto(ctx context.Context, in wrappingKms.Key, opt ...handlers.Option) (*pb.Key, error) {
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building scope proto")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building key proto")
 	}
 	outputFields := *opts.WithOutputFields
 
@@ -714,6 +757,35 @@ func keyToProto(ctx context.Context, in wrappingKms.Key, opt ...handlers.Option)
 		}
 	}
 
+	return &out, nil
+}
+
+func destructionJobToProto(ctx context.Context, in *kms.DataKeyVersionDestructionJobProgress, opt ...handlers.Option) (*pb.KeyVersionDestructionJob, error) {
+	opts := handlers.GetOpts(opt...)
+	if opts.WithOutputFields == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building data key version destruction job proto")
+	}
+	outputFields := *opts.WithOutputFields
+
+	out := pb.KeyVersionDestructionJob{}
+	if outputFields.Has(globals.KeyVersionIdField) {
+		out.KeyVersionId = in.KeyId
+	}
+	if outputFields.Has(globals.ScopeField) {
+		out.Scope = opts.WithScope
+	}
+	if outputFields.Has(globals.CreatedTimeField) {
+		out.CreatedTime = in.CreateTime.Timestamp
+	}
+	if outputFields.Has(globals.CompletedCountField) {
+		out.CompletedCount = in.CompletedCount
+	}
+	if outputFields.Has(globals.TotalCountField) {
+		out.TotalCount = in.TotalCount
+	}
+	if outputFields.Has(globals.StatusField) {
+		out.Status = in.Status
+	}
 	return &out, nil
 }
 
@@ -891,6 +963,17 @@ func validateRotateKeysRequest(req *pbs.RotateKeysRequest) error {
 		badFields["id"] = "Must be 'global', a valid org scope id or a valid project scope id when listing keys."
 	}
 	// other field is just a bool so can't be validated
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
+	}
+	return nil
+}
+
+func validateListKeyVersionDestructionJobsRequest(req *pbs.ListKeyVersionDestructionJobsRequest) error {
+	badFields := map[string]string{}
+	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) {
+		badFields["scope_id"] = "Must be 'global', a valid org scope id or a valid project scope id when listing key version destruction jobs."
+	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}

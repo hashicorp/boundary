@@ -2665,6 +2665,31 @@
         ]
       }
     },
+    "/v1/scopes/{scope_id}:list-key-version-destruction-jobs": {
+      "get": {
+        "summary": "Lists all pending key version destruction jobs in the scope.",
+        "operationId": "ScopeService_ListKeyVersionDestructionJobs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListKeyVersionDestructionJobsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
     "/v1/scopes:rotate-keys": {
       "post": {
         "summary": "Rotate all keys in a Scope.",
@@ -5051,6 +5076,39 @@
       },
       "title": "KeyVersion describes a specific version of a key and holds the actual key material"
     },
+    "controller.api.resources.scopes.v1.KeyVersionDestructionJob": {
+      "type": "object",
+      "properties": {
+        "key_version_id": {
+          "type": "string",
+          "description": "The ID of the Key version this job relates to."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the key version destruction job. One of \"pending\", \"running\" or \"completed\"."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this key version destruction job was created."
+        },
+        "completed_count": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of rows that have been successfully re-encrypted with a new key version.\nAll rows must be re-encrypted before the key version can be destroyed."
+        },
+        "total_count": {
+          "type": "string",
+          "format": "int64",
+          "description": "The total number of rows that need re-encrypting."
+        }
+      },
+      "description": "KeyVersionDestructionJob holds information about a pending key version destruction job."
+    },
     "controller.api.resources.scopes.v1.Scope": {
       "type": "object",
       "properties": {
@@ -6464,6 +6522,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListKeyVersionDestructionJobsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyVersionDestructionJob"
           }
         }
       }

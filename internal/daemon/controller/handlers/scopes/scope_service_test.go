@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -95,6 +96,7 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list-keys"),
 			structpb.NewStringValue("rotate-keys"),
 			structpb.NewStringValue("revoke-keys"),
+			structpb.NewStringValue("list-key-version-destruction-jobs"),
 		},
 	},
 	"users": {
@@ -145,6 +147,7 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list-keys"),
 			structpb.NewStringValue("rotate-keys"),
 			structpb.NewStringValue("revoke-keys"),
+			structpb.NewStringValue("list-key-version-destruction-jobs"),
 		},
 	},
 	"users": {
@@ -190,6 +193,7 @@ var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list-keys"),
 			structpb.NewStringValue("rotate-keys"),
 			structpb.NewStringValue("revoke-keys"),
+			structpb.NewStringValue("list-key-version-destruction-jobs"),
 		},
 	},
 	"targets": {
@@ -1841,10 +1845,12 @@ func TestRotateKeys(t *testing.T) {
 	// Add new role for listing+rotating keys in org
 	rotateKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
 	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+	_ = iam.TestUserRole(t, tc.DbConn(), rotateKeysRole.PublicId, aToken.UserId)
 
 	// Add new role for listing+rotating keys in project
 	rotateKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
 	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+	_ = iam.TestUserRole(t, tc.DbConn(), rotateKeysRole.PublicId, aToken.UserId)
 
 	cases := []struct {
 		name    string
@@ -1947,6 +1953,229 @@ func TestRotateKeys(t *testing.T) {
 				// since we just rotated them, there should be the same number of version 1 and version 2
 				assert.Equal(prevKeyVersions[prevLatest], keyVersions[latest])
 			}
+		})
+	}
+}
+
+func TestListKeyVersionDestructionJobs(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	aToken := tc.Token()
+	uToken := tc.UnprivilegedToken()
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return tc.IamRepo(), nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return tc.ServersRepo(), nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return tc.AuthTokenRepo(), nil
+	}
+
+	privCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       aToken.Id,
+			EncryptedToken: strings.Split(aToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		},
+	)
+
+	unprivCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       uToken.Id,
+			EncryptedToken: strings.Split(uToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		},
+	)
+
+	sqldb, err := tc.DbConn().SqlDB(context.Background())
+	require.NoError(t, err)
+
+	org, proj := iam.TestScopes(t, tc.IamRepo())
+
+	org.Name = "defaultOrg"
+	org.Description = "defaultOrg"
+	org, _, err = tc.IamRepo().UpdateScope(context.Background(), org, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing keys in org
+	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=list-key-version-destruction-jobs")
+	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
+
+	proj.Name = "defaultProj"
+	proj.Description = "defaultProj"
+	proj, _, err = tc.IamRepo().UpdateScope(context.Background(), proj, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing keys in project
+	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=list-key-version-destruction-jobs")
+	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
+
+	for _, scope := range []string{"global", org.PublicId, proj.PublicId} {
+		err = tc.Kms().RotateKeys(context.Background(), scope)
+		require.NoError(t, err)
+		keys, err := tc.Kms().ListKeys(context.Background(), scope)
+		require.NoError(t, err)
+
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(kms.KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		// TODO: Use real DestroyKeyVersion when it's available.
+		_, err = sqldb.ExecContext(context.Background(), "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(context.Background(), "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(context.Background(), "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_oidc_method', 200)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(context.Background(), "update kms_data_key_version_destruction_job_run set completed_count=100 where key_id=$1 and table_name='auth_token'", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(context.Background(), "delete from kms_data_key_version_destruction_job where key_id=$1", kvToDestroy.Id)
+			require.NoError(t, err)
+		})
+	}
+
+	cases := []struct {
+		name    string
+		req     *pbs.ListKeyVersionDestructionJobsRequest
+		res     *pbs.ListKeyVersionDestructionJobsResponse
+		authCtx context.Context
+		err     error
+	}{
+		{
+			name: "List key version destruction jobs in the global scope",
+			req:  &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "global"},
+			res: &pbs.ListKeyVersionDestructionJobsResponse{
+				Items: []*pb.KeyVersionDestructionJob{
+					{
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Status:         "pending",
+						CompletedCount: 100,
+						TotalCount:     300,
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "List key version destruction jobs in an existing org",
+			req:  &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: org.GetPublicId()},
+			res: &pbs.ListKeyVersionDestructionJobsResponse{
+				Items: []*pb.KeyVersionDestructionJob{
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            org.GetPublicId(),
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.GetName(),
+							Description:   org.GetDescription(),
+						},
+						Status:         "pending",
+						CompletedCount: 100,
+						TotalCount:     300,
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name:    "List key version destruction jobs in a non existing org",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "o_DoesntExis"},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "List key version destruction jobs in an existing project",
+			req:  &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: proj.GetPublicId()},
+			res: &pbs.ListKeyVersionDestructionJobsResponse{
+				Items: []*pb.KeyVersionDestructionJob{
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            proj.GetPublicId(),
+							ParentScopeId: org.GetPublicId(),
+							Type:          "project",
+							Name:          proj.GetName(),
+							Description:   proj.GetDescription(),
+						},
+						Status:         "pending",
+						CompletedCount: 100,
+						TotalCount:     300,
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name:    "List key version destruction jobs in a non existing project",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "p_DoesntExis"},
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+			authCtx: privCtx,
+		},
+		{
+			name:    "Wrong id prefix",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "j_1234567890"},
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+			authCtx: privCtx,
+		},
+		{
+			name:    "space in id",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "p_1 23456789"},
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+			authCtx: privCtx,
+		},
+		{
+			name:    "unauthorized",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "global"},
+			err:     handlers.ApiErrorWithCode(codes.PermissionDenied),
+			authCtx: unprivCtx,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := scopes.NewService(iamRepoFn, tc.Kms())
+			require.NoError(err, "Couldn't create new project service.")
+
+			got, gErr := s.ListKeyVersionDestructionJobs(tt.authCtx, tt.req)
+			if tt.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tt.err), "ListKeys(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
+			} else {
+				require.NoError(gErr)
+			}
+			assert.Empty(
+				cmp.Diff(
+					tt.res,
+					got,
+					protocmp.Transform(),
+					protocmp.SortRepeated(func(i, j *pb.KeyVersionDestructionJob) bool { return i.GetTotalCount() < j.GetTotalCount() }),
+					protocmp.IgnoreFields(&pb.KeyVersionDestructionJob{}, "key_version_id", "created_time"),
+				),
+				"ListKeyVersionDestructionJobs(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res,
+			)
 		})
 	}
 }
