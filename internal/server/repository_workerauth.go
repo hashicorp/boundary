@@ -369,6 +369,7 @@ func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodee.Messag
 // Node information is loaded in two parts:
 // * the workerAuth record
 // * its certificate bundles
+// * the prior encryption key, if present
 func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, node *types.NodeInformation) error {
 	const op = "server.(WorkerAuthRepositoryStorage).loadNodeInformation"
 	if node == nil {
@@ -417,6 +418,15 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.Wrap(ctx, err, op)
 	}
 	node.CertificateBundles = certBundles
+
+	// Get prior encryption key, if available
+	priorKey, err := r.findPriorEncryptionKey(ctx, authorizedWorker.GetWorkerId())
+	if !errors.IsNotFoundError(err) {
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		node.PreviousEncryptionKey = priorKey
+	}
 
 	return nil
 }
@@ -505,6 +515,36 @@ func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *
 	}
 
 	return worker, nil
+}
+
+func (r *WorkerAuthRepositoryStorage) findPriorEncryptionKey(ctx context.Context, workerId string) (*types.EncryptionKey, error) {
+	const op = "server.(WorkerAuthRepositoryStorage).findPriorEncryptionKey"
+	if workerId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty workerId")
+	}
+
+	workerAuthSet, err := r.FindWorkerAuthByWorkerId(ctx, workerId)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, err
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	if workerAuthSet.Previous == nil {
+		return nil, nil
+	}
+
+	// Create the EncryptionKey using the prior worker auth record
+	priorKey := &types.EncryptionKey{
+		KeyId:           workerAuthSet.Previous.WorkerKeyIdentifier,
+		PrivateKeyPkcs8: workerAuthSet.Previous.ControllerEncryptionPrivKey,
+		PrivateKeyType:  types.KEYTYPE_X25519,
+		PublicKeyPkix:   workerAuthSet.Previous.WorkerEncryptionPubKey,
+		PublicKeyType:   types.KEYTYPE_X25519,
+	}
+
+	return priorKey, nil
 }
 
 func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, cert *types.RootCertificates) error {
@@ -879,22 +919,56 @@ func decrypt(ctx context.Context, value []byte, wrapper wrapping.Wrapper) ([]byt
 	return marshaledInfo, nil
 }
 
-// FindWorkerAuthByWorkerId takes a workerId and returns the WorkerAuth record associated with that worker.
-func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Context, workerId string) (*WorkerAuth, error) {
+// FindWorkerAuthByWorkerId takes a workerId and returns the WorkerAuthSet for this worker.
+func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Context, workerId string) (*WorkerAuthSet, error) {
 	const op = "server.(WorkerAuthRepositoryStorage).FindWorkerAuthByWorkerId"
 	if len(workerId) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty worker ID")
 	}
 
-	worker := allocWorkerAuth()
-	worker.WorkerId = workerId
-	err := r.reader.SearchWhere(ctx, &worker, "worker_id = ?", []interface{}{workerId})
-	if err != nil {
-		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return nil, nil
-		}
+	var previousWorkerAuth *WorkerAuth
+	var currentWorkerAuth *WorkerAuth
+
+	var workerAuths []*WorkerAuth
+	if err := r.reader.SearchWhere(ctx, &workerAuths, "worker_id = ?", []interface{}{workerId}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	return worker, nil
+	workerAuthsFound := len(workerAuths)
+	switch {
+	case workerAuthsFound == 0:
+		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("did not find worker auth records for worker %s", workerId))
+	case workerAuthsFound == 1:
+		if workerAuths[0].State != currentWorkerAuthState {
+			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
+				fmt.Sprintf("expected sole worker auth record to be in current state, found %s", workerAuths[0].State))
+		} else {
+			currentWorkerAuth = workerAuths[0]
+		}
+	case workerAuthsFound == 2:
+		currentStateFound := false
+		previousStateFound := false
+		for _, w := range workerAuths {
+			if w.State == currentWorkerAuthState {
+				currentStateFound = true
+				currentWorkerAuth = w
+			} else if w.State == previousWorkerAuthState {
+				previousStateFound = true
+				previousWorkerAuth = w
+			}
+		}
+		if !currentStateFound || !previousStateFound {
+			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("worker auth records in invalid set of states"))
+		}
+	default:
+		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
+			fmt.Sprintf("expected 2 or fewer worker auth records, found %d", workerAuthsFound))
+	}
+
+	workerAuthSet := &WorkerAuthSet{
+		Previous: previousWorkerAuth,
+		Current:  currentWorkerAuth,
+	}
+
+	return workerAuthSet, nil
 }

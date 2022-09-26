@@ -103,6 +103,7 @@ create table worker_auth_authorized(
 comment on table worker_auth_authorized is
   'worker_auth_authorized is a table where each row represents key and cert data associated with an authorized worker.';
 
+-- Trigger updated in 55/01_worker_auth_create_time.up.sql
 create trigger immutable_columns before update on worker_auth_authorized
   for each row execute procedure immutable_columns('worker_key_identifier', 'worker_id', 'worker_signing_pub_key', 'worker_encryption_pub_key', 'controller_encryption_priv_key', 'key_id', 'nonce');
 
