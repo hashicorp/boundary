@@ -1384,7 +1384,6 @@ func TestListKeys(t *testing.T) {
 			res: &pbs.ListKeysResponse{
 				Items: []*pb.Key{
 					{
-						ScopeId: "global",
 						Scope: &pb.ScopeInfo{
 							Id:          "global",
 							Type:        "global",
@@ -1392,11 +1391,14 @@ func TestListKeys(t *testing.T) {
 							Description: "Global Scope",
 						},
 						Purpose: "tokens",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: "global",
 						Scope: &pb.ScopeInfo{
 							Id:          "global",
 							Type:        "global",
@@ -1404,11 +1406,14 @@ func TestListKeys(t *testing.T) {
 							Description: "Global Scope",
 						},
 						Purpose: "oplog",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: "global",
 						Scope: &pb.ScopeInfo{
 							Id:          "global",
 							Type:        "global",
@@ -1416,11 +1421,14 @@ func TestListKeys(t *testing.T) {
 							Description: "Global Scope",
 						},
 						Purpose: "database",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: "global",
 						Scope: &pb.ScopeInfo{
 							Id:          "global",
 							Type:        "global",
@@ -1428,11 +1436,14 @@ func TestListKeys(t *testing.T) {
 							Description: "Global Scope",
 						},
 						Purpose: "audit",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: "global",
 						Scope: &pb.ScopeInfo{
 							Id:          "global",
 							Type:        "global",
@@ -1440,11 +1451,14 @@ func TestListKeys(t *testing.T) {
 							Description: "Global Scope",
 						},
 						Purpose: "oidc",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: "global",
 						Scope: &pb.ScopeInfo{
 							Id:          "global",
 							Type:        "global",
@@ -1452,11 +1466,14 @@ func TestListKeys(t *testing.T) {
 							Description: "Global Scope",
 						},
 						Purpose: "sessions",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: "global",
 						Scope: &pb.ScopeInfo{
 							Id:          "global",
 							Type:        "global",
@@ -1464,8 +1481,12 @@ func TestListKeys(t *testing.T) {
 							Description: "Global Scope",
 						},
 						Purpose: "rootKey",
-						Version: 1,
 						Type:    "kek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 				},
 			},
@@ -1477,7 +1498,6 @@ func TestListKeys(t *testing.T) {
 			res: &pbs.ListKeysResponse{
 				Items: []*pb.Key{
 					{
-						ScopeId: org.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            org.PublicId,
 							ParentScopeId: "global",
@@ -1486,11 +1506,14 @@ func TestListKeys(t *testing.T) {
 							Description:   org.Description,
 						},
 						Purpose: "tokens",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: org.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            org.PublicId,
 							ParentScopeId: "global",
@@ -1499,11 +1522,14 @@ func TestListKeys(t *testing.T) {
 							Description:   org.Description,
 						},
 						Purpose: "oplog",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: org.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            org.PublicId,
 							ParentScopeId: "global",
@@ -1512,11 +1538,14 @@ func TestListKeys(t *testing.T) {
 							Description:   org.Description,
 						},
 						Purpose: "database",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: org.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            org.PublicId,
 							ParentScopeId: "global",
@@ -1525,11 +1554,14 @@ func TestListKeys(t *testing.T) {
 							Description:   org.Description,
 						},
 						Purpose: "audit",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: org.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            org.PublicId,
 							ParentScopeId: "global",
@@ -1538,11 +1570,14 @@ func TestListKeys(t *testing.T) {
 							Description:   org.Description,
 						},
 						Purpose: "oidc",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: org.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            org.PublicId,
 							ParentScopeId: "global",
@@ -1551,11 +1586,14 @@ func TestListKeys(t *testing.T) {
 							Description:   org.Description,
 						},
 						Purpose: "sessions",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: org.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            org.PublicId,
 							ParentScopeId: "global",
@@ -1564,8 +1602,12 @@ func TestListKeys(t *testing.T) {
 							Description:   org.Description,
 						},
 						Purpose: "rootKey",
-						Version: 1,
 						Type:    "kek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 				},
 			},
@@ -1583,7 +1625,6 @@ func TestListKeys(t *testing.T) {
 			res: &pbs.ListKeysResponse{
 				Items: []*pb.Key{
 					{
-						ScopeId: proj.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            proj.PublicId,
 							ParentScopeId: org.PublicId,
@@ -1592,11 +1633,14 @@ func TestListKeys(t *testing.T) {
 							Description:   proj.Description,
 						},
 						Purpose: "tokens",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: proj.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            proj.PublicId,
 							ParentScopeId: org.PublicId,
@@ -1605,11 +1649,14 @@ func TestListKeys(t *testing.T) {
 							Description:   proj.Description,
 						},
 						Purpose: "oplog",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: proj.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            proj.PublicId,
 							ParentScopeId: org.PublicId,
@@ -1618,11 +1665,14 @@ func TestListKeys(t *testing.T) {
 							Description:   proj.Description,
 						},
 						Purpose: "database",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: proj.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            proj.PublicId,
 							ParentScopeId: org.PublicId,
@@ -1631,11 +1681,14 @@ func TestListKeys(t *testing.T) {
 							Description:   proj.Description,
 						},
 						Purpose: "audit",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: proj.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            proj.PublicId,
 							ParentScopeId: org.PublicId,
@@ -1644,11 +1697,14 @@ func TestListKeys(t *testing.T) {
 							Description:   proj.Description,
 						},
 						Purpose: "oidc",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: proj.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            proj.PublicId,
 							ParentScopeId: org.PublicId,
@@ -1657,11 +1713,14 @@ func TestListKeys(t *testing.T) {
 							Description:   proj.Description,
 						},
 						Purpose: "sessions",
-						Version: 1,
 						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 					{
-						ScopeId: proj.PublicId,
 						Scope: &pb.ScopeInfo{
 							Id:            proj.PublicId,
 							ParentScopeId: org.PublicId,
@@ -1670,8 +1729,12 @@ func TestListKeys(t *testing.T) {
 							Description:   proj.Description,
 						},
 						Purpose: "rootKey",
-						Version: 1,
 						Type:    "kek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
 					},
 				},
 			},
@@ -1724,6 +1787,7 @@ func TestListKeys(t *testing.T) {
 					// Sort by purpose for comparison since it is the only unique and predictable field
 					protocmp.SortRepeated(func(i, j *pb.Key) bool { return i.GetPurpose() < j.GetPurpose() }),
 					protocmp.IgnoreFields(&pb.Key{}, "id", "created_time"),
+					protocmp.IgnoreFields(&pb.KeyVersion{}, "id", "created_time"),
 				),
 				"ListKeys(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res,
 			)
@@ -1838,14 +1902,16 @@ func TestRotateKeys(t *testing.T) {
 				require.NoError(gErr)
 
 				for _, key := range keys.Items {
-					if key.Version > prevLatest {
-						prevLatest = key.Version
+					for _, keyVersion := range key.Versions {
+						if keyVersion.Version > prevLatest {
+							prevLatest = keyVersion.Version
+						}
+						_, ok := prevKeyVersions[keyVersion.Version]
+						if !ok {
+							prevKeyVersions[keyVersion.Version] = 0
+						}
+						prevKeyVersions[keyVersion.Version]++
 					}
-					_, ok := prevKeyVersions[key.Version]
-					if !ok {
-						prevKeyVersions[key.Version] = 0
-					}
-					prevKeyVersions[key.Version]++
 				}
 			}
 
@@ -1864,14 +1930,16 @@ func TestRotateKeys(t *testing.T) {
 				var latest uint32 = 0
 
 				for _, key := range keys.Items {
-					if key.Version > latest {
-						latest = key.Version
+					for _, keyVersion := range key.Versions {
+						if keyVersion.Version > latest {
+							latest = keyVersion.Version
+						}
+						_, ok := keyVersions[keyVersion.Version]
+						if !ok {
+							keyVersions[keyVersion.Version] = 0
+						}
+						keyVersions[keyVersion.Version]++
 					}
-					_, ok := keyVersions[key.Version]
-					if !ok {
-						keyVersions[key.Version] = 0
-					}
-					keyVersions[key.Version]++
 				}
 
 				// there should only be one new key version

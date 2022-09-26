@@ -3,6 +3,7 @@ package scopescmd
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
@@ -77,11 +78,6 @@ func (c *ListKeysCommand) printListTable(items []*scopes.Key) string {
 				fmt.Sprintf("    Scope ID:  %s", item.Scope.Id),
 			)
 		}
-		if item.Version > 0 {
-			output = append(output,
-				fmt.Sprintf("    Version:   %d", item.Version),
-			)
-		}
 		if item.Type != "" {
 			output = append(output,
 				fmt.Sprintf("    Type:      %s", item.Type),
@@ -91,6 +87,24 @@ func (c *ListKeysCommand) printListTable(items []*scopes.Key) string {
 			output = append(output,
 				fmt.Sprintf("    Purpose:   %s", item.Purpose),
 			)
+		}
+		output = append(output, "    Key Versions:")
+		for _, keyVersion := range item.Versions {
+			if true {
+				output = append(output,
+					fmt.Sprintf("      Version:   %d", keyVersion.Version),
+				)
+			}
+			if keyVersion.Id != "" {
+				output = append(output,
+					fmt.Sprintf("        ID:      %s", keyVersion.Id),
+				)
+			}
+			if !keyVersion.CreatedTime.IsZero() {
+				output = append(output,
+					fmt.Sprintf("        Created: %s", keyVersion.CreatedTime.Local().Format(time.RFC1123)),
+				)
+			}
 		}
 	}
 

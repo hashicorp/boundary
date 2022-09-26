@@ -573,6 +573,13 @@ func sortKeys(keys []*pb.Key) {
 	sort.SliceStable(keys, func(i, j int) bool {
 		return keys[i].GetId() < keys[j].GetId()
 	})
+	// we also want to sort the key versions by version id so they are in
+	// descending order (newest first)
+	for _, key := range keys {
+		sort.Slice(key.Versions, func(i, j int) bool {
+			return key.Versions[i].Version > key.Versions[j].Version
+		})
+	}
 }
 
 func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Scope, error) {
@@ -685,9 +692,6 @@ func keyToProto(ctx context.Context, in wrappingKms.Key, opt ...handlers.Option)
 	if outputFields.Has(globals.IdField) {
 		out.Id = in.Id
 	}
-	if outputFields.Has(globals.ScopeIdField) {
-		out.ScopeId = in.Scope
-	}
 	if outputFields.Has(globals.ScopeField) {
 		out.Scope = opts.WithScope
 	}
@@ -697,11 +701,17 @@ func keyToProto(ctx context.Context, in wrappingKms.Key, opt ...handlers.Option)
 	if outputFields.Has(globals.CreatedTimeField) {
 		out.CreatedTime = timestamppb.New(in.CreateTime)
 	}
-	if outputFields.Has(globals.VersionField) {
-		out.Version = uint32(in.Version)
-	}
 	if outputFields.Has(globals.TypeField) {
 		out.Type = string(in.Type)
+	}
+	if outputFields.Has(globals.KeyVersionsField) {
+		for _, keyVersion := range in.Versions {
+			out.Versions = append(out.Versions, &pb.KeyVersion{
+				Id:          keyVersion.Id,
+				Version:     uint32(keyVersion.Version),
+				CreatedTime: timestamppb.New(keyVersion.CreateTime),
+			})
+		}
 	}
 
 	return &out, nil

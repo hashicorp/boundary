@@ -209,7 +209,13 @@ func Test_RotateKeys(t *testing.T) {
 		// assert
 		keys, err = kmsCache.ListKeys(testCtx, "global")
 		require.NoError(t, err)
-		require.Len(t, keys, 14)
+
+		keyCount := 0
+		for _, key := range keys {
+			keyCount += len(key.Versions)
+		}
+
+		require.Equal(t, keyCount, 14)
 	})
 
 	t.Run("reader provided, missing writer", func(t *testing.T) {

@@ -86,27 +86,35 @@ message Scope {
   map<string, google.protobuf.ListValue> authorized_collection_actions = 310 [json_name = "authorized_collection_actions"];
 }
 
-// Key contains all fields related to a Key in a Scope.
-message Key {
-  // Output only. The ID of the Key.
+// KeyVersion describes a specific version of a key and holds the actual key material
+message KeyVersion {
+  // The ID of the key version.
   string id = 10; // @gotags: `class:"public"`
 
-  // Output only. The ID of the Scope this Key is in.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  // The iteration of the Key that this version represents.
+  uint32 version = 20; // @gotags: `class:"public"`
 
-  // Output only. Scope information for this resource.
-  ScopeInfo scope = 30;
+  // When this version was created.
+  google.protobuf.Timestamp created_time = 30 [json_name = "created_time"]; // @gotags: `class:"public"`
+}
 
-  // Output only. The purpose of the Key.
-  string purpose = 40; // @gotags: `class:"public"`
+// Key contains all fields related to a Key in a Scope.
+message Key {
+  // The ID of the Key.
+  string id = 10; // @gotags: `class:"public"`
 
-  // Output only. The time this Key was created.
-  google.protobuf.Timestamp created_time = 50 [json_name = "created_time"]; // @gotags: `class:"public"`
+  // Scope information for this resource.
+  ScopeInfo scope = 20;
 
-  // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
-  // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 60; // @gotags: `class:"public"`
+  // The purpose of the Key.
+  string purpose = 30; // @gotags: `class:"public"`
 
-  // Output only. The type of the Key.
-  string type = 70; // @gotags: `class:"public"`
+  // The time this Key was created.
+  google.protobuf.Timestamp created_time = 40 [json_name = "created_time"]; // @gotags: `class:"public"`
+
+  // The type of the Key.
+  string type = 50; // @gotags: `class:"public"`
+
+  // The versions of the key.
+  repeated KeyVersion versions = 60;
 }
