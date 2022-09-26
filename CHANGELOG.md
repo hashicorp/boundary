@@ -6,45 +6,77 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.11.0 (2022/09/27)
 
+### Known Issues
+
+* PKI workers in past versions did not store a prior encryption key, and a bug
+  prior to 0.11.0 meant that auth rotations could happen more frequently than
+  expected. This could cause some race issues around rotation time. However,
+  there was another issue where a past worker authentication record could be
+  looked up for some operations instead of the current one, made more likely by
+  the too-frequent rotations. In 0.11.0 we attempt to ensure that the record
+  that remains on upgrade is the most current one, but it is possible that the
+  wrong one is chosen, leading to a failure for the worker to authenticate or
+  for some operations to consistently fail. In this case, the worker will need
+  to be deleted and re-authorized. We apologize for any issues this causes and
+  this should be remedied going forward.
+
 ### Bug Fixes
 
-* Fix bug preventing delete of org ([PR](https://github.com/hashicorp/boundary/pull/2465))
+* scopes: Organizations could be prevented from being deleted if some resources
+  remained ([PR](https://github.com/hashicorp/boundary/pull/2465))
+* workers: Authentication rotation could occur prior to the expected time
+  ([PR](https://github.com/hashicorp/boundary/pull/2484))
+* workers: When looking up worker authentication records, an old record could be
+  returned instead of the new one, leading to errors for encryption or
+  decryption operations ([PR](https://github.com/hashicorp/boundary/pull/2495))
 
 ### New and Improved
 
+* credentials: There is now a `json` credential type supported by `static`
+  credential stores that allows submitting a generic JSON object to Boundary for
+  use with credential brokering workflows
+  ([PR](https://github.com/hashicorp/boundary/pull/2423))
+* ui: Add support for worker management
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1229))
+* ui: Add support for PKI worker registration
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1244))
+* ui: Add support for Static Credential Stores
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1193))
+* ui: Add support for Username & Password Credentials
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1205))
+* ui: Add support for Username & Key Pair Credentials
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1266))
+* ui (HCP Boundary only): SSH Target creation along with injected application
+  credential support ([PR](https://github.com/hashicorp/boundary-ui/pull/1027))
+* ui (HCP Boundary only): Update vault credential stores to support private
+  vault access ([PR](https://github.com/hashicorp/boundary-ui/pull/1318))
+* ui: Improve quick setup wizard onboarding guide resource names
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1328))
+* ui: Updates to host catalog and host set forms and “Learn More” links
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1342))
 * workers: Added the ability to read and reinitialize the Worker certificate
   authority ([PR1](https://github.com/hashicorp/boundary/pull/2312),
   [PR2](https://github.com/hashicorp/boundary/pull/2387))
 * workers: Return the worker Boundary binary version on worker list and read
   ([PR](https://github.com/hashicorp/boundary/pull/2377))
-* workers: Addition of worker graceful shutdown ([PR](https://github.com/hashicorp/boundary/pull/2455))
-* credentials: There is now a `json` credential type that allows submitting a generic JSON object to
-  Boundary for use with credential brokering workflows. ([PR](https://github.com/hashicorp/boundary/pull/2423))
-* ui: Add support for worker management ([PR](https://github.com/hashicorp/boundary-ui/pull/1229))
-* ui: Add support for PKI worker registration ([PR](https://github.com/hashicorp/boundary-ui/pull/1244))
-* ui: Add support for Static Credential Stores ([PR](https://github.com/hashicorp/boundary-ui/pull/1193))
-* ui: Add support for Username & Password Credentials ([PR](https://github.com/hashicorp/boundary-ui/pull/1205))
-* ui: Add support for Username & Key Pair Credentials ([PR](https://github.com/hashicorp/boundary-ui/pull/1266))
-* ui (HCP Boundary only): SSH Target creation along with injected application credential support ([PR](https://github.com/hashicorp/boundary-ui/pull/1027))
-* ui (HCP Boundary only): Update vault credential stores to support private vault access ([PR](https://github.com/hashicorp/boundary-ui/pull/1318))
-* ui: Improve quick setup wizard onboarding guide resource names ([PR](https://github.com/hashicorp/boundary-ui/pull/1328))
-* ui: Updates to host catalog and host set forms and “Learn More” links ([PR](https://github.com/hashicorp/boundary-ui/pull/1342))
+* workers: Addition of worker graceful shutdown, triggered by an initial
+  `SIGINT` or `SIGTERM` ([PR](https://github.com/hashicorp/boundary/pull/2455))
+* workers: Retain one previous encryption/decryption key after authentication
+  rotation ([PR](https://github.com/hashicorp/boundary/pull/2495))
 
 ### Deprecations/Changes
-* Workers: PKI authentication records will only be retained for the current and previous encryption keys. 
-  As part of this change, only the current worker auth record will be migrated.
-  ([PR](https://github.com/hashicorp/boundary/pull/2495))
+
 * In 0.5.0, the `add-host-sets`, `remove-host-sets`, and `set-host-sets` actions
-on targets were deprecated in favor of `add-host-sources`,
-`remove-host-sources`, and `set-host-sources`. Originally these actions and API
-calls were to be removed in 0.6, but this was delayed to give extra time for
-clients to switch over. This has now been fully switched over. A database
-migration will modify any grants in roles to have the new actions. This same
-changeover has been made for `add-/remove-/set-credential-libraries` to
-`add-/remove-/set-credential-sources`, although those actions would only be in
-grant strings in very rare circumstances as the `-sources` actions replaced the
-`-libraries` actions very quickly.
-([PR](https://github.com/hashicorp/boundary/pull/2393))
+  on targets were deprecated in favor of `add-host-sources`,
+  `remove-host-sources`, and `set-host-sources`. Originally these actions and
+  API calls were to be removed in 0.6, but this was delayed to give extra time
+  for clients to switch over. This has now been fully switched over. A database
+  migration will modify any grants in roles to have the new actions. This same
+  changeover has been made for `add-/remove-/set-credential-libraries` to
+  `add-/remove-/set-credential-sources`, although those actions would only be in
+  grant strings in very rare circumstances as the `-sources` actions replaced
+  the `-libraries` actions very quickly.
+  ([PR](https://github.com/hashicorp/boundary/pull/2393))
 
 ## 0.10.5 (2022/09/13)
 
