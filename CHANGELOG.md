@@ -32,10 +32,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* vault (HCP Boundary only): Private Vault clusters can be used with HCP Boundary by using PKI workers
+* vault: (HCP Boundary only): Private Vault clusters can be used with HCP Boundary by using PKI workers
   deployed in the same network as a private cluster. Tags are used to control which PKI workers can manage private Vault 
-  requests by specifying a `worker_filter` attribute when configuring a Vault credential store.
-  Vault requests to Boundary controllers.
+  requests by specifying a `worker_filter` attribute when configuring a Vault credential store. 
 * credentials: There is now a `json` credential type supported by `static`
   credential stores that allows submitting a generic JSON object to Boundary for
   use with credential brokering workflows
