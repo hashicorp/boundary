@@ -6,7 +6,7 @@ type Connection struct {
 	ClientTcpPort      uint32 `json:"client_tcp_port,omitempty"`
 	EndpointTcpAddress string `json:"endpoint_tcp_address,omitempty"`
 	EndpointTcpPort    uint32 `json:"endpoint_tcp_port,omitempty"`
-	BytesUp            uint64 `json:"bytes_up,omitempty"`
-	BytesDown          uint64 `json:"bytes_down,omitempty"`
+	BytesUp            uint64 `json:"bytes_up,string,omitempty"`
+	BytesDown          uint64 `json:"bytes_down,string,omitempty"`
 	ClosedReason       string `json:"closed_reason,omitempty"`
 }
