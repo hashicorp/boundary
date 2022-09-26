@@ -3,6 +3,8 @@ syntax = "proto3";
 // Package store provides protobufs for storing types in the pki package.
 package controller.storage.servers.store.v1;
 
+import "controller/storage/timestamp/v1/timestamp.proto";
+
 option go_package = "github.com/hashicorp/boundary/internal/server/store;store";
 
 // WorkerAuth contains all fields related to an authorized Worker resource
@@ -35,6 +37,19 @@ message WorkerAuth {
   // Nonce used by a worker in authenticating
   // @inject_tag: `gorm:"default:null"`
   bytes nonce = 70;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  storage.timestamp.v1.Timestamp create_time = 80;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  storage.timestamp.v1.Timestamp update_time = 90;
+
+  // State of the worker auth record.
+  // The only valid value is either current or previous
+  // @inject_tag: `gorm:"not_null"`
+  string state = 100;
 }
 
 // WorkerCertBundle contains all fields related to a WorkerCertBundle resource

@@ -212,6 +212,11 @@ func TestStoreWorkerAuth(t *testing.T) {
 	assert.Equal(nodeInfo.CertificatePublicKeyPkix, nodeLookup.CertificatePublicKeyPkix)
 	assert.Equal(nodeInfo.State.AsMap(), nodeLookup.State.AsMap())
 
+	// Validate that we can find the workerAuth set and key identifier
+	workerAuthSet, err := storage.FindWorkerAuthByWorkerId(ctx, worker.PublicId)
+	assert.NoError(err)
+	assert.Equal(workerAuthSet.Current.WorkerKeyIdentifier, keyId)
+
 	// Remove node
 	err = storage.Remove(ctx, nodeLookup)
 	require.NoError(err)
