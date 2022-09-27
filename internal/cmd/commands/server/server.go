@@ -56,7 +56,7 @@ type Command struct {
 	controller    *controller.Controller
 	worker        *worker.Worker
 
-	flagConfig      string
+	flagConfig      []string
 	flagConfigKms   string
 	flagLogLevel    string
 	flagLogFormat   string
@@ -90,14 +90,14 @@ func (c *Command) Flags() *base.FlagSets {
 
 	f := set.NewFlagSet("Command Options")
 
-	f.StringVar(&base.StringVar{
+	f.StringSliceVar(&base.StringSliceVar{
 		Name:   "config",
 		Target: &c.flagConfig,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
 			complete.PredictFiles("*.json"),
 		),
-		Usage: "Path to the configuration file.",
+		Usage: "Path to the configuration file. Can be specified multiple times for multiple configuration files (only if using HCL format).",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -550,17 +550,34 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 		cfg, err = config.Parse(c.presetConfig.Load())
 
 	default:
-		wrapperPath := c.flagConfig
-		if c.flagConfigKms != "" {
-			wrapperPath = c.flagConfigKms
+		configStrs := make([]string, 0, len(c.flagConfig))
+		for _, path := range c.flagConfig {
+			fileBytes, err := os.ReadFile(path)
+			if err != nil {
+				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not read config file", "path", path, "error", err))
+				return nil, base.CommandUserError
+			}
+			configStrs = append(configStrs, string(fileBytes))
 		}
+		configString := strings.Join(configStrs, "\n")
+
+		wrapperString := configString
+		if c.flagConfigKms != "" {
+			wrapperBytes, err := os.ReadFile(c.flagConfigKms)
+			if err != nil {
+				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not read kms config file", "path", c.flagConfigKms, "error", err))
+				return nil, base.CommandUserError
+			}
+			wrapperString = string(wrapperBytes)
+		}
+
 		var configWrapper wrapping.Wrapper
 		var ifWrapper wrapping.InitFinalizer
 		var cleanupFunc func() error
-		if wrapperPath != "" {
-			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromPath(
+		if wrapperString != "" {
+			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromHcl(
 				c.Context,
-				wrapperPath,
+				wrapperString,
 				globals.KmsPurposeConfig,
 				configutil.WithPluginOptions(
 					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
@@ -594,7 +611,7 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 				return nil, base.CommandCliError
 			}
 		}
-		cfg, err = config.LoadFile(c.flagConfig, configWrapper)
+		cfg, err = config.LoadConfigString(configString, configWrapper)
 		if ifWrapper != nil {
 			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
 				event.WriteError(context.Background(), op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
@@ -754,7 +771,7 @@ func (c *Command) WaitForInterrupt() int {
 			var newConf *config.Config
 			var out int
 
-			if c.flagConfig == "" && c.presetConfig == nil {
+			if len(c.flagConfig) == 0 && c.presetConfig == nil {
 				goto RUNRELOADFUNCS
 			}
 

@@ -331,16 +331,19 @@ func LoadFile(path string, wrapper wrapping.Wrapper) (*Config, error) {
 		return nil, err
 	}
 
-	raw := string(d)
+	return LoadConfigString(string(d), wrapper)
+}
 
+func LoadConfigString(input string, wrapper wrapping.Wrapper) (*Config, error) {
 	if wrapper != nil {
-		raw, err = configutil.EncryptDecrypt(raw, true, true, wrapper)
+		var err error
+		input, err = configutil.EncryptDecrypt(input, true, true, wrapper)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return Parse(raw)
+	return Parse(input)
 }
 
 func Parse(d string) (*Config, error) {
