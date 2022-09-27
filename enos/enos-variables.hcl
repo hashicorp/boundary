@@ -103,3 +103,9 @@ variable "skip_failing_bats_tests" {
   type        = string
   default     = "false"
 }
+
+variable "vault_instance_type" {
+  description = "Instance type for test target nodes"
+  type        = string
+  default     = "t3a.small"
+}

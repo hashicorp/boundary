@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"testing"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/stretchr/testify/require"
 )
 
 type config struct {
@@ -80,22 +82,17 @@ func NewApiClient() (*api.Client, error) {
 }
 
 // AuthenticateCli uses the cli to authenticate the specified Boundary instance.
-// Returns the result of the command.
-func AuthenticateCli() *e2e.CommandResult {
+func AuthenticateCli(t testing.TB) {
 	c, err := loadConfig()
-	if err != nil {
-		return &e2e.CommandResult{Err: err}
-	}
+	require.NoError(t, err)
 	err = c.validate()
-	if err != nil {
-		return &e2e.CommandResult{Err: err}
-	}
+	require.NoError(t, err)
 
-	return e2e.RunCommand(
-		"boundary", "authenticate", "password",
+	output := e2e.RunCommand("boundary", e2e.WithArgs("authenticate", "password",
 		"-addr", c.Address,
 		"-auth-method-id", c.AuthMethodId,
 		"-login-name", c.AdminLoginName,
 		"-password", "env://E2E_PASSWORD_ADMIN_PASSWORD",
-	)
+	))
+	require.NoError(t, output.Err, string(output.Stderr))
 }
