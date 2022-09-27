@@ -2,25 +2,31 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
+	"github.com/hashicorp/boundary/sdk/wrapper"
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
@@ -324,26 +330,100 @@ func New() *Config {
 	}
 }
 
-// LoadFile loads the configuration from the given file.
-func LoadFile(path string, wrapper wrapping.Wrapper) (*Config, error) {
-	d, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
+// Load will create a Config from the given config files. It concatenates the
+// contents of the files together. This allows for composing a config from
+// separate files, but notably does not attempt any merging of configs. Thus it
+// is possible that the concatenation results in an invalid config file. This
+// also supports decrypting the config, either with a kms block in one of the
+// given files, or as a separate file in wrapperPath.
+//
+// Note that having multiple config files is only supported properly if they are
+// all hcl files. If they are json files, only the first file is used. A mix of
+// hcl and json will result in an error.
+func Load(ctx context.Context, paths []string, wrapperPath string) (*Config, error) {
+	const op = "config.Load"
+
+	var err error
+	var cfg *Config
+
+	configStrs := make([]string, 0, len(paths))
+	for _, path := range paths {
+		fileBytes, err := os.ReadFile(path)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not read config file", "path", path, "error", err))
+			return nil, err
+		}
+		configStrs = append(configStrs, string(fileBytes))
+	}
+	configString := strings.Join(configStrs, "\n")
+
+	wrapperString := configString
+	if wrapperPath != "" {
+		wrapperBytes, err := os.ReadFile(wrapperPath)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not read kms config file", "path", wrapperPath, "error", err))
+			return nil, err
+		}
+		wrapperString = string(wrapperBytes)
 	}
 
-	return LoadConfigString(string(d), wrapper)
-}
+	var configWrapper wrapping.Wrapper
+	var ifWrapper wrapping.InitFinalizer
+	var cleanupFunc func() error
+	if wrapperString != "" {
+		configWrapper, cleanupFunc, err = wrapper.GetWrapperFromHcl(
+			ctx,
+			wrapperString,
+			globals.KmsPurposeConfig,
+			configutil.WithPluginOptions(
+				pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+				pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
+			),
+			// TODO: How would we want to expose this kind of log to users when
+			// using recovery configs? Generally with normal CLI commands we
+			// don't print out all of these logs. We may want a logger with a
+			// custom writer behind our existing gate where we print nothing
+			// unless there is an error, then dump all of it.
+			configutil.WithLogger(hclog.NewNullLogger()),
+		)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", wrapperPath))
+			return nil, err
+		}
+		if cleanupFunc != nil {
+			defer func() {
+				if err := cleanupFunc(); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("could not clean up kms wrapper", "path", wrapperPath))
+				}
+			}()
+		}
+		if configWrapper != nil {
+			ifWrapper, _ = configWrapper.(wrapping.InitFinalizer)
+		}
+	}
+	if ifWrapper != nil {
+		if err := ifWrapper.Init(ctx); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not initialize kms", "path", wrapperPath))
+			return nil, err
+		}
+	}
 
-func LoadConfigString(input string, wrapper wrapping.Wrapper) (*Config, error) {
-	if wrapper != nil {
-		var err error
-		input, err = configutil.EncryptDecrypt(input, true, true, wrapper)
+	if configWrapper != nil {
+		configString, err = configutil.EncryptDecrypt(configString, true, true, configWrapper)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return Parse(input)
+	cfg, err = Parse(configString)
+
+	if ifWrapper != nil {
+		if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+			event.WriteError(context.Background(), op, err, event.WithInfoMsg("could not finalize kms", "path", wrapperPath))
+			return nil, err
+		}
+	}
+	return cfg, err
 }
 
 func Parse(d string) (*Config, error) {

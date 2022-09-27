@@ -23,15 +23,10 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
-	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -548,80 +543,17 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 	switch {
 	case c.presetConfig != nil:
 		cfg, err = config.Parse(c.presetConfig.Load())
+		if err != nil {
+			event.WriteError(c.Context, op, err, event.WithInfoMsg("could not parse presetConfig", "config", c.presetConfig))
+			return nil, base.CommandUserError
+		}
 
 	default:
-		configStrs := make([]string, 0, len(c.flagConfig))
-		for _, path := range c.flagConfig {
-			fileBytes, err := os.ReadFile(path)
-			if err != nil {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not read config file", "path", path, "error", err))
-				return nil, base.CommandUserError
-			}
-			configStrs = append(configStrs, string(fileBytes))
+		cfg, err = config.Load(c.Context, c.flagConfig, c.flagConfigKms)
+		if err != nil {
+			c.UI.Error("Error parsing config: " + err.Error())
+			return nil, base.CommandUserError
 		}
-		configString := strings.Join(configStrs, "\n")
-
-		wrapperString := configString
-		if c.flagConfigKms != "" {
-			wrapperBytes, err := os.ReadFile(c.flagConfigKms)
-			if err != nil {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not read kms config file", "path", c.flagConfigKms, "error", err))
-				return nil, base.CommandUserError
-			}
-			wrapperString = string(wrapperBytes)
-		}
-
-		var configWrapper wrapping.Wrapper
-		var ifWrapper wrapping.InitFinalizer
-		var cleanupFunc func() error
-		if wrapperString != "" {
-			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromHcl(
-				c.Context,
-				wrapperString,
-				globals.KmsPurposeConfig,
-				configutil.WithPluginOptions(
-					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
-				),
-				// TODO: How would we want to expose this kind of log to users when
-				// using recovery configs? Generally with normal CLI commands we
-				// don't print out all of these logs. We may want a logger with a
-				// custom writer behind our existing gate where we print nothing
-				// unless there is an error, then dump all of it.
-				configutil.WithLogger(hclog.NewNullLogger()),
-			)
-			if err != nil {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", c.flagConfig))
-				return nil, base.CommandUserError
-			}
-			if cleanupFunc != nil {
-				defer func() {
-					if err := cleanupFunc(); err != nil {
-						event.WriteError(c.Context, op, err, event.WithInfoMsg("could not clean up kms wrapper", "path", c.flagConfig))
-					}
-				}()
-			}
-			if configWrapper != nil {
-				ifWrapper, _ = configWrapper.(wrapping.InitFinalizer)
-			}
-		}
-		if ifWrapper != nil {
-			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not initialize kms", "path", c.flagConfig))
-				return nil, base.CommandCliError
-			}
-		}
-		cfg, err = config.LoadConfigString(configString, configWrapper)
-		if ifWrapper != nil {
-			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-				event.WriteError(context.Background(), op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
-				return nil, base.CommandCliError
-			}
-		}
-	}
-	if err != nil {
-		event.WriteError(c.Context, op, err, event.WithInfoMsg("could not parse config", "path", c.flagConfig))
-		return nil, base.CommandUserError
 	}
 	return cfg, 0
 }
