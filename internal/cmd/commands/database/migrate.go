@@ -1,25 +1,18 @@
 package database
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
-	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
-	"github.com/hashicorp/boundary/sdk/wrapper"
-	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
@@ -49,7 +42,7 @@ type MigrateCommand struct {
 
 	selectedRepairs schema.RepairMigrations
 
-	flagConfig             string
+	flagConfig             []string
 	flagConfigKms          string
 	flagLogLevel           string
 	flagLogFormat          string
@@ -79,7 +72,7 @@ func (c *MigrateCommand) Flags() *base.FlagSets {
 
 	f := set.NewFlagSet("Command options")
 
-	f.StringVar(&base.StringVar{
+	f.StringSliceVar(&base.StringSliceVar{
 		Name:   "config",
 		Target: &c.flagConfig,
 		Completion: complete.PredictOr(
@@ -320,49 +313,7 @@ func (c *MigrateCommand) ParseFlagsAndConfig(args []string) int {
 		return base.CommandUserError
 	}
 
-	wrapperPath := c.flagConfig
-	if c.flagConfigKms != "" {
-		wrapperPath = c.flagConfigKms
-	}
-	wrapper, cleanupFunc, err := wrapper.GetWrapperFromPath(
-		c.Context,
-		wrapperPath,
-		globals.KmsPurposeConfig,
-		configutil.WithPluginOptions(
-			pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-			pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
-		),
-		// TODO: How would we want to expose this kind of log to users when
-		// using recovery configs? Generally with normal CLI commands we
-		// don't print out all of these logs. We may want a logger with a
-		// custom writer behind our existing gate where we print nothing
-		// unless there is an error, then dump all of it.
-		configutil.WithLogger(hclog.NewNullLogger()),
-	)
-	if err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandUserError
-	}
-	if wrapper != nil {
-		c.configWrapperCleanupFunc = cleanupFunc
-		if ifWrapper, ok := wrapper.(wrapping.InitFinalizer); ok {
-			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-				c.UI.Error(fmt.Errorf("Could not initialize kms: %w", err).Error())
-				return base.CommandUserError
-			}
-			c.configWrapperCleanupFunc = func() error {
-				if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-					c.UI.Warn(fmt.Errorf("Could not finalize kms: %w", err).Error())
-				}
-				if cleanupFunc != nil {
-					return cleanupFunc()
-				}
-				return nil
-			}
-		}
-	}
-
-	c.Config, err = config.LoadFile(c.flagConfig, wrapper)
+	c.Config, err = config.Load(c.Context, c.flagConfig, c.flagConfigKms)
 	if err != nil {
 		c.UI.Error("Error parsing config: " + err.Error())
 		return base.CommandUserError
