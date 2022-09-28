@@ -35,7 +35,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "missing-client-address",
 			conf: Config{
-				ClientConn:     conn,
+				ClientConn:     websocket.NetConn(context.Background(), conn, websocket.MessageBinary),
 				RemoteEndpoint: "tcp://remote",
 				Session:        si,
 				ConnectionId:   "connection-id",
@@ -58,7 +58,7 @@ func TestConfigValidate(t *testing.T) {
 			name: "missing-remote-endpoint",
 			conf: Config{
 				ClientAddress: clientAddr,
-				ClientConn:    conn,
+				ClientConn:    websocket.NetConn(context.Background(), conn, websocket.MessageBinary),
 				Session:       si,
 				ConnectionId:  "connection-id",
 			},
@@ -69,7 +69,7 @@ func TestConfigValidate(t *testing.T) {
 			name: "missing-session",
 			conf: Config{
 				ClientAddress:  clientAddr,
-				ClientConn:     conn,
+				ClientConn:     websocket.NetConn(context.Background(), conn, websocket.MessageBinary),
 				RemoteEndpoint: "tcp://remote",
 				ConnectionId:   "connection-id",
 			},
@@ -80,7 +80,7 @@ func TestConfigValidate(t *testing.T) {
 			name: "missing-connection-id",
 			conf: Config{
 				ClientAddress:  clientAddr,
-				ClientConn:     conn,
+				ClientConn:     websocket.NetConn(context.Background(), conn, websocket.MessageBinary),
 				RemoteEndpoint: "tcp://remote",
 				Session:        si,
 			},
@@ -91,7 +91,7 @@ func TestConfigValidate(t *testing.T) {
 			name: "valid",
 			conf: Config{
 				ClientAddress:  clientAddr,
-				ClientConn:     conn,
+				ClientConn:     websocket.NetConn(context.Background(), conn, websocket.MessageBinary),
 				RemoteEndpoint: "tcp://remote",
 				Session:        si,
 				ConnectionId:   "connection-id",

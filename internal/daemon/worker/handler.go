@@ -218,6 +218,8 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			return
 		}
 		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.Id)
+
+		cc := &countingConn{Conn: websocket.NetConn(connCtx, conn, websocket.MessageBinary)}
 		defer func() {
 			if sessionManager.RequestCloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
 				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.Id)
@@ -240,7 +242,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		conf := proxyHandlers.Config{
 			UserClientIp:   net.ParseIP(userClientIp),
 			ClientAddress:  clientAddr,
-			ClientConn:     conn,
+			ClientConn:     cc,
 			RemoteEndpoint: sess.GetEndpoint(),
 			Session:        sess,
 			ConnectionId:   ci.Id,
