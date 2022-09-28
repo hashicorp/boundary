@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -72,7 +73,7 @@ func WithConfigFile(f string) Option {
 			return fmt.Errorf("WithConfigFile provided more than once.")
 		}
 		c.setWithConfigFile = true
-		cfg, err := config.LoadFile(f, nil)
+		cfg, err := config.Load(context.Background(), []string{f}, "")
 		if err != nil {
 			return err
 		}

@@ -1,0 +1,28 @@
+{
+    "kms": [
+        {
+            "aead": {
+              "aead_type": "aes-gcm",
+              "key": "sP1fnF5Xz85RrXyELHFeZg9Ad2qt4Z4bgNHVGtD6ung=",
+              "key_id": "global_root",
+              "purpose": "root"
+            }
+        },
+        {
+            "aead": {
+              "aead_type": "aes-gcm",
+              "key": "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ=",
+              "key_id": "global_worker-auth",
+              "purpose": "worker-auth"
+            }
+        },
+        {
+            "aead": {
+              "aead_type": "aes-gcm",
+              "key": "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ=",
+              "key_id": "global_recovery",
+              "purpose": "recovery"
+            }
+        }
+    ]
+}
