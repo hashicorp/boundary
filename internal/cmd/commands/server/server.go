@@ -23,15 +23,10 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
-	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -56,7 +51,7 @@ type Command struct {
 	controller    *controller.Controller
 	worker        *worker.Worker
 
-	flagConfig      string
+	flagConfig      []string
 	flagConfigKms   string
 	flagLogLevel    string
 	flagLogFormat   string
@@ -90,14 +85,14 @@ func (c *Command) Flags() *base.FlagSets {
 
 	f := set.NewFlagSet("Command Options")
 
-	f.StringVar(&base.StringVar{
+	f.StringSliceVar(&base.StringSliceVar{
 		Name:   "config",
 		Target: &c.flagConfig,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
 			complete.PredictFiles("*.json"),
 		),
-		Usage: "Path to the configuration file.",
+		Usage: "Path to the configuration file. Can be specified multiple times for multiple configuration files (only if using HCL format).",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -548,63 +543,17 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 	switch {
 	case c.presetConfig != nil:
 		cfg, err = config.Parse(c.presetConfig.Load())
+		if err != nil {
+			event.WriteError(c.Context, op, err, event.WithInfoMsg("could not parse presetConfig", "config", c.presetConfig))
+			return nil, base.CommandUserError
+		}
 
 	default:
-		wrapperPath := c.flagConfig
-		if c.flagConfigKms != "" {
-			wrapperPath = c.flagConfigKms
+		cfg, err = config.Load(c.Context, c.flagConfig, c.flagConfigKms)
+		if err != nil {
+			c.UI.Error("Error parsing config: " + err.Error())
+			return nil, base.CommandUserError
 		}
-		var configWrapper wrapping.Wrapper
-		var ifWrapper wrapping.InitFinalizer
-		var cleanupFunc func() error
-		if wrapperPath != "" {
-			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromPath(
-				c.Context,
-				wrapperPath,
-				globals.KmsPurposeConfig,
-				configutil.WithPluginOptions(
-					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
-				),
-				// TODO: How would we want to expose this kind of log to users when
-				// using recovery configs? Generally with normal CLI commands we
-				// don't print out all of these logs. We may want a logger with a
-				// custom writer behind our existing gate where we print nothing
-				// unless there is an error, then dump all of it.
-				configutil.WithLogger(hclog.NewNullLogger()),
-			)
-			if err != nil {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", c.flagConfig))
-				return nil, base.CommandUserError
-			}
-			if cleanupFunc != nil {
-				defer func() {
-					if err := cleanupFunc(); err != nil {
-						event.WriteError(c.Context, op, err, event.WithInfoMsg("could not clean up kms wrapper", "path", c.flagConfig))
-					}
-				}()
-			}
-			if configWrapper != nil {
-				ifWrapper, _ = configWrapper.(wrapping.InitFinalizer)
-			}
-		}
-		if ifWrapper != nil {
-			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not initialize kms", "path", c.flagConfig))
-				return nil, base.CommandCliError
-			}
-		}
-		cfg, err = config.LoadFile(c.flagConfig, configWrapper)
-		if ifWrapper != nil {
-			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-				event.WriteError(context.Background(), op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
-				return nil, base.CommandCliError
-			}
-		}
-	}
-	if err != nil {
-		event.WriteError(c.Context, op, err, event.WithInfoMsg("could not parse config", "path", c.flagConfig))
-		return nil, base.CommandUserError
 	}
 	return cfg, 0
 }
@@ -754,7 +703,7 @@ func (c *Command) WaitForInterrupt() int {
 			var newConf *config.Config
 			var out int
 
-			if c.flagConfig == "" && c.presetConfig == nil {
+			if len(c.flagConfig) == 0 && c.presetConfig == nil {
 				goto RUNRELOADFUNCS
 			}
 
