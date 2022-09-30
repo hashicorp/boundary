@@ -3,6 +3,7 @@ package kms
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -46,6 +47,7 @@ func Test_New(t *testing.T) {
 			w:    rw,
 			want: &Kms{
 				reader: rw,
+				writer: rw,
 				underlying: func() *wrappingKms.Kms {
 					purposes := make([]wrappingKms.KeyPurpose, 0, len(ValidDekPurposes()))
 					for _, p := range ValidDekPurposes() {
@@ -344,6 +346,254 @@ func Test_ListDataKeyVersionDestructionJobs(t *testing.T) {
 		jobs, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "myscope")
 		require.NoError(t, err)
 		assert.Empty(t, jobs)
+	})
+}
+
+func TestMonitorTableRewrappingRuns(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	extWrapper := db.TestWrapper(t)
+	kmsCache := TestKms(t, conn, extWrapper)
+	err := kmsCache.CreateKeys(testCtx, "global")
+	require.NoError(t, err)
+	err = kmsCache.RotateKeys(testCtx, "global")
+	require.NoError(t, err)
+	keys, err := kmsCache.ListKeys(testCtx, "global")
+	require.NoError(t, err)
+	sqldb, err := conn.SqlDB(testCtx)
+	require.NoError(t, err)
+
+	t.Run("does-nothing-when-no-run-available", func(t *testing.T) {
+		callbackCalled := false
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+			callbackCalled = true
+			return nil
+		}
+		err = kmsCache.MonitorTableRewrappingRuns(testCtx, "auth_token")
+		require.NoError(t, err)
+		assert.False(t, callbackCalled, "auth_token callback should not have been called")
+	})
+	t.Run("returns-an-error-when-no-rewrapping-function-registered", func(t *testing.T) {
+		tableNameToRewrapFn = make(map[string]RewrapFn)
+		err = kmsCache.MonitorTableRewrappingRuns(testCtx, "auth_token")
+		require.Error(t, err)
+	})
+	t.Run("does-nothing-when-another-run-is-running", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_oidc_method', 100)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "update kms_data_key_version_destruction_job_run set is_running=true where key_id=$1 and table_name='auth_oidc_method'", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "truncate kms_data_key_version_destruction_job, kms_data_key_version_destruction_job_run CASCADE")
+			require.NoError(t, err)
+		})
+		callbackCalled := false
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+			callbackCalled = true
+			return nil
+		}
+		err = kmsCache.MonitorTableRewrappingRuns(testCtx, "auth_token")
+		require.NoError(t, err)
+		assert.False(t, callbackCalled, "auth_token callback should not have been called")
+	})
+	t.Run("chooses-one-when-one-run-available", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "truncate kms_data_key_version_destruction_job, kms_data_key_version_destruction_job_run CASCADE")
+			require.NoError(t, err)
+		})
+		callbackCalled := make(chan struct{})
+		returnFromCallback := make(chan struct{})
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+			close(callbackCalled)
+			assert.Equal(t, "global", scopeId)
+			// Block here until we want it to return
+			<-returnFromCallback
+			return nil
+		}
+		monitorErrCh := make(chan error)
+		// Run in goroutine so we can check status while the job is running
+		go func() {
+			monitorErrCh <- kmsCache.MonitorTableRewrappingRuns(testCtx, "auth_token")
+		}()
+		// Wait for callback to have been called
+		select {
+		case <-callbackCalled:
+		case err := <-monitorErrCh:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("Callback had not been called after 5 seconds")
+			return
+		}
+		// Now we know that the job is waiting for the callback to return, lets
+		// do some db inspection
+		row := sqldb.QueryRowContext(testCtx, "select is_running from kms_data_key_version_destruction_job_run where key_id=$1 and table_name='auth_token'", kvToDestroy.Id)
+		isRunning := false
+		err = row.Scan(&isRunning)
+		require.NoError(t, err)
+		assert.True(t, isRunning, "is_running should be set to true")
+		// Trigger callback to return
+		close(returnFromCallback)
+		// Wait for function to return
+		select {
+		case err := <-monitorErrCh:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("Function has not returned 5 seconds after callback finished")
+			return
+		}
+		// Lets look at the db state again after the function has returned
+		row = sqldb.QueryRowContext(testCtx, "select completed_count, is_running from kms_data_key_version_destruction_job_run where key_id=$1 and table_name='auth_token'", kvToDestroy.Id)
+		completedCount := 0
+		isRunning = false
+		err = row.Scan(&completedCount, &isRunning)
+		require.NoError(t, err)
+		assert.EqualValues(t, completedCount, 100, "completed_count should have been updated")
+		assert.False(t, isRunning, "is_running should be set to false")
+	})
+	t.Run("chooses-oldest-when-two-runs-available", func(t *testing.T) {
+		var kvsToDestroy []wrappingKms.KeyVersion
+		for _, key := range keys {
+			switch key.Purpose {
+			case wrappingKms.KeyPurpose(KeyPurposeDatabase.String()), wrappingKms.KeyPurpose(KeyPurposeTokens.String()):
+				kvsToDestroy = append(kvsToDestroy, key.Versions[0])
+			}
+		}
+		require.Len(t, kvsToDestroy, 2)
+		for _, kvToDestroy := range kvsToDestroy {
+			_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+			require.NoError(t, err)
+			_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+			require.NoError(t, err)
+		}
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "truncate kms_data_key_version_destruction_job, kms_data_key_version_destruction_job_run CASCADE")
+			require.NoError(t, err)
+		})
+		rewrappedKeyVersion := ""
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+			rewrappedKeyVersion = dataKeyVersionId
+			return nil
+		}
+		err = kmsCache.MonitorTableRewrappingRuns(testCtx, "auth_token")
+		require.NoError(t, err)
+		assert.Equal(t, rewrappedKeyVersion, kvsToDestroy[0].Id, "auth_token callback should have been called with the oldest job")
+	})
+	t.Run("resumes-running-one-when-two-runs-available-even-if-not-oldest", func(t *testing.T) {
+		var kvsToDestroy []wrappingKms.KeyVersion
+		for _, key := range keys {
+			switch key.Purpose {
+			case wrappingKms.KeyPurpose(KeyPurposeDatabase.String()), wrappingKms.KeyPurpose(KeyPurposeTokens.String()):
+				kvsToDestroy = append(kvsToDestroy, key.Versions[0])
+			}
+		}
+		require.Len(t, kvsToDestroy, 2)
+		for i, kvToDestroy := range kvsToDestroy {
+			_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+			require.NoError(t, err)
+			_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+			require.NoError(t, err)
+			if i == 1 {
+				_, err = sqldb.ExecContext(testCtx, "update kms_data_key_version_destruction_job_run set is_running=true where key_id=$1 and table_name='auth_token'", kvToDestroy.Id)
+				require.NoError(t, err)
+			}
+		}
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "truncate kms_data_key_version_destruction_job, kms_data_key_version_destruction_job_run CASCADE")
+			require.NoError(t, err)
+		})
+		rewrappedKeyVersion := ""
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+			rewrappedKeyVersion = dataKeyVersionId
+			return nil
+		}
+		err = kmsCache.MonitorTableRewrappingRuns(testCtx, "auth_token")
+		require.NoError(t, err)
+		assert.Equal(t, rewrappedKeyVersion, kvsToDestroy[1].Id, "auth_token callback should have been called with the already running job")
+	})
+	t.Run("updates-the-running-state-even-when-context-canceled", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "truncate kms_data_key_version_destruction_job, kms_data_key_version_destruction_job_run CASCADE")
+			require.NoError(t, err)
+		})
+		callbackCalled := make(chan struct{})
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+			close(callbackCalled)
+			// Block here until we want it to return
+			<-ctx.Done()
+			return ctx.Err()
+		}
+		monitorErrCh := make(chan error)
+		newCtx, cancel := context.WithCancel(testCtx)
+		defer cancel()
+		// Run in goroutine so we can check status while the job is running
+		go func() {
+			monitorErrCh <- kmsCache.MonitorTableRewrappingRuns(newCtx, "auth_token")
+		}()
+		// Wait for callback to have been called
+		select {
+		case <-callbackCalled:
+		case err := <-monitorErrCh:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("Callback had not been called after 5 seconds")
+			return
+		}
+		// Now we know that the job is waiting for the callback to return, lets
+		// do some db inspection
+		row := sqldb.QueryRowContext(testCtx, "select is_running from kms_data_key_version_destruction_job_run where key_id=$1 and table_name='auth_token'", kvToDestroy.Id)
+		isRunning := false
+		err = row.Scan(&isRunning)
+		require.NoError(t, err)
+		assert.True(t, isRunning, "is_running should be set to true")
+		// Trigger callback to return
+		cancel()
+		// Wait for function to return
+		select {
+		case err := <-monitorErrCh:
+			require.Equal(t, err, context.Canceled)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("Function has not returned 5 seconds after callback finished")
+			return
+		}
+		// Lets look at the db state again after the function has returned
+		row = sqldb.QueryRowContext(testCtx, "select completed_count, is_running from kms_data_key_version_destruction_job_run where key_id=$1 and table_name='auth_token'", kvToDestroy.Id)
+		completedCount := 0
+		isRunning = false
+		err = row.Scan(&completedCount, &isRunning)
+		require.NoError(t, err)
+		assert.EqualValues(t, completedCount, 100, "completed_count should have been updated")
+		assert.False(t, isRunning, "is_running should be set to false")
 	})
 }
 

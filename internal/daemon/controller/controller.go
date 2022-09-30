@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
@@ -477,6 +478,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
+		return err
+	}
+	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {
 		return err
 	}
 
