@@ -597,6 +597,76 @@ func TestMonitorTableRewrappingRuns(t *testing.T) {
 	})
 }
 
+func TestMonitorDataKeyVersionDestruction(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	extWrapper := db.TestWrapper(t)
+	kmsCache := TestKms(t, conn, extWrapper)
+	err := kmsCache.CreateKeys(testCtx, "global")
+	require.NoError(t, err)
+	err = kmsCache.RotateKeys(testCtx, "global")
+	require.NoError(t, err)
+	keys, err := kmsCache.ListKeys(testCtx, "global")
+	require.NoError(t, err)
+	sqldb, err := conn.SqlDB(testCtx)
+	require.NoError(t, err)
+
+	t.Run("does-nothing-when-no-jobs-available", func(t *testing.T) {
+		err = kmsCache.MonitorDataKeyVersionDestruction(testCtx)
+		require.NoError(t, err)
+	})
+	t.Run("does-nothing-when-the-job-isnt-completed", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "truncate kms_data_key_version_destruction_job, kms_data_key_version_destruction_job_run CASCADE")
+			require.NoError(t, err)
+		})
+		err = kmsCache.MonitorDataKeyVersionDestruction(testCtx)
+		require.NoError(t, err)
+		row := sqldb.QueryRowContext(testCtx, "select exists(select 1 from kms_data_key_version_destruction_job where key_id=$1)", kvToDestroy.Id)
+		exists := false
+		err = row.Scan(&exists)
+		require.NoError(t, err)
+		assert.True(t, exists, "the job should still exist")
+	})
+	t.Run("deletes-the-key-when-the-job-is-completed", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job(key_id) values ($1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "insert into kms_data_key_version_destruction_job_run(key_id, table_name, total_count) values ($1, 'auth_token', 100)", kvToDestroy.Id)
+		require.NoError(t, err)
+		_, err = sqldb.ExecContext(testCtx, "update kms_data_key_version_destruction_job_run set completed_count=100 where key_id=$1 and table_name='auth_token'", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "truncate kms_data_key_version_destruction_job, kms_data_key_version_destruction_job_run CASCADE")
+			require.NoError(t, err)
+		})
+		err = kmsCache.MonitorDataKeyVersionDestruction(testCtx)
+		require.NoError(t, err)
+		row := sqldb.QueryRowContext(testCtx, "select exists(select 1 from kms_data_key_version_destruction_job where key_id=$1)", kvToDestroy.Id)
+		exists := false
+		err = row.Scan(&exists)
+		require.NoError(t, err)
+		// The job is deleted by virtue of cascading foreign key references
+		assert.False(t, exists, "the job should be deleted")
+	})
+}
+
 type invalidReader struct {
 	db.Reader
 }

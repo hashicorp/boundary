@@ -51,4 +51,20 @@ on
 where
 	dkv.private_id=?
 `
+	// finishedDestructionJobsQuery returns all key version
+	// destruction jobs that have completed rewrapping all of their rows.
+	finishedDestructionJobsQuery = `
+select
+	j.key_id
+from
+	kms_data_key_version_destruction_job     j
+inner join
+	kms_data_key_version_destruction_job_run jr
+on
+	j.key_id=jr.key_id
+group by
+	(j.key_id)
+having
+	sum(jr.total_count)=sum(jr.completed_count)
+`
 )

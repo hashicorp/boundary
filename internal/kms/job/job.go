@@ -12,6 +12,13 @@ import (
 func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, kmsRepo *kms.Kms) error {
 	const op = "kmsjob.RegisterJobs"
 
+	dataKeyVersionDestructionMonitorJob, err := newDataKeyVersionDestructionMonitorJob(ctx, kmsRepo)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if err := s.RegisterJob(ctx, dataKeyVersionDestructionMonitorJob); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 	for _, tableName := range kms.ListTablesSupportingRewrap() {
 		tableRewrappingJob, err := newTableRewrappingJob(ctx, kmsRepo, tableName)
 		if err != nil {
