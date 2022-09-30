@@ -2,6 +2,7 @@ package kms
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"reflect"
@@ -22,6 +23,7 @@ import (
 type Kms struct {
 	underlying          *wrappingKms.Kms
 	reader              db.Reader
+	writer              db.Writer
 	derivedPurposeCache sync.Map
 }
 
@@ -44,6 +46,7 @@ func New(ctx context.Context, reader *db.Db, writer *db.Db, _ ...Option) (*Kms, 
 	return &Kms{
 		underlying: k,
 		reader:     reader,
+		writer:     writer,
 	}, nil
 }
 
@@ -277,6 +280,84 @@ func (k *Kms) ListDataKeyVersionDestructionJobs(ctx context.Context, scopeId str
 		return nil, err
 	}
 	return jobs, nil
+}
+
+// MonitorTableRewrappingRuns checks for pending rewrapping runs for the
+// specified table name, and attempts to become the running run and
+// start rewrapping data in the specified table. This may be a long running operation.
+// Options are ignored.
+func (k *Kms) MonitorTableRewrappingRuns(ctx context.Context, tableName string, _ ...Option) (retErr error) {
+	const op = "kms.(Kms).MonitorTableRewrappingRuns"
+
+	rewrapFn, ok := tableNameToRewrapFn[tableName]
+	if !ok {
+		return errors.E(ctx, errors.WithMsg("no rewrapper for table %q", tableName), errors.WithOp(op))
+	}
+
+	run := allocDataKeyVersionDestructionJobRun()
+	err := k.reader.LookupWhere(ctx, &run, "is_running=true and table_name!=?", []any{tableName})
+	switch {
+	case err == nil:
+		// Another run was already running
+		return nil
+	case errors.Match(errors.T(errors.RecordNotFound), err):
+		// Great, no running run, lets continue
+	default:
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to find any running runs"))
+	}
+	// Find the oldest or currently running run for our tablename
+	run = allocDataKeyVersionDestructionJobRun()
+	rows, err := k.reader.Query(ctx, oldestPendingOrRunningRun, []any{tableName})
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query pending runs for %q", tableName))
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := k.reader.ScanRows(ctx, rows, &run); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan pending run for %q", tableName))
+		}
+	}
+	if run.KeyId == "" {
+		// No queued runs, lets try again later
+		return nil
+	}
+	if !run.IsRunning {
+		// No running job, lets try to become the running job
+		run.IsRunning = true
+		if _, err := k.writer.Update(ctx, &run, []string{"IsRunning"}, nil); err != nil {
+			// Unique error means some other run started running since we last checked.
+			if errors.Match(errors.T(errors.NotUnique), err) {
+				return nil
+			}
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to become running run for %q", tableName))
+		}
+	}
+
+	defer func() {
+		if retErr != nil {
+			// Create new context in case we failed because the context was canceled
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+		}
+		// Update the progress of this run
+		args := []any{
+			sql.Named("key_id", run.KeyId),
+			sql.Named("table_name", tableName),
+		}
+		if _, err := k.writer.Exec(ctx, fmt.Sprintf(updateCompletedCountQueryTemplate, tableName), args); err != nil {
+			if retErr != nil {
+				// Just emit an error, don't mutate the returned error
+				_ = errors.E(ctx, errors.WithWrap(err))
+			} else {
+				retErr = err
+			}
+		}
+	}()
+
+	// Call the function to rewrap the data in the table. The progress will be automatically
+	// updated by the deferred function.
+	return rewrapFn(ctx, run.KeyId, k.reader, k.writer, k)
 }
 
 // VerifyGlobalRoot will verify that the global root wrapper is reasonable.
