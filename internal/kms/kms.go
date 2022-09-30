@@ -360,6 +360,34 @@ func (k *Kms) MonitorTableRewrappingRuns(ctx context.Context, tableName string, 
 	return rewrapFn(ctx, run.KeyId, k.reader, k.writer, k)
 }
 
+// MonitorDataKeyVersionDestruction monitors any pending destruction jobs. If
+// a job has finished rewrapping all rows, it will destroy the key version
+// by calling RevokeKeyVersion on the underlying kms.
+func (k *Kms) MonitorDataKeyVersionDestruction(ctx context.Context) error {
+	const op = "kms.(Kms).MonitorDataKeyVersionDestruction"
+
+	rows, err := k.reader.Query(ctx, finishedDestructionJobsQuery, nil)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to find completed destruction jobs"))
+	}
+	defer rows.Close()
+	var completedDataKeyVersionIds []string
+	for rows.Next() {
+		if err := k.reader.ScanRows(ctx, rows, &completedDataKeyVersionIds); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
+	for _, dataKeyVersionId := range completedDataKeyVersionIds {
+		// Finally, revoke the key, deleting it from the database.
+		// This will error if anything still references it that isn't
+		// meant to be cascade deleted.
+		if err := k.underlying.RevokeKeyVersion(ctx, dataKeyVersionId); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
+	return nil
+}
+
 // VerifyGlobalRoot will verify that the global root wrapper is reasonable.
 func (k *Kms) VerifyGlobalRoot(ctx context.Context) error {
 	const op = "kms.(Kms).VerifyGlobalRoot"
