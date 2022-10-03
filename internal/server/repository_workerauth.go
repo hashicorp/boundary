@@ -376,17 +376,29 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformation")
 	}
 
-	authorizedWorker, err := r.findWorkerAuth(ctx, node)
+	workerAuthorizedSet, err := r.findWorkerAuth(ctx, node)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if authorizedWorker == nil {
+	if workerAuthorizedSet == nil || workerAuthorizedSet.Current == nil {
 		return nodee.ErrNotFound
 	}
 
-	node.EncryptionPublicKeyBytes = authorizedWorker.WorkerEncryptionPubKey
-	node.CertificatePublicKeyPkix = authorizedWorker.WorkerSigningPubKey
-	node.RegistrationNonce = authorizedWorker.Nonce
+	if workerAuthorizedSet.Previous != nil {
+		priorKey := &types.EncryptionKey{
+			KeyId:           workerAuthorizedSet.Previous.WorkerKeyIdentifier,
+			PrivateKeyPkcs8: workerAuthorizedSet.Previous.ControllerEncryptionPrivKey,
+			PrivateKeyType:  types.KEYTYPE_X25519,
+			PublicKeyPkix:   workerAuthorizedSet.Previous.WorkerEncryptionPubKey,
+			PublicKeyType:   types.KEYTYPE_X25519,
+		}
+
+		node.PreviousEncryptionKey = priorKey
+	}
+
+	node.EncryptionPublicKeyBytes = workerAuthorizedSet.Current.WorkerEncryptionPubKey
+	node.CertificatePublicKeyPkix = workerAuthorizedSet.Current.WorkerSigningPubKey
+	node.RegistrationNonce = workerAuthorizedSet.Current.Nonce
 
 	// Default values are used for key types
 	node.EncryptionPublicKeyType = types.KEYTYPE_X25519
@@ -394,16 +406,16 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	node.ServerEncryptionPrivateKeyType = types.KEYTYPE_X25519
 
 	// Decrypt private key
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(authorizedWorker.KeyId))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(workerAuthorizedSet.Current.KeyId))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	node.ServerEncryptionPrivateKeyBytes, err = decrypt(ctx, authorizedWorker.ControllerEncryptionPrivKey, databaseWrapper)
+	node.ServerEncryptionPrivateKeyBytes, err = decrypt(ctx, workerAuthorizedSet.Current.ControllerEncryptionPrivKey, databaseWrapper)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
-	workerIdInfo := workerAuthWorkerId{WorkerId: authorizedWorker.GetWorkerId()}
+	workerIdInfo := workerAuthWorkerId{WorkerId: workerAuthorizedSet.Current.GetWorkerId()}
 	s := structs.New(workerIdInfo)
 	s.TagName = "mapstructure"
 	state, err := structpb.NewStruct(s.Map())
@@ -418,15 +430,6 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.Wrap(ctx, err, op)
 	}
 	node.CertificateBundles = certBundles
-
-	// Get prior encryption key, if available
-	priorKey, err := r.findPriorEncryptionKey(ctx, authorizedWorker.GetWorkerId())
-	if !errors.IsNotFoundError(err) {
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		node.PreviousEncryptionKey = priorKey
-	}
 
 	return nil
 }
@@ -497,7 +500,7 @@ func (r *WorkerAuthRepositoryStorage) findCertBundles(ctx context.Context, worke
 	return certBundle, nil
 }
 
-func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *types.NodeInformation) (*WorkerAuth, error) {
+func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *types.NodeInformation) (*WorkerAuthSet, error) {
 	const op = "server.(WorkerAuthRepositoryStorage).findWorkerAuth"
 	if node == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "node is nil")
@@ -514,16 +517,7 @@ func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	return worker, nil
-}
-
-func (r *WorkerAuthRepositoryStorage) findPriorEncryptionKey(ctx context.Context, workerId string) (*types.EncryptionKey, error) {
-	const op = "server.(WorkerAuthRepositoryStorage).findPriorEncryptionKey"
-	if workerId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty workerId")
-	}
-
-	workerAuthSet, err := r.FindWorkerAuthByWorkerId(ctx, workerId)
+	workerAuthSet, err := r.FindWorkerAuthByWorkerId(ctx, worker.GetWorkerId())
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, err
@@ -531,20 +525,7 @@ func (r *WorkerAuthRepositoryStorage) findPriorEncryptionKey(ctx context.Context
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	if workerAuthSet.Previous == nil {
-		return nil, nil
-	}
-
-	// Create the EncryptionKey using the prior worker auth record
-	priorKey := &types.EncryptionKey{
-		KeyId:           workerAuthSet.Previous.WorkerKeyIdentifier,
-		PrivateKeyPkcs8: workerAuthSet.Previous.ControllerEncryptionPrivKey,
-		PrivateKeyType:  types.KEYTYPE_X25519,
-		PublicKeyPkix:   workerAuthSet.Previous.WorkerEncryptionPubKey,
-		PublicKeyType:   types.KEYTYPE_X25519,
-	}
-
-	return priorKey, nil
+	return workerAuthSet, nil
 }
 
 func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, cert *types.RootCertificates) error {
