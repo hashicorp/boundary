@@ -376,8 +376,22 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformation")
 	}
 
-	workerAuthorizedSet, err := r.findWorkerAuth(ctx, node)
+	worker := allocWorkerAuth()
+	worker.WorkerKeyIdentifier = node.Id
+
+	err := r.reader.LookupById(ctx, worker)
 	if err != nil {
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return nodee.ErrNotFound
+		}
+		return errors.Wrap(ctx, err, op)
+	}
+
+	workerAuthorizedSet, err := r.FindWorkerAuthByWorkerId(ctx, worker.GetWorkerId())
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nodee.ErrNotFound
+		}
 		return errors.Wrap(ctx, err, op)
 	}
 	if workerAuthorizedSet == nil || workerAuthorizedSet.Current == nil {
@@ -498,34 +512,6 @@ func (r *WorkerAuthRepositoryStorage) findCertBundles(ctx context.Context, worke
 	}
 
 	return certBundle, nil
-}
-
-func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *types.NodeInformation) (*WorkerAuthSet, error) {
-	const op = "server.(WorkerAuthRepositoryStorage).findWorkerAuth"
-	if node == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "node is nil")
-	}
-
-	worker := allocWorkerAuth()
-	worker.WorkerKeyIdentifier = node.Id
-
-	err := r.reader.LookupById(ctx, worker)
-	if err != nil {
-		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	workerAuthSet, err := r.FindWorkerAuthByWorkerId(ctx, worker.GetWorkerId())
-	if err != nil {
-		if errors.IsNotFoundError(err) {
-			return nil, err
-		}
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	return workerAuthSet, nil
 }
 
 func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, cert *types.RootCertificates) error {
