@@ -451,7 +451,7 @@ func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext
 	}, server.WithFetchNodeCredentialsRequest(childPkiWorkerReq))
 	require.NoError(err)
 
-	// Sleep so that DAG gets updated
+	// Sleep so that workers can startup and connect.
 	time.Sleep(10 * time.Second)
 
 	return kmsWorker, pkiWorker, childPkiWorker
