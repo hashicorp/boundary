@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
@@ -172,6 +173,14 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
 	}
 
+	// This wraps the reverse grpc pki worker connections with a listener which
+	// records the worker id of the  connection that is about to be established
+	// inside the clusters downstream connection manager.
+	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(w.baseContext, reverseGrpcListener, w.pkiConnManager)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating reverse grpc pki worker tracking listener: %w", op, err)
+	}
+
 	statsHandler, err := metric.InstrumentClusterStatsHandler(w.baseContext)
 	if err != nil {
 		return nil, errors.Wrap(w.baseContext, err, op)
@@ -197,11 +206,19 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
 	}
 
+	// This wraps the normal pki worker connections with a listener which
+	// records the worker id of the  connection that is about to be established
+	// inside the clusters downstream connection manager.
+	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(cancelCtx, eventingListener, w.pkiConnManager)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
+	}
+
 	return func() {
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(proxyListener)
-		go ln.GrpcServer.Serve(eventingListener)
-		go handleSecondaryConnection(cancelCtx, reverseGrpcListener, w.downstreamRoutes, -1)
+		go ln.GrpcServer.Serve(pkiWorkerTrackingListener)
+		go handleSecondaryConnection(cancelCtx, revPkiWorkerTrackingListener, w.downstreamRoutes, -1)
 	}, nil
 }
 
