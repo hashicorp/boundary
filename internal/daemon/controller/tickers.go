@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/server/store"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -13,8 +14,9 @@ import (
 
 // In the future we could make this configurable
 const (
-	statusInterval      = 10 * time.Second
-	terminationInterval = 1 * time.Minute
+	clusterConnectionManagementInterval = 3 * time.Second
+	statusInterval                      = 10 * time.Second
+	terminationInterval                 = 1 * time.Minute
 )
 
 // This is exported so it can be tweaked in tests
@@ -153,5 +155,37 @@ func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
 			}
 			timer.Reset(getRandomInterval())
 		}
+	}
+}
+
+func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.Context, m *cluster.DownstreamManager) {
+	const op = "controller.(downstreamManager).startManagingTicker"
+	timer := time.NewTimer(0)
+	for {
+		select {
+		case <-cancelCtx.Done():
+			event.WriteSysEvent(cancelCtx, op, "worker connection maintenance ticking shutting down")
+			return
+
+		case <-timer.C:
+			repo, err := c.WorkerAuthRepoStorageFn()
+			if err != nil {
+				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for cluster connection maintenance"))
+				break
+			}
+			wKeyIds := m.Connected()
+			if len(wKeyIds) == 0 {
+				break
+			}
+
+			authorized, err := repo.AuthorizableWorkerKeyIds(cancelCtx, wKeyIds)
+			if err != nil {
+				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldnt get authorized workers from repo"))
+				break
+			}
+			cluster.DisconnectUnauthorized(m, wKeyIds, authorized)
+		}
+
+		timer.Reset(clusterConnectionManagementInterval)
 	}
 }

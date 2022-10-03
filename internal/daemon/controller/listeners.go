@@ -12,6 +12,7 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -157,12 +158,21 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
 	}
+
+	// This wraps the normal pki worker connections with a listener which
+	// records the worker id of the  connection that is about to be established
+	// inside the clusters downstream connection manager.
+	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, eventingAuthedListener, c.pkiConnManager)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
+	}
+
 	// Create a multiplexer to unify connections between PKI and KMS
 	multiplexingAuthedListener, err := nodeenet.NewMultiplexingListener(c.baseContext, nodeeAuthedListener.Addr())
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating authed multiplexed listener: %w", err)
 	}
-	if err := multiplexingAuthedListener.IngressListener(eventingAuthedListener); err != nil {
+	if err := multiplexingAuthedListener.IngressListener(pkiWorkerTrackingListener); err != nil {
 		return nil, fmt.Errorf("error adding authed evented listener to multiplexed listener: %w", err)
 	}
 	// Connections that came in on the cluster listener that are not authed via
@@ -178,12 +188,21 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating reverse gprc connection split listener: %w", err)
 	}
+
+	// This wraps the reverse grpc pki worker connections with a listener which
+	// records the worker id of the  connection that is about to be established
+	// inside the clusters downstream connection manager.
+	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, reverseGrpcListener, c.pkiConnManager)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating reverse grpc pki worker tracking listener: %w", op, err)
+	}
+
 	// Create a multiplexer to unify reverse grpc connections between PKI and KMS
 	multiplexingReverseGrpcListener, err := nodeenet.NewMultiplexingListener(c.baseContext, reverseGrpcListener.Addr())
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating reverse grpc multiplexed listener: %w", err)
 	}
-	if err := multiplexingReverseGrpcListener.IngressListener(reverseGrpcListener); err != nil {
+	if err := multiplexingReverseGrpcListener.IngressListener(revPkiWorkerTrackingListener); err != nil {
 		return nil, fmt.Errorf("error adding reverse grpc listener to multiplexed listener: %w", err)
 	}
 

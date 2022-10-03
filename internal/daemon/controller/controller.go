@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
@@ -127,6 +128,8 @@ type Controller struct {
 	// Used to signal the Health Service to start
 	// replying to queries with "503 Service Unavailable".
 	HealthService *health.Service
+
+	pkiConnManager *cluster.DownstreamManager
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
@@ -141,6 +144,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		workerStatusUpdateTimes: new(sync.Map),
 		enabledPlugins:          conf.Server.EnabledPlugins,
 		apiListeners:            make([]*base.ServerListener, 0),
+		pkiConnManager:          cluster.NewDownstreamManager(),
 	}
 
 	if downstreamRouterFactory != nil {
@@ -380,7 +384,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 
 func (c *Controller) Start() error {
 	const op = "controller.(Controller).Start"
-	if c.started.Load() {
+	if c.started.Swap(true) {
 		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
 		return nil
 	}
@@ -421,7 +425,7 @@ func (c *Controller) Start() error {
 	}()
 	go func() {
 		defer c.tickerWg.Done()
-		c.started.Store(true)
+		c.startWorkerConnectionMaintenanceTicking(c.baseContext, c.pkiConnManager)
 	}()
 
 	if c.downstreamRoutes != nil {

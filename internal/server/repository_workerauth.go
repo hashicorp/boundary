@@ -517,6 +517,38 @@ func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *
 	return worker, nil
 }
 
+// AuthorizableWorkerKeyIds returns all the worker key identifiers that are
+// authorizable from the slice of key identifiers provided to the function.
+// TODO: Maybe make this ListAuthorizableWorkers
+func (r *WorkerAuthRepositoryStorage) AuthorizableWorkerKeyIds(ctx context.Context, workerKeyIds []string) ([]string, error) {
+	const authorizedWorkerQuery = `
+	select w.worker_key_identifier 
+	from 
+	    worker_auth_certificate_bundle as w
+	where
+	    w.worker_key_identifier in (?)
+`
+	const op = "server.(WorkerAuthRepositoryStorage).AuthorizableWorkerKeyIds"
+	if len(workerKeyIds) == 0 {
+		return []string{}, nil
+	}
+	rows, err := r.reader.Query(ctx, authorizedWorkerQuery, []interface{}{workerKeyIds}, db.WithDebug(true))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+	var ret []string
+	for rows.Next() {
+		var result string
+		err = r.reader.ScanRows(ctx, rows, &result)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		ret = append(ret, result)
+	}
+	return ret, nil
+}
+
 func (r *WorkerAuthRepositoryStorage) findPriorEncryptionKey(ctx context.Context, workerId string) (*types.EncryptionKey, error) {
 	const op = "server.(WorkerAuthRepositoryStorage).findPriorEncryptionKey"
 	if workerId == "" {
