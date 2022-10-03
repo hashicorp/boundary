@@ -47,6 +47,9 @@ func TestStatus(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
@@ -89,7 +92,7 @@ func TestStatus(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -233,6 +236,9 @@ func TestStatusSessionClosed(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
@@ -287,7 +293,7 @@ func TestStatusSessionClosed(t *testing.T) {
 	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -414,6 +420,9 @@ func TestStatusDeadConnection(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
@@ -466,7 +475,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -554,6 +563,9 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
@@ -619,7 +631,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -739,6 +751,9 @@ func TestWorkerOperationalStatus(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
 	sessionRepoFn := func(opt ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms)
 	}
@@ -748,7 +763,7 @@ func TestWorkerOperationalStatus(t *testing.T) {
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	cases := []struct {
