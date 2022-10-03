@@ -517,34 +517,37 @@ func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *
 	return worker, nil
 }
 
-// AuthorizableWorkerKeyIds returns all the worker key identifiers that are
-// authorizable from the slice of key identifiers provided to the function.
-// TODO: Maybe make this ListAuthorizableWorkers
-func (r *WorkerAuthRepositoryStorage) AuthorizableWorkerKeyIds(ctx context.Context, workerKeyIds []string) ([]string, error) {
+// VerifyAuthorizableWorkerKeyIds returns all the worker key identifiers that
+// are authorizable from the slice of key identifiers provided to the function.
+func (r *WorkerAuthRepositoryStorage) VerifyAuthorizableWorkerKeyIds(ctx context.Context, workerKeyIds []string) ([]string, error) {
 	const authorizedWorkerQuery = `
-	select w.worker_key_identifier 
+	select distinct w.worker_key_identifier 
 	from 
 	    worker_auth_certificate_bundle as w
 	where
 	    w.worker_key_identifier in (?)
 `
-	const op = "server.(WorkerAuthRepositoryStorage).AuthorizableWorkerKeyIds"
+	const op = "server.(WorkerAuthRepositoryStorage).VerifyAuthorizableWorkerKeyIds"
 	if len(workerKeyIds) == 0 {
 		return []string{}, nil
 	}
-	rows, err := r.reader.Query(ctx, authorizedWorkerQuery, []interface{}{workerKeyIds}, db.WithDebug(true))
+	rows, err := r.reader.Query(ctx, authorizedWorkerQuery, []interface{}{workerKeyIds})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
+
+	type rowsResult struct {
+		WorkerKeyIdentifier string
+	}
 	var ret []string
 	for rows.Next() {
-		var result string
+		var result rowsResult
 		err = r.reader.ScanRows(ctx, rows, &result)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		ret = append(ret, result)
+		ret = append(ret, result.WorkerKeyIdentifier)
 	}
 	return ret, nil
 }
