@@ -456,7 +456,7 @@ func TestAuthorizableWorkerKeyIds(t *testing.T) {
 	rw := db.New(conn)
 	repo, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
-	got, err := repo.AuthorizableWorkerKeyIds(ctx, []string{})
+	got, err := repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{})
 	require.NoError(t, err)
 	assert.Empty(t, got)
 
@@ -467,28 +467,17 @@ func TestAuthorizableWorkerKeyIds(t *testing.T) {
 
 	_, _ = w1, w2
 
-	got, err = repo.AuthorizableWorkerKeyIds(ctx, []string{"not-found-key-id", keyId1})
+	got, err = repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{"not-found-key-id", keyId1})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{keyId1}, got)
-	t.Logf("Key1: %q", keyId1)
 
-	got, err = repo.AuthorizableWorkerKeyIds(ctx, []string{"another-key-that-isnt-found", keyId2, "not-found-key-id"})
+	got, err = repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{keyId2, "not-found-key-id"})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{keyId2}, got)
 
-	t.Logf("Key2: %q", keyId2)
-	//
-	//got, err = repo.AuthorizableWorkerKeyIds(ctx, []string{keyId1, keyId2})
-	//assert.NoError(t, err)
-	//assert.ElementsMatch(t, []string{keyId1, keyId2}, got)
-
-	rows, err := repo.reader.Query(ctx, "select worker_key_identifier from worker_auth_certificate_bundle", nil)
-	require.NoError(t, err)
-	for rows.Next() {
-		var result string
-		require.NoError(t, repo.reader.ScanRows(ctx, rows, &result))
-		t.Log(result)
-	}
+	got, err = repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{keyId1, keyId2}, got)
 }
 
 type mockTestWrapper struct {

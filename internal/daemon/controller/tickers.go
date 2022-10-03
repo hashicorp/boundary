@@ -178,7 +178,7 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 				break
 			}
 
-			authorized, err := repo.AuthorizableWorkerKeyIds(cancelCtx, wKeyIds)
+			authorized, err := repo.VerifyAuthorizableWorkerKeyIds(cancelCtx, wKeyIds)
 			if err != nil {
 				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldnt get authorized workers from repo"))
 				break
