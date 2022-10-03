@@ -26,7 +26,7 @@ func (m *DownstreamManager) addConnection(id string, c net.Conn) {
 	m.workerConnections[id] = append(m.workerConnections[id], c)
 }
 
-// disconnect disconnects all connections associated with the provided worker key id.
+// Disconnect closes all connections associated with the provided worker key id.
 func (m *DownstreamManager) Disconnect(id string) {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -36,7 +36,8 @@ func (m *DownstreamManager) Disconnect(id string) {
 	delete(m.workerConnections, id)
 }
 
-// Connected returns a struct which can report its
+// Connected returns a slice of key ids for all workers that are currently
+// being tracked by this downstream manager.
 func (m *DownstreamManager) Connected() []string {
 	m.l.RLock()
 	defer m.l.RUnlock()
@@ -49,8 +50,8 @@ func (m *DownstreamManager) Connected() []string {
 	return r
 }
 
-// DisconnectUnauthorized calls disconnects for all ids which are
-// present in the connected but not in the authorized slice of key ids.
+// DisconnectUnauthorized calls disconnects for all ids which are present in
+// the connected but not in the authorized slice of key ids.
 func DisconnectUnauthorized(dm *DownstreamManager, connected, authorized []string) {
 	am := make(map[string]struct{}, len(authorized))
 	for _, i := range authorized {
