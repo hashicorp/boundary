@@ -86,6 +86,5 @@ func TestDeleteConnectedWorkers(t *testing.T) {
 				prevState = newState
 			}
 		})
-
 	}
 }
