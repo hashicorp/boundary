@@ -529,7 +529,7 @@ func (r *WorkerAuthRepositoryStorage) VerifyAuthorizableWorkerKeyIds(ctx context
 `
 	const op = "server.(WorkerAuthRepositoryStorage).VerifyAuthorizableWorkerKeyIds"
 	if len(workerKeyIds) == 0 {
-		return []string{}, nil
+		return nil, nil
 	}
 	rows, err := r.reader.Query(ctx, authorizedWorkerQuery, []interface{}{workerKeyIds})
 	if err != nil {
