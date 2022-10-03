@@ -14,7 +14,7 @@ import (
 
 // In the future we could make this configurable
 const (
-	clusterConnectionManagementInterval = 3 * time.Second
+	workerConnectionMaintenanceInterval = 3 * time.Second
 	statusInterval                      = 10 * time.Second
 	terminationInterval                 = 1 * time.Minute
 )
@@ -164,7 +164,7 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 	for {
 		select {
 		case <-cancelCtx.Done():
-			event.WriteSysEvent(cancelCtx, op, "worker connection maintenance ticking shutting down")
+			event.WriteSysEvent(cancelCtx, op, "context done, shutting down")
 			return
 
 		case <-timer.C:
@@ -174,18 +174,14 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 				break
 			}
 			wKeyIds := m.Connected()
-			if len(wKeyIds) == 0 {
-				break
-			}
-
 			authorized, err := repo.VerifyAuthorizableWorkerKeyIds(cancelCtx, wKeyIds)
 			if err != nil {
-				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldnt get authorized workers from repo"))
+				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get authorized workers from repo"))
 				break
 			}
 			cluster.DisconnectUnauthorized(m, wKeyIds, authorized)
 		}
 
-		timer.Reset(clusterConnectionManagementInterval)
+		timer.Reset(workerConnectionMaintenanceInterval)
 	}
 }

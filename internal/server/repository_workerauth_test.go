@@ -478,6 +478,15 @@ func TestAuthorizableWorkerKeyIds(t *testing.T) {
 	got, err = repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{keyId1, keyId2}, got)
+
+	workerRepo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+	_, err = workerRepo.DeleteWorker(ctx, w1.GetPublicId())
+	require.NoError(t, err)
+
+	got, err = repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId2}, got)
 }
 
 type mockTestWrapper struct {
