@@ -159,9 +159,8 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
 	}
 
-	// This wraps the normal pki worker connections with a listener which
-	// records the worker id of the  connection that is about to be established
-	// inside the clusters downstream connection manager.
+	// This wraps the normal pki worker connections with a listener which adds
+	// the worker key id of the connections to the controller's pkiConnManager.
 	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, eventingAuthedListener, c.pkiConnManager)
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
@@ -190,8 +189,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	}
 
 	// This wraps the reverse grpc pki worker connections with a listener which
-	// records the worker id of the  connection that is about to be established
-	// inside the clusters downstream connection manager.
+	// adds the worker key id of the connections to the pkiConnManager.
 	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, reverseGrpcListener, c.pkiConnManager)
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating reverse grpc pki worker tracking listener: %w", op, err)
