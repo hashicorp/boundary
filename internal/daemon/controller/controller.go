@@ -51,7 +51,7 @@ type downstreamRouter interface {
 	StartRouteMgmtTicking(context.Context, func() string, int) error
 
 	// ProcessPendingConnections starts a function that continually processes
-	// incoming client connections and processes them. This never returns until
+	// incoming client connections. This never returns until
 	// the provided context is done.
 	StartProcessingPendingConnections(context.Context, func() string)
 }
