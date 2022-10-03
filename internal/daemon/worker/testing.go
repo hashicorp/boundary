@@ -456,3 +456,84 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	}
 	return NewTestWorker(t, nextOpts)
 }
+
+// NewTestMultihopWorkers creates a KMS and PKI worker with the controller as an upstream, and a
+// child PKI worker as a downstream of the PKI worker connected to the controller.
+// Tags for the PKI and child PKI worker can be passed in, if desired
+func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext context.Context, clusterAddrs []string,
+	workerAuthKms wrapping.Wrapper, serversRepoFn common.ServersRepoFactory, pkiTags,
+	childPkiTags map[string][]string,
+) (kmsWorker *TestWorker, pkiWorker *TestWorker, childPkiWorker *TestWorker) {
+	require := require.New(t)
+	kmsWorker = NewTestWorker(t, &TestWorkerOpts{
+		WorkerAuthKms:    workerAuthKms,
+		InitialUpstreams: clusterAddrs,
+		Logger:           logger.Named("kmsWorker"),
+	})
+
+	// names should not be set when using pki workers
+	pkiWorkerConf, err := config.DevWorker()
+	require.NoError(err)
+	pkiWorkerConf.Worker.Name = ""
+	if pkiTags != nil {
+		pkiWorkerConf.Worker.Tags = pkiTags
+	}
+	pkiWorkerConf.Worker.InitialUpstreams = clusterAddrs
+	pkiWorker = NewTestWorker(t, &TestWorkerOpts{
+		InitialUpstreams: clusterAddrs,
+		Logger:           logger.Named("pkiWorker"),
+		Config:           pkiWorkerConf,
+	})
+	t.Cleanup(pkiWorker.Shutdown)
+
+	// Get a server repo and worker auth repo
+	serversRepo, err := serversRepoFn()
+	require.NoError(err)
+
+	// Perform initial authentication of worker to controller
+	reqBytes, err := base58.FastBase58Decoding(pkiWorker.Worker().WorkerAuthRegistrationRequest)
+	require.NoError(err)
+
+	// Decode the proto into the request and create the worker
+	pkiWorkerReq := new(types.FetchNodeCredentialsRequest)
+	require.NoError(proto.Unmarshal(reqBytes, pkiWorkerReq))
+	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, server.WithFetchNodeCredentialsRequest(pkiWorkerReq))
+	require.NoError(err)
+
+	childPkiWorkerConf, err := config.DevWorker()
+	require.NoError(err)
+	childPkiWorkerConf.Worker.Name = ""
+	if childPkiTags != nil {
+		childPkiWorkerConf.Worker.Tags = childPkiTags
+	}
+	childPkiWorkerConf.Worker.InitialUpstreams = kmsWorker.ProxyAddrs()
+
+	childPkiWorker = NewTestWorker(t, &TestWorkerOpts{
+		InitialUpstreams: kmsWorker.ProxyAddrs(),
+		Logger:           logger.Named("childPkiWorker"),
+		Config:           childPkiWorkerConf,
+	})
+
+	// Perform initial authentication of worker to controller
+	reqBytes, err = base58.FastBase58Decoding(childPkiWorker.Worker().WorkerAuthRegistrationRequest)
+	require.NoError(err)
+
+	// Decode the proto into the request and create the worker
+	childPkiWorkerReq := new(types.FetchNodeCredentialsRequest)
+	require.NoError(proto.Unmarshal(reqBytes, childPkiWorkerReq))
+	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, server.WithFetchNodeCredentialsRequest(childPkiWorkerReq))
+	require.NoError(err)
+
+	// Sleep so that workers can startup and connect.
+	time.Sleep(10 * time.Second)
+
+	return kmsWorker, pkiWorker, childPkiWorker
+}
