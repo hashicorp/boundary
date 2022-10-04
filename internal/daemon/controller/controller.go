@@ -50,6 +50,11 @@ type downstreamRouter interface {
 	// StartRouteMgmtTicking starts a ticker which manages the router's
 	// connections.
 	StartRouteMgmtTicking(context.Context, func() string, int) error
+
+	// ProcessPendingConnections starts a function that continually processes
+	// incoming client connections. This only returns when the provided context
+	// is done.
+	StartProcessingPendingConnections(context.Context, func() string)
 }
 
 // downstreamWorkersTicker defines an interface for a ticker that maintains the
@@ -429,19 +434,25 @@ func (c *Controller) Start() error {
 	}()
 
 	if c.downstreamRoutes != nil {
-		c.tickerWg.Add(1)
+		c.tickerWg.Add(2)
+
+		servNameFn := func() string {
+			switch {
+			case c.conf.RawConfig.Controller.Name != "":
+				return c.conf.RawConfig.Controller.Name
+			default:
+				return "unknown controller name"
+			}
+		}
+		go func() {
+			defer c.tickerWg.Done()
+			c.downstreamRoutes.StartProcessingPendingConnections(c.baseContext, servNameFn)
+		}()
 		go func() {
 			defer c.tickerWg.Done()
 			err := c.downstreamRoutes.StartRouteMgmtTicking(
 				c.baseContext,
-				func() string {
-					switch {
-					case c.conf.RawConfig.Controller.Name != "":
-						return c.conf.RawConfig.Controller.Name
-					default:
-						return "unknown controller name"
-					}
-				},
+				servNameFn,
 				-1,
 			)
 			if err != nil {

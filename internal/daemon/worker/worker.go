@@ -47,6 +47,11 @@ type downstreamRouter interface {
 	// StartRouteMgmtTicking starts a ticker which manages the router's
 	// connections.
 	StartRouteMgmtTicking(context.Context, func() string, int) error
+
+	// ProcessPendingConnections starts a function that continually processes
+	// incoming client connections. This only returns when the provided context
+	// is done.
+	StartProcessingPendingConnections(context.Context, func() string)
 }
 
 // downstreamers provides at least a minimum interface that must be met by a
@@ -393,7 +398,7 @@ func (w *Worker) Start() error {
 	// Rather than deal with some of the potential error conditions for Add on
 	// the waitgroup vs. Done (in case a function exits immediately), we will
 	// always start rotation and simply exit early if we're using KMS
-	w.tickerWg.Add(3)
+	w.tickerWg.Add(2)
 	go func() {
 		defer w.tickerWg.Done()
 		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers)
@@ -402,24 +407,31 @@ func (w *Worker) Start() error {
 		defer w.tickerWg.Done()
 		w.startAuthRotationTicking(w.baseContext)
 	}()
-	go func() {
-		defer w.tickerWg.Done()
-		if w.downstreamRoutes != nil {
+
+	if w.downstreamRoutes != nil {
+		w.tickerWg.Add(2)
+		servNameFn := func() string {
+			if s := w.LastStatusSuccess(); s != nil {
+				return s.WorkerId
+			}
+			return "unknown worker id"
+		}
+		go func() {
+			defer w.tickerWg.Done()
+			w.downstreamRoutes.StartProcessingPendingConnections(w.baseContext, servNameFn)
+		}()
+		go func() {
+			defer w.tickerWg.Done()
 			err := w.downstreamRoutes.StartRouteMgmtTicking(
 				w.baseContext,
-				func() string {
-					if s := w.LastStatusSuccess(); s != nil {
-						return s.WorkerId
-					}
-					return "unknown worker id"
-				},
+				servNameFn,
 				-1, // indicates the ticker should run until cancelled.
 			)
 			if err != nil {
 				errors.Wrap(w.baseContext, err, op)
 			}
-		}
-	}()
+		}()
+	}
 
 	w.workerStartTime = time.Now()
 	w.started.Store(true)
