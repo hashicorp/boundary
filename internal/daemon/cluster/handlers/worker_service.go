@@ -144,7 +144,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting worker auth repo"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to lookup worker auth info: %v", err)
 	}
-	authorizedWorkers, err := workerAuthRepo.VerifyAuthorizableWorkerKeyIds(ctx, req.GetConnectedWorkerKeyIdentifiers())
+	authorizedWorkers, err := workerAuthRepo.FilterToAuthorizedWorkerKeyIds(ctx, req.GetConnectedWorkerKeyIdentifiers())
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting authorizable worker key ids"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting authorized worker key ids: %v", err)
@@ -153,7 +153,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	ret := &pbs.StatusResponse{
 		CalculatedUpstreams:            responseControllers,
 		WorkerId:                       wrk.GetPublicId(),
-		AuthroizedWorkerKeyIdentifiers: authorizedWorkers,
+		AuthorizedWorkerKeyIdentifiers: authorizedWorkers,
 	}
 
 	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))

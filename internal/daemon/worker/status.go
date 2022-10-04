@@ -215,7 +215,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 
 	w.updateTags.Store(false)
 
-	cluster.DisconnectUnauthorized(w.pkiConnManager, connectedWorkerKeyIds, result.GetAuthroizedWorkerKeyIdentifiers())
+	cluster.DisconnectUnauthorized(w.pkiConnManager, connectedWorkerKeyIds, result.GetAuthorizedWorkerKeyIdentifiers())
 	var addrs []string
 	// This may be empty if we are in a multiple hop scenario
 	if len(result.CalculatedUpstreams) > 0 {

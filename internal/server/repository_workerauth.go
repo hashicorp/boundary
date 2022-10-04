@@ -520,38 +520,25 @@ func (r *WorkerAuthRepositoryStorage) findCertBundles(ctx context.Context, worke
 	return certBundle, nil
 }
 
-
-// VerifyAuthorizableWorkerKeyIds returns all the worker key identifiers that
+// FilterToAuthorizedWorkerKeyIds returns all the worker key identifiers that
 // are authorizable from the slice of key identifiers provided to the function.
-func (r *WorkerAuthRepositoryStorage) VerifyAuthorizableWorkerKeyIds(ctx context.Context, workerKeyIds []string) ([]string, error) {
-	const authorizedWorkerQuery = `
-	select distinct w.worker_key_identifier 
-	from 
-	    worker_auth_certificate_bundle as w
-	where
-	    w.worker_key_identifier in (?)
-`
-	const op = "server.(WorkerAuthRepositoryStorage).VerifyAuthorizableWorkerKeyIds"
+func (r *WorkerAuthRepositoryStorage) FilterToAuthorizedWorkerKeyIds(ctx context.Context, workerKeyIds []string) ([]string, error) {
+	const op = "server.(WorkerAuthRepositoryStorage).FilterToAuthorizedWorkerKeyIds"
 	if len(workerKeyIds) == 0 {
 		return nil, nil
 	}
-	rows, err := r.reader.Query(ctx, authorizedWorkerQuery, []interface{}{workerKeyIds})
-	if err != nil {
+	var bundles []*WorkerCertBundle
+	if err := r.reader.SearchWhere(ctx, &bundles, "worker_key_identifier in (?)", []interface{}{workerKeyIds}, db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	defer rows.Close()
-
-	type rowsResult struct {
-		WorkerKeyIdentifier string
-	}
+	found := make(map[string]struct{})
 	var ret []string
-	for rows.Next() {
-		var result rowsResult
-		err = r.reader.ScanRows(ctx, rows, &result)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+	for _, b := range bundles {
+		if _, ok := found[b.WorkerKeyIdentifier]; ok {
+			continue
 		}
-		ret = append(ret, result.WorkerKeyIdentifier)
+		found[b.WorkerKeyIdentifier] = struct{}{}
+		ret = append(ret, b.WorkerKeyIdentifier)
 	}
 	return ret, nil
 }
