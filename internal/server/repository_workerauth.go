@@ -376,24 +376,30 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformation")
 	}
 
-	worker := allocWorkerAuth()
-	worker.WorkerKeyIdentifier = node.Id
-
-	err := r.reader.LookupById(ctx, worker)
+	query := getWorkerAuthsByWorkerKeyIdQuery
+	rows, err := r.reader.Query(ctx, query, []interface{}{sql.Named("worker_key_identifier", node.Id)})
 	if err != nil {
-		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return nodee.ErrNotFound
-		}
 		return errors.Wrap(ctx, err, op)
 	}
+	defer rows.Close()
 
-	workerAuthorizedSet, err := r.FindWorkerAuthByWorkerId(ctx, worker.GetWorkerId())
+	var workerAuths []*WorkerAuth
+	for rows.Next() {
+		var s WorkerAuth
+		if err := r.reader.ScanRows(ctx, rows, &s); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+		}
+		workerAuths = append(workerAuths, &s)
+	}
+
+	workerAuthorizedSet, err := r.validateWorkerAuths(ctx, workerAuths)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nodee.ErrNotFound
 		}
 		return errors.Wrap(ctx, err, op)
 	}
+
 	if workerAuthorizedSet == nil || workerAuthorizedSet.Current == nil {
 		return nodee.ErrNotFound
 	}
@@ -886,25 +892,16 @@ func decrypt(ctx context.Context, value []byte, wrapper wrapping.Wrapper) ([]byt
 	return marshaledInfo, nil
 }
 
-// FindWorkerAuthByWorkerId takes a workerId and returns the WorkerAuthSet for this worker.
-func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Context, workerId string) (*WorkerAuthSet, error) {
-	const op = "server.(WorkerAuthRepositoryStorage).FindWorkerAuthByWorkerId"
-	if len(workerId) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty worker ID")
-	}
+func (r *WorkerAuthRepositoryStorage) validateWorkerAuths(ctx context.Context, workerAuths []*WorkerAuth) (*WorkerAuthSet, error) {
+	const op = "server.(WorkerAuthRepositoryStorage).validateWorkerAuths"
 
 	var previousWorkerAuth *WorkerAuth
 	var currentWorkerAuth *WorkerAuth
 
-	var workerAuths []*WorkerAuth
-	if err := r.reader.SearchWhere(ctx, &workerAuths, "worker_id = ?", []interface{}{workerId}); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
 	workerAuthsFound := len(workerAuths)
 	switch {
 	case workerAuthsFound == 0:
-		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("did not find worker auth records for worker %s", workerId))
+		return nil, errors.New(ctx, errors.RecordNotFound, op, "did not find worker auth records for worker")
 	case workerAuthsFound == 1:
 		if workerAuths[0].State != currentWorkerAuthState {
 			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
@@ -938,4 +935,19 @@ func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Conte
 	}
 
 	return workerAuthSet, nil
+}
+
+// FindWorkerAuthByWorkerId takes a workerId and returns the WorkerAuthSet for this worker.
+func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Context, workerId string) (*WorkerAuthSet, error) {
+	const op = "server.(WorkerAuthRepositoryStorage).FindWorkerAuthByWorkerId"
+	if len(workerId) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty worker ID")
+	}
+
+	var workerAuths []*WorkerAuth
+	if err := r.reader.SearchWhere(ctx, &workerAuths, "worker_id = ?", []interface{}{workerId}); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return r.validateWorkerAuths(ctx, workerAuths)
 }
