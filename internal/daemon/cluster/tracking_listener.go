@@ -10,8 +10,8 @@ import (
 	nodee "github.com/hashicorp/nodeenrollment"
 )
 
-// EventingListener simply sends an event when a worker has connected
-// successfully
+// trackingListener tracks a nodee connection in a DownstreamManager when a
+// worker has connected successfully.
 type trackingListener struct {
 	ctx context.Context
 	ln  net.Listener
@@ -19,14 +19,14 @@ type trackingListener struct {
 }
 
 // NewTrackingListener returns a listener which adds all connections made
-// through it to the provide DownstreamManager.  The net.Conn returned by
-// Accept is only tracked if it is a *tls.Conn and was created the
+// through it to the provided DownstreamManager.  The net.Conn returned by
+// Accept is only tracked if it is a *tls.Conn and was created by the
 // nodeenrollment library.
 func NewTrackingListener(ctx context.Context, l net.Listener, m *DownstreamManager) (net.Listener, error) {
-	const op = "common.(EventingListener).Accept"
+	const op = "common.NewTrackingListener"
 	switch {
-	case ctx == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil context")
+	case m == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil DownstreamManager")
 	case l == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil base listener")
 	}
@@ -37,6 +37,10 @@ func NewTrackingListener(ctx context.Context, l net.Listener, m *DownstreamManag
 	}, nil
 }
 
+// Accept satisfies the net.Listener interface.  If the the wrapped listener
+// must return a tls.Conn or an error is returned.  If the tls.Conn has no
+// PeerCertificates then no error is returned and the Conn is not added to the
+// DownstreamManager.
 func (e *trackingListener) Accept() (net.Conn, error) {
 	const op = "cluster.(trackingListener).Accept"
 	conn, err := e.ln.Accept()
@@ -56,10 +60,10 @@ func (e *trackingListener) Accept() (net.Conn, error) {
 	keyId, err := nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId)
 	if err != nil {
 		// Create an error so it gets written out to the event log
-		errors.Wrap(e.ctx, err, op)
+		_ = errors.Wrap(e.ctx, err, op)
 	}
 	if keyId == "" {
-		// nothing to track
+		// No key id means there is nothing to track.
 		return conn, nil
 	}
 	e.dsm.addConnection(keyId, conn)
