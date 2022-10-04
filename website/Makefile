@@ -1,8 +1,16 @@
+######################################################
+# NOTE: This file is managed by the Digital Team's   #
+# Terraform configuration @ hashicorp/mktg-terraform #
+######################################################
+
 .DEFAULT_GOAL := website
 
-# "developer" | "io"
-PREVIEW_MODE?=io
-REPO?=boundary
+# Set the preview mode for the website shell to "developer" or "io"
+PREVIEW_MODE ?= io
+REPO ?= boundary
+
+# Enable setting alternate docker tool, e.g. 'make DOCKER_CMD=podman'
+DOCKER_CMD ?= docker
 
 PWD=$$(pwd)
 DOCKER_IMAGE="hashicorp/dev-portal"
@@ -14,8 +22,8 @@ DOCKER_RUN_FLAGS=-it \
 		--volume "$(PWD)/content:/app/content" \
 		--volume "$(PWD)/public:/app/public" \
 		--volume "$(PWD)/data:/app/data" \
-		--volume "$(PWD)/../internal/gen:/internal/gen" \
 		--volume "$(PWD)/redirects.js:/app/redirects.js" \
+		--volume "$(PWD)/../internal/gen:/internal/gen" \
 		--volume "next-dir:/app/website-preview/.next" \
 		--volume "$(PWD)/.env:/app/.env" \
 		-e "REPO=$(REPO)" \
@@ -25,20 +33,20 @@ DOCKER_RUN_FLAGS=-it \
 .PHONY: website
 website:
 	@echo "==> Downloading latest Docker image..."
-	@docker pull $(DOCKER_IMAGE)
+	@$(DOCKER_CMD) pull $(DOCKER_IMAGE)
 	@echo "==> Starting website..."
-	@docker run $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE)
+	@$(DOCKER_CMD) run $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE)
 
 # Use this if you have run `website/build-local` to use the locally built image.
 .PHONY: website/local
 website/local:
 	@echo "==> Starting website from local image..."
-	@docker run $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE_LOCAL)
+	@$(DOCKER_CMD) run $(DOCKER_RUN_FLAGS) $(DOCKER_IMAGE_LOCAL)
 
 # Run this to generate a new local Docker image.
 .PHONY: website/build-local
 website/build-local:
 	@echo "==> Building local Docker image"
-	@docker build https://github.com/hashicorp/dev-portal.git\#main \
+	@$(DOCKER_CMD) build https://github.com/hashicorp/dev-portal.git\#main \
 		-t $(DOCKER_IMAGE_LOCAL)
 
