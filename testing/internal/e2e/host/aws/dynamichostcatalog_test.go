@@ -23,58 +23,21 @@ import (
 )
 
 type config struct {
-	AwsAccessKeyId     string `envconfig:"E2E_AWS_ACCESS_KEY_ID"`
-	AwsSecretAccessKey string `envconfig:"E2E_AWS_SECRET_ACCESS_KEY"`
-	AwsHostSetFilter1  string `envconfig:"E2E_AWS_HOST_SET_FILTER1"`
-	AwsHostSetCount1   string `envconfig:"E2E_AWS_HOST_SET_COUNT1"`
-	AwsHostSetIps1     string `envconfig:"E2E_AWS_HOST_SET_IPS1"`
-	AwsHostSetFilter2  string `envconfig:"E2E_AWS_HOST_SET_FILTER2"`
-	AwsHostSetCount2   string `envconfig:"E2E_AWS_HOST_SET_COUNT2"`
-	TargetSshKeyPath   string `envconfig:"E2E_SSH_KEY_PATH"` // e.g. /Users/username/key.pem
-	TargetSshUser      string `envconfig:"E2E_SSH_USER"`     // e.g. ubuntu
+	AwsAccessKeyId     string `envconfig:"E2E_AWS_ACCESS_KEY_ID" required:"true"`
+	AwsSecretAccessKey string `envconfig:"E2E_AWS_SECRET_ACCESS_KEY" required:"true"`
+	AwsHostSetFilter1  string `envconfig:"E2E_AWS_HOST_SET_FILTER1" required:"true"`
+	AwsHostSetCount1   string `envconfig:"E2E_AWS_HOST_SET_COUNT1" required:"true"`
+	AwsHostSetIps1     string `envconfig:"E2E_AWS_HOST_SET_IPS1" required:"true"`
+	AwsHostSetFilter2  string `envconfig:"E2E_AWS_HOST_SET_FILTER2" required:"true"`
+	AwsHostSetCount2   string `envconfig:"E2E_AWS_HOST_SET_COUNT2" required:"true"`
+	TargetSshKeyPath   string `envconfig:"E2E_SSH_KEY_PATH" required:"true"` // e.g. /Users/username/key.pem
+	TargetSshUser      string `envconfig:"E2E_SSH_USER" required:"true"`     // e.g. ubuntu
 	TargetPort         string `envconfig:"E2E_SSH_PORT" default:"22"`
-}
-
-func (c *config) validate() error {
-	if c.AwsAccessKeyId == "" {
-		return errors.New("AwsAccessKeyId is empty. Set environment variable: E2E_AWS_ACCESS_KEY_ID")
-	}
-	if c.AwsSecretAccessKey == "" {
-		return errors.New("AwsSecretAccessKey is empty. Set environment variable: E2E_AWS_SECRET_ACCESS_KEY")
-	}
-	if c.AwsHostSetFilter1 == "" {
-		return errors.New("AwsHostSetFilter1 is empty. Set environment variable: E2E_AWS_HOST_SET_FILTER1")
-	}
-	if c.AwsHostSetCount1 == "" {
-		return errors.New("AwsHostSetCount1 is empty. Set environment variable: E2E_AWS_HOST_SET_COUNT1")
-	}
-	if c.AwsHostSetFilter2 == "" {
-		return errors.New("AwsHostSetFilter2 is empty. Set environment variable: E2E_AWS_HOST_SET_FILTER2")
-	}
-	if c.AwsHostSetCount2 == "" {
-		return errors.New("AwsHostSetCount2 is empty. Set environment variable: E2E_AWS_HOST_SET_COUNT2")
-	}
-	if c.TargetSshKeyPath == "" {
-		return errors.New("TargetSshKeyPath is empty. Set environment variable: E2E_SSH_KEY_PATH")
-	}
-	if c.TargetSshUser == "" {
-		return errors.New("TargetSshUser is empty. Set environment variable: E2E_SSH_USER")
-	}
-	if c.TargetPort == "" {
-		return errors.New("TargetPort is empty. Set environment variable: E2E_SSH_PORT")
-	}
-
-	return nil
 }
 
 func loadConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.validate()
 	if err != nil {
 		return nil, err
 	}

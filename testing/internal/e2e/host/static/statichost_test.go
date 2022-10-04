@@ -3,7 +3,6 @@ package static_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"strconv"
 	"strings"
 	"testing"
@@ -19,37 +18,15 @@ import (
 )
 
 type config struct {
-	TargetIp         string `envconfig:"E2E_TARGET_IP"`    // e.g. 192.168.0.1
-	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH"` // e.g. /Users/username/key.pem
-	TargetSshUser    string `envconfig:"E2E_SSH_USER"`     // e.g. ubuntu
+	TargetIp         string `envconfig:"E2E_TARGET_IP" required:"true"`    // e.g. 192.168.0.1
+	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH" required:"true"` // e.g. /Users/username/key.pem
+	TargetSshUser    string `envconfig:"E2E_SSH_USER" required:"true"`     // e.g. ubuntu
 	TargetPort       string `envconfig:"E2E_SSH_PORT" default:"22"`
-}
-
-func (c *config) validate() error {
-	if c.TargetIp == "" {
-		return errors.New("TargetIp is empty. Set environment variable: E2E_TARGET_IP")
-	}
-	if c.TargetSshKeyPath == "" {
-		return errors.New("TargetSshKeyPath is empty. Set environment variable: E2E_SSH_KEY_PATH")
-	}
-	if c.TargetSshUser == "" {
-		return errors.New("TargetSshUser is empty. Set environment variable: E2E_SSH_USER")
-	}
-	if c.TargetPort == "" {
-		return errors.New("TargetPort is empty. Set environment variable: E2E_SSH_PORT")
-	}
-
-	return nil
 }
 
 func loadConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.validate()
 	if err != nil {
 		return nil, err
 	}

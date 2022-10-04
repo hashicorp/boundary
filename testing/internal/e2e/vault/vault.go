@@ -2,7 +2,6 @@
 package vault
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -15,29 +14,13 @@ import (
 )
 
 type config struct {
-	VaultAddr  string `envconfig:"VAULT_ADDR"` // e.g. "http://127.0.0.1:8200"
-	VaultToken string `envconfig:"VAULT_TOKEN"`
-}
-
-func (c *config) validate() error {
-	if c.VaultAddr == "" {
-		return errors.New("VaultAddr is empty. Set environment variable: VAULT_ADDR")
-	}
-	if c.VaultToken == "" {
-		return errors.New("VaultToken is empty. Set environment variable: VAULT_TOKEN")
-	}
-
-	return nil
+	VaultAddr  string `envconfig:"VAULT_ADDR" required:"true"` // e.g. "http://127.0.0.1:8200"
+	VaultToken string `envconfig:"VAULT_TOKEN" required:"true"`
 }
 
 func loadConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.validate()
 	if err != nil {
 		return nil, err
 	}

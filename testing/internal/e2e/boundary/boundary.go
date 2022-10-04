@@ -3,7 +3,6 @@ package boundary
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -15,37 +14,15 @@ import (
 )
 
 type config struct {
-	Address            string `envconfig:"BOUNDARY_ADDR"`               // e.g. http://127.0.0.1:9200
-	AuthMethodId       string `envconfig:"E2E_PASSWORD_AUTH_METHOD_ID"` // e.g. ampw_1234567890
+	Address            string `envconfig:"BOUNDARY_ADDR" required:"true"`               // e.g. http://127.0.0.1:9200
+	AuthMethodId       string `envconfig:"E2E_PASSWORD_AUTH_METHOD_ID" required:"true"` // e.g. ampw_1234567890
 	AdminLoginName     string `envconfig:"E2E_PASSWORD_ADMIN_LOGIN_NAME" default:"admin"`
-	AdminLoginPassword string `envconfig:"E2E_PASSWORD_ADMIN_PASSWORD"`
-}
-
-func (c *config) validate() error {
-	if c.Address == "" {
-		return errors.New("Address is empty. Set environment variable: BOUNDARY_ADDR")
-	}
-	if c.AuthMethodId == "" {
-		return errors.New("AuthMethodId is empty. Set environment variable: E2E_PASSWORD_AUTH_METHOD_ID")
-	}
-	if c.AdminLoginName == "" {
-		return errors.New("AdminLoginName is empty. Set environment variable: E2E_PASSWORD_ADMIN_LOGIN_NAME")
-	}
-	if c.AdminLoginPassword == "" {
-		return errors.New("AdminLoginPassword is empty. Set environment variable: E2E_PASSWORD_ADMIN_PASSWORD")
-	}
-
-	return nil
+	AdminLoginPassword string `envconfig:"E2E_PASSWORD_ADMIN_PASSWORD" required:"true"`
 }
 
 func loadConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.validate()
 	if err != nil {
 		return nil, err
 	}
