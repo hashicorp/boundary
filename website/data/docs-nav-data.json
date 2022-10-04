@@ -312,6 +312,19 @@
     ]
   },
   {
+    "title": "Troubleshoot",
+    "routes": [
+      {
+        "title": "Common Error Messages",
+        "path": "troubleshoot/common-errors"
+      },
+      {
+        "title": "FAQ",
+        "path": "troubleshoot/faq"
+      }
+    ]
+  },
+  {
     "title": "Common Workflows",
     "href": "https://learn.hashicorp.com/boundary"
   },
