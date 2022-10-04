@@ -21,7 +21,7 @@ func NewDownstreamManager() *DownstreamManager {
 
 // addConnection adds a connection associated with the provided downstream
 // worker key identifier.
-func (m *DownstreamManager) addConnection(id string, c net.Conn) error {
+func (m *DownstreamManager) addConnection(id string, c net.Conn) {
 	m.l.Lock()
 	defer m.l.Unlock()
 	m.workerConnections[id] = append(m.workerConnections[id], c)

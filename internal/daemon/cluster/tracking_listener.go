@@ -66,7 +66,7 @@ func (e *trackingListener) Accept() (net.Conn, error) {
 		// No key id means there is nothing to track.
 		return conn, nil
 	}
-	err := e.dsm.addConnection(keyId, conn)
+	e.dsm.addConnection(keyId, conn)
 	event.WriteSysEvent(e.ctx, op, "tracking worker connection", "key_id", keyId)
 
 	return conn, nil
