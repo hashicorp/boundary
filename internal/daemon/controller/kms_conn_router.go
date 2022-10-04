@@ -60,6 +60,7 @@ func startKmsConnRouter(
 	case reverseGrpcListener == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "nil reverseGrpcListener")
 	}
+
 	go func() {
 		for {
 			conn, err := baseLn.Accept()
