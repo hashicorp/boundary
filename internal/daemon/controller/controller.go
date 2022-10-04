@@ -423,10 +423,9 @@ func (c *Controller) Start() error {
 		defer c.tickerWg.Done()
 		c.startCloseExpiredPendingTokens(c.baseContext)
 	}()
-	go func() {
-		defer c.tickerWg.Done()
-		c.startWorkerConnectionMaintenanceTicking(c.baseContext, c.pkiConnManager)
-	}()
+	if err := c.startWorkerConnectionMaintenanceTicking(c.baseContext, c.tickerWg, c.pkiConnManager); err != nil {
+		return errors.Wrap(c.baseContext, err, op)
+	}
 
 	if c.downstreamRoutes != nil {
 		c.tickerWg.Add(1)
