@@ -19,12 +19,13 @@ DOCKER_RUN_FLAGS=-it \
 		--publish "3000:3000" \
 		--rm \
 		--tty \
-				--volume "$(PWD)/content:/app/content" \
-				--volume "$(PWD)/public:/app/public" \
-				--volume "$(PWD)/data:/app/data" \
-				--volume "$(PWD)/redirects.js:/app/redirects.js" \
-				--volume "$(PWD)/../internal/gen:/internal/gen" \
-				--volume "next-dir:/app/website-preview/.next" \
+		--volume "$(PWD)/content:/app/content" \
+		--volume "$(PWD)/public:/app/public" \
+		--volume "$(PWD)/data:/app/data" \
+		--volume "$(PWD)/redirects.js:/app/redirects.js" \
+		--volume "$(PWD)/../internal/gen:/internal/gen" \
+		--volume "next-dir:/app/website-preview/.next" \
+		--volume "$(PWD)/.env:/app/.env" \
 		-e "REPO=$(REPO)" \
 		-e "PREVIEW_MODE=$(PREVIEW_MODE)"
 
