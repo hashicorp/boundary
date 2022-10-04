@@ -444,7 +444,7 @@ func TestStoreNodeInformationTx(t *testing.T) {
 	}
 }
 
-func TestAuthorizableWorkerKeyIds(t *testing.T) {
+func TestFilterToAuthorizedWorkerKeyIds(t *testing.T) {
 	ctx := context.Background()
 	rootWrapper := db.TestWrapper(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -456,7 +456,7 @@ func TestAuthorizableWorkerKeyIds(t *testing.T) {
 	rw := db.New(conn)
 	repo, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
-	got, err := repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{})
+	got, err := repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{})
 	require.NoError(t, err)
 	assert.Empty(t, got)
 
@@ -467,15 +467,15 @@ func TestAuthorizableWorkerKeyIds(t *testing.T) {
 
 	_, _ = w1, w2
 
-	got, err = repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{"not-found-key-id", keyId1})
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{"not-found-key-id", keyId1})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{keyId1}, got)
 
-	got, err = repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{keyId2, "not-found-key-id"})
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId2, "not-found-key-id"})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{keyId2}, got)
 
-	got, err = repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{keyId1, keyId2}, got)
 
@@ -484,7 +484,7 @@ func TestAuthorizableWorkerKeyIds(t *testing.T) {
 	_, err = workerRepo.DeleteWorker(ctx, w1.GetPublicId())
 	require.NoError(t, err)
 
-	got, err = repo.VerifyAuthorizableWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
 	assert.NoError(t, err)
 	assert.Equal(t, []string{keyId2}, got)
 }

@@ -159,7 +159,17 @@ func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
 }
 
 func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.Context, m *cluster.DownstreamManager) {
-	const op = "controller.(downstreamManager).startManagingTicker"
+	const op = "controller.(Controller).startWorkerConnectionMaintenanceTicking"
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	getRandomInterval := func() time.Duration {
+		// 0 to 0.5 adjustment to the base
+		f := r.Float64() / 2
+		// Half a chance to be faster, not slower
+		if r.Float32() > 0.5 {
+			f = -1 * f
+		}
+		return workerConnectionMaintenanceInterval + time.Duration(f*float64(workerConnectionMaintenanceInterval))
+	}
 	timer := time.NewTimer(0)
 	for {
 		select {
@@ -174,7 +184,7 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 				break
 			}
 			wKeyIds := m.Connected()
-			authorized, err := repo.VerifyAuthorizableWorkerKeyIds(cancelCtx, wKeyIds)
+			authorized, err := repo.FilterToAuthorizedWorkerKeyIds(cancelCtx, wKeyIds)
 			if err != nil {
 				event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get authorized workers from repo"))
 				break
@@ -182,6 +192,6 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 			cluster.DisconnectUnauthorized(m, wKeyIds, authorized)
 		}
 
-		timer.Reset(workerConnectionMaintenanceInterval)
+		timer.Reset(getRandomInterval())
 	}
 }

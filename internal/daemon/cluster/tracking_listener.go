@@ -54,13 +54,18 @@ func (e *trackingListener) Accept() (net.Conn, error) {
 	}
 
 	keyId, err := nodee.KeyIdFromPkix(tlsConn.ConnectionState().PeerCertificates[0].SubjectKeyId)
-	if err == nil {
-		event.WriteSysEvent(e.ctx, op, "worker successfully authenticated", "key_id", keyId)
+	if err != nil {
+		// Create an error so it gets written out to the event log
+		errors.Wrap(e.ctx, err, op)
+	}
+	if keyId == "" {
+		// nothing to track
+		return conn, nil
 	}
 	e.dsm.addConnection(keyId, conn)
 	event.WriteSysEvent(e.ctx, op, "tracking worker connection", "key_id", keyId)
 
-	return conn, err
+	return conn, nil
 }
 
 func (e *trackingListener) Close() error {

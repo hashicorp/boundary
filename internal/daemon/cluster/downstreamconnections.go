@@ -5,8 +5,8 @@ import (
 	"sync"
 )
 
-// DownstreamManager associates downstream worker ids with the connections to
-// a specific server.
+// DownstreamManager associates downstream worker key identifiers with the
+// connections to  a specific server.
 // It is safe to access DownstreamManager concurrently.
 type DownstreamManager struct {
 	workerConnections map[string][]net.Conn
@@ -19,14 +19,16 @@ func NewDownstreamManager() *DownstreamManager {
 	}
 }
 
-// addConnection adds a connection associated with the provided downstream id.
+// addConnection adds a connection associated with the provided downstream
+// worker key identifier.
 func (m *DownstreamManager) addConnection(id string, c net.Conn) {
 	m.l.Lock()
 	defer m.l.Unlock()
 	m.workerConnections[id] = append(m.workerConnections[id], c)
 }
 
-// Disconnect closes all connections associated with the provided worker key id.
+// Disconnect closes all connections associated with the provided worker key
+// identifier.
 func (m *DownstreamManager) Disconnect(id string) {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -36,8 +38,8 @@ func (m *DownstreamManager) Disconnect(id string) {
 	delete(m.workerConnections, id)
 }
 
-// Connected returns a slice of key ids for all workers that are currently
-// being tracked by this downstream manager.
+// Connected returns a slice of worker key identifiers for all workers that are
+// currently being tracked by this downstream manager.
 func (m *DownstreamManager) Connected() []string {
 	m.l.RLock()
 	defer m.l.RUnlock()

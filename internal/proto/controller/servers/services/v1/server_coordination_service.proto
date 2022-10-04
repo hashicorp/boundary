@@ -131,7 +131,7 @@ message StatusResponse {
 
   // Of the worker key identifiers provided in the request, these are the ones
   // which are authorized to remain connected.
-  repeated string authroized_worker_key_identifiers = 50;
+  repeated string authorized_worker_key_identifiers = 50;
 }
 
 // WorkerInfo contains information about workers for the HcpbWorkerResponse message
