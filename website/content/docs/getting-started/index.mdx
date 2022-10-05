@@ -6,19 +6,30 @@ description: Getting started with Boundary
 
 # Getting Started
 
-Before getting started with Boundary, it's important to understand a few key concepts. Please consult our [Boundary concepts](/docs/concepts) page to familiarize yourself with Boundary's architecture and terminology.
+This section walks through how to get started with Boundary. You’ll learn how
+Boundary provides access to private endpoints securely.
 
-![Boundary Architecture](/img/architecture-overview.png)
+There are two options to get started with Boundary:
 
-## Requirements
+- **HCP Boundary** is a managed offering of the Boundary product, and is the
+  easiest way to get started. It streamlines deployment and operations, and is
+  available as a freemium service. HCP Boundary allows users to run their own
+  worker proxies, preventing exposure of your network to HashiCorp or clients.
+  Some enterprise features are only available with HCP Boundary. Review the [Get
+  started with HCP Boundary](/docs/getting-started/deploy-and-login) page to
+  learn more.
+- **Boundary OSS** is an open source distribution of Boundary that users can run
+  in their own environments. The [Getting Started with Boundary
+  OSS](/docs/getting-started/connect-to-target) page discusses running Boundary
+  in Dev mode on your local machine, allowing you to get started with the OSS distribution quickly.
 
-The Getting Started section uses HCP Boundary, a HashiCorp hosted and fully-managed version of the Boundary product.
+We recommend you use the Boundary model that best meets your intended use case.
+If you’re not sure what’s best for you, we recommend reviewing the [Getting
+started with HCP Boundary](/docs/getting-started/deploy-and-login) page.
 
-To get started with HCP Boundary, users need:
+# Key Concepts
 
-- A [HashiCorp Cloud Platform](https://portal.cloud.hashicorp.com/sign-up) account
-- [Installation](https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-install?in=boundary/hcp-getting-started) of Boundary CLI
-- A [Boundary binary](https://www.boundaryproject.io/downloads) in your `$PATH`
-- Optionally, an [installation of Boundary Desktop](https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app)
+Before getting started with Boundary, it's important to understand a few key
+concepts. Please consult our [Boundary concepts](/docs/concepts) page to
+familiarize yourself with Boundary's architecture and terminology.
 
-If you prefer to get started on your local machine, refer to [Run and Login in Dev Mode](/docs/oss/installing/run-and-login). For more information on Boundary OSS and self-managed installations, refer to [Boundary OSS](/docs/oss).
