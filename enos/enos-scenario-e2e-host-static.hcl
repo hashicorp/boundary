@@ -1,4 +1,4 @@
-scenario "e2e_target" {
+scenario "e2e_host_static" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
@@ -101,7 +101,7 @@ scenario "e2e_target" {
     ]
 
     variables {
-      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/target"
+      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/host/static"
       alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id           = step.create_boundary_cluster.auth_method_id
       auth_login_name          = step.create_boundary_cluster.auth_login_name

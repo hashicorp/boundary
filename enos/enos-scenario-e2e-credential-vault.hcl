@@ -1,4 +1,4 @@
-scenario "e2e_vault" {
+scenario "e2e_credential_vault" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
@@ -18,14 +18,11 @@ scenario "e2e_vault" {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
     }
-  }
-
-  step "check_jq_is_installed" {
-    module = module.binary_finder
-
-    variables {
-      name = "jq"
-    }
+    tags = merge({
+      "Project Name" : var.project_name
+      "Project" : "Enos",
+      "Environment" : "ci"
+    }, var.tags)
   }
 
   step "find_azs" {
@@ -56,6 +53,7 @@ scenario "e2e_vault" {
 
     variables {
       availability_zones = step.find_azs.availability_zones
+      common_tags        = local.tags
     }
   }
 
@@ -68,6 +66,7 @@ scenario "e2e_vault" {
 
     variables {
       boundary_install_dir     = local.boundary_install_dir
+      common_tags              = local.tags
       controller_instance_type = var.controller_instance_type
       controller_count         = var.controller_count
       db_pass                  = step.create_db_password.string

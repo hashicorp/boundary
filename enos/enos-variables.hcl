@@ -109,3 +109,9 @@ variable "vault_instance_type" {
   type        = string
   default     = "t3a.small"
 }
+
+variable "test_email" {
+  description = "Email address for setting up AWS IAM user (module: iam_setup)"
+  type        = string
+  default     = null
+}
