@@ -524,18 +524,22 @@ func (r *WorkerAuthRepositoryStorage) FilterToAuthorizedWorkerKeyIds(ctx context
 	if len(workerKeyIds) == 0 {
 		return nil, nil
 	}
-	var bundles []*WorkerCertBundle
-	if err := r.reader.SearchWhere(ctx, &bundles, "worker_key_identifier in (?)", []interface{}{workerKeyIds}, db.WithLimit(-1)); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	rows, err := r.reader.Query(ctx, authorizedWorkerQuery, []interface{}{workerKeyIds})
+	if err != nil {
 	}
-	found := make(map[string]struct{})
+	defer rows.Close()
+
+	type rowsResult struct {
+		WorkerKeyIdentifier string
+	}
 	var ret []string
-	for _, b := range bundles {
-		if _, ok := found[b.WorkerKeyIdentifier]; ok {
-			continue
+	for rows.Next() {
+		var result rowsResult
+		err = r.reader.ScanRows(ctx, rows, &result)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
 		}
-		found[b.WorkerKeyIdentifier] = struct{}{}
-		ret = append(ret, b.WorkerKeyIdentifier)
+		ret = append(ret, result.WorkerKeyIdentifier)
 	}
 	return ret, nil
 }
