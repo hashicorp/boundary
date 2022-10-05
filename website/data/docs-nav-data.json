@@ -495,6 +495,10 @@
         "path": "release-notes"
       },
       {
+        "title": "v0.11.0",
+        "path": "release-notes/v0_11_0"
+      },
+      {
         "title": "v0.10.0",
         "path": "release-notes/v0_10_0"
       },
