@@ -131,7 +131,7 @@ scenario "e2e_credential_vault" {
       auth_password            = step.create_boundary_cluster.auth_password
       local_boundary_dir       = local.local_boundary_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      target_ips               = step.create_target.target_ips
+      target_ip                = step.create_target.target_ips[0]
       target_user              = "ubuntu"
       vault_addr               = step.create_vault_cluster.instance_public_ips[0]
       vault_root_token         = step.create_vault_cluster.vault_root_token

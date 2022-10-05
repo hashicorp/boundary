@@ -38,10 +38,10 @@ variable "aws_ssh_private_key_path" {
   description = "Local Path to key used to SSH onto created hosts"
   type        = string
 }
-variable "target_ips" {
-  description = "List of IP Addresses of created hosts"
-  type        = list(string)
-  default     = [""]
+variable "target_ip" {
+  description = "IP address of target"
+  type        = string
+  default     = ""
 }
 variable "vault_addr" {
   description = "URL of Vault instance"
@@ -101,7 +101,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id,
     E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name,
     E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password,
-    E2E_TARGET_IP                 = var.target_ips[0],
+    E2E_TARGET_IP                 = var.target_ip,
     E2E_SSH_USER                  = var.target_user,
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
     VAULT_ADDR                    = local.vault_addr,
