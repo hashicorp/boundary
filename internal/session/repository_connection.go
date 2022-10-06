@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/kms"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -79,6 +79,49 @@ func (r *ConnectionRepository) list(ctx context.Context, resources interface{}, 
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
+}
+
+func (r *ConnectionRepository) updateBytesUpBytesDown(ctx context.Context, conns ...*Connection) error {
+	const op = "session.(ConnectionRepository).updateBytesUpBytesDown"
+	if len(conns) == 0 {
+		return nil
+	}
+
+	updateMask := []string{"BytesUp", "BytesDown"}
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			for _, c := range conns {
+				_, err := w.Update(
+					ctx,
+					&Connection{PublicId: c.PublicId, BytesUp: c.BytesUp, BytesDown: c.BytesDown},
+					updateMask,
+					nil,
+					// The last update to these two fields should come from our
+					// connection closure logic, which does not use this
+					// function (see the closeConnections func). Therefore, here
+					// we shouldn't update bytes up and down if the connection
+					// has already been closed. This also guards against
+					// potential data races where a connection closure request
+					// and a worker status update happen close to each other in
+					// terms of timing.
+					db.WithWhere("closed_reason is null"),
+				)
+				if err != nil {
+					// Returning an error will rollback the entire transaction.
+					// We don't want to bail out of an update batch if just one
+					// of the connections fails to update, but we still log it.
+					event.WriteError(ctx, op, fmt.Errorf("failed to update bytes up and down for connection id %q: %w", c.GetPublicId(), err))
+					continue
+				}
+			}
+
+			return nil
+		})
+
+	return err
 }
 
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,
