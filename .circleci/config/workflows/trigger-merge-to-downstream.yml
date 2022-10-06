@@ -1,6 +1,7 @@
 jobs:
-  - trigger-merge-to-ent:
+  - trigger-merge-to-downstream:
       filters:
         branches:
           only:
             - main
+            - /release\/.*/
