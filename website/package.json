@@ -7,10 +7,10 @@
     "node": "14.x - 16.x",
     "npm": ">=7.0.0"
   },
-  "dependencies": {},
   "devDependencies": {
     "@hashicorp/platform-cli": "^1.2.0",
     "husky": "4.3.8",
+    "next": "^12.3.1",
     "prettier": "2.2.1"
   },
   "husky": {
