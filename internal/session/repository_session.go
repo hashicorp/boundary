@@ -591,12 +591,12 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 }
 
 // checkIfNoLongerActive checks the given sessions to see if they are in a
-// non-active state, i.e. "canceling" or "terminated"
-// It returns a []StateReport for each session that is not active, with its current status.
-func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions []string) ([]StateReport, error) {
+// non-active state, i.e. "canceling" or "terminated" It returns a *StateReport
+// object for each session that is not active, with its current status.
+func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions []string) ([]*StateReport, error) {
 	const op = "session.(Repository).checkIfNotActive"
 
-	notActive := make([]StateReport, 0, len(reportedSessions))
+	notActive := make([]*StateReport, 0, len(reportedSessions))
 	args := make([]any, 0, len(reportedSessions))
 	var inClause string
 
@@ -629,7 +629,7 @@ func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions
 				if err := rows.Scan(&sessionId, &status); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 				}
-				notActive = append(notActive, StateReport{
+				notActive = append(notActive, &StateReport{
 					SessionId: sessionId,
 					Status:    status,
 				})

@@ -386,6 +386,10 @@ func (s *sess) CancelAllLocalConnections() []string {
 	return closedIds
 }
 
+// ApplyConnectionCounterCallbacks sets a connection's bytes up and bytes
+// down callbacks to the provided functions. Both functions must be safe for
+// concurrent use. If there is no connection with the provided id, an error
+// is returned.
 func (s *sess) ApplyConnectionCounterCallbacks(connId string, bytesUp func() uint64, bytesDown func() uint64) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
