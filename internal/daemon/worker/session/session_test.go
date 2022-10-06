@@ -272,8 +272,8 @@ func TestApplyConnectionCounterCallbacks(t *testing.T) {
 	s := &sess{connInfoMap: make(map[string]*ConnInfo)}
 
 	connId := "conn1"
-	bytesUpFn := func() uint64 { return 10 }
-	bytesDnFn := func() uint64 { return 20 }
+	bytesUpFn := func() int64 { return 10 }
+	bytesDnFn := func() int64 { return 20 }
 	err := s.ApplyConnectionCounterCallbacks(connId, bytesUpFn, bytesDnFn)
 	require.EqualError(t, err, "failed to find connection info for connection id \"conn1\"")
 

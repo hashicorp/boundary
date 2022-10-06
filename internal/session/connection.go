@@ -30,9 +30,9 @@ type Connection struct {
 	// EndpointTcpPort of the connection
 	EndpointTcpPort uint32 `json:"endpoint_tcp_port,omitempty" gorm:"default:null"`
 	// BytesUp of the connection
-	BytesUp uint64 `json:"bytes_up,omitempty" gorm:"default:null"`
+	BytesUp int64 `json:"bytes_up,omitempty" gorm:"default:null"`
 	// BytesDown of the connection
-	BytesDown uint64 `json:"bytes_down,omitempty" gorm:"default:null"`
+	BytesDown int64 `json:"bytes_down,omitempty" gorm:"default:null"`
 	// ClosedReason of the connection
 	ClosedReason string `json:"closed_reason,omitempty" gorm:"default:null"`
 	// CreateTime from the RDBMS
