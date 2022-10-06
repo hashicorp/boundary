@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -79,6 +80,45 @@ func (r *ConnectionRepository) list(ctx context.Context, resources interface{}, 
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
+}
+
+func (r *ConnectionRepository) updateBytesUpBytesDown(ctx context.Context, conns ...*Connection) error {
+	const op = "session.(ConnectionRepository).updateBytesUpBytesDown"
+	if len(conns) == 0 {
+		return nil
+	}
+
+	updateMask := []string{"BytesUp", "BytesDown"}
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(read db.Reader, w db.Writer) error {
+			for _, c := range conns {
+				_, err := w.Update(
+					ctx,
+					&Connection{PublicId: c.PublicId, BytesUp: c.BytesUp, BytesDown: c.BytesDown},
+					updateMask,
+					nil,
+					// The last update to these two fields should come from our
+					// connection closure logic, so we don't update here if the
+					// connection has already been closed. There's also a
+					// trigger on the database itself to prevent this.
+					db.WithWhere("closed_reason is null"),
+				)
+				if err != nil {
+					// Returning an error will rollback the entire transaction.
+					// We don't want to bail out of an update batch if just of
+					// the connections fails to update, but we still log it.
+					event.WriteError(ctx, op, fmt.Errorf("failed to update bytes up and down for connection id %q: %w", c.GetPublicId(), err))
+					continue
+				}
+			}
+
+			return nil
+		})
+
+	return err
 }
 
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,

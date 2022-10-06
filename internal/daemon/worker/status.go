@@ -126,6 +126,8 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			connections = append(connections, &pbs.Connection{
 				ConnectionId: k,
 				Status:       v.Status,
+				BytesUp:      v.BytesUp(),
+				BytesDown:    v.BytesDown(),
 			})
 		}
 		jobInfo.SessionId = sessionId

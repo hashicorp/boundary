@@ -10,9 +10,9 @@ import (
 
 // StateReport is used to report on the state of a Session.
 type StateReport struct {
-	SessionId     string
-	Status        Status
-	ConnectionIds []string
+	SessionId   string
+	Status      Status
+	Connections []Connection
 }
 
 // WorkerStatusReport is a domain service function that compares the state of
@@ -25,11 +25,15 @@ type StateReport struct {
 func WorkerStatusReport(ctx context.Context, repo *Repository, connRepo *ConnectionRepository, workerId string, report []StateReport) ([]StateReport, error) {
 	const op = "session.WorkerStatusReport"
 
-	reportedConnections := make([]string, 0)
+	reportedConnectionIds := make([]string, 0)
+	reportedConnections := make([]*Connection, 0)
 	reportedSessions := make([]string, 0, len(report))
 	for _, r := range report {
 		reportedSessions = append(reportedSessions, r.SessionId)
-		reportedConnections = append(reportedConnections, r.ConnectionIds...)
+		for _, c := range r.Connections {
+			reportedConnectionIds = append(reportedConnectionIds, c.GetPublicId())
+			reportedConnections = append(reportedConnections, &c)
+		}
 	}
 
 	notActive, err := repo.checkIfNoLongerActive(ctx, reportedSessions)
@@ -37,12 +41,18 @@ func WorkerStatusReport(ctx context.Context, repo *Repository, connRepo *Connect
 		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error checking session state for worker %s: %v", workerId, err))
 	}
 
-	closed, err := connRepo.closeOrphanedConnections(ctx, workerId, reportedConnections)
+	closed, err := connRepo.closeOrphanedConnections(ctx, workerId, reportedConnectionIds)
 	if err != nil {
 		return notActive, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error closing orphaned connections for worker %s: %v", workerId, err))
 	}
 	if len(closed) > 0 {
 		event.WriteSysEvent(ctx, op, "marked unclaimed connections as closed", "controller_id", workerId, "count", len(closed))
 	}
-	return notActive, err
+
+	err = connRepo.updateBytesUpBytesDown(ctx, reportedConnections...)
+	if err != nil {
+		return notActive, errors.New(ctx, errors.Internal, op, fmt.Sprintf("failed to update bytes up and down for worker reported connections: %v", err))
+	}
+
+	return notActive, nil
 }

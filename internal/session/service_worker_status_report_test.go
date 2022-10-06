@@ -129,9 +129,11 @@ func TestWorkerStatusReport(t *testing.T) {
 					worker: worker,
 					req: []session.StateReport{
 						{
-							SessionId:     sess.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection.PublicId},
+							SessionId: sess.PublicId,
+							Status:    session.StatusActive,
+							Connections: []session.Connection{
+								{PublicId: connection.PublicId},
+							},
 						},
 					},
 					want: []session.StateReport{},
@@ -164,9 +166,11 @@ func TestWorkerStatusReport(t *testing.T) {
 					worker: worker,
 					req: []session.StateReport{
 						{
-							SessionId:     sess.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection.PublicId},
+							SessionId: sess.PublicId,
+							Status:    session.StatusActive,
+							Connections: []session.Connection{
+								{PublicId: connection.PublicId},
+							},
 						},
 					},
 					want: []session.StateReport{
@@ -222,14 +226,18 @@ func TestWorkerStatusReport(t *testing.T) {
 					worker: worker,
 					req: []session.StateReport{
 						{
-							SessionId:     sess.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection.PublicId},
+							SessionId: sess.PublicId,
+							Status:    session.StatusActive,
+							Connections: []session.Connection{
+								{PublicId: connection.PublicId},
+							},
 						},
 						{
-							SessionId:     sess2.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection2.PublicId},
+							SessionId: sess2.PublicId,
+							Status:    session.StatusActive,
+							Connections: []session.Connection{
+								{PublicId: connection2.PublicId},
+							},
 						},
 					},
 					want: []session.StateReport{
@@ -286,9 +294,11 @@ func TestWorkerStatusReport(t *testing.T) {
 					worker: worker,
 					req: []session.StateReport{
 						{
-							SessionId:     sess2.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection2.PublicId},
+							SessionId: sess2.PublicId,
+							Status:    session.StatusActive,
+							Connections: []session.Connection{
+								{PublicId: connection2.PublicId},
+							},
 						},
 					},
 					want:                []session.StateReport{},
@@ -342,14 +352,18 @@ func TestWorkerStatusReport(t *testing.T) {
 					worker: worker,
 					req: []session.StateReport{
 						{
-							SessionId:     sess.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection.PublicId},
+							SessionId: sess.PublicId,
+							Status:    session.StatusActive,
+							Connections: []session.Connection{
+								{PublicId: connection.PublicId},
+							},
 						},
 						{
-							SessionId:     sess2.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection2.PublicId},
+							SessionId: sess2.PublicId,
+							Status:    session.StatusActive,
+							Connections: []session.Connection{
+								{PublicId: connection2.PublicId},
+							},
 						},
 					},
 					want: []session.StateReport{
