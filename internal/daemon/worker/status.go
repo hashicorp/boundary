@@ -345,7 +345,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			closedIds := s.CancelAllLocalConnections()
 			localConns := s.GetLocalConnections()
 			for _, connId := range closedIds {
-				var bytesUp, bytesDown uint64
+				var bytesUp, bytesDown int64
 				connInfo, ok := localConns[connId]
 				if ok {
 					bytesUp = connInfo.BytesUp()

@@ -31,9 +31,9 @@ type ConnInfo struct {
 	connCtxCancelFunc context.CancelFunc
 
 	// The number of bytes uploaded from the client.
-	BytesUp func() uint64
+	BytesUp func() int64
 	// The number of bytes downloaded to the client.
-	BytesDown func() uint64
+	BytesDown func() int64
 
 	// The time the controller has successfully reported that this connection is
 	// closed.
@@ -44,8 +44,8 @@ type ConnInfo struct {
 // RPC to the controller.
 type ConnectionCloseData struct {
 	SessionId string
-	BytesUp   uint64
-	BytesDown uint64
+	BytesUp   int64
+	BytesDown int64
 }
 
 // Session is the local representation of a session.  After initial loading
@@ -103,7 +103,7 @@ type Session interface {
 	// down callbacks to the provided functions. Both functions must be safe for
 	// concurrent use. If there is no connection with the provided id, an error
 	// is returned.
-	ApplyConnectionCounterCallbacks(connId string, bytesUp func() uint64, bytesDown func() uint64) error
+	ApplyConnectionCounterCallbacks(connId string, bytesUp func() int64, bytesDown func() int64) error
 
 	// RequestAuthorizeConnection sends an AuthorizeConnection request to
 	// the controller.
@@ -314,8 +314,8 @@ func (s *sess) RequestAuthorizeConnection(ctx context.Context, workerId string, 
 	// Install safe callbacks before connection has been established. These
 	// should be replaced when `ApplyConnectionCounterCallbacks` gets called on
 	// the `sess` object.
-	ci.BytesUp = func() uint64 { return 0 }
-	ci.BytesDown = func() uint64 { return 0 }
+	ci.BytesUp = func() int64 { return 0 }
+	ci.BytesDown = func() int64 { return 0 }
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -390,7 +390,7 @@ func (s *sess) CancelAllLocalConnections() []string {
 // down callbacks to the provided functions. Both functions must be safe for
 // concurrent use. If there is no connection with the provided id, an error
 // is returned.
-func (s *sess) ApplyConnectionCounterCallbacks(connId string, bytesUp func() uint64, bytesDown func() uint64) error {
+func (s *sess) ApplyConnectionCounterCallbacks(connId string, bytesUp func() int64, bytesDown func() int64) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

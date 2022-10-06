@@ -548,8 +548,8 @@ func TestUpdateBytesUpDown(t *testing.T) {
 	conns := make([]*Connection, 0, connCount)
 	for i := 0; i < connCount; i++ {
 		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
-		c.BytesUp = uint64(rand.Int63())
-		c.BytesDown = uint64(rand.Int63())
+		c.BytesUp = rand.Int63()
+		c.BytesDown = rand.Int63()
 		conns = append(conns, c)
 	}
 
@@ -594,8 +594,8 @@ func TestUpdateBytesUpDown(t *testing.T) {
 	conns2 := make([]*Connection, len(conns))
 	for i := 0; i < len(conns); i++ {
 		conns2[i] = conns[i].Clone().(*Connection)
-		conns2[i].BytesUp = uint64(rand.Int63())
-		conns2[i].BytesDown = uint64(rand.Int63())
+		conns2[i].BytesUp = rand.Int63()
+		conns2[i].BytesDown = rand.Int63()
 	}
 	require.NoError(t, connRepo.updateBytesUpBytesDown(ctx, conns2...))
 

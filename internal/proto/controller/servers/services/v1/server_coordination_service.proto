@@ -26,8 +26,8 @@ enum CONNECTIONSTATUS {
 message Connection {
   string connection_id = 1; // @gotags: `class:"public"`
   CONNECTIONSTATUS status = 2;
-  uint64 bytes_up = 3; // @gotags: `class:"public"`
-  uint64 bytes_down = 4; // @gotags: `class:"public"`
+  int64 bytes_up = 3; // @gotags: `class:"public"`
+  int64 bytes_down = 4; // @gotags: `class:"public"`
 }
 
 enum SESSIONSTATUS {
