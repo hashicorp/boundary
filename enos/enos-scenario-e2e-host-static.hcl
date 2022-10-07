@@ -108,7 +108,7 @@ scenario "e2e_host_static" {
       auth_password            = step.create_boundary_cluster.auth_password
       local_boundary_dir       = local.local_boundary_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      target_ips               = step.create_target.target_ips
+      target_ip                = step.create_target.target_ips[0]
       target_user              = "ubuntu"
     }
   }
