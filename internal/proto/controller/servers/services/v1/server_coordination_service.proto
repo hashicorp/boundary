@@ -111,6 +111,10 @@ message JobChangeRequest {
   CHANGETYPE request_type = 2;
 }
 
+message AuthorizedWorkerList {
+  repeated string worker_key_identifiers = 1;
+}
+
 message StatusResponse {
   reserved 10;
   reserved "controllers";
@@ -131,7 +135,7 @@ message StatusResponse {
 
   // Of the worker key identifiers provided in the request, these are the ones
   // which are authorized to remain connected.
-  repeated string authorized_worker_key_identifiers = 50;
+  AuthorizedWorkerList authorized_workers = 50;
 }
 
 // WorkerInfo contains information about workers for the HcpbWorkerResponse message

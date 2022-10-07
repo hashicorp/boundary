@@ -151,9 +151,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	ret := &pbs.StatusResponse{
-		CalculatedUpstreams:            responseControllers,
-		WorkerId:                       wrk.GetPublicId(),
-		AuthorizedWorkerKeyIdentifiers: authorizedWorkers,
+		CalculatedUpstreams: responseControllers,
+		WorkerId:            wrk.GetPublicId(),
+		AuthorizedWorkers:   &pbs.AuthorizedWorkerList{WorkerKeyIdentifiers: authorizedWorkers},
 	}
 
 	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))
