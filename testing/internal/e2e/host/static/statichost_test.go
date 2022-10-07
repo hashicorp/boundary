@@ -216,6 +216,7 @@ func TestCreateTargetApi(t *testing.T) {
 	// Create a target
 	tClient := targets.NewClient(client)
 	targetPort, err := strconv.ParseInt(c.TargetPort, 10, 32)
+	require.NoError(t, err)
 	newTargetResult, err := tClient.Create(ctx, "tcp", newProjectId,
 		targets.WithName("e2e Automated Test Target"),
 		targets.WithTcpTargetDefaultPort(uint32(targetPort)),
