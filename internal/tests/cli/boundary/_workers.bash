@@ -4,6 +4,13 @@ function read_worker() {
   boundary workers read -id $1 -format json
 }
 
+function create_worker() {
+  local name=$1
+  boundary workers create controller-led \
+    -name $name \
+    -description 'test worker'
+}
+
 function update_worker() {
   boundary workers update -id $1 -name $2 -version 0
 }
@@ -21,19 +28,8 @@ function list_workers() {
 }
 
 function worker_id() {
-  # TODO: After we have creation tests, look up based
-  #    on the worker's name.
-  strip $(list_workers | jq -c ".items[] | .[\"id\"]")
-}
-
-function worker_has_name() {
-  local name=$(strip $(list_workers | jq -c ".items[] | .[\"name\"]"))
-  if [[ "$1" == "$name" ]]
-    then
-      return 0
-    else
-      return 1
-    fi
+  local id=$1
+  strip $(list_workers | jq -c ".items[] | select(.name | contains(\"$id\")) | .[\"id\"]")
 }
 
 function has_default_worker_actions() {

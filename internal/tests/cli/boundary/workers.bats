@@ -4,33 +4,37 @@ load _auth
 load _workers
 load _helpers
 
+export NEW_WORKER='test'
+
+export NEW_UPDATED_WORKER='newtest'
+
 @test "boundary/login: can login as default user" {
   run login $DEFAULT_LOGIN
   echo "$output"
   [ "$status" -eq 0 ]
 }
 
-# TODO: Add worker creation and deletion tests.
+@test "boundary/workers: can create $NEW_WORKER worker" {
+	run create_worker $NEW_WORKER
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
+
+@test "boundary/workers: can not create already created $NEW_WORKER worker" {
+	run create_worker $NEW_WORKER
+  echo "$output"
+	[ "$status" -eq 1 ]
+}
+
+@test "boundary/workers: can read $NEW_WORKER worker" {
+  local wid=$(worker_id $NEW_WORKER)
+	run read_worker $wid
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
 
 @test "boundary/workers: can list workers" {
 	run list_workers
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/workers: can update worker's name" {
-  local wid=$(worker_id)
-  local name="test"
-    run update_worker $wid $name
-  echo "$output"
-	[ "$status" -eq 0 ]
-  worker_has_name $name
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/workers: can read worker" {
-  local wid=$(worker_id)
-	run read_worker $wid
   echo "$output"
 	[ "$status" -eq 0 ]
 }
@@ -41,4 +45,26 @@ load _helpers
 	run has_default_worker_actions "$out"
   echo "$output"
 	[ "$status" -eq 0 ]
+}
+
+@test "boundary/workers: can update worker's name" {
+  local wid=$(worker_id $NEW_WORKER)
+    run update_worker $wid $NEW_UPDATED_WORKER
+  echo "$output"
+	[ "$status" -eq 0 ]
+}
+
+@test "boundary/workers: can delete $NEW_UPDATED_WORKER worker" {
+  local wid=$(worker_id $NEW_UPDATED_WORKER)
+  run delete_worker $wid
+  echo "$output"
+  run has_status_code "$output" "204"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/workers: can not read deleted $NEW_UPDATED_WORKER worker" {
+  local wid=$(worker_id $NEW_UPDATED_WORKER)
+	run read_worker $wid
+  echo "$output"
+	[ "$status" -eq 1 ]
 }
