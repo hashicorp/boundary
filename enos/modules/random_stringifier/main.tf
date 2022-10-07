@@ -1,5 +1,9 @@
+variable "length" {
+  type    = number
+  default = 10
+}
 resource "random_string" "string" {
-  length  = 10
+  length  = var.length
   lower   = true
   upper   = true
   numeric = true

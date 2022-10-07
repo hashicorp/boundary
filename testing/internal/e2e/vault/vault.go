@@ -2,7 +2,6 @@
 package vault
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -15,19 +14,8 @@ import (
 )
 
 type config struct {
-	VaultAddr  string `envconfig:"VAULT_ADDR"` // e.g. "http://127.0.0.1:8200"
-	VaultToken string `envconfig:"VAULT_TOKEN"`
-}
-
-func (c *config) validate() error {
-	if c.VaultAddr == "" {
-		return errors.New("VaultAddr is empty. Set environment variable: VAULT_ADDR")
-	}
-	if c.VaultToken == "" {
-		return errors.New("VaultToken is empty. Set environment variable: VAULT_TOKEN")
-	}
-
-	return nil
+	VaultAddr  string `envconfig:"VAULT_ADDR" required:"true"` // e.g. "http://127.0.0.1:8200"
+	VaultToken string `envconfig:"VAULT_TOKEN" required:"true"`
 }
 
 func loadConfig() (*config, error) {
@@ -45,18 +33,16 @@ func loadConfig() (*config, error) {
 func Setup(t testing.TB) (string, string) {
 	c, err := loadConfig()
 	require.NoError(t, err)
-	err = c.validate()
-	require.NoError(t, err)
 
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
 	policyName := "boundary-controller"
-	output := e2e.RunCommand("vault", e2e.WithArgs("policy", "write", policyName,
-		path.Join(path.Dir(filename), "boundary-controller-policy.hcl")),
+	output := e2e.RunCommand("vault", "policy", "write", policyName,
+		path.Join(path.Dir(filename), "boundary-controller-policy.hcl"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
-		output := e2e.RunCommand("vault", e2e.WithArgs("policy", "delete", policyName))
+		output := e2e.RunCommand("vault", "policy", "delete", policyName)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -80,20 +66,20 @@ func CreateKvPrivateKeyCredential(t testing.TB, secretName string, secretPath st
 
 	// Add policy to vault
 	policyName := "kv-read"
-	output := e2e.RunCommand("vault", e2e.WithArgs("policy", "write", policyName, kvPolicyFilePath))
+	output := e2e.RunCommand("vault", "policy", "write", policyName, kvPolicyFilePath)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
-		output := e2e.RunCommand("vault", e2e.WithArgs("policy", "delete", policyName))
+		output := e2e.RunCommand("vault", "policy", "delete", policyName)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
 	// Create secret
-	output = e2e.RunCommand("vault", e2e.WithArgs("kv", "put",
+	output = e2e.RunCommand("vault", "kv", "put",
 		"-mount", secretPath,
 		secretName,
 		"username="+user,
 		"private_key=@"+keyPath,
-	))
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	return policyName

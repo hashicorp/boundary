@@ -6,6 +6,9 @@ variable "project_name" {}
 variable "instance_type" {}
 variable "aws_ssh_keypair_name" {}
 variable "enos_user" {}
+variable "additional_tags" {
+  default = {}
+}
 
 data "aws_subnets" "infra" {
   filter {
@@ -15,7 +18,7 @@ data "aws_subnets" "infra" {
 }
 
 resource "aws_security_group" "boundary_target" {
-  name        = "boundary-target-sg"
+  name_prefix = "boundary-target-sg"
   description = "SSH and boundary Traffic"
   vpc_id      = var.vpc_id
 
@@ -47,12 +50,12 @@ resource "aws_instance" "target" {
   subnet_id              = tolist(data.aws_subnets.infra.ids)[count.index % length(data.aws_subnets.infra.ids)]
   key_name               = var.aws_ssh_keypair_name
 
-  tags = {
+  tags = merge(var.additional_tags, {
     "Name" : "boundary-target-${count.index}",
     "Type" : "target",
     "Environment" : var.environment
     "Enos User" : var.enos_user,
-  }
+  })
 }
 
 output "target_ips" {

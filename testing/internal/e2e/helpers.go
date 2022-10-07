@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"testing"
@@ -49,45 +48,17 @@ const EnvToCheckSkip = "E2E_PASSWORD_AUTH_METHOD_ID"
 // of running the provided command.
 //
 //	RunCommand("ls")
-//	RunCommand("ls", WithArgs("-al", "/path"))
-//	RunCommand("ls", WithArgs("-al", "/path"), WithPipe("grep", "file"))
+//	RunCommand("ls", "-al", "/path")
 //
 // CommandResult is always valid even if there is an error.
-func RunCommand(command string, opt ...Option) *CommandResult {
+func RunCommand(name string, args ...string) *CommandResult {
 	var outbuf, errbuf bytes.Buffer
-	var err error
-	var c1, c2 *exec.Cmd
 
-	opts := getOpts(opt...)
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = &outbuf
+	cmd.Stderr = &errbuf
 
-	if opts.withArgs == nil {
-		c1 = exec.Command(command)
-	} else {
-		c1 = exec.Command(command, opts.withArgs...)
-	}
-
-	if opts.withPipe == nil {
-		c1.Stdout = &outbuf
-		c1.Stderr = &errbuf
-		err = c1.Run()
-	} else {
-		pipeCommand := opts.withPipe[0]
-		pipeArgs := opts.withPipe[1:]
-		c2 = exec.Command(pipeCommand, pipeArgs...)
-
-		r, w := io.Pipe()
-		c1.Stdout = w
-		c2.Stdin = r
-
-		c2.Stdout = &outbuf
-		c2.Stderr = &errbuf
-
-		c1.Start()
-		c2.Start()
-		c1.Wait()
-		w.Close()
-		c2.Wait()
-	}
+	err := cmd.Run()
 
 	var ee *exec.ExitError
 	var exitCode int

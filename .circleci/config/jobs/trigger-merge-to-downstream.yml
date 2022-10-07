@@ -1,0 +1,7 @@
+executor: go-machine-medium
+steps:
+- checkout
+- run:
+    name: "Trigger Merge to Downstream"
+    command: |
+      ./scripts/trigger-merge-to-downstream ${CIRCLE_BRANCH}

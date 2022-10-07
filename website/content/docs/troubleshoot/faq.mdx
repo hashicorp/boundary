@@ -1,0 +1,56 @@
+---
+layout: docs
+page_title: FAQ
+description: |-
+  FAQ for Boundary
+---
+
+# Frequently Asked Questions
+#### Q: What are the networking requirements for Boundary? Do my workers need to be exposed to the public internet?
+Boundary workers require inbound access from clients. This does not necessarily require that workers be exposed to the public internet. 
+If the client is coming from a private network (eg a corporate network), the worker needs to allow connectivity from the private network. 
+If the client is coming from the public internet, the worker needs to allow connectivity from the public internet. For more information, 
+check out the [worker networking requirements](https://cloud.hashicorp.com/docs/boundary/self-managed-workers).
+
+#### Q: Does Boundary require Vault? What is the integration story?
+While Vault isn't a *required* secrets backend for Boundary sessions, the potential for Boundary | Vault integration is a core part of Boundary's overall 
+value proposition for identity-based access.There are three primary points of integration with Vault:
+1. Vault can be used as a secrets backend for Boundary, offering single signon to end target systems via credential brokering. This was covered in Boundary's 
+[0.4 announcement](https://www.hashicorp.com/blog/announcing-hashicorp-boundary-0-4) and there are ample 
+[tutorials](https://learn.hashicorp.com/tutorials/boundary/vault-cred-brokering-quickstart) of this scenario. 
+2. Boundary can use Vault as an OIDC provider to enable sign-in with Vault's supported auth methods (even non-OIDC auth methods like Active Directory kerberos/LDAP). 
+This scenario is walked through in this [tutorial](https://learn.hashicorp.com/tutorials/vault/oidc-identity-provider).
+3. OSS Boundary can use Vault as the external KMS that serves as Boundary's root of trust. More information on this use case can be found 
+[here](https://www.boundaryproject.io/docs/configuration/kms/transit).
+
+#### Q: What Identity Providers does Boundary Support?
+Boundary supports [OIDC authentication](https://learn.hashicorp.com/tutorials/boundary/oidc-auth), which allows support for many popular IdPs 
+like Okta, Azure AD, Auth0, etc. For non-OIDC authentication protocols (such as LDAP), users can also log in with an OIDC bridge identity provider 
+such as [Vault's OIDC bridge](https://www.vaultproject.io/docs/concepts/oidc-provider) capabilities released in 1.9, [Dex](https://dexidp.io), or various others.
+
+#### Q: Does Boundary support Multi-factor Authentication (MFA)
+Boundary Open-ID Connect (OIDC)-based authentication supports MFA if the IdP being used enforces MFA. This allows users to authenticate with an identity 
+provider supporting MFA, such as Azure AD, Okta, Auth0, etc.
+Boundary also supports syncing permission claims between an IDP-managed identity and Boundary. This can be very useful when you want to sync group memberships 
+from an IDP to Boundary to assign role assignments dynamically. See Boundary's [managed groups capabilities](https://learn.hashicorp.com/tutorials/boundary/oidc-idp-groups?in=boundary/configuration).
+
+#### Q: Does Boundary automate the discovery and configuration of new targets (e.g. servers)? What happens if a host IP address changes?
+Yes, this is one of the core competencies of Boundary. Boundary can discover new targets in two primary ways
+1. Boundary's [Terraform provider](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) supports discovery of targets provisioned by Terraform
+2. Boundary's [dynamic host catalog](https://learn.hashicorp.com/tutorials/boundary/aws-host-catalogs?in=boundary/oss-access-management) 
+agentlessly queries infrastructure providers to automate the onboarding and configuration of hosts
+
+All of these methods will automate the discovery and configuration of targets when their ip addresses change. Of course, static hosts can still be manually added via Boundary admin UI and CLI.
+
+For more information on dynamic host catalogs, please see:
+- [Dynamic Host Catalog on AWS](https://learn.hashicorp.com/tutorials/boundary/aws-host-catalogs?in=boundary/access-management)
+- [Dynamic Host Catalogs on Azure](https://learn.hashicorp.com/tutorials/boundary/azure-host-catalogs?in=boundary/access-management)
+
+#### Q: Session management capabilities - Does Boundary support live session monitoring and termination?
+**Session Logging/Monitoring:** Supported. Boundary creates a session log of all sessions created between identities and targets that have been onboarded to 
+Boundary. You can learn how to monitor these sessions in this [tutorial](https://learn.hashicorp.com/tutorials/boundary/getting-started-connect?in=boundary/getting-started#manage-sessions). 
+Boundary supports audit logs for [Boundary OSS](https://learn.hashicorp.com/tutorials/boundary/event-logging) and [audit log streaming](https://cloud.hashicorp.com/docs/boundary/audit-logging) 
+for HCP Boundary. Audit logs for both distributions can be exported to SIEM or BI tools.
+
+**Session Termination:** Supported. Session termination for Boundary administrators is a supported capability, as demonstrated in this 
+[tutorial](https://learn.hashicorp.com/tutorials/boundary/getting-started-connect?in=boundary/getting-started#manage-sessions).
