@@ -678,11 +678,26 @@ func (b *Server) RunShutdownFuncs() error {
 	return mErr.ErrorOrNil()
 }
 
-func (b *Server) ConnectToDatabase(ctx context.Context, dialect string) error {
+// OpenAndSetServerDatabase calls OpenDatabase and sets its result *db.DB to the Server's
+// `Database` field.
+func (b *Server) OpenAndSetServerDatabase(ctx context.Context, dialect string) error {
+	dbase, err := b.OpenDatabase(ctx, dialect, b.DatabaseUrl)
+	if err != nil {
+		return err
+	}
+	b.Database = dbase
+	return nil
+}
+
+// OpenDatabase creates a database connection with the given URL and returns it to the caller.
+// It supports various configuration options - The values must be set on the Server object
+// beforehand.
+func (b *Server) OpenDatabase(ctx context.Context, dialect, url string) (*db.DB, error) {
 	dbType, err := db.StringToDbType(dialect)
 	if err != nil {
-		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+		return nil, fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
+
 	opts := []db.Option{
 		db.WithMaxOpenConnections(b.DatabaseMaxOpenConnections),
 		db.WithMaxIdleConnections(b.DatabaseMaxIdleConnections),
@@ -691,12 +706,13 @@ func (b *Server) ConnectToDatabase(ctx context.Context, dialect string) error {
 	if os.Getenv("BOUNDARY_DISABLE_GORM_FORMATTER") == "" {
 		opts = append(opts, db.WithGormFormatter(b.Logger))
 	}
-	dbase, err := db.Open(ctx, dbType, b.DatabaseUrl, opts...)
+
+	dbase, err := db.Open(ctx, dbType, url, opts...)
 	if err != nil {
-		return fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
+		return nil, fmt.Errorf("unable to create db object with dialect %s: %w", dialect, err)
 	}
-	b.Database = dbase
-	return nil
+
+	return dbase, nil
 }
 
 func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
@@ -713,17 +729,7 @@ func (b *Server) CreateGlobalKmsKeys(ctx context.Context) error {
 		return fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
-
-	if err = kmsCache.CreateKeys(cancelCtx, scope.Global.String(), kms.WithRandomReader(b.SecureRandomReader)); err != nil {
+	if err = kmsCache.CreateKeys(ctx, scope.Global.String(), kms.WithRandomReader(b.SecureRandomReader)); err != nil {
 		return fmt.Errorf("error creating global scope kms keys: %w", err)
 	}
 
@@ -739,49 +745,6 @@ func (b *Server) DestroyDevDatabase(ctx context.Context) error {
 	if b.DevDatabaseCleanupFunc != nil {
 		return b.DevDatabaseCleanupFunc()
 	}
-	return nil
-}
-
-func (b *Server) SetupControllerPublicClusterAddress(conf *config.Config, flagValue string) error {
-	if conf.Controller == nil {
-		conf.Controller = new(config.Controller)
-	}
-	if flagValue != "" {
-		conf.Controller.PublicClusterAddr = flagValue
-	}
-	if conf.Controller.PublicClusterAddr == "" {
-	FindAddr:
-		for _, listener := range conf.Listeners {
-			for _, purpose := range listener.Purpose {
-				if purpose == "cluster" {
-					conf.Controller.PublicClusterAddr = listener.Address
-					break FindAddr
-				}
-			}
-		}
-	} else {
-		var err error
-		conf.Controller.PublicClusterAddr, err = parseutil.ParsePath(conf.Controller.PublicClusterAddr)
-		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
-			return fmt.Errorf("Error parsing public cluster addr: %w", err)
-		}
-
-		conf.Controller.PublicClusterAddr, err = listenerutil.ParseSingleIPTemplate(conf.Controller.PublicClusterAddr)
-		if err != nil {
-			return fmt.Errorf("Error parsing IP template on controller public cluster addr: %w", err)
-		}
-	}
-
-	host, port, err := net.SplitHostPort(conf.Controller.PublicClusterAddr)
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			port = "9201"
-			host = conf.Controller.PublicClusterAddr
-		} else {
-			return fmt.Errorf("Error splitting public cluster adddress host/port: %w", err)
-		}
-	}
-	conf.Controller.PublicClusterAddr = net.JoinHostPort(host, port)
 	return nil
 }
 
@@ -855,11 +818,11 @@ func MakeSighupCh() chan struct{} {
 //
 // The setting is derived from one of the following, in order:
 //
-//   * Via the supplied value if non-zero.
-//   * BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
-//   integer value to define the setting.
-//   * If either of these is missing, the default is used. See the
-//   defaultStatusGracePeriod value for the default value.
+//   - Via the supplied value if non-zero.
+//   - BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
+//     integer value to define the setting.
+//   - If either of these is missing, the default is used. See the
+//     defaultStatusGracePeriod value for the default value.
 //
 // The minimum setting for this value is the default setting. Values
 // below this will be reset to the default.

@@ -85,3 +85,52 @@ func Test_TestUsernamePasswordCredentials(t *testing.T) {
 	creds := TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), count)
 	assert.Len(creds, count)
 }
+
+func Test_TestJsonCredential(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kkms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
+
+	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+
+	obj, objBytes, err := TestJsonObject()
+	assert.NoError(err)
+
+	cred := TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, WithName("my-name"), WithDescription("my-description"))
+	require.NotNil(cred)
+	assert.NotEmpty(cred.GetPublicId())
+	assert.Equal(cred.Name, "my-name")
+	assert.Equal(cred.Description, "my-description")
+	assert.Equal(cred.Object, objBytes)
+
+	// Validate hmac
+	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(err)
+	hm, err := crypto.HmacSha256(context.Background(), cred.Object, databaseWrapper, []byte(cred.StoreId), nil)
+	require.NoError(err)
+	assert.Equal([]byte(hm), cred.ObjectHmac)
+}
+
+func Test_TestJsonCredentials(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	require.NotNil(prj)
+	assert.NotEmpty(prj.GetPublicId())
+
+	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+
+	obj, _, err := TestJsonObject()
+	assert.NoError(err)
+
+	count := 3
+	creds := TestJsonCredentials(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, count)
+	assert.Len(creds, count)
+}

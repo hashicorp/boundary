@@ -139,7 +139,7 @@ func (r *UserRole) SetTableName(n string) {
 	}
 }
 
-//  GroupRole is a group assigned to a role
+// GroupRole is a group assigned to a role
 type GroupRole struct {
 	*store.GroupRole
 	tableName string `gorm:"-"`

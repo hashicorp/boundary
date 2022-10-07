@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+BRANCH=${1:="main"}
+
+if [[ -z "${DOWNSTREAM_SLUG}" ]]; then
+    echo "skipping, no downstream"
+    exit 0
+fi
+
+if [[ -z "${CIRCLE_REPOSITORY_URL}" ]]; then
+    exit 0
+fi
+
+if [[ "${CIRCLE_REPOSITORY_URL}" == *"boundary-${DOWNSTREAM_SLUG}"* ]]; then
+  exit 0
+fi
+
+if [[ -z ${CIRCLE_CI_DOWNSTREAM_TOK} ]]; then
+  exit 0
+fi
+
+curl -u "${CIRCLE_CI_DOWNSTREAM_TOK}:" \
+  -d "build_parameters[CIRCLE_JOB]=merge-from-upstream" \
+  "https://circleci.com/api/v1.1/project/github/hashicorp/boundary-${DOWNSTREAM_SLUG}/tree/${BRANCH}"

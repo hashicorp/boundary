@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
-	"os/signal"
 	"runtime"
 	"strings"
-	"syscall"
+	"sync"
+	atm "sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -90,7 +91,7 @@ type Command struct {
 	flagEveryEventDenyFilters        []string
 	flagCreateLoopbackHostPlugin     bool
 	flagPluginExecutionDir           string
-	flagUseKmsWorkerAuthMethod       bool
+	flagWorkerAuthMethod             string
 	flagWorkerAuthStorageDir         string
 	flagWorkerAuthStorageSkipCleanup bool
 	flagWorkerAuthRotationInterval   time.Duration
@@ -337,10 +338,11 @@ func (c *Command) Flags() *base.FlagSets {
 		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
 		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
 	})
-	f.BoolVar(&base.BoolVar{
-		Name:   "use-kms-worker-auth-method",
-		Target: &c.flagUseKmsWorkerAuthMethod,
-		Usage:  "If set, the original KMS-based method of worker auth will be used to connect the initial dev worker to the controller.",
+	f.StringVar(&base.StringVar{
+		Name:    "worker-auth-method",
+		Target:  &c.flagWorkerAuthMethod,
+		Default: "random-pki",
+		Usage:   `Allows specifying how the generated worker will authenticate to the controller. Valid values are "kms" for the KMS-based mechanism; "pki-controller-led" for the PKI mechanism via the server-led authorization flow; "pki-worker-led" for the PKI mechanism via the worker-led authorization flow; and "random-pki" to randomly choose one of the PKI methods.`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -515,7 +517,7 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
-	if err := c.SetupControllerPublicClusterAddress(c.Config, c.flagControllerPublicClusterAddr); err != nil {
+	if err := c.Config.SetupControllerPublicClusterAddress(c.flagControllerPublicClusterAddr); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
@@ -598,7 +600,7 @@ func (c *Command) Run(args []string) int {
 	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
 	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 
-	if !c.flagUseKmsWorkerAuthMethod {
+	if c.flagWorkerAuthMethod != "kms" {
 		c.DevUsePkiForUpstream = true
 		// These must be unset for PKI
 		c.Config.Worker.Name = ""
@@ -625,7 +627,7 @@ func (c *Command) Run(args []string) int {
 	if c.flagCreateLoopbackHostPlugin {
 		c.DevLoopbackHostPluginId = "pl_1234567890"
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostLoopback)
-		c.Config.Controller.SchedulerRunJobInterval = 100 * time.Millisecond
+		c.Config.Controller.Scheduler.JobRunIntervalDuration = 100 * time.Millisecond
 	}
 	switch c.flagDatabaseUrl {
 	case "":
@@ -701,6 +703,54 @@ func (c *Command) Run(args []string) int {
 			c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthRotationInterval
 		}
 
+		// Note: this should be done before starting the worker so that the
+		// activation token is populated
+		var useWorkerLed bool
+		if c.flagWorkerAuthMethod != "kms" {
+			// Flip a coin. Use one method or the other; it's transparent to
+			// users, but keeps both exercised.
+			if c.flagWorkerAuthMethod == "random-pki" {
+				randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
+				if randPki == 0 {
+					c.flagWorkerAuthMethod = "pki-controller-led"
+				} else {
+					c.flagWorkerAuthMethod = "pki-worker-led"
+				}
+			}
+			switch c.flagWorkerAuthMethod {
+			case "pki-controller-led":
+				// Controller-led
+				serversRepo, err := c.controller.ServersRepoFn()
+				if err != nil {
+					c.UI.Error(fmt.Errorf("Error instantiating server repo: %w", err).Error())
+					if err := c.controller.Shutdown(); err != nil {
+						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+					}
+					return base.CommandCliError
+				}
+
+				// Create the worker in the database and fetch an activation token
+				worker, err := serversRepo.CreateWorker(c.Context, &server.Worker{
+					Worker: &store.Worker{
+						ScopeId: scope.Global.String(),
+					},
+				}, server.WithCreateControllerLedActivationToken(true))
+				if err != nil {
+					c.UI.Error(fmt.Errorf("Error creating worker in database: %w", err).Error())
+					if err := c.controller.Shutdown(); err != nil {
+						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+					}
+					return base.CommandCliError
+				}
+
+				// Set the activation token in the config
+				conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
+
+			default:
+				useWorkerLed = true
+			}
+		}
+
 		if err := c.worker.Start(); err != nil {
 			retErr := fmt.Errorf("Error starting worker: %w", err)
 			if err := c.worker.Shutdown(); err != nil {
@@ -714,46 +764,48 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		if !c.flagUseKmsWorkerAuthMethod {
-			req := c.worker.WorkerAuthRegistrationRequest
-			if req == "" {
-				c.UI.Error("No worker auth registration request found at worker start time")
-				return base.CommandCliError
-			}
-			c.InfoKeys = append(c.InfoKeys, "worker auth registration request")
-			c.Info["worker auth registration request"] = req
+		if c.flagWorkerAuthMethod != "kms" {
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
 			c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
-			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
-				// Shutdown on failure
-				retErr := fmt.Errorf("Error storing worker auth request: %w", err)
-				if err := c.worker.Shutdown(); err != nil {
+
+			if useWorkerLed {
+				req := c.worker.WorkerAuthRegistrationRequest
+				if req == "" {
+					c.UI.Error("No worker auth registration request found at worker start time")
+					return base.CommandCliError
+				}
+
+				if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
+					// Shutdown on failure
+					retErr := fmt.Errorf("Error storing worker auth request: %w", err)
+					if err := c.worker.Shutdown(); err != nil {
+						c.UI.Error(retErr.Error())
+						retErr = fmt.Errorf("Error shutting down worker: %w", err)
+					}
 					c.UI.Error(retErr.Error())
-					retErr = fmt.Errorf("Error shutting down worker: %w", err)
+					if err := c.controller.Shutdown(); err != nil {
+						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+					}
+					return base.CommandCliError
 				}
-				c.UI.Error(retErr.Error())
-				if err := c.controller.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-				}
-				return base.CommandCliError
-			}
-			go func() {
-				for {
-					select {
-					case <-c.Context.Done():
-						return
-					case <-time.After(time.Second):
-						if err := authorizeWorker(c.Context, c.controller, req); err != nil {
-							c.UI.Error(fmt.Errorf("Error authorizing node: %w", err).Error())
-							errorEncountered.Store(true)
+				go func() {
+					for {
+						select {
+						case <-c.Context.Done():
+							return
+						case <-time.After(time.Second):
+							if err := authorizeWorker(c.Context, c.controller, req); err != nil {
+								c.UI.Error(fmt.Errorf("Error authorizing node: %w", err).Error())
+								errorEncountered.Store(true)
+								return
+							}
 							return
 						}
-						return
 					}
-				}
-			}()
+				}()
+			}
 		}
 	}
 
@@ -763,7 +815,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.worker, c.Listeners...)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Failed to start ops listeners: %w", err).Error())
 		return base.CommandCliError
@@ -772,74 +824,92 @@ func (c *Command) Run(args []string) int {
 	c.opsServer = opsServer
 	c.opsServer.Start()
 
-	// Wait for shutdown
-	shutdownTriggered := false
+	var shutdownCompleted atm.Bool
+	shutdownTriggerCount := 0
 
-	// Add a force-shutdown goroutine to consume more interrupts
-	abortForceShutdownCh := make(chan struct{})
-	defer close(abortForceShutdownCh)
-
-	runShutdownLogic := func() {
-		go func() {
-			shutdownCh := make(chan os.Signal, 4)
-			signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
-			for {
-				select {
-				case <-shutdownCh:
-					c.UI.Error("Forcing shutdown")
-					os.Exit(base.CommandUserError)
-
-				case <-c.ServerSideShutdownCh:
-					// Drain connections in case this is hit more than once
-
-				case <-abortForceShutdownCh:
-					// No-op, we just use this to shut down the goroutine
-					return
-				}
-			}
-		}()
-
-		shutdownTriggered = true
+	var workerShutdownOnce sync.Once
+	workerShutdownFunc := func() {
+		if err := c.worker.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
+		}
+		if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
+			c.worker.WorkerAuthStorage.Cleanup()
+		}
+	}
+	workerGracefulShutdownFunc := func() {
+		if err := c.worker.GracefulShutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker gracefully: %w", err).Error())
+		}
+		workerShutdownOnce.Do(workerShutdownFunc)
+	}
+	var controllerOnce sync.Once
+	controllerShutdownFunc := func() {
+		if err := c.controller.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
+		}
+		err := c.opsServer.Shutdown()
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
+		}
 	}
 
-	for !shutdownTriggered && !errorEncountered.Load() {
+	runShutdownLogic := func() {
+		switch {
+		case shutdownTriggerCount == 1:
+			c.ContextCancel()
+			go func() {
+				if c.Config.Controller != nil {
+					c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+				}
+
+				if !c.flagControllerOnly {
+					c.UI.Output("==> Boundary dev environment graceful shutdown triggered, interrupt again to enter shutdown")
+					workerGracefulShutdownFunc()
+				} else {
+					c.UI.Output("==> Boundary dev shutdown triggered, interrupt again to force")
+				}
+
+				controllerOnce.Do(controllerShutdownFunc)
+
+				shutdownCompleted.Store(true)
+			}()
+		case shutdownTriggerCount == 2 && !c.flagControllerOnly:
+			go func() {
+				if !c.flagControllerOnly {
+					workerShutdownOnce.Do(workerShutdownFunc)
+				}
+
+				if c.Config.Controller != nil {
+					controllerOnce.Do(controllerShutdownFunc)
+				}
+				shutdownCompleted.Store(true)
+			}()
+
+		case shutdownTriggerCount >= 2:
+			go func() {
+				c.UI.Error("Forcing shutdown")
+				os.Exit(base.CommandCliError)
+			}()
+		}
+	}
+
+	for !errorEncountered.Load() && !shutdownCompleted.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary dev environment self-terminating")
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary dev environment shutdown triggered, interrupt again to force")
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
-		}
 
-		if shutdownTriggered {
-			if c.Config.Controller != nil {
-				c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
-			}
-
-			if !c.flagControllerOnly {
-				if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
-					c.worker.WorkerAuthStorage.Cleanup()
-				}
-				if err := c.worker.Shutdown(); err != nil {
-					c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
-				}
-			}
-
-			if err := c.controller.Shutdown(); err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
-			}
-
-			err := c.opsServer.Shutdown()
-			if err != nil {
-				c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
-			}
+		case <-time.After(10 * time.Millisecond):
 		}
 	}
 

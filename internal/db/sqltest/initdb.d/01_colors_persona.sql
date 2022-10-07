@@ -224,16 +224,17 @@ begin;
     ('p____rcolors', 't_________cr', 's___1cr-sths'),
     ('p____rcolors', 't_________cr', 's___2cr-sths');
 
-
   insert into credential_vault_store
-    (project_id,     public_id,      name,                description, vault_address, namespace)
+    (project_id,     public_id,       name,                  description, vault_address,         namespace)
   values
-    ('p____bcolors', 'vs_______cvs', 'color vault store', 'None',      'https://vault.color', 'blue');
+    ('p____bcolors', 'vs_______cvs1', 'color vault store 1', 'None',      'https://vault.color', 'blue'),
+    ('p____bcolors', 'vs_______cvs2', 'color vault store 2', 'Some',      'https://vault.color', 'blue'),
+    ('p____bcolors', 'vs_______cvs3', 'color vault store 3', 'Maybe',     'https://vault.color', 'blue');
 
   insert into credential_vault_library
-    (store_id,       public_id,     name,                  description, vault_path, http_method)
+    (store_id,        public_id,     name,                  description, vault_path, http_method)
   values
-    ('vs_______cvs', 'vl______cvl', 'color vault library', 'None',      '/secrets', 'GET');
+    ('vs_______cvs1', 'vl______cvl', 'color vault library', 'None',      '/secrets', 'GET');
 
   insert into target_credential_library
     (project_id,     target_id,      credential_library_id, credential_purpose)

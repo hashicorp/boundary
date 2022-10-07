@@ -5,7 +5,7 @@ CWD := $(shell pwd)
 # Version of postgres docker image for test database
 PG_DOCKER_TAG ?= 13-alpine
 # Version of pg_tap docker image
-PG_TAP_DOCKER_TAG ?= pg13
+PG_TAP_DOCKER_TAG ?= 13
 SQL_TEST_DB_PORT ?=
 DOCKER_ARGS ?=
 ifneq ($(strip $(SQL_TEST_DB_PORT)),)
@@ -18,6 +18,7 @@ endif
 PROVE_OPTS ?=
 
 TESTS ?= tests/setup/*.sql \
+		 tests/org/*.sql \
 		 tests/wh/*/*.sql \
 		 tests/sentinel/*.sql \
 		 tests/credential/*/*.sql \
@@ -29,7 +30,7 @@ POSTGRES_DOCKER_IMAGE_BASE ?= postgres
 
 POSTGRES_DOCKER_IMAGE := $(POSTGRES_DOCKER_IMAGE_BASE):$(PG_DOCKER_TAG)
 
-PG_TAP_DOCKER_IMAGE_BASE ?= subzerocloud/pgtap
+PG_TAP_DOCKER_IMAGE_BASE ?= hashicorpboundary/pgtap
 PG_TAP_DOCKER_IMAGE := $(PG_TAP_DOCKER_IMAGE_BASE):$(PG_TAP_DOCKER_TAG)
 
 SQL_TEST_CONTAINER_NAME ?= boundary-sql-tests
@@ -61,7 +62,7 @@ test:
 		-e TESTS="$(PROVE_OPTS) $(dockerized_tests)" \
 		-v "$(CWD)/tests":/test \
 		$(PG_TAP_DOCKER_IMAGE); \
-		(ret=$$?; docker stop $(SQL_TEST_CONTAINER_NAME) &>/dev/null && docker rm -v $(SQL_TEST_CONTAINER_NAME) &>/dev/null && exit $$ret)
+		(ret=$$?; docker stop $(SQL_TEST_CONTAINER_NAME) &>/dev/null && docker logs $(SQL_TEST_CONTAINER_NAME) && docker rm -v $(SQL_TEST_CONTAINER_NAME) &>/dev/null && exit $$ret)
 
 database-up:
 	@echo Using $(POSTGRES_DOCKER_IMAGE)

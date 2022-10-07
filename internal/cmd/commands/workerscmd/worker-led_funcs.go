@@ -58,7 +58,10 @@ func executeExtraWorkerLedActionsImpl(c *WorkerLedCommand, origResp *api.Respons
 	switch c.Func {
 	case "create":
 		result, err := workerClient.CreateWorkerLed(c.Context, c.flagWorkerGeneratedAuthToken, c.FlagScopeId, opts...)
-		return result.GetResponse(), result.GetItem(), err
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil
 	}
 	return origResp, origItem, origError
 }

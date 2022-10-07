@@ -144,7 +144,7 @@ func TestSessionParams(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamR
 	tcpTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "test target")
 
 	kms := kms.TestKms(t, conn, wrapper)
-	targetRepo, err := target.NewRepository(rw, rw, kms)
+	targetRepo, err := target.NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 	require.NoError(err)

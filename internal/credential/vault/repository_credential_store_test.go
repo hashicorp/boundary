@@ -235,13 +235,20 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	stores := TestCredentialStores(t, conn, wrapper, prj.PublicId, 2)
+	stores := TestCredentialStores(t, conn, wrapper, prj.PublicId, 3)
 	csWithClientCert := stores[0]
 	csWithoutClientCert := stores[1]
+	csWithExpiredToken := stores[2]
 
 	ccert := allocClientCertificate()
 	ccert.StoreId = csWithoutClientCert.GetPublicId()
 	rows, err := rw.Delete(context.Background(), ccert, db.WithWhere("store_id = ?", csWithoutClientCert.GetPublicId()))
+	require.NoError(t, err)
+	require.Equal(t, 1, rows)
+
+	rows, err = rw.Exec(context.Background(),
+		"update credential_vault_token set status = ? where token_hmac = ?",
+		[]interface{}{ExpiredToken, csWithExpiredToken.Token().TokenHmac})
 	require.NoError(t, err)
 	require.Equal(t, 1, rows)
 
@@ -260,6 +267,12 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 			name:           "valid-with-client-cert",
 			id:             csWithClientCert.GetPublicId(),
 			want:           csWithClientCert,
+			wantClientCert: true,
+		},
+		{
+			name:           "valid-with-expired-token",
+			id:             csWithExpiredToken.GetPublicId(),
+			want:           csWithExpiredToken,
 			wantClientCert: true,
 		},
 		{
@@ -355,13 +368,6 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 	changeDescription := func(d string) func(*CredentialStore) *CredentialStore {
 		return func(cs *CredentialStore) *CredentialStore {
 			cs.Description = d
-			return cs
-		}
-	}
-
-	changeWorkerFilter := func(wf string) func(*CredentialStore) *CredentialStore {
-		return func(cs *CredentialStore) *CredentialStore {
-			cs.WorkerFilter = wf
 			return cs
 		}
 	}
@@ -513,37 +519,19 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			wantCount: 1,
 		},
 		{
-			name: "change-worker-filter",
+			name: "change-name-and-description",
 			orig: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					WorkerFilter: "test-workerfilter",
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
 				},
 			},
-			chgFn: changeWorkerFilter("test-update-worker-filter"),
-			masks: []string{"WorkerFilter"},
-			want: &CredentialStore{
-				CredentialStore: &store.CredentialStore{
-					WorkerFilter: "test-update-worker-filter",
-				},
-			},
-			wantCount: 1,
-		},
-		{
-			name: "change-name-and-description-and-workerfilter",
-			orig: &CredentialStore{
-				CredentialStore: &store.CredentialStore{
-					Name:         "test-name-repo",
-					Description:  "test-description-repo",
-					WorkerFilter: "test-workerfilter",
-				},
-			},
-			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo"), changeWorkerFilter("test-update-worker-filter")),
+			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
 			masks: []string{"Name", "Description"},
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					Name:         "test-update-name-repo",
-					Description:  "test-update-description-repo",
-					WorkerFilter: "test-update-worker-filter",
+					Name:        "test-update-name-repo",
+					Description: "test-update-description-repo",
 				},
 			},
 			wantCount: 1,
@@ -552,9 +540,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			name: "delete-name",
 			orig: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					Name:         "test-name-repo",
-					Description:  "test-description-repo",
-					WorkerFilter: "test-workerfilter",
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
 				},
 			},
 			masks: []string{"Name"},
@@ -570,9 +557,8 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			name: "delete-description",
 			orig: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
-					Name:         "test-name-repo",
-					Description:  "test-description-repo",
-					WorkerFilter: "test-workerfilter",
+					Name:        "test-name-repo",
+					Description: "test-description-repo",
 				},
 			},
 			masks: []string{"Description"},
@@ -580,26 +566,6 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			want: &CredentialStore{
 				CredentialStore: &store.CredentialStore{
 					Name: "test-name-repo",
-				},
-			},
-			wantCount: 1,
-		},
-		{
-			name: "delete-workerfilter",
-			orig: &CredentialStore{
-				CredentialStore: &store.CredentialStore{
-					Name:         "test-name-repo",
-					Description:  "test-description-repo",
-					WorkerFilter: "test-workerfilter",
-				},
-			},
-			masks: []string{"WorkerFilter"},
-			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo"),
-				changeWorkerFilter("")),
-			want: &CredentialStore{
-				CredentialStore: &store.CredentialStore{
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
 				},
 			},
 			wantCount: 1,
@@ -1073,6 +1039,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 		name               string
 		newTokenOpts       []TestOption
 		wantOldTokenStatus TokenStatus
+		updateToken        func(ctx context.Context, tokenHmac []byte)
 		wantCount          int
 		wantErr            errors.Code
 	}{
@@ -1080,6 +1047,17 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			name:               "valid",
 			wantOldTokenStatus: MaintainingToken,
 			wantCount:          1,
+		},
+		{
+			name:               "valid-token-expired",
+			wantOldTokenStatus: ExpiredToken,
+			updateToken: func(ctx context.Context, tokenHmac []byte) {
+				_, err := rw.Exec(ctx,
+					"update credential_vault_token set status = ? where token_hmac = ?",
+					[]interface{}{ExpiredToken, tokenHmac})
+				require.NoError(t, err)
+			},
+			wantCount: 1,
 		},
 		{
 			name:         "token-missing-capabilities",
@@ -1126,6 +1104,10 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			orig, err := repo.CreateCredentialStore(ctx, origIn)
 			assert.NoError(err)
 			require.NotNil(orig)
+
+			if tt.updateToken != nil {
+				tt.updateToken(ctx, orig.outputToken.TokenHmac)
+			}
 
 			// update
 			_, updateToken := v.CreateToken(t, tt.newTokenOpts...)
@@ -1190,12 +1172,12 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 		return nil
 	}
 
-	assertUpdated := func(t *testing.T, org, updated *ClientCertificate, ps *privateStore) {
+	assertUpdated := func(t *testing.T, org, updated *ClientCertificate, ps *clientStore) {
 		assert.Equal(t, updated.Certificate, ps.ClientCert, "updated certificate")
 		assert.Equal(t, updated.CertificateKey, []byte(ps.ClientKey), "updated certificate key")
 	}
 
-	assertDeleted := func(t *testing.T, org, updated *ClientCertificate, ps *privateStore) {
+	assertDeleted := func(t *testing.T, org, updated *ClientCertificate, ps *clientStore) {
 		assert.Nil(t, updated, "updated certificate")
 		assert.Nil(t, ps.ClientCert, "ps ClientCert")
 		assert.Nil(t, ps.ClientKey, "ps ClientKey")
@@ -1207,7 +1189,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 		tls       TestVaultTLS
 		origFn    func(t *testing.T, v *TestVaultServer) *ClientCertificate
 		updateFn  func(t *testing.T, v *TestVaultServer) *ClientCertificate
-		wantFn    func(t *testing.T, org, updated *ClientCertificate, ps *privateStore)
+		wantFn    func(t *testing.T, org, updated *ClientCertificate, ps *clientStore)
 		wantCount int
 		wantErr   errors.Code
 	}{
@@ -1292,7 +1274,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(got)
 
-			ps, err := repo.lookupPrivateStore(ctx, orig.GetPublicId())
+			ps, err := repo.lookupClientStore(ctx, orig.GetPublicId())
 			require.NoError(err)
 			tt.wantFn(t, origClientCert, updateClientCert, ps)
 		})
@@ -1323,6 +1305,20 @@ func TestRepository_ListCredentialStores_Multiple_Scopes(t *testing.T) {
 		TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), numPerScope)
 		total += numPerScope
 	}
+
+	// Add some credential stores with expired tokens
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	prjs = append(prjs, prj.GetPublicId())
+
+	stores := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), numPerScope)
+	for _, cs := range stores {
+		rows, err := rw.Exec(context.Background(),
+			"update credential_vault_token set status = ? where token_hmac = ?",
+			[]interface{}{ExpiredToken, cs.Token().TokenHmac})
+		require.NoError(err)
+		require.Equal(1, rows)
+	}
+	total += numPerScope
 
 	got, err := repo.ListCredentialStores(context.Background(), prjs)
 	require.NoError(err)
@@ -1585,10 +1581,14 @@ group by store_id, status;
 				assert.Len(libs, len(actualLibs))
 			}
 
+			// verify no revoke stores exist
 			{
-				privStores, err := repo.listRevokePrivateStores(ctx)
-				assert.NoError(err)
-				assert.Empty(privStores)
+				rows, err := repo.reader.Query(ctx,
+					"select * from credential_vault_token_renewal_revocation where token_status = $1",
+					[]interface{}{ExpiredToken})
+				require.NoError(err)
+				defer rows.Close()
+				assert.False(rows.Next())
 			}
 
 			// verify updating the credential store works
@@ -1656,17 +1656,27 @@ group by store_id, status;
 			}
 
 			var deleteTime *timestamp.Timestamp
-			// still in privateStore delete time set
+			// still in clientStore delete time set
 			{
-				privStores, err := repo.listRevokePrivateStores(ctx)
-				assert.NoError(err)
-				var privateStore *privateStore
+				rows, err := repo.reader.Query(ctx,
+					"select * from credential_vault_token_renewal_revocation where token_status = $1",
+					[]interface{}{RevokeToken})
+				require.NoError(err)
+				defer rows.Close()
+
+				var privateStore *clientStore
 				var storeIds []string
-				for _, v := range privStores {
-					id := v.GetPublicId()
+				for rows.Next() {
+					var s clientStore
+					err = repo.reader.ScanRows(ctx, rows, &s)
+					require.NoError(err)
+					require.NotNil(s)
+
+					id := s.GetPublicId()
 					storeIds = append(storeIds, id)
 					if id == storeId {
-						privateStore = v
+						privateStore = &s
+						break
 					}
 				}
 				assert.Contains(storeIds, storeId)
@@ -1693,17 +1703,27 @@ group by store_id, status;
 				assert.Equal(0, deleteCount)
 			}
 
-			// still in privateStore delete time should not change
+			// still in clientStore delete time should not change
 			{
-				privStores, err := repo.listRevokePrivateStores(ctx)
-				assert.NoError(err)
-				var privateStore *privateStore
+				rows, err := repo.reader.Query(ctx,
+					"select * from credential_vault_token_renewal_revocation where token_status = $1",
+					[]interface{}{RevokeToken})
+				require.NoError(err)
+				defer rows.Close()
+
+				var privateStore *clientStore
 				var storeIds []string
-				for _, v := range privStores {
-					id := v.GetPublicId()
+				for rows.Next() {
+					var s clientStore
+					err = repo.reader.ScanRows(ctx, rows, &s)
+					require.NoError(err)
+					require.NotNil(s)
+
+					id := s.GetPublicId()
 					storeIds = append(storeIds, id)
 					if id == storeId {
-						privateStore = v
+						privateStore = &s
+						break
 					}
 				}
 				assert.Contains(storeIds, storeId)

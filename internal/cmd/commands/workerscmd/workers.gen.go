@@ -208,6 +208,30 @@ func (c *Command) Run(args []string) int {
 			version = uint32(c.FlagVersion)
 		}
 
+	case "add-worker-tags":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, workers.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "set-worker-tags":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, workers.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "remove-worker-tags":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, workers.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
 	}
 
 	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {

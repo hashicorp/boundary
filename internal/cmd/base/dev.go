@@ -93,7 +93,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
 	}
 
-	if err := b.ConnectToDatabase(ctx, dialect); err != nil {
+	if err := b.OpenAndSetServerDatabase(ctx, dialect); err != nil {
 		if c != nil {
 			err = multierror.Append(err, c())
 		}
@@ -371,18 +371,8 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 		}
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
-
 	b.DevOidcSetup.authMethod, err = oidcRepo.CreateAuthMethod(
-		cancelCtx,
+		ctx,
 		authMethod,
 		oidc.WithPublicId(b.DevOidcAuthMethodId))
 	if err != nil {
@@ -402,7 +392,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 				return fmt.Errorf("error generating %s oidc account: %w", typ, err)
 			}
 			acct, err = oidcRepo.CreateAccount(
-				cancelCtx,
+				ctx,
 				b.DevOidcSetup.authMethod.GetScopeId(),
 				acct,
 				oidc.WithPublicId(accountId),
@@ -417,11 +407,11 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 				return fmt.Errorf("unable to create iam repo: %w", err)
 			}
 
-			u, _, err := iamRepo.LookupUser(cancelCtx, userId)
+			u, _, err := iamRepo.LookupUser(ctx, userId)
 			if err != nil {
 				return fmt.Errorf("error looking up %s user: %w", typ, err)
 			}
-			if _, err = iamRepo.AddUserAccounts(cancelCtx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
+			if _, err = iamRepo.AddUserAccounts(ctx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
 				return fmt.Errorf("error associating initial %s user with account: %w", typ, err)
 			}
 

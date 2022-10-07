@@ -60,10 +60,12 @@ func init() {
 
 // Service handles request as described by the pbs.RoleServiceServer interface.
 type Service struct {
-	pbs.UnimplementedRoleServiceServer
+	pbs.UnsafeRoleServiceServer
 
 	repoFn common.IamRepoFactory
 }
+
+var _ pbs.RoleServiceServer = (*Service)(nil)
 
 // NewService returns a role service which handles role related requests to boundary.
 func NewService(repo common.IamRepoFactory) (Service, error) {
@@ -73,8 +75,6 @@ func NewService(repo common.IamRepoFactory) (Service, error) {
 	}
 	return Service{repoFn: repo}, nil
 }
-
-var _ pbs.RoleServiceServer = Service{}
 
 // ListRoles implements the interface pbs.RoleServiceServer.
 func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs.ListRolesResponse, error) {
@@ -880,9 +880,9 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetRoleRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.RolePrefix)
 }
@@ -1053,9 +1053,16 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		if _, err := perms.Parse("p_anything", v); err != nil {
+		grant, err := perms.Parse("p_anything", v)
+		if err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
+		}
+		_, actStrs := grant.Actions()
+		for _, actStr := range actStrs {
+			if depAct := action.DeprecatedMap[actStr]; depAct != action.Unknown {
+				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
+			}
 		}
 	}
 	if len(badFields) > 0 {
@@ -1077,9 +1084,16 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		if _, err := perms.Parse("p_anything", v); err != nil {
+		grant, err := perms.Parse("p_anything", v)
+		if err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
+		}
+		_, actStrs := grant.Actions()
+		for _, actStr := range actStrs {
+			if depAct := action.DeprecatedMap[actStr]; depAct != action.Unknown {
+				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
+			}
 		}
 	}
 	if len(badFields) > 0 {
@@ -1108,6 +1122,7 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
 		}
+		// NOTE: we don't do a deprecation check here because it's fine to allow people to remove deprecated grants.
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)

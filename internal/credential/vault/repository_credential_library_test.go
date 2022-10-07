@@ -1621,6 +1621,47 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, got2.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
 
+	t.Run("valid-update-with-expired-store-token", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		css := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)
+		cs := css[0]
+
+		in := &CredentialLibrary{
+			CredentialLibrary: &store.CredentialLibrary{
+				HttpMethod: "GET",
+				VaultPath:  "/some/path",
+				Name:       "test-name-repo",
+			},
+		}
+
+		in.StoreId = cs.GetPublicId()
+		got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in)
+		assert.NoError(err)
+		require.NotNil(got)
+
+		// Expire the credential store Vault token
+		rows, err := rw.Exec(context.Background(),
+			"update credential_vault_token set status = ? where token_hmac = ?",
+			[]interface{}{ExpiredToken, cs.Token().TokenHmac})
+		require.NoError(err)
+		require.Equal(1, rows)
+
+		got.Name = "new-name"
+		updated, gotCount, err := repo.UpdateCredentialLibrary(ctx, prj.GetPublicId(), got, 1, []string{"name"})
+		assert.NoError(err)
+		require.NotNil(updated)
+		assert.Equal("new-name", updated.Name)
+		assert.Equal(1, gotCount)
+	})
+
 	t.Run("change-project-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
@@ -1662,7 +1703,15 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 
 	{
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+		css := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
+
+		cs := css[0]
+		csWithExpiredToken := css[1]
+		rows, err := rw.Exec(context.Background(),
+			"update credential_vault_token set status = ? where token_hmac = ?",
+			[]interface{}{ExpiredToken, csWithExpiredToken.Token().TokenHmac})
+		require.NoError(t, err)
+		require.Equal(t, 1, rows)
 
 		tests := []struct {
 			name string
@@ -1673,6 +1722,17 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 				in: &CredentialLibrary{
 					CredentialLibrary: &store.CredentialLibrary{
 						StoreId:    cs.GetPublicId(),
+						HttpMethod: "GET",
+						VaultPath:  "/some/path",
+					},
+				},
+			},
+
+			{
+				name: "valid-with-expired-cred-store-token",
+				in: &CredentialLibrary{
+					CredentialLibrary: &store.CredentialLibrary{
+						StoreId:    csWithExpiredToken.GetPublicId(),
 						HttpMethod: "GET",
 						VaultPath:  "/some/path",
 					},

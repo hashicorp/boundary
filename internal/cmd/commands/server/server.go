@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/signal"
 	"runtime"
 	"strings"
-	"syscall"
+	"sync"
+	atm "sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -23,15 +23,10 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
-	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -50,11 +45,13 @@ type Command struct {
 	SighupCh  chan struct{}
 	SigUSR2Ch chan struct{}
 
-	Config     *config.Config
-	controller *controller.Controller
-	worker     *worker.Worker
+	Config *config.Config
 
-	flagConfig      string
+	schemaManager *schema.Manager
+	controller    *controller.Controller
+	worker        *worker.Worker
+
+	flagConfig      []string
 	flagConfigKms   string
 	flagLogLevel    string
 	flagLogFormat   string
@@ -88,14 +85,14 @@ func (c *Command) Flags() *base.FlagSets {
 
 	f := set.NewFlagSet("Command Options")
 
-	f.StringVar(&base.StringVar{
+	f.StringSliceVar(&base.StringSliceVar{
 		Name:   "config",
 		Target: &c.flagConfig,
 		Completion: complete.PredictOr(
 			complete.PredictFiles("*.hcl"),
 			complete.PredictFiles("*.json"),
 		),
-		Usage: "Path to the configuration file.",
+		Usage: "Path to the configuration file. Can be specified multiple times for multiple configuration files (only if using HCL format).",
 	})
 
 	f.StringVar(&base.StringVar{
@@ -210,6 +207,10 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error("Worker is using KMS auth but has no name set. It must be the unique name of this instance.")
 				return base.CommandUserError
 			}
+			if c.Config.Worker.ControllerGeneratedActivationToken != "" {
+				c.UI.Error("Worker has KMS auth info but also has a controller-generated activation token set, which is incompatible.")
+				return base.CommandUserError
+			}
 		}
 	}
 
@@ -275,7 +276,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates controller but no listener with "cluster" purpose found`)
 			return base.CommandUserError
 		}
-		if err := c.SetupControllerPublicClusterAddress(c.Config, ""); err != nil {
+		if err := c.Config.SetupControllerPublicClusterAddress(""); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandUserError
 		}
@@ -300,36 +301,8 @@ func (c *Command) Run(args []string) int {
 		c.Info["worker public proxy addr"] = c.Config.Worker.PublicAddr
 
 		if c.Config.Controller != nil {
-			switch len(c.Config.Worker.InitialUpstreams) {
-			case 0:
-				if c.Config.Controller.PublicClusterAddr != "" {
-					clusterAddr = c.Config.Controller.PublicClusterAddr
-				}
-				c.Config.Worker.InitialUpstreams = []string{clusterAddr}
-			case 1:
-				if c.Config.Worker.InitialUpstreams[0] == clusterAddr {
-					break
-				}
-				if c.Config.Controller.PublicClusterAddr != "" &&
-					c.Config.Worker.InitialUpstreams[0] == c.Config.Controller.PublicClusterAddr {
-					break
-				}
-				// Best effort see if it's a domain name and if not assume it must match
-				host, _, err := net.SplitHostPort(c.Config.Worker.InitialUpstreams[0])
-				if err != nil && strings.Contains(err.Error(), "missing port in address") {
-					err = nil
-					host = c.Config.Worker.InitialUpstreams[0]
-				}
-				if err == nil {
-					ip := net.ParseIP(host)
-					if ip == nil {
-						// Assume it's a domain name
-						break
-					}
-				}
-				fallthrough
-			default:
-				c.UI.Error(`When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`)
+			if err := c.Config.SetupWorkerInitialUpstreams(); err != nil {
+				c.UI.Error(err.Error())
 				return base.CommandUserError
 			}
 		}
@@ -419,61 +392,48 @@ func (c *Command) Run(args []string) int {
 		c.DatabaseMaxIdleConnections = c.Config.Controller.Database.MaxIdleConnections
 		c.DatabaseConnMaxIdleTimeDuration = c.Config.Controller.Database.ConnMaxIdleTimeDuration
 
-		if err := c.ConnectToDatabase(c.Context, "postgres"); err != nil {
+		if err := c.OpenAndSetServerDatabase(c.Context, "postgres"); err != nil {
 			c.UI.Error(fmt.Errorf("Error connecting to database: %w", err).Error())
 			return base.CommandCliError
 		}
 
-		underlyingDB, err := c.Database.SqlDB(c.Context)
+		sm, err := acquireSchemaManager(c.Context, c.Server.Database, c.Config.Controller.Database.SkipSharedLockAcquisition)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Can't get db: %w.", err).Error())
+			c.UI.Error(fmt.Errorf("Failed to acquire database shared lock: %w", err).Error())
 			return base.CommandCliError
 		}
-		sMan, err := schema.NewManager(c.Context, "postgres", underlyingDB)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Can't get schema manager: %w.", err).Error())
-			return base.CommandCliError
-		}
-		// This is an advisory locks on the DB which is released when the db session ends.
-		if err := sMan.SharedLock(c.Context); err != nil {
-			c.UI.Error(fmt.Errorf("Unable to gain shared access to the database: %w", err).Error())
-			return base.CommandCliError
-		}
+		c.schemaManager = sm
+
 		defer func() {
+			if c.schemaManager == nil {
+				c.UI.Error("no schema manager to unlock database with")
+				return
+			}
+
 			// The base context has already been canceled so we shouldn't use it here.
 			// 1 second is chosen so the shutdown is still responsive and this is a mostly
 			// non critical step since the lock should be released when the session with the
 			// database is closed.
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
-			if err := sMan.SharedUnlock(ctx); err != nil {
+
+			err := c.schemaManager.Close(ctx)
+			if err != nil {
 				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
 			}
 		}()
-		ckState, err := sMan.CurrentState(c.Context)
+
+		err = verifyDatabaseState(c.Context, c.Server.Database, c.schemaManager)
 		if err != nil {
-			c.UI.Error(fmt.Errorf("Error checking schema state: %w", err).Error())
+			c.UI.Error(err.Error())
 			return base.CommandCliError
 		}
-		if !ckState.Initialized {
-			c.UI.Error(base.WrapAtLength("The database has not been initialized. Please run 'boundary database init'."))
-			return base.CommandCliError
-		}
-		if !ckState.MigrationsApplied() {
-			for _, e := range ckState.Editions {
-				if e.DatabaseSchemaState == schema.Ahead {
-					c.UI.Error(base.WrapAtLength(fmt.Sprintf("Newer schema version (%s %d) "+
-						"than this binary expects. Please use a newer version of the boundary "+
-						"binary.", e.Name, e.DatabaseSchemaVersion)))
-					return base.CommandCliError
-				}
+
+		if c.Config.Controller.Database.SkipSharedLockAcquisition {
+			if err := c.schemaManager.Close(c.Context); err != nil {
+				c.UI.Error(fmt.Errorf("Unable to release shared lock to the database: %w", err).Error())
+				return base.CommandCliError
 			}
-			c.UI.Error(base.WrapAtLength("Database schema must be updated to use this version. Run 'boundary database migrate' to update the database. NOTE: Boundary does not currently support live migration; ensure all controllers are shut down before running the migration command."))
-			return base.CommandCliError
-		}
-		if err := c.verifyKmsSetup(); err != nil {
-			c.UI.Error(base.WrapAtLength("Database is in a bad state. Please revert the database into the last known good state."))
-			return base.CommandCliError
 		}
 	}
 
@@ -527,7 +487,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Logger, c.controller, c.Listeners...)
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.worker, c.Listeners...)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
@@ -583,63 +543,17 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 	switch {
 	case c.presetConfig != nil:
 		cfg, err = config.Parse(c.presetConfig.Load())
+		if err != nil {
+			event.WriteError(c.Context, op, err, event.WithInfoMsg("could not parse presetConfig", "config", c.presetConfig))
+			return nil, base.CommandUserError
+		}
 
 	default:
-		wrapperPath := c.flagConfig
-		if c.flagConfigKms != "" {
-			wrapperPath = c.flagConfigKms
+		cfg, err = config.Load(c.Context, c.flagConfig, c.flagConfigKms)
+		if err != nil {
+			c.UI.Error("Error parsing config: " + err.Error())
+			return nil, base.CommandUserError
 		}
-		var configWrapper wrapping.Wrapper
-		var ifWrapper wrapping.InitFinalizer
-		var cleanupFunc func() error
-		if wrapperPath != "" {
-			configWrapper, cleanupFunc, err = wrapper.GetWrapperFromPath(
-				c.Context,
-				wrapperPath,
-				globals.KmsPurposeConfig,
-				configutil.WithPluginOptions(
-					pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
-					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
-				),
-				// TODO: How would we want to expose this kind of log to users when
-				// using recovery configs? Generally with normal CLI commands we
-				// don't print out all of these logs. We may want a logger with a
-				// custom writer behind our existing gate where we print nothing
-				// unless there is an error, then dump all of it.
-				configutil.WithLogger(hclog.NewNullLogger()),
-			)
-			if err != nil {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", c.flagConfig))
-				return nil, base.CommandUserError
-			}
-			if cleanupFunc != nil {
-				defer func() {
-					if err := cleanupFunc(); err != nil {
-						event.WriteError(c.Context, op, err, event.WithInfoMsg("could not clean up kms wrapper", "path", c.flagConfig))
-					}
-				}()
-			}
-			if configWrapper != nil {
-				ifWrapper, _ = configWrapper.(wrapping.InitFinalizer)
-			}
-		}
-		if ifWrapper != nil {
-			if err := ifWrapper.Init(c.Context); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-				event.WriteError(c.Context, op, err, event.WithInfoMsg("could not initialize kms", "path", c.flagConfig))
-				return nil, base.CommandCliError
-			}
-		}
-		cfg, err = config.LoadFile(c.flagConfig, configWrapper)
-		if ifWrapper != nil {
-			if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
-				event.WriteError(context.Background(), op, err, event.WithInfoMsg("could not finalize kms", "path", c.flagConfig))
-				return nil, base.CommandCliError
-			}
-		}
-	}
-	if err != nil {
-		event.WriteError(c.Context, op, err, event.WithInfoMsg("could not parse config", "path", c.flagConfig))
-		return nil, base.CommandUserError
 	}
 	return cfg, 0
 }
@@ -702,69 +616,83 @@ func (c *Command) StartWorker() error {
 
 func (c *Command) WaitForInterrupt() int {
 	const op = "server.(Command).WaitForInterrupt"
-	// Wait for shutdown
-	shutdownTriggered := false
 
-	// Add a force-shutdown goroutine to consume another interrupt
-	abortForceShutdownCh := make(chan struct{})
-	defer close(abortForceShutdownCh)
+	var shutdownCompleted atm.Bool
+	shutdownTriggerCount := 0
 
-	runShutdownLogic := func() {
-		go func() {
-			shutdownCh := make(chan os.Signal, 4)
-			signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
-			for {
-				select {
-				case <-shutdownCh:
-					c.UI.Error("Forcing shutdown")
-					os.Exit(base.CommandUserError)
-
-				case <-c.ServerSideShutdownCh:
-					// Drain connections in case this is hit more than once
-
-				case <-abortForceShutdownCh:
-					// No-op, we just use this to shut down the goroutine
-					return
-				}
-			}
-		}()
-
-		if c.Config.Controller != nil && c.opsServer != nil {
-			c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+	var workerShutdownOnce sync.Once
+	workerShutdownFunc := func() {
+		if err := c.worker.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 		}
-
-		// Do worker shutdown
-		if c.Config.Worker != nil {
-			if err := c.worker.Shutdown(); err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
-			}
+	}
+	workerGracefulShutdownFunc := func() {
+		if err := c.worker.GracefulShutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down worker gracefully: %w", err).Error())
 		}
-
-		// Do controller shutdown
-		if c.Config.Controller != nil {
-			if err := c.controller.Shutdown(); err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
-			}
+		workerShutdownOnce.Do(workerShutdownFunc)
+	}
+	var controllerOnce sync.Once
+	controllerShutdownFunc := func() {
+		if err := c.controller.Shutdown(); err != nil {
+			c.UI.Error(fmt.Errorf("Error shutting down controller: %w", err).Error())
 		}
-
 		if c.opsServer != nil {
 			err := c.opsServer.Shutdown()
 			if err != nil {
-				c.UI.Error(fmt.Errorf("Error shutting down ops listeners: %w", err).Error())
+				c.UI.Error(fmt.Errorf("Failed to shutdown ops listeners: %w", err).Error())
 			}
 		}
-
-		shutdownTriggered = true
 	}
 
-	for !shutdownTriggered {
+	runShutdownLogic := func() {
+		switch {
+		case shutdownTriggerCount == 1:
+			c.ContextCancel()
+			go func() {
+				if c.Config.Controller != nil && c.opsServer != nil {
+					c.opsServer.WaitIfHealthExists(c.Config.Controller.GracefulShutdownWaitDuration, c.UI)
+				}
+
+				if c.Config.Worker != nil {
+					c.UI.Output("==> Boundary server graceful shutdown triggered, interrupt again to enter shutdown")
+					workerGracefulShutdownFunc()
+				} else {
+					c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
+				}
+
+				if c.Config.Controller != nil {
+					controllerOnce.Do(controllerShutdownFunc)
+				}
+				shutdownCompleted.Store(true)
+			}()
+
+		case shutdownTriggerCount == 2 && c.Config.Worker != nil:
+			go func() {
+				if c.Config.Worker != nil {
+					workerShutdownOnce.Do(workerShutdownFunc)
+				}
+				if c.Config.Controller != nil {
+					controllerOnce.Do(controllerShutdownFunc)
+				}
+				shutdownCompleted.Store(true)
+			}()
+
+		case shutdownTriggerCount >= 2:
+			c.UI.Error("Forcing shutdown")
+			os.Exit(base.CommandCliError)
+		}
+	}
+
+	for !shutdownCompleted.Load() {
 		select {
 		case <-c.ServerSideShutdownCh:
 			c.UI.Output("==> Boundary server self-terminating")
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Boundary server shutdown triggered, interrupt again to force")
+			shutdownTriggerCount++
 			runShutdownLogic()
 
 		case <-c.SighupCh:
@@ -775,7 +703,7 @@ func (c *Command) WaitForInterrupt() int {
 			var newConf *config.Config
 			var out int
 
-			if c.flagConfig == "" && c.presetConfig == nil {
+			if len(c.flagConfig) == 0 && c.presetConfig == nil {
 				goto RUNRELOADFUNCS
 			}
 
@@ -819,6 +747,8 @@ func (c *Command) WaitForInterrupt() int {
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
 			event.WriteSysEvent(context.TODO(), op, "goroutine trace", "stack", string(buf[:n]))
+
+		case <-time.After(10 * time.Millisecond):
 		}
 	}
 
@@ -839,8 +769,28 @@ func (c *Command) Reload(newConf *config.Config) error {
 		}
 	}
 
+	err := c.reloadControllerDatabase(newConf)
+	if err != nil {
+		reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
+	}
+
 	if newConf != nil && c.worker != nil {
-		c.worker.ParseAndStoreTags(newConf.Worker.Tags)
+		workerReloadErr := func() error {
+			if newConf.Controller != nil {
+				if err := newConf.SetupControllerPublicClusterAddress(""); err != nil {
+					return err
+				}
+			}
+
+			if err := newConf.SetupWorkerInitialUpstreams(); err != nil {
+				return err
+			}
+			c.worker.Reload(c.Context, newConf)
+			return nil
+		}()
+		if workerReloadErr != nil {
+			reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
+		}
 	}
 
 	// Send a message that we reloaded. This prevents "guessing" sleep times
@@ -855,9 +805,9 @@ func (c *Command) Reload(newConf *config.Config) error {
 	return reloadErrors.ErrorOrNil()
 }
 
-func (c *Command) verifyKmsSetup() error {
+func verifyKmsSetup(dbase *db.DB) error {
 	const op = "server.(Command).verifyKmsExists"
-	rw := db.New(c.Database)
+	rw := db.New(dbase)
 
 	ctx := context.Background()
 	kmsCache, err := kms.New(ctx, rw, rw)
@@ -867,6 +817,141 @@ func (c *Command) verifyKmsSetup() error {
 	if err := kmsCache.VerifyGlobalRoot(ctx); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (c *Command) reloadControllerDatabase(newConfig *config.Config) error {
+	if c.Server == nil || c.Server.Database == nil {
+		return nil
+	}
+	if c.controller == nil {
+		return nil
+	}
+	if newConfig == nil || newConfig.Controller == nil || newConfig.Controller.Database == nil {
+		return nil
+	}
+
+	var err error
+	newConfig.Controller.Database.Url, err = parseutil.ParsePath(newConfig.Controller.Database.Url)
+	if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+		return fmt.Errorf("failed to parse db url: %w", err)
+	}
+	if len(newConfig.Controller.Database.Url) == 0 || c.DatabaseUrl == newConfig.Controller.Database.Url {
+		return nil
+	}
+
+	newDb, err := c.Server.OpenDatabase(c.Context, "postgres", newConfig.Controller.Database.Url)
+	if err != nil {
+		return fmt.Errorf("failed to open connection to new database: %w", err)
+	}
+
+	// Acquire new lock on the new database and verify that it's in a good state to be used.
+	newDbSchemaManager, err := acquireSchemaManager(c.Context, newDb, c.Config.Controller.Database.SkipSharedLockAcquisition)
+	if err != nil {
+		_ = newDb.Close(c.Context)
+		return fmt.Errorf("failed to acquire shared lock on new database: %w", err)
+	}
+
+	err = verifyDatabaseState(c.Context, newDb, newDbSchemaManager)
+	if err != nil {
+		_ = newDbSchemaManager.Close(c.Context)
+		_ = newDb.Close(c.Context)
+		return fmt.Errorf("invalid new database state: %w", err)
+	}
+
+	if newConfig.Controller.Database.SkipSharedLockAcquisition {
+		if err := newDbSchemaManager.Close(c.Context); err != nil {
+			return fmt.Errorf("unable to release shared lock to the database for new schema manager: %w", err)
+		}
+	}
+
+	oldDbSchemaManager := c.schemaManager
+
+	// Swap underlying database with new one and update application state.
+	oldDbCloseFn, err := c.Database.Swap(c.Context, newDb)
+	if err != nil {
+		_ = newDbSchemaManager.Close(c.Context)
+		_ = newDb.Close(c.Context)
+		return fmt.Errorf("failed to swap databases: %w", err)
+	}
+	c.schemaManager = newDbSchemaManager
+	c.Server.DatabaseUrl = newConfig.Controller.Database.Url
+	c.Config.Controller.Database.Url = newConfig.Controller.Database.Url
+
+	// Release old database shared lock and close old database object.
+	_ = oldDbSchemaManager.Close(c.Context)
+	oldDbCloseFn(c.Context)
+
+	return nil
+}
+
+// acquireSchemaManager returns a schema manager and generally acquires a shared lock on
+// the database. This is done as a mechanism to disallow running migration commands
+// while the database is in use.
+func acquireSchemaManager(ctx context.Context, db *db.DB, skipSharedLock bool) (*schema.Manager, error) {
+	if db == nil {
+		return nil, fmt.Errorf("nil database")
+	}
+
+	underlyingDb, err := db.SqlDB(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to obtain sql db: %w", err)
+	}
+
+	manager, err := schema.NewManager(ctx, "postgres", underlyingDb)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new schema manager: %w", err)
+	}
+
+	// This is an advisory locks on the DB which is released when the db session ends.
+	if !skipSharedLock {
+		err = manager.SharedLock(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to gain shared access to the database: %w", err)
+		}
+	}
+
+	return manager, nil
+}
+
+// verifyDatabaseState checks that the migrations and kms setup for the given database are correctly setup.
+func verifyDatabaseState(ctx context.Context, db *db.DB, schemaManager *schema.Manager) error {
+	if db == nil {
+		return fmt.Errorf("nil database")
+	}
+	if schemaManager == nil {
+		return fmt.Errorf("nil schema manager")
+	}
+
+	s, err := schemaManager.CurrentState(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get current schema state: %w", err)
+	}
+	if !s.Initialized {
+		return fmt.Errorf("The database has not been initialized. Please ensure your database user " +
+			"has access to all Boundary tables, or run 'boundary database init' if you haven't initialized " +
+			"your database for Boundary.")
+	}
+	if !s.MigrationsApplied() {
+		for _, e := range s.Editions {
+			if e.DatabaseSchemaState == schema.Ahead {
+				return fmt.Errorf("Newer schema version (%s %d) "+
+					"than this binary expects. Please use a newer version of the boundary "+
+					"binary.", e.Name, e.DatabaseSchemaVersion)
+			}
+		}
+		return fmt.Errorf("Database schema must be updated to use this version. " +
+			"Run 'boundary database migrate' to update the database. " +
+			"NOTE: Boundary does not currently support live migration; " +
+			"Ensure all controllers are shut down before running the migration command.")
+	}
+
+	err = verifyKmsSetup(db)
+	if err != nil {
+		return fmt.Errorf("Database is in a bad state. Please revert the database "+
+			"into the last known good state. (Failed to verify kms setup: %w)", err)
+	}
+
 	return nil
 }
 

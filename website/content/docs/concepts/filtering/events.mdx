@@ -17,16 +17,15 @@ several formats including [cloudevents](https://github.com/cloudevents/spec) and
 [hclog](https://github.com/hashicorp/go-hclog), and can be encoded as text and
 json.
 
-Boundary allows you to configure any number of
-[sinks](/docs/configuration/events/overview), where these events will be
+Boundary allows you to configure any number of sinks where these events will be
 written. When configuring an event sink, you can specify [common sink
 parameters](/docs/configuration/events/common) which include both
 `allow_filters` and `deny_filters` which use the standard [filter
-syntax](/docs/concepts/filtering) used
-elsewhere in Boundary.
+syntax](/docs/concepts/filtering) used elsewhere in Boundary.
 
 Example events encoded as cloudevents-text.  The first event is a system event
 and the second event is an observation event.
+
 ```json
 {
   "id": "DU7u227Jhc",

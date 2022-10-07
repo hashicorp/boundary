@@ -21,5 +21,4 @@ function retry {
   return 0
 }
 
-# cannot currently boundary connect ssh -- [args] <cmd> because port and host key are appended
-retry 10 ${BOUNDARY_PATH}/boundary connect -target-id=${TARGET_ID} -exec /usr/bin/ssh -- -i ${SSH_KEY_PATH} -l ${SSH_USER} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p {{boundary.port}} {{boundary.ip}} hostname -I
+retry 10 ${BOUNDARY_PATH}/boundary connect ssh -target-id=${TARGET_ID} -- -o StrictHostKeyChecking=no

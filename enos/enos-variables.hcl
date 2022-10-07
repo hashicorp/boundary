@@ -52,6 +52,18 @@ variable "alb_listener_api_port" {
   default     = 9200
 }
 
+variable "project_name" {
+  description = "The description of the project"
+  type        = string
+  default     = "boundary-enos-integration"
+}
+
+variable "tags" {
+  description = "Tags that will be applied to infrastructure resources that support tagging"
+  type        = map(string)
+  default     = null
+}
+
 variable "target_instance_type" {
   description = "Instance type for test target nodes"
   type        = string
@@ -90,4 +102,16 @@ variable "skip_failing_bats_tests" {
   description = "Skip known Bats test failures"
   type        = string
   default     = "false"
+}
+
+variable "vault_instance_type" {
+  description = "Instance type for test target nodes"
+  type        = string
+  default     = "t3a.small"
+}
+
+variable "test_email" {
+  description = "Email address for setting up AWS IAM user (module: iam_setup)"
+  type        = string
+  default     = null
 }

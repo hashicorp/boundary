@@ -97,6 +97,7 @@ func testVaultCred(t *testing.T,
 	expiration time.Duration,
 ) (*vault.Secret, *Credential) {
 	t.Helper()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
 
@@ -105,9 +106,9 @@ func testVaultCred(t *testing.T,
 	var err error
 	switch Method(cl.HttpMethod) {
 	case MethodGet:
-		secret, err = client.get(cl.VaultPath)
+		secret, err = client.get(ctx, cl.VaultPath)
 	case MethodPost:
-		secret, err = client.post(cl.VaultPath, cl.HttpRequestBody)
+		secret, err = client.post(ctx, cl.VaultPath, cl.HttpRequestBody)
 	}
 	require.NoError(err)
 	require.NotNil(secret)
@@ -434,12 +435,12 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	sche := scheduler.TestScheduler(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper, scheduler.WithRunJobsInterval(time.Second))
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	v := NewTestVaultServer(t)
 
-	// Create 1s token so it expires in vault before we can renew it
-	_, ct := v.CreateToken(t, WithTokenPeriod(time.Second))
+	// Create 2s token so it expires in vault before we can renew it
+	_, ct := v.CreateToken(t, WithTokenPeriod(time.Second*2))
 
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	assert.NoError(err)
@@ -468,6 +469,27 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	token := allocToken()
 	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []interface{}{cs.GetPublicId()}))
 	assert.Equal(string(ExpiredToken), token.Status)
+
+	// Updating the credential store with a token that will expire before the job scheduler can run should return an error
+	_, ct = v.CreateToken(t, WithTokenPeriod(time.Second))
+	in, err = NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
+	assert.NoError(err)
+	require.NotNil(in)
+
+	cs, _, err = repo.UpdateCredentialStore(context.Background(), in, cs.Version+1, []string{"Token"})
+	assert.Error(err)
+	assert.Nil(cs)
+
+	// Create 1s token so it expires in vault before the job scheduler can run
+	_, ct = v.CreateToken(t, WithTokenPeriod(time.Second))
+	in, err = NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
+	assert.NoError(err)
+	require.NotNil(in)
+
+	// Should return error because token ttl expires before the run job scheduler interval
+	cs, err = repo.CreateCredentialStore(context.Background(), in)
+	require.Error(err)
+	require.Nil(cs)
 }
 
 func TestTokenRenewalJob_NextRunIn(t *testing.T) {
@@ -2030,7 +2052,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, r.numStores)
 
 	// Lookup of cs1 and its token should fail
-	agg := allocPublicStore()
+	agg := allocListLookupStore()
 	agg.PublicId = cs1.PublicId
 	err = rw.LookupByPublicId(context.Background(), agg)
 	require.Error(err)
@@ -2075,7 +2097,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(1, r.numStores)
 
 	// Lookup of cs2 and its token should fail
-	agg = allocPublicStore()
+	agg = allocListLookupStore()
 	agg.PublicId = cs2.PublicId
 	err = rw.LookupByPublicId(context.Background(), agg)
 	require.Error(err)

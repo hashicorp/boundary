@@ -13,23 +13,25 @@ import (
 )
 
 type Worker struct {
-	Id                       string              `json:"id,omitempty"`
-	ScopeId                  string              `json:"scope_id,omitempty"`
-	Scope                    *scopes.ScopeInfo   `json:"scope,omitempty"`
-	Name                     string              `json:"name,omitempty"`
-	Description              string              `json:"description,omitempty"`
-	CreatedTime              time.Time           `json:"created_time,omitempty"`
-	UpdatedTime              time.Time           `json:"updated_time,omitempty"`
-	Version                  uint32              `json:"version,omitempty"`
-	Address                  string              `json:"address,omitempty"`
-	CanonicalTags            map[string][]string `json:"canonical_tags,omitempty"`
-	ConfigTags               map[string][]string `json:"config_tags,omitempty"`
-	LastStatusTime           time.Time           `json:"last_status_time,omitempty"`
-	WorkerGeneratedAuthToken string              `json:"worker_generated_auth_token,omitempty"`
-	ActiveConnectionCount    uint32              `json:"active_connection_count,omitempty"`
-	Type                     string              `json:"type,omitempty"`
-	ApiTags                  map[string][]string `json:"api_tags,omitempty"`
-	AuthorizedActions        []string            `json:"authorized_actions,omitempty"`
+	Id                                 string              `json:"id,omitempty"`
+	ScopeId                            string              `json:"scope_id,omitempty"`
+	Scope                              *scopes.ScopeInfo   `json:"scope,omitempty"`
+	Name                               string              `json:"name,omitempty"`
+	Description                        string              `json:"description,omitempty"`
+	CreatedTime                        time.Time           `json:"created_time,omitempty"`
+	UpdatedTime                        time.Time           `json:"updated_time,omitempty"`
+	Version                            uint32              `json:"version,omitempty"`
+	Address                            string              `json:"address,omitempty"`
+	CanonicalTags                      map[string][]string `json:"canonical_tags,omitempty"`
+	ConfigTags                         map[string][]string `json:"config_tags,omitempty"`
+	LastStatusTime                     time.Time           `json:"last_status_time,omitempty"`
+	WorkerGeneratedAuthToken           string              `json:"worker_generated_auth_token,omitempty"`
+	ControllerGeneratedActivationToken string              `json:"controller_generated_activation_token,omitempty"`
+	ActiveConnectionCount              uint32              `json:"active_connection_count,omitempty"`
+	Type                               string              `json:"type,omitempty"`
+	ApiTags                            map[string][]string `json:"api_tags,omitempty"`
+	ReleaseVersion                     string              `json:"release_version,omitempty"`
+	AuthorizedActions                  []string            `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }
@@ -135,6 +137,50 @@ func (c *Client) CreateWorkerLed(ctx context.Context, workerGeneratedAuthToken s
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding CreateWorkerLed response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) CreateControllerLed(ctx context.Context, scopeId string, opt ...Option) (*WorkerCreateResult, error) {
+	if scopeId == "" {
+		return nil, fmt.Errorf("empty scopeId value passed into CreateControllerLed request")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if c.client == nil {
+		return nil, fmt.Errorf("nil client")
+	}
+
+	opts.postMap["scope_id"] = scopeId
+
+	req, err := c.client.NewRequest(ctx, "POST", "workers:create:controller-led", opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating CreateControllerLed request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during CreateControllerLed call: %w", err)
+	}
+
+	target := new(WorkerCreateResult)
+	target.Item = new(Worker)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding CreateControllerLed response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr
@@ -322,6 +368,212 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Work
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding List response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) AddWorkerTags(ctx context.Context, id string, version uint32, apiTags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into AddWorkerTags request")
+	}
+
+	if len(apiTags) == 0 {
+		return nil, errors.New("empty apiTags passed into AddWorkerTags request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into AddWorkerTags request")
+		}
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+
+	opts.postMap["api_tags"] = apiTags
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("workers/%s:add-worker-tags", url.PathEscape(id)), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating AddWorkerTags request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during AddWorkerTags call: %w", err)
+	}
+
+	target := new(WorkerUpdateResult)
+	target.Item = new(Worker)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding AddWorkerTags response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) SetWorkerTags(ctx context.Context, id string, version uint32, apiTags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into SetWorkerTags request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into SetWorkerTags request")
+		}
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+
+	opts.postMap["api_tags"] = apiTags
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("workers/%s:set-worker-tags", url.PathEscape(id)), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating SetWorkerTags request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during SetWorkerTags call: %w", err)
+	}
+
+	target := new(WorkerUpdateResult)
+	target.Item = new(Worker)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding SetWorkerTags response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) RemoveWorkerTags(ctx context.Context, id string, version uint32, apiTags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into RemoveWorkerTags request")
+	}
+
+	if len(apiTags) == 0 {
+		return nil, errors.New("empty apiTags passed into RemoveWorkerTags request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into RemoveWorkerTags request")
+		}
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+
+	opts.postMap["api_tags"] = apiTags
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("workers/%s:remove-worker-tags", url.PathEscape(id)), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating RemoveWorkerTags request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during RemoveWorkerTags call: %w", err)
+	}
+
+	target := new(WorkerUpdateResult)
+	target.Item = new(Worker)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding RemoveWorkerTags response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr

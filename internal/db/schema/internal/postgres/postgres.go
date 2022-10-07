@@ -251,6 +251,11 @@ func (p *Postgres) Run(ctx context.Context, migration io.Reader, version int, ed
 	return nil
 }
 
+// Close closes the underlying Postgres database connection.
+func (p *Postgres) Close() error {
+	return p.conn.Close()
+}
+
 var errOldMigrationTable = stderrors.New("old schema migration table")
 
 func (p *Postgres) schemaInitialized(ctx context.Context) (bool, error) {
@@ -451,7 +456,7 @@ func (p *Postgres) EnsureMigrationLogTable(ctx context.Context) error {
 
 // GetMigrationLog will retrieve the migration logs from the db for the last
 // migration.
-//  The WithDeleteLog option is supported and will remove all log entries,
+// The WithDeleteLog option is supported and will remove all log entries,
 // after reading the entries, when provided.
 func (p *Postgres) GetMigrationLog(ctx context.Context, opt ...log.Option) ([]*log.Entry, error) {
 	const op = "postgres.(Postgres).GetMigrationLog"

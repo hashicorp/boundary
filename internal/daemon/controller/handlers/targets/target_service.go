@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
-	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -33,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -74,9 +74,6 @@ var (
 		action.Read,
 		action.Update,
 		action.Delete,
-		action.AddHostSets,
-		action.SetHostSets,
-		action.RemoveHostSets,
 		action.AddHostSources,
 		action.SetHostSources,
 		action.RemoveHostSources,
@@ -96,12 +93,12 @@ var (
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
-	pbs.UnimplementedTargetServiceServer
+	pbs.UnsafeTargetServiceServer
 
-	repoFn           common.TargetRepoFactory
+	repoFn           target.RepositoryFactory
 	iamRepoFn        common.IamRepoFactory
 	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    common.SessionRepoFactory
+	sessionRepoFn    session.RepositoryFactory
 	pluginHostRepoFn common.PluginHostRepoFactory
 	staticHostRepoFn common.StaticRepoFactory
 	vaultCredRepoFn  common.VaultCredentialRepoFactory
@@ -109,14 +106,16 @@ type Service struct {
 	kmsCache         *kms.Kms
 }
 
+var _ pbs.TargetServiceServer = (*Service)(nil)
+
 // NewService returns a target service which handles target related requests to boundary.
 func NewService(
 	ctx context.Context,
 	kmsCache *kms.Kms,
-	repoFn common.TargetRepoFactory,
+	repoFn target.RepositoryFactory,
 	iamRepoFn common.IamRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
-	sessionRepoFn common.SessionRepoFactory,
+	sessionRepoFn session.RepositoryFactory,
 	pluginHostRepoFn common.PluginHostRepoFactory,
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
@@ -160,8 +159,6 @@ func NewService(
 	}, nil
 }
 
-var _ pbs.TargetServiceServer = Service{}
-
 // ListTargets implements the interface pbs.TargetServiceServer.
 func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (*pbs.ListTargetsResponse, error) {
 	const op = "targets.(Service).ListSessions"
@@ -183,34 +180,24 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		}
 	}
 
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	var err error
+	var authzScopes map[string]*scopes.ScopeInfo
+	if req.GetRecursive() {
+		authzScopes, err = authResults.ScopesAuthorizedForList(ctx, req.GetScopeId(), resource.Target)
+	} else {
+		authzScopes = map[string]*scopes.ScopeInfo{authResults.Scope.Id: authResults.Scope}
 	}
-
-	scopeResourceInfo, err := scopeids.GetListingResourceInformation(
-		ctx,
-		scopeids.GetListingResourceInformationInput{
-			IamRepoFn:                    s.iamRepoFn,
-			AuthResults:                  authResults,
-			RootScopeId:                  req.GetScopeId(),
-			Type:                         resource.Target,
-			Recursive:                    req.GetRecursive(),
-			AuthzProtectedEntityProvider: repo,
-			ActionSet:                    IdActions,
-		},
-	)
 	if err != nil {
 		return nil, err
 	}
 
-	// If no scopes match, return an empty response
-	if len(scopeResourceInfo.ScopeIds) == 0 ||
-		len(scopeResourceInfo.ResourceIds) == 0 {
+	// Get all user permissions for the requested scope(s).
+	userPerms := authResults.ACL().ListPermissions(authzScopes, resource.Target, IdActions)
+	if len(userPerms) == 0 {
 		return &pbs.ListTargetsResponse{}, nil
 	}
 
-	tl, err := s.listFromRepo(ctx, scopeResourceInfo.ResourceIds)
+	tl, err := s.listFromRepo(ctx, userPerms)
 	if err != nil {
 		return nil, err
 	}
@@ -222,19 +209,21 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err != nil {
 		return nil, err
 	}
+
 	finalItems := make([]*pb.Target, 0, len(tl))
-	res := perms.Resource{
-		Type: resource.Target,
-	}
 	for _, item := range tl {
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target}
+		outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
+
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+
 		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeResourceInfo.ScopeResourceMap[item.GetProjectId()].ScopeInfo))
+			outputOpts = append(outputOpts, handlers.WithScope(authzScopes[item.GetProjectId()]))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(scopeResourceInfo.ScopeResourceMap[item.GetProjectId()].Resources[item.GetPublicId()].AuthorizedActions.Strings()))
+			authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&pr)).Strings()
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
 		item, err := toProto(ctx, item, nil, nil, outputOpts...)
@@ -250,6 +239,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 			finalItems = append(finalItems, item)
 		}
 	}
+
 	return &pbs.ListTargetsResponse{Items: finalItems}, nil
 }
 
@@ -383,120 +373,6 @@ func (s Service) DeleteTarget(ctx context.Context, req *pbs.DeleteTargetRequest)
 	return nil, nil
 }
 
-// AddTargetHostSets implements the interface pbs.TargetServiceServer.
-func (s Service) AddTargetHostSets(ctx context.Context, req *pbs.AddTargetHostSetsRequest) (*pbs.AddTargetHostSetsResponse, error) {
-	const op = "targets.(Service).AddTargetHostSets"
-
-	if err := validateAddSetsRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetId(), action.AddHostSets)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	t, ts, cl, err := s.addHostSourcesInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
-
-	outputFields, ok := requests.OutputFields(ctx)
-	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
-	}
-
-	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
-	if outputFields.Has(globals.ScopeField) {
-		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-	}
-	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
-	}
-
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pbs.AddTargetHostSetsResponse{Item: item}, nil
-}
-
-// SetTargetHostSets implements the interface pbs.TargetServiceServer.
-func (s Service) SetTargetHostSets(ctx context.Context, req *pbs.SetTargetHostSetsRequest) (*pbs.SetTargetHostSetsResponse, error) {
-	const op = "targets.(Service).SetTargetHostSets"
-
-	if err := validateSetSetsRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetId(), action.SetHostSets)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	t, ts, cl, err := s.setHostSourcesInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
-
-	outputFields, ok := requests.OutputFields(ctx)
-	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
-	}
-
-	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
-	if outputFields.Has(globals.ScopeField) {
-		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-	}
-	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
-	}
-
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pbs.SetTargetHostSetsResponse{Item: item}, nil
-}
-
-// RemoveTargetHostSets implements the interface pbs.TargetServiceServer.
-func (s Service) RemoveTargetHostSets(ctx context.Context, req *pbs.RemoveTargetHostSetsRequest) (*pbs.RemoveTargetHostSetsResponse, error) {
-	const op = "targets.(Service).RemoveTargetHostSets"
-
-	if err := validateRemoveSetsRequest(req); err != nil {
-		return nil, err
-	}
-	authResults := s.authResult(ctx, req.GetId(), action.RemoveHostSets)
-	if authResults.Error != nil {
-		return nil, authResults.Error
-	}
-	t, ts, cl, err := s.removeHostSourcesInRepo(ctx, req.GetId(), req.GetHostSetIds(), req.GetVersion())
-	if err != nil {
-		return nil, err
-	}
-
-	outputFields, ok := requests.OutputFields(ctx)
-	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
-	}
-
-	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
-	if outputFields.Has(globals.ScopeField) {
-		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-	}
-	if outputFields.Has(globals.AuthorizedActionsField) {
-		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
-	}
-
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pbs.RemoveTargetHostSetsResponse{Item: item}, nil
-}
-
 // AddTargetHostSources implements the interface pbs.TargetServiceServer.
 func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHostSourcesRequest) (*pbs.AddTargetHostSourcesResponse, error) {
 	const op = "targets.(Service).AddTargetHostSources"
@@ -620,12 +496,7 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.AddCredentialSources)
 	if authResults.Error != nil {
-		// TODO AddCredentialLibraries was deprecated but grant actions were never migrated
-		// remove this check once actions have been migrated
-		authResults = s.authResult(ctx, req.GetId(), action.AddCredentialLibraries)
-		if authResults.Error != nil {
-			return nil, authResults.Error
-		}
+		return nil, authResults.Error
 	}
 
 	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
@@ -665,12 +536,7 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.SetCredentialSources)
 	if authResults.Error != nil {
-		// TODO SetCredentialLibraries was deprecated but grant actions were never migrated
-		// remove this check once actions have been migrated
-		authResults = s.authResult(ctx, req.GetId(), action.SetCredentialLibraries)
-		if authResults.Error != nil {
-			return nil, authResults.Error
-		}
+		return nil, authResults.Error
 	}
 
 	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
@@ -710,12 +576,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.RemoveCredentialSources)
 	if authResults.Error != nil {
-		// TODO RemoveCredentialLibraries was deprecated but grant actions were never migrated
-		// remove this check once actions have been migrated
-		authResults = s.authResult(ctx, req.GetId(), action.RemoveCredentialLibraries)
-		if authResults.Error != nil {
-			return nil, authResults.Error
-		}
+		return nil, authResults.Error
 	}
 
 	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
@@ -820,7 +681,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// worker IDs below is used to contain their IDs in the same order. This is
 	// used to fetch tags for filtering. But we avoid allocation unless we
 	// actually need it.
-	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
+	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
 	if err != nil {
 		return nil, err
 	}
@@ -1233,12 +1094,12 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, targetIds []string) ([]target.Target, error) {
-	repo, err := s.repoFn()
+func (s Service) listFromRepo(ctx context.Context, perms []perms.Permission) ([]target.Target, error) {
+	repo, err := s.repoFn(target.WithPermissions(perms))
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListTargets(ctx, target.WithTargetIds(targetIds))
+	ul, err := repo.ListTargets(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1490,22 +1351,9 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
-	if outputFields.Has(globals.HostSetIdsField) {
-		for _, hs := range hostSources {
-			out.HostSetIds = append(out.HostSetIds, hs.Id())
-		}
-	}
 	if outputFields.Has(globals.HostSourceIdsField) {
 		for _, hs := range hostSources {
 			out.HostSourceIds = append(out.HostSourceIds, hs.Id())
-		}
-	}
-	if outputFields.Has(globals.HostSetsField) {
-		for _, hs := range hostSources {
-			out.HostSets = append(out.HostSets, &pb.HostSet{
-				Id:            hs.Id(),
-				HostCatalogId: hs.HostCatalogId(),
-			})
 		}
 	}
 	if outputFields.Has(globals.HostSourcesField) {
@@ -1570,9 +1418,9 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
-//  * The path passed in is correctly formatted
-//  * All required parameters are set
-//  * There are no conflicting parameters provided
+//   - The path passed in is correctly formatted
+//   - All required parameters are set
+//   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetTargetRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, target.Prefixes()...)
 }
@@ -1692,72 +1540,6 @@ func validateListRequest(req *pbs.ListTargetsRequest) error {
 	return nil
 }
 
-func validateAddSetsRequest(req *pbs.AddTargetHostSetsRequest) error {
-	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
-		badFields[globals.IdField] = "Incorrectly formatted identifier."
-	}
-	if req.GetVersion() == 0 {
-		badFields[globals.VersionField] = "Required field."
-	}
-	if len(req.GetHostSetIds()) == 0 {
-		badFields[globals.HostSetIdsField] = "Must be non-empty."
-	}
-	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
-			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
-			break
-		}
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
-}
-
-func validateSetSetsRequest(req *pbs.SetTargetHostSetsRequest) error {
-	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
-		badFields[globals.IdField] = "Incorrectly formatted identifier."
-	}
-	if req.GetVersion() == 0 {
-		badFields[globals.VersionField] = "Required field."
-	}
-	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
-			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
-			break
-		}
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
-}
-
-func validateRemoveSetsRequest(req *pbs.RemoveTargetHostSetsRequest) error {
-	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
-		badFields[globals.IdField] = "Incorrectly formatted identifier."
-	}
-	if req.GetVersion() == 0 {
-		badFields[globals.VersionField] = "Required field."
-	}
-	if len(req.GetHostSetIds()) == 0 {
-		badFields[globals.HostSetIdsField] = "Must be non-empty."
-	}
-	for _, id := range req.GetHostSetIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix) {
-			badFields[globals.HostSetIdsField] = fmt.Sprintf("Incorrectly formatted host set identifier %q.", id)
-			break
-		}
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
-	}
-	return nil
-}
-
 func validateAddHostSourcesRequest(req *pbs.AddTargetHostSourcesRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), target.Prefixes()...) {
@@ -1842,7 +1624,8 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 			vault.CredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix) {
+			credential.SshPrivateKeyCredentialPrefix,
+			credential.JsonCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1852,7 +1635,8 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 			vault.CredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix) {
+			credential.SshPrivateKeyCredentialPrefix,
+			credential.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1887,7 +1671,8 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 			vault.CredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix) {
+			credential.SshPrivateKeyCredentialPrefix,
+			credential.JsonCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1897,7 +1682,8 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 			vault.CredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix) {
+			credential.SshPrivateKeyCredentialPrefix,
+			credential.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1936,7 +1722,8 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 			vault.CredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix) {
+			credential.SshPrivateKeyCredentialPrefix,
+			credential.JsonCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1946,7 +1733,8 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 			vault.CredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix) {
+			credential.SshPrivateKeyCredentialPrefix,
+			credential.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1956,7 +1744,8 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 			vault.CredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix) {
+			credential.SshPrivateKeyCredentialPrefix,
+			credential.JsonCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}

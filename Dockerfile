@@ -11,7 +11,7 @@
 
 
 # Development docker image
-FROM docker.mirror.hashicorp.services/alpine:3.13.6 as dev
+FROM docker.mirror.hashicorp.services/alpine:3.13 as dev
 
 RUN set -eux && \
     addgroup boundary && \
@@ -23,6 +23,7 @@ ADD bin/boundary /bin/boundary
 RUN mkdir /boundary/
 ADD .release/docker/config.hcl /boundary/config.hcl
 RUN chown -R boundary:boundary /boundary/
+RUN chmod -R 640 /boundary/*
 
 EXPOSE 9200 9201 9202
 VOLUME /boundary/
@@ -33,7 +34,7 @@ CMD ["server", "-config", "/boundary/config.hcl"]
 
 
 # Official docker image that uses binaries from releases.hashicorp.com
-FROM docker.mirror.hashicorp.services/alpine:3.13.6 as official
+FROM docker.mirror.hashicorp.services/alpine:3.13 as official
 
 ARG PRODUCT_VERSION
 
@@ -71,6 +72,7 @@ RUN set -eux && \
 COPY .release/docker/config.hcl /boundary/config.hcl
 
 RUN chown -R boundary:boundary /boundary/ 
+RUN chmod -R 640 /boundary/*
 
 EXPOSE 9200 9201 9202
 VOLUME /boundary/
@@ -82,7 +84,7 @@ CMD ["server", "-config", "/boundary/config.hcl"]
 
 # Production docker image
 # Remember, this cannot be built locally
-FROM docker.mirror.hashicorp.services/alpine:3.13.6 as default
+FROM docker.mirror.hashicorp.services/alpine:3.13 as default
 
 ARG BIN_NAME
 # NAME and PRODUCT_VERSION are the name of the software in releases.hashicorp.com
@@ -114,6 +116,7 @@ COPY .release/docker/config.hcl /boundary/config.hcl
 COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
 
 RUN chown -R ${NAME}:${NAME} /boundary
+RUN chmod -R 640 /boundary/*
 
 EXPOSE 9200 9201 9202
 VOLUME /boundary/

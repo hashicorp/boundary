@@ -99,6 +99,22 @@ func TestAction(t *testing.T) {
 			action: CreateWorkerLed,
 			want:   "create:worker-led",
 		},
+		{
+			action: AddWorkerTags,
+			want:   "add-worker-tags",
+		},
+		{
+			action: SetWorkerTags,
+			want:   "set-worker-tags",
+		},
+		{
+			action: RemoveWorkerTags,
+			want:   "remove-worker-tags",
+		},
+		{
+			action: CreateControllerLed,
+			want:   "create:controller-led",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

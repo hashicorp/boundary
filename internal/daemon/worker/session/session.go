@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"crypto"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -55,6 +56,7 @@ type Session interface {
 	GetTofuToken() string
 	GetConnectionLimit() int32
 	GetEndpoint() string
+	GetHostKeys() ([]crypto.Signer, error)
 	GetCredentials() []*pbs.Credential
 	GetExpiration() time.Time
 	GetCertificate() *x509.Certificate
@@ -107,6 +109,7 @@ type sess struct {
 	resp        *pbs.LookupSessionResponse
 	status      pbs.SESSIONSTATUS
 	cert        *x509.Certificate
+	sessionId   string
 }
 
 func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (*sess, error) {
@@ -128,6 +131,7 @@ func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (
 		resp:        resp,
 		status:      resp.GetStatus(),
 		cert:        parsedCert,
+		sessionId:   resp.GetAuthorization().GetSessionId(),
 	}
 	return s, nil
 }
@@ -152,6 +156,13 @@ func (s *sess) ApplyLocalConnectionStatus(connId string, status pbs.CONNECTIONST
 	return nil
 }
 
+func (s *sess) ApplySessionUpdate(r *pbs.LookupSessionResponse) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.resp = r
+	s.status = r.Status
+}
+
 func (s *sess) ApplyLocalStatus(st pbs.SESSIONSTATUS) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -174,18 +185,48 @@ func (s *sess) GetLocalConnections() map[string]ConnInfo {
 }
 
 func (s *sess) GetTofuToken() string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetTofuToken()
 }
 
 func (s *sess) GetConnectionLimit() int32 {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetConnectionLimit()
 }
 
 func (s *sess) GetEndpoint() string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetEndpoint()
 }
 
+func (s *sess) GetHostKeys() ([]crypto.Signer, error) {
+	s.lock.RLock()
+	pkcs8Keys := s.resp.GetPkcs8HostKeys()
+	s.lock.RUnlock()
+
+	var hostKeys []crypto.Signer
+	for _, hostKey := range pkcs8Keys {
+		p, err := x509.ParsePKCS8PrivateKey(hostKey)
+		if err != nil {
+			return nil, errors.New("error parsing host keys")
+		}
+
+		hostKey, ok := p.(crypto.Signer)
+		if !ok {
+			return nil, fmt.Errorf("unsupported host key %T", p)
+		}
+		hostKeys = append(hostKeys, hostKey)
+
+	}
+	return hostKeys, nil
+}
+
 func (s *sess) GetCredentials() []*pbs.Credential {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetCredentials()
 }
 
@@ -196,19 +237,25 @@ func (s *sess) GetStatus() pbs.SESSIONSTATUS {
 }
 
 func (s *sess) GetExpiration() time.Time {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetExpiration().AsTime()
 }
 
 func (s *sess) GetCertificate() *x509.Certificate {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.cert
 }
 
 func (s *sess) GetPrivateKey() []byte {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.resp.GetAuthorization().GetPrivateKey()
 }
 
 func (s *sess) GetId() string {
-	return s.resp.GetAuthorization().GetSessionId()
+	return s.sessionId
 }
 
 func (s *sess) RequestCancel(ctx context.Context) error {
@@ -261,7 +308,7 @@ func (s *sess) RequestConnectConnection(ctx context.Context, info *pbs.ConnectCo
 }
 
 // CancelOpenLocalConnections closes the local connections in this session
-//based on the connection's state by calling the connections context cancel
+// based on the connection's state by calling the connections context cancel
 // function.
 //
 // The returned slice are connection ids that were closed.

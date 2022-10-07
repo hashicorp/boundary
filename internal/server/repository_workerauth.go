@@ -9,6 +9,7 @@ import (
 
 	"github.com/fatih/structs"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -85,6 +86,7 @@ func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodee.Messa
 		}); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+
 	case *types.RootCertificates:
 		err := r.storeRootCertificates(ctx, t)
 		if err != nil {
@@ -227,7 +229,7 @@ func (r *WorkerAuthRepositoryStorage) convertRootCertificate(ctx context.Context
 	rootCert.NotValidBefore = timestamp.New(cert.NotBefore.AsTime())
 	rootCert.PublicKey = cert.PublicKeyPkix
 	rootCert.State = cert.Id
-	rootCert.IssuingCa = ca_id
+	rootCert.IssuingCa = CaId
 
 	// Encrypt the private key
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
@@ -278,7 +280,7 @@ func (r *WorkerAuthRepositoryStorage) storeRootCertificates(ctx context.Context,
 	}
 	certAuthority := &CertificateAuthority{
 		CertificateAuthority: &store.CertificateAuthority{
-			PrivateId: ca_id,
+			PrivateId: CaId,
 			Version:   version + 1,
 		},
 	}
@@ -343,6 +345,9 @@ func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodee.Messag
 	case *types.NodeInformation:
 		err = r.loadNodeInformation(ctx, t)
 
+	case *types.ServerLedActivationToken:
+		err = r.loadServerLedActivationToken(ctx, t)
+
 	case *types.RootCertificates:
 		err = r.loadRootCertificates(ctx, t)
 
@@ -364,23 +369,56 @@ func (r *WorkerAuthRepositoryStorage) Load(ctx context.Context, msg nodee.Messag
 // Node information is loaded in two parts:
 // * the workerAuth record
 // * its certificate bundles
+// * the prior encryption key, if present
 func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, node *types.NodeInformation) error {
 	const op = "server.(WorkerAuthRepositoryStorage).loadNodeInformation"
 	if node == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformation")
 	}
 
-	authorizedWorker, err := r.findWorkerAuth(ctx, node)
+	query := getWorkerAuthsByWorkerKeyIdQuery
+	rows, err := r.reader.Query(ctx, query, []interface{}{sql.Named("worker_key_identifier", node.Id)})
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if authorizedWorker == nil {
+	defer rows.Close()
+
+	var workerAuths []*WorkerAuth
+	for rows.Next() {
+		var s WorkerAuth
+		if err := r.reader.ScanRows(ctx, rows, &s); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+		}
+		workerAuths = append(workerAuths, &s)
+	}
+
+	workerAuthorizedSet, err := r.validateWorkerAuths(ctx, workerAuths)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nodee.ErrNotFound
+		}
+		return errors.Wrap(ctx, err, op)
+	}
+
+	if workerAuthorizedSet == nil || workerAuthorizedSet.Current == nil {
 		return nodee.ErrNotFound
 	}
 
-	node.EncryptionPublicKeyBytes = authorizedWorker.WorkerEncryptionPubKey
-	node.CertificatePublicKeyPkix = authorizedWorker.WorkerSigningPubKey
-	node.RegistrationNonce = authorizedWorker.Nonce
+	if workerAuthorizedSet.Previous != nil {
+		priorKey := &types.EncryptionKey{
+			KeyId:           workerAuthorizedSet.Previous.WorkerKeyIdentifier,
+			PrivateKeyPkcs8: workerAuthorizedSet.Previous.ControllerEncryptionPrivKey,
+			PrivateKeyType:  types.KEYTYPE_X25519,
+			PublicKeyPkix:   workerAuthorizedSet.Previous.WorkerEncryptionPubKey,
+			PublicKeyType:   types.KEYTYPE_X25519,
+		}
+
+		node.PreviousEncryptionKey = priorKey
+	}
+
+	node.EncryptionPublicKeyBytes = workerAuthorizedSet.Current.WorkerEncryptionPubKey
+	node.CertificatePublicKeyPkix = workerAuthorizedSet.Current.WorkerSigningPubKey
+	node.RegistrationNonce = workerAuthorizedSet.Current.Nonce
 
 	// Default values are used for key types
 	node.EncryptionPublicKeyType = types.KEYTYPE_X25519
@@ -388,16 +426,16 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	node.ServerEncryptionPrivateKeyType = types.KEYTYPE_X25519
 
 	// Decrypt private key
-	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(authorizedWorker.KeyId))
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(workerAuthorizedSet.Current.KeyId))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	node.ServerEncryptionPrivateKeyBytes, err = decrypt(ctx, authorizedWorker.ControllerEncryptionPrivKey, databaseWrapper)
+	node.ServerEncryptionPrivateKeyBytes, err = decrypt(ctx, workerAuthorizedSet.Current.ControllerEncryptionPrivKey, databaseWrapper)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
-	workerIdInfo := workerAuthWorkerId{WorkerId: authorizedWorker.GetWorkerId()}
+	workerIdInfo := workerAuthWorkerId{WorkerId: workerAuthorizedSet.Current.GetWorkerId()}
 	s := structs.New(workerIdInfo)
 	s.TagName = "mapstructure"
 	state, err := structpb.NewStruct(s.Map())
@@ -412,6 +450,48 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 		return errors.Wrap(ctx, err, op)
 	}
 	node.CertificateBundles = certBundles
+
+	return nil
+}
+
+// Node information is loaded in two parts:
+// * the workerAuth record
+// * its certificate bundles
+func (r *WorkerAuthRepositoryStorage) loadServerLedActivationToken(ctx context.Context, token *types.ServerLedActivationToken) error {
+	const op = "server.(WorkerAuthRepositoryStorage).loadServerLedActivationToken"
+	if token == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ServerLedActivationToken")
+	}
+
+	activationTokenEntry := allocWorkerAuthServerLedActivationToken()
+
+	err := r.reader.LookupWhere(ctx, activationTokenEntry, "token_id = ?", []any{token.Id})
+	if err != nil {
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return nodee.ErrNotFound
+		}
+		return errors.Wrap(ctx, err, op)
+	}
+
+	token.State, err = AttachWorkerIdToState(ctx, activationTokenEntry.WorkerId)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	// Decrypt marshaled creation time
+	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(activationTokenEntry.KeyId))
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if err := activationTokenEntry.decrypt(ctx, databaseWrapper); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	token.CreationTimeMarshaled = activationTokenEntry.CreationTime
+
+	token.CreationTime = new(timestamppb.Timestamp)
+	if err := proto.Unmarshal(token.CreationTimeMarshaled, token.CreationTime); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 
 	return nil
 }
@@ -438,26 +518,6 @@ func (r *WorkerAuthRepositoryStorage) findCertBundles(ctx context.Context, worke
 	}
 
 	return certBundle, nil
-}
-
-func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *types.NodeInformation) (*WorkerAuth, error) {
-	const op = "server.(WorkerAuthRepositoryStorage).findWorkerAuth"
-	if node == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "node is nil")
-	}
-
-	worker := allocWorkerAuth()
-	worker.WorkerKeyIdentifier = node.Id
-
-	err := r.reader.LookupById(ctx, worker)
-	if err != nil {
-		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	return worker, nil
 }
 
 func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, cert *types.RootCertificates) error {
@@ -537,9 +597,14 @@ func (r *WorkerAuthRepositoryStorage) Remove(ctx context.Context, msg nodee.Mess
 	}
 
 	// Determine type of message to remove
-	switch msg.(type) {
+	switch t := msg.(type) {
 	case *types.NodeInformation:
-		err := r.removeNodeInformation(ctx, msg.GetId())
+		err := r.removeNodeInformation(ctx, t)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	case *types.ServerLedActivationToken:
+		err := r.removeServerLedActivationToken(ctx, t)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -555,9 +620,12 @@ func (r *WorkerAuthRepositoryStorage) Remove(ctx context.Context, msg nodee.Mess
 	return nil
 }
 
-func (r *WorkerAuthRepositoryStorage) removeNodeInformation(ctx context.Context, id string) error {
+func (r *WorkerAuthRepositoryStorage) removeNodeInformation(ctx context.Context, msg *types.NodeInformation) error {
 	const op = "server.(WorkerAuthRepositoryStorage).removeNodeInformation"
-	if id == "" {
+	switch {
+	case msg == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "nil node information")
+	case msg.Id == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "empty id")
 	}
 
@@ -567,13 +635,56 @@ func (r *WorkerAuthRepositoryStorage) removeNodeInformation(ctx context.Context,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			_, err = w.Exec(ctx, deleteWorkerAuthQuery, []interface{}{sql.Named("worker_key_identifier", id)})
+			_, err = w.Exec(ctx, deleteWorkerAuthQuery, []interface{}{sql.Named("worker_key_identifier", msg.Id)})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []interface{}{sql.Named("worker_key_identifier", id)})
+			_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []interface{}{sql.Named("worker_key_identifier", msg.Id)})
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete workerAuth"))
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	return nil
+}
+
+func (r *WorkerAuthRepositoryStorage) removeServerLedActivationToken(ctx context.Context, msg *types.ServerLedActivationToken) error {
+	const op = "server.(WorkerAuthRepositoryStorage).removeServerLedActivationToken"
+	switch {
+	case msg == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "nil node information")
+	case msg.Id == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "empty id")
+	case msg.State == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing state")
+	}
+
+	var workerInfo workerAuthWorkerId
+	if err := mapstructure.Decode(msg.State.AsMap(), &workerInfo); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if workerInfo.WorkerId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "state missing worker id")
+	}
+
+	actToken := allocWorkerAuthServerLedActivationToken()
+	actToken.WorkerId = workerInfo.WorkerId
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, w db.Writer) error {
+			rowsDeleted, err := w.Delete(ctx, actToken)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsDeleted != 1 {
+				return errors.New(ctx, errors.UnexpectedRowsAffected, op, fmt.Sprintf("expected to delete one activation token, deleted %d", rowsDeleted))
 			}
 			return nil
 		},
@@ -600,7 +711,7 @@ func (r *WorkerAuthRepositoryStorage) removeCertificateAuthority(ctx context.Con
 	}
 	certAuthority := &CertificateAuthority{
 		CertificateAuthority: &store.CertificateAuthority{
-			PrivateId: ca_id,
+			PrivateId: CaId,
 			Version:   version + 1,
 		},
 	}
@@ -632,6 +743,7 @@ func (r *WorkerAuthRepositoryStorage) removeCertificateAuthority(ctx context.Con
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
+	cert.State.Fields["version"] = structpb.NewNumberValue(float64(version + 1))
 
 	return nil
 }
@@ -778,4 +890,64 @@ func decrypt(ctx context.Context, value []byte, wrapper wrapping.Wrapper) ([]byt
 	}
 
 	return marshaledInfo, nil
+}
+
+func (r *WorkerAuthRepositoryStorage) validateWorkerAuths(ctx context.Context, workerAuths []*WorkerAuth) (*WorkerAuthSet, error) {
+	const op = "server.(WorkerAuthRepositoryStorage).validateWorkerAuths"
+
+	var previousWorkerAuth *WorkerAuth
+	var currentWorkerAuth *WorkerAuth
+
+	workerAuthsFound := len(workerAuths)
+	switch {
+	case workerAuthsFound == 0:
+		return nil, errors.New(ctx, errors.RecordNotFound, op, "did not find worker auth records for worker")
+	case workerAuthsFound == 1:
+		if workerAuths[0].State != currentWorkerAuthState {
+			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
+				fmt.Sprintf("expected sole worker auth record to be in current state, found %s", workerAuths[0].State))
+		} else {
+			currentWorkerAuth = workerAuths[0]
+		}
+	case workerAuthsFound == 2:
+		currentStateFound := false
+		previousStateFound := false
+		for _, w := range workerAuths {
+			if w.State == currentWorkerAuthState {
+				currentStateFound = true
+				currentWorkerAuth = w
+			} else if w.State == previousWorkerAuthState {
+				previousStateFound = true
+				previousWorkerAuth = w
+			}
+		}
+		if !currentStateFound || !previousStateFound {
+			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("worker auth records in invalid set of states"))
+		}
+	default:
+		return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,
+			fmt.Sprintf("expected 2 or fewer worker auth records, found %d", workerAuthsFound))
+	}
+
+	workerAuthSet := &WorkerAuthSet{
+		Previous: previousWorkerAuth,
+		Current:  currentWorkerAuth,
+	}
+
+	return workerAuthSet, nil
+}
+
+// FindWorkerAuthByWorkerId takes a workerId and returns the WorkerAuthSet for this worker.
+func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Context, workerId string) (*WorkerAuthSet, error) {
+	const op = "server.(WorkerAuthRepositoryStorage).FindWorkerAuthByWorkerId"
+	if len(workerId) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "empty worker ID")
+	}
+
+	var workerAuths []*WorkerAuth
+	if err := r.reader.SearchWhere(ctx, &workerAuths, "worker_id = ?", []interface{}{workerId}); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return r.validateWorkerAuths(ctx, workerAuths)
 }

@@ -15,22 +15,21 @@ is the fastest way to onboard a target to HCP Boundary.
 
 A `tcp` target with a default port of `22` (the default SSH port using TCP) is
 recommended for an initial target. If using the Quick setup, a sample host set
-called **QA Databases** will contain the **CRM Database** host, with the Address
-provided during setup. When `boundary connect` is executed against the **CRM
-Database target**, the single available host will be selected and a local
+called **Prod-EC2** will contain the **Instance-1** host, with the Address
+provided during setup. When `boundary connect` is executed against the **EC2 Instances** target, the single available host will be selected and a local
 authenticated proxy to the host is established on the target's default port.
 
 ![Setup Wizard](/img/quick-start-targets.png)
 
-To connect to the initial CRM Database target:
+To connect to the initial EC2 Instances target:
 
-1. Copy the **CRM Database target ID** (such as `ttcp_eTcZMueUYv`).
+1. Copy the **EC2 Instances** target ID (such as `ttcp_ZnHEU9h8qX`).
 
-1. Open a terminal session. Export the Boundary **Origin URL** as an environment
+1. Open a terminal session. Export the Boundary **Cluster URL** as an environment
    variable.
 
 ```shell-session
-$ export BOUNDARY_ADDR=<boundary-origin-url>
+$ export BOUNDARY_ADDR=<boundary-cluster-url>
 ```
 
 1. Connect to the target.

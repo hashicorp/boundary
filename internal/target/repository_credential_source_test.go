@@ -48,7 +48,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(context.Background(), rw, rw, testKms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)

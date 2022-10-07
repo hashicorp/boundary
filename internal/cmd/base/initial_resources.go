@@ -32,15 +32,6 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
 
 	iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 	if err != nil {
@@ -54,11 +45,11 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
 	}
-	role, err := iamRepo.CreateRole(cancelCtx, pr)
+	role, err := iamRepo.CreateRole(ctx, pr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
 	}
-	if _, err := iamRepo.AddRoleGrants(cancelCtx, role.PublicId, role.Version, []string{
+	if _, err := iamRepo.AddRoleGrants(ctx, role.PublicId, role.Version, []string{
 		"id=*;type=scope;actions=list,no-op",
 		"id=*;type=auth-method;actions=authenticate,list",
 		"id={{account.id}};actions=read,change-password",
@@ -66,7 +57,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	}); err != nil {
 		return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 	}
-	if _, err := iamRepo.AddPrincipalRoles(cancelCtx, role.PublicId, role.Version+1, []string{auth.AnonymousUserId}, nil); err != nil {
+	if _, err := iamRepo.AddPrincipalRoles(ctx, role.PublicId, role.Version+1, []string{auth.AnonymousUserId}, nil); err != nil {
 		return nil, fmt.Errorf("error adding principal to role for default generated grants: %w", err)
 	}
 
@@ -106,17 +97,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		}
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
-
-	am, err := pwRepo.CreateAuthMethod(cancelCtx, authMethod,
+	am, err := pwRepo.CreateAuthMethod(ctx, authMethod,
 		password.WithPublicId(b.DevPasswordAuthMethodId))
 	if err != nil {
 		return nil, nil, fmt.Errorf("error saving auth method to the db: %w", err)
@@ -165,7 +146,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 			return nil, fmt.Errorf("error creating new in memory password auth account: %w", err)
 		}
 		acct, err = pwRepo.CreateAccount(
-			cancelCtx,
+			ctx,
 			scope.Global.String(),
 			acct,
 			password.WithPassword(loginPassword),
@@ -201,10 +182,10 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		if err != nil {
 			return nil, fmt.Errorf("error creating in memory user: %w", err)
 		}
-		if u, err = iamRepo.CreateUser(cancelCtx, u, opts...); err != nil {
+		if u, err = iamRepo.CreateUser(ctx, u, opts...); err != nil {
 			return nil, fmt.Errorf("error creating initial %s user: %w", typeStr, err)
 		}
-		if _, err = iamRepo.AddUserAccounts(cancelCtx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
+		if _, err = iamRepo.AddUserAccounts(ctx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
 			return nil, fmt.Errorf("error associating initial %s user with account: %w", typeStr, err)
 		}
 		if !admin {
@@ -218,14 +199,14 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		if err != nil {
 			return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
 		}
-		defPermsRole, err := iamRepo.CreateRole(cancelCtx, pr)
+		defPermsRole, err := iamRepo.CreateRole(ctx, pr)
 		if err != nil {
 			return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
 		}
-		if _, err := iamRepo.AddRoleGrants(cancelCtx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;type=*;actions=*"}); err != nil {
+		if _, err := iamRepo.AddRoleGrants(ctx, defPermsRole.PublicId, defPermsRole.Version, []string{"id=*;type=*;actions=*"}); err != nil {
 			return nil, fmt.Errorf("error creating grant for default generated grants: %w", err)
 		}
-		if _, err := iamRepo.AddPrincipalRoles(cancelCtx, defPermsRole.PublicId, defPermsRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {
+		if _, err := iamRepo.AddPrincipalRoles(ctx, defPermsRole.PublicId, defPermsRole.Version+1, []string{u.GetPublicId()}, nil); err != nil {
 			return nil, fmt.Errorf("error adding principal to role for default generated grants: %w", err)
 		}
 		return u, nil
@@ -282,16 +263,6 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 		return nil, nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
-
 	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating scopes repository: %w", err)
@@ -314,7 +285,7 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating new in memory org scope: %w", err)
 	}
-	orgScope, err = iamRepo.CreateScope(cancelCtx, orgScope, b.DevUserId, opts...)
+	orgScope, err = iamRepo.CreateScope(ctx, orgScope, b.DevUserId, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error saving org scope to the db: %w", err)
 	}
@@ -337,7 +308,7 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating new in memory project scope: %w", err)
 	}
-	projScope, err = iamRepo.CreateScope(cancelCtx, projScope, b.DevUserId, opts...)
+	projScope, err = iamRepo.CreateScope(ctx, projScope, b.DevUserId, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error saving project scope to the db: %w", err)
 	}
@@ -361,16 +332,6 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 		return nil, nil, nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
-
 	staticRepo, err := static.NewRepository(rw, rw, kmsCache)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating static repository: %w", err)
@@ -392,7 +353,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating in memory host catalog: %w", err)
 	}
-	if hc, err = staticRepo.CreateCatalog(cancelCtx, hc, opts...); err != nil {
+	if hc, err = staticRepo.CreateCatalog(ctx, hc, opts...); err != nil {
 		return nil, nil, nil, fmt.Errorf("error saving host catalog to the db: %w", err)
 	}
 	b.InfoKeys = append(b.InfoKeys, "generated host catalog id")
@@ -418,7 +379,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating in memory host: %w", err)
 	}
-	if h, err = staticRepo.CreateHost(cancelCtx, b.DevProjectId, h, opts...); err != nil {
+	if h, err = staticRepo.CreateHost(ctx, b.DevProjectId, h, opts...); err != nil {
 		return nil, nil, nil, fmt.Errorf("error saving host to the db: %w", err)
 	}
 	b.InfoKeys = append(b.InfoKeys, "generated host id")
@@ -440,14 +401,14 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating in memory host set: %w", err)
 	}
-	if hs, err = staticRepo.CreateSet(cancelCtx, b.DevProjectId, hs, opts...); err != nil {
+	if hs, err = staticRepo.CreateSet(ctx, b.DevProjectId, hs, opts...); err != nil {
 		return nil, nil, nil, fmt.Errorf("error saving host set to the db: %w", err)
 	}
 	b.InfoKeys = append(b.InfoKeys, "generated host set id")
 	b.Info["generated host set id"] = b.DevHostSetId
 
 	// Associate members
-	if _, err := staticRepo.AddSetMembers(cancelCtx, b.DevProjectId, b.DevHostSetId, hs.GetVersion(), []string{h.GetPublicId()}); err != nil {
+	if _, err := staticRepo.AddSetMembers(ctx, b.DevProjectId, b.DevHostSetId, hs.GetVersion(), []string{h.GetPublicId()}); err != nil {
 		return nil, nil, nil, fmt.Errorf("error associating host set to host in the db: %w", err)
 	}
 
@@ -468,17 +429,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
-
-	targetRepo, err := target.NewRepository(rw, rw, kmsCache)
+	targetRepo, err := target.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
 		return nil, fmt.Errorf("error creating target repository: %w", err)
 	}
@@ -505,7 +456,7 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory target: %w", err)
 	}
-	tt, _, _, err := targetRepo.CreateTarget(cancelCtx, t, opts...)
+	tt, _, _, err := targetRepo.CreateTarget(ctx, t, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("error saving target to the db: %w", err)
 	}
@@ -559,18 +510,18 @@ func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error)
 		if err != nil {
 			return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
 		}
-		sessionRole, err := iamRepo.CreateRole(cancelCtx, pr)
+		sessionRole, err := iamRepo.CreateRole(ctx, pr)
 		if err != nil {
 			return nil, fmt.Errorf("error creating role for unprivileged user generated grants: %w", err)
 		}
-		if _, err := iamRepo.AddRoleGrants(cancelCtx,
+		if _, err := iamRepo.AddRoleGrants(ctx,
 			sessionRole.PublicId,
 			sessionRole.Version,
 			[]string{fmt.Sprintf("id=%s;actions=authorize-session", b.DevTargetId)},
 		); err != nil {
 			return nil, fmt.Errorf("error creating grant for unprivileged user generated grants: %w", err)
 		}
-		if _, err := iamRepo.AddPrincipalRoles(cancelCtx, sessionRole.PublicId, sessionRole.Version+1, []string{b.DevUnprivilegedUserId}, nil); err != nil {
+		if _, err := iamRepo.AddPrincipalRoles(ctx, sessionRole.PublicId, sessionRole.Version+1, []string{b.DevUnprivilegedUserId}, nil); err != nil {
 			return nil, fmt.Errorf("error adding principal to role for unprivileged user generated grants: %w", err)
 		}
 	}
@@ -599,16 +550,6 @@ func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
-
 	hpRepo, err := hostplugin.NewRepository(rw, rw, kmsCache)
 	if err != nil {
 		return nil, fmt.Errorf("error creating host plugin repository: %w", err)
@@ -622,7 +563,7 @@ func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.
 	if plugin == nil {
 		opt = append(opt, hostplugin.WithName(name))
 		plugin = hostplugin.NewPlugin(opt...)
-		plugin, err = hpRepo.CreatePlugin(cancelCtx, plugin, opt...)
+		plugin, err = hpRepo.CreatePlugin(ctx, plugin, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error creating host plugin: %w", err)
 		}

@@ -57,6 +57,7 @@ var (
 )
 
 func TestList(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -95,6 +96,7 @@ func TestList(t *testing.T) {
 				VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 					Address:                  wrapperspb.String(s.GetVaultAddress()),
 					TokenHmac:                base64.RawURLEncoding.EncodeToString(s.Token().GetTokenHmac()),
+					TokenStatus:              s.Token().GetStatus(),
 					ClientCertificate:        wrapperspb.String(string(s.ClientCertificate().GetCertificate())),
 					ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(s.ClientCertificate().GetCertificateKeyHmac()),
 					// TODO: Add all fields including tls related fields, namespace, etc...
@@ -168,7 +170,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
+			s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -197,6 +199,7 @@ func TestList(t *testing.T) {
 }
 
 func TestCreateVault(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -469,6 +472,7 @@ func TestCreateVault(t *testing.T) {
 							CaCert:                   wrapperspb.String(string(v.CaCert)),
 							Address:                  wrapperspb.String(v.Addr),
 							TokenHmac:                "<hmac>",
+							TokenStatus:              "current",
 							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
 							ClientCertificateKeyHmac: "<hmac>",
 						},
@@ -510,6 +514,7 @@ func TestCreateVault(t *testing.T) {
 							CaCert:                   wrapperspb.String(string(v.CaCert)),
 							Address:                  wrapperspb.String(v.Addr),
 							TokenHmac:                "<hmac>",
+							TokenStatus:              "current",
 							ClientCertificate:        wrapperspb.String(string(v.ClientCert)),
 							ClientCertificateKeyHmac: "<hmac>",
 						},
@@ -524,7 +529,7 @@ func TestCreateVault(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
+			s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
 			require.NoError(err, "Error when getting new credential store service.")
 			defer cleanup(s)
 
@@ -577,6 +582,7 @@ func TestCreateVault(t *testing.T) {
 }
 
 func TestCreateStatic(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -700,7 +706,7 @@ func TestCreateStatic(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
+			s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
 			require.NoError(err, "Error when getting new credential store service.")
 			defer cleanup(s)
 
@@ -742,6 +748,7 @@ func TestCreateStatic(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -764,7 +771,7 @@ func TestGet(t *testing.T) {
 	vaultStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 	staticStorePrev := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId(), credstatic.WithPublicId(fmt.Sprintf("%s_1234567890", credstatic.PreviousCredentialStorePrefix)))
-	s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
+	s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -791,6 +798,7 @@ func TestGet(t *testing.T) {
 						VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
 							Address:                  wrapperspb.String(vaultStore.GetVaultAddress()),
 							TokenHmac:                base64.RawURLEncoding.EncodeToString(vaultStore.Token().GetTokenHmac()),
+							TokenStatus:              vaultStore.Token().GetStatus(),
 							ClientCertificate:        wrapperspb.String(string(vaultStore.ClientCertificate().GetCertificate())),
 							ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(vaultStore.ClientCertificate().GetCertificateKeyHmac()),
 						},
@@ -872,6 +880,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -895,7 +904,7 @@ func TestDelete(t *testing.T) {
 
 	vaultStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)[0]
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
+	s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -968,7 +977,7 @@ func TestUpdateVault(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
+	s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {
@@ -1063,6 +1072,7 @@ func TestUpdateVault(t *testing.T) {
 			res: func(in *pb.CredentialStore) *pb.CredentialStore {
 				out := proto.Clone(in).(*pb.CredentialStore)
 				out.GetVaultCredentialStoreAttributes().TokenHmac = "<hmac>"
+				out.GetVaultCredentialStoreAttributes().TokenStatus = "current"
 				return out
 			},
 		},
@@ -1300,7 +1310,7 @@ func TestUpdateStatic(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(vaultRepoFn, staticRepoFn, iamRepoFn)
+	s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {

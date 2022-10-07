@@ -52,6 +52,7 @@ type AuthMethod struct {
 	// The Auth Method type.
 	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Types that are assignable to Attrs:
+	//
 	//	*AuthMethod_Attributes
 	//	*AuthMethod_PasswordAuthMethodAttributes
 	//	*AuthMethod_OidcAuthMethodsAttributes

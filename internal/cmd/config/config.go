@@ -2,23 +2,31 @@ package config
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"net"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
+	"github.com/hashicorp/boundary/sdk/wrapper"
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
+	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
@@ -130,10 +138,11 @@ type Config struct {
 }
 
 type Controller struct {
-	Name              string    `hcl:"name"`
-	Description       string    `hcl:"description"`
-	Database          *Database `hcl:"database"`
-	PublicClusterAddr string    `hcl:"public_cluster_addr"`
+	Name              string     `hcl:"name"`
+	Description       string     `hcl:"description"`
+	Database          *Database  `hcl:"database"`
+	PublicClusterAddr string     `hcl:"public_cluster_addr"`
+	Scheduler         *Scheduler `hcl:"scheduler"`
 
 	// AuthTokenTimeToLive is the total valid lifetime of a token denoted by time.Duration
 	AuthTokenTimeToLive         interface{} `hcl:"auth_token_time_to_live"`
@@ -156,12 +165,6 @@ type Controller struct {
 	//
 	// TODO: This field is currently internal.
 	StatusGracePeriodDuration time.Duration `hcl:"-"`
-
-	// SchedulerRunJobInterval is the time interval between waking up the
-	// scheduler to run pending jobs.
-	//
-	// TODO: This field is currently internal.
-	SchedulerRunJobInterval time.Duration `hcl:"-"`
 }
 
 func (c *Controller) InitNameIfEmpty() error {
@@ -212,6 +215,11 @@ type Worker struct {
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
+
+	// ControllerGeneratedActivationToken is a controller-generated activation
+	// token used to register this worker to the cluster. It can be a path, env
+	// var, or direct value.
+	ControllerGeneratedActivationToken string `hcl:"controller_generated_activation_token"`
 }
 
 type Database struct {
@@ -223,6 +231,27 @@ type Database struct {
 	MaxIdleConnectionsRaw   interface{}    `hcl:"max_idle_connections"`
 	ConnMaxIdleTime         interface{}    `hcl:"max_idle_time"`
 	ConnMaxIdleTimeDuration *time.Duration `hcl:"-"`
+
+	// SkipSharedLockAcquisition allows skipping grabbing the database shared
+	// lock. This is dangerous unless you know what you're doing, and you should
+	// not set it unless you are the reason it's here in the first place, as not
+	// only it dangerous but it will be removed at some point in the future.
+	SkipSharedLockAcquisition bool `hcl:"skip_shared_lock_acquisition"`
+}
+
+// Scheduler is the configuration block that specifies the job scheduler behavior on the controller
+type Scheduler struct {
+	// JobRunInterval is the time interval between waking up the
+	// scheduler to run pending jobs.
+	//
+	JobRunInterval         interface{} `hcl:"job_run_interval"`
+	JobRunIntervalDuration time.Duration
+
+	// MonitorInterval is the time interval between waking up the
+	// scheduler to monitor for jobs that are defunct.
+	//
+	MonitorInterval         interface{} `hcl:"monitor_interval"`
+	MonitorIntervalDuration time.Duration
 }
 
 type Plugins struct {
@@ -301,23 +330,100 @@ func New() *Config {
 	}
 }
 
-// LoadFile loads the configuration from the given file.
-func LoadFile(path string, wrapper wrapping.Wrapper) (*Config, error) {
-	d, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
+// Load will create a Config from the given config files. It concatenates the
+// contents of the files together. This allows for composing a config from
+// separate files, but notably does not attempt any merging of configs. Thus it
+// is possible that the concatenation results in an invalid config file. This
+// also supports decrypting the config, either with a kms block in one of the
+// given files, or as a separate file in wrapperPath.
+//
+// Note that having multiple config files is only supported properly if they are
+// all hcl files. If they are json files, only the first file is used. A mix of
+// hcl and json will result in an error.
+func Load(ctx context.Context, paths []string, wrapperPath string) (*Config, error) {
+	const op = "config.Load"
+
+	var err error
+	var cfg *Config
+
+	configStrs := make([]string, 0, len(paths))
+	for _, path := range paths {
+		fileBytes, err := os.ReadFile(path)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not read config file", "path", path, "error", err))
+			return nil, err
+		}
+		configStrs = append(configStrs, string(fileBytes))
+	}
+	configString := strings.Join(configStrs, "\n")
+
+	wrapperString := configString
+	if wrapperPath != "" {
+		wrapperBytes, err := os.ReadFile(wrapperPath)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not read kms config file", "path", wrapperPath, "error", err))
+			return nil, err
+		}
+		wrapperString = string(wrapperBytes)
 	}
 
-	raw := string(d)
+	var configWrapper wrapping.Wrapper
+	var ifWrapper wrapping.InitFinalizer
+	var cleanupFunc func() error
+	if wrapperString != "" {
+		configWrapper, cleanupFunc, err = wrapper.GetWrapperFromHcl(
+			ctx,
+			wrapperString,
+			globals.KmsPurposeConfig,
+			configutil.WithPluginOptions(
+				pluginutil.WithPluginsMap(kms_plugin_assets.BuiltinKmsPlugins()),
+				pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
+			),
+			// TODO: How would we want to expose this kind of log to users when
+			// using recovery configs? Generally with normal CLI commands we
+			// don't print out all of these logs. We may want a logger with a
+			// custom writer behind our existing gate where we print nothing
+			// unless there is an error, then dump all of it.
+			configutil.WithLogger(hclog.NewNullLogger()),
+		)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not get kms wrapper from config", "path", wrapperPath))
+			return nil, err
+		}
+		if cleanupFunc != nil {
+			defer func() {
+				if err := cleanupFunc(); err != nil {
+					event.WriteError(ctx, op, err, event.WithInfoMsg("could not clean up kms wrapper", "path", wrapperPath))
+				}
+			}()
+		}
+		if configWrapper != nil {
+			ifWrapper, _ = configWrapper.(wrapping.InitFinalizer)
+		}
+	}
+	if ifWrapper != nil {
+		if err := ifWrapper.Init(ctx); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("could not initialize kms", "path", wrapperPath))
+			return nil, err
+		}
+	}
 
-	if wrapper != nil {
-		raw, err = configutil.EncryptDecrypt(raw, true, true, wrapper)
+	if configWrapper != nil {
+		configString, err = configutil.EncryptDecrypt(configString, true, true, configWrapper)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return Parse(raw)
+	cfg, err = Parse(configString)
+
+	if ifWrapper != nil {
+		if err := ifWrapper.Finalize(context.Background()); err != nil && !errors.Is(err, wrapping.ErrFunctionNotImplemented) {
+			event.WriteError(context.Background(), op, err, event.WithInfoMsg("could not finalize kms", "path", wrapperPath))
+			return nil, err
+		}
+	}
+	return cfg, err
 }
 
 func Parse(d string) (*Config, error) {
@@ -372,6 +478,24 @@ func Parse(d string) (*Config, error) {
 				return result, err
 			}
 			result.Controller.GracefulShutdownWaitDuration = t
+		}
+
+		if result.Controller.Scheduler != nil {
+			if result.Controller.Scheduler.JobRunInterval != "" {
+				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.JobRunInterval)
+				if err != nil {
+					return result, err
+				}
+				result.Controller.Scheduler.JobRunIntervalDuration = t
+			}
+
+			if result.Controller.Scheduler.MonitorInterval != "" {
+				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.MonitorInterval)
+				if err != nil {
+					return result, err
+				}
+				result.Controller.Scheduler.MonitorIntervalDuration = t
+			}
 		}
 
 		if result.Controller.Database != nil {
@@ -452,6 +576,11 @@ func Parse(d string) (*Config, error) {
 		}
 		if !strutil.Printable(result.Worker.Description) {
 			return nil, errors.New("Worker description contains non-printable characters")
+		}
+
+		result.Worker.ControllerGeneratedActivationToken, err = parseutil.ParsePath(result.Worker.ControllerGeneratedActivationToken)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return nil, fmt.Errorf("Error parsing worker activation token: %w", err)
 		}
 
 		if result.Worker.TagsRaw != nil {
@@ -546,12 +675,18 @@ func Parse(d string) (*Config, error) {
 			if !strutil.Printable(k) {
 				return nil, fmt.Errorf("Tag key %q contains non-printable characters", k)
 			}
+			if strings.Contains(k, ",") {
+				return nil, fmt.Errorf("Tag key %q cannot contain commas", k)
+			}
 			for _, val := range v {
 				if val != strings.ToLower(val) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q is not all lower-case letters", val, k)
 				}
 				if !strutil.Printable(k) {
 					return nil, fmt.Errorf("Tag value %q for tag key %q contains non-printable characters", v, k)
+				}
+				if strings.Contains(val, ",") {
+					return nil, fmt.Errorf("Tag value %q for tag key %q cannot contain commas", val, k)
 				}
 			}
 		}
@@ -619,7 +754,6 @@ func Parse(d string) (*Config, error) {
 }
 
 // supportControllersRawConfig returns either initialUpstreamsRaw or controllersRaw depending on which is populated. Errors when both fields are populated.
-//
 func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, error) {
 	switch {
 	case initialUpstreamsRaw == nil && controllersRaw != nil:
@@ -766,4 +900,123 @@ func (c *Config) Sanitized() map[string]interface{} {
 	}
 
 	return result
+}
+
+// SetupControllerPublicClusterAddress will set the controller public address.
+// If the flagValue is provided it will be used. Otherwise this will use the
+// address from cluster listener. In either case it will check to see if no port
+// is included, and if not it will set the default port of 9201.
+//
+// If there are any errors parsing the address from the flag or listener,
+// and error is returned.
+func (c *Config) SetupControllerPublicClusterAddress(flagValue string) error {
+	if c.Controller == nil {
+		c.Controller = new(Controller)
+	}
+	if flagValue != "" {
+		c.Controller.PublicClusterAddr = flagValue
+	}
+	if c.Controller.PublicClusterAddr == "" {
+	FindAddr:
+		for _, listener := range c.Listeners {
+			for _, purpose := range listener.Purpose {
+				if purpose == "cluster" {
+					c.Controller.PublicClusterAddr = listener.Address
+					break FindAddr
+				}
+			}
+		}
+	} else {
+		var err error
+		c.Controller.PublicClusterAddr, err = parseutil.ParsePath(c.Controller.PublicClusterAddr)
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return fmt.Errorf("Error parsing public cluster addr: %w", err)
+		}
+
+		c.Controller.PublicClusterAddr, err = listenerutil.ParseSingleIPTemplate(c.Controller.PublicClusterAddr)
+		if err != nil {
+			return fmt.Errorf("Error parsing IP template on controller public cluster addr: %w", err)
+		}
+	}
+
+	host, port, err := net.SplitHostPort(c.Controller.PublicClusterAddr)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			port = "9201"
+			host = c.Controller.PublicClusterAddr
+		} else {
+			return fmt.Errorf("Error splitting public cluster adddress host/port: %w", err)
+		}
+	}
+	c.Controller.PublicClusterAddr = net.JoinHostPort(host, port)
+	return nil
+}
+
+// SetupWorkerInitialUpstreams will set the worker initial upstreams in cases
+// where both a worker and controller stanza are provided. The initial upstreams
+// will be:
+// - The initialily provided value, if it is the same as the controller's cluster address
+// - The controller's public cluster address if it it was set
+// - The controller's cluster listener's address
+//
+// Any other value already set for iniital upstream will result in an error.
+func (c *Config) SetupWorkerInitialUpstreams() error {
+	// nothing to do here
+	if c.Worker == nil || c.Controller == nil {
+		return nil
+	}
+
+	var clusterAddr string
+	for _, lnConfig := range c.Listeners {
+		switch len(lnConfig.Purpose) {
+		case 0:
+			return fmt.Errorf("Listener specified without a purpose")
+		case 1:
+			purpose := lnConfig.Purpose[0]
+			switch purpose {
+			case "cluster":
+				clusterAddr = lnConfig.Address
+				if clusterAddr == "" {
+					clusterAddr = "127.0.0.1:9201"
+					lnConfig.Address = clusterAddr
+				}
+			}
+		default:
+			return fmt.Errorf("Specifying a listener with more than one purpose is not supported")
+		}
+	}
+
+	switch len(c.Worker.InitialUpstreams) {
+	case 0:
+		if c.Controller.PublicClusterAddr != "" {
+			clusterAddr = c.Controller.PublicClusterAddr
+		}
+		c.Worker.InitialUpstreams = []string{clusterAddr}
+	case 1:
+		if c.Worker.InitialUpstreams[0] == clusterAddr {
+			break
+		}
+		if c.Controller.PublicClusterAddr != "" &&
+			c.Worker.InitialUpstreams[0] == c.Controller.PublicClusterAddr {
+			break
+		}
+		// Best effort see if it's a domain name and if not assume it must match
+		host, _, err := net.SplitHostPort(c.Worker.InitialUpstreams[0])
+		if err != nil && strings.Contains(err.Error(), "missing port in address") {
+			err = nil
+			host = c.Worker.InitialUpstreams[0]
+		}
+		if err == nil {
+			ip := net.ParseIP(host)
+			if ip == nil {
+				// Assume it's a domain name
+				break
+			}
+		}
+		fallthrough
+	default:
+		return fmt.Errorf(`When running a combined controller and worker, it's invalid to specify a "initial_upstreams" or "controllers" key in the worker block with any values other than the controller cluster or upstream worker address/port when using IPs rather than DNS names`)
+	}
+
+	return nil
 }

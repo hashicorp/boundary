@@ -3,7 +3,6 @@ package connect
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -45,12 +44,12 @@ func (s *sshFlags) defaultExec() string {
 	return strings.ToLower(s.flagSshStyle)
 }
 
-func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credentials) (args, envs []string, retCreds credentials, retErr error) {
+func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) (args, envs []string, retCreds credentials, retErr error) {
 	var username string
 	retCreds = creds
 
 	var tryConsume bool
-	switch string(target.SubtypeFromId(c.sessionAuthzData.TargetId)) {
+	switch string(target.SubtypeFromId(c.sessionAuthzData.GetTargetId())) {
 	case "tcp":
 		tryConsume = true
 	}
@@ -60,9 +59,14 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 		// Might want -t for ssh or -tt but seems fine without it for now...
 		args = append(args, "-p", port, ip)
 
-		// SSH detects a host key change when localhost proxy port changes, disable localhost
-		// host key verification to avoid 'WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED...'
-		args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
+		switch c.sessionAuthzData.GetType() {
+		case "tcp":
+			// SSH detects a host key change when the localhost proxy port changes
+			// This uses the host ID instead of 'localhost:port'.
+			args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthzData.GetHostId()))
+		case "ssh":
+			args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
+		}
 
 	case "sshpass":
 		if !tryConsume {
@@ -97,7 +101,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 	}
 
 	// Check if we got credentials to attempt to use for ssh or putty,
-	// sshpass style has already be handled above as username password.
+	// sshpass style has already been handled above as username password.
 	switch strings.ToLower(s.flagSshStyle) {
 	case "putty", "ssh":
 
@@ -120,8 +124,9 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 				delete(cred.raw.Credential, "username")
 				delete(cred.raw.Credential, "private_key")
 			}
+			retCreds.sshPrivateKey[0] = cred
 
-			pkFile, err := ioutil.TempFile("", "*")
+			pkFile, err := os.CreateTemp("", "*")
 			if err != nil {
 				return nil, nil, credentials{}, fmt.Errorf("Error saving ssh private key to tmp file: %w", err)
 			}

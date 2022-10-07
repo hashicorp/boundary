@@ -14,7 +14,7 @@ import (
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	t.Run("WithName", func(t *testing.T) {
-		opts := getOpts(WithName("test"))
+		opts := GetOpts(WithName("test"))
 		testOpts := getDefaultOptions()
 		testOpts.withName = "test"
 		opts.withNewIdFunc = nil
@@ -22,7 +22,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithPublicId", func(t *testing.T) {
-		opts := getOpts(WithPublicId("test"))
+		opts := GetOpts(WithPublicId("test"))
 		testOpts := getDefaultOptions()
 		testOpts.withPublicId = "test"
 		opts.withNewIdFunc = nil
@@ -30,7 +30,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithDescription", func(t *testing.T) {
-		opts := getOpts(WithDescription("test desc"))
+		opts := GetOpts(WithDescription("test desc"))
 		testOpts := getDefaultOptions()
 		testOpts.withDescription = "test desc"
 		opts.withNewIdFunc = nil
@@ -38,7 +38,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithLimit", func(t *testing.T) {
-		opts := getOpts(WithLimit(5))
+		opts := GetOpts(WithLimit(5))
 		testOpts := getDefaultOptions()
 		testOpts.withLimit = 5
 		opts.withNewIdFunc = nil
@@ -46,7 +46,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithAddress", func(t *testing.T) {
-		opts := getOpts(WithAddress("test"))
+		opts := GetOpts(WithAddress("test"))
 		testOpts := getDefaultOptions()
 		testOpts.withAddress = "test"
 		opts.withNewIdFunc = nil
@@ -54,7 +54,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithLiveness", func(t *testing.T) {
-		opts := getOpts(WithLiveness(time.Hour))
+		opts := GetOpts(WithLiveness(time.Hour))
 		testOpts := getDefaultOptions()
 		testOpts.withLiveness = time.Hour
 		opts.withNewIdFunc = nil
@@ -62,7 +62,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithUpdateTags", func(t *testing.T) {
-		opts := getOpts(WithUpdateTags(true))
+		opts := GetOpts(WithUpdateTags(true))
 		testOpts := getDefaultOptions()
 		testOpts.withUpdateTags = true
 		opts.withNewIdFunc = nil
@@ -74,7 +74,7 @@ func Test_GetOpts(t *testing.T) {
 			{Key: "key1", Value: "val1"},
 			{Key: "key2", Value: "val2"},
 		}
-		opts := getOpts(WithWorkerTags(tags...))
+		opts := GetOpts(WithWorkerTags(tags...))
 		testOpts := getDefaultOptions()
 		testOpts.withWorkerTags = tags
 		opts.withNewIdFunc = nil
@@ -90,7 +90,7 @@ func Test_GetOpts(t *testing.T) {
 			workerSigningPubKey:    populateBytes(20),
 		}
 
-		opts := getOpts(WithWorkerKeys(keys))
+		opts := GetOpts(WithWorkerKeys(keys))
 		testOpts = getDefaultOptions()
 		testOpts.withWorkerKeys = keys
 		opts.withNewIdFunc = nil
@@ -103,7 +103,7 @@ func Test_GetOpts(t *testing.T) {
 
 		key := populateBytes(20)
 
-		opts := getOpts(WithControllerEncryptionPrivateKey(key))
+		opts := GetOpts(WithControllerEncryptionPrivateKey(key))
 		testOpts = getDefaultOptions()
 		testOpts.withControllerEncryptionPrivateKey = key
 		opts.withNewIdFunc = nil
@@ -114,7 +114,7 @@ func Test_GetOpts(t *testing.T) {
 		assert := assert.New(t)
 		testOpts := getDefaultOptions()
 
-		opts := getOpts(WithKeyId("hi i'm another key id"))
+		opts := GetOpts(WithKeyId("hi i'm another key id"))
 		testOpts = getDefaultOptions()
 		testOpts.withKeyId = "hi i'm another key id"
 		opts.withNewIdFunc = nil
@@ -127,7 +127,7 @@ func Test_GetOpts(t *testing.T) {
 
 		nonce := populateBytes(20)
 
-		opts := getOpts(WithNonce(nonce))
+		opts := GetOpts(WithNonce(nonce))
 		testOpts = getDefaultOptions()
 		testOpts.withNonce = nonce
 		opts.withNewIdFunc = nil
@@ -137,7 +137,7 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithNewIdFunc", func(t *testing.T) {
 		assert := assert.New(t)
 		testFn := func(context.Context) (string, error) { return "", nil }
-		opts := getOpts(WithNewIdFunc(testFn))
+		opts := GetOpts(WithNewIdFunc(testFn))
 		testOpts := getDefaultOptions()
 		testOpts.withNewIdFunc = testFn
 		assert.Equal(
@@ -150,7 +150,7 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 
 		var keyId string
-		opts := getOpts(WithTestPkiWorkerAuthorizedKeyId(&keyId))
+		opts := GetOpts(WithTestPkiWorkerAuthorizedKeyId(&keyId))
 		testOpts = getDefaultOptions()
 		testOpts.withTestPkiWorkerAuthorized = true
 		testOpts.withTestPkiWorkerKeyId = &keyId
@@ -161,19 +161,45 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithWorkerType", func(t *testing.T) {
 		opts := getDefaultOptions()
 		assert.Empty(t, opts.withWorkerType)
-		opts = getOpts(WithWorkerType(KmsWorkerType))
+		opts = GetOpts(WithWorkerType(KmsWorkerType))
 		assert.Equal(t, KmsWorkerType, opts.withWorkerType)
 	})
 	t.Run("WithRoot", func(t *testing.T) {
 		opts := getDefaultOptions()
 		assert.Empty(t, opts.withRoot)
-		opts = getOpts(WithRoot("a"))
+		opts = GetOpts(WithRoot("a"))
 		assert.Equal(t, "a", opts.withRoot)
 	})
 	t.Run("WithStopAfter", func(t *testing.T) {
 		opts := getDefaultOptions()
 		assert.Empty(t, opts.withStopAfter)
-		opts = getOpts(WithStopAfter(10))
+		opts = GetOpts(WithStopAfter(10))
 		assert.Equal(t, uint(10), opts.withStopAfter)
+	})
+	t.Run("WithCreateControllerLedActivationToken", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.False(t, opts.WithCreateControllerLedActivationToken)
+		opts = GetOpts(WithCreateControllerLedActivationToken(true))
+		assert.True(t, opts.WithCreateControllerLedActivationToken)
+	})
+	t.Run("WithReleaseVersion", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.Empty(t, opts.withReleaseVersion)
+		opts = GetOpts(WithReleaseVersion("version"))
+		assert.Equal(t, "version", opts.withReleaseVersion)
+	})
+	t.Run("WithOperationalState", func(t *testing.T) {
+		opts := GetOpts(WithOperationalState("test state"))
+		testOpts := getDefaultOptions()
+		testOpts.withOperationalState = "test state"
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithExcludeShutdown", func(t *testing.T) {
+		opts := getDefaultOptions()
+		assert.Empty(t, opts.withActiveWorkers)
+		opts = GetOpts(WithActiveWorkers(true))
+		assert.Equal(t, true, opts.withActiveWorkers)
 	})
 }

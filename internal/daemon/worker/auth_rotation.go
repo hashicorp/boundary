@@ -93,7 +93,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 				shouldRotate = true
 			default:
 				delta := latestValid.Sub(earliestValid)
-				shouldRotate = now.Before(earliestValid.Add(delta / 2))
+				shouldRotate = now.After(earliestValid.Add(delta / 2))
 			}
 
 			if !shouldRotate {
@@ -104,6 +104,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 				event.WriteError(cancelCtx, op, err)
 				continue
 			}
+			event.WriteSysEvent(cancelCtx, op, "worker credentials rotated")
 
 			// TODO (maybe): Calculate new delta and set a custom retry time on the timer?
 		}
@@ -121,17 +122,13 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 	randReaderOpt := nodeenrollment.WithRandomReader(w.conf.SecureRandomReader)
 
 	// Ensure we can get some needed values prior to actually doing generation
-	currentKeyId, err := nodeenrollment.KeyIdFromPkix(currentNodeCreds.CertificatePublicKeyPkix)
-	if err != nil {
-		return berrors.Wrap(ctx, err, op)
-	}
 	client := w.controllerMultihopConn.Load()
 	if client == nil {
-		return berrors.Wrap(ctx, err, op)
+		return berrors.New(ctx, berrors.Internal, op, "nil multihop client")
 	}
 	multihopClient, ok := client.(multihop.MultihopServiceClient)
 	if !ok {
-		return berrors.Wrap(ctx, err, op)
+		return berrors.New(ctx, berrors.Internal, op, "multihop client is not the right type")
 	}
 
 	// Generate a new set of credentials but don't persist them yet
@@ -146,6 +143,11 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 		return berrors.Wrap(ctx, err, op)
 	}
 
+	err = newNodeCreds.SetPreviousEncryptionKey(currentNodeCreds)
+	if err != nil {
+		return berrors.Wrap(ctx, err, op)
+	}
+
 	// Get a signed request from the new credentials
 	fetchReq, err := newNodeCreds.CreateFetchNodeCredentialsRequest(ctx, randReaderOpt)
 	if err != nil {
@@ -153,7 +155,7 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 	}
 
 	// Encrypt the values to the server
-	encFetchReq, err := nodeenrollment.EncryptMessage(ctx, currentKeyId, fetchReq, currentNodeCreds, randReaderOpt)
+	encFetchReq, err := nodeenrollment.EncryptMessage(ctx, fetchReq, currentNodeCreds, randReaderOpt)
 	if err != nil {
 		return berrors.Wrap(ctx, err, op)
 	}
@@ -170,7 +172,6 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 	fetchResp := new(types.FetchNodeCredentialsResponse)
 	if err := nodeenrollment.DecryptMessage(
 		ctx,
-		currentKeyId,
 		resp.EncryptedFetchNodeCredentialsResponse,
 		currentNodeCreds,
 		fetchResp,

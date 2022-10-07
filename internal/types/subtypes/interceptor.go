@@ -37,60 +37,60 @@ func messageDomain(m proto.Message) string {
 // The first structure is a message that contains a single "item" that is a
 // message that has a "type" and an "attrs" oneof for attributes:
 //
-//    message CreateFooRequest {
-//      item Foo = 1;
-//    }
-//    message Foo {
-//      string type = 1;
-//      // other fields
-//      oneof attrs {
-//        google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
-//        // other subtype attributes types
-//      }
-//    }
+//	message CreateFooRequest {
+//	  item Foo = 1;
+//	}
+//	message Foo {
+//	  string type = 1;
+//	  // other fields
+//	  oneof attrs {
+//	    google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
+//	    // other subtype attributes types
+//	  }
+//	}
 //
 // The second structure is similar to the first, but rather then the type field
 // being provided, an id field is set. Note this is a different id from the
 // third structure. In this case it is an id for a related resource and the id
 // is marked with the "subtype_source_id" custom option:
 //
-//    message CreateFooRequest {
-//      item Foo = 1;
-//    }
-//    message Foo {
-//      string bar_id = 1 [(custom_options.v1.subtype_source_id) = true];
-//      // other fields
-//      oneof attrs {
-//        google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
-//        // other subtype attributes types
-//      }
-//    }
+//	message CreateFooRequest {
+//	  item Foo = 1;
+//	}
+//	message Foo {
+//	  string bar_id = 1 [(custom_options.v1.subtype_source_id) = true];
+//	  // other fields
+//	  oneof attrs {
+//	    google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
+//	    // other subtype attributes types
+//	  }
+//	}
 //
 // The third structure is a message that contains an id string and an "item"
 // that is a message that has an "attrs" oneof for attributes:
 //
-//    message UpdateFooRequest {
-//      string id = 1;
-//      item Foo  = 2;
-//    }
-//    message Foo {
-//      // other fields
-//      oneof attrs {
-//        google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
-//        // other subtype attributes types
-//      }
-//    }
+//	message UpdateFooRequest {
+//	  string id = 1;
+//	  item Foo  = 2;
+//	}
+//	message Foo {
+//	  // other fields
+//	  oneof attrs {
+//	    google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
+//	    // other subtype attributes types
+//	  }
+//	}
 //
 // The forth structure is a message that contains an id string and an "attrs" oneof for
 // attributes:
 //
-//    message FooActionRequest {
-//      string id = 1;
-//      oneof attrs {
-//        google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
-//        // other subtype attributes types
-//      }
-//    }
+//	message FooActionRequest {
+//	  string id = 1;
+//	  oneof attrs {
+//	    google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
+//	    // other subtype attributes types
+//	  }
+//	}
 //
 // Also note that for any of the id based lookups to function, the file that contains
 // the proto.Message definition must set the "domain" custom option.
@@ -189,28 +189,28 @@ func transformRequest(msg proto.Message) error {
 // The first structure is a message that contains a single "item" that is a
 // message that has an "attrs" oneof for attributes:
 //
-//    message CreateFooResponse {
-//      item Foo = 1;
-//    }
-//    message Foo {
-//      oneof attrs {
-//        google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
-//        // other subtype attributes types
-//      }
-//    }
+//	message CreateFooResponse {
+//	  item Foo = 1;
+//	}
+//	message Foo {
+//	  oneof attrs {
+//	    google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
+//	    // other subtype attributes types
+//	  }
+//	}
 //
 // The second structure is a message that contains a single "items" that is a
 // slice of item messages that have an "attrs" oneof for attributes:
 //
-//    message ListFooResponse {
-//      items []Foo = 1;
-//    }
-//    message Foo {
-//      oneof attrs {
-//        google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
-//        // other subtype attributes types
-//      }
-//    }
+//	message ListFooResponse {
+//	  items []Foo = 1;
+//	}
+//	message Foo {
+//	  oneof attrs {
+//	    google.protobuf.Struct attributes = 10 [(custom_options.v1.subtype) = "default"];
+//	    // other subtype attributes types
+//	  }
+//	}
 func transformResponseAttributes(res proto.Message) error {
 	r := res.ProtoReflect()
 	fields := r.Descriptor().Fields()
@@ -257,42 +257,43 @@ func transformResponse(msg proto.Message) error {
 //
 // For example with a protobuf message definition like:
 //
-//     message Account {
-//       string id = 1;
-//       string type = 2;
-//       oneof attrs {
-//         google.protobuf.Struct attributes = 10 [(controller.custom_options.v1.subtype) = "default"];
-//         PasswordAttributes password_attributes = 20 [(controller.custom_options.v1.subtype) = "password"];
-//       }
-//     }
+//	message Account {
+//	  string id = 1;
+//	  string type = 2;
+//	  oneof attrs {
+//	    google.protobuf.Struct attributes = 10 [(controller.custom_options.v1.subtype) = "default"];
+//	    PasswordAttributes password_attributes = 20 [(controller.custom_options.v1.subtype) = "password"];
+//	  }
+//	}
 //
-//     message PasswordAttributes {
-//        string login_name = 1;
-//     }
+//	message PasswordAttributes {
+//	   string login_name = 1;
+//	}
 //
-//     message AccountCreateRequest {
-//        Account item = 1;
-//     }
+//	message AccountCreateRequest {
+//	   Account item = 1;
+//	}
 //
-//     message AccountCreateResponse {
-//        Account item = 1;
-//     }
+//	message AccountCreateResponse {
+//	   Account item = 1;
+//	}
 //
 // And a create request with JSON request body like:
-//     {
-//        "type": "password",
-//        "attributes": {
-//           "login_name": "tim"
-//        }
-//     }
+//
+//	{
+//	   "type": "password",
+//	   "attributes": {
+//	      "login_name": "tim"
+//	   }
+//	}
 //
 // Will result in a proto request like:
 //
-//     type:"password" attributes:{fields:{key:"login_name" value:{string_value:"tim"}}}
+//	type:"password" attributes:{fields:{key:"login_name" value:{string_value:"tim"}}}
 //
 // This request will be transformed into:
 //
-//     type:"password" password_attributes:{login_name:"tim"}
+//	type:"password" password_attributes:{login_name:"tim"}
 func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerInterceptor {
 	const op = "subtypes.AttributeTransformInterceptor"
 	return func(interceptorCtx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {

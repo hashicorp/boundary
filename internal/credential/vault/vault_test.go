@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"path"
@@ -16,6 +17,7 @@ import (
 func Test_newClient(t *testing.T) {
 	t.Parallel()
 	v := NewTestVaultServer(t)
+	ctx := context.Background()
 
 	tests := []struct {
 		name         string
@@ -52,7 +54,7 @@ func Test_newClient(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			client, err := newClient(tt.clientConfig)
+			client, err := newClient(ctx, tt.clientConfig)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(client)
@@ -66,6 +68,7 @@ func Test_newClient(t *testing.T) {
 
 func TestClient_RenewToken(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert := assert.New(t)
 	v := NewTestVaultServer(t)
 
@@ -75,8 +78,8 @@ func TestClient_RenewToken(t *testing.T) {
 	// need to sleep so the expiration times will be different
 	time.Sleep(100 * time.Millisecond)
 
-	client := v.clientUsingToken(t, token)
-	renewedToken, err := client.renewToken()
+	client := v.ClientUsingToken(t, token)
+	renewedToken, err := client.renewToken(ctx)
 	require.NoError(t, err)
 	assert.NotNil(renewedToken)
 
@@ -102,14 +105,15 @@ func tokenExpirationTime(t *testing.T, s *vault.Secret) time.Time {
 
 func TestClient_LookupToken(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t)
 
 	_, token := v.CreateToken(t)
 	secretLookup := v.LookupToken(t, token)
 
-	client := v.clientUsingToken(t, token)
-	tokenLookup, err := client.lookupToken()
+	client := v.ClientUsingToken(t, token)
+	tokenLookup, err := client.lookupToken(ctx)
 	assert.NoError(err)
 	require.NotNil(tokenLookup)
 
@@ -119,20 +123,21 @@ func TestClient_LookupToken(t *testing.T) {
 
 func TestClient_RevokeToken(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t)
 
 	_, token := v.CreateToken(t)
 
-	client := v.clientUsingToken(t, token)
-	tokenLookup, err := client.lookupToken()
+	client := v.ClientUsingToken(t, token)
+	tokenLookup, err := client.lookupToken(ctx)
 	assert.NoError(err)
 	assert.NotNil(tokenLookup)
 
-	require.NoError(client.revokeToken())
+	require.NoError(client.revokeToken(ctx))
 
 	// An attempt to lookup should now fail with a 403
-	tokenLookup, err = client.lookupToken()
+	tokenLookup, err = client.lookupToken(ctx)
 	require.Error(err)
 	assert.Nil(tokenLookup)
 
@@ -144,19 +149,21 @@ func TestClient_RevokeToken(t *testing.T) {
 
 func TestClient_Get(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert := assert.New(t)
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 	v.MountDatabase(t)
 
 	client := v.client(t)
 
-	cred, err := client.get(path.Join("database", "creds", "opened"))
+	cred, err := client.get(ctx, path.Join("database", "creds", "opened"))
 	assert.NoError(err)
 	assert.NotNil(cred)
 }
 
 func TestClient_Post(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	v := NewTestVaultServer(t, WithTestVaultTLS(TestServerTLS))
 	v.MountPKI(t)
 	client := v.client(t)
@@ -164,13 +171,13 @@ func TestClient_Post(t *testing.T) {
 	t.Run("post-body", func(t *testing.T) {
 		assert := assert.New(t)
 		credData := []byte(`{"common_name":"boundary.com"}`)
-		cred, err := client.post(credPath, credData)
+		cred, err := client.post(ctx, credPath, credData)
 		assert.NoError(err)
 		assert.NotNil(cred)
 	})
 	t.Run("nil-body", func(t *testing.T) {
 		assert := assert.New(t)
-		cred, err := client.post(credPath, nil)
+		cred, err := client.post(ctx, credPath, nil)
 		assert.Error(err)
 		assert.Contains(err.Error(), "common_name field is required")
 		assert.Nil(cred)
@@ -179,15 +186,16 @@ func TestClient_Post(t *testing.T) {
 
 func TestClient_RenewLease(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 	v.MountDatabase(t)
 
 	_, token := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
-	client := v.clientUsingToken(t, token)
+	client := v.ClientUsingToken(t, token)
 
 	// Create secret
-	cred, err := client.get(path.Join("database", "creds", "opened"))
+	cred, err := client.get(ctx, path.Join("database", "creds", "opened"))
 	assert.NoError(err)
 	require.NotNil(cred)
 
@@ -198,7 +206,7 @@ func TestClient_RenewLease(t *testing.T) {
 	// Verify lease has not been renewed
 	assert.Empty(leaseLookup.Data["last_renewal"])
 
-	renewedLease, err := client.renewLease(cred.LeaseID, time.Hour)
+	renewedLease, err := client.renewLease(ctx, cred.LeaseID, time.Hour)
 	assert.NoError(err)
 	require.NotNil(renewedLease)
 	assert.Equal(cred.LeaseID, renewedLease.LeaseID)
@@ -213,6 +221,7 @@ func TestClient_RenewLease(t *testing.T) {
 
 func TestClient_capabilities(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	v := NewTestVaultServer(t)
 
 	tests := []struct {
@@ -243,9 +252,9 @@ func TestClient_capabilities(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			_, token := v.CreateToken(t, WithPolicies(tt.polices))
-			client := v.clientUsingToken(t, token)
+			client := v.ClientUsingToken(t, token)
 
-			have, err := client.capabilities(tt.require.paths())
+			have, err := client.capabilities(ctx, tt.require.paths())
 			assert.NoError(err)
 			got := have.missing(tt.require)
 			assert.Equalf(tt.wantMissing, got, "pathCapabilities: want: {%s} got: {%s}", tt.wantMissing, got)
@@ -255,14 +264,15 @@ func TestClient_capabilities(t *testing.T) {
 
 func TestClient_revokeLease(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	v := NewTestVaultServer(t, WithDockerNetwork(true), WithTestVaultTLS(TestClientTLS))
 	testDatabase := v.MountDatabase(t)
 
 	_, token := v.CreateToken(t, WithPolicies([]string{"boundary-controller", "database"}))
-	client := v.clientUsingToken(t, token)
+	client := v.ClientUsingToken(t, token)
 
-	cred, err := client.get(path.Join("database", "creds", "opened"))
+	cred, err := client.get(ctx, path.Join("database", "creds", "opened"))
 	assert.NoError(err)
 	require.NotNil(cred)
 
@@ -270,7 +280,7 @@ func TestClient_revokeLease(t *testing.T) {
 	assert.NoError(testDatabase.ValidateCredential(t, cred))
 
 	// revoke the database credentials
-	assert.NoError(client.revokeLease(cred.LeaseID))
+	assert.NoError(client.revokeLease(ctx, cred.LeaseID))
 
 	// verify the database credentials no longer work
 	assert.Error(testDatabase.ValidateCredential(t, cred))

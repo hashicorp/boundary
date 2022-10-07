@@ -34,7 +34,7 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, staticProj := iam.TestScopes(t, iamRepo)
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(context.Background(), rw, rw, testKms)
 	require.NoError(t, err)
 
 	createHostSetsFn := func(projects []string) []string {
@@ -199,10 +199,10 @@ func TestRepository_DeleteTargetHosts(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, proj := iam.TestScopes(t, iamRepo)
-	repo, err := target.NewRepository(rw, rw, testKms)
-	require.NoError(t, err)
 
 	ctx := context.Background()
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
 
 	type args struct {
 		target                target.Target
@@ -404,7 +404,9 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	repo, err := target.NewRepository(rw, rw, testKms)
+
+	ctx := context.Background()
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -426,8 +428,6 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 		}
 		return results
 	}
-
-	ctx := context.Background()
 
 	setupFn := func(target target.Target) []target.HostSource {
 		hs := createHostSetsFn()

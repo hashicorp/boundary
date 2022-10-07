@@ -27,9 +27,11 @@ type ExprValue struct {
 // column values for database operations. See: Expr(...)
 //
 // Set name column to null example:
+//
 //	SetColumnValues(map[string]interface{}{"name": Expr("NULL")})
 //
 // Set exp_time column to N seconds from now:
+//
 //	SetColumnValues(map[string]interface{}{"exp_time": Expr("wt_add_seconds_to_now(?)", 10)})
 func Expr(expr string, args ...interface{}) ExprValue {
 	return ExprValue{sql: expr, vars: args}

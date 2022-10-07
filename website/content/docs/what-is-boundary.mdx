@@ -9,7 +9,7 @@ description: And introduction to Boundary
 HashiCorp Boundary is a tool for managing identity-based access for modern, dynamic infrastructure. Boundary’s workflow layers security controls and integrations on multiple levels monitoring and managing user access through:
 
 - Tightly scoped identity-based permissions
-- "Just-in-time" network and credential access for sessions via [HashiCorp Vault](https://vaultproject.io/)
+- "Just-in-time" network and credential access for sessions via [HashiCorp Vault](https://www.vaultproject.io/)
 - Single sign-on to target services and applications via external identity providers
 - Access-as-code to automate the configuration of user permissions
 - Automated discovery of target systems
@@ -25,13 +25,13 @@ Boundary's foundation is based on the following important concepts.
 
 ## How does Boundary work?
 
-Boundary provides secure access to hosts and critical systems without distributing and managing credentidals, configuring firewalls, or exposing the organization's private network. Traditionally, for users to access their resources, it's required that organizations establish and maintain SSH bastion hosts and VPNs. The illustration below displays Boundary's core workflow.
+Boundary provides secure access to hosts and critical systems without distributing and managing credentials, configuring firewalls, or exposing the organization's private network. Traditionally, for users to access their resources, it's required that organizations establish and maintain SSH bastion hosts and VPNs. The illustration below displays Boundary's core workflow.
 
 ![Boundary core workflow](/img/boundary-core-workflow.png)
 
 The core Boundary workflow consists of four stages:
 
-- **User Authentication:** The user logs in with a trusted identity (based on the rules and policies) with a trust identity platform such as Azure Active Directory, Okta, Ping, or any other trust identify platforms supporting OpenID Connect.
+- **User Authentication:** The user logs in with a trusted identity (based on the rules and policies) with a trust identity platform such as Azure Active Directory, Okta, Ping, or any other trust identity platforms supporting OpenID Connect.
 - **Granular Authorization:** Boundary authenticates and authorizes users based on their roles and logical services, and tightly controls access and actions performed against systems.
 - **User-selected dynamic catalogs**: The user selects their application or host from dynamic host catalogs.
 - **Access:** Boundary streamlines connection to hosts by automating discovery and access configuration as workloads are deployed and changed.

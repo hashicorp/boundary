@@ -12,7 +12,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 	"testing"
@@ -88,7 +87,7 @@ func TestServer_ReloadListener(t *testing.T) {
 	wd, _ := os.Getwd()
 	wd += "/test-fixtures/reload/"
 
-	td, err := ioutil.TempDir("", "boundary-test-")
+	td, err := os.MkdirTemp("", "boundary-test-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,15 +112,15 @@ func TestServer_ReloadListener(t *testing.T) {
 	require.NoError(err)
 
 	// Setup initial certs
-	inBytes, err := ioutil.ReadFile(wd + "bundle1.pem")
+	inBytes, err := os.ReadFile(wd + "bundle1.pem")
 	require.NoError(err)
-	require.NoError(ioutil.WriteFile(td+"/bundle.pem", inBytes, 0o777))
+	require.NoError(os.WriteFile(td+"/bundle.pem", inBytes, 0o777))
 
 	relHcl := fmt.Sprintf(reloadConfig, cmd.DatabaseUrl, controllerKey, workerAuthKey, recoveryKey, td, td)
-	require.NoError(ioutil.WriteFile(td+"/reload.hcl", []byte(relHcl), 0o777))
+	require.NoError(os.WriteFile(td+"/reload.hcl", []byte(relHcl), 0o777))
 
 	// Populate CA pool
-	inBytes, _ = ioutil.ReadFile(td + "/bundle.pem")
+	inBytes, _ = os.ReadFile(td + "/bundle.pem")
 	certPool := x509.NewCertPool()
 	require.True(certPool.AppendCertsFromPEM(inBytes))
 
@@ -155,9 +154,9 @@ func TestServer_ReloadListener(t *testing.T) {
 
 	testCertificateSerial("142541707881583626546634262782315760343015820827")
 
-	inBytes, err = ioutil.ReadFile(wd + "bundle2.pem")
+	inBytes, err = os.ReadFile(wd + "bundle2.pem")
 	require.NoError(err)
-	require.NoError(ioutil.WriteFile(td+"/bundle.pem", inBytes, 0o777))
+	require.NoError(os.WriteFile(td+"/bundle.pem", inBytes, 0o777))
 
 	cmd.SighupCh <- struct{}{}
 	select {
@@ -168,7 +167,6 @@ func TestServer_ReloadListener(t *testing.T) {
 
 	testCertificateSerial("193080739105342897219784862820114567438786419504")
 
-	close(cmd.ShutdownCh)
-
+	cmd.ShutdownCh <- struct{}{}
 	wg.Wait()
 }

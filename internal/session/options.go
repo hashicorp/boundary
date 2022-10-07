@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/perms"
 )
 
 // getOpts - iterate the inbound Options and return a struct
@@ -32,6 +33,7 @@ type options struct {
 	withDbOpts            []db.Option
 	withWorkerStateDelay  time.Duration
 	withTerminated        bool
+	withPermissions       *perms.UserPermissions
 }
 
 func getDefaultOptions() options {
@@ -118,5 +120,13 @@ func WithWorkerStateDelay(d time.Duration) Option {
 func WithTerminated(withTerminated bool) Option {
 	return func(o *options) {
 		o.withTerminated = withTerminated
+	}
+}
+
+// WithPermissions is used to include user permissions when constructing a
+// Repository.
+func WithPermissions(p *perms.UserPermissions) Option {
+	return func(o *options) {
+		o.withPermissions = p
 	}
 }

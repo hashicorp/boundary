@@ -85,10 +85,14 @@ for permanent installations, are detailed in our [Installation Guide](https://ww
 
 ### Build and Start Boundary in Dev Mode
 
+**NOTE**: Do _not_ use the `main` branch except for dev or test cases. Boundary 0.10 introduced release branches which should be safe to track, however, migrations in `main` may be renumbered if needed. The Boundary team will not be able to provide assistance if running `main` over the long term results in migration breakages.
+
 If you have the following requirements met locally:
-- Golang v1.18 or greater
+- Golang v1.19 or greater
 - Docker
-- [Boundary UI Dependencies](https://github.com/hashicorp/boundary-ui#prerequisites)
+- Either the [Boundary UI Dependencies](https://github.com/hashicorp/boundary-ui#prerequisites)
+  for locally building the ui assets
+  or [gh cli](https://cli.github.com) for downloading pre-built ui assets.
 
 You can get up and running with Boundary quickly. Simply run:
 

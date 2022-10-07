@@ -7,11 +7,11 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/go-dbw"
 )
 
 // CreateUsernamePasswordCredential inserts c into the repository and returns a new
@@ -192,6 +192,89 @@ func (r *Repository) CreateSshPrivateKeyCredential(
 	return newCred, nil
 }
 
+// CreateJsonCredential inserts c into the repository and returns a new
+// JsonCredential containing the credential's PublicId. c is not
+// changed. c must not contain a PublicId. The PublicId is generated and
+// assigned by this method. c must contain a valid StoreId.
+//
+// The object is encrypted and a HmacSha256 of the object is
+// calculated. Only the ObjectHmac is returned, the plain-text and encrypted
+// object is not returned.
+//
+// Both c.Name and c.Description are optional. If c.Name is set, it must be
+// unique within c.ProjectId. Both c.CreateTime and c.UpdateTime are ignored.
+func (r *Repository) CreateJsonCredential(
+	ctx context.Context,
+	projectId string,
+	c *JsonCredential,
+	_ ...Option,
+) (*JsonCredential, error) {
+	const op = "static.(Repository).CreateJsonCredential"
+	if c == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential")
+	}
+	if c.JsonCredential == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing embedded credential")
+	}
+	if projectId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	}
+	if c.Object == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing object")
+	}
+	if c.StoreId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing store id")
+	}
+	if c.PublicId != "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
+	}
+
+	c = c.clone()
+	id, err := credential.NewJsonCredentialId(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	c.PublicId = id
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	// encrypt
+	databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+	}
+	if err := c.encrypt(ctx, databaseWrapper); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	var newCred *JsonCredential
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			newCred = c.clone()
+			if err := w.Create(ctx, newCred,
+				db.WithOplog(oplogWrapper, newCred.oplog(oplog.OpType_OP_TYPE_CREATE))); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+
+			return nil
+		},
+	)
+	if err != nil {
+		if errors.IsUniqueError(err) {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in store: %s: name %s already exists", c.StoreId, c.Name)))
+		}
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("in store: %s", c.StoreId)))
+	}
+
+	// Clear object fields, only ObjectHmac should be returned
+	newCred.ObjectEncrypted = nil
+	newCred.Object = nil
+
+	return newCred, nil
+}
+
 // LookupCredential returns the Credential for the publicId. Returns
 // nil, nil if no Credential is found for the publicId.
 // TODO: This should hit a view and return the interface type...
@@ -234,6 +317,20 @@ func (r *Repository) LookupCredential(ctx context.Context, publicId string, _ ..
 		spkCred.PrivateKeyPassphraseEncrypted = nil
 		spkCred.PrivateKeyPassphrase = nil
 		cred = spkCred
+
+	case credential.JsonSubtype:
+		jsonCred := allocJsonCredential()
+		jsonCred.PublicId = publicId
+		if err := r.reader.LookupByPublicId(ctx, jsonCred); err != nil {
+			if errors.IsNotFoundError(err) {
+				return nil, nil
+			}
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for : %s", publicId)))
+		}
+		// Clear object fields, only ObjectHmac should be returned
+		jsonCred.ObjectEncrypted = nil
+		jsonCred.Object = nil
+		cred = jsonCred
 	}
 
 	return cred, nil
@@ -287,7 +384,7 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
-	dbMask, nullFields := dbcommon.BuildUpdatePaths(
+	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:        c.Name,
 			descriptionField: c.Description,
@@ -403,7 +500,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
-	dbMask, nullFields := dbcommon.BuildUpdatePaths(
+	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			nameField:                 c.Name,
 			descriptionField:          c.Description,
@@ -485,8 +582,137 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 	return returnedCredential, rowsUpdated, nil
 }
 
-// ListCredentials returns a slice of UsernamePasswordCredentials for the
-// storeId. WithLimit is the only option supported.
+// UpdateJsonCredential updates the repository entry for c.PublicId
+// with the values in c for the fields listed in fieldMaskPaths. It returns a
+// new JsonCredential containing the updated values and a count of the
+// number of records updated. c is not changed.
+//
+// c must contain a valid PublicId. Only Name, Description and
+// Json can be changed. If c.Name is set to a non-empty string, it must be
+// unique within c.ProjectId.
+//
+// An attribute of c will be set to NULL in the database if the attribute in c
+// is the zero value and it is included in fieldMaskPaths.
+func (r *Repository) UpdateJsonCredential(ctx context.Context,
+	projectId string,
+	c *JsonCredential,
+	version uint32,
+	fieldMaskPaths []string,
+	_ ...Option,
+) (*JsonCredential, int, error) {
+	const op = "static.(Repository).UpdateJsonCredential"
+	if c == nil {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing credential")
+	}
+	if c.JsonCredential == nil {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing embedded credential")
+	}
+	if c.PublicId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
+	}
+	if version == 0 {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+	}
+	if projectId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	}
+	if c.StoreId == "" {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing store id")
+	}
+	c = c.clone()
+
+	// each field in the json secret will be passed into the fieldMaskPaths as an individual path
+	// that shares the same prefix: attributes.object.
+	// for example attributes.object.username & attributes.object.password
+	// fieldMaskPaths elements will be deduped if sharing the same prefix attributes.object.
+	// and the values will be substituted with a single value Object.
+	var hasSecret bool
+	reducedFieldMaskPaths := []string{}
+	for _, f := range fieldMaskPaths {
+		if strings.HasPrefix(f, "attributes.object.") {
+			hasSecret = true
+			continue
+		}
+		reducedFieldMaskPaths = append(reducedFieldMaskPaths, f)
+	}
+	if hasSecret {
+		reducedFieldMaskPaths = append(reducedFieldMaskPaths, objectField)
+	}
+
+	for _, f := range reducedFieldMaskPaths {
+		switch {
+		case strings.EqualFold(nameField, f):
+		case strings.EqualFold(descriptionField, f):
+		case strings.EqualFold(objectField, f):
+		default:
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
+		}
+	}
+	dbMask, nullFields := dbw.BuildUpdatePaths(
+		map[string]interface{}{
+			nameField:        c.Name,
+			descriptionField: c.Description,
+			objectField:      c.Object,
+		},
+		reducedFieldMaskPaths,
+		nil,
+	)
+	if len(dbMask) == 0 && len(nullFields) == 0 {
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "missing field mask")
+	}
+
+	if hasSecret {
+		// Json secret has been updated, re-encrypt and recalculate hmac
+		databaseWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+		}
+		if err := c.encrypt(ctx, databaseWrapper); err != nil {
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		}
+
+		// Set ObjectHmac and ObjectEncrypted masks for update.
+		dbMask = append(dbMask, "ObjectHmac", "ObjectEncrypted")
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, db.NoRowsAffected,
+			errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
+	var rowsUpdated int
+	var returnedCredential *JsonCredential
+	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			returnedCredential = c.clone()
+			var err error
+			rowsUpdated, err = w.Update(ctx, returnedCredential,
+				dbMask, nullFields,
+				db.WithOplog(oplogWrapper, returnedCredential.oplog(oplog.OpType_OP_TYPE_UPDATE)),
+				db.WithVersion(&version))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if rowsUpdated > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, db.NoRowsAffected, err
+	}
+
+	// Clear object fields, only ObjectHmac should be returned
+	returnedCredential.ObjectEncrypted = nil
+	returnedCredential.Object = nil
+
+	return returnedCredential, rowsUpdated, nil
+}
+
+// ListCredentials returns a slice of UsernamePasswordCredentials, SshPrivateKeyCredentials, and JsonCredentials
+// for the storeId. WithLimit is the only option supported.
 // TODO: This should hit a view and return the interface type...
 func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ...Option) ([]credential.Static, error) {
 	const op = "static.(Repository).ListCredentials"
@@ -512,7 +738,13 @@ func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ..
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	ret := make([]credential.Static, 0, len(upCreds)+len(spkCreds))
+	var jsonCreds []*JsonCredential
+	err = r.reader.SearchWhere(ctx, &jsonCreds, "store_id = ?", []interface{}{storeId}, db.WithLimit(limit))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	ret := make([]credential.Static, 0, len(upCreds)+len(spkCreds)+len(jsonCreds))
 
 	for _, c := range upCreds {
 		// Clear password fields, only PasswordHmac should be returned
@@ -529,6 +761,13 @@ func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ..
 		// Clear passphrase fields, only PrivateKeyPassphraseHmac should be returned if it exists
 		c.PrivateKeyPassphraseEncrypted = nil
 		c.PrivateKeyPassphrase = nil
+		ret = append(ret, c)
+	}
+
+	for _, c := range jsonCreds {
+		// Clear the object fields, only ObjectHmac should be returned
+		c.ObjectEncrypted = nil
+		c.Object = nil
 		ret = append(ret, c)
 	}
 
@@ -557,6 +796,11 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 		md = c.oplog(oplog.OpType_OP_TYPE_DELETE)
 	case credential.SshPrivateKeySubtype:
 		c := allocSshPrivateKeyCredential()
+		c.PublicId = id
+		input = c
+		md = c.oplog(oplog.OpType_OP_TYPE_DELETE)
+	case credential.JsonSubtype:
+		c := allocJsonCredential()
 		c.PublicId = id
 		input = c
 		md = c.oplog(oplog.OpType_OP_TYPE_DELETE)

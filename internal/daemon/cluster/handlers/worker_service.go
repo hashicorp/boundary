@@ -25,19 +25,24 @@ import (
 const ManagedWorkerTagKey = "boundary.cloud.hashicorp.com:managed"
 
 type workerServiceServer struct {
-	pbs.UnimplementedServerCoordinationServiceServer
-	pbs.UnimplementedSessionServiceServer
+	pbs.UnsafeServerCoordinationServiceServer
+	pbs.UnsafeSessionServiceServer
 
 	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    common.SessionRepoFactory
+	sessionRepoFn    session.RepositoryFactory
 	connectionRepoFn common.ConnectionRepoFactory
 	updateTimes      *sync.Map
 	kms              *kms.Kms
 }
 
+var (
+	_ pbs.SessionServiceServer            = &workerServiceServer{}
+	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
+)
+
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
-	sessionRepoFn common.SessionRepoFactory,
+	sessionRepoFn session.RepositoryFactory,
 	connectionRepoFn common.ConnectionRepoFactory,
 	updateTimes *sync.Map,
 	kms *kms.Kms,
@@ -50,11 +55,6 @@ func NewWorkerServiceServer(
 		kms:              kms,
 	}
 }
-
-var (
-	_ pbs.SessionServiceServer            = &workerServiceServer{}
-	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
-)
 
 func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusRequest) (*pbs.StatusResponse, error) {
 	const op = "workers.(workerServiceServer).Status"
@@ -92,11 +92,23 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		})
 	}
 
+	if wStat.OperationalState == "" {
+		// If this is an older worker (pre 0.11), it will not have ReleaseVersion and we'll default to active.
+		// Otherwise, default to Uknown.
+		if wStat.ReleaseVersion == "" {
+			wStat.OperationalState = server.ActiveOperationalState.String()
+		} else {
+			wStat.OperationalState = server.UnknownOperationalState.String()
+		}
+	}
+
 	wConf := server.NewWorker(scope.Global.String(),
 		server.WithName(wStat.GetName()),
 		server.WithDescription(wStat.GetDescription()),
 		server.WithAddress(wStat.GetAddress()),
-		server.WithWorkerTags(workerTags...))
+		server.WithWorkerTags(workerTags...),
+		server.WithReleaseVersion(wStat.ReleaseVersion),
+		server.WithOperationalState(wStat.OperationalState))
 	opts := []server.Option{server.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
 		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))

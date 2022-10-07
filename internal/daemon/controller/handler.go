@@ -39,7 +39,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
-	opsservices "github.com/hashicorp/boundary/internal/gen/controller/ops/services"
+	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -212,7 +212,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterManagedGroupServiceServer(s, mgs)
 	}
 	if _, ok := currentServices[services.CredentialStoreService_ServiceDesc.ServiceName]; !ok {
-		cs, err := credentialstores.NewService(c.VaultCredentialRepoFn, c.StaticCredentialRepoFn, c.IamRepoFn)
+		cs, err := credentialstores.NewService(c.baseContext, c.VaultCredentialRepoFn, c.StaticCredentialRepoFn, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create credential store handler service: %w", err)
 		}
@@ -226,7 +226,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterCredentialLibraryServiceServer(s, cl)
 	}
 	if _, ok := currentServices[services.WorkerService_ServiceDesc.ServiceName]; !ok {
-		ws, err := workers.NewService(c.baseContext, c.ServersRepoFn, c.IamRepoFn)
+		ws, err := workers.NewService(c.baseContext, c.ServersRepoFn, c.IamRepoFn, c.WorkerAuthRepoStorageFn)
 		if err != nil {
 			return fmt.Errorf("failed to create worker handler service: %w", err)
 		}

@@ -49,6 +49,11 @@ type downstreamRouter interface {
 	// StartRouteMgmtTicking starts a ticker which manages the router's
 	// connections.
 	StartRouteMgmtTicking(context.Context, func() string, int) error
+
+	// ProcessPendingConnections starts a function that continually processes
+	// incoming client connections. This only returns when the provided context
+	// is done.
+	StartProcessingPendingConnections(context.Context, func() string)
 }
 
 // downstreamWorkersTicker defines an interface for a ticker that maintains the
@@ -72,6 +77,7 @@ var (
 
 	downstreamersFactory           func(context.Context, string) (downstreamers, error)
 	downstreamWorkersTickerFactory func(context.Context, string, downstreamers, downstreamRouter) (downstreamWorkersTicker, error)
+	commandClientFactory           func(context.Context, *Controller) error
 )
 
 type Controller struct {
@@ -109,12 +115,12 @@ type Controller struct {
 	OidcRepoFn              common.OidcAuthRepoFactory
 	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
 	ServersRepoFn           common.ServersRepoFactory
-	SessionRepoFn           common.SessionRepoFactory
+	SessionRepoFn           session.RepositoryFactory
 	ConnectionRepoFn        common.ConnectionRepoFactory
 	StaticHostRepoFn        common.StaticRepoFactory
 	PluginHostRepoFn        common.PluginHostRepoFactory
 	HostPluginRepoFn        common.HostPluginRepoFactory
-	TargetRepoFn            common.TargetRepoFactory
+	TargetRepoFn            target.RepositoryFactory
 	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
@@ -293,8 +299,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	// TODO: Allow setting run jobs limit from config
 	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
-	if c.conf.RawConfig.Controller.SchedulerRunJobInterval > 0 {
-		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.SchedulerRunJobInterval))
+	if sche := c.conf.RawConfig.Controller.Scheduler; sche != nil {
+		if sche.JobRunIntervalDuration > 0 {
+			schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(sche.JobRunIntervalDuration))
+		}
+		if sche.MonitorIntervalDuration > 0 {
+			schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(sche.MonitorIntervalDuration))
+		}
 	}
 	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
@@ -332,11 +343,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(dbase, dbase, c.kms)
 	}
-	c.TargetRepoFn = func() (*target.Repository, error) {
-		return target.NewRepository(dbase, dbase, c.kms)
+	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
+		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
 	}
-	c.SessionRepoFn = func() (*session.Repository, error) {
-		return session.NewRepository(dbase, dbase, c.kms)
+	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, dbase, dbase, c.kms, opt...)
 	}
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)
@@ -351,7 +362,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
 	}
-	err = server.RotateRoots(ctx, serversRepo)
+	_, err = server.RotateRoots(ctx, serversRepo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
 	}
@@ -360,6 +371,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		c.downstreamWorkers, err = downstreamersFactory(ctx, "root")
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize downstream workers graph: %w", err)
+		}
+		if commandClientFactory != nil {
+			err := commandClientFactory(ctx, c)
+			if err != nil {
+				return nil, fmt.Errorf("unable to initialize issue command factory: %w", err)
+			}
 		}
 	}
 
@@ -413,19 +430,25 @@ func (c *Controller) Start() error {
 	}()
 
 	if c.downstreamRoutes != nil {
-		c.tickerWg.Add(1)
+		c.tickerWg.Add(2)
+
+		servNameFn := func() string {
+			switch {
+			case c.conf.RawConfig.Controller.Name != "":
+				return c.conf.RawConfig.Controller.Name
+			default:
+				return "unknown controller name"
+			}
+		}
+		go func() {
+			defer c.tickerWg.Done()
+			c.downstreamRoutes.StartProcessingPendingConnections(c.baseContext, servNameFn)
+		}()
 		go func() {
 			defer c.tickerWg.Done()
 			err := c.downstreamRoutes.StartRouteMgmtTicking(
 				c.baseContext,
-				func() string {
-					switch {
-					case c.conf.RawConfig.Controller.Name != "":
-						return c.conf.RawConfig.Controller.Name
-					default:
-						return "unknown controller name"
-					}
-				},
+				servNameFn,
 				-1,
 			)
 			if err != nil {

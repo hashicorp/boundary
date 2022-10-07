@@ -5,6 +5,30 @@ description: |-
   How to deploy HCP Boundary services and login for the first time.
 ---
 
+HCP Boundary provides secure access to remote hosts and infrastructure
+endpoints. Boundary enables secure connectivity to cloud service catalogs,
+on-premise infrastructure, and Kubernetes clusters without needing to manage any
+of the underlying systems or operations.
+
+## Requirements
+
+The Getting Started section uses HCP Boundary, a HashiCorp hosted and
+fully-managed version of the Boundary product.
+
+To get started with HCP Boundary, users need:
+
+- A [HashiCorp Cloud Platform](https://portal.cloud.hashicorp.com/sign-up)
+  account
+- [Installation](https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-install)
+  of the Boundary CLI
+- A [Boundary binary](https://www.boundaryproject.io/downloads) in your `$PATH`
+- Optionally, an [installation of Boundary
+  Desktop](https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app)
+
+If you prefer to get started on your local machine, refer to [Run and Login in
+Dev Mode](/docs/oss/installing/run-and-login). For more information on Boundary
+OSS and self-managed installations, refer to [Boundary OSS](/docs/oss).
+
 # Deploy an HCP Boundary Instance
 
 HCP Boundary is a fully-managed cloud-based workflow. It enables secure access
@@ -157,7 +181,7 @@ Boundary using the Boundary Desktop app.
 
 
 You can also use these overrides to configure the [Terraform provider for
-Boundary](https://registry.terraform.io/providers/hashicorp/boundary/):
+Boundary](https://registry.terraform.io/providers/hashicorp/boundary):
 
 ```hcl
 provider "boundary" {
@@ -171,7 +195,8 @@ provider "boundary" {
 To find your environment’s `base_url`:
 
 1. In the HCP portal, open the **Boundary Overview** page.
-1. Click the **copy icon** in the **Copy this into Boundary Desktop** section. This copies your environment’s Boundary **Origin URL**.
+1. Click the **copy icon** in the **Copy this into Boundary Desktop** section.
+   This copies your environment’s Boundary **Origin URL**.
 
 To find your environment’s default `auth_method_id`:
 
@@ -186,8 +211,13 @@ To find your environment’s default `auth_method_id`:
 
 ## Tutorial
 
-- Refer to the [Create a Boundary Instance on HCP](https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-create) tutorial to learn how to deploy a Boundary instance.
-- Refer to the [Install Boundary Desktop](https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app) tutorial to learn how to use the Boundary desktop to connect to a running HCP Boundary instance.
+- Refer to the [Create a Boundary Instance on
+  HCP](https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-create)
+  tutorial to learn how to deploy a Boundary instance.
+- Refer to the [Install Boundary
+  Desktop](https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-desktop-app)
+  tutorial to learn how to use the Boundary desktop to connect to a running HCP
+  Boundary instance.
 
 
 ## Next Steps

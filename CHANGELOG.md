@@ -2,25 +2,220 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+ ## Next
+
+## 0.11.0 (2022/09/27)
+
+### Known Issues
+
+* PKI workers in past versions did not store a prior encryption key, and a bug
+  prior to 0.11.0 meant that auth rotations could happen more frequently than
+  expected. This could cause some race issues around rotation time. However,
+  there was another issue where a past worker authentication record could be
+  looked up for some operations instead of the current one, made more likely by
+  the too-frequent rotations. In 0.11.0 we attempt to ensure that the record
+  that remains on upgrade is the most current one, but it is possible that the
+  wrong one is chosen, leading to a failure for the worker to authenticate or
+  for some operations to consistently fail. In this case, the worker will need
+  to be deleted and re-authorized. We apologize for any issues this causes and
+  this should be remedied going forward.
+
+### Bug Fixes
+
+* scopes: Organizations could be prevented from being deleted if some resources
+  remained ([PR](https://github.com/hashicorp/boundary/pull/2465))
+* workers: Authentication rotation could occur prior to the expected time
+  ([PR](https://github.com/hashicorp/boundary/pull/2484))
+* workers: When looking up worker authentication records, an old record could be
+  returned instead of the new one, leading to errors for encryption or
+  decryption operations ([PR](https://github.com/hashicorp/boundary/pull/2495))
+
+### New and Improved
+
+* vault: (HCP Boundary only): Private Vault clusters can be used with HCP Boundary by using PKI workers
+  deployed in the same network as a private cluster. Tags are used to control which PKI workers can manage private Vault 
+  requests by specifying a `worker_filter` attribute when configuring a Vault credential store. 
+* credentials: There is now a `json` credential type supported by `static`
+  credential stores that allows submitting a generic JSON object to Boundary for
+  use with credential brokering workflows
+  ([PR](https://github.com/hashicorp/boundary/pull/2423))
+* ui: Add support for worker management
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1229))
+* ui: Add support for PKI worker registration
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1244))
+* ui: Add support for Static Credential Stores
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1193))
+* ui: Add support for Username & Password Credentials
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1205))
+* ui: Add support for Username & Key Pair Credentials
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1266))
+* ui (HCP Boundary only): SSH Target creation along with injected application
+  credential support ([PR](https://github.com/hashicorp/boundary-ui/pull/1027))
+* ui (HCP Boundary only): Update vault credential stores to support private
+  vault access ([PR](https://github.com/hashicorp/boundary-ui/pull/1318))
+* ui: Improve quick setup wizard onboarding guide resource names
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1328))
+* ui: Updates to host catalog and host set forms and “Learn More” links
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1342))
+* workers: Added the ability to read and reinitialize the Worker certificate
+  authority ([PR1](https://github.com/hashicorp/boundary/pull/2312),
+  [PR2](https://github.com/hashicorp/boundary/pull/2387))
+* workers: Return the worker Boundary binary version on worker list and read
+  ([PR](https://github.com/hashicorp/boundary/pull/2377))
+* workers: Addition of worker graceful shutdown, triggered by an initial
+  `SIGINT` or `SIGTERM` ([PR](https://github.com/hashicorp/boundary/pull/2455))
+* workers: Retain one previous encryption/decryption key after authentication
+  rotation ([PR](https://github.com/hashicorp/boundary/pull/2495))
+
+### Deprecations/Changes
+
+* In 0.5.0, the `add-host-sets`, `remove-host-sets`, and `set-host-sets` actions
+  on targets were deprecated in favor of `add-host-sources`,
+  `remove-host-sources`, and `set-host-sources`. Originally these actions and
+  API calls were to be removed in 0.6, but this was delayed to give extra time
+  for clients to switch over. This has now been fully switched over. A database
+  migration will modify any grants in roles to have the new actions. This same
+  changeover has been made for `add-/remove-/set-credential-libraries` to
+  `add-/remove-/set-credential-sources`, although those actions would only be in
+  grant strings in very rare circumstances as the `-sources` actions replaced
+  the `-libraries` actions very quickly.
+  ([PR](https://github.com/hashicorp/boundary/pull/2393))
+
+## 0.10.5 (2022/09/13)
+
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
+
+### Bug Fixes
+
+* grants: Properly resolve "only self" for permissions. When generating
+  permissions from grants, if a single grant was limited only to a set of "self"
+  actions and that was the last grant parsed (which would be semi-random
+  depending on a number of factors), the overall set of permissions would be
+  marked as only-self. This would result in the generated permissions being more
+  limiting then they should be based on the grants. This only impacts the
+  sessions list endpoint. It would result in users that have been granted access
+  to list other user's sessions to be unable to see these sessions in the list
+  results ([PR](https://github.com/hashicorp/boundary/pull/2448)).
+
+## 0.10.4 (2022/09/13)
+
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
+
+### New and Improved
+
+* Controller-led worker authorization: This is a second authorization option for
+  the workers using PKI-based authentication that was introduced in Boundary
+  0.10.0. In 0.10.0, the only mode available was "worker-led", in which a worker
+  generates an authorization request which can be submitted to a controller to
+  authorize the worker. With this new controller-led flow, a worker can be
+  created via the controller API first and return a one-time-use authorization
+  token. This token can then be made available to the worker at startup time via
+  its configuration file, env var, or a file with the value. If the worker is
+  not authorized and this token is provided, it will use the token to authorize
+  itself to the controller and set up PKI-based authentication.
+  ([PR](https://github.com/hashicorp/boundary/pull/2413))
+* Initial upstreams reloading on `SIGHUP`: Workers will now re-read the
+  `initial_upstreams` value from the configuration file when given a SIGHUP.
+  This allows a worker to reconnect to controllers if the full set of
+  controllers has been changed over at the same time, without having to restart
+  the worker. ([PR](https://github.com/hashicorp/boundary/pull/2417))
+* Database URL reloading on `SIGHUP`: Controllers will now re-read the database
+    url value from the configuration file when given a SIGHUP. This is
+    particularly useful for allowing database credentials to rotate and
+    signaling the controller to use the new credentials without the need for a
+    restart. ([PR](https://github.com/hashicorp/boundary/pull/2422))
+* Additional improvements to response time for listing sessions and targets
+    ([PR](https://github.com/hashicorp/boundary/pull/2342)).
+
+### Bug Fixes
+
+* aws host catalog: Fix an issue where the request to list hosts could timeout
+  on a large number of hosts
+  ([Issue](https://github.com/hashicorp/boundary/issues/2224),
+  [PR](https://github.com/hashicorp/boundary-plugin-host-aws/pull/17))
+* aws host catalog: Fix an issue where filters could become unreadable in the UI
+  if only one filter was created and was set by the CLI or directly via the API
+  ([PR1](https://github.com/hashicorp/boundary/pull/2376),
+  [PR2](https://github.com/hashicorp/boundary-plugin-host-aws/pull/16))
+* aws host catalog: Use provided region for IAM calls in addition to EC2
+  ([Issue](https://github.com/hashicorp/boundary/issues/2233),
+  [PR](https://github.com/hashicorp/boundary-plugin-host-aws/pull/18))
+* azure host catalog: Fix hosts not being found depending on the exact filter
+  used because different filters return values with different casing
+  ([PR](https://github.com/hashicorp/boundary-plugin-host-azure/pull/8))
+* sessions: Fix an issue where sessions could not have more than one connection
+  ([Issue](https://github.com/hashicorp/boundary/issues/2362),
+  [PR](https://github.com/hashicorp/boundary/pull/2369))
+* workers: Fix repeating error in logs when connected to HCP Boundary about an
+  unimplemented HcpbWorkers call
+  ([PR](https://github.com/hashicorp/boundary/pull/2361))
+* workers: Fix a panic that could occur when `workers:create:worker-led` (e.g.
+  via `boundary workers create worker-led`) was given an invalid token
+  ([PR](https://github.com/hashicorp/boundary/pull/2388))
+* workers: Add the ability to set API-based worker tags via the CLI
+  ([PR](https://github.com/hashicorp/boundary/pull/2266))
+* vault: Correctly handle Vault credential stores and libraries that are linked
+  to an expired Vault token
+  ([Issue](https://github.com/hashicorp/boundary/issues/2179),
+  [PR](https://github.com/hashicorp/boundary/pull/2399))
+
+## 0.10.3 (2022/08/30)
+
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
+
+### Bug Fixes
+
+* db: Fix an issue with migrations failing due to not updating the project_id
+  value for the host plugin set
+  ([Issue](https://github.com/hashicorp/boundary/issues/2349#issuecomment-1229953874),
+  [PR](https://github.com/hashicorp/boundary/pull/2407)).
+
+## 0.10.2 (2022/08/23)
+
+### Known Issues
+
+* There is bug that prevents deleting an org in some circumstances. This can be
+  worked around by first deleting all projects in the org, then deleting the
+  org. This will be fixed in 0.11.0.
+
+### Security
+
+* Fix security vulnerability CVE-2022-36130: Boundary up to 0.10.1 did not
+  properly perform data integrity checks to ensure that host-set and
+  credential-source resources being added to a target were associated with the
+  same scope as the target. This could allow privilege escalation via allowing a
+  user able to modify a target to provide connections to unintended hosts.
+  [[HCSEC-2022-17](https://discuss.hashicorp.com/t/hcsec-2022017-boundary-allowed-access-to-host-sets-and-credential-sources-for-authorized-users-of-another-scope/43493)]
 
 ## 0.10.1 (2022/08/11)
 
 ### Bug Fixes
 
-* db: Fix an issue with migrations affecting clusters that contain 
-  credential libraries or static credentials.
+* db: Fix an issue with migrations affecting clusters that contain credential
+  libraries or static credentials.
   ([Issue](https://github.com/hashicorp/boundary/issues/2349)),
   ([PR](https://github.com/hashicorp/boundary/pull/2351)).
-* Managed Groups: Fix an issue where the `filter` field is not sent by
-  admin UI ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
-* Host Sets: Fix an issue causing host sets to not display in UI when using the aws plugin 
-  ([PR](https://github.com/hashicorp/boundary-ui/pull/1251))
-* Plugins: Fixes regression from 0.9.0 causing a failure to start when using
+* managed groups: Fix an issue where the `filter` field is not sent by admin UI
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1238)).
+* host sets: Fix an issue causing host sets to not display in UI when using the
+  aws plugin ([PR](https://github.com/hashicorp/boundary-ui/pull/1251))
+* plugins: Fixes regression from 0.9.0 causing a failure to start when using
   multiple KMS blocks of the same type
   ([PR1](https://github.com/hashicorp/go-secure-stdlib/pull/43),
   [PR2](https://github.com/hashicorp/boundary/pull/2346))
-* CLI: Fixed errors related to URL detection when passing in `-attr` or
+* cli: Fixed errors related to URL detection when passing in `-attr` or
   `-secret` values that contained colons
   ([PR](https://github.com/hashicorp/boundary/pull/2353))
 

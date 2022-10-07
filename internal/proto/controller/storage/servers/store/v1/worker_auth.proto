@@ -3,6 +3,8 @@ syntax = "proto3";
 // Package store provides protobufs for storing types in the pki package.
 package controller.storage.servers.store.v1;
 
+import "controller/storage/timestamp/v1/timestamp.proto";
+
 option go_package = "github.com/hashicorp/boundary/internal/server/store;store";
 
 // WorkerAuth contains all fields related to an authorized Worker resource
@@ -35,6 +37,19 @@ message WorkerAuth {
   // Nonce used by a worker in authenticating
   // @inject_tag: `gorm:"default:null"`
   bytes nonce = 70;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  storage.timestamp.v1.Timestamp create_time = 80;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  storage.timestamp.v1.Timestamp update_time = 90;
+
+  // State of the worker auth record.
+  // The only valid value is either current or previous
+  // @inject_tag: `gorm:"not_null"`
+  string state = 100;
 }
 
 // WorkerCertBundle contains all fields related to a WorkerCertBundle resource
@@ -50,4 +65,30 @@ message WorkerCertBundle {
   // CertBundle is the marshaled protobuf certificate bundle for a WorkerAuth
   // @inject_tag: `gorm:"not_null"`
   bytes cert_bundle = 30;
+}
+
+// WorkerAuthServerLedActivationToken contains all fields related to a
+// WorkerAuthServerLedActivationToken resource
+message WorkerAuthServerLedActivationToken {
+  // The worker_id of the worker that this activates
+  // @inject_tag: `gorm:"primary_key"`
+  string worker_id = 10;
+
+  // The token identifier, which is used for lookup
+  // @inject_tag: `gorm:"not_null"`
+  string token_id = 15;
+
+  // The creation time, encrypted to prevent tampering, as the time plus
+  // existence of the record allows authorization
+  // @inject_tag: `gorm:"not_null" wrapping:"ct,creation_time_data"`
+  bytes creation_time_encrypted = 20;
+
+  // The plaintext bytes of the creation time, which are never stored. This is a
+  // marshaled timestamppb.Timestamp.
+  // @inject_tag: `gorm:"-" wrapping:"pt,creation_time_data"`
+  bytes creation_time = 21;
+
+  // The key ID of the encrypting key
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 40;
 }

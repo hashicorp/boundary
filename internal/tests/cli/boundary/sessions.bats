@@ -20,20 +20,17 @@ load _helpers
 }
 
 @test "boundary/session/connect: unpriv user can connect to default target" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
-
   run login $DEFAULT_UNPRIVILEGED_LOGIN
+  echo $output
   [ "$status" -eq 0 ]
 
   run connect_nc $DEFAULT_TARGET
+  echo $output
   [ "$status" -eq 0 ]
 
   # Run twice so we have two values for later testing
   run connect_nc $DEFAULT_TARGET
   echo "$output"
-  diag "$output"
   [ "$status" -eq 0 ]
 }
 
@@ -85,16 +82,13 @@ load _helpers
 }
 
 @test "boundary/session: verify read and cancellation permissions on unpriv session" {
-  if [ "$SKIP_FAILING_TESTS_IN_CI" == "true" ]; then
-      skip
-  fi
-
   # Find an unpriv session
   run login $DEFAULT_UNPRIVILEGED_LOGIN
   [ "$status" -eq 0 ]
   run list_sessions $DEFAULT_P_ID
+  echo $output
   [ "$status" -eq 0 ]
-  id=$(echo "$output" | jq -r "[.items[]|select(.user_id == \"$DEFAULT_USER\")][0].id")
+  id=$(echo "$output" | jq -r "[.items[]|select(.user_id == \"$DEFAULT_UNPRIVILEGED_USER\")][0].id")
 
   # Check unpriv can read and cancel their own session
   run login $DEFAULT_UNPRIVILEGED_LOGIN
@@ -111,6 +105,4 @@ load _helpers
   [ "$status" -eq 0 ]
   run cancel_session $id
   [ "$status" -eq 0 ]
-
-  diag "$output"
 }

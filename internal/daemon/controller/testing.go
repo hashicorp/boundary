@@ -287,7 +287,7 @@ func (tc *TestController) buildClient() {
 func (tc *TestController) Shutdown() {
 	tc.shutdownOnce.Do(func() {
 		if tc.b != nil {
-			close(tc.b.ShutdownCh)
+			tc.b.ContextCancel()
 		}
 
 		tc.cancel()
@@ -492,10 +492,13 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts = new(TestControllerOpts)
 	}
 
+	ctxTest, cancel := context.WithCancel(context.Background())
+
 	// Base server
 	tc.b = base.NewServer(&base.Command{
-		Context:    ctx,
-		ShutdownCh: make(chan struct{}),
+		Context:       ctxTest,
+		ContextCancel: cancel,
+		ShutdownCh:    make(chan struct{}),
 	})
 
 	// Get dev config, or use a provided one
@@ -569,7 +572,11 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	if opts.Config.Controller.Name == "" {
 		require.NoError(t, opts.Config.Controller.InitNameIfEmpty())
 	}
-	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
+
+	if opts.Config.Controller.Scheduler == nil {
+		opts.Config.Controller.Scheduler = new(config.Scheduler)
+	}
+	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
 
 	switch {
 	case opts.DisableEventing:
@@ -650,7 +657,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster", "ops"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := tc.b.SetupControllerPublicClusterAddress(opts.Config, ""); err != nil {
+	if err := opts.Config.SetupControllerPublicClusterAddress(""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -664,7 +671,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		if _, err := schema.MigrateStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
-		if err := tc.b.ConnectToDatabase(tc.ctx, "postgres"); err != nil {
+		if err := tc.b.OpenAndSetServerDatabase(tc.ctx, "postgres"); err != nil {
 			t.Fatal(err)
 		}
 		if !opts.DisableKmsKeyCreation {

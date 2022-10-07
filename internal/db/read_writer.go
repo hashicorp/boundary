@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -208,9 +209,13 @@ func New(underlying *DB) *Db {
 	return &Db{underlying: underlying}
 }
 
-// UnderlyingDB returns the underlying *dbw.DB
-func (rw *Db) UnderlyingDB() *dbw.DB {
-	return rw.underlying.wrapped
+// UnderlyingDB returns a function to get the underlying *dbw.DB. The function
+// should be called every time rather than caching the value, as the value may
+// change from call to call.
+func (rw *Db) UnderlyingDB() func() *dbw.DB {
+	return func() *dbw.DB {
+		return rw.underlying.wrapped.Load()
+	}
 }
 
 // Exec will execute the sql with the values as parameters. The int returned
@@ -221,7 +226,7 @@ func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, opt ..
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
 	opts := GetOpts(opt...)
-	rowsAffected, err := dbw.New(rw.underlying.wrapped).Exec(ctx, sql, values, dbw.WithDebug(opts.withDebug))
+	rowsAffected, err := dbw.New(rw.underlying.wrapped.Load()).Exec(ctx, sql, values, dbw.WithDebug(opts.withDebug))
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
@@ -238,7 +243,7 @@ func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, opt .
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
 	opts := GetOpts(opt...)
-	rows, err := dbw.New(rw.underlying.wrapped).Query(ctx, sql, values, dbw.WithDebug(opts.withDebug))
+	rows, err := dbw.New(rw.underlying.wrapped.Load()).Query(ctx, sql, values, dbw.WithDebug(opts.withDebug))
 	if err != nil {
 		return nil, wrapError(ctx, err, op)
 	}
@@ -254,7 +259,7 @@ func (rw *Db) ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) 
 	if isNil(result) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing result")
 	}
-	if err := dbw.New(rw.underlying.wrapped).ScanRows(rows, result); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).ScanRows(rows, result); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil
@@ -284,7 +289,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := dbw.New(rw.underlying.wrapped).Create(ctx, i, dbwOpts...); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).Create(ctx, i, dbwOpts...); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil
@@ -303,7 +308,7 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := dbw.New(rw.underlying.wrapped).CreateItems(ctx, createItems, dbwOpts...); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).CreateItems(ctx, createItems, dbwOpts...); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil
@@ -341,7 +346,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	if err != nil {
 		return NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	rowsUpdated, err := dbw.New(rw.underlying.wrapped).Update(ctx, i, fieldMaskPaths, setToNullPaths, dbwOpts...)
+	rowsUpdated, err := dbw.New(rw.underlying.wrapped.Load()).Update(ctx, i, fieldMaskPaths, setToNullPaths, dbwOpts...)
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
@@ -362,7 +367,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
-	rowsUpdated, err := dbw.New(rw.underlying.wrapped).Delete(ctx, i, dbwOpts...)
+	rowsUpdated, err := dbw.New(rw.underlying.wrapped.Load()).Delete(ctx, i, dbwOpts...)
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
@@ -381,7 +386,7 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 	if err != nil {
 		return NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	rowsDeleted, err := dbw.New(rw.underlying.wrapped).DeleteItems(ctx, deleteItems, dbwOpts...)
+	rowsDeleted, err := dbw.New(rw.underlying.wrapped.Load()).DeleteItems(ctx, deleteItems, dbwOpts...)
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
@@ -410,11 +415,14 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler Tx
 		}
 
 		// step one of this, start a transaction...
-		beginTx, err := dbw.New(w.underlying.wrapped).Begin(ctx)
+		beginTx, err := dbw.New(w.underlying.wrapped.Load()).Begin(ctx)
 		if err != nil {
 			return info, wrapError(ctx, err, op)
 		}
-		newRW := New(&DB{wrapped: beginTx.DB()})
+
+		newTxDb := &DB{wrapped: new(atomic.Pointer[dbw.DB])}
+		newTxDb.wrapped.Store(beginTx.DB())
+		newRW := New(newTxDb)
 
 		if err := handler(newRW, newRW); err != nil {
 			if err := beginTx.Rollback(ctx); err != nil {
@@ -448,7 +456,7 @@ func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt 
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	opts := GetOpts(opt...)
-	if err := dbw.New(rw.underlying.wrapped).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug)); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug)); err != nil {
 		var errOpts []errors.Option
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			// Not found is a common workflow in the application layer during lookup, suppress
@@ -474,7 +482,7 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	opts := GetOpts(opt...)
-	if err := dbw.New(rw.underlying.wrapped).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug)); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug)); err != nil {
 		var errOpts []errors.Option
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			// Not found is a common workflow in the application layer during lookup, suppress
@@ -502,7 +510,7 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := dbw.New(rw.underlying.wrapped).SearchWhere(ctx, resources, where, args, dbwOpts...); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).SearchWhere(ctx, resources, where, args, dbwOpts...); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil

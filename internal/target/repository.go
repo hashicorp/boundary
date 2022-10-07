@@ -8,12 +8,19 @@ import (
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
-	dbcommon "github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/go-dbw"
 )
+
+// RepositoryFactory enables `target.Repository` object instantiation,
+// and is used by the various service packages/controller object to do so.
+type RepositoryFactory func(...Option) (*Repository, error)
 
 // Cloneable provides a cloning interface
 type Cloneable interface {
@@ -28,31 +35,49 @@ type Repository struct {
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
+
+	// permissions provides a set of user permissions - these directly correlate to what the user
+	// has access to in terms of actions and resources and we use it to build queries.
+	// These are passed in on the repository constructor using `WithPermissions`, meaning the
+	// `Repository` object is contextualized to whatever the request context is.
+	permissions []perms.Permission
 }
 
-// NewRepository creates a new target Repository. Supports the options: WithLimit
-// which sets a default limit on results returned by repo operations.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+// NewRepository creates a new target Repository.
+// Supports the following options:
+// - WithLimit: sets a limit on the number of results returned by various repo operations.
+// - WithPermissions: defines the permissions the user has to perform different
+// actions and access resources within the created repo object.
+func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "target.NewRepository"
 	if r == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
 	}
+
 	opts := GetOpts(opt...)
 	if opts.WithLimit == 0 {
 		// zero signals the boundary defaults should be used.
 		opts.WithLimit = db.DefaultLimit
 	}
+
+	for _, p := range opts.WithPermissions {
+		if p.Resource != resource.Target {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "permission for incorrect resource found")
+		}
+	}
+
 	return &Repository{
 		reader:       r,
 		writer:       w,
 		kms:          kms,
 		defaultLimit: opts.WithLimit,
+		permissions:  opts.WithPermissions,
 	}, nil
 }
 
@@ -188,59 +213,36 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, pro
 	return targetsMap, nil
 }
 
-// ListTargets in targets in a project.  Supports the WithProjectId, WithLimit, WithType options.
+// ListTargets lists targets in a project based on the data in the WithPermissions option
+// provided to the Repository constructor. If no permissions are available, this function
+// is a no-op.
+// Supports WithLimit which overrides the limit set in the Repository object.
 func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
 	const op = "target.(Repository).ListTargets"
+
+	if len(r.permissions) == 0 {
+		return []Target{}, nil
+	}
+
+	where, args := r.listPermissionWhereClauses()
+	if len(where) == 0 {
+		return []Target{}, nil
+	}
+
 	opts := GetOpts(opt...)
-	if len(opts.WithProjectIds) == 0 && opts.WithUserId == "" && len(opts.WithTargetIds) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "must specify either project ids, target ids, or user id")
-	}
-	// TODO (jimlambrt 8/2020) - implement WithUserId() optional filtering.
-	var where []string
-	var args []interface{}
-	inClauseCnt := 0
-
-	switch len(opts.WithProjectIds) {
-	case 0:
-	case 1:
-		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("project_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithProjectIds[0]))
-	default:
-		idsInClause := make([]string, 0, len(opts.WithProjectIds))
-		for _, id := range opts.WithProjectIds {
-			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
-		}
-		where = append(where, fmt.Sprintf("project_id in (%s)", strings.Join(idsInClause, ",")))
-	}
-
-	switch len(opts.WithTargetIds) {
-	case 0:
-	case 1:
-		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("public_id = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithTargetIds[0]))
-	default:
-		idsInClause := make([]string, 0, len(opts.WithTargetIds))
-		for _, id := range opts.WithTargetIds {
-			inClauseCnt += 1
-			idsInClause, args = append(idsInClause, fmt.Sprintf("@%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), id))
-		}
-		where = append(where, fmt.Sprintf("public_id in (%s)", strings.Join(idsInClause, ",")))
-	}
-
-	if opts.WithType != "" {
-		inClauseCnt += 1
-		where, args = append(where, fmt.Sprintf("type = @%d", inClauseCnt)), append(args, sql.Named(fmt.Sprintf("%d", inClauseCnt), opts.WithType.String()))
+	limit := r.defaultLimit
+	if opts.WithLimit != 0 {
+		limit = opts.WithLimit
 	}
 
 	var foundTargets []*targetView
-	err := r.list(ctx, &foundTargets, strings.Join(where, " and "), args, opt...)
+	err := r.reader.SearchWhere(ctx, &foundTargets, strings.Join(where, " or "), args,
+		db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	targets := make([]Target, 0, len(foundTargets))
-
 	for _, t := range foundTargets {
 		subtype, err := t.targetSubtype(ctx)
 		if err != nil {
@@ -248,25 +250,34 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 		}
 		targets = append(targets, subtype)
 	}
+
 	return targets, nil
 }
 
-// list will return a listing of resources and honor the WithLimit option or the
-// repo defaultLimit
-func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
-	const op = "target.(Repository).list"
-	opts := GetOpts(opt...)
-	limit := r.defaultLimit
-	var dbOpts []db.Option
-	if opts.WithLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.WithLimit
+func (r *Repository) listPermissionWhereClauses() ([]string, []interface{}) {
+	var where []string
+	var args []interface{}
+
+	inClauseCnt := 0
+	for _, p := range r.permissions {
+		if p.Action != action.List {
+			continue
+		}
+		inClauseCnt++
+
+		var clauses []string
+		clauses = append(clauses, fmt.Sprintf("project_id = @project_id_%d", inClauseCnt))
+		args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.ScopeId))
+
+		if len(p.ResourceIds) > 0 {
+			clauses = append(clauses, fmt.Sprintf("public_id = any(@public_id_%d)", inClauseCnt))
+			args = append(args, sql.Named(fmt.Sprintf("public_id_%d", inClauseCnt), "{"+strings.Join(p.ResourceIds, ",")+"}"))
+		}
+
+		where = append(where, fmt.Sprintf("(%s)", strings.Join(clauses, " and ")))
 	}
-	dbOpts = append(dbOpts, db.WithLimit(limit))
-	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	return nil
+
+	return where, args
 }
 
 // DeleteTarget will delete a target from the repository.
@@ -518,7 +529,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		}
 	}
 	var dbMask, nullFields []string
-	dbMask, nullFields = dbcommon.BuildUpdatePaths(
+	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
 			"Name":                   target.GetName(),
 			"Description":            target.GetDescription(),

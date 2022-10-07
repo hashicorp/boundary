@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary
 
-go 1.18
+go 1.19
 
 replace github.com/hashicorp/boundary/api => ./api
 
@@ -20,8 +20,8 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.2
-	github.com/hashicorp/boundary/api v0.0.28
-	github.com/hashicorp/boundary/sdk v0.0.20
+	github.com/hashicorp/boundary/api v0.0.30
+	github.com/hashicorp/boundary/sdk v0.0.24
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
@@ -82,7 +82,7 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.28.1
 	gorm.io/driver/postgres v1.3.8
-	gorm.io/gorm v1.23.8
+	gorm.io/gorm v1.23.8 // indirect
 	mvdan.cc/gofumpt v0.3.1
 	nhooyr.io/websocket v1.8.7
 )
@@ -91,8 +91,11 @@ require github.com/hashicorp/go-dbw v0.0.0-20220725170111-b7cb3aa3d628
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220711120347-32232bae6803
-	github.com/hashicorp/nodeenrollment v0.1.13
+	github.com/hashicorp/nodeenrollment v0.1.17
+	github.com/kelseyhightower/envconfig v1.4.0
+	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e
 )
 
 require (
@@ -111,7 +114,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
-	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.0.0 // indirect
@@ -183,7 +185,6 @@ require (
 	github.com/xo/dburl v0.11.0 // indirect
 	go.uber.org/goleak v1.1.10 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
-	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect

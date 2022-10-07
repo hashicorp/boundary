@@ -168,7 +168,7 @@ func staticToWorkerCredential(ctx context.Context, cred credential.Static) (sess
 
 	data, err := proto.Marshal(workerCred)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling dynamic secret to proto"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling static secret to proto"))
 	}
 	return data, nil
 }
@@ -217,6 +217,21 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for ssh private key credential"))
 		}
+
+	case *credstatic.JsonCredential:
+		var err error
+		credType = string(credential.JsonType)
+		object := map[string]interface{}{}
+		err = json.Unmarshal(c.GetObject(), &object)
+		if err != nil {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "unmarshalling json")
+		}
+
+		credData, err = structpb.NewStruct(object)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for json credential"))
+		}
+		secret = object
 
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))

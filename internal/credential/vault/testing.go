@@ -620,13 +620,28 @@ func TestRenewableToken(b bool) TestOption {
 	}
 }
 
-func (v *TestVaultServer) client(t testing.TB) *client {
-	t.Helper()
-	return v.clientUsingToken(t, v.RootToken)
+// TestClientConfig returns a client config, using the
+// provided Vault Server and token
+func TestClientConfig(v *TestVaultServer, token string) *clientConfig {
+	clientConfig := &clientConfig{
+		Addr:       v.Addr,
+		Token:      TokenSecret(token),
+		CaCert:     v.CaCert,
+		ClientCert: v.ClientCert,
+		ClientKey:  v.ClientKey,
+	}
+
+	return clientConfig
 }
 
-func (v *TestVaultServer) clientUsingToken(t testing.TB, token string) *client {
+func (v *TestVaultServer) client(t testing.TB) *client {
 	t.Helper()
+	return v.ClientUsingToken(t, v.RootToken)
+}
+
+func (v *TestVaultServer) ClientUsingToken(t testing.TB, token string) *client {
+	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 	conf := &clientConfig{
 		Addr:       v.Addr,
@@ -636,10 +651,10 @@ func (v *TestVaultServer) clientUsingToken(t testing.TB, token string) *client {
 		ClientKey:  v.ClientKey,
 	}
 
-	client, err := newClient(conf)
+	client, err := newClient(ctx, conf)
 	require.NoError(err)
 	require.NotNil(client)
-	require.NoError(client.ping())
+	require.NoError(client.ping(ctx))
 	return client
 }
 
@@ -672,6 +687,17 @@ func (v *TestVaultServer) CreateToken(t testing.TB, opt ...TestOption) (*vault.S
 	require.NotNil(token)
 
 	return secret, token
+}
+
+// RevokeToken calls /auth/token/revoke-self on v for the token. See
+// https://www.vaultproject.io/api-docs/auth/token#revoke-a-token-self.
+func (v *TestVaultServer) RevokeToken(t testing.TB, token string) {
+	t.Helper()
+	require := require.New(t)
+	vc := v.client(t).cl
+	vc.SetToken(token)
+	err := vc.Auth().Token().RevokeSelf("")
+	require.NoError(err)
 }
 
 // LookupToken calls /auth/token/lookup on v for the token. See
@@ -738,9 +764,9 @@ func (v *TestVaultServer) addPolicy(t testing.TB, name string, pc pathCapabiliti
 // standard set of polices attached to tokens created with v.CreateToken.
 // The policy is defined as:
 //
-//   path "mountPath/*" {
-//     capabilities = ["create", "read", "update", "delete", "list"]
-//   }
+//	path "mountPath/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
 func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secret {
 	t.Helper()
 	require := require.New(t)
@@ -802,9 +828,9 @@ func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secre
 // standard set of polices attached to tokens created with v.CreateToken.
 // The policy is defined as:
 //
-//   path "secret/*" {
-//     capabilities = ["create", "read", "update", "delete", "list"]
-//   }
+//	path "secret/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
 //
 // All options are ignored.
 func (v *TestVaultServer) AddKVPolicy(t testing.TB, _ ...TestOption) {
@@ -823,10 +849,11 @@ func (v *TestVaultServer) AddKVPolicy(t testing.TB, _ ...TestOption) {
 // https://www.vaultproject.io/api-docs/secret/kv/kv-v2#create-update-secret
 func (v *TestVaultServer) CreateKVSecret(t testing.TB, p string, data []byte) *vault.Secret {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 
 	vc := v.client(t)
-	cred, err := vc.post(path.Join("secret", "data", p), data)
+	cred, err := vc.post(ctx, path.Join("secret", "data", p), data)
 	require.NoError(err)
 	return cred
 }
@@ -872,9 +899,9 @@ func NewTestVaultServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 // to the standard set of polices attached to tokens created with
 // v.CreateToken. The policy is defined as:
 //
-//   path "mountPath/*" {
-//     capabilities = ["create", "read", "update", "delete", "list"]
-//   }
+//	path "mountPath/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
 //
 // MountDatabase returns a TestDatabase for testing credentials from the
 // mount.
