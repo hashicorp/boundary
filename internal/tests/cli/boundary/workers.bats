@@ -61,10 +61,3 @@ export NEW_UPDATED_WORKER='newtest'
   run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
 }
-
-@test "boundary/workers: can not read deleted $NEW_UPDATED_WORKER worker" {
-  local wid=$(worker_id $NEW_UPDATED_WORKER)
-	run read_worker $wid
-  echo "$output"
-	[ "$status" -eq 1 ]
-}
