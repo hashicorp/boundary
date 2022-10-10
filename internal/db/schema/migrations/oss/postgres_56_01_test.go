@@ -117,13 +117,17 @@ func TestMigrations_DeleteOrphanedAccounts(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = iamRepo.AddUserAccounts(ctx, usr.GetPublicId(), usr.GetVersion(),
-		[]string{pwAcct1.GetPublicId(), pwAcct2.GetPublicId(),
-			oidcAcct1.GetPublicId(), oidcAcct2.GetPublicId()})
+		[]string{
+			pwAcct1.GetPublicId(), pwAcct2.GetPublicId(),
+			oidcAcct1.GetPublicId(), oidcAcct2.GetPublicId(),
+		})
 	require.NoError(t, err)
 	usr, accts, err := iamRepo.LookupUser(ctx, usr.GetPublicId())
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{pwAcct1.GetPublicId(), pwAcct2.GetPublicId(),
-		oidcAcct1.GetPublicId(), oidcAcct2.GetPublicId()}, accts)
+	assert.ElementsMatch(t, []string{
+		pwAcct1.GetPublicId(), pwAcct2.GetPublicId(),
+		oidcAcct1.GetPublicId(), oidcAcct2.GetPublicId(),
+	}, accts)
 
 	_, err = pwRepo.DeleteAccount(ctx, scope.Global.String(), pwAcct1.GetPublicId())
 	require.NoError(t, err)
@@ -133,8 +137,10 @@ func TestMigrations_DeleteOrphanedAccounts(t *testing.T) {
 	// pwAcct1 is still listed as an account for this user!  oh no!
 	_, accts, err = iamRepo.LookupUser(ctx, usr.GetPublicId())
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{pwAcct1.GetPublicId(), pwAcct2.GetPublicId(),
-		oidcAcct1.GetPublicId(), oidcAcct2.GetPublicId()}, accts)
+	assert.ElementsMatch(t, []string{
+		pwAcct1.GetPublicId(), pwAcct2.GetPublicId(),
+		oidcAcct1.GetPublicId(), oidcAcct2.GetPublicId(),
+	}, accts)
 
 	// now we're ready for the migration we want to test.
 	m, err = schema.NewManager(ctx, schema.Dialect(dialect), d, schema.WithEditions(
