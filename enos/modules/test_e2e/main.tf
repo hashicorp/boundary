@@ -83,16 +83,17 @@ variable "aws_host_set_filter2" {
   type        = string
   default     = ""
 }
-variable "aws_host_set_count2" {
-  description = "Number of hosts in aws_host_set_filter2"
-  type        = number
-  default     = 0
+variable "aws_host_set_ips2" {
+  description = "List of IP addresses in aws_host_set_filter2"
+  type        = list(string)
+  default     = [""]
 }
 
 locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
   vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:8200" : ""
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
+  aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
 }
 
 resource "enos_local_exec" "run_e2e_test" {
@@ -109,10 +110,9 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id,
     E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key,
     E2E_AWS_HOST_SET_FILTER1      = var.aws_host_set_filter1,
-    E2E_AWS_HOST_SET_COUNT1       = var.aws_host_set_count1,
     E2E_AWS_HOST_SET_IPS1         = local.aws_host_set_ips1,
     E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2,
-    E2E_AWS_HOST_SET_COUNT2       = var.aws_host_set_count2
+    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }
 
   inline = ["PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package}"]

@@ -49,10 +49,9 @@ export E2E_SSH_USER=  # e.g. ubuntu
 export E2E_AWS_ACCESS_KEY_ID=
 export E2E_AWS_SECRET_ACCESS_KEY=
 export E2E_AWS_HOST_SET_FILTER1=  # e.g. "tag:testtag=true"
-export E2E_AWS_HOST_SET_COUNT1=  # e.g. 2
 export E2E_AWS_HOST_SET_IPS1=  # e.g. "[\"1.2.3.4\", \"2.3.4.5\"]"
 export E2E_AWS_HOST_SET_FILTER2=  # e.g. "tag:testtagtwo=test"
-export E2E_AWS_HOST_SET_COUNT2=  # e.g. 1
+export E2E_AWS_HOST_SET_IPS2=  # e.g. "[\"1.2.3.4\"]
 export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
 export E2E_SSH_USER=  # e.g. ubuntu
 
