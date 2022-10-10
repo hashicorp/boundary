@@ -25,7 +25,6 @@ jobs:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
-          - filter: 'integration test:smoke'
           - filter: 'integration test:cli_ui'
           - filter: 'e2e_credential_vault'
           - filter: 'e2e_host_aws'
