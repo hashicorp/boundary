@@ -63,7 +63,8 @@ func TestRewrap_argon2ConfigRewrapFn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
-	cred.decrypt(ctx, kmsWrapper)
+	err = cred.decrypt(ctx, kmsWrapper)
+	assert.NoError(t, err)
 	assert.Equal(t, cred.GetKeyId(), newKeyVersion)
 	assert.Equal(t, got.GetSalt(), cred.GetSalt())
 }
