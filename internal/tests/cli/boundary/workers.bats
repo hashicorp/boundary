@@ -54,10 +54,15 @@ export NEW_UPDATED_WORKER='newtest'
 	[ "$status" -eq 0 ]
 }
 
-@test "boundary/workers: can delete $NEW_UPDATED_WORKER worker" {
+@test "boundary/workers: can delete $NEW_UPDATED_WORKER worker once" {
   local wid=$(worker_id $NEW_UPDATED_WORKER)
   run delete_worker $wid
   echo "$output"
   run has_status_code "$output" "204"
+  [ "$status" -eq 0 ]
+
+  run delete_worker $wid
+  echo "$output"
+  run has_status_code "$output" "404"
   [ "$status" -eq 0 ]
 }

@@ -14,10 +14,6 @@ function update_worker() {
   boundary workers update -id $1 -name $2 -version 0
 }
 
-function add_worker_tag() {
-  boundary workers add-worker-tags -id $1 -tag $2 -version 0
-}
-
 function delete_worker() {
   boundary workers delete -id $1
 }
