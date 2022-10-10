@@ -5,9 +5,8 @@ function read_worker() {
 }
 
 function create_worker() {
-  local name=$1
   boundary workers create controller-led \
-    -name $name \
+    -name $1 \
     -description 'test worker'
 }
 
