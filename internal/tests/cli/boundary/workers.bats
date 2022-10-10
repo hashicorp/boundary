@@ -15,43 +15,43 @@ export NEW_UPDATED_WORKER='newtest'
 }
 
 @test "boundary/workers: can create $NEW_WORKER worker" {
-	run create_worker $NEW_WORKER
+  run create_worker $NEW_WORKER
   echo "$output"
-	[ "$status" -eq 0 ]
+  [ "$status" -eq 0 ]
 }
 
 @test "boundary/workers: can not create already created $NEW_WORKER worker" {
-	run create_worker $NEW_WORKER
+  run create_worker $NEW_WORKER
   echo "$output"
-	[ "$status" -eq 1 ]
+  [ "$status" -eq 1 ]
 }
 
 @test "boundary/workers: can read $NEW_WORKER worker" {
   local wid=$(worker_id $NEW_WORKER)
-	run read_worker $wid
+  run read_worker $wid
   echo "$output"
-	[ "$status" -eq 0 ]
+  [ "$status" -eq 0 ]
 }
 
 @test "boundary/workers: can list workers" {
-	run list_workers
+  run list_workers
   echo "$output"
-	[ "$status" -eq 0 ]
+  [ "$status" -eq 0 ]
 }
 
 @test "boundary/workers: the worker contains default authorized-actions" {
   local wid=$(worker_id)
   local out=$(read_worker $wid)
-	run has_default_worker_actions "$out"
+  run has_default_worker_actions "$out"
   echo "$output"
-	[ "$status" -eq 0 ]
+  [ "$status" -eq 0 ]
 }
 
 @test "boundary/workers: can update worker's name" {
   local wid=$(worker_id $NEW_WORKER)
-    run update_worker $wid $NEW_UPDATED_WORKER
+  run update_worker $wid $NEW_UPDATED_WORKER
   echo "$output"
-	[ "$status" -eq 0 ]
+  [ "$status" -eq 0 ]
 }
 
 @test "boundary/workers: can delete $NEW_UPDATED_WORKER worker once" {
