@@ -24,7 +24,7 @@ function list_workers() {
 
 function worker_id() {
   local id=$1
-  strip $(list_workers | jq -c ".items[] | select(.name | contains(\"$id\")) | .[\"id\"]")
+  strip $(list_workers | jq -c ".items[] | select(.name != null) | select(.name | contains(\"$id\")) | .[\"id\"]")
 }
 
 function has_default_worker_actions() {
