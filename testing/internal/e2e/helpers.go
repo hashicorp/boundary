@@ -18,6 +18,11 @@ type CommandResult struct {
 	Err      error
 }
 
+// CliError parses the Stderr from running a boundary command
+type CliError struct {
+	Status int `json:"status"`
+}
+
 const EnvToCheckSkip = "E2E_PASSWORD_AUTH_METHOD_ID"
 
 // RunCommand executes external commands on the system. Returns the results
