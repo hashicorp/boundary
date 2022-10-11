@@ -11,6 +11,7 @@ import (
 
 func init() {
 	kms.RegisterTableRewrapFn("credential_vault_client_certificate", credVaultClientCertificateRewrapFn)
+	kms.RegisterTableRewrapFn("credential_vault_token", credVaultTokenRewrapFn)
 }
 
 func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
@@ -40,6 +41,39 @@ func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId st
 			return errors.Wrap(ctx, err, op)
 		}
 		if _, err := repo.writer.Update(ctx, cert, []string{"CtCertificateKey", "CertificateKeyHmac", "KeyId"}, nil); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
+	return nil
+}
+
+func credVaultTokenRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+	const op = "vault.credVaultTokenRewrapFn"
+	// using an empty scheduler here since the only function we need is a lookup func and we really don't want to actually schedule something
+	repo, err := NewRepository(reader, writer, kmsRepo, &scheduler.Scheduler{})
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	var tokens []*Token
+	if err := repo.reader.SearchWhere(ctx, &tokens, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	for _, token := range tokens {
+		store, err := repo.LookupCredentialStore(ctx, token.GetStoreId())
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		wrapper, err := repo.kms.GetWrapper(ctx, store.GetProjectId(), kms.KeyPurposeDatabase)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if err := token.decrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if err := token.encrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if _, err := repo.writer.Update(ctx, token, []string{"CtToken", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}

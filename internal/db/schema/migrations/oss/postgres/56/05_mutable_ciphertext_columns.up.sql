@@ -11,4 +11,11 @@ begin;
   drop trigger immutable_auth_token_columns on auth_token;
   drop function immutable_auth_token_columns;
 
+
+  -- We need to make token and token_hmac mutable, so that we can rewrap them.
+  drop trigger immutable_columns on credential_vault_token;
+
+  create trigger immutable_columns before update on credential_vault_token
+    for each row execute procedure immutable_columns('store_id','create_time');
+
 commit;
