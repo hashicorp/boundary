@@ -26,19 +26,12 @@ func TestRewrap_credVaultClientCertificateRewrapFn(t *testing.T) {
 
 	kmsWrapper, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
-
-	err = cert.encrypt(ctx, kmsWrapper)
-	assert.NoError(t, err)
-
-	err = rw.Create(context.Background(), cert)
-	assert.NoError(t, err)
+	assert.NoError(t, cert.encrypt(ctx, kmsWrapper))
+	assert.NoError(t, rw.Create(context.Background(), cert))
 
 	// now things are stored in the db, we can rotate and rewrap
-	err = kmsCache.RotateKeys(ctx, prj.PublicId)
-	assert.NoError(t, err)
-
-	err = credVaultClientCertificateRewrapFn(ctx, cert.GetKeyId(), rw, rw, kmsCache)
-	assert.NoError(t, err)
+	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
+	assert.NoError(t, credVaultClientCertificateRewrapFn(ctx, cert.GetKeyId(), rw, rw, kmsCache))
 
 	// now we pull the credential back from the db, decrypt it with the new key, and ensure things match
 	got := allocClientCertificate()
@@ -48,8 +41,7 @@ func TestRewrap_credVaultClientCertificateRewrapFn(t *testing.T) {
 	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
 	assert.NoError(t, err)
 
-	err = got.decrypt(ctx, kmsWrapper2)
-	assert.NoError(t, err)
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 
 	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
 	assert.NoError(t, err)

@@ -14,7 +14,7 @@ func init() {
 }
 
 func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
-	const op = "vault.credVaultClientCertificate"
+	const op = "vault.credVaultClientCertificateRewrapFn"
 	// using an empty scheduler here since the only function we need is a lookup func and we really don't want to actually schedule something
 	repo, err := NewRepository(reader, writer, kmsRepo, &scheduler.Scheduler{})
 	if err != nil {
