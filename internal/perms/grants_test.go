@@ -754,3 +754,17 @@ func TestHasActionOrSubaction(t *testing.T) {
 		})
 	}
 }
+
+func FuzzParse(f *testing.F) {
+	f.Add("type=host-catalog;actions=create")
+	f.Add("type=*;actions=*")
+	f.Add("id=*;type=*;actions=*")
+	f.Add("id=*;type=*;actions=read,list")
+	f.Add("id=foobar;actions=read;output_fields=version,id,name")
+	f.Add("id={{account.id}};actions=update,read")
+	f.Add(`{"type":"host-catalog","actions":["create"]}`)
+
+	f.Fuzz(func(t *testing.T, grant string) {
+		_, _ = Parse("global", grant, WithSkipFinalValidation(true))
+	})
+}
