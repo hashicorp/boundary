@@ -159,7 +159,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
 	assert.Len(resp.GetItems(), 3)
-	items := resp.GetResponse().Map["items"].([]interface{})
+	items := resp.GetResponse().Map["items"].([]any)
 	require.NotNil(items)
 
 	// The default generated roles don't have output field definitions for them,
@@ -171,7 +171,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	// auto generated one.
 	var globalAms, orgAms int
 	for _, item := range items {
-		m := item.(map[string]interface{})
+		m := item.(map[string]any)
 		require.NotNil(m)
 		switch m["scope_id"].(string) {
 		case scope.Global.String():
@@ -200,7 +200,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	require.NotNil(resp)
 	require.NotNil(resp.GetItems())
 	assert.Len(resp.GetItems(), 1)
-	item := resp.GetResponse().Map["items"].([]interface{})[0].(map[string]interface{})
+	item := resp.GetResponse().Map["items"].([]any)[0].(map[string]any)
 	assert.NotContains(item, "created_time")
 	assert.NotContains(item, "attributes")
 }

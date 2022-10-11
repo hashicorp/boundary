@@ -240,7 +240,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 			got := api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
 			if tt.wantAuthAuditData {
-				auth, ok := got.Data.(map[string]interface{})["auth"].(map[string]interface{})
+				auth, ok := got.Data.(map[string]any)["auth"].(map[string]any)
 				require.True(ok)
 				assert.Equal(encrypt.RedactedData, auth["email"])
 				assert.Equal(encrypt.RedactedData, auth["name"])
@@ -249,7 +249,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 					assert.Equal(true, auth["disabled_auth_entirely"])
 				}
 				if tt.wantUserId != "" {
-					userInfo, ok := auth["user_info"].(map[string]interface{})
+					userInfo, ok := auth["user_info"].(map[string]any)
 					require.True(ok)
 					assert.Equal(tt.wantUserId, userInfo["id"])
 				}

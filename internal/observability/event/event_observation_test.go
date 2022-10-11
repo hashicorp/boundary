@@ -13,9 +13,9 @@ func Test_newObservation(t *testing.T) {
 
 	now := time.Now()
 
-	testHeader := []interface{}{"public-id", "public-id", "now", now}
+	testHeader := []any{"public-id", "public-id", "now", now}
 
-	testDetails := []interface{}{"file_name", "tmpfile-name"}
+	testDetails := []any{"file_name", "tmpfile-name"}
 
 	tests := []struct {
 		name            string
@@ -50,8 +50,8 @@ func Test_newObservation(t *testing.T) {
 			},
 			want: &observation{
 				ID:          "valid-all-opts",
-				Header:      map[string]interface{}{"public-id": "public-id", "now": now},
-				Detail:      map[string]interface{}{"file_name": "tmpfile-name"},
+				Header:      map[string]any{"public-id": "public-id", "now": now},
+				Detail:      map[string]any{"file_name": "tmpfile-name"},
 				Flush:       true,
 				Version:     errorVersion,
 				Op:          Op("valid-all-opts"),

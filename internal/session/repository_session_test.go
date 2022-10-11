@@ -152,7 +152,7 @@ func TestRepository_ListSession(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(tt.perms))
 			require.NoError(err)
 
-			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
 			testSessions := []*Session{}
 			for i := 0; i < tt.createCnt; i++ {
 				s := TestSession(t, conn, wrapper, composedOf)
@@ -188,7 +188,7 @@ func TestRepository_ListSession(t *testing.T) {
 	}
 	t.Run("withOrder", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+		db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
@@ -209,7 +209,7 @@ func TestRepository_ListSession(t *testing.T) {
 	})
 	t.Run("onlySelf", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+		db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
@@ -245,7 +245,7 @@ func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	ctx := context.Background()
 
-	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
 
 	const numPerScope = 10
 	var p []perms.Permission
@@ -866,7 +866,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
 			args := tt.setup()
 
 			got, err := repo.TerminateCompletedSessions(context.Background())
@@ -1112,7 +1112,7 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 	}
 	type cancelFk struct {
 		s      *Session
-		fkType interface{}
+		fkType any
 	}
 	tests := []struct {
 		name     string

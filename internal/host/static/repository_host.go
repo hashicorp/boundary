@@ -142,7 +142,7 @@ func (r *Repository) UpdateHost(ctx context.Context, projectId string, h *Host, 
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"Name":        h.Name,
 			"Description": h.Description,
 			"Address":     h.Address,
@@ -236,7 +236,7 @@ func (r *Repository) ListHosts(ctx context.Context, catalogId string, opt ...Opt
 		limit = opts.withLimit
 	}
 	var aggs []*hostAgg
-	err := r.reader.SearchWhere(ctx, &aggs, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &aggs, "catalog_id = ?", []any{catalogId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

@@ -134,7 +134,7 @@ func (c *Command) printListTable(items []*authmethods.AuthMethod) string {
 }
 
 func printItemTable(item *authmethods.AuthMethod, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

@@ -49,8 +49,8 @@ func Test_upsertAccount(t *testing.T) {
 	tests := []struct {
 		name            string
 		am              *AuthMethod
-		idClaims        map[string]interface{}
-		atClaims        map[string]interface{}
+		idClaims        map[string]any
+		atClaims        map[string]any
 		wantAcct        *Account
 		wantErrMatch    *errors.Template
 		wantErrContains string
@@ -58,8 +58,8 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:     "success-defaults",
 			am:       amActivePriv,
-			idClaims: map[string]interface{}{"iss": "https://alice-active-priv.com", "sub": "success-defaults"},
-			atClaims: map[string]interface{}{},
+			idClaims: map[string]any{"iss": "https://alice-active-priv.com", "sub": "success-defaults"},
+			atClaims: map[string]any{},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId:   amActivePriv.PublicId,
 				Issuer:         "https://alice-active-priv.com",
@@ -71,8 +71,8 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:     "success-atTk-full-name-and-email",
 			am:       amActivePriv,
-			idClaims: map[string]interface{}{"iss": "https://alice-active-priv.com", "sub": "success-atTk-full-name-and-email"},
-			atClaims: map[string]interface{}{"name": "alice eve-smith", "email": "alice@alice.com"},
+			idClaims: map[string]any{"iss": "https://alice-active-priv.com", "sub": "success-atTk-full-name-and-email"},
+			atClaims: map[string]any{"name": "alice eve-smith", "email": "alice@alice.com"},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId:   amActivePriv.PublicId,
 				Issuer:         "https://alice-active-priv.com",
@@ -86,8 +86,8 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:     "success-idTk-full-name-and-email",
 			am:       amActivePriv,
-			idClaims: map[string]interface{}{"iss": "https://alice-active-priv.com", "sub": "success-idTk-full-name-and-email", "name": "alice eve-smith", "email": "alice@alice.com"},
-			atClaims: map[string]interface{}{},
+			idClaims: map[string]any{"iss": "https://alice-active-priv.com", "sub": "success-idTk-full-name-and-email", "name": "alice eve-smith", "email": "alice@alice.com"},
+			atClaims: map[string]any{},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId:   amActivePriv.PublicId,
 				Issuer:         "https://alice-active-priv.com",
@@ -101,8 +101,8 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:     "success-map-idTk",
 			am:       amWithMapping,
-			idClaims: map[string]interface{}{"iss": "https://alice-active-priv.com", "sub": "success-defaults", "oid": "success-map"},
-			atClaims: map[string]interface{}{},
+			idClaims: map[string]any{"iss": "https://alice-active-priv.com", "sub": "success-defaults", "oid": "success-map"},
+			atClaims: map[string]any{},
 			wantAcct: &Account{Account: &store.Account{
 				AuthMethodId:   amWithMapping.PublicId,
 				Issuer:         "https://alice-active-priv.com",
@@ -114,62 +114,62 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:            "non-existent-auth-method-scope-id",
 			am:              func() *AuthMethod { cp := amActivePriv.Clone(); cp.ScopeId = "non-existent-scope-id"; return cp }(),
-			idClaims:        map[string]interface{}{"iss": "https://alice.com", "sub": "non-existent-auth-method-scope-id"},
-			atClaims:        map[string]interface{}{},
+			idClaims:        map[string]any{"iss": "https://alice.com", "sub": "non-existent-auth-method-scope-id"},
+			atClaims:        map[string]any{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "unable to get oplog wrapper",
 		},
 		{
 			name:            "non-parsable-issuer",
 			am:              amActivePriv,
-			idClaims:        map[string]interface{}{"iss": ":::::alice.com", "sub": "non-parsable-issuer"},
-			atClaims:        map[string]interface{}{},
+			idClaims:        map[string]any{"iss": ":::::alice.com", "sub": "non-parsable-issuer"},
+			atClaims:        map[string]any{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "unable to parse issuer",
 		},
 		{
 			name:            "empty-sub",
 			am:              amActivePriv,
-			idClaims:        map[string]interface{}{"iss": "https://alice.com", "sub": ""},
-			atClaims:        map[string]interface{}{},
+			idClaims:        map[string]any{"iss": "https://alice.com", "sub": ""},
+			atClaims:        map[string]any{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "missing subject",
 		},
 		{
 			name:            "empty-issuer",
 			am:              amActivePriv,
-			idClaims:        map[string]interface{}{"iss": "", "sub": "bad-issuer"},
-			atClaims:        map[string]interface{}{},
+			idClaims:        map[string]any{"iss": "", "sub": "bad-issuer"},
+			atClaims:        map[string]any{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "missing issuer",
 		},
 		{
 			name:            "missing-id-token-issuer",
 			am:              amActivePriv,
-			idClaims:        map[string]interface{}{},
-			atClaims:        map[string]interface{}{},
+			idClaims:        map[string]any{},
+			atClaims:        map[string]any{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "issuer is not present in ID Token",
 		},
 		{
 			name:            "missing-id-token-sub",
 			am:              amActivePriv,
-			idClaims:        map[string]interface{}{"iss": "https://alice.com"},
-			atClaims:        map[string]interface{}{},
+			idClaims:        map[string]any{"iss": "https://alice.com"},
+			atClaims:        map[string]any{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "to account subject and it is not present in ID Token",
 		},
 		{
 			name:            "missing-id-token-claims",
 			am:              amActivePriv,
-			atClaims:        map[string]interface{}{},
+			atClaims:        map[string]any{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "missing ID Token claims",
 		},
 		{
 			name:            "missing-access-token-claims",
 			am:              amActivePriv,
-			idClaims:        map[string]interface{}{},
+			idClaims:        map[string]any{},
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "missing Access Token claims",
 		},

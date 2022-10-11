@@ -57,7 +57,7 @@ func AllocUser() User {
 }
 
 // Clone creates a clone of the User
-func (u *User) Clone() interface{} {
+func (u *User) Clone() any {
 	cp := proto.Clone(u.User)
 	return &User{
 		User: cp.(*store.User),

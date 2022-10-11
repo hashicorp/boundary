@@ -57,7 +57,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			name: "set-column-values",
 			onConflict: db.OnConflict{
 				Target: db.Columns{"public_id"},
-				Action: db.SetColumnValues(map[string]interface{}{
+				Action: db.SetColumnValues(map[string]any{
 					"name":         db.Expr("md5(?)", "alice eve smith"),
 					"email":        "alice@gmail.com",
 					"phone_number": db.Expr("NULL"),
@@ -75,7 +75,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 				}
 				cv := db.SetColumns([]string{"name"})
 				cv = append(cv,
-					db.SetColumnValues(map[string]interface{}{
+					db.SetColumnValues(map[string]any{
 						"email":        "alice@gmail.com",
 						"phone_number": db.Expr("NULL"),
 					})...)
@@ -216,7 +216,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			Target: db.Constraint("db_test_user_public_id_key"),
 			Action: db.SetColumns([]string{"name"}),
 		}
-		users := []interface{}{}
+		users := []any{}
 		users = append(users, conflictUser)
 		var rowsAffected int64
 		err = rw.CreateItems(ctx, users, db.WithOnConflict(&onConflict), db.WithOplog(wrapper, md), db.WithReturnRowsAffected(&rowsAffected))

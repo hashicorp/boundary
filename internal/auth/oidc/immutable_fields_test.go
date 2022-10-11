@@ -105,7 +105,7 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithAudClaims("alice.com"))
 
 	new := AllocAudClaim()
-	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []interface{}{am.PublicId, "alice.com"}))
+	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []any{am.PublicId, "alice.com"}))
 
 	tests := []struct {
 		name      string
@@ -147,7 +147,7 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 
 			orig := new.Clone()
 			orig.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []interface{}{orig.OidcMethodId, orig.Aud}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []any{orig.OidcMethodId, orig.Aud}))
 
 			require.NoError(err)
 
@@ -158,7 +158,7 @@ func TestAudClaim_ImmutableFields(t *testing.T) {
 
 			after := new.Clone()
 			after.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []interface{}{after.OidcMethodId, after.Aud}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and aud_claim = ?", []any{after.OidcMethodId, after.Aud}))
 
 			assert.True(proto.Equal(orig, after))
 		})
@@ -186,7 +186,7 @@ func TestCertificate_ImmutableFields(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithCertificates(x509))
 
 	new := AllocCertificate()
-	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []interface{}{am.PublicId, pem}))
+	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []any{am.PublicId, pem}))
 
 	tests := []struct {
 		name      string
@@ -228,7 +228,7 @@ func TestCertificate_ImmutableFields(t *testing.T) {
 
 			orig := new.Clone()
 			orig.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []interface{}{orig.OidcMethodId, orig.Cert}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []any{orig.OidcMethodId, orig.Cert}))
 
 			require.NoError(err)
 
@@ -239,7 +239,7 @@ func TestCertificate_ImmutableFields(t *testing.T) {
 
 			after := new.Clone()
 			after.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []interface{}{after.OidcMethodId, after.Cert}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and certificate = ?", []any{after.OidcMethodId, after.Cert}))
 
 			assert.True(proto.Equal(orig, after))
 		})
@@ -263,7 +263,7 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithSigningAlgs(RS256))
 
 	new := AllocSigningAlg()
-	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{am.PublicId, RS256}))
+	require.NoError(t, rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []any{am.PublicId, RS256}))
 
 	tests := []struct {
 		name      string
@@ -305,7 +305,7 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 
 			orig := new.Clone()
 			orig.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{orig.OidcMethodId, orig.Alg}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []any{orig.OidcMethodId, orig.Alg}))
 
 			require.NoError(err)
 
@@ -316,7 +316,7 @@ func TestSigningAlg_ImmutableFields(t *testing.T) {
 
 			after := new.Clone()
 			after.SetTableName(defaultAuthMethodTableName)
-			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []interface{}{after.OidcMethodId, after.Alg}))
+			require.NoError(rw.LookupWhere(ctx, &new, "oidc_method_id = ? and signing_alg_name = ?", []any{after.OidcMethodId, after.Alg}))
 
 			assert.True(proto.Equal(orig, after))
 		})

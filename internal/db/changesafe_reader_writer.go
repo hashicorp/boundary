@@ -100,6 +100,6 @@ func (w *changeSafeDbwWriter) ScanRows(rows *sql.Rows, result any) error {
 	return dbw.New(w.db.underlying.wrapped.Load()).ScanRows(rows, result)
 }
 
-func (w *changeSafeDbwWriter) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...dbw.Option) (int, error) {
+func (w *changeSafeDbwWriter) Update(ctx context.Context, i any, fieldMaskPaths []string, setToNullPaths []string, opt ...dbw.Option) (int, error) {
 	return dbw.New(w.db.underlying.wrapped.Load()).Update(ctx, i, fieldMaskPaths, setToNullPaths, opt...)
 }

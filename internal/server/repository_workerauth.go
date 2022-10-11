@@ -377,7 +377,7 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	}
 
 	query := getWorkerAuthsByWorkerKeyIdQuery
-	rows, err := r.reader.Query(ctx, query, []interface{}{sql.Named("worker_key_identifier", node.Id)})
+	rows, err := r.reader.Query(ctx, query, []any{sql.Named("worker_key_identifier", node.Id)})
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -503,7 +503,7 @@ func (r *WorkerAuthRepositoryStorage) findCertBundles(ctx context.Context, worke
 	}
 
 	var bundles []*WorkerCertBundle
-	err := r.reader.SearchWhere(ctx, &bundles, "worker_key_identifier = ?", []interface{}{workerKeyId}, db.WithLimit(-1))
+	err := r.reader.SearchWhere(ctx, &bundles, "worker_key_identifier = ?", []any{workerKeyId}, db.WithLimit(-1))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -553,7 +553,7 @@ func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, 
 		rootCertificate := allocRootCertificate()
 		rootCert := &types.RootCertificate{}
 
-		if err := r.reader.SearchWhere(ctx, &rootCertificate, "state = ?", []interface{}{c}, db.WithLimit(-1)); err != nil {
+		if err := r.reader.SearchWhere(ctx, &rootCertificate, "state = ?", []any{c}, db.WithLimit(-1)); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 
@@ -635,11 +635,11 @@ func (r *WorkerAuthRepositoryStorage) removeNodeInformation(ctx context.Context,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			_, err = w.Exec(ctx, deleteWorkerAuthQuery, []interface{}{sql.Named("worker_key_identifier", msg.Id)})
+			_, err = w.Exec(ctx, deleteWorkerAuthQuery, []any{sql.Named("worker_key_identifier", msg.Id)})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []interface{}{sql.Named("worker_key_identifier", msg.Id)})
+			_, err = w.Exec(ctx, deleteWorkerCertBundlesQuery, []any{sql.Named("worker_key_identifier", msg.Id)})
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete workerAuth"))
 			}
@@ -757,7 +757,7 @@ func (r *WorkerAuthRepositoryStorage) removeRootCertificateWithWriter(ctx contex
 		return errors.New(ctx, errors.InvalidParameter, op, "missing writer")
 	}
 
-	rows, err := writer.Exec(ctx, deleteRootCertificateQuery, []interface{}{
+	rows, err := writer.Exec(ctx, deleteRootCertificateQuery, []any{
 		sql.Named("state", id),
 	})
 	if err != nil {
@@ -799,7 +799,7 @@ func (r *WorkerAuthRepositoryStorage) listNodeInformation(ctx context.Context) (
 
 	var where string
 	var nodeAuths []*WorkerAuth
-	err := r.reader.SearchWhere(ctx, &nodeAuths, where, []interface{}{}, db.WithLimit(-1))
+	err := r.reader.SearchWhere(ctx, &nodeAuths, where, []any{}, db.WithLimit(-1))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -817,7 +817,7 @@ func (r *WorkerAuthRepositoryStorage) listRootCertificates(ctx context.Context) 
 
 	var where string
 	var rootCertificates []*RootCertificate
-	err := r.reader.SearchWhere(ctx, &rootCertificates, where, []interface{}{}, db.WithLimit(-1))
+	err := r.reader.SearchWhere(ctx, &rootCertificates, where, []any{}, db.WithLimit(-1))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -836,7 +836,7 @@ func (r *WorkerAuthRepositoryStorage) listCertificateAuthority(ctx context.Conte
 
 	var where string
 	var rootCertificates []*CertificateAuthority
-	err := r.reader.SearchWhere(ctx, &rootCertificates, where, []interface{}{}, db.WithLimit(-1))
+	err := r.reader.SearchWhere(ctx, &rootCertificates, where, []any{}, db.WithLimit(-1))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -945,7 +945,7 @@ func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Conte
 	}
 
 	var workerAuths []*WorkerAuth
-	if err := r.reader.SearchWhere(ctx, &workerAuths, "worker_id = ?", []interface{}{workerId}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &workerAuths, "worker_id = ?", []any{workerId}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 

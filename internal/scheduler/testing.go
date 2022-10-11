@@ -98,7 +98,7 @@ func (j testJob) Description() string {
 
 func mapLen(sm *sync.Map) int {
 	count := 0
-	sm.Range(func(key, value interface{}) bool {
+	sm.Range(func(key, value any) bool {
 		count++
 		return true
 	})

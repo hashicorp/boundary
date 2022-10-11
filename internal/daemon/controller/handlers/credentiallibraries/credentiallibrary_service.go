@@ -524,7 +524,7 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 		if outputFields.Has(globals.CredentialTypeField) && vaultIn.GetCredentialType() != string(credential.UnspecifiedType) {
 			out.CredentialType = vaultIn.GetCredentialType()
 			if outputFields.Has(globals.CredentialMappingOverridesField) && vaultIn.MappingOverride != nil {
-				m := make(map[string]interface{})
+				m := make(map[string]any)
 				switch mapping := vaultIn.MappingOverride.(type) {
 				case *vault.UsernamePasswordOverride:
 					if mapping.UsernameAttribute != "" {
@@ -716,7 +716,7 @@ func validateListRequest(req *pbs.ListCredentialLibrariesRequest) error {
 	return nil
 }
 
-func validateMapping(badFields map[string]string, credentialType credential.Type, overrides map[string]interface{}) {
+func validateMapping(badFields map[string]string, credentialType credential.Type, overrides map[string]any) {
 	validFields := make(map[string]bool)
 	switch credentialType {
 	case "", credential.UnspecifiedType:
@@ -747,8 +747,8 @@ func validateMapping(badFields map[string]string, credentialType credential.Type
 	}
 }
 
-func getMappingUpdates(credentialType credential.Type, current vault.MappingOverride, new map[string]interface{}, apiMasks []string) (map[string]interface{}, bool) {
-	ret := make(map[string]interface{})
+func getMappingUpdates(credentialType credential.Type, current vault.MappingOverride, new map[string]any, apiMasks []string) (map[string]any, bool) {
+	ret := make(map[string]any)
 	masks := make(map[string]bool)
 	for _, m := range apiMasks {
 		if m == credentialMappingPathField {
@@ -769,7 +769,7 @@ func getMappingUpdates(credentialType credential.Type, current vault.MappingOver
 
 	switch credentialType {
 	case credential.UsernamePasswordType:
-		var currentUser, currentPass interface{}
+		var currentUser, currentPass any
 		if overrides, ok := current.(*vault.UsernamePasswordOverride); ok {
 			currentUser = overrides.UsernameAttribute
 			currentPass = overrides.PasswordAttribute
@@ -790,7 +790,7 @@ func getMappingUpdates(credentialType credential.Type, current vault.MappingOver
 		}
 
 	case credential.SshPrivateKeyType:
-		var currentUser, currentpPass, currentPk interface{}
+		var currentUser, currentpPass, currentPk any
 		if overrides, ok := current.(*vault.SshPrivateKeyOverride); ok {
 			currentUser = overrides.UsernameAttribute
 			currentPk = overrides.PrivateKeyAttribute

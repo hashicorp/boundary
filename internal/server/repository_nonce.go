@@ -67,7 +67,7 @@ func (r *Repository) CleanupNonces(ctx context.Context, opt ...Option) (int, err
 // ListNonces lists nonces. Used only for tests at the moment.
 func (r *Repository) ListNonces(ctx context.Context, purpose string, opt ...Option) ([]*Nonce, error) {
 	var nonces []*Nonce
-	if err := r.reader.SearchWhere(ctx, &nonces, "purpose = ?", []interface{}{purpose}, db.WithLimit(-1)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &nonces, "purpose = ?", []any{purpose}, db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, "server.ListNonces")
 	}
 	return nonces, nil

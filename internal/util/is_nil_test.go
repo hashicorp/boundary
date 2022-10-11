@@ -20,7 +20,7 @@ func Test_IsNil(t *testing.T) {
 	var testChanString chan string
 
 	tc := []struct {
-		i    interface{}
+		i    any
 		want bool
 	}{
 		{i: &testError{}, want: false},

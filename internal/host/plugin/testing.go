@@ -122,10 +122,10 @@ func TestHost(t testing.TB, conn *db.DB, catId, externId string, opt ...Option) 
 	require.NoError(t, err)
 	require.NoError(t, w.Create(ctx, host1))
 
-	var ipAddresses []interface{}
+	var ipAddresses []any
 	if len(host1.GetIpAddresses()) > 0 {
 		sort.Strings(host1.IpAddresses)
-		ipAddresses = make([]interface{}, 0, len(host1.GetIpAddresses()))
+		ipAddresses = make([]any, 0, len(host1.GetIpAddresses()))
 		for _, a := range host1.GetIpAddresses() {
 			obj, err := host.NewIpAddress(ctx, host1.PublicId, a)
 			require.NoError(t, err)
@@ -134,10 +134,10 @@ func TestHost(t testing.TB, conn *db.DB, catId, externId string, opt ...Option) 
 		require.NoError(t, w.CreateItems(ctx, ipAddresses))
 	}
 
-	var dnsNames []interface{}
+	var dnsNames []any
 	if len(host1.GetDnsNames()) > 0 {
 		sort.Strings(host1.DnsNames)
-		dnsNames = make([]interface{}, 0, len(host1.GetDnsNames()))
+		dnsNames = make([]any, 0, len(host1.GetDnsNames()))
 		for _, n := range host1.GetDnsNames() {
 			obj, err := host.NewDnsName(ctx, host1.PublicId, n)
 			require.NoError(t, err)

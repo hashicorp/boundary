@@ -385,7 +385,7 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 		}
 	}
 	dbMask, nullFields := dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			nameField:        c.Name,
 			descriptionField: c.Description,
 			usernameField:    c.Username,
@@ -501,7 +501,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 		}
 	}
 	dbMask, nullFields := dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			nameField:                 c.Name,
 			descriptionField:          c.Description,
 			usernameField:             c.Username,
@@ -649,7 +649,7 @@ func (r *Repository) UpdateJsonCredential(ctx context.Context,
 		}
 	}
 	dbMask, nullFields := dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			nameField:        c.Name,
 			descriptionField: c.Description,
 			objectField:      c.Object,
@@ -727,19 +727,19 @@ func (r *Repository) ListCredentials(ctx context.Context, storeId string, opt ..
 	}
 
 	var upCreds []*UsernamePasswordCredential
-	err := r.reader.SearchWhere(ctx, &upCreds, "store_id = ?", []interface{}{storeId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &upCreds, "store_id = ?", []any{storeId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var spkCreds []*SshPrivateKeyCredential
-	err = r.reader.SearchWhere(ctx, &spkCreds, "store_id = ?", []interface{}{storeId}, db.WithLimit(limit))
+	err = r.reader.SearchWhere(ctx, &spkCreds, "store_id = ?", []any{storeId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var jsonCreds []*JsonCredential
-	err = r.reader.SearchWhere(ctx, &jsonCreds, "store_id = ?", []interface{}{storeId}, db.WithLimit(limit))
+	err = r.reader.SearchWhere(ctx, &jsonCreds, "store_id = ?", []any{storeId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -786,7 +786,7 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
 
-	var input interface{}
+	var input any
 	var md oplog.Metadata
 	switch subtypes.SubtypeFromId(credential.Domain, id) {
 	case credential.UsernamePasswordSubtype:

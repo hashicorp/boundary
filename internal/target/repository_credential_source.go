@@ -60,7 +60,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 
 	var hostSources []HostSource
 	var credSources []CredentialSource
-	var updatedTarget interface{}
+	var updatedTarget any
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -87,7 +87,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			msgs = append(msgs, &targetOplogMsg)
 
 			if len(addCredLibs) > 0 {
-				i := make([]interface{}, 0, len(addCredLibs))
+				i := make([]any, 0, len(addCredLibs))
 				for _, cl := range addCredLibs {
 					i = append(i, cl)
 				}
@@ -99,7 +99,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			}
 
 			if len(addStaticCreds) > 0 {
-				i := make([]interface{}, 0, len(addStaticCreds))
+				i := make([]any, 0, len(addStaticCreds))
 				for _, c := range addStaticCreds {
 					i = append(i, c)
 				}
@@ -196,7 +196,7 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 			msgs = append(msgs, &targetOplogMsg)
 
 			if len(deleteCredLibs) > 0 {
-				i := make([]interface{}, 0, len(deleteCredLibs))
+				i := make([]any, 0, len(deleteCredLibs))
 				for _, cl := range deleteCredLibs {
 					i = append(i, cl)
 				}
@@ -214,7 +214,7 @@ func (r *Repository) DeleteTargetCredentialSources(ctx context.Context, targetId
 			}
 
 			if len(deleteStaticCred) > 0 {
-				i := make([]interface{}, 0, len(deleteStaticCred))
+				i := make([]any, 0, len(deleteStaticCred))
 				for _, cl := range deleteStaticCred {
 					i = append(i, cl)
 				}
@@ -352,7 +352,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 			// add new credential libraries
 			if len(addCredLibs) > 0 {
-				i := make([]interface{}, 0, len(addCredLibs))
+				i := make([]any, 0, len(addCredLibs))
 				for _, cl := range addCredLibs {
 					i = append(i, cl)
 				}
@@ -367,7 +367,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 			// delete existing credential libraries not part of set
 			if len(delCredLibs) > 0 {
-				i := make([]interface{}, 0, len(delCredLibs))
+				i := make([]any, 0, len(delCredLibs))
 				for _, cl := range delCredLibs {
 					i = append(i, cl)
 				}
@@ -386,7 +386,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 			// add new static credential
 			if len(addStaticCred) > 0 {
-				i := make([]interface{}, 0, len(addStaticCred))
+				i := make([]any, 0, len(addStaticCred))
 				for _, cl := range addStaticCred {
 					i = append(i, cl)
 				}
@@ -401,7 +401,7 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 
 			// delete existing static credentials not part of set
 			if len(delStaticCred) > 0 {
-				i := make([]interface{}, 0, len(delStaticCred))
+				i := make([]any, 0, len(delStaticCred))
 				for _, cl := range delStaticCred {
 					i = append(i, cl)
 				}
@@ -455,7 +455,7 @@ func (r *Repository) changes(ctx context.Context, targetId string, ids []string,
 	// TODO ensure that all cls have the same purpose as the given purpose?
 
 	var inClauseSpots []string
-	var params []interface{}
+	var params []any
 	params = append(params, sql.Named("target_id", targetId), sql.Named("purpose", purpose))
 	for idx, id := range ids {
 		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), id))
@@ -509,7 +509,7 @@ func (r *Repository) changes(ctx context.Context, targetId string, ids []string,
 func fetchCredentialSources(ctx context.Context, r db.Reader, targetId string) ([]CredentialSource, error) {
 	const op = "target.fetchCredentialSources"
 	var sources []*TargetCredentialSource
-	if err := r.SearchWhere(ctx, &sources, "target_id = ?", []interface{}{targetId}); err != nil {
+	if err := r.SearchWhere(ctx, &sources, "target_id = ?", []any{targetId}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if len(sources) == 0 {
@@ -535,7 +535,7 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 
 	// Fetch credentials from database to determine the type of credential
 	var credView []*credentialSourceView
-	if err := r.reader.SearchWhere(ctx, &credView, "public_id in (?)", []interface{}{ids}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &credView, "public_id in (?)", []any{ids}); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("can't retrieve credentials"))
 	}
 	if len(ids) != len(credView) {

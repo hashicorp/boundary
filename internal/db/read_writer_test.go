@@ -362,7 +362,7 @@ func TestDb_Update(t *testing.T) {
 				}
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
-			err = rw.LookupWhere(context.Background(), foundUser, where, []interface{}{tt.args.i.PublicId})
+			err = rw.LookupWhere(context.Background(), foundUser, where, []any{tt.args.i.PublicId})
 			require.NoError(err)
 			assert.Equal(tt.args.i.Id, foundUser.Id)
 			assert.Equal(tt.wantName, foundUser.Name)
@@ -878,7 +878,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert.NotEmpty(user.PublicId)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{user.PublicId})
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []any{user.PublicId})
 		require.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
@@ -886,7 +886,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{}
 		var foundUser db_test.TestUser
-		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{1})
+		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []any{1})
 		require.Error(err)
 		assert.Equal("db.LookupWhere: missing underlying db: parameter violation: error #100", err.Error())
 	})
@@ -897,7 +897,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{id})
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []any{id})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
 	})
@@ -908,7 +908,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", []interface{}{id})
+		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", []any{id})
 		require.Error(err)
 	})
 }
@@ -941,7 +941,7 @@ func TestDb_LookupNotFoundEvent(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(ctx, &foundUser, "public_id = ?", []interface{}{id})
+		err = w.LookupWhere(ctx, &foundUser, "public_id = ?", []any{id})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
 
@@ -984,7 +984,7 @@ func TestDb_SearchWhere(t *testing.T) {
 
 	type args struct {
 		where string
-		arg   []interface{}
+		arg   []any
 		opt   []Option
 	}
 	tests := []struct {
@@ -1035,7 +1035,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			createCnt: 1,
 			args: args{
 				where: "public_id = ?",
-				arg:   []interface{}{knownUser.PublicId},
+				arg:   []any{knownUser.PublicId},
 				opt:   []Option{WithLimit(3)},
 			},
 			wantCnt: 1,
@@ -1057,7 +1057,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			db:        New(conn),
 			createCnt: 1,
 			args: args{
-				arg: []interface{}{knownUser.PublicId},
+				arg: []any{knownUser.PublicId},
 				opt: []Option{WithLimit(3)},
 			},
 			wantErr: true,
@@ -1068,7 +1068,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			createCnt: 1,
 			args: args{
 				where: "public_id = ?",
-				arg:   []interface{}{"bad-id"},
+				arg:   []any{"bad-id"},
 				opt:   []Option{WithLimit(3)},
 			},
 			wantCnt: 0,
@@ -1080,7 +1080,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			createCnt: 1,
 			args: args{
 				where: "bad_column_name = ?",
-				arg:   []interface{}{knownUser.PublicId},
+				arg:   []any{knownUser.PublicId},
 				opt:   []Option{WithLimit(3)},
 			},
 			wantCnt: 0,
@@ -1092,7 +1092,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			createCnt: 1,
 			args: args{
 				where: "public_id = ?",
-				arg:   []interface{}{knownUser.PublicId},
+				arg:   []any{knownUser.PublicId},
 				opt:   []Option{WithLimit(3)},
 			},
 			wantCnt: 0,
@@ -1142,7 +1142,7 @@ func TestDb_Exec(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		require.NoError(err)
 		require.NotEmpty(user.Id)
-		rowsAffected, err := w.Exec(context.Background(), "update db_test_user set name = ? where public_id = ?", []interface{}{"updated-" + id, user.PublicId})
+		rowsAffected, err := w.Exec(context.Background(), "update db_test_user set name = ? where public_id = ?", []any{"updated-" + id, user.PublicId})
 		require.NoError(err)
 		require.Equal(1, rowsAffected)
 	})
@@ -1594,7 +1594,7 @@ func TestDb_ScanRows(t *testing.T) {
 		require.NoError(err)
 		assert.NotEmpty(user.Id)
 		where := "select * from db_test_user where name in (?, ?)"
-		rows, err := w.Query(context.Background(), where, []interface{}{"alice", "bob"})
+		rows, err := w.Query(context.Background(), where, []any{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
 		for rows.Next() {
@@ -1625,7 +1625,7 @@ func TestDb_Query(t *testing.T) {
 		assert.Equal("alice", user.Name)
 
 		where := "select * from db_test_user where name in (?, ?)"
-		rows, err := rw.Query(context.Background(), where, []interface{}{"alice", "bob"})
+		rows, err := rw.Query(context.Background(), where, []any{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
 		for rows.Next() {
@@ -1644,8 +1644,8 @@ func TestDb_CreateItems(t *testing.T) {
 	TestCreateTables(t, db)
 	testOplogResourceId := testId(t)
 
-	createFn := func() []interface{} {
-		results := []interface{}{}
+	createFn := func() []any {
+		results := []any{}
 		for i := 0; i < 10; i++ {
 			u, err := db_test.NewTestUser()
 			require.NoError(t, err)
@@ -1653,12 +1653,12 @@ func TestDb_CreateItems(t *testing.T) {
 		}
 		return results
 	}
-	createMixedFn := func() []interface{} {
+	createMixedFn := func() []any {
 		u, err := db_test.NewTestUser()
 		require.NoError(t, err)
 		c, err := db_test.NewTestCar()
 		require.NoError(t, err)
-		return []interface{}{
+		return []any{
 			u,
 			c,
 		}
@@ -1667,7 +1667,7 @@ func TestDb_CreateItems(t *testing.T) {
 	returnedMsgs := []*oplog.Message{}
 
 	type args struct {
-		createItems []interface{}
+		createItems []any
 		opt         []Option
 	}
 	tests := []struct {
@@ -1801,7 +1801,7 @@ func TestDb_CreateItems(t *testing.T) {
 			name:       "empty items",
 			underlying: db,
 			args: args{
-				createItems: []interface{}{},
+				createItems: []any{},
 			},
 			wantErr:   true,
 			wantErrIs: errors.InvalidParameter,
@@ -1855,8 +1855,8 @@ func TestDb_DeleteItems(t *testing.T) {
 	TestCreateTables(t, db)
 	testOplogResourceId := testId(t)
 
-	createFn := func() []interface{} {
-		results := []interface{}{}
+	createFn := func() []any {
+		results := []any{}
 		for i := 0; i < 10; i++ {
 			u := testUser(t, db, "", "", "")
 			results = append(results, u)
@@ -1867,7 +1867,7 @@ func TestDb_DeleteItems(t *testing.T) {
 	returnedMsgs := []*oplog.Message{}
 
 	type args struct {
-		deleteItems []interface{}
+		deleteItems []any
 		opt         []Option
 	}
 	tests := []struct {
@@ -1995,7 +1995,7 @@ func TestDb_DeleteItems(t *testing.T) {
 			name:       "empty items",
 			underlying: db,
 			args: args{
-				deleteItems: []interface{}{},
+				deleteItems: []any{},
 			},
 			wantErr:   true,
 			wantErrIs: errors.InvalidParameter,
@@ -2152,7 +2152,7 @@ func TestDb_LookupById(t *testing.T) {
 	scooterAccessory := testScooterAccessory(t, conn, scooter.Id, accessory.AccessoryId)
 
 	type args struct {
-		resource interface{}
+		resource any
 		opt      []Option
 	}
 	tests := []struct {
@@ -2203,7 +2203,7 @@ func TestDb_LookupById(t *testing.T) {
 			name:       "compond-with-zero-value-pk",
 			underlying: conn,
 			args: args{
-				resource: func() interface{} {
+				resource: func() any {
 					cp := scooterAccessory.Clone()
 					cp.(*db_test.TestScooterAccessory).ScooterId = 0
 					return cp
@@ -2287,7 +2287,7 @@ func TestDb_GetTicket(t *testing.T) {
 	tests := []struct {
 		name          string
 		underlying    *DB
-		aggregateType interface{}
+		aggregateType any
 		wantErr       bool
 		wantErrIs     errors.Code
 	}{
@@ -2971,7 +2971,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 
 	// underlying isn't used at this point, so it can just be nil
 	rw := Db{underlying: nil}
-	var users []interface{}
+	var users []any
 	var wantUsrMsgs []*oplog.Message
 	for i := 0; i < 5; i++ {
 		publicId, err := base62.Random(20)
@@ -2990,7 +2990,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 
 	publicId, err := base62.Random(20)
 	require.NoError(t, err)
-	mixed := []interface{}{
+	mixed := []any{
 		&db_test.TestUser{StoreTestUser: &db_test.StoreTestUser{PublicId: publicId}},
 		&db_test.TestCar{StoreTestCar: &db_test.StoreTestCar{PublicId: publicId}},
 	}
@@ -2998,7 +2998,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 	type args struct {
 		opType OpType
 		opts   Options
-		items  []interface{}
+		items  []any
 	}
 	tests := []struct {
 		name      string
@@ -3029,7 +3029,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 			name: "zero items",
 			args: args{
 				opType: CreateOp,
-				items:  []interface{}{},
+				items:  []any{},
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,

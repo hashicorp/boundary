@@ -421,7 +421,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			var err error
 			if tt.directUpdate {
 				g := updateGrp.Clone()
-				var resource interface{}
+				var resource any
 				resource, updatedRows, err = repo.update(context.Background(), g.(*Group), updateGrp.Version, tt.args.fieldMaskPaths, nil, tt.args.opt...)
 				if err == nil {
 					groupAfterUpdate = resource.(*Group)
@@ -627,7 +627,7 @@ func TestRepository_ListGroups(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := allocGroup(); ; return &i }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { i := allocGroup(); ; return &i }(), "1=1")
 			testGroups := []*Group{}
 			for i := 0; i < tt.createCnt; i++ {
 				testGroups = append(testGroups, TestGroup(t, conn, tt.createScopeId))
@@ -651,7 +651,7 @@ func TestRepository_ListGroups_Multiple_Scopes(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
-	db.TestDeleteWhere(t, conn, func() interface{} { g := allocGroup(); return &g }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { g := allocGroup(); return &g }(), "1=1")
 
 	const numPerScope = 10
 	var total int
@@ -733,7 +733,7 @@ func TestRepository_ListMembers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := allocGroupMember(); ; return &i }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { i := allocGroupMember(); ; return &i }(), "1=1")
 			gm := []*GroupMemberUser{}
 			for i := 0; i < tt.createCnt; i++ {
 				u := TestUser(t, repo, org.PublicId)

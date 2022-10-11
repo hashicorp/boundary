@@ -21,7 +21,7 @@ type HclogLoggerAdapter struct {
 	l        *sync.RWMutex
 	level    hclog.Level
 	name     string
-	withArgs []interface{}
+	withArgs []any
 }
 
 // Ensure that we are implementing Logger
@@ -47,7 +47,7 @@ func NewHclogLogger(ctx context.Context, e *Eventer, opt ...Option) (hclog.Logge
 // keys must be strings
 // vals can be any type, but display is implementation specific
 // Emit a message and key/value pairs at a provided log level
-func (h *HclogLoggerAdapter) Log(level hclog.Level, msg string, args ...interface{}) {
+func (h *HclogLoggerAdapter) Log(level hclog.Level, msg string, args ...any) {
 	switch {
 	case h.level == hclog.NoLevel: // If logger is not set to any level, accept it
 	case h.level <= level: // Otherwise if logger is same or more verbose, accept
@@ -58,7 +58,7 @@ func (h *HclogLoggerAdapter) Log(level hclog.Level, msg string, args ...interfac
 }
 
 // Emit a message and key/value pairs at the TRACE level
-func (h *HclogLoggerAdapter) Trace(msg string, args ...interface{}) {
+func (h *HclogLoggerAdapter) Trace(msg string, args ...any) {
 	if h.level > hclog.Trace {
 		return
 	}
@@ -66,7 +66,7 @@ func (h *HclogLoggerAdapter) Trace(msg string, args ...interface{}) {
 }
 
 // Emit a message and key/value pairs at the DEBUG level
-func (h *HclogLoggerAdapter) Debug(msg string, args ...interface{}) {
+func (h *HclogLoggerAdapter) Debug(msg string, args ...any) {
 	if h.level > hclog.Debug {
 		return
 	}
@@ -74,7 +74,7 @@ func (h *HclogLoggerAdapter) Debug(msg string, args ...interface{}) {
 }
 
 // Emit a message and key/value pairs at the INFO level
-func (h *HclogLoggerAdapter) Info(msg string, args ...interface{}) {
+func (h *HclogLoggerAdapter) Info(msg string, args ...any) {
 	if h.level > hclog.Info {
 		return
 	}
@@ -82,7 +82,7 @@ func (h *HclogLoggerAdapter) Info(msg string, args ...interface{}) {
 }
 
 // Emit a message and key/value pairs at the WARN level
-func (h *HclogLoggerAdapter) Warn(msg string, args ...interface{}) {
+func (h *HclogLoggerAdapter) Warn(msg string, args ...any) {
 	if h.level > hclog.Warn {
 		return
 	}
@@ -90,17 +90,17 @@ func (h *HclogLoggerAdapter) Warn(msg string, args ...interface{}) {
 }
 
 // Emit a message and key/value pairs at the ERROR level
-func (h *HclogLoggerAdapter) Error(msg string, args ...interface{}) {
+func (h *HclogLoggerAdapter) Error(msg string, args ...any) {
 	if h.level > hclog.Error {
 		return
 	}
 	h.writeEvent("", msg, args)
 }
 
-func (h *HclogLoggerAdapter) writeEvent(caller Op, msg string, args []interface{}) {
+func (h *HclogLoggerAdapter) writeEvent(caller Op, msg string, args []any) {
 	h.l.RLock()
 	defer h.l.RUnlock()
-	var allArgs []interface{}
+	var allArgs []any
 	if len(h.withArgs)+len(args) > 0 {
 		allArgs = append(h.withArgs, args...)
 	}
@@ -138,17 +138,17 @@ func (h *HclogLoggerAdapter) IsError() bool {
 }
 
 // ImpliedArgs returns With key/value pairs
-func (h *HclogLoggerAdapter) ImpliedArgs() []interface{} {
+func (h *HclogLoggerAdapter) ImpliedArgs() []any {
 	return h.withArgs
 }
 
 // Creates a sublogger that will always have the given key/value pairs
-func (h *HclogLoggerAdapter) With(args ...interface{}) hclog.Logger {
+func (h *HclogLoggerAdapter) With(args ...any) hclog.Logger {
 	h.l.Lock()
 	defer h.l.Unlock()
 	newArgs := args
 	if len(h.withArgs) > 0 {
-		newArgs = make([]interface{}, len(h.withArgs), len(h.withArgs)+len(args))
+		newArgs = make([]any, len(h.withArgs), len(h.withArgs)+len(args))
 		copy(newArgs, h.withArgs)
 		newArgs = append(newArgs, args...)
 	}
@@ -175,9 +175,9 @@ func (h *HclogLoggerAdapter) Name() string {
 func (h *HclogLoggerAdapter) Named(name string) hclog.Logger {
 	h.l.Lock()
 	defer h.l.Unlock()
-	var newArgs []interface{}
+	var newArgs []any
 	if len(h.withArgs) > 0 {
-		newArgs = make([]interface{}, len(h.withArgs))
+		newArgs = make([]any, len(h.withArgs))
 		copy(newArgs, h.withArgs)
 	}
 
@@ -201,9 +201,9 @@ func (h *HclogLoggerAdapter) Named(name string) hclog.Logger {
 func (h *HclogLoggerAdapter) ResetNamed(name string) hclog.Logger {
 	h.l.Lock()
 	defer h.l.Unlock()
-	var newArgs []interface{}
+	var newArgs []any
 	if len(h.withArgs) > 0 {
-		newArgs = make([]interface{}, len(h.withArgs))
+		newArgs = make([]any, len(h.withArgs))
 		copy(newArgs, h.withArgs)
 	}
 	return &HclogLoggerAdapter{

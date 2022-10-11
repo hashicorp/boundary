@@ -26,7 +26,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 	t.Run("default-configuration", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		var confs []*Argon2Configuration
-		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
+		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
 		require.NoError(err)
 		require.Equal(1, len(confs))
 		got := confs[0]
@@ -59,7 +59,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		var confs []*Argon2Configuration
-		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
+		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
 		require.NoError(err)
 		assert.Equal(1, len(confs))
 
@@ -85,7 +85,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		assert.NoError(err)
 
 		confs = nil
-		err = rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
+		err = rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
 		require.NoError(err)
 		assert.Equal(3, len(confs))
 	})
@@ -143,7 +143,7 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var confs []*Argon2Configuration
-			err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []interface{}{authMethodId})
+			err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []any{authMethodId})
 			require.NoError(err)
 			assert.Greater(len(confs), 0)
 			orig := confs[0]
@@ -293,7 +293,7 @@ func testArgon2Confs(t *testing.T, conn *db.DB, authMethodId string, count int) 
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
 	var confs []*Argon2Configuration
-	err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []interface{}{authMethodId})
+	err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []any{authMethodId})
 	require.NoError(err)
 	assert.Equal(1, len(confs))
 	base := confs[0]

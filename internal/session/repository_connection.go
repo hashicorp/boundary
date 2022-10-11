@@ -59,7 +59,7 @@ func NewConnectionRepository(ctx context.Context, r db.Reader, w db.Writer, kms 
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit.  Supports WithOrder option.
-func (r *ConnectionRepository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+func (r *ConnectionRepository) list(ctx context.Context, resources any, where string, args []any, opt ...Option) error {
 	const op = "session.(ConnectionRepository).list"
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -106,7 +106,7 @@ func (r *ConnectionRepository) AuthorizeConnection(ctx context.Context, sessionI
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{
+			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []any{
 				sql.Named("session_id", sessionId),
 				sql.Named("public_id", connectionId),
 				sql.Named("worker_id", workerId),
@@ -177,7 +177,7 @@ func (r *ConnectionRepository) ListConnectionsBySessionId(ctx context.Context, s
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no session ID supplied")
 	}
 	var connections []*Connection
-	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
+	err := r.list(ctx, &connections, "session_id = ?", []any{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -351,7 +351,7 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 
 	var orphanedConns []string
 
-	args := make([]interface{}, 0, len(reportedConnections)+2)
+	args := make([]any, 0, len(reportedConnections)+2)
 	args = append(args, sql.Named("worker_id", workerId))
 	args = append(args, sql.Named("worker_state_delay_seconds", r.workerStateDelay.Seconds()))
 
@@ -396,7 +396,7 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 func fetchConnectionStates(ctx context.Context, r db.Reader, connectionId string, opt ...db.Option) ([]*ConnectionState, error) {
 	const op = "session.fetchConnectionStates"
 	var states []*ConnectionState
-	if err := r.SearchWhere(ctx, &states, "connection_id = ?", []interface{}{connectionId}, opt...); err != nil {
+	if err := r.SearchWhere(ctx, &states, "connection_id = ?", []any{connectionId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if len(states) == 0 {

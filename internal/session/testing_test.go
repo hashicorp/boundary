@@ -65,7 +65,7 @@ func Test_TestConnectionState(t *testing.T) {
 
 	rw := db.New(conn)
 	var initialState ConnectionState
-	err := rw.LookupWhere(context.Background(), &initialState, "connection_id = ? and state = ?", []interface{}{cs.ConnectionId, cs.Status})
+	err := rw.LookupWhere(context.Background(), &initialState, "connection_id = ? and state = ?", []any{cs.ConnectionId, cs.Status})
 	require.NoError(err)
 	assert.NotEmpty(initialState.StartTime)
 }

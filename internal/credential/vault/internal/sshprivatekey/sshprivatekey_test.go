@@ -101,8 +101,8 @@ func TestExtract(t *testing.T) {
 			name: "no-match-username-secret-kv2",
 			given: args{
 				s: data{
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username-wrong": "user",
 						"private_key":    string(edKey),
 					},
@@ -116,8 +116,8 @@ func TestExtract(t *testing.T) {
 			name: "no-match-private-key-secret-kv2",
 			given: args{
 				s: data{
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username":          "user",
 						"private_key-wrong": string(edKey),
 					},
@@ -131,8 +131,8 @@ func TestExtract(t *testing.T) {
 			name: "valid-kv2",
 			given: args{
 				s: data{
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username":    "user",
 						"private_key": string(edKey),
 					},
@@ -146,8 +146,8 @@ func TestExtract(t *testing.T) {
 			name: "valid-kv2-with-passphrase",
 			given: args{
 				s: data{
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username":    "user",
 						"private_key": string(edKey),
 						"passphrase":  "my-pass",
@@ -163,7 +163,7 @@ func TestExtract(t *testing.T) {
 			name: "no-metadata-kv2",
 			given: args{
 				s: data{
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"username":    "user",
 						"private_key": string(edKey),
 					},
@@ -178,7 +178,7 @@ func TestExtract(t *testing.T) {
 			given: args{
 				s: data{
 					"metadata": "string",
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"username":    "user",
 						"private_key": string(edKey),
 					},
@@ -192,9 +192,9 @@ func TestExtract(t *testing.T) {
 			name: "invalid-field-kv2",
 			given: args{
 				s: data{
-					"invalid":  map[string]interface{}{},
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"invalid":  map[string]any{},
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username":    "user",
 						"private_key": string(edKey),
 					},
@@ -210,8 +210,8 @@ func TestExtract(t *testing.T) {
 				s: data{
 					"username":    "default-user",
 					"private_key": string(rsaKey),
-					"metadata":    map[string]interface{}{},
-					"data": map[string]interface{}{
+					"metadata":    map[string]any{},
+					"data": map[string]any{
 						"username":    "kv2-user",
 						"private_key": string(edKey),
 					},
@@ -226,7 +226,7 @@ func TestExtract(t *testing.T) {
 			given: args{
 				s: data{
 					"username": "default-user",
-					"testing": map[string]interface{}{
+					"testing": map[string]any{
 						"private_key": string(edKey),
 					},
 				},
@@ -240,7 +240,7 @@ func TestExtract(t *testing.T) {
 			given: args{
 				s: data{
 					"private_key": string(edKey),
-					"testing": map[string]interface{}{
+					"testing": map[string]any{
 						"special": "not-so-special",
 					},
 				},
@@ -253,15 +253,15 @@ func TestExtract(t *testing.T) {
 			name: "all-json-pointer",
 			given: args{
 				s: data{
-					"first-path": map[string]interface{}{
-						"deeper-path": map[string]interface{}{
+					"first-path": map[string]any{
+						"deeper-path": map[string]any{
 							"my-special-user": "you-found-me",
 						},
 					},
-					"testing": map[string]interface{}{
+					"testing": map[string]any{
 						"private_key": string(edKey),
 					},
-					"hidden": map[string]interface{}{
+					"hidden": map[string]any{
 						"pass": "my-pass",
 					},
 				},

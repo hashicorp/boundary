@@ -41,7 +41,7 @@ func TestList(t *testing.T) {
 
 	var expected []*credentiallibraries.CredentialLibrary
 	for i := 0; i < 10; i++ {
-		expected = append(expected, &credentiallibraries.CredentialLibrary{Name: fmt.Sprint(i), Attributes: map[string]interface{}{"vault_path": "something"}})
+		expected = append(expected, &credentiallibraries.CredentialLibrary{Name: fmt.Sprint(i), Attributes: map[string]any{"vault_path": "something"}})
 	}
 
 	cl, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithName(expected[0].Name), credentiallibraries.WithVaultCredentialLibraryPath("something"))

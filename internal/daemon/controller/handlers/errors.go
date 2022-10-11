@@ -73,7 +73,7 @@ func ApiErrorWithCode(c codes.Code) error {
 }
 
 // ApiErrorWithCodeAndMessage returns an api error with the provided code and message.
-func ApiErrorWithCodeAndMessage(c codes.Code, msg string, args ...interface{}) error {
+func ApiErrorWithCodeAndMessage(c codes.Code, msg string, args ...any) error {
 	return &ApiError{
 		Status: int32(runtime.HTTPStatusFromCode(c)),
 		Inner: &pb.Error{
@@ -95,7 +95,7 @@ func NotFoundError() error {
 }
 
 // NotFoundErrorf returns an ApiError indicating a resource couldn't be found.
-func NotFoundErrorf(msg string, a ...interface{}) *ApiError {
+func NotFoundErrorf(msg string, a ...any) *ApiError {
 	return &ApiError{
 		Status: http.StatusNotFound,
 		Inner: &pb.Error{

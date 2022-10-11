@@ -75,7 +75,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	// Set previous token to expired in the database and revoke in Vault to validate a
 	// credential store with an expired token is correctly returned over the API
 	num, err := rw.Exec(context.Background(), "update credential_vault_token set status = ? where store_id = ?",
-		[]interface{}{vault.ExpiredToken, expStore.PublicId})
+		[]any{vault.ExpiredToken, expStore.PublicId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 	v.RevokeToken(t, expToken)

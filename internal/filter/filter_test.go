@@ -14,7 +14,7 @@ import (
 
 func TestWellKnownTypeFilterHook(t *testing.T) {
 	t.Run("wrappers", func(t *testing.T) {
-		conversions := map[interface{}]interface{}{
+		conversions := map[any]any{
 			wrapperspb.String("foo"):        "foo",
 			wrapperspb.UInt64(123):          uint64(123),
 			wrapperspb.Int64(123):           int64(123),
@@ -39,12 +39,12 @@ func TestWellKnownTypeFilterHook(t *testing.T) {
 	})
 	t.Run("struct", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		s, err := structpb.NewStruct(map[string]interface{}{
+		s, err := structpb.NewStruct(map[string]any{
 			"name": "test",
 		})
 		require.NoError(err)
 
-		expect := map[string]interface{}{
+		expect := map[string]any{
 			"name": "test",
 		}
 		actual := WellKnownTypeFilterHook(reflect.ValueOf(s))

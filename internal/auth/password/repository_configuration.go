@@ -134,7 +134,7 @@ func (c *currentConfig) TableName() string {
 func (r *Repository) currentConfig(ctx context.Context, authMethodId string) (*currentConfig, error) {
 	const op = "password.(Repository).currentConfig"
 	var cc currentConfig
-	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", []interface{}{authMethodId}); err != nil {
+	if err := r.reader.LookupWhere(ctx, &cc, "password_method_id = ?", []any{authMethodId}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &cc, nil
@@ -144,7 +144,7 @@ func (r *Repository) currentConfigForAccount(ctx context.Context, accountId stri
 	const op = "password.(Repository).currentConfigForAccount"
 	var confs []currentConfig
 
-	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []interface{}{sql.Named("public_id", accountId)})
+	rows, err := r.reader.Query(ctx, currentConfigForAccountQuery, []any{sql.Named("public_id", accountId)})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

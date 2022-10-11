@@ -158,7 +158,7 @@ func (r *Repository) UpdateCredentialLibrary(ctx context.Context, projectId stri
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			nameField:            l.Name,
 			descriptionField:     l.Description,
 			vaultPathField:       l.VaultPath,
@@ -463,7 +463,7 @@ func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string
 		limit = opts.withLimit
 	}
 	var libs []*CredentialLibrary
-	err := r.reader.SearchWhere(ctx, &libs, "store_id = ?", []interface{}{storeId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &libs, "store_id = ?", []any{storeId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

@@ -93,7 +93,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	}
 
 	var where []string
-	var whereArgs []interface{}
+	var whereArgs []any
 	nameEmpty := opts.WithName == ""
 	projectIdEmpty := opts.WithProjectId == ""
 	projectNameEmpty := opts.WithProjectName == ""
@@ -171,7 +171,7 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, pro
 	const op = "target.(Repository).FetchAuthzProtectedEntitiesByScope"
 
 	var where string
-	var args []interface{}
+	var args []any
 
 	inClauseCnt := 0
 
@@ -254,9 +254,9 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	return targets, nil
 }
 
-func (r *Repository) listPermissionWhereClauses() ([]string, []interface{}) {
+func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 	var where []string
-	var args []interface{}
+	var args []any
 
 	inClauseCnt := 0
 	for _, p := range r.permissions {
@@ -308,7 +308,7 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 	}
 
 	var rowsDeleted int
-	var deleteResource interface{}
+	var deleteResource any
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -370,7 +370,7 @@ func (r *Repository) update(ctx context.Context, target Target, version uint32, 
 	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
 
 	var rowsUpdated int
-	var returnedTarget interface{}
+	var returnedTarget any
 	var hostSources []HostSource
 	var credSources []CredentialSource
 	_, err = r.writer.DoTx(
@@ -461,7 +461,7 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 	}
 
 	metadata := t.Oplog(oplog.OpType_OP_TYPE_CREATE)
-	var returnedTarget interface{}
+	var returnedTarget any
 	var returnedHostSources []HostSource
 	var returnedCredSources []CredentialSource
 	_, err = r.writer.DoTx(
@@ -530,7 +530,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"Name":                   target.GetName(),
 			"Description":            target.GetDescription(),
 			"DefaultPort":            target.GetDefaultPort(),

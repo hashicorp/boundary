@@ -132,7 +132,7 @@ func Test_ServerEnumChanges(t *testing.T) {
 	require.Nil(result)
 
 	// Try adding a broken server type
-	result, err = d.ExecContext(ctx, insertServerQuery, []interface{}{"test-bad", "bad", "127.0.0.1"}...)
+	result, err = d.ExecContext(ctx, insertServerQuery, []any{"test-bad", "bad", "127.0.0.1"}...)
 	require.EqualError(err, expectServerConstraintErr)
 	require.Nil(result)
 

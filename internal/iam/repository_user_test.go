@@ -648,7 +648,7 @@ func TestRepository_ListUsers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { u := iam.AllocUser(); return &u }(), "public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'")
+			db.TestDeleteWhere(t, conn, func() any { u := iam.AllocUser(); return &u }(), "public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'")
 			testUsers := []*iam.User{}
 			wantUserInfo := map[string]userInfo{}
 			for i := 0; i < tt.createCnt; i++ {
@@ -693,7 +693,7 @@ func TestRepository_ListUsers_Multiple_Scopes(t *testing.T) {
 	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
 
-	db.TestDeleteWhere(t, conn, func() interface{} { i := iam.AllocUser(); return &i }(), "public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'")
+	db.TestDeleteWhere(t, conn, func() any { i := iam.AllocUser(); return &i }(), "public_id != 'u_anon' and public_id != 'u_auth' and public_id != 'u_recovery'")
 
 	const numPerScope = 10
 	var total int = 3 // anon, auth, recovery
@@ -902,7 +902,7 @@ func TestRepository_AssociateAccounts(t *testing.T) {
 	user := iam.TestUser(t, repo, org.PublicId)
 
 	createAccountsFn := func(prefix string) []string {
-		db.TestDeleteWhere(t, conn, func() interface{} { i := allocAuthAccount(); return &i }(), "iam_user_id = ?", user.PublicId)
+		db.TestDeleteWhere(t, conn, func() any { i := allocAuthAccount(); return &i }(), "iam_user_id = ?", user.PublicId)
 		results := []string{}
 		for i := 0; i < 5; i++ {
 			authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, fmt.Sprintf("%s-alice-rp-%d", prefix, i), "fido",
@@ -1072,7 +1072,7 @@ func TestRepository_DisassociateAccounts(t *testing.T) {
 	user := iam.TestUser(t, repo, org.PublicId)
 
 	createAccountsFn := func(prefix string) []string {
-		db.TestDeleteWhere(t, conn, func() interface{} { a := allocAuthAccount(); return &a }(), "iam_user_id = ?", user.PublicId)
+		db.TestDeleteWhere(t, conn, func() any { a := allocAuthAccount(); return &a }(), "iam_user_id = ?", user.PublicId)
 		results := []string{}
 		for i := 0; i < 1; i++ {
 			authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, fmt.Sprintf("%s-alice-rp-%d", prefix, i), "fido",
@@ -1220,7 +1220,7 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 	user := iam.TestUser(t, repo, org.PublicId)
 
 	createAccountsFn := func(prefix string) []string {
-		db.TestDeleteWhere(t, conn, func() interface{} { i := allocAuthAccount(); return &i }(), "iam_user_id = ?", user.PublicId)
+		db.TestDeleteWhere(t, conn, func() any { i := allocAuthAccount(); return &i }(), "iam_user_id = ?", user.PublicId)
 		results := []string{}
 		for i := 0; i < 1; i++ {
 			authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, oidc.ActivePrivateState, fmt.Sprintf("%s-alice-rp-%d", prefix, i), "fido",
@@ -1382,7 +1382,7 @@ func TestRepository_SetAssociatedAccounts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { a := allocAuthAccount(); return &a }(), "iam_user_id = ?", user.PublicId)
+			db.TestDeleteWhere(t, conn, func() any { a := allocAuthAccount(); return &a }(), "iam_user_id = ?", user.PublicId)
 
 			accountIds, changes := tt.args.accountIdsFn()
 			sort.Strings(accountIds)

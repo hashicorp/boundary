@@ -16,7 +16,7 @@ type TypeCatalog map[string]reflect.Type
 // refactor the type name without breaking the catalog
 type Type struct {
 	// Interface of the type
-	Interface interface{}
+	Interface any
 	// Name for the interface
 	Name string
 }
@@ -37,7 +37,7 @@ func NewTypeCatalog(ctx context.Context, withTypes ...Type) (*TypeCatalog, error
 }
 
 // GetTypeName returns the interface's name from the catalog
-func (t *TypeCatalog) GetTypeName(ctx context.Context, i interface{}) (string, error) {
+func (t *TypeCatalog) GetTypeName(ctx context.Context, i any) (string, error) {
 	const op = "oplog.(TypeCatalog).GetTypeName"
 	if i == nil {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "nil interface")
@@ -55,7 +55,7 @@ func (t *TypeCatalog) GetTypeName(ctx context.Context, i interface{}) (string, e
 }
 
 // Set creates an entry in the catalog for the interface
-func (t TypeCatalog) Set(ctx context.Context, i interface{}, typeName string) error {
+func (t TypeCatalog) Set(ctx context.Context, i any, typeName string) error {
 	const op = "oplog.(TypeCatalog).Set"
 	if i == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "nil interface")
@@ -71,7 +71,7 @@ func (t TypeCatalog) Set(ctx context.Context, i interface{}, typeName string) er
 }
 
 // Get retrieves the interface via a name
-func (t TypeCatalog) Get(ctx context.Context, typeName string) (interface{}, error) {
+func (t TypeCatalog) Get(ctx context.Context, typeName string) (any, error) {
 	const op = "oplog.(TypeCatalog).Get"
 	if typeName == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing type name")

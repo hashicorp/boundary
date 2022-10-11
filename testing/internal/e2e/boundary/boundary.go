@@ -46,7 +46,7 @@ func NewApiClient() (*api.Client, error) {
 	ctx := context.Background()
 	authmethodsClient := authmethods.NewClient(client)
 	authenticationResult, err := authmethodsClient.Authenticate(ctx, c.AuthMethodId, "login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": c.AdminLoginName,
 			"password":   c.AdminLoginPassword,
 		},

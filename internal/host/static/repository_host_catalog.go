@@ -213,7 +213,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt 
 		limit = opts.withLimit
 	}
 	var hostCatalogs []*HostCatalog
-	err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []interface{}{projectIds}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []any{projectIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

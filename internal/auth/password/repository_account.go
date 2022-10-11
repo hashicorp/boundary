@@ -155,7 +155,7 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 		limit = opts.withLimit
 	}
 	var accts []*Account
-	err := r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &accts, "auth_method_id = ?", []any{withAuthMethodId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -263,7 +263,7 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"Name":        a.Name,
 			"Description": a.Description,
 			"LoginName":   a.LoginName,

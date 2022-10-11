@@ -126,7 +126,7 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"Name":        s.Name,
 			"Description": s.Description,
 		},
@@ -258,7 +258,7 @@ func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...Opti
 		limit = opts.withLimit
 	}
 	var sets []*HostSet
-	err := r.reader.SearchWhere(ctx, &sets, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &sets, "catalog_id = ?", []any{catalogId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

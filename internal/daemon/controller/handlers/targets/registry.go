@@ -28,7 +28,7 @@ type Attributes interface {
 	VetForUpdate([]string) map[string]string
 }
 
-type attributeFunc func(interface{}) Attributes
+type attributeFunc func(any) Attributes
 
 type setAttributeFunc func(target.Target, *pb.Target) error
 
@@ -67,7 +67,7 @@ func (r registry) maskManager(s subtypes.Subtype) (handlers.MaskManager, error) 
 // newAttribute creates an Attribute for the given subtype. It delegates the
 // allocation of the Attribute to the registered attrFunc for the given
 // subtype. An error is returned if the provided subtype is not registered
-func (r registry) newAttribute(s subtypes.Subtype, m interface{}) (Attributes, error) {
+func (r registry) newAttribute(s subtypes.Subtype, m any) (Attributes, error) {
 	re, err := r.get(s)
 	if err != nil {
 		return nil, err

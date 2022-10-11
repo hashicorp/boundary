@@ -165,8 +165,8 @@ func Callback(
 
 	// okay, now we need some claims from both the ID Token and userinfo, so we can
 	// upsert an auth account
-	idTkClaims := map[string]interface{}{}     // intentionally, NOT nil for call to upsertAccount(...)
-	userInfoClaims := map[string]interface{}{} // intentionally, NOT nil for call to upsertAccount(...)
+	idTkClaims := map[string]any{}     // intentionally, NOT nil for call to upsertAccount(...)
+	userInfoClaims := map[string]any{} // intentionally, NOT nil for call to upsertAccount(...)
 
 	if err := tk.IDToken().Claims(&idTkClaims); err != nil {
 		return "", errors.New(ctx, errors.Unknown, op, "unable to parse ID Token claims", errors.WithWrap(err))
@@ -195,7 +195,7 @@ func Callback(
 	}
 	if len(mgs) > 0 {
 		matchedMgs := make([]*ManagedGroup, 0, len(mgs))
-		evalData := map[string]interface{}{
+		evalData := map[string]any{
 			"token":    idTkClaims,
 			"userinfo": userInfoClaims,
 		}

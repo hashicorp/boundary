@@ -169,7 +169,7 @@ func AllocSession() Session {
 }
 
 // Clone creates a clone of the Session
-func (s *Session) Clone() interface{} {
+func (s *Session) Clone() any {
 	clone := &Session{
 		PublicId:          s.PublicId,
 		UserId:            s.UserId,

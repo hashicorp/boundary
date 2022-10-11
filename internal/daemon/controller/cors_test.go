@@ -222,14 +222,14 @@ func TestHandler_CORS(t *testing.T) {
 			var req *retryablehttp.Request
 
 			// This tests out scope_id handling from body or query
-			var body interface{}
+			var body any
 			scopeId := "global"
 			if c.provideScopeId {
 				scopeId = org.GetPublicId()
 			}
 
 			if c.method == http.MethodPost {
-				body = map[string]interface{}{
+				body = map[string]any{
 					"scope_id": scopeId,
 				}
 			}

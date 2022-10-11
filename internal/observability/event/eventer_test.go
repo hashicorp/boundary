@@ -170,8 +170,8 @@ func TestEventer_writeObservation(t *testing.T) {
 	eventer, err := NewEventer(testLogger, testLock, "TestEventer_writeObservation", testSetup.EventerConfig)
 	require.NoError(t, err)
 
-	testHeader := map[string]interface{}{"name": "header"}
-	testDetail := map[string]interface{}{"name": "details"}
+	testHeader := map[string]any{"name": "header"}
+	testDetail := map[string]any{"name": "details"}
 	testObservation, err := newObservation("Test_NewEventer", WithHeader(testHeader), WithDetails(testDetail))
 	require.NoError(t, err)
 
@@ -224,7 +224,7 @@ func TestEventer_writeObservation(t *testing.T) {
 		e, err := NewEventer(testLogger, testLock, "e2e-test", c)
 		require.NoError(err)
 
-		m := map[string]interface{}{
+		m := map[string]any{
 			"name": "bar",
 			"list": []string{"1", "2"},
 		}
@@ -1132,12 +1132,12 @@ func Test_logAdapter_Write(t *testing.T) {
 			require.NoErrorf(err, "json: %s", string(b))
 
 			if tt.wantErrorEvent != "" {
-				gotData := gotEvent.Data.(map[string]interface{})
+				gotData := gotEvent.Data.(map[string]any)
 				t.Log(tt.name, gotData)
 				assert.Equal(tt.wantErrorEvent, gotData["error"])
 			}
 			if tt.wantSystemEvent != "" {
-				gotData := gotEvent.Data.(map[string]interface{})["data"].(map[string]interface{})
+				gotData := gotEvent.Data.(map[string]any)["data"].(map[string]any)
 				t.Log(tt.name, gotData)
 				assert.Equal(tt.wantSystemEvent, gotData["msg"])
 			}

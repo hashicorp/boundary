@@ -339,7 +339,7 @@ func testAuthMethod(t testing.TB, conn *db.DB, scopeId string) string {
 	require.NoError(err)
 
 	rw := db.New(conn)
-	_, err = rw.Exec(context.Background(), insertAuthMethod, []interface{}{id, scopeId})
+	_, err = rw.Exec(context.Background(), insertAuthMethod, []any{id, scopeId})
 	require.NoError(err)
 	return id
 }

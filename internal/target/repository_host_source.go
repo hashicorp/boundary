@@ -26,7 +26,7 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 	if len(hostSourceIds) == 0 {
 		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing host source ids")
 	}
-	newHostSources := make([]interface{}, 0, len(hostSourceIds))
+	newHostSources := make([]any, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
 		ths, err := NewTargetHostSet(targetId, id)
 		if err != nil {
@@ -58,7 +58,7 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 	}
 	var currentHostSources []HostSource
 	var currentCredSources []CredentialSource
-	var updatedTarget interface{}
+	var updatedTarget any
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -121,7 +121,7 @@ func (r *Repository) DeleteTargetHostSources(ctx context.Context, targetId strin
 	if len(hostSourceIds) == 0 {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing host source ids")
 	}
-	deleteTargetHostSources := make([]interface{}, 0, len(hostSourceIds))
+	deleteTargetHostSources := make([]any, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
 		ths, err := NewTargetHostSet(targetId, id)
 		if err != nil {
@@ -231,7 +231,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 	for _, s := range foundThs {
 		found[s.Id()] = s
 	}
-	addHostSources := make([]interface{}, 0, len(hostSourceIds))
+	addHostSources := make([]any, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
 		if _, ok := found[id]; ok {
 			// found a match, so do nothing (we want to keep it), but remove it
@@ -245,7 +245,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 		}
 		addHostSources = append(addHostSources, hs)
 	}
-	deleteHostSources := make([]interface{}, 0, len(hostSourceIds))
+	deleteHostSources := make([]any, 0, len(hostSourceIds))
 	if len(found) > 0 {
 		for _, s := range found {
 			hs, err := NewTargetHostSet(targetId, s.Id())
@@ -350,7 +350,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 func fetchHostSources(ctx context.Context, r db.Reader, targetId string) ([]HostSource, error) {
 	const op = "target.fetchHostSources"
 	var hostSets []*TargetSet
-	if err := r.SearchWhere(ctx, &hostSets, "target_id = ?", []interface{}{targetId}); err != nil {
+	if err := r.SearchWhere(ctx, &hostSets, "target_id = ?", []any{targetId}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	// FIXME: When we have direct host additions, there will need to be an

@@ -29,7 +29,7 @@ func (r *Repository) AddSessionCredentials(ctx context.Context, sessProjectId, s
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
-	addCreds := make([]interface{}, 0, len(credData))
+	addCreds := make([]any, 0, len(credData))
 	for _, cred := range credData {
 		if len(cred) == 0 {
 			return errors.New(ctx, errors.InvalidParameter, op, "missing credential")
@@ -74,7 +74,7 @@ func (r *Repository) ListSessionCredentials(ctx context.Context, sessProjectId, 
 	}
 
 	var creds []*credential
-	if err := r.reader.SearchWhere(ctx, &creds, "session_id = ?", []interface{}{sessionId}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &creds, "session_id = ?", []any{sessionId}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if len(creds) == 0 {
