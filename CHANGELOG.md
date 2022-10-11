@@ -2,7 +2,12 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
- ## Next
+## Next
+
+### Bug Fixes
+
+* accounts: Deleted auth accounts would still show up as being associated with
+  a User when reading the User ([PR](https://github.com/hashicorp/boundary/pull/2528))
 
 ## 0.11.0 (2022/09/27)
 

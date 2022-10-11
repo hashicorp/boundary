@@ -23,6 +23,7 @@ TESTS ?= tests/setup/*.sql \
 		 tests/sentinel/*.sql \
 		 tests/credential/*/*.sql \
 		 tests/session/*.sql \
+		 tests/account/*/*.sql \
 		 tests/target/*.sql \
 		 tests/controller/*.sql
 
