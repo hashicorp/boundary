@@ -22,6 +22,7 @@ func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) stri
 		require.NoError(t, err)
 	})
 
+	t.Logf("Created Org Id: %s", newOrgResult.Item.Id)
 	return newOrgResult.Item.Id
 }
 
@@ -32,11 +33,8 @@ func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, 
 	scopeClient := scopes.NewClient(client)
 	newProjResult, err := scopeClient.Create(ctx, orgId, scopes.WithName("e2e Automated Test Project"))
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		_, err := scopeClient.Delete(ctx, newProjResult.Item.Id)
-		require.NoError(t, err)
-	})
 
+	t.Logf("Created Project Id: %s", newProjResult.Item.Id)
 	return newProjResult.Item.Id
 }
 
@@ -59,6 +57,7 @@ func CreateNewOrgCli(t testing.TB) string {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
+	t.Logf("Created Org Id: %s", newOrgResult.Item.Id)
 	return newOrgResult.Item.Id
 }
 
@@ -77,10 +76,6 @@ func CreateNewProjectCli(t testing.TB, orgId string) string {
 	err := json.Unmarshal(output.Stdout, &newProjResult)
 	require.NoError(t, err)
 
-	t.Cleanup(func() {
-		output := e2e.RunCommand("boundary", "scopes", "delete", "-id", newProjResult.Item.Id)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-
+	t.Logf("Created Project Id: %s", newProjResult.Item.Id)
 	return newProjResult.Item.Id
 }

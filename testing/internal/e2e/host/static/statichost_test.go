@@ -28,9 +28,7 @@ func TestConnectTargetCli(t *testing.T) {
 
 	// Create an org and project
 	newOrgId := boundary.CreateNewOrgCli(t)
-	t.Logf("Created Org Id: %s", newOrgId)
 	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-	t.Logf("Created Project Id: %s", newProjectId)
 
 	// Create a host catalog
 	output := e2e.RunCommand("boundary", "host-catalogs", "create", "static",
@@ -149,9 +147,7 @@ func TestCreateTargetApi(t *testing.T) {
 
 	// Create an org and project
 	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
-	t.Logf("Created Org Id: %s", newOrgId)
 	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	t.Logf("Created Project Id: %s", newProjectId)
 
 	// Create a host catalog
 	hcClient := hostcatalogs.NewClient(client)

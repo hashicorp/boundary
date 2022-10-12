@@ -32,9 +32,7 @@ func TestConnectTargetWithStaticCredentialStoreCli(t *testing.T) {
 
 	// Create an org and project
 	newOrgId := boundary.CreateNewOrgCli(t)
-	t.Logf("Created Org Id: %s", newOrgId)
 	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-	t.Logf("Created Project Id: %s", newProjectId)
 
 	// Create a credential store
 	output := e2e.RunCommand("boundary", "credential-stores", "create", "static",
@@ -176,9 +174,7 @@ func TestCreateTargetWithStaticCredentialStoreApi(t *testing.T) {
 
 	// Create an org and project
 	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
-	t.Logf("Created Org Id: %s", newOrgId)
 	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	t.Logf("Created Project Id: %s", newProjectId)
 
 	// Create a credential store
 	csClient := credentialstores.NewClient(client)
