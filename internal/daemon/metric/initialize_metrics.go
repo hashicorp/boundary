@@ -53,9 +53,21 @@ func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor) bool
 	return true
 }
 
+// appendServicesAndMethods ranges through all registered files in a specified proto package
+// and appends service and method names to the provided map m.
+// This method is exported for testing purposes.
+func appendServicesAndMethods(m map[string][]string, pkg protoreflect.FileDescriptor) {
+	protoregistry.GlobalFiles.RangeFilesByPackage(
+		pkg.Package(),
+		func(fd protoreflect.FileDescriptor) bool { return rangeProtoFiles(m, fd) },
+	)
+}
+
 // InitializeGrpcCollectorsFromPackage registers and zeroes a Prometheus
-// histogram, populating all service and method labels by ranging through a
-// given protobuf package.
+// histogram, populating all service and method labels by ranging through
+// the package containing the provided FileDescriptor.
+// Note: inputting a protoreflect.FileDescriptor will populate all services and methods
+// found in its package, not just methods associated with that specific FileDescriptor.
 func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec, pkg protoreflect.FileDescriptor, codes []codes.Code) {
 	if r == nil {
 		return
@@ -63,10 +75,7 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 	r.MustRegister(v)
 
 	serviceNamesToMethodNames := make(map[string][]string, 0)
-	protoregistry.GlobalFiles.RangeFilesByPackage(
-		pkg.Package(),
-		func(fd protoreflect.FileDescriptor) bool { return rangeProtoFiles(serviceNamesToMethodNames, fd) },
-	)
+	appendServicesAndMethods(serviceNamesToMethodNames, pkg)
 
 	for serviceName, serviceMethods := range serviceNamesToMethodNames {
 		for _, sm := range serviceMethods {
