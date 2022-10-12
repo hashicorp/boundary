@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -9,6 +10,7 @@ import (
 )
 
 func init() {
+	kms.RegisterTableRewrapFn(defaultSessionTableName, sessionRewrapFn)
 	kms.RegisterTableRewrapFn("session_credential", sessionCredentialRewrapFn)
 }
 
@@ -50,6 +52,36 @@ where session_id = ?
 			cred.SessionId,
 			cred.CredentialSha256,
 		}); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
+	return nil
+}
+
+func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+	const op = "session.sessionRewrapFn"
+	repo, err := NewRepository(ctx, reader, writer, kmsRepo, WithLimit(-1))
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	var sessions []*Session
+	if err := repo.reader.SearchWhere(ctx, &sessions, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	for _, session := range sessions {
+		fmt.Printf("session: %#v\n", session)
+		wrapper, err := repo.kms.GetWrapper(ctx, session.GetProjectId(), kms.KeyPurposeDatabase)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if err := session.decrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if err := session.encrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		fmt.Printf("updated: %#v\n", session)
+		if _, err := repo.writer.Update(ctx, session, []string{"CtTofuToken", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}

@@ -31,20 +31,17 @@ func TestRewrap_workerAuthCertRewrapFn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// now things are stored in the db, we can rotate and rewrap
-	err = kmsCache.RotateKeys(ctx, scope.Global.String())
-	assert.NoError(t, err)
-
-	err = workerAuthCertRewrapFn(ctx, currentRoot.KeyId, rw, rw, kmsCache)
-	assert.NoError(t, err)
+	assert.NoError(t, kmsCache.RotateKeys(ctx, scope.Global.String()))
+	assert.NoError(t, workerAuthCertRewrapFn(ctx, currentRoot.KeyId, rw, rw, kmsCache))
 
 	// now we pull the certs back from the db, decrypt it with the new key, and ensure things match
 	newRoots := &types.RootCertificates{Id: CaId}
-	err = workerAuthRepo.Load(ctx, newRoots)
-	assert.NoError(t, err)
+	assert.NoError(t, workerAuthRepo.Load(ctx, newRoots))
 	newRoots.Current.Id = string(CurrentState)
-	assert.NoError(t, err)
 
 	// decryption occurs during Load, so we just want to make sure everything is expected
 	assert.Equal(t, roots.Current.Id, newRoots.Current.Id)
 	assert.Equal(t, roots.Current.PrivateKeyPkcs8, newRoots.Current.PrivateKeyPkcs8)
+	assert.NotEmpty(t, newRoots.GetWrappingKeyId())
+	assert.Equal(t, roots.GetWrappingKeyId(), newRoots.GetWrappingKeyId())
 }
