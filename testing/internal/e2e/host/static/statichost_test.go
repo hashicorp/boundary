@@ -13,26 +13,8 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
-	"github.com/kelseyhightower/envconfig"
 	"github.com/stretchr/testify/require"
 )
-
-type config struct {
-	TargetIp         string `envconfig:"E2E_TARGET_IP" required:"true"`    // e.g. 192.168.0.1
-	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH" required:"true"` // e.g. /Users/username/key.pem
-	TargetSshUser    string `envconfig:"E2E_SSH_USER" required:"true"`     // e.g. ubuntu
-	TargetPort       string `envconfig:"E2E_SSH_PORT" default:"22"`
-}
-
-func loadConfig() (*config, error) {
-	var c config
-	err := envconfig.Process("", &c)
-	if err != nil {
-		return nil, err
-	}
-
-	return &c, err
-}
 
 // TestConnectTargetCli uses the boundary cli to create a number of supporting objects
 // to connect to a target. It then attempts to connect to that target and verifies that
@@ -216,6 +198,7 @@ func TestCreateTargetApi(t *testing.T) {
 	// Create a target
 	tClient := targets.NewClient(client)
 	targetPort, err := strconv.ParseInt(c.TargetPort, 10, 32)
+	require.NoError(t, err)
 	newTargetResult, err := tClient.Create(ctx, "tcp", newProjectId,
 		targets.WithName("e2e Automated Test Target"),
 		targets.WithTcpTargetDefaultPort(uint32(targetPort)),

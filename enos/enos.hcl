@@ -43,7 +43,7 @@ scenario "integration" {
 
   matrix {
     builder = ["local", "crt"]
-    test    = ["smoke", "cli_ui"]
+    test    = ["cli_ui"]
   }
 
   locals {
@@ -117,41 +117,6 @@ scenario "integration" {
       vpc_id                   = step.create_base_infra.vpc_id
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
-    }
-  }
-
-  step "launch_smoke_targets" {
-    skip_step  = matrix.test != "smoke"
-    module     = module.target
-    depends_on = [step.create_base_infra]
-
-    variables {
-      ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      aws_ssh_keypair_name = var.aws_ssh_keypair_name
-      enos_user            = var.enos_user
-      instance_type        = var.target_instance_type
-      vpc_id               = step.create_base_infra.vpc_id
-    }
-  }
-
-  step "run_test_smoke" {
-    skip_step  = matrix.test != "smoke"
-    module     = module.test_smoke
-    depends_on = [step.create_boundary_cluster]
-
-    variables {
-      alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
-      auth_login_name          = step.create_boundary_cluster.auth_login_name
-      auth_method_id           = step.create_boundary_cluster.auth_method_id
-      auth_password            = step.create_boundary_cluster.auth_password
-      aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      boundary_install_dir     = local.boundary_install_dir
-      controller_ips           = step.create_boundary_cluster.controller_ips
-      local_boundary_dir       = local.local_boundary_dir
-      project_scope_id         = step.create_boundary_cluster.project_scope_id
-      target_count             = var.target_count
-      target_id                = step.create_boundary_cluster.target_id
-      target_ips               = step.launch_smoke_targets.target_ips
     }
   }
 

@@ -179,10 +179,9 @@ scenario "e2e_host_aws" {
       aws_access_key_id        = step.iam_setup.access_key_id
       aws_secret_access_key    = step.iam_setup.secret_access_key
       aws_host_set_filter1     = step.create_tag1_inputs.tag_string
-      aws_host_set_count1      = 2
       aws_host_set_ips1        = step.create_targets_with_tag1.target_ips
       aws_host_set_filter2     = step.create_tag2_inputs.tag_string
-      aws_host_set_count2      = 1
+      aws_host_set_ips2        = step.create_targets_with_tag2.target_ips
     }
   }
 

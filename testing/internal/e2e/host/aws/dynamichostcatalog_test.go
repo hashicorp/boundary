@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -25,13 +24,12 @@ import (
 type config struct {
 	AwsAccessKeyId     string `envconfig:"E2E_AWS_ACCESS_KEY_ID" required:"true"`
 	AwsSecretAccessKey string `envconfig:"E2E_AWS_SECRET_ACCESS_KEY" required:"true"`
-	AwsHostSetFilter1  string `envconfig:"E2E_AWS_HOST_SET_FILTER1" required:"true"`
-	AwsHostSetCount1   string `envconfig:"E2E_AWS_HOST_SET_COUNT1" required:"true"`
-	AwsHostSetIps1     string `envconfig:"E2E_AWS_HOST_SET_IPS1" required:"true"`
-	AwsHostSetFilter2  string `envconfig:"E2E_AWS_HOST_SET_FILTER2" required:"true"`
-	AwsHostSetCount2   string `envconfig:"E2E_AWS_HOST_SET_COUNT2" required:"true"`
-	TargetSshKeyPath   string `envconfig:"E2E_SSH_KEY_PATH" required:"true"` // e.g. /Users/username/key.pem
-	TargetSshUser      string `envconfig:"E2E_SSH_USER" required:"true"`     // e.g. ubuntu
+	AwsHostSetFilter1  string `envconfig:"E2E_AWS_HOST_SET_FILTER1" required:"true"` // e.g. "tag:testtag=true"
+	AwsHostSetIps1     string `envconfig:"E2E_AWS_HOST_SET_IPS1" required:"true"`    // e.g. "[\"1.2.3.4\", \"2.3.4.5\"]"
+	AwsHostSetFilter2  string `envconfig:"E2E_AWS_HOST_SET_FILTER2" required:"true"` // e.g. "tag:testtagtwo=test"
+	AwsHostSetIps2     string `envconfig:"E2E_AWS_HOST_SET_IPS2" required:"true"`    // e.g. "[\"1.2.3.4\"]"
+	TargetSshKeyPath   string `envconfig:"E2E_SSH_KEY_PATH" required:"true"`         // e.g. "/Users/username/key.pem"
+	TargetSshUser      string `envconfig:"E2E_SSH_USER" required:"true"`             // e.g. "ubuntu"
 	TargetPort         string `envconfig:"E2E_SSH_PORT" default:"22"`
 }
 
@@ -45,6 +43,9 @@ func loadConfig() (*config, error) {
 	return &c, err
 }
 
+// TestCreateAwsDynamicHostCatalogCli uses the boundary cli to create a host catalog with the AWS
+// plugin. The test sets up an AWS dynamic host catalog, creates some host sets, sets up a target to
+// one of the host sets, and attempts to connect to the target.
 func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
@@ -123,7 +124,10 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	expectedHostSetCount1, err := strconv.Atoi(c.AwsHostSetCount1)
+
+	var targetIps1 []string
+	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps1)
+	expectedHostSetCount1 := len(targetIps1)
 	require.NoError(t, err)
 	assert.Equal(t, expectedHostSetCount1, actualHostSetCount1, "Numbers of hosts in host set did not match expected amount")
 
@@ -174,7 +178,9 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	expectedHostSetCount2, err := strconv.Atoi(c.AwsHostSetCount2)
+	var targetIps2 []string
+	err = json.Unmarshal([]byte(c.AwsHostSetIps2), &targetIps2)
+	expectedHostSetCount2 := len(targetIps2)
 	require.NoError(t, err)
 	assert.Equal(t, expectedHostSetCount2, actualHostSetCount2, "Numbers of hosts in host set did not match expected amount")
 
@@ -257,17 +263,18 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	t.Log("Successfully connected to the target")
 
 	// Check if connected host exists in the host set
-	var targetIps []string
-	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps)
 	hostIpInList := false
-	for _, v := range targetIps {
+	for _, v := range targetIps1 {
 		if v == hostIp {
 			hostIpInList = true
 		}
 	}
-	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps))
+	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps1))
 }
 
+// TestCreateAwsDynamicHostCatalogApi uses the boundary go api to create a host catalog with the AWS
+// plugin. The test sets up an AWS dynamic host catalog, creates a host set, and sets up a target to
+// the host set.
 func TestCreateAwsDynamicHostCatalogApi(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
@@ -340,7 +347,9 @@ func TestCreateAwsDynamicHostCatalogApi(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Log("Successfully found items in the host set")
-	expectedHostSetCount, err := strconv.Atoi(c.AwsHostSetCount1)
+	var targetIps []string
+	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps)
+	expectedHostSetCount := len(targetIps)
 	require.NoError(t, err)
 	assert.Equal(t, expectedHostSetCount, actualHostSetCount, "Numbers of hosts in host set did not match expected amount")
 

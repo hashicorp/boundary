@@ -49,10 +49,9 @@ export E2E_SSH_USER=  # e.g. ubuntu
 export E2E_AWS_ACCESS_KEY_ID=
 export E2E_AWS_SECRET_ACCESS_KEY=
 export E2E_AWS_HOST_SET_FILTER1=  # e.g. "tag:testtag=true"
-export E2E_AWS_HOST_SET_COUNT1=  # e.g. 2
 export E2E_AWS_HOST_SET_IPS1=  # e.g. "[\"1.2.3.4\", \"2.3.4.5\"]"
 export E2E_AWS_HOST_SET_FILTER2=  # e.g. "tag:testtagtwo=test"
-export E2E_AWS_HOST_SET_COUNT2=  # e.g. 1
+export E2E_AWS_HOST_SET_IPS2=  # e.g. "[\"1.2.3.4\"]
 export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
 export E2E_SSH_USER=  # e.g. ubuntu
 
@@ -80,3 +79,31 @@ one can be created. If a new package is created, a new enos scenario would also 
 Enos is comprised of scenarios, where a scenario is the environment you want the tests to operate
 in. In one scenario, there may be a boundary cluster and a target. Another scenario might involve a
 boundary cluster and a vault instance. Scenarios can be found in [boundary/enos](../../../enos/)
+
+To run these tests in CI, the [enos-run.yml](../../../.github/workflows/enos-run.yml) github action
+workflow must be updated to include the new scenario (see the `matrix`).
+
+### Development
+To assist with iterating on tests on enos launched infrastructure, you can perform the following...
+
+Add the following snippet to print out environment variable information
+```
+# `c` is the output from `loadConfig()`
+s, _ := json.MarshalIndent(c, "", "\t")
+log.Printf("%s", s)
+```
+Launch an enos scenario
+```
+enos scenario launch e2e_{scenario} builder:local
+enos scenario output
+```
+Take the printed environment variable information and export them into another terminal session
+```
+export BOUNDARY_ADDR=
+export E2E_PASSWORD_AUTH_METHOD_ID=
+...
+```
+Run your tests
+```
+go test -v {go package}
+```
