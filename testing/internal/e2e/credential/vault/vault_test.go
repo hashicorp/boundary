@@ -284,6 +284,7 @@ func TestCreateVaultCredentialStoreApi(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 	var tokenCreateResult createTokenResponse
 	err = json.Unmarshal(output.Stdout, &tokenCreateResult)
+	require.NoError(t, err)
 	credStoreToken := tokenCreateResult.Auth.Client_Token
 	t.Log("Created Vault Cred Store Token")
 
@@ -351,6 +352,7 @@ func TestCreateVaultCredentialStoreApi(t *testing.T) {
 	// Create a target
 	tClient := targets.NewClient(client)
 	targetPort, err := strconv.ParseInt(c.TargetPort, 10, 32)
+	require.NoError(t, err)
 	newTargetResult, err := tClient.Create(ctx, "tcp", newProjectId,
 		targets.WithName("e2e Automated Test Target"),
 		targets.WithTcpTargetDefaultPort(uint32(targetPort)),
