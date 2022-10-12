@@ -18,4 +18,11 @@ begin;
   create trigger immutable_columns before update on credential_vault_token
     for each row execute procedure immutable_columns('store_id','create_time');
 
+
+  -- And again on credential and key_id (and the hash of credential).
+  drop trigger immutable_columns on session_credential;
+
+  create trigger immutable_columns before update on session_credential
+    for each row execute procedure immutable_columns('session_id');
+
 commit;
