@@ -6,12 +6,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/status"
+)
+
+var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: "test_metric",
+		Name:      "grpc_request_duration_seconds",
+		Help:      "Test histogram.",
+		Buckets:   prometheus.DefBuckets,
+	},
+	ListGrpcLabels,
 )
 
 func TestNewStatsHandler(t *testing.T) {
@@ -136,6 +148,72 @@ func TestNewStatsHandler(t *testing.T) {
 
 			assert.Len(t, testableLatency.Observations, 1)
 			assert.Equal(t, testableLatency.Observations[0].Observation, tc.wantedLatency)
+			assert.Equal(t, testableLatency.Observations[0].Labels, tc.wantedLabels)
+		})
+	}
+}
+
+func TestRecorder(t *testing.T) {
+	cases := []struct {
+		name         string
+		methodName   string
+		err          error
+		wantedLabels prometheus.Labels
+	}{
+		{
+			name:       "basic",
+			methodName: "/some.service.path/method",
+			err:        nil,
+			wantedLabels: map[string]string{
+				LabelGrpcCode:    "OK",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
+			},
+		},
+		{
+			name:       "unrecognized method path format",
+			methodName: "unrecognized",
+			err:        nil,
+			wantedLabels: map[string]string{
+				LabelGrpcCode:    "OK",
+				LabelGrpcMethod:  "unknown",
+				LabelGrpcService: "unknown",
+			},
+		},
+		{
+			name:       "cancel error",
+			methodName: "/some.service.path/method",
+			err:        status.Error(codes.Canceled, ""),
+			wantedLabels: map[string]string{
+				LabelGrpcCode:    "Canceled",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
+			},
+		},
+		{
+			name:       "permission error",
+			methodName: "/some.service.path/method",
+			err:        status.Error(codes.PermissionDenied, ""),
+			wantedLabels: map[string]string{
+				LabelGrpcCode:    "PermissionDenied",
+				LabelGrpcMethod:  "method",
+				LabelGrpcService: "some.service.path",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ogReqLatency := grpcRequestLatency
+			defer func() { grpcRequestLatency = ogReqLatency }()
+			testableLatency := &TestableObserverVec{}
+			start := time.Now()
+			tested := NewGrpcRequestRecorder(tc.methodName, testableLatency)
+			tested.Record(tc.err)
+
+			require.Len(t, testableLatency.Observations, 1)
+			assert.Greater(t, testableLatency.Observations[0].Observation, float64(0))
+			assert.LessOrEqual(t, testableLatency.Observations[0].Observation, time.Since(start).Seconds())
 			assert.Equal(t, testableLatency.Observations[0].Labels, tc.wantedLabels)
 		})
 	}
