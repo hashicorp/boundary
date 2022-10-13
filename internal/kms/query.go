@@ -67,4 +67,8 @@ group by
 having
 	sum(jr.total_count)=sum(jr.completed_count)
 `
+	// findAffectedRowsForKeyQueryTemplate is used to find rows encrypted
+	// with a specific data key version ID in a table. The interpolated
+	// variable is the table name.
+	findAffectedRowsForKeyQueryTemplate = `select count(*) from %q where key_id=?`
 )

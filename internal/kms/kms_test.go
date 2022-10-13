@@ -667,6 +667,162 @@ func TestMonitorDataKeyVersionDestruction(t *testing.T) {
 	})
 }
 
+func TestDestroyKeyVersion(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	extWrapper := db.TestWrapper(t)
+	kmsCache := TestKms(t, conn, extWrapper)
+	err := kmsCache.CreateKeys(testCtx, "global")
+	require.NoError(t, err)
+	err = kmsCache.RotateKeys(testCtx, "global")
+	require.NoError(t, err)
+	keys, err := kmsCache.ListKeys(testCtx, "global")
+	require.NoError(t, err)
+	sqldb, err := conn.SqlDB(testCtx)
+	require.NoError(t, err)
+
+	t.Run("returns-an-error-when-attempting-to-destroy-an-unknown-key-version", func(t *testing.T) {
+		_, err := kmsCache.DestroyKeyVersion(testCtx, "global", "krkv_DoesntExist")
+		require.Error(t, err)
+		assert.True(t, errors.Match(errors.T(errors.KeyNotFound), err))
+	})
+	t.Run("returns-an-error-when-attempting-to-destroy-a-key-version-in-an-unknown-scope", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[len(key.Versions)-1]
+			}
+		}
+		_, err := kmsCache.DestroyKeyVersion(testCtx, "p_DoesntExist", kvToDestroy.Id)
+		require.Error(t, err)
+		assert.True(t, errors.Match(errors.T(errors.RecordNotFound), err))
+	})
+	t.Run("returns-an-error-when-attempting-to-destroy-latest-key-version", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[len(key.Versions)-1]
+			}
+		}
+		_, err := kmsCache.DestroyKeyVersion(testCtx, "global", kvToDestroy.Id)
+		require.Error(t, err)
+		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+	})
+	t.Run("returns-an-error-when-attempting-to-destroy-oplog-key-version", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeOplog.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		_, err := kmsCache.DestroyKeyVersion(testCtx, "global", kvToDestroy.Id)
+		require.Error(t, err)
+		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
+	})
+	t.Run("succeeds-synchronously-when-destroying-old-root-key-version", func(t *testing.T) {
+		var chosenKey wrappingKms.Key
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeRootKey.String()) {
+				kvToDestroy = key.Versions[0]
+				chosenKey = key
+			}
+		}
+		destroyed, err := kmsCache.DestroyKeyVersion(testCtx, "global", kvToDestroy.Id)
+		require.NoError(t, err)
+		assert.True(t, destroyed)
+		// Check that the key version is destroyed
+		keys, err := kmsCache.ListKeys(testCtx, "global")
+		require.NoError(t, err)
+		for _, key := range keys {
+			if key.Id == chosenKey.Id {
+				require.Len(t, key.Versions, 1, "the root key should only have one version left")
+				assert.NotEqual(t, key.Versions[0].Id, kvToDestroy.Id)
+			}
+		}
+	})
+	t.Run("succeeds-synchronously-when-destroying-old-data-key-version-that-encrypts-no-data", func(t *testing.T) {
+		require.NoError(t, err)
+		var chosenKey wrappingKms.Key
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeAudit.String()) {
+				kvToDestroy = key.Versions[0]
+				chosenKey = key
+			}
+		}
+		destroyed, err := kmsCache.DestroyKeyVersion(testCtx, "global", kvToDestroy.Id)
+		require.NoError(t, err)
+		assert.True(t, destroyed)
+		// Check that the key version is destroyed
+		keys, err := kmsCache.ListKeys(testCtx, "global")
+		require.NoError(t, err)
+		for _, key := range keys {
+			if key.Id == chosenKey.Id {
+				require.Len(t, key.Versions, 1, "the data key should only have one version left")
+				assert.NotEqual(t, key.Versions[0].Id, kvToDestroy.Id)
+			}
+		}
+	})
+	t.Run("creates-asynchronous-job-and-runs-for-data-key-version-that-encrypt-data", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		// Create a row that references the key we want to destroy.
+		// Note: This could break if the underlying table definitions change.
+		// Future contributors; forgive me, but we do really want to test this
+		// functionality here, and we can't import any of the normal test helpers
+		// since it would create circular dependencies.
+		_, err = sqldb.ExecContext(testCtx, "insert into worker_auth_ca_certificate(certificate, not_valid_after, public_key, private_key, state, issuing_ca, key_id) values ('certificate', CURRENT_TIMESTAMP+'1h'::interval, 'public_key', 'private_key', 'current', 'roots', $1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "delete from worker_auth_ca_certificate")
+			require.NoError(t, err)
+		})
+		destroyed, err := kmsCache.DestroyKeyVersion(testCtx, "global", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "delete from kms_data_key_version_destruction_job; delete from kms_data_key_version_destruction_job_run")
+			require.NoError(t, err)
+		})
+		assert.False(t, destroyed)
+		// Check that the data key version destruction job was created
+		jobs, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "global")
+		require.NoError(t, err)
+		require.Len(t, jobs, 1)
+		assert.Equal(t, jobs[0].KeyId, kvToDestroy.Id)
+		assert.Equal(t, jobs[0].CompletedCount, int64(0))
+		assert.Equal(t, jobs[0].TotalCount, int64(1))
+		assert.Equal(t, jobs[0].Status, "pending")
+		assert.Equal(t, jobs[0].ScopeId, "global")
+		assert.True(t, jobs[0].CreateTime.AsTime().Before(time.Now()))
+	})
+	t.Run("errors-when-destroying-key-that-is-already-destroying", func(t *testing.T) {
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		_, err = sqldb.ExecContext(testCtx, "insert into worker_auth_ca_certificate(certificate, not_valid_after, public_key, private_key, state, issuing_ca, key_id) values ('certificate', CURRENT_TIMESTAMP+'1h'::interval, 'public_key', 'private_key', 'current', 'roots', $1)", kvToDestroy.Id)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(testCtx, "delete from worker_auth_ca_certificate")
+			require.NoError(t, err)
+		})
+		destroyed, err := kmsCache.DestroyKeyVersion(testCtx, "global", kvToDestroy.Id)
+		require.NoError(t, err)
+		assert.False(t, destroyed)
+		_, err = kmsCache.DestroyKeyVersion(testCtx, "global", kvToDestroy.Id)
+		require.Error(t, err)
+		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err), "error did not match InvalidParameter as expected: %v", err)
+	})
+}
+
 type invalidReader struct {
 	db.Reader
 }

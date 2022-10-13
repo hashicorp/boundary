@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package controller.storage.kms.store.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
+
+message DataKeyVersionDestructionJobRunAllowedTableName {
+  // The name of a table that is allowed to be used
+  // in a data key version destruction job run.
+  // @inject_tag: gorm:"not_null"
+  string table_name = 10;
+}

@@ -15,8 +15,8 @@ func (k *DataKeyVersionDestructionJobProgress) TableName() string {
 	return "kms_data_key_version_destruction_job_progress"
 }
 
-// allocDataKeyVersionDestructionJob makes an empty one in memory.
-func allocDataKeyVersionDestructionJob() DataKeyVersionDestructionJobProgress {
+// allocDataKeyVersionDestructionJobProgress makes an empty one in memory.
+func allocDataKeyVersionDestructionJobProgress() DataKeyVersionDestructionJobProgress {
 	return DataKeyVersionDestructionJobProgress{
 		DataKeyVersionDestructionJobProgress: &store.DataKeyVersionDestructionJobProgress{},
 	}
