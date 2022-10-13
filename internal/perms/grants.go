@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -183,7 +184,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		if !ok {
 			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "id"))
 		}
-		g.id = id
+		g.id = strings.ToValidUTF8(id, string(unicode.ReplacementChar))
 	}
 	if rawType, ok := raw["type"]; ok {
 		typ, ok := rawType.(string)
@@ -210,7 +211,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 				case actionStr == "":
 					return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
 				default:
-					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(actionStr))
+					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(strings.ToValidUTF8(actionStr, string(unicode.ReplacementChar))))
 				}
 			}
 		}
@@ -230,7 +231,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 				case !ok:
 					return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
 				default:
-					g.OutputFields[field] = true
+					g.OutputFields[strings.ToValidUTF8(field, string(unicode.ReplacementChar))] = true
 				}
 			}
 		}
@@ -256,7 +257,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 
 		switch kv[0] {
 		case "id":
-			g.id = kv[1]
+			g.id = strings.ToValidUTF8(kv[1], string(unicode.ReplacementChar))
 
 		case "type":
 			typeString := strings.ToLower(kv[1])
@@ -273,11 +274,14 @@ func (g *Grant) unmarshalText(grantString string) error {
 					if action == "" {
 						return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
 					}
-					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(action))
+					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(strings.ToValidUTF8(action, string(unicode.ReplacementChar))))
 				}
 			}
 
 		case "output_fields":
+			if strings.HasSuffix(kv[1], ",") {
+				return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing value", segment))
+			}
 			g.OutputFields = g.OutputFields.AddFields(strings.Split(kv[1], ","))
 		}
 	}
@@ -302,7 +306,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	}
 
 	grant := Grant{
-		scope: Scope{Id: scopeId},
+		scope: Scope{Id: strings.ToValidUTF8(scopeId, string(unicode.ReplacementChar))},
 	}
 	switch {
 	case scopeId == scope.Global.String():
@@ -337,11 +341,11 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 		switch id {
 		case "user.id", ".User.Id":
 			if opts.withUserId != "" {
-				grant.id = opts.withUserId
+				grant.id = strings.ToValidUTF8(opts.withUserId, string(unicode.ReplacementChar))
 			}
 		case "account.id", ".Account.Id":
 			if opts.withAccountId != "" {
-				grant.id = opts.withAccountId
+				grant.id = strings.ToValidUTF8(opts.withAccountId, string(unicode.ReplacementChar))
 			}
 		default:
 			return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown template %q in grant %q value", grant.id, "id"))

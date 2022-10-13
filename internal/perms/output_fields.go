@@ -2,6 +2,8 @@ package perms
 
 import (
 	"sort"
+	"strings"
+	"unicode"
 
 	"github.com/hashicorp/boundary/globals"
 )
@@ -30,7 +32,7 @@ func (o OutputFieldsMap) AddFields(input []string) (ret OutputFieldsMap) {
 			ret = OutputFieldsMap{k: true}
 			return
 		}
-		ret[k] = true
+		ret[strings.ToValidUTF8(k, string(unicode.ReplacementChar))] = true
 	}
 	return
 }
