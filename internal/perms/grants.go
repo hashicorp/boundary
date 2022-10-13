@@ -184,7 +184,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		if !ok {
 			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "id"))
 		}
-		g.id = strings.ToValidUTF8(id, string(unicode.ReplacementChar))
+		g.id = id
 	}
 	if rawType, ok := raw["type"]; ok {
 		typ, ok := rawType.(string)
@@ -211,7 +211,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 				case actionStr == "":
 					return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
 				default:
-					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(strings.ToValidUTF8(actionStr, string(unicode.ReplacementChar))))
+					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(actionStr))
 				}
 			}
 		}
@@ -231,7 +231,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 				case !ok:
 					return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
 				default:
-					g.OutputFields[strings.ToValidUTF8(field, string(unicode.ReplacementChar))] = true
+					g.OutputFields[field] = true
 				}
 			}
 		}
@@ -257,7 +257,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 
 		switch kv[0] {
 		case "id":
-			g.id = strings.ToValidUTF8(kv[1], string(unicode.ReplacementChar))
+			g.id = kv[1]
 
 		case "type":
 			typeString := strings.ToLower(kv[1])
@@ -274,7 +274,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 					if action == "" {
 						return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
 					}
-					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(strings.ToValidUTF8(action, string(unicode.ReplacementChar))))
+					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(action))
 				}
 			}
 
@@ -304,6 +304,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	if scopeId == "" {
 		return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
+	grantString = strings.ToValidUTF8(grantString, string(unicode.ReplacementChar))
 
 	grant := Grant{
 		scope: Scope{Id: strings.ToValidUTF8(scopeId, string(unicode.ReplacementChar))},
