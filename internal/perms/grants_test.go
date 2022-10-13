@@ -765,6 +765,27 @@ func FuzzParse(f *testing.F) {
 	f.Add(`{"type":"host-catalog","actions":["create"]}`)
 
 	f.Fuzz(func(t *testing.T, grant string) {
-		_, _ = Parse("global", grant, WithSkipFinalValidation(true))
+		g, err := Parse("global", grant, WithSkipFinalValidation(true))
+		if err != nil {
+			return
+		}
+		g2, err := Parse("global", g.CanonicalString(), WithSkipFinalValidation(true))
+		if err != nil {
+			t.Error("Failed to parse canonical string: ", err)
+		}
+		if g.CanonicalString() != g2.CanonicalString() {
+			t.Errorf("grant roundtrip failed, input %q, output %q", g.CanonicalString(), g2.CanonicalString())
+		}
+		jsonBytes, err := g.MarshalJSON()
+		if err != nil {
+			t.Error("Failed to marshal JSON: ", err)
+		}
+		g3, err := Parse("global", string(jsonBytes), WithSkipFinalValidation(true))
+		if err != nil {
+			return
+		}
+		if g.CanonicalString() != g3.CanonicalString() {
+			t.Errorf("grant JSON roundtrip failed, input %q, output %q", g.CanonicalString(), g3.CanonicalString())
+		}
 	})
 }
