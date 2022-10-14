@@ -279,9 +279,6 @@ func (g *Grant) unmarshalText(grantString string) error {
 			}
 
 		case "output_fields":
-			if strings.HasSuffix(kv[1], ",") {
-				return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing value", segment))
-			}
 			g.OutputFields = g.OutputFields.AddFields(strings.Split(kv[1], ","))
 		}
 	}
