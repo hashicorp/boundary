@@ -46,12 +46,12 @@ func TestRewrap_credStaticUsernamePasswordRewrapFn(t *testing.T) {
 
 	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
 	assert.NoError(t, err)
-	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 
 	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, secret.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())

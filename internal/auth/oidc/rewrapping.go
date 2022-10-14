@@ -56,7 +56,7 @@ func authMethodRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.
 				return errors.Wrap(ctx, err, op)
 			}
 			am.KeyId = newKeyVersionId
-			if _, err := repo.writer.Update(ctx, am, []string{CtClientSecretField, KeyIdField}, nil); err != nil {
+			if _, err := repo.writer.Update(ctx, am, []string{CtClientSecretField, ClientSecretHmacField, KeyIdField}, nil); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		}

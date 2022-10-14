@@ -2,7 +2,6 @@ package authtoken
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -23,37 +22,25 @@ func TestRewrap_authTokenRewrapFn(t *testing.T) {
 	at := TestAuthToken(t, conn, kmsCache, org.GetPublicId())
 
 	// now things are stored in the db, we can rotate and rewrap
-	err := kmsCache.RotateKeys(ctx, org.Scope.GetPublicId())
-	assert.NoError(t, err)
-
-	err = authTokenRewrapFn(ctx, at.GetKeyId(), rw, rw, kmsCache)
-	assert.NoError(t, err)
+	assert.NoError(t, kmsCache.RotateKeys(ctx, org.Scope.GetPublicId()))
+	assert.NoError(t, authTokenRewrapFn(ctx, at.GetKeyId(), rw, rw, kmsCache))
 
 	// now we pull the authToken back from the db, decrypt it with the new key, and ensure things match
-	// as a security measure, LookupAuthToken clears both CtToken and KeyId, which are the fields we want, so we will lookup manually
-	atv := allocAuthTokenView()
-	atv.PublicId = at.GetPublicId()
-	rw.LookupByPublicId(ctx, atv)
-	assert.NoError(t, err)
-	newAt := atv.toAuthToken()
-
-	assert.Equal(t, at.GetPublicId(), newAt.GetPublicId())
-	assert.NotEqual(t, at.GetKeyId(), atv.GetKeyId())
+	got := allocAuthToken()
+	got.PublicId = at.GetPublicId()
+	assert.NoError(t, rw.LookupById(ctx, got))
 
 	// fetch the new key version
-	kmsWrapper, err := kmsCache.GetWrapper(ctx, org.Scope.GetPublicId(), kms.KeyPurposeDatabase, kms.WithKeyId(newAt.GetKeyId()))
+	kmsWrapper, err := kmsCache.GetWrapper(ctx, org.Scope.GetPublicId(), kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
 	assert.NoError(t, err)
-	newKeyVersion, err := kmsWrapper.KeyId(ctx)
+	newKeyVersionId, err := kmsWrapper.KeyId(ctx)
 	assert.NoError(t, err)
-
-	fmt.Printf("at: %#v\natv: %#v\nnewAt: %#v\n", at.GetKeyId(), atv.GetKeyId(), newAt.GetKeyId())
 
 	// decrypt with the new key version and check to make sure things match
-	err = newAt.decrypt(ctx, kmsWrapper)
-	assert.NoError(t, err)
-	fmt.Printf("at: %#v\nnewAt: %#v\n, expected keyid: %s\n", at.AuthToken, newAt.AuthToken, newKeyVersion)
-
-	// assert.Equal(t, newKeyVersion, newAt.GetKeyId()) newAt ALWAYS HAS AN EMPTY KEY ID AND I DON'T KNOW WHY
-	// I've confirmed from the db that the key id is, in fact, stored and is correct, but it cannot be retrieved??
-	assert.Equal(t, at.GetToken(), newAt.GetToken())
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper))
+	assert.NotEmpty(t, got.GetKeyId())
+	assert.NotEqual(t, at.GetKeyId(), got.GetKeyId())
+	assert.Equal(t, newKeyVersionId, got.GetKeyId())
+	assert.Equal(t, at.GetToken(), got.GetToken())
+	assert.NotEqual(t, at.GetCtToken(), got.GetCtToken())
 }

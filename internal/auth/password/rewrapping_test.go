@@ -30,41 +30,35 @@ func TestRewrap_argon2ConfigRewrapFn(t *testing.T) {
 	wrapper, _ = kmsCache.GetWrapper(context.Background(), org.GetPublicId(), 1)
 
 	// actually store it
-	got, err := newArgon2Credential(acct.PublicId, "this is a password", conf)
+	cred, err := newArgon2Credential(acct.PublicId, "this is a password", conf)
 	require.NoError(t, err)
 
-	err = got.encrypt(context.Background(), wrapper)
-	require.NoError(t, err)
-	err = rw.Create(context.Background(), got)
-	assert.NoError(t, err)
+	require.NoError(t, cred.encrypt(context.Background(), wrapper))
+	assert.NoError(t, rw.Create(context.Background(), cred))
 
 	// now things are stored in the db, we can rotate and rewrap
-	err = kmsCache.RotateKeys(ctx, org.Scope.GetPublicId())
-	assert.NoError(t, err)
-
-	err = argon2ConfigRewrapFn(ctx, got.KeyId, rw, rw, kmsCache)
-	assert.NoError(t, err)
+	assert.NoError(t, kmsCache.RotateKeys(ctx, org.Scope.GetPublicId()))
+	assert.NoError(t, argon2ConfigRewrapFn(ctx, cred.KeyId, rw, rw, kmsCache))
 
 	// now we pull the config back from the db, decrypt it with the new key, and ensure things match
-	cred := &Argon2Credential{
+	got := &Argon2Credential{
 		Argon2Credential: &store.Argon2Credential{
-			PrivateId: got.PrivateId,
+			PrivateId: cred.PrivateId,
 		},
 	}
-	err = rw.LookupById(ctx, cred)
-	assert.NoError(t, err)
-
-	assert.NotEqual(t, cred.GetKeyId(), got.GetKeyId())
+	assert.NoError(t, rw.LookupById(ctx, got))
 
 	// fetch the new key version
-	kmsWrapper, err := kmsCache.GetWrapper(ctx, org.Scope.GetPublicId(), kms.KeyPurposeDatabase, kms.WithKeyId(cred.GetKeyId()))
+	kmsWrapper, err := kmsCache.GetWrapper(ctx, org.Scope.GetPublicId(), kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
 	assert.NoError(t, err)
 	newKeyVersion, err := kmsWrapper.KeyId(ctx)
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
-	err = cred.decrypt(ctx, kmsWrapper)
-	assert.NoError(t, err)
-	assert.Equal(t, cred.GetKeyId(), newKeyVersion)
-	assert.Equal(t, got.GetSalt(), cred.GetSalt())
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper))
+	assert.NotEmpty(t, got.GetKeyId())
+	assert.NotEqual(t, cred.GetKeyId(), got.GetKeyId())
+	assert.Equal(t, newKeyVersion, got.GetKeyId())
+	assert.Equal(t, cred.GetSalt(), got.GetSalt())
+	assert.NotEqual(t, cred.GetCtSalt(), got.GetCtSalt())
 }

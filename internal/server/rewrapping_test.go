@@ -40,14 +40,12 @@ func TestRewrap_workerAuthCertRewrapFn(t *testing.T) {
 
 	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
 	assert.NoError(t, err)
-	decryptedGotPrivKey, err := decrypt(ctx, got.GetPrivateKey(), kmsWrapper2)
-	assert.NoError(t, err)
-
 	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
 	assert.NoError(t, err)
 
-	// decryption occurs during Load, so we just want to make sure everything is expected
-	assert.Equal(t, currentRoot.State, got.State)
+	// decrypt with the new key version and check to make sure things match
+	decryptedGotPrivKey, err := decrypt(ctx, got.GetPrivateKey(), kmsWrapper2)
+	assert.NoError(t, err)
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, currentRoot.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
@@ -89,13 +87,12 @@ func TestRewrap_workerAuthRewrapFn(t *testing.T) {
 
 	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), worker.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
 	assert.NoError(t, err)
-	decryptedGotPrivKey, err := decrypt(ctx, got.ControllerEncryptionPrivKey, kmsWrapper2)
-	assert.NoError(t, err)
-
 	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
+	decryptedGotPrivKey, err := decrypt(ctx, got.ControllerEncryptionPrivKey, kmsWrapper2)
+	assert.NoError(t, err)
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, workerAuth.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())

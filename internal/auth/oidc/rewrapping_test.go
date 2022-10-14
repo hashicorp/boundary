@@ -69,20 +69,14 @@ func TestRewrap_authMethodRewrapFn(t *testing.T) {
 	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	assert.NoError(t, err)
 
-	got, err := repo.CreateAuthMethod(ctx, am)
+	authMethod, err := repo.CreateAuthMethod(ctx, am)
 	assert.NoError(t, err)
-	assert.NotNil(t, got)
+	assert.NotNil(t, authMethod)
+	assert.Equal(t, authMethod.KeyId, currentKeyVersion)
 
-	// double check that we used the expected key version to encrypt the material
-	assert.Equal(t, got.KeyId, currentKeyVersion)
-
-	// rotate the keys here so that we have a new key version
-	err = kmsCache.RotateKeys(ctx, org.Scope.GetPublicId())
-	assert.NoError(t, err)
-
-	// trigger the rewrap func
-	err = authMethodRewrapFn(ctx, got.KeyId, rw, rw, kmsCache)
-	assert.NoError(t, err)
+	// now things are stored in the db, we can rotate and rewrap
+	assert.NoError(t, kmsCache.RotateKeys(ctx, org.Scope.GetPublicId()))
+	assert.NoError(t, authMethodRewrapFn(ctx, authMethod.KeyId, rw, rw, kmsCache))
 
 	// fetch the new key version
 	kmsWrapper, err = kmsCache.GetWrapper(ctx, org.Scope.GetPublicId(), kms.KeyPurposeDatabase)
@@ -90,16 +84,17 @@ func TestRewrap_authMethodRewrapFn(t *testing.T) {
 	newKeyVersion, err := kmsWrapper.KeyId(ctx)
 	assert.NoError(t, err)
 
-	// make sure there actually is a new key version
-	assert.NotEqual(t, currentKeyVersion, newKeyVersion)
-
 	// fetching the latest auth method itself
-	ams, err := repo.getAuthMethods(ctx, got.GetPublicId(), []string{})
+	ams, err := repo.getAuthMethods(ctx, authMethod.GetPublicId(), []string{})
 	assert.NoError(t, err)
-	newAm := ams[0]
+	got := ams[0]
 
 	// since getAuthMethods automatically decrypts the secret, all we need to do is make sure
 	// that it's correct and that it uses the newest key version id
-	assert.Equal(t, newAm.ClientSecret, "alice-secret")
-	assert.Equal(t, newAm.KeyId, newKeyVersion)
+	assert.NotEmpty(t, got.KeyId)
+	assert.Equal(t, newKeyVersion, got.KeyId)
+	assert.Equal(t, "alice-secret", got.ClientSecret)
+	assert.NotEqual(t, authMethod.CtClientSecret, got.CtClientSecret)
+	assert.NotEmpty(t, got.ClientSecretHmac)
+	assert.NotEqual(t, authMethod.ClientSecretHmac, got.ClientSecretHmac)
 }

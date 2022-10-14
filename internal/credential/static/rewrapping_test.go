@@ -24,45 +24,31 @@ func TestRewrap_credStaticUsernamePasswordRewrapFn(t *testing.T) {
 	cred, err := NewUsernamePasswordCredential(cs.GetPublicId(), "username", "password")
 	assert.NoError(t, err)
 
-	assert.NotNil(t, cred)
-	assert.Emptyf(t, cred.PublicId, "PublicId set")
-
-	id, err := credential.NewUsernamePasswordCredentialId(ctx)
+	cred.PublicId, err = credential.NewUsernamePasswordCredentialId(ctx)
 	assert.NoError(t, err)
-
-	cred.PublicId = id
 
 	kmsWrapper, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 
-	err = cred.encrypt(ctx, kmsWrapper)
-	assert.NoError(t, err)
-
-	err = rw.Create(context.Background(), cred)
-	assert.NoError(t, err)
+	assert.NoError(t, cred.encrypt(ctx, kmsWrapper))
+	assert.NoError(t, rw.Create(context.Background(), cred))
 
 	// now things are stored in the db, we can rotate and rewrap
-	err = kmsCache.RotateKeys(ctx, prj.PublicId)
-	assert.NoError(t, err)
-
-	err = credStaticUsernamePasswordRewrapFn(ctx, cred.GetKeyId(), rw, rw, kmsCache)
-	assert.NoError(t, err)
+	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
+	assert.NoError(t, credStaticUsernamePasswordRewrapFn(ctx, cred.GetKeyId(), rw, rw, kmsCache))
 
 	// now we pull the credential back from the db, decrypt it with the new key, and ensure things match
 	got := allocUsernamePasswordCredential()
-	got.PublicId = id
+	got.PublicId = cred.PublicId
 	assert.NoError(t, rw.LookupById(ctx, got))
 
 	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
 	assert.NoError(t, err)
-
-	err = got.decrypt(ctx, kmsWrapper2)
-	assert.NoError(t, err)
-
 	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, cred.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
@@ -83,21 +69,12 @@ func TestRewrap_credStaticSshPrivKeyRewrapFn(t *testing.T) {
 	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
 	cs2 := TestCredentialStore(t, conn, wrapper, prj.PublicId)
 
-	id, err := credential.NewSshPrivateKeyCredentialId(ctx)
-	assert.NoError(t, err)
-
 	cred, err := NewSshPrivateKeyCredential(ctx, cs.GetPublicId(), "username", credential.PrivateKey(TestSshPrivateKeyPem))
-	assert.NoError(t, err)
-	assert.NotNil(t, cred)
-	cred.PublicId = id
-
-	id2, err := credential.NewSshPrivateKeyCredentialId(ctx)
 	assert.NoError(t, err)
 
 	// we need to assign this one explicitly since the new function (correctly) has some checks on the passphrase actually being correct
 	cred2 := &SshPrivateKeyCredential{
 		SshPrivateKeyCredential: &store.SshPrivateKeyCredential{
-			PublicId:             id2,
 			StoreId:              cs2.GetPublicId(),
 			Username:             "username",
 			PrivateKey:           credential.PrivateKey(TestSshPrivateKeyPem),
@@ -105,68 +82,66 @@ func TestRewrap_credStaticSshPrivKeyRewrapFn(t *testing.T) {
 		},
 	}
 
+	cred.PublicId, err = credential.NewSshPrivateKeyCredentialId(ctx)
+	assert.NoError(t, err)
+	cred2.PublicId, err = credential.NewSshPrivateKeyCredentialId(ctx)
+	assert.NoError(t, err)
+
 	kmsWrapper, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
 
-	err = cred.encrypt(ctx, kmsWrapper)
-	assert.NoError(t, err)
-
-	err = cred2.encrypt(ctx, kmsWrapper)
-	assert.NoError(t, err)
+	assert.NoError(t, cred.encrypt(ctx, kmsWrapper))
+	assert.NoError(t, cred2.encrypt(ctx, kmsWrapper))
 
 	// create them in the db
-	err = rw.Create(context.Background(), cred)
-	assert.NoError(t, err)
-
-	err = rw.Create(context.Background(), cred2)
-	assert.NoError(t, err)
+	assert.NoError(t, rw.Create(context.Background(), cred))
+	assert.NoError(t, rw.Create(context.Background(), cred2))
 
 	// now things are stored in the db, we can rotate and rewrap
-	err = kmsCache.RotateKeys(ctx, prj.PublicId)
-	assert.NoError(t, err)
-
-	err = credStaticSshPrivKeyRewrapFn(ctx, cred.GetKeyId(), rw, rw, kmsCache)
-	assert.NoError(t, err)
+	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
+	assert.NoError(t, credStaticSshPrivKeyRewrapFn(ctx, cred.GetKeyId(), rw, rw, kmsCache))
 
 	// now we pull both credential2 back from the db, decrypt them with the new key, and ensure things match
 	got := allocSshPrivateKeyCredential()
-	got.PublicId = id
+	got.PublicId = cred.PublicId
 	assert.NoError(t, rw.LookupById(ctx, got))
 
 	got2 := allocSshPrivateKeyCredential()
-	got2.PublicId = id2
+	got2.PublicId = cred2.PublicId
 	assert.NoError(t, rw.LookupById(ctx, got2))
 
 	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
-	assert.NoError(t, err)
-
-	err = got.decrypt(ctx, kmsWrapper2)
-	assert.NoError(t, err)
-	err = got2.decrypt(ctx, kmsWrapper2)
 	assert.NoError(t, err)
 
 	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, cred.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
 	assert.Equal(t, TestSshPrivateKeyPem, string(got.PrivateKey))
+	assert.NotEqual(t, cred.GetPrivateKeyEncrypted(), got.GetPrivateKeyEncrypted())
 	assert.NotEmpty(t, got.GetPrivateKeyHmac())
 	assert.NotEqual(t, cred.GetPrivateKeyHmac(), got.GetPrivateKeyHmac())
 	// we didn't set this, so they should be empty before AND after rewrapping
 	assert.Empty(t, got.GetPrivateKeyPassphrase())
+	assert.Empty(t, got.GetPrivateKeyPassphraseHmac())
 	assert.Empty(t, got.GetPrivateKeyPassphraseEncrypted())
 
-	// perform all the same checks again on #2, but check passphrase
+	// perform all the same checks again on #2, but also check passphrase
+	assert.NoError(t, got2.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got2.GetKeyId())
 	assert.NotEqual(t, cred2.GetKeyId(), got2.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got2.GetKeyId())
 	assert.Equal(t, TestSshPrivateKeyPem, string(got2.PrivateKey))
+	assert.NotEqual(t, cred.GetPrivateKeyEncrypted(), got.GetPrivateKeyEncrypted())
 	assert.NotEmpty(t, got2.GetPrivateKeyHmac())
 	assert.NotEqual(t, cred2.GetPrivateKeyHmac(), got2.GetPrivateKeyHmac())
 	// this time, we did set this, so they should be available
 	assert.NotEmpty(t, got2.GetPrivateKeyPassphraseEncrypted())
+	assert.NotEmpty(t, got2.GetPrivateKeyPassphraseHmac())
 	assert.Equal(t, []byte("passphrase"), got2.GetPrivateKeyPassphrase())
+	assert.NotEqual(t, cred2.GetPrivateKeyPassphraseHmac(), got2.GetPrivateKeyPassphraseHmac())
 }

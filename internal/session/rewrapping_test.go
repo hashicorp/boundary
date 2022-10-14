@@ -72,19 +72,18 @@ func TestRewrap_sessionCredentialRewrapFn(t *testing.T) {
 	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.KeyId))
 	assert.NoError(t, err)
 
-	err = got.decrypt(ctx, kmsWrapper2)
-	assert.NoError(t, err)
-
 	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got.KeyId)
 	assert.NotEqual(t, cred.KeyId, got.KeyId)
 	assert.Equal(t, newKeyVersionId, got.KeyId)
 	assert.Equal(t, "secret", string(got.Credential))
 	assert.NotEmpty(t, got.CredentialSha256)
 	assert.NotEqual(t, cred.CredentialSha256, got.CredentialSha256)
+	assert.NotEqual(t, cred.CtCredential, got.CtCredential)
 }
 
 func TestRewrap_sessionRewrapFn(t *testing.T) {
@@ -131,15 +130,15 @@ func TestRewrap_sessionRewrapFn(t *testing.T) {
 	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.KeyId))
 	assert.NoError(t, err)
 
-	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
-
 	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got.KeyId)
 	assert.NotEqual(t, session.KeyId, got.KeyId)
 	assert.Equal(t, newKeyVersionId, got.KeyId)
 	assert.Equal(t, "token", string(got.TofuToken))
+	assert.NotEqual(t, session.CtTofuToken, got.CtTofuToken)
 	// there is no hmac, so we're done
 }

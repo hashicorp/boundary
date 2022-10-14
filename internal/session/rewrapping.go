@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -69,7 +68,6 @@ func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Rea
 		return errors.Wrap(ctx, err, op)
 	}
 	for _, session := range sessions {
-		fmt.Printf("session: %#v\n", session)
 		wrapper, err := repo.kms.GetWrapper(ctx, session.GetProjectId(), kms.KeyPurposeDatabase)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -80,7 +78,6 @@ func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Rea
 		if err := session.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		fmt.Printf("updated: %#v\n", session)
 		if _, err := repo.writer.Update(ctx, session, []string{"CtTofuToken", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
