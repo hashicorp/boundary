@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/nodeenrollment/rotation"
-	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,23 +26,33 @@ func TestRewrap_workerAuthCertRewrapFn(t *testing.T) {
 	roots, err := rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	assert.NoError(t, err)
 
-	currentRoot, err := workerAuthRepo.convertRootCertificate(ctx, roots.Current)
-	assert.NoError(t, err)
+	// pull this directly from the db rather than convert so we don't lose key info
+	currentRoot := allocRootCertificate()
+	assert.NoError(t, rw.SearchWhere(ctx, &currentRoot, "state = ?", []interface{}{"current"}, db.WithLimit(-1)))
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, scope.Global.String()))
 	assert.NoError(t, workerAuthCertRewrapFn(ctx, currentRoot.KeyId, rw, rw, kmsCache))
 
 	// now we pull the certs back from the db, decrypt it with the new key, and ensure things match
-	newRoots := &types.RootCertificates{Id: CaId}
-	assert.NoError(t, workerAuthRepo.Load(ctx, newRoots))
-	newRoots.Current.Id = string(CurrentState)
+	got := allocRootCertificate()
+	assert.NoError(t, rw.SearchWhere(ctx, &got, "state = ?", []interface{}{"current"}, db.WithLimit(-1)))
+
+	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
+	assert.NoError(t, err)
+	decryptedGotPrivKey, err := decrypt(ctx, got.GetPrivateKey(), kmsWrapper2)
+	assert.NoError(t, err)
+
+	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
+	assert.NoError(t, err)
 
 	// decryption occurs during Load, so we just want to make sure everything is expected
-	assert.Equal(t, roots.Current.Id, newRoots.Current.Id)
-	assert.Equal(t, roots.Current.PrivateKeyPkcs8, newRoots.Current.PrivateKeyPkcs8)
-	// assert.NotEmpty(t, newRoots.GetWrappingKeyId())
-	assert.Equal(t, roots.GetWrappingKeyId(), newRoots.GetWrappingKeyId())
+	assert.Equal(t, currentRoot.State, got.State)
+	assert.NotEmpty(t, got.GetKeyId())
+	assert.NotEqual(t, currentRoot.GetKeyId(), got.GetKeyId())
+	assert.Equal(t, newKeyVersionId, got.GetKeyId())
+	assert.NotEqual(t, currentRoot.GetPrivateKey(), got.GetPrivateKey())
+	assert.Equal(t, roots.Current.PrivateKeyPkcs8, decryptedGotPrivKey)
 }
 
 func TestRewrap_workerAuthRewrapFn(t *testing.T) {
