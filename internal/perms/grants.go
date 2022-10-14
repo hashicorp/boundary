@@ -251,7 +251,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, wrong number of equal signs", segment))
 		case len(kv[0]) == 0:
 			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing key", segment))
-		case len(kv[1]) == 0:
+		case len(kv[1]) == 0 && kv[0] != "output_fields":
 			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing value", segment))
 		}
 

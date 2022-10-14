@@ -422,16 +422,6 @@ func Test_Parse(t *testing.T) {
 			err:   `perms.Parse: parsed grant string contains no id or type: parameter violation: error #100`,
 		},
 		{
-			name:  "empty output fields",
-			input: "id=*;type=*;actions=read,list;output_fields=",
-			err:   `perms.Parse: unable to parse grant string: perms.(Grant).unmarshalText: segment "output_fields=" not formatted correctly, missing value: parameter violation: error #100`,
-		},
-		{
-			name:  "empty output fields json",
-			input: `{"id": "*", "type": "*", "actions": ["read", "list"], "output_fields": []}`,
-			err:   "perms.Parse: parsed grant string has output_fields set but empty: parameter violation: error #100",
-		},
-		{
 			name:  "wildcard id and type and actions with list",
 			input: "id=*;type=*;actions=read,list",
 			expected: Grant{
@@ -782,7 +772,7 @@ func FuzzParse(f *testing.F) {
 		}
 		g3, err := Parse("global", string(jsonBytes), WithSkipFinalValidation(true))
 		if err != nil {
-			return
+			t.Fatal("Failed to parse json string:", err)
 		}
 		if g.CanonicalString() != g3.CanonicalString() {
 			t.Errorf("grant JSON roundtrip failed, input %q, output %q", g.CanonicalString(), g3.CanonicalString())
