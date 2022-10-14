@@ -86,3 +86,60 @@ func TestRewrap_sessionCredentialRewrapFn(t *testing.T) {
 	assert.NotEmpty(t, got.CredentialSha256)
 	assert.NotEqual(t, cred.CredentialSha256, got.CredentialSha256)
 }
+
+func TestRewrap_sessionRewrapFn(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
+
+	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+	uId := at.GetIamUserId()
+	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	kmsWrapper, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
+	assert.NoError(t, err)
+	session := TestSession(t, conn, kmsWrapper, ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+	// you cannot create a session with a pre-populated token, so do it in an update
+	session.TofuToken = []byte("token")
+	assert.NoError(t, session.encrypt(ctx, kmsWrapper))
+	_, err = rw.Update(ctx, session, []string{"CtTofuToken", "KeyId"}, nil)
+	assert.NoError(t, err)
+
+	// now things are stored in the db, we can rotate and rewrap
+	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
+	assert.NoError(t, sessionRewrapFn(ctx, session.KeyId, rw, rw, kmsCache))
+
+	// now we pull the session back from the db, decrypt it with the new key, and ensure things match
+	got := &Session{}
+	got.PublicId = session.PublicId
+	assert.NoError(t, rw.LookupById(ctx, got))
+
+	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.KeyId))
+	assert.NoError(t, err)
+
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
+
+	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
+	assert.NoError(t, err)
+
+	// decrypt with the new key version and check to make sure things match
+	assert.NotEmpty(t, got.KeyId)
+	assert.NotEqual(t, session.KeyId, got.KeyId)
+	assert.Equal(t, newKeyVersionId, got.KeyId)
+	assert.Equal(t, "token", string(got.TofuToken))
+	// there is no hmac, so we're done
+}
