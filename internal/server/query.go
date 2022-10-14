@@ -23,4 +23,15 @@ const (
 		delete from worker_auth_ca_certificate
  		where state = @state;
 	`
+	workerAuthRewrapQuery = `
+		select distinct
+		auth.worker_key_identifier,
+		auth.controller_encryption_priv_key,
+		auth.key_id
+		from server_worker worker
+		inner join worker_auth_authorized auth
+		on auth.worker_id = worker.public_id
+		and auth.key_id = ?
+		where worker.scope_id = ?
+	`
 )

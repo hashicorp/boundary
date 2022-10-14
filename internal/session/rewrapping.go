@@ -13,39 +13,42 @@ func init() {
 	kms.RegisterTableRewrapFn("session_credential", sessionCredentialRewrapFn)
 }
 
-func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "session.sessionCredentialRewrapFn"
-	repo, err := NewRepository(ctx, reader, writer, kmsRepo, WithLimit(-1))
+	var creds []*credential
+	// an index exists on (session_id, credential_sha256), so we can query workers via scope and refine with key id. this is the fastest query
+	rows, err := reader.Query(ctx, sessionCredentialRewrapQuery, []interface{}{dataKeyVersionId, scopeId})
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	var creds []*credential
-	if err := repo.reader.SearchWhere(ctx, &creds, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+	for rows.Next() {
+		cred := &credential{}
+		if err := rows.Scan(
+			&cred.SessionId,
+			&cred.KeyId,
+			&cred.CtCredential,
+			&cred.CredentialSha256,
+		); err != nil {
+			_ = rows.Close()
+			return errors.Wrap(ctx, err, op)
+		}
+		creds = append(creds, cred)
+	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	for _, cred := range creds {
-		session, _, err := repo.LookupSession(ctx, cred.SessionId)
-		// check for session nil? technically shouldn't be possible according to db fk
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		wrapper, err := repo.kms.GetWrapper(ctx, session.GetProjectId(), kms.KeyPurposeDatabase)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
 		if err := cred.decrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 		if err := cred.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		if _, err := repo.writer.Exec(ctx, `
-update session_credential
-	set credential = ?,
-		key_id = ?
-where session_id = ?
-	and credential_sha256 = ?;
-		`, []interface{}{
+		if _, err := writer.Exec(ctx, sessionCredentialRewrapUpdate, []interface{}{
 			cred.CtCredential,
 			cred.KeyId,
 			cred.SessionId,
@@ -57,18 +60,15 @@ where session_id = ?
 	return nil
 }
 
-func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "session.sessionRewrapFn"
-	repo, err := NewRepository(ctx, reader, writer, kmsRepo, WithLimit(-1))
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
 	var sessions []*Session
-	if err := repo.reader.SearchWhere(ctx, &sessions, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+	// an index exists on (project_id, user_id, termination_reason), so we can query sessions via scope and refine with key id. this is the fastest query
+	if err := reader.SearchWhere(ctx, &sessions, "project_id=? and key_id=?", []interface{}{scopeId, dataKeyVersionId}, db.WithLimit(-1)); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	for _, session := range sessions {
-		wrapper, err := repo.kms.GetWrapper(ctx, session.GetProjectId(), kms.KeyPurposeDatabase)
+		wrapper, err := kmsRepo.GetWrapper(ctx, session.GetProjectId(), kms.KeyPurposeDatabase)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -78,7 +78,7 @@ func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Rea
 		if err := session.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		if _, err := repo.writer.Update(ctx, session, []string{"CtTofuToken", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, session, []string{"CtTofuToken", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}

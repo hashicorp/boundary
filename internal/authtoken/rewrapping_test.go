@@ -23,7 +23,7 @@ func TestRewrap_authTokenRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, org.Scope.GetPublicId()))
-	assert.NoError(t, authTokenRewrapFn(ctx, at.GetKeyId(), rw, rw, kmsCache))
+	assert.NoError(t, authTokenRewrapFn(ctx, at.GetKeyId(), org.Scope.GetPublicId(), rw, rw, kmsCache))
 
 	// now we pull the authToken back from the db, decrypt it with the new key, and ensure things match
 	got := allocAuthToken()

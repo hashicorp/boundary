@@ -52,7 +52,7 @@ func TestRewrap_sessionCredentialRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
-	assert.NoError(t, sessionCredentialRewrapFn(ctx, cred.KeyId, rw, rw, kmsCache))
+	assert.NoError(t, sessionCredentialRewrapFn(ctx, cred.KeyId, prj.PublicId, rw, rw, kmsCache))
 
 	// now we pull the credential back from the db, decrypt it with the new key, and ensure things match
 	got := &credential{
@@ -120,7 +120,7 @@ func TestRewrap_sessionRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
-	assert.NoError(t, sessionRewrapFn(ctx, session.KeyId, rw, rw, kmsCache))
+	assert.NoError(t, sessionRewrapFn(ctx, session.KeyId, prj.PublicId, rw, rw, kmsCache))
 
 	// now we pull the session back from the db, decrypt it with the new key, and ensure things match
 	got := &Session{}

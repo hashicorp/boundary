@@ -76,7 +76,7 @@ func TestRewrap_authMethodRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, org.Scope.GetPublicId()))
-	assert.NoError(t, authMethodRewrapFn(ctx, authMethod.KeyId, rw, rw, kmsCache))
+	assert.NoError(t, authMethodRewrapFn(ctx, authMethod.KeyId, org.Scope.GetPublicId(), rw, rw, kmsCache))
 
 	// fetch the new key version
 	kmsWrapper, err = kmsCache.GetWrapper(ctx, org.Scope.GetPublicId(), kms.KeyPurposeDatabase)

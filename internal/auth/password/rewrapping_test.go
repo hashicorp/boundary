@@ -38,7 +38,7 @@ func TestRewrap_argon2ConfigRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, org.Scope.GetPublicId()))
-	assert.NoError(t, argon2ConfigRewrapFn(ctx, cred.KeyId, rw, rw, kmsCache))
+	assert.NoError(t, argon2ConfigRewrapFn(ctx, cred.KeyId, org.Scope.GetPublicId(), rw, rw, kmsCache))
 
 	// now we pull the config back from the db, decrypt it with the new key, and ensure things match
 	got := &Argon2Credential{

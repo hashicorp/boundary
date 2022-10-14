@@ -35,7 +35,7 @@ func TestRewrap_credStaticUsernamePasswordRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
-	assert.NoError(t, credStaticUsernamePasswordRewrapFn(ctx, cred.GetKeyId(), rw, rw, kmsCache))
+	assert.NoError(t, credStaticUsernamePasswordRewrapFn(ctx, cred.GetKeyId(), prj.PublicId, rw, rw, kmsCache))
 
 	// now we pull the credential back from the db, decrypt it with the new key, and ensure things match
 	got := allocUsernamePasswordCredential()
@@ -99,7 +99,7 @@ func TestRewrap_credStaticSshPrivKeyRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
-	assert.NoError(t, credStaticSshPrivKeyRewrapFn(ctx, cred.GetKeyId(), rw, rw, kmsCache))
+	assert.NoError(t, credStaticSshPrivKeyRewrapFn(ctx, cred.GetKeyId(), prj.PublicId, rw, rw, kmsCache))
 
 	// now we pull both credential2 back from the db, decrypt them with the new key, and ensure things match
 	got := allocSshPrivateKeyCredential()

@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/scheduler"
 )
 
 func init() {
@@ -14,66 +13,50 @@ func init() {
 	kms.RegisterTableRewrapFn("credential_vault_token", credVaultTokenRewrapFn)
 }
 
-func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "vault.credVaultClientCertificateRewrapFn"
-	// using an empty scheduler here since the only function we need is a lookup func and we really don't want to actually schedule something
-	repo, err := NewRepository(reader, writer, kmsRepo, &scheduler.Scheduler{})
+	var certs []*ClientCertificate
+	// only index is store id, and store isn't queryable via scope. this is the fastest query
+	if err := reader.SearchWhere(ctx, &certs, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	var certs []*ClientCertificate
-	if err := repo.reader.SearchWhere(ctx, &certs, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
 	for _, cert := range certs {
-		store, err := repo.LookupCredentialStore(ctx, cert.GetStoreId())
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		wrapper, err := repo.kms.GetWrapper(ctx, store.GetProjectId(), kms.KeyPurposeDatabase)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
 		if err := cert.decrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 		if err := cert.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		if _, err := repo.writer.Update(ctx, cert, []string{"CtCertificateKey", "CertificateKeyHmac", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, cert, []string{"CtCertificateKey", "CertificateKeyHmac", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}
 	return nil
 }
 
-func credVaultTokenRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func credVaultTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "vault.credVaultTokenRewrapFn"
-	// using an empty scheduler here since the only function we need is a lookup func and we really don't want to actually schedule something
-	repo, err := NewRepository(reader, writer, kmsRepo, &scheduler.Scheduler{})
+	var tokens []*Token
+	// indexes on token hmac, store id, expiration time. none of which are queryable via scope or key. this is the fastest query
+	if err := reader.SearchWhere(ctx, &tokens, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	var tokens []*Token
-	if err := repo.reader.SearchWhere(ctx, &tokens, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
 	for _, token := range tokens {
-		store, err := repo.LookupCredentialStore(ctx, token.GetStoreId())
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		wrapper, err := repo.kms.GetWrapper(ctx, store.GetProjectId(), kms.KeyPurposeDatabase)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
 		if err := token.decrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 		if err := token.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		if _, err := repo.writer.Update(ctx, token, []string{"CtToken", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, token, []string{"CtToken", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}

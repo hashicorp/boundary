@@ -37,7 +37,7 @@ func TestRewrap_credStaticUsernamePasswordRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
-	assert.NoError(t, hostCatalogSecretRewrapFn(ctx, secret.GetKeyId(), rw, rw, kmsCache))
+	assert.NoError(t, hostCatalogSecretRewrapFn(ctx, secret.GetKeyId(), prj.PublicId, rw, rw, kmsCache))
 
 	// now we pull the credential back from the db, decrypt it with the new key, and ensure things match
 	got := allocHostCatalogSecret()

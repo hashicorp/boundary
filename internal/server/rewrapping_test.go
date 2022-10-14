@@ -32,7 +32,7 @@ func TestRewrap_workerAuthCertRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, scope.Global.String()))
-	assert.NoError(t, workerAuthCertRewrapFn(ctx, currentRoot.KeyId, rw, rw, kmsCache))
+	assert.NoError(t, workerAuthCertRewrapFn(ctx, currentRoot.KeyId, scope.Global.String(), rw, rw, kmsCache))
 
 	// now we pull the certs back from the db, decrypt it with the new key, and ensure things match
 	got := allocRootCertificate()
@@ -78,7 +78,7 @@ func TestRewrap_workerAuthRewrapFn(t *testing.T) {
 
 	// now things are stored in the db, we can rotate and rewrap
 	assert.NoError(t, kmsCache.RotateKeys(ctx, scope.Global.String()))
-	assert.NoError(t, workerAuthRewrapFn(ctx, workerAuth.GetKeyId(), rw, rw, kmsCache))
+	assert.NoError(t, workerAuthRewrapFn(ctx, workerAuth.GetKeyId(), scope.Global.String(), rw, rw, kmsCache))
 
 	// now we pull the auth back from the db, decrypt it with the new key, and ensure things match
 	got := allocWorkerAuth()

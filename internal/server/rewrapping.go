@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 func init() {
@@ -14,17 +13,14 @@ func init() {
 	kms.RegisterTableRewrapFn("worker_auth_authorized", workerAuthRewrapFn)
 }
 
-func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "server.workerAuthCertRewrapFn"
-	repo, err := NewRepository(reader, writer, kmsRepo)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
 	var certs []*RootCertificate
-	if err := repo.reader.SearchWhere(ctx, &certs, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+	// indexes on public id, state. neither of which are queryable via scope. this is the fastest query
+	if err := reader.SearchWhere(ctx, &certs, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	wrapper, err := repo.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
+	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -37,51 +33,58 @@ func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, reader
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		ctPrivateKey, err := encrypt(ctx, privateKey, wrapper)
-		if err != nil {
+		if cert.PrivateKey, err = encrypt(ctx, privateKey, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 		cert.KeyId = newKeyVersionId
-		cert.PrivateKey = ctPrivateKey
-		if _, err := repo.writer.Update(ctx, cert, []string{"PrivateKey", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, cert, []string{"PrivateKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}
 	return nil
 }
 
-func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "server.workerAuthRewrapFn"
-	repo, err := NewRepository(reader, writer, kmsRepo)
+	var auths []*WorkerAuth
+	// an index exists on (worker_id, state), so we can query workers via scope and refine with key id. this is the fastest query
+	rows, err := reader.Query(ctx, workerAuthRewrapQuery, []interface{}{dataKeyVersionId, scopeId})
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	var auths []*WorkerAuth
-	if err := repo.reader.SearchWhere(ctx, &auths, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+	for rows.Next() {
+		workerAuth := allocWorkerAuth()
+		if err := rows.Scan(
+			&workerAuth.WorkerKeyIdentifier,
+			&workerAuth.ControllerEncryptionPrivKey,
+			&workerAuth.KeyId,
+		); err != nil {
+			_ = rows.Close()
+			return errors.Wrap(ctx, err, op)
+		}
+		auths = append(auths, workerAuth)
+	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	newKeyVersionId, err := wrapper.KeyId(ctx)
+	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	for _, workerAuth := range auths {
-		worker, err := repo.LookupWorker(ctx, workerAuth.GetWorkerId())
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		wrapper, err := repo.kms.GetWrapper(ctx, worker.GetScopeId(), kms.KeyPurposeDatabase)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
 		privateKey, err := decrypt(ctx, workerAuth.ControllerEncryptionPrivKey, wrapper)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		workerAuth.ControllerEncryptionPrivKey, err = encrypt(ctx, privateKey, wrapper)
-		if err != nil {
+		if workerAuth.ControllerEncryptionPrivKey, err = encrypt(ctx, privateKey, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		workerAuth.KeyId, err = wrapper.KeyId(ctx)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		if _, err := repo.writer.Update(ctx, workerAuth, []string{"ControllerEncryptionPrivKey", "KeyId"}, nil); err != nil {
+		workerAuth.KeyId = newKeyVersionId
+		if _, err := writer.Update(ctx, workerAuth, []string{"ControllerEncryptionPrivKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}
