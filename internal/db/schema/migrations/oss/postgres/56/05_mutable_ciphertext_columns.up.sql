@@ -25,4 +25,11 @@ begin;
   create trigger immutable_columns before update on session_credential
     for each row execute procedure immutable_columns('session_id');
 
+
+  -- And one final time on worker auth for controller priv key and key id.
+  drop trigger immutable_columns on worker_auth_authorized;
+
+  create trigger immutable_columns before update on worker_auth_authorized
+    for each row execute function immutable_columns('worker_key_identifier', 'worker_id', 'worker_signing_pub_key', 'worker_encryption_pub_key', 'nonce', 'create_time');
+
 commit;

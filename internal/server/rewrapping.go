@@ -11,6 +11,7 @@ import (
 
 func init() {
 	kms.RegisterTableRewrapFn("worker_auth_ca_certificate", workerAuthCertRewrapFn)
+	kms.RegisterTableRewrapFn("worker_auth_authorized", workerAuthRewrapFn)
 }
 
 func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
@@ -43,6 +44,44 @@ func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, reader
 		cert.KeyId = newKeyVersionId
 		cert.PrivateKey = ctPrivateKey
 		if _, err := repo.writer.Update(ctx, cert, []string{"PrivateKey", "KeyId"}, nil); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
+	return nil
+}
+
+func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+	const op = "server.workerAuthRewrapFn"
+	repo, err := NewRepository(reader, writer, kmsRepo)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	var auths []*WorkerAuth
+	if err := repo.reader.SearchWhere(ctx, &auths, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	for _, workerAuth := range auths {
+		worker, err := repo.LookupWorker(ctx, workerAuth.GetWorkerId())
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		wrapper, err := repo.kms.GetWrapper(ctx, worker.GetScopeId(), kms.KeyPurposeDatabase)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		privateKey, err := decrypt(ctx, workerAuth.ControllerEncryptionPrivKey, wrapper)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		workerAuth.ControllerEncryptionPrivKey, err = encrypt(ctx, privateKey, wrapper)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		workerAuth.KeyId, err = wrapper.KeyId(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if _, err := repo.writer.Update(ctx, workerAuth, []string{"ControllerEncryptionPrivKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}
