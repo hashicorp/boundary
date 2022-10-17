@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -55,6 +56,30 @@ func RunCommand(name string, args ...string) *CommandResult {
 	var outbuf, errbuf bytes.Buffer
 
 	cmd := exec.Command(name, args...)
+	cmd.Stdout = &outbuf
+	cmd.Stderr = &errbuf
+
+	err := cmd.Run()
+
+	var ee *exec.ExitError
+	var exitCode int
+	if errors.As(err, &ee) {
+		exitCode = ee.ExitCode()
+	}
+
+	return &CommandResult{
+		Stdout:   outbuf.Bytes(),
+		Stderr:   errbuf.Bytes(),
+		ExitCode: exitCode,
+		Err:      err,
+	}
+}
+
+// RunCommandContext is similar to RunCommand but allows passing in a context
+func RunCommandContext(ctx context.Context, name string, args ...string) *CommandResult {
+	var outbuf, errbuf bytes.Buffer
+
+	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout = &outbuf
 	cmd.Stderr = &errbuf
 
