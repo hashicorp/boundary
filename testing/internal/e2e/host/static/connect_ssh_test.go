@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConnectTargetWithStaticCredentialStoreCli uses the boundary cli to create a credential using
-// boundary's built-in credential store. The test attaches that credential to a target and attempts
-// to connect to that target using those credentials.
-func TestConnectTargetWithStaticCredentialStoreCli(t *testing.T) {
+// TestConnectTargetWithSshCli uses the boundary cli to create a credential using boundary's
+// built-in credential store. The test attaches that credential to a target and attempts to connect
+// to that target using those credentials.
+func TestConnectTargetWithSshCli(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -141,4 +141,14 @@ func TestCreateTargetWithStaticCredentialStoreApi(t *testing.T) {
 		targets.WithBrokeredCredentialSourceIds([]string{newCredentialsId}),
 	)
 	require.NoError(t, err)
+
+	// Authorize Session
+	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, newTargetId)
+	require.NoError(t, err)
+	newSessionAuthorization := newSessionAuthorizationResult.Item
+	retrievedUser := fmt.Sprintf("%s", newSessionAuthorization.Credentials[0].Credential["username"])
+	retrievedKey := fmt.Sprintf("%s", newSessionAuthorization.Credentials[0].Credential["private_key"])
+	assert.Equal(t, c.TargetSshUser, retrievedUser)
+	require.Equal(t, string(k), retrievedKey)
+	t.Log("Successfully retrieved credentials for target")
 }
