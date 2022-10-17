@@ -17,13 +17,15 @@ func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) stri
 	scopeClient := scopes.NewClient(client)
 	newOrgResult, err := scopeClient.Create(ctx, "global", scopes.WithName("e2e Automated Test Org"))
 	require.NoError(t, err)
+
+	newOrgId := newOrgResult.Item.Id
 	t.Cleanup(func() {
-		_, err := scopeClient.Delete(ctx, newOrgResult.Item.Id)
+		_, err := scopeClient.Delete(ctx, newOrgId)
 		require.NoError(t, err)
 	})
 
-	t.Logf("Created Org Id: %s", newOrgResult.Item.Id)
-	return newOrgResult.Item.Id
+	t.Logf("Created Org Id: %s", newOrgId)
+	return newOrgId
 }
 
 // CreateNewProjectApi creates a new project in boundary using the go api. The project will be created
@@ -34,8 +36,9 @@ func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, 
 	newProjResult, err := scopeClient.Create(ctx, orgId, scopes.WithName("e2e Automated Test Project"))
 	require.NoError(t, err)
 
-	t.Logf("Created Project Id: %s", newProjResult.Item.Id)
-	return newProjResult.Item.Id
+	newProjectId := newProjResult.Item.Id
+	t.Logf("Created Project Id: %s", newProjectId)
+	return newProjectId
 }
 
 // CreateNewOrgCli creates a new organization in boundary using the cli.
@@ -52,13 +55,14 @@ func CreateNewOrgCli(t testing.TB) string {
 	err := json.Unmarshal(output.Stdout, &newOrgResult)
 	require.NoError(t, err)
 
+	newOrgId := newOrgResult.Item.Id
 	t.Cleanup(func() {
-		output := e2e.RunCommand("boundary", "scopes", "delete", "-id", newOrgResult.Item.Id)
+		output := e2e.RunCommand("boundary", "scopes", "delete", "-id", newOrgId)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
-	t.Logf("Created Org Id: %s", newOrgResult.Item.Id)
-	return newOrgResult.Item.Id
+	t.Logf("Created Org Id: %s", newOrgId)
+	return newOrgId
 }
 
 // CreateNewProjectCli creates a new project in boundary using the cli. The project will be created
@@ -76,6 +80,7 @@ func CreateNewProjectCli(t testing.TB, orgId string) string {
 	err := json.Unmarshal(output.Stdout, &newProjResult)
 	require.NoError(t, err)
 
-	t.Logf("Created Project Id: %s", newProjResult.Item.Id)
-	return newProjResult.Item.Id
+	newProjectId := newProjResult.Item.Id
+	t.Logf("Created Project Id: %s", newProjectId)
+	return newProjectId
 }

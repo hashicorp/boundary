@@ -5,15 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/api/credentialstores"
-	"github.com/hashicorp/boundary/api/hostcatalogs"
-	"github.com/hashicorp/boundary/api/hosts"
-	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
@@ -56,6 +52,16 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
+	boundary.AuthenticateCli(t)
+	newOrgId := boundary.CreateNewOrgCli(t)
+	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetCli(t, newHostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, newHostCatalogId, c.TargetIp)
+	boundary.AddHostToHostSetCli(t, newHostSetId, newHostId)
+	newTargetId := boundary.CreateNewTargetCli(t, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
+
 	// Configure vault
 	vaultAddr, boundaryPolicyName := vault.Setup(t)
 
@@ -88,13 +94,6 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	credStoreToken := tokenCreateResult.Auth.Client_Token
 	t.Log("Created Vault Cred Store Token")
 
-	// Authenticate boundary cli
-	boundary.AuthenticateCli(t)
-
-	// Create an org and project
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-
 	// Create a credential store
 	output = e2e.RunCommand("boundary", "credential-stores", "create", "vault",
 		"-scope-id", newProjectId,
@@ -123,74 +122,6 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	require.NoError(t, err)
 	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
-
-	// Create a host catalog
-	output = e2e.RunCommand("boundary", "host-catalogs", "create", "static",
-		"-scope-id", newProjectId,
-		"-name", "e2e Automated Test Host Catalog",
-		"-format", "json",
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostCatalogResult hostcatalogs.HostCatalogCreateResult
-	err = json.Unmarshal(output.Stdout, &newHostCatalogResult)
-	require.NoError(t, err)
-	newHostCatalogId := newHostCatalogResult.Item.Id
-	t.Logf("Created Host Catalog: %s", newHostCatalogId)
-
-	// Create a host set and add to catalog
-	output = e2e.RunCommand("boundary", "host-sets", "create", "static",
-		"-host-catalog-id", newHostCatalogId,
-		"-name", "e2e Automated Test Host Set",
-		"-format", "json",
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostSetResult hostsets.HostSetCreateResult
-	err = json.Unmarshal(output.Stdout, &newHostSetResult)
-	require.NoError(t, err)
-	newHostSetId := newHostSetResult.Item.Id
-	t.Logf("Created Host Set: %s", newHostSetId)
-
-	// Create a host
-	output = e2e.RunCommand("boundary", "hosts", "create", "static",
-		"-host-catalog-id", newHostCatalogId,
-		"-name", c.TargetIp,
-		"-address", c.TargetIp,
-		"-format", "json",
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostResult hosts.HostCreateResult
-	err = json.Unmarshal(output.Stdout, &newHostResult)
-	require.NoError(t, err)
-	newHostId := newHostResult.Item.Id
-	t.Logf("Created Host: %s", newHostId)
-
-	// Add host to host set
-	output = e2e.RunCommand("boundary", "host-sets", "add-hosts",
-		"-id", newHostSetId,
-		"-host", newHostId,
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-
-	// Create Target
-	output = e2e.RunCommand("boundary", "targets", "create", "tcp",
-		"-scope-id", newProjectId,
-		"-default-port", c.TargetPort,
-		"-name", "e2e Automated Test Target",
-		"-format", "json",
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newTargetResult targets.TargetCreateResult
-	err = json.Unmarshal(output.Stdout, &newTargetResult)
-	require.NoError(t, err)
-	newTargetId := newTargetResult.Item.Id
-	t.Logf("Created Target: %s", newTargetId)
-
-	// Add host set to target
-	output = e2e.RunCommand("boundary", "targets", "add-host-sources",
-		"-id", newTargetId,
-		"-host-source", newHostSetId,
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Add brokered credentials to target
 	output = e2e.RunCommand("boundary", "targets", "add-credential-sources",
@@ -254,6 +185,19 @@ func TestCreateVaultCredentialStoreApi(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
+	client, err := boundary.NewApiClient()
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
+	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetIp)
+	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
+	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
+
 	// Configure vault
 	vaultAddr, boundaryPolicyName := vault.Setup(t)
 
@@ -286,15 +230,6 @@ func TestCreateVaultCredentialStoreApi(t *testing.T) {
 	credStoreToken := tokenCreateResult.Auth.Client_Token
 	t.Log("Created Vault Cred Store Token")
 
-	// Create boundary api client
-	client, err := boundary.NewApiClient()
-	require.NoError(t, err)
-	ctx := context.Background()
-
-	// Create an org and project
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-
 	// Create a credential store
 	csClient := credentialstores.NewClient(client)
 	newCredentialStoreResult, err := csClient.Create(ctx, "vault", newProjectId,
@@ -315,56 +250,8 @@ func TestCreateVaultCredentialStoreApi(t *testing.T) {
 	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
 
-	// Create a host catalog
-	hcClient := hostcatalogs.NewClient(client)
-	newHostCatalogResult, err := hcClient.Create(ctx, "static", newProjectId,
-		hostcatalogs.WithName("e2e Automated Test Host Catalog"),
-	)
-	require.NoError(t, err)
-	newHostCatalogId := newHostCatalogResult.Item.Id
-	t.Logf("Created Host Catalog: %s", newHostCatalogId)
-
-	// Create a host set and add to catalog
-	hsClient := hostsets.NewClient(client)
-	newHostSetResult, err := hsClient.Create(ctx, newHostCatalogId)
-	require.NoError(t, err)
-	newHostSetId := newHostSetResult.Item.Id
-	t.Logf("Created Host Set: %s", newHostSetId)
-
-	// Create a host
-	hClient := hosts.NewClient(client)
-	newHostResult, err := hClient.Create(ctx, newHostCatalogId,
-		hosts.WithName(c.TargetIp),
-		hosts.WithStaticHostAddress(c.TargetIp),
-	)
-	require.NoError(t, err)
-	newHostId := newHostResult.Item.Id
-	t.Logf("Created Host: %s", newHostId)
-
-	// Add host to host set
-	_, err = hsClient.AddHosts(ctx, newHostSetId, 0, []string{newHostId}, hostsets.WithAutomaticVersioning(true))
-	require.NoError(t, err)
-
-	// Create a target
-	tClient := targets.NewClient(client)
-	targetPort, err := strconv.ParseInt(c.TargetPort, 10, 32)
-	require.NoError(t, err)
-	newTargetResult, err := tClient.Create(ctx, "tcp", newProjectId,
-		targets.WithName("e2e Automated Test Target"),
-		targets.WithTcpTargetDefaultPort(uint32(targetPort)),
-	)
-	require.NoError(t, err)
-	newTargetId := newTargetResult.Item.Id
-	t.Logf("Created Target: %s", newTargetId)
-
-	// Add host set to target
-	_, err = tClient.AddHostSources(ctx, newTargetId, 0,
-		[]string{newHostSetId},
-		targets.WithAutomaticVersioning(true),
-	)
-	require.NoError(t, err)
-
 	// Add brokered credentials to target
+	tClient := targets.NewClient(client)
 	_, err = tClient.AddCredentialSources(ctx, newTargetId, 0,
 		targets.WithBrokeredCredentialSourceIds([]string{newCredentialLibraryId}),
 		targets.WithAutomaticVersioning(true),
