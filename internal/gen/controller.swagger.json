@@ -2690,6 +2690,33 @@
         ]
       }
     },
+    "/v1/scopes:destroy-key-version": {
+      "post": {
+        "summary": "Destroy the specified key version in the scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs.",
+        "operationId": "ScopeService_DestroyKeyVersion",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DestroyKeyVersionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DestroyKeyVersionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
     "/v1/scopes:rotate-keys": {
       "post": {
         "summary": "Rotate all keys in a Scope.",
@@ -6279,6 +6306,26 @@
     },
     "controller.api.services.v1.DeleteWorkerResponse": {
       "type": "object"
+    },
+    "controller.api.services.v1.DestroyKeyVersionRequest": {
+      "type": "object",
+      "properties": {
+        "scope_id": {
+          "type": "string"
+        },
+        "key_version_id": {
+          "type": "string"
+        }
+      }
+    },
+    "controller.api.services.v1.DestroyKeyVersionResponse": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "description": "Destruction state. One of \"pending\" or \"completed\".\nUse GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs\nto monitor pending destruction jobs."
+        }
+      }
     },
     "controller.api.services.v1.GetAccountResponse": {
       "type": "object",

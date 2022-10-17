@@ -54,6 +54,10 @@ type ScopeServiceClient interface {
 	RotateKeys(ctx context.Context, in *RotateKeysRequest, opts ...grpc.CallOption) (*RotateKeysResponse, error)
 	// ListKeyVersionDestructionJobs lists any pending key version destruction jobs in the scope.
 	ListKeyVersionDestructionJobs(ctx context.Context, in *ListKeyVersionDestructionJobsRequest, opts ...grpc.CallOption) (*ListKeyVersionDestructionJobsResponse, error)
+	// DestroyKeyVersion destroys the specified key version. If this requires re-encrypting
+	// existing data, it will start an asynchronous process to complete this operation
+	// before destroying the key. Use ListKeyVersionDestructionJobs to monitor pending destruction jobs.
+	DestroyKeyVersion(ctx context.Context, in *DestroyKeyVersionRequest, opts ...grpc.CallOption) (*DestroyKeyVersionResponse, error)
 }
 
 type scopeServiceClient struct {
@@ -136,6 +140,15 @@ func (c *scopeServiceClient) ListKeyVersionDestructionJobs(ctx context.Context, 
 	return out, nil
 }
 
+func (c *scopeServiceClient) DestroyKeyVersion(ctx context.Context, in *DestroyKeyVersionRequest, opts ...grpc.CallOption) (*DestroyKeyVersionResponse, error) {
+	out := new(DestroyKeyVersionResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.ScopeService/DestroyKeyVersion", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ScopeServiceServer is the server API for ScopeService service.
 // All implementations must embed UnimplementedScopeServiceServer
 // for forward compatibility
@@ -176,6 +189,10 @@ type ScopeServiceServer interface {
 	RotateKeys(context.Context, *RotateKeysRequest) (*RotateKeysResponse, error)
 	// ListKeyVersionDestructionJobs lists any pending key version destruction jobs in the scope.
 	ListKeyVersionDestructionJobs(context.Context, *ListKeyVersionDestructionJobsRequest) (*ListKeyVersionDestructionJobsResponse, error)
+	// DestroyKeyVersion destroys the specified key version. If this requires re-encrypting
+	// existing data, it will start an asynchronous process to complete this operation
+	// before destroying the key. Use ListKeyVersionDestructionJobs to monitor pending destruction jobs.
+	DestroyKeyVersion(context.Context, *DestroyKeyVersionRequest) (*DestroyKeyVersionResponse, error)
 	mustEmbedUnimplementedScopeServiceServer()
 }
 
@@ -206,6 +223,9 @@ func (UnimplementedScopeServiceServer) RotateKeys(context.Context, *RotateKeysRe
 }
 func (UnimplementedScopeServiceServer) ListKeyVersionDestructionJobs(context.Context, *ListKeyVersionDestructionJobsRequest) (*ListKeyVersionDestructionJobsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListKeyVersionDestructionJobs not implemented")
+}
+func (UnimplementedScopeServiceServer) DestroyKeyVersion(context.Context, *DestroyKeyVersionRequest) (*DestroyKeyVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DestroyKeyVersion not implemented")
 }
 func (UnimplementedScopeServiceServer) mustEmbedUnimplementedScopeServiceServer() {}
 
@@ -364,6 +384,24 @@ func _ScopeService_ListKeyVersionDestructionJobs_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScopeService_DestroyKeyVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DestroyKeyVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScopeServiceServer).DestroyKeyVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.ScopeService/DestroyKeyVersion",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScopeServiceServer).DestroyKeyVersion(ctx, req.(*DestroyKeyVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ScopeService_ServiceDesc is the grpc.ServiceDesc for ScopeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -402,6 +440,10 @@ var ScopeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListKeyVersionDestructionJobs",
 			Handler:    _ScopeService_ListKeyVersionDestructionJobs_Handler,
+		},
+		{
+			MethodName: "DestroyKeyVersion",
+			Handler:    _ScopeService_DestroyKeyVersion_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

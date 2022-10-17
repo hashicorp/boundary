@@ -122,6 +122,19 @@ service ScopeService {
       summary: "Lists all pending key version destruction jobs in the scope."
     };
   }
+
+  // DestroyKeyVersion destroys the specified key version. If this requires re-encrypting
+  // existing data, it will start an asynchronous process to complete this operation
+  // before destroying the key. Use ListKeyVersionDestructionJobs to monitor pending destruction jobs.
+  rpc DestroyKeyVersion(DestroyKeyVersionRequest) returns (DestroyKeyVersionResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes:destroy-key-version"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Destroy the specified key version in the scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs."
+    };
+  }
 }
 
 message GetScopeRequest {
@@ -190,4 +203,16 @@ message ListKeyVersionDestructionJobsRequest {
 
 message ListKeyVersionDestructionJobsResponse {
   repeated resources.scopes.v1.KeyVersionDestructionJob items = 1;
+}
+
+message DestroyKeyVersionRequest {
+  string scope_id = 1;
+  string key_version_id = 2;
+}
+
+message DestroyKeyVersionResponse {
+  // Destruction state. One of "pending" or "completed".
+  // Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs
+  // to monitor pending destruction jobs.
+  string state = 1;
 }

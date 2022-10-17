@@ -61,6 +61,7 @@ var (
 		action.RotateScopeKeys,
 		action.RevokeScopeKeys,
 		action.ListScopeKeyVersionDestructionJobs,
+		action.DestroyScopeKeyVersion,
 	}
 
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
@@ -475,6 +476,34 @@ func (s Service) ListKeyVersionDestructionJobs(ctx context.Context, req *pbs.Lis
 	}, nil
 }
 
+// DestroyKeyVersion implements the interface pbs.ScopeServiceServer.
+func (s Service) DestroyKeyVersion(ctx context.Context, req *pbs.DestroyKeyVersionRequest) (*pbs.DestroyKeyVersionResponse, error) {
+	if req.GetScopeId() == "" {
+		req.ScopeId = scope.Global.String()
+	}
+	if err := validateDestroyKeyVersionRequest(req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetScopeId(), action.DestroyScopeKeyVersion)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	destroyed, err := s.kmsRepo.DestroyKeyVersion(ctx, req.GetScopeId(), req.GetKeyVersionId())
+	if err != nil {
+		if errors.Match(errors.T(errors.KeyNotFound), err) {
+			return nil, handlers.NotFoundErrorf("unknown key_version_id %q", req.KeyVersionId)
+		}
+		return nil, err
+	}
+	state := "completed"
+	if !destroyed {
+		state = "pending"
+	}
+	return &pbs.DestroyKeyVersionResponse{
+		State: state,
+	}, nil
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Scope, error) {
 	repo, err := s.repoFn()
 	if err != nil {
@@ -648,7 +677,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	var parentId string
 	opts := []auth.Option{auth.WithType(resource.Scope), auth.WithAction(a)}
 	switch a {
-	case action.List, action.Create, action.ListScopeKeys, action.ListScopeKeyVersionDestructionJobs:
+	case action.List, action.Create, action.ListScopeKeys, action.ListScopeKeyVersionDestructionJobs, action.DestroyScopeKeyVersion:
 		parentId = id
 		s, err := repo.LookupScope(ctx, parentId)
 		if err != nil {
@@ -973,6 +1002,20 @@ func validateListKeyVersionDestructionJobsRequest(req *pbs.ListKeyVersionDestruc
 	badFields := map[string]string{}
 	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) {
 		badFields["scope_id"] = "Must be 'global', a valid org scope id or a valid project scope id when listing key version destruction jobs."
+	}
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
+	}
+	return nil
+}
+
+func validateDestroyKeyVersionRequest(req *pbs.DestroyKeyVersionRequest) error {
+	badFields := map[string]string{}
+	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) {
+		badFields["scope_id"] = "Must be 'global', a valid org scope id or a valid project scope id when destroying a key version."
+	}
+	if !handlers.ValidId(handlers.Id(req.GetKeyVersionId()), "kdkv", "krkv") {
+		badFields["key_version_id"] = "Must be a valid KEK or DEK version ID."
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
