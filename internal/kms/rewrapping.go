@@ -8,7 +8,7 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-type RewrapFn func(ctx context.Context, dataKeyVersionId string, reader db.Reader, writer db.Writer, kms *Kms) error
+type RewrapFn func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error
 
 var tableNameToRewrapFn = map[string]RewrapFn{}
 
