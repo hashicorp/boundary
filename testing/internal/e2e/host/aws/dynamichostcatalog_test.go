@@ -209,7 +209,7 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 				return errors.New("No items are appearing in the host catalog")
 			}
 
-			t.Logf("Found %d hosts", actualHostCatalogCount)
+			t.Logf("Found %d host(s)", actualHostCatalogCount)
 			return nil
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
