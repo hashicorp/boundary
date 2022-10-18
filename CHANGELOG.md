@@ -6,8 +6,16 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* accounts: Deleted auth accounts would still show up as being associated with
-  a User when reading the User ([PR](https://github.com/hashicorp/boundary/pull/2528))
+* accounts: Deleted auth accounts would still show up as being associated with a
+  User when reading the User
+  ([PR](https://github.com/hashicorp/boundary/pull/2528))
+* sessions: Fix workers not being in random order when returned to clients at
+  `authorize-session` time, which could allow one worker to bear the majority of
+  sessions ([PR](https://github.com/hashicorp/boundary/pull/2544))
+* workers: In some error conditions when sending status to controllers, errors
+  could be written to stdout along with a message that they could not
+  successfully be evented instead of being written to the event log
+  ([PR](https://github.com/hashicorp/boundary/pull/2544))
 
 ## 0.11.0 (2022/09/27)
 
