@@ -99,8 +99,8 @@ type RootCertificate struct {
 	// Not valid after is the timestamp at which this certificate's validity period ends
 	NotValidAfter *timestamp.Timestamp `protobuf:"bytes,40,opt,name=not_valid_after,json=notValidAfter,proto3" json:"not_valid_after,omitempty"`
 	// The public key associated with this certificate
-	// @inject_tag: `gorm:"not_null"`
-	PublicKey []byte `protobuf:"bytes,50,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"primary_key"`
+	PublicKey []byte `protobuf:"bytes,50,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty" gorm:"primary_key"`
 	// The private key associated with this certificate
 	// This is a ciphertext field
 	// @inject_tag: `gorm:"not_null"`
