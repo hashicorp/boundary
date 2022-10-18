@@ -64,7 +64,7 @@ func AddHostToHostSetApi(t testing.TB, ctx context.Context, client *api.Client, 
 // CreateNewHostCatalogCli creates a new host catalog in boundary using the cli.
 // Returns the id of the new host catalog.
 func CreateNewHostCatalogCli(t testing.TB, projectId string) string {
-	output := e2e.RunCommand("boundary", "host-catalogs", "create", "static",
+	output := e2e.RunCommand(context.Background(), "boundary", "host-catalogs", "create", "static",
 		"-scope-id", projectId,
 		"-name", "e2e Automated Test Host Catalog",
 		"-format", "json",
@@ -82,7 +82,7 @@ func CreateNewHostCatalogCli(t testing.TB, projectId string) string {
 // CreateNewHostSetCli creates a new host set in boundary using the cli.
 // Returns the id of the new host set.
 func CreateNewHostSetCli(t testing.TB, hostCatalogId string) string {
-	output := e2e.RunCommand("boundary", "host-sets", "create", "static",
+	output := e2e.RunCommand(context.Background(), "boundary", "host-sets", "create", "static",
 		"-host-catalog-id", hostCatalogId,
 		"-name", "e2e Automated Test Host Set",
 		"-format", "json",
@@ -100,7 +100,7 @@ func CreateNewHostSetCli(t testing.TB, hostCatalogId string) string {
 // CreateNewHostCli creates a new host in boundary using the cli.
 // Returns the id of the new host.
 func CreateNewHostCli(t testing.TB, hostCatalogId string, address string) string {
-	output := e2e.RunCommand("boundary", "hosts", "create", "static",
+	output := e2e.RunCommand(context.Background(), "boundary", "hosts", "create", "static",
 		"-host-catalog-id", hostCatalogId,
 		"-name", address,
 		"-address", address,
@@ -118,6 +118,6 @@ func CreateNewHostCli(t testing.TB, hostCatalogId string, address string) string
 
 // AddHostToHostSetCli adds a host to a host set using the cli
 func AddHostToHostSetCli(t testing.TB, hostSetId string, hostId string) {
-	output := e2e.RunCommand("boundary", "host-sets", "add-hosts", "-id", hostSetId, "-host", hostId)
+	output := e2e.RunCommand(context.Background(), "boundary", "host-sets", "add-hosts", "-id", hostSetId, "-host", hostId)
 	require.NoError(t, output.Err, string(output.Stderr))
 }

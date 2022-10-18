@@ -1,6 +1,7 @@
 package static_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -34,7 +35,8 @@ func TestConnectTargetWithAuthzTokenCli(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
 
 	// Create a credential store
-	output := e2e.RunCommand("boundary", "credential-stores", "create", "static",
+	ctx := context.Background()
+	output := e2e.RunCommand(ctx, "boundary", "credential-stores", "create", "static",
 		"-scope-id", newProjectId,
 		"-format", "json",
 	)
@@ -46,7 +48,7 @@ func TestConnectTargetWithAuthzTokenCli(t *testing.T) {
 	t.Logf("Created Credential Store: %s", newCredentialStoreId)
 
 	// Create credentials
-	output = e2e.RunCommand("boundary", "credentials", "create", "ssh-private-key",
+	output = e2e.RunCommand(ctx, "boundary", "credentials", "create", "ssh-private-key",
 		"-credential-store-id", newCredentialStoreId,
 		"-username", c.TargetSshUser,
 		"-private-key", "file://"+c.TargetSshKeyPath,
@@ -60,14 +62,14 @@ func TestConnectTargetWithAuthzTokenCli(t *testing.T) {
 	t.Logf("Created Credentials: %s", newCredentialsId)
 
 	// Add credentials to target
-	output = e2e.RunCommand("boundary", "targets", "add-credential-sources",
+	output = e2e.RunCommand(ctx, "boundary", "targets", "add-credential-sources",
 		"-id", newTargetId,
 		"-brokered-credential-source", newCredentialsId,
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Get credentials for target
-	output = e2e.RunCommand("boundary", "targets", "authorize-session", "-id", newTargetId, "-format", "json")
+	output = e2e.RunCommand(ctx, "boundary", "targets", "authorize-session", "-id", newTargetId, "-format", "json")
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionAuthorizationResult targets.SessionAuthorizationResult
 	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
@@ -96,7 +98,7 @@ func TestConnectTargetWithAuthzTokenCli(t *testing.T) {
 	require.NoError(t, err)
 
 	// Connect to target and print host's IP address using retrieved credentials
-	output = e2e.RunCommand("boundary", "connect",
+	output = e2e.RunCommand(ctx, "boundary", "connect",
 		"-authz-token", newAuthToken,
 		"-exec", "/usr/bin/ssh", "--",
 		"-l", retrievedUser,

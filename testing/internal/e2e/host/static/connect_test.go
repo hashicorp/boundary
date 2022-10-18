@@ -29,7 +29,8 @@ func TestConnectTargetCli(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
 
 	// Connect to target and print host's IP address
-	output := e2e.RunCommand("boundary", "connect",
+	ctx := context.Background()
+	output := e2e.RunCommand(ctx, "boundary", "connect",
 		"-target-id", newTargetId,
 		"-exec", "/usr/bin/ssh", "--",
 		"-l", c.TargetSshUser,

@@ -31,10 +31,10 @@ func TestSessionCancelingCli(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
 
 	// Connect to target to create a session
-	ctx, cancel := context.WithCancel(context.Background())
+	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
-		errChan <- e2e.RunCommandContext(ctx, "boundary", "connect",
+		errChan <- e2e.RunCommand(ctxCancel, "boundary", "connect",
 			"-target-id", newTargetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", c.TargetSshUser,
@@ -50,10 +50,11 @@ func TestSessionCancelingCli(t *testing.T) {
 	t.Cleanup(cancel)
 
 	// Get list of sessions
+	ctx := context.Background()
 	var session *sessions.Session
 	err = backoff.RetryNotify(
 		func() error {
-			output := e2e.RunCommand("boundary", "sessions", "list", "-scope-id", newProjectId, "-format", "json")
+			output := e2e.RunCommand(ctx, "boundary", "sessions", "list", "-scope-id", newProjectId, "-format", "json")
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
@@ -88,10 +89,10 @@ func TestSessionCancelingCli(t *testing.T) {
 	require.Equal(t, "active", session.Status)
 
 	// Cancel session
-	output := e2e.RunCommand("boundary", "sessions", "cancel", "-id", session.Id)
+	output := e2e.RunCommand(ctx, "boundary", "sessions", "cancel", "-id", session.Id)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	output = e2e.RunCommand("boundary", "sessions", "read", "-id", session.Id, "-format", "json")
+	output = e2e.RunCommand(ctx, "boundary", "sessions", "read", "-id", session.Id, "-format", "json")
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionReadResult sessions.SessionReadResult
 	err = json.Unmarshal(output.Stdout, &newSessionReadResult)

@@ -55,7 +55,8 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
 
 	// Create a dynamic host catalog
-	output := e2e.RunCommand("boundary", "host-catalogs", "create", "plugin",
+	ctx := context.Background()
+	output := e2e.RunCommand(ctx, "boundary", "host-catalogs", "create", "plugin",
 		"-scope-id", newProjectId,
 		"-plugin-name", "aws",
 		"-attr", "disable_credential_rotation=true",
@@ -72,7 +73,7 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	t.Logf("Created Host Catalog: %s", newHostCatalogId)
 
 	// Create a host set
-	output = e2e.RunCommand("boundary", "host-sets", "create", "plugin",
+	output = e2e.RunCommand(ctx, "boundary", "host-sets", "create", "plugin",
 		"-host-catalog-id", newHostCatalogId,
 		"-attr", "filters="+c.AwsHostSetFilter1,
 		"-name", "e2e Automated Test Host Set",
@@ -91,7 +92,7 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	var actualHostSetCount1 int
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand("boundary", "host-sets", "read",
+			output = e2e.RunCommand(ctx, "boundary", "host-sets", "read",
 				"-id", newHostSetId1,
 				"-format", "json",
 			)
@@ -127,7 +128,7 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	assert.Equal(t, expectedHostSetCount1, actualHostSetCount1, "Numbers of hosts in host set did not match expected amount")
 
 	// Create another host set
-	output = e2e.RunCommand("boundary", "host-sets", "create", "plugin",
+	output = e2e.RunCommand(ctx, "boundary", "host-sets", "create", "plugin",
 		"-host-catalog-id", newHostCatalogId,
 		"-attr", "filters="+c.AwsHostSetFilter2,
 		"-name", "e2e Automated Test Host Set2",
@@ -145,7 +146,7 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	var actualHostSetCount2 int
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand("boundary", "host-sets", "read",
+			output = e2e.RunCommand(ctx, "boundary", "host-sets", "read",
 				"-id", newHostSetId2,
 				"-format", "json",
 			)
@@ -184,7 +185,7 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	var actualHostCatalogCount int
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand("boundary", "hosts", "list",
+			output = e2e.RunCommand(ctx, "boundary", "hosts", "list",
 				"-host-catalog-id", newHostCatalogId,
 				"-format", "json",
 			)
@@ -221,7 +222,7 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId1)
 
 	// Connect to target
-	output = e2e.RunCommand("boundary", "connect",
+	output = e2e.RunCommand(ctx, "boundary", "connect",
 		"-target-id", newTargetId,
 		"-exec", "/usr/bin/ssh", "--",
 		"-l", c.TargetSshUser,
