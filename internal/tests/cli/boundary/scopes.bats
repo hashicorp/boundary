@@ -12,24 +12,6 @@ export NEW_PROJECT='test_project'
   [ "$status" -eq 0 ]
 }
 
-@test "boundary/scopes: can list keys at global scope" {
-	run list_scope_keys $DEFAULT_GLOBAL
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/scopes: can rotate keys at global scope" {
-	run rotate_scope_keys $DEFAULT_GLOBAL
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/scopes: can list key version destruction jobs at global scope" {
-	run list_key_version_destruction_jobs $DEFAULT_GLOBAL
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
 @test "boundary/scopes: can create $NEW_ORG organization level scope" {
 	run create_scope $DEFAULT_GLOBAL $NEW_ORG
   echo "$output"
@@ -48,27 +30,6 @@ export NEW_PROJECT='test_project'
   local out=$(read_scope $sid)
 
 	run has_default_scope_actions "$out" 
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/scopes: can list keys at $NEW_ORG organization level scope" {
-  local sid=$(scope_id $NEW_ORG $DEFAULT_GLOBAL)
-	run list_scope_keys $sid
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/scopes: can rotate keys at $NEW_ORG organization level scope" {
-  local sid=$(scope_id $NEW_ORG $DEFAULT_GLOBAL)
-	run rotate_scope_keys $sid
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/scopes: can list key version destruction jobs at $NEW_ORG organization level scope" {
-  local sid=$(scope_id $NEW_ORG $DEFAULT_GLOBAL)
-	run list_key_version_destruction_jobs $sid
   echo "$output"
 	[ "$status" -eq 0 ]
 }
@@ -94,30 +55,6 @@ export NEW_PROJECT='test_project'
   local out=$(read_scope $sid)
 
 	run has_default_scope_actions "$out" 
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/scopes: can list keys at $NEW_PROJECT project level scope" {
-  local parent=$(scope_id $NEW_ORG $DEFAULT_GLOBAL)
-  local sid=$(scope_id $NEW_PROJECT $parent)
-	run list_scope_keys $sid
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/scopes: can rotate keys at $NEW_PROJECT project level scope" {
-  local parent=$(scope_id $NEW_ORG $DEFAULT_GLOBAL)
-  local sid=$(scope_id $NEW_PROJECT $parent)
-	run rotate_scope_keys $sid
-  echo "$output"
-	[ "$status" -eq 0 ]
-}
-
-@test "boundary/scopes: can list key version destruction jobs at $NEW_PROJECT project level scope" {
-  local parent=$(scope_id $NEW_ORG $DEFAULT_GLOBAL)
-  local sid=$(scope_id $NEW_PROJECT $parent)
-	run list_key_version_destruction_jobs $sid
   echo "$output"
 	[ "$status" -eq 0 ]
 }

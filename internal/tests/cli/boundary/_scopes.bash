@@ -23,18 +23,6 @@ function list_scopes() {
   boundary scopes list -scope-id $1 -format json
 }
 
-function list_scope_keys() {
-  boundary scopes list-keys -scope-id $1 -format json
-}
-
-function rotate_scope_keys() {
-  boundary scopes rotate-keys -scope-id $1 -rewrap -format json
-}
-
-function list_key_version_destruction_jobs() {
-  boundary scopes list-key-version-destruction-jobs -scope-id $1 -format json
-}
-
 function scope_id() {
   local name=$1
   local sid=$2

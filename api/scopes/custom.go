@@ -42,6 +42,15 @@ func (n KeyVersionDestructionJobListResult) GetResponse() *api.Response {
 	return n.response
 }
 
+type KeyVersionDestructionResult struct {
+	State    string
+	response *api.Response
+}
+
+func (n KeyVersionDestructionResult) GetResponse() *api.Response {
+	return n.response
+}
+
 func (c *Client) ListKeys(ctx context.Context, scopeId string, opt ...Option) (*KeyListResult, error) {
 	if scopeId == "" {
 		return nil, fmt.Errorf("empty scopeId value passed into ListKeys request")
@@ -151,6 +160,51 @@ func (c *Client) ListKeyVersionDestructionJobs(ctx context.Context, scopeId stri
 	apiErr, err := resp.Decode(target)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding ListKeyVersionDestructionJobs response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) DestroyKeyVersion(ctx context.Context, scopeId string, keyVersionId string, opt ...Option) (*KeyVersionDestructionResult, error) {
+	if scopeId == "" {
+		return nil, fmt.Errorf("empty scopeId value passed into DestroyKeyVersion request")
+	}
+	if keyVersionId == "" {
+		return nil, fmt.Errorf("empty keyVersionId value passed into DestroyKeyVersion request")
+	}
+	if c.client == nil {
+		return nil, fmt.Errorf("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+	opts.postMap["scope_id"] = scopeId
+	opts.postMap["key_version_id"] = keyVersionId
+
+	req, err := c.client.NewRequest(ctx, "POST", "scopes:destroy-key-version", opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating RotateKeys request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during DestroyKeyVersion call: %w", err)
+	}
+
+	target := new(KeyVersionDestructionResult)
+	apiErr, err := resp.Decode(target)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding DestroyKeyVersion response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr
