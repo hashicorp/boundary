@@ -57,7 +57,9 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager se
 				continue
 			}
 
+			event.WriteSysEvent(cancelCtx, op, "starting worker status send")
 			w.sendWorkerStatus(cancelCtx, sessionManager, addrReceivers)
+			event.WriteSysEvent(cancelCtx, op, "worker status send finished")
 			timer.Reset(getRandomInterval())
 		}
 	}
@@ -114,13 +116,18 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	// get cancel/job change info back.
 	var activeJobs []*pbs.JobStatus
 
+	var sessionCount, connectionCount uint64
+
 	// Range over known sessions and collect info
 	sessionManager.ForEachLocalSession(func(s session.Session) bool {
+		sessionCount++
 		var jobInfo pbs.SessionJobInfo
 		status := s.GetStatus()
 		sessionId := s.GetId()
-		connections := make([]*pbs.Connection, 0, len(s.GetLocalConnections()))
-		for k, v := range s.GetLocalConnections() {
+		localConnections := s.GetLocalConnections()
+		connectionCount += uint64(len(localConnections))
+		connections := make([]*pbs.Connection, 0, len(localConnections))
+		for k, v := range localConnections {
 			connections = append(connections, &pbs.Connection{
 				ConnectionId: k,
 				Status:       v.Status,
@@ -142,6 +149,8 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		return true
 	})
 
+	event.WriteSysEvent(cancelCtx, op, "current connection stats", "session_count", sessionCount, "connection_count", connectionCount)
+
 	// Send status information
 	client := w.controllerStatusConn.Load().(pbs.ServerCoordinationServiceClient)
 	var tags []*pb.TagPair
@@ -156,7 +165,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	keyId := w.WorkerAuthCurrentKeyId.Load()
 
 	if w.conf.RawConfig.Worker.Name == "" && keyId == "" {
-		event.WriteError(statusCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
+		event.WriteError(cancelCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
 			event.WithInfoMsg("error making status request to controller"))
 	}
 
@@ -172,7 +181,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		UpdateTags: w.updateTags.Load(),
 	})
 	if err != nil {
-		event.WriteError(statusCtx, op, err, event.WithInfoMsg("error making status request to controller"))
+		event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error making status request to controller"))
 		// Check for last successful status. Ignore nil last status, this probably
 		// means that we've never connected to a controller, and as such probably
 		// don't have any sessions to worry about anyway.
@@ -182,7 +191,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		// scenario, as there will be no way we can really tell if these
 		// connections should continue to exist.
 		if isPastGrace, lastStatusTime, gracePeriod := w.isPastGrace(); isPastGrace {
-			event.WriteError(statusCtx, op,
+			event.WriteError(cancelCtx, op,
 				errors.New("status error grace period has expired, canceling all sessions on worker"),
 				event.WithInfo("last_status_time", lastStatusTime.String(), "grace_period", gracePeriod),
 			)
@@ -271,7 +280,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 				sessionId := sessInfo.GetSessionId()
 				si := sessionManager.Get(sessionId)
 				if si == nil {
-					event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
+					event.WriteError(cancelCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
 					continue
 				}
 				si.ApplyLocalStatus(sessInfo.GetStatus())
@@ -280,7 +289,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 				// the request.
 				for _, conn := range sessInfo.GetConnections() {
 					if err := si.ApplyLocalConnectionStatus(conn.GetConnectionId(), conn.GetStatus()); err != nil {
-						event.WriteError(statusCtx, op, err, event.WithInfo("connection_id", conn.GetConnectionId()))
+						event.WriteError(cancelCtx, op, err, event.WithInfo("connection_id", conn.GetConnectionId()))
 					}
 				}
 			}
