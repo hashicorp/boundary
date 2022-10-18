@@ -2,6 +2,18 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+### Bug Fixes
+
+* sessions: Fix workers not being in random order when returned to clients at
+  `authorize-session` time, which could allow one worker to bear the majority of
+  sessions ([PR](https://github.com/hashicorp/boundary/pull/2544))
+* workers: In some error conditions when sending status to controllers, errors
+  could be written to stdout along with a message that they could not
+  successfully be evented instead of being written to the event log
+  ([PR](https://github.com/hashicorp/boundary/pull/2544))
+
 ## 0.11.0 (2022/09/27)
 
 ### Known Issues
@@ -20,7 +32,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* Fix bug preventing delete of org. ([PR](https://github.com/hashicorp/boundary/pull/2465)
 * scopes: Organizations could be prevented from being deleted if some resources
     remained ([PR](https://github.com/hashicorp/boundary/pull/2465))
 * workers: Authentication rotation could occur prior to the expected time

@@ -158,7 +158,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	keyId := w.WorkerAuthCurrentKeyId.Load()
 
 	if w.conf.RawConfig.Worker.Name == "" && keyId == "" {
-		event.WriteError(statusCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
+		event.WriteError(cancelCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
 			event.WithInfoMsg("error making status request to controller"))
 	}
 	versionInfo := version.Get()
@@ -176,7 +176,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		UpdateTags: w.updateTags.Load(),
 	})
 	if err != nil {
-		event.WriteError(statusCtx, op, err, event.WithInfoMsg("error making status request to controller"))
+		event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error making status request to controller"))
 		// Check for last successful status. Ignore nil last status, this probably
 		// means that we've never connected to a controller, and as such probably
 		// don't have any sessions to worry about anyway.
@@ -186,7 +186,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		// scenario, as there will be no way we can really tell if these
 		// connections should continue to exist.
 		if isPastGrace, lastStatusTime, gracePeriod := w.isPastGrace(); isPastGrace {
-			event.WriteError(statusCtx, op,
+			event.WriteError(cancelCtx, op,
 				errors.New("status error grace period has expired, canceling all sessions on worker"),
 				event.WithInfo("last_status_time", lastStatusTime.String(), "grace_period", gracePeriod),
 			)
@@ -275,7 +275,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 				sessionId := sessInfo.GetSessionId()
 				si := sessionManager.Get(sessionId)
 				if si == nil {
-					event.WriteError(statusCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
+					event.WriteError(cancelCtx, op, errors.New("session change requested but could not find local information for it"), event.WithInfo("session_id", sessionId))
 					continue
 				}
 				si.ApplyLocalStatus(sessInfo.GetStatus())
@@ -284,7 +284,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 				// the request.
 				for _, conn := range sessInfo.GetConnections() {
 					if err := si.ApplyLocalConnectionStatus(conn.GetConnectionId(), conn.GetStatus()); err != nil {
-						event.WriteError(statusCtx, op, err, event.WithInfo("connection_id", conn.GetConnectionId()))
+						event.WriteError(cancelCtx, op, err, event.WithInfo("connection_id", conn.GetConnectionId()))
 					}
 				}
 			}
