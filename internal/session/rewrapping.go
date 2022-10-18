@@ -16,11 +16,13 @@ func init() {
 func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "session.sessionCredentialRewrapFn"
 	var creds []*credential
-	// an index exists on (session_id, credential_sha256), so we can query workers via scope and refine with key id. this is the fastest query
-	rows, err := reader.Query(ctx, sessionCredentialRewrapQuery, []interface{}{dataKeyVersionId, scopeId})
+	// An index exists on (session_id, credential_sha256), so we can query workers via scope and refine with key id.
+	// This is the fastest query we can use without creating a new index on key_id.
+	rows, err := reader.Query(ctx, sessionCredentialRewrapQuery, []interface{}{scopeId, dataKeyVersionId})
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
 	}
+	defer rows.Close()
 	for rows.Next() {
 		cred := &credential{}
 		if err := rows.Scan(
@@ -29,24 +31,23 @@ func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId st
 			&cred.CtCredential,
 			&cred.CredentialSha256,
 		); err != nil {
-			_ = rows.Close()
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to failed to scan row"))
 		}
 		creds = append(creds, cred)
 	}
 	if err := rows.Err(); err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to iterate over retrieved rows"))
 	}
 	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
 	}
 	for _, cred := range creds {
 		if err := cred.decrypt(ctx, wrapper); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt session credential"))
 		}
 		if err := cred.encrypt(ctx, wrapper); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt session credential"))
 		}
 		if _, err := writer.Exec(ctx, sessionCredentialRewrapUpdate, []interface{}{
 			cred.CtCredential,
@@ -54,7 +55,7 @@ func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId st
 			cred.SessionId,
 			cred.CredentialSha256,
 		}); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update session credential row with rewrapped fields"))
 		}
 	}
 	return nil
@@ -63,23 +64,24 @@ func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId st
 func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "session.sessionRewrapFn"
 	var sessions []*Session
-	// an index exists on (project_id, user_id, termination_reason), so we can query sessions via scope and refine with key id. this is the fastest query
+	// An index exists on (project_id, user_id, termination_reason), so we can query sessions via scope and refine with key id.
+	// This is the fastest query we can use without creating a new index on key_id.
 	if err := reader.SearchWhere(ctx, &sessions, "project_id=? and key_id=?", []interface{}{scopeId, dataKeyVersionId}, db.WithLimit(-1)); err != nil {
-		return errors.Wrap(ctx, err, op)
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
 	}
 	for _, session := range sessions {
 		wrapper, err := kmsRepo.GetWrapper(ctx, session.GetProjectId(), kms.KeyPurposeDatabase)
 		if err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
 		}
 		if err := session.decrypt(ctx, wrapper); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt session"))
 		}
 		if err := session.encrypt(ctx, wrapper); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt session"))
 		}
 		if _, err := writer.Update(ctx, session, []string{"CtTofuToken", "KeyId"}, nil); err != nil {
-			return errors.Wrap(ctx, err, op)
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update session row with rewrapped fields"))
 		}
 	}
 	return nil

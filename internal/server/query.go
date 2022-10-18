@@ -25,13 +25,13 @@ const (
 	`
 	workerAuthRewrapQuery = `
 		select distinct
-		auth.worker_key_identifier,
-		auth.controller_encryption_priv_key,
-		auth.key_id
+			auth.worker_key_identifier,
+			auth.controller_encryption_priv_key,
+			auth.key_id
 		from server_worker worker
-		inner join worker_auth_authorized auth
-		on auth.worker_id = worker.public_id
-		and auth.key_id = ?
+			inner join worker_auth_authorized auth
+				on auth.worker_id = worker.public_id
 		where worker.scope_id = ?
+			and auth.key_id = ?
 	`
 )

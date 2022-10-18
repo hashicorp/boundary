@@ -417,8 +417,8 @@ select distinct
 from session
   inner join session_credential cred
     on cred.session_id = session.public_id
-      and cred.key_id = ?
 where session.project_id = ?
+  and cred.key_id = ?
 `
 	sessionCredentialRewrapUpdate = `
 update session_credential

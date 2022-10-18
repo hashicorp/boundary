@@ -57,6 +57,7 @@ begin;
   comment on function update_last_access_time() is
     'function used in before update triggers to properly set last_access_time columns';
 
+  -- this trigger is deleted in 56/05_mutable_ciphertext_columns.up.sql
   create or replace function immutable_auth_token_columns() returns trigger
   as $$
   begin
