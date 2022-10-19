@@ -40,7 +40,7 @@ export NEW_UPDATED_WORKER='newtest'
 }
 
 @test "boundary/workers: the worker contains default authorized-actions" {
-  local wid=$(worker_id)
+  local wid=$(worker_id $NEW_WORKER)
   local out=$(read_worker $wid)
   run has_default_worker_actions "$out"
   echo "$output"
