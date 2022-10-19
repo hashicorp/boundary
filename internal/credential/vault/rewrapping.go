@@ -32,7 +32,7 @@ func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId, s
 		if err := cert.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt vault client certificate"))
 		}
-		if _, err := writer.Update(ctx, cert, []string{"CtCertificateKey", "CertificateKeyHmac", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, cert, []string{"CtCertificateKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update vault client certificate row with rewrapped fields"))
 		}
 	}

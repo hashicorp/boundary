@@ -96,5 +96,5 @@ func TestRewrap_authMethodRewrapFn(t *testing.T) {
 	assert.Equal(t, "alice-secret", got.ClientSecret)
 	assert.NotEqual(t, authMethod.CtClientSecret, got.CtClientSecret)
 	assert.NotEmpty(t, got.ClientSecretHmac)
-	assert.NotEqual(t, authMethod.ClientSecretHmac, got.ClientSecretHmac)
+	assert.Equal(t, authMethod.ClientSecretHmac, got.ClientSecretHmac)
 }

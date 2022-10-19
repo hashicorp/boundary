@@ -31,7 +31,7 @@ func authMethodRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, r
 		if err := am.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt auth method"))
 		}
-		if _, err := writer.Update(ctx, am, []string{CtClientSecretField, ClientSecretHmacField, KeyIdField}, nil); err != nil {
+		if _, err := writer.Update(ctx, am, []string{CtClientSecretField, KeyIdField}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update auth method row with rewrapped fields"))
 		}
 	}

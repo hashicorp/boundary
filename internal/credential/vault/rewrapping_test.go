@@ -52,7 +52,7 @@ func TestRewrap_credVaultClientCertificateRewrapFn(t *testing.T) {
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
 	assert.Equal(t, keyPem, string(got.GetCertificateKey()))
 	assert.NotEmpty(t, got.GetCertificateKeyHmac())
-	assert.NotEqual(t, cert.GetCertificateKeyHmac(), got.GetCertificateKeyHmac())
+	assert.Equal(t, cert.GetCertificateKeyHmac(), got.GetCertificateKeyHmac())
 }
 
 func TestRewrap_credVaultTokenRewrapFn(t *testing.T) {

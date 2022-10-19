@@ -54,7 +54,7 @@ func TestRewrap_credStaticUsernamePasswordRewrapFn(t *testing.T) {
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
 	assert.Equal(t, "password", string(got.GetPassword()))
 	assert.NotEmpty(t, got.GetPasswordHmac())
-	assert.NotEqual(t, cred.GetPasswordHmac(), got.GetPasswordHmac())
+	assert.Equal(t, cred.GetPasswordHmac(), got.GetPasswordHmac())
 }
 
 func TestRewrap_credStaticSshPrivKeyRewrapFn(t *testing.T) {
@@ -124,7 +124,7 @@ func TestRewrap_credStaticSshPrivKeyRewrapFn(t *testing.T) {
 	assert.Equal(t, TestSshPrivateKeyPem, string(got.PrivateKey))
 	assert.NotEqual(t, cred.GetPrivateKeyEncrypted(), got.GetPrivateKeyEncrypted())
 	assert.NotEmpty(t, got.GetPrivateKeyHmac())
-	assert.NotEqual(t, cred.GetPrivateKeyHmac(), got.GetPrivateKeyHmac())
+	assert.Equal(t, cred.GetPrivateKeyHmac(), got.GetPrivateKeyHmac())
 	// we didn't set this, so they should be empty before AND after rewrapping
 	assert.Empty(t, got.GetPrivateKeyPassphrase())
 	assert.Empty(t, got.GetPrivateKeyPassphraseHmac())
@@ -138,10 +138,10 @@ func TestRewrap_credStaticSshPrivKeyRewrapFn(t *testing.T) {
 	assert.Equal(t, TestSshPrivateKeyPem, string(got2.PrivateKey))
 	assert.NotEqual(t, cred.GetPrivateKeyEncrypted(), got.GetPrivateKeyEncrypted())
 	assert.NotEmpty(t, got2.GetPrivateKeyHmac())
-	assert.NotEqual(t, cred2.GetPrivateKeyHmac(), got2.GetPrivateKeyHmac())
+	assert.Equal(t, cred2.GetPrivateKeyHmac(), got2.GetPrivateKeyHmac())
 	// this time, we did set this, so they should be available
 	assert.NotEmpty(t, got2.GetPrivateKeyPassphraseEncrypted())
 	assert.NotEmpty(t, got2.GetPrivateKeyPassphraseHmac())
 	assert.Equal(t, []byte("passphrase"), got2.GetPrivateKeyPassphrase())
-	assert.NotEqual(t, cred2.GetPrivateKeyPassphraseHmac(), got2.GetPrivateKeyPassphraseHmac())
+	assert.Equal(t, cred2.GetPrivateKeyPassphraseHmac(), got2.GetPrivateKeyPassphraseHmac())
 }

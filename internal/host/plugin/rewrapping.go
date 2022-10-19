@@ -15,7 +15,7 @@ func init() {
 func hostCatalogSecretRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "plugin.hostCatalogSecretRewrapFn"
 	var secrets []*HostCatalogSecret
-	// the only index on this table is on catalog id and there are no references to catalog id.
+	// The only index on this table is on catalog id and there are no references to catalog id.
 	// This is the fastest query we can use without creating a new index on key_id.
 	if err := reader.SearchWhere(ctx, &secrets, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
