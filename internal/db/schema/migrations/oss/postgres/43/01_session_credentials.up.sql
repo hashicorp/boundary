@@ -13,7 +13,7 @@ begin;
     add constraint session_credential_session_id_credential_sha256_uq
       unique(session_id, credential_sha256);
 
-  -- Replace the immutable columns trigger from 23/01_session_credential.up.sql
+  -- this trigger is updated in 56/05_mutable_ciphertext_columns.up.sql
   drop trigger immutable_columns on session_credential;
   create trigger immutable_columns before update on session_credential
     for each row execute procedure immutable_columns('session_id', 'credential', 'key_id', 'credential_sha256');

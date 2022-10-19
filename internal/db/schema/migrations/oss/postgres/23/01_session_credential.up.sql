@@ -22,7 +22,7 @@ begin;
     'session_credential is a table where each row contains a credential to be used by '
     'by a worker when a connection is established for the session_id.';
 
-  -- Replaced in 43/01_session_credentials.up.sql
+  -- this trigger is updated in 56/05_mutable_ciphertext_columns.up.sql
   create trigger immutable_columns before update on session_credential
     for each row execute procedure immutable_columns('session_id', 'credential', 'key_id');
 

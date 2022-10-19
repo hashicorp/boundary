@@ -12,10 +12,11 @@ import (
 type Credential []byte
 
 type credential struct {
-	SessionId    string
-	KeyId        string
-	Credential   []byte `gorm:"-" wrapping:"pt,credential_data"`
-	CtCredential []byte `gorm:"column:credential" wrapping:"ct,credential_data"`
+	SessionId        string `gorm:"index:,unique,composite:session_credential_session_id_credential_sha256_uq"`
+	KeyId            string
+	Credential       []byte `gorm:"-" wrapping:"pt,credential_data"`
+	CtCredential     []byte `gorm:"column:credential" wrapping:"ct,credential_data"`
+	CredentialSha256 []byte `gorm:"index:,unique,composite:session_credential_session_id_credential_sha256_uq"`
 }
 
 // TableName returns the table name.
