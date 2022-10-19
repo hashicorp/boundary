@@ -83,7 +83,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	authorizedActions := authResults.FetchActionSetForId(ctx, ses.GetPublicId(), IdActions)
 
 	// Check to see if we need to verify Read vs. just ReadSelf
-	if ses.UserId != authResults.UserId {
+	if ses.UserId != authResults.UserData.User.Id {
 		if !authorizedActions.HasAction(action.Read) {
 			return nil, handlers.ForbiddenError()
 		}
@@ -91,7 +91,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 			Id:      ses.GetPublicId(),
 			ScopeId: ses.ProjectId,
 			Type:    resource.Session,
-		}, action.Read).SelfOrDefaults(authResults.UserId)
+		}, action.Read).SelfOrDefaults(authResults.UserData.User.Id)
 	} else {
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)
@@ -151,7 +151,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	listPerms := authResults.ACL().ListPermissions(scopeIds, resource.Session, IdActions)
 
 	repo, err := s.repoFn(session.WithPermissions(&perms.UserPermissions{
-		UserId:      authResults.UserId,
+		UserId:      authResults.UserData.User.Id,
 		Permissions: listPerms,
 	}))
 	if err != nil {
@@ -182,7 +182,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 			continue
 		}
 
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserData.User.Id)
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
@@ -228,7 +228,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	authorizedActions := authResults.FetchActionSetForId(ctx, ses.GetPublicId(), IdActions)
 
 	// Check to see if we need to verify Cancel vs. just CancelSelf
-	if ses.UserId != authResults.UserId {
+	if ses.UserId != authResults.UserData.User.Id {
 		if !authorizedActions.HasAction(action.Cancel) {
 			return nil, handlers.ForbiddenError()
 		}
@@ -236,7 +236,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 			Id:      ses.GetPublicId(),
 			ScopeId: ses.ProjectId,
 			Type:    resource.Session,
-		}, action.Cancel).SelfOrDefaults(authResults.UserId)
+		}, action.Cancel).SelfOrDefaults(authResults.UserData.User.Id)
 	} else {
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)

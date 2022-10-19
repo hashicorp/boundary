@@ -35,7 +35,7 @@ func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
 func (c *Controller) startListeners() error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
-	grpcServer, gwTicket, err := newGrpcServer(c.baseContext, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.kms, c.conf.Eventer)
+	grpcServer, gwTicket, err := newGrpcServer(c.baseContext, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.PasswordAuthRepoFn, c.OidcRepoFn, c.kms, c.conf.Eventer)
 	if err != nil {
 		return fmt.Errorf("failed to create new grpc server: %w", err)
 	}

@@ -213,7 +213,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	finalItems := make([]*pb.Target, 0, len(tl))
 	for _, item := range tl {
 		pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target}
-		outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
+		outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserData.User.Id)
 
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
@@ -819,7 +819,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	expTime := timestamppb.Now()
 	expTime.Seconds += int64(t.GetSessionMaxSeconds())
 	sessionComposition := session.ComposedOf{
-		UserId:             authResults.UserId,
+		UserId:             authResults.UserData.User.Id,
 		HostId:             chosenEndpoint.HostId,
 		TargetId:           t.GetPublicId(),
 		HostSetId:          chosenEndpoint.SetId,
@@ -853,7 +853,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		dynamic, err = credRepo.Issue(ctx, sess.GetPublicId(), vaultReqs)
+		dynamic, err = credRepo.Issue(ctx, sess.GetPublicId(), vaultReqs, credential.WithTemplateData(authResults.UserData))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -956,7 +956,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		CreatedTime:        sess.CreateTime.GetTimestamp(),
 		Type:               t.GetType().String(),
 		AuthorizationToken: encodedMarshaledSad,
-		UserId:             authResults.UserId,
+		UserId:             authResults.UserData.User.Id,
 		HostId:             chosenEndpoint.HostId,
 		HostSetId:          chosenEndpoint.SetId,
 		Endpoint:           endpointUrl.String(),

@@ -106,7 +106,7 @@ type Issuer interface {
 	//
 	// If Issue encounters an error, it returns no credentials and revokes
 	// any credentials issued before encountering the error.
-	Issue(ctx context.Context, sessionId string, requests []Request) ([]Dynamic, error)
+	Issue(ctx context.Context, sessionId string, requests []Request, opt ...Option) ([]Dynamic, error)
 }
 
 // Revoker revokes dynamic credentials.

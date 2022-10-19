@@ -114,11 +114,11 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 			continue
 		}
 
-		if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserId {
+		if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserData.User.Id {
 			continue
 		}
 
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserData.User.Id)
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
@@ -161,7 +161,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 	authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions)
 
 	// Check to see if we need to verify Read vs. just ReadSelf
-	if at.GetIamUserId() != authResults.UserId {
+	if at.GetIamUserId() != authResults.UserData.User.Id {
 		if !authorizedActions.HasAction(action.Read) {
 			return nil, handlers.ForbiddenError()
 		}
@@ -169,7 +169,7 @@ func (s Service) GetAuthToken(ctx context.Context, req *pbs.GetAuthTokenRequest)
 			Id:      at.GetPublicId(),
 			ScopeId: at.GetScopeId(),
 			Type:    resource.AuthToken,
-		}, action.Read).SelfOrDefaults(authResults.UserId)
+		}, action.Read).SelfOrDefaults(authResults.UserData.User.Id)
 	} else {
 		var ok bool
 		outputFields, ok = requests.OutputFields(ctx)
@@ -213,7 +213,7 @@ func (s Service) DeleteAuthToken(ctx context.Context, req *pbs.DeleteAuthTokenRe
 	authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions)
 
 	// Check to see if we need to verify Delete vs. just DeleteSelf
-	if at.GetIamUserId() != authResults.UserId {
+	if at.GetIamUserId() != authResults.UserData.User.Id {
 		if !authorizedActions.HasAction(action.Delete) {
 			return nil, handlers.ForbiddenError()
 		}
