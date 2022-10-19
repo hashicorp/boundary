@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -47,14 +48,14 @@ const EnvToCheckSkip = "E2E_PASSWORD_AUTH_METHOD_ID"
 // RunCommand executes external commands on the system. Returns the results
 // of running the provided command.
 //
-//	RunCommand("ls")
-//	RunCommand("ls", "-al", "/path")
+//	RunCommand(context.Background(), "ls")
+//	RunCommand(context.Background(), "ls", "-al", "/path")
 //
 // CommandResult is always valid even if there is an error.
-func RunCommand(name string, args ...string) *CommandResult {
+func RunCommand(ctx context.Context, name string, args ...string) *CommandResult {
 	var outbuf, errbuf bytes.Buffer
 
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdout = &outbuf
 	cmd.Stderr = &errbuf
 

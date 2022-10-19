@@ -64,7 +64,7 @@ func AuthenticateCli(t testing.TB) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	output := e2e.RunCommand("boundary", "authenticate", "password",
+	output := e2e.RunCommand(context.Background(), "boundary", "authenticate", "password",
 		"-addr", c.Address,
 		"-auth-method-id", c.AuthMethodId,
 		"-login-name", c.AdminLoginName,
