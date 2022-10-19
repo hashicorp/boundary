@@ -218,8 +218,7 @@ func TestRootCertStore(t *testing.T) {
 				assert.Empty(cmp.Diff(tt.expectedRootCert, cert, protocmp.Transform()))
 			}
 
-			deleteWhere := `state = ?`
-			deleted, err := rw.Delete(ctx, &RootCertificate{}, db.WithWhere(deleteWhere, cert.State))
+			deleted, err := rw.Exec(ctx, `delete from worker_auth_ca_certificate where state = ?`, []interface{}{cert.State})
 			assert.NoError(err)
 			assert.Equal(1, deleted)
 		})
