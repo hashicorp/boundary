@@ -15,7 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSessionCancelingCli(t *testing.T) {
+// TestSessionCancelCli uses the boundary cli to start and then cancel a session
+func TestSessionCancelCli(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
