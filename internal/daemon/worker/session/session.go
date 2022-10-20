@@ -313,6 +313,8 @@ func (s *sess) RequestConnectConnection(ctx context.Context, info *pbs.ConnectCo
 //
 // The returned slice are connection ids that were closed.
 func (s *sess) CancelOpenLocalConnections() []string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	var closedIds []string
 	for k, v := range s.connInfoMap {
 		if v.Status != pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED {
@@ -336,6 +338,8 @@ func (s *sess) CancelOpenLocalConnections() []string {
 //
 // The returned slice is the connection ids which were closed.
 func (s *sess) CancelAllLocalConnections() []string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	var closedIds []string
 	for k, v := range s.connInfoMap {
 		v.connCtxCancelFunc()
