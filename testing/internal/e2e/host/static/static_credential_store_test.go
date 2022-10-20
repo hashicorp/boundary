@@ -21,7 +21,7 @@ func TestStaticCredentialStoreCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateCli(t)
+	boundary.AuthenticateAdminCli(t)
 	newOrgId := boundary.CreateNewOrgCli(t)
 	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, newProjectId)

@@ -4,6 +4,7 @@ package boundary
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -59,16 +60,25 @@ func NewApiClient() (*api.Client, error) {
 	return client, err
 }
 
-// AuthenticateCli uses the cli to authenticate the specified Boundary instance.
-func AuthenticateCli(t testing.TB) {
+// AuthenticateAdminCli uses the cli to authenticate the specified Boundary instance as an admin
+func AuthenticateAdminCli(t testing.TB) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
+	AuthenticateCli(t, c.AdminLoginName, c.AdminLoginPassword)
+}
+
+// AuthenticateCli uses the cli to authenticate the specified Boundary instance
+func AuthenticateCli(t testing.TB, loginName string, password string) {
+	c, err := loadConfig()
+	require.NoError(t, err)
+
+	os.Setenv("E2E_TEST_BOUNDARY_PASSWORD", password)
 	output := e2e.RunCommand(context.Background(), "boundary", "authenticate", "password",
 		"-addr", c.Address,
 		"-auth-method-id", c.AuthMethodId,
-		"-login-name", c.AdminLoginName,
-		"-password", "env://E2E_PASSWORD_ADMIN_PASSWORD",
+		"-login-name", loginName,
+		"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 }
