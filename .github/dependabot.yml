@@ -1,0 +1,81 @@
+---
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/api"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/sdk"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/plugins/kms/mains/ocikms"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/plugins/kms/mains/awskms"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/plugins/kms/mains/azurekeyvault"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/plugins/kms/mains/transit"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/plugins/kms/mains/gcpckms"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/plugins/kms/mains/alicloudkms"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/plugins/kms/mains/azure"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "gomod"
+    directory: "/plugins/kms/mains/aws"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
+  - package-ecosystem: "npm"
+    directory: "/website"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "09:00"
