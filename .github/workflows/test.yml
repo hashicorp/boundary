@@ -3,6 +3,8 @@ on:
   pull_request:
     branches:
       - main
+env:
+  PKG_NAME: boundary
 permissions:
   contents: read
   id-token: write
