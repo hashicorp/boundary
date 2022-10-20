@@ -13,6 +13,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   could be written to stdout along with a message that they could not
   successfully be evented instead of being written to the event log
   ([PR](https://github.com/hashicorp/boundary/pull/2544))
+* workers: Fixed a panic that can happen in certain situations
+  ([PR](https://github.com/hashicorp/boundary/pull/2553))
 
 ## 0.11.0 (2022/09/27)
 
