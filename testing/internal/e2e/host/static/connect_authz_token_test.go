@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api/credentials"
-	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
@@ -33,22 +32,11 @@ func TestConnectTargetWithAuthzTokenCli(t *testing.T) {
 	boundary.AddHostToHostSetCli(t, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
-
-	// Create a credential store
-	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "credential-stores", "create", "static",
-		"-scope-id", newProjectId,
-		"-format", "json",
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newCredentialStoreResult credentialstores.CredentialStoreCreateResult
-	err = json.Unmarshal(output.Stdout, &newCredentialStoreResult)
-	require.NoError(t, err)
-	newCredentialStoreId := newCredentialStoreResult.Item.Id
-	t.Logf("Created Credential Store: %s", newCredentialStoreId)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, newProjectId)
 
 	// Create credentials
-	output = e2e.RunCommand(ctx, "boundary", "credentials", "create", "ssh-private-key",
+	ctx := context.Background()
+	output := e2e.RunCommand(ctx, "boundary", "credentials", "create", "ssh-private-key",
 		"-credential-store-id", newCredentialStoreId,
 		"-username", c.TargetSshUser,
 		"-private-key", "file://"+c.TargetSshKeyPath,

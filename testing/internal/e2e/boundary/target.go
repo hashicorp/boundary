@@ -19,7 +19,7 @@ func CreateNewTargetApi(t testing.TB, ctx context.Context, client *api.Client, p
 	targetPort, err := strconv.ParseInt(defaultPort, 10, 32)
 	require.NoError(t, err)
 	newTargetResult, err := tClient.Create(ctx, "tcp", projectId,
-		targets.WithName("e2e Automated Test Target"),
+		targets.WithName("e2e Target"),
 		targets.WithTcpTargetDefaultPort(uint32(targetPort)),
 	)
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func CreateNewTargetCli(t testing.TB, projectId string, defaultPort string) stri
 	output := e2e.RunCommand(context.Background(), "boundary", "targets", "create", "tcp",
 		"-scope-id", projectId,
 		"-default-port", defaultPort,
-		"-name", "e2e Automated Test Target",
+		"-name", "e2e Target",
 		"-format", "json",
 	)
 	require.NoError(t, output.Err, string(output.Stderr))

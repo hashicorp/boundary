@@ -15,7 +15,7 @@ import (
 // Returns the id of the new org.
 func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) string {
 	scopeClient := scopes.NewClient(client)
-	newOrgResult, err := scopeClient.Create(ctx, "global", scopes.WithName("e2e Automated Test Org"))
+	newOrgResult, err := scopeClient.Create(ctx, "global", scopes.WithName("e2e Org"))
 	require.NoError(t, err)
 
 	newOrgId := newOrgResult.Item.Id
@@ -33,7 +33,7 @@ func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) stri
 // Returns the id of the new project.
 func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, orgId string) string {
 	scopeClient := scopes.NewClient(client)
-	newProjResult, err := scopeClient.Create(ctx, orgId, scopes.WithName("e2e Automated Test Project"))
+	newProjResult, err := scopeClient.Create(ctx, orgId, scopes.WithName("e2e Project"))
 	require.NoError(t, err)
 
 	newProjectId := newProjResult.Item.Id
@@ -46,7 +46,7 @@ func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, 
 func CreateNewOrgCli(t testing.TB) string {
 	ctx := context.Background()
 	output := e2e.RunCommand(ctx, "boundary", "scopes", "create",
-		"-name", "e2e Automated Test Org",
+		"-name", "e2e Org",
 		"-scope-id", "global",
 		"-format", "json",
 	)
@@ -72,7 +72,7 @@ func CreateNewOrgCli(t testing.TB) string {
 func CreateNewProjectCli(t testing.TB, orgId string) string {
 	ctx := context.Background()
 	output := e2e.RunCommand(ctx, "boundary", "scopes", "create",
-		"-name", "e2e Automated Test Project",
+		"-name", "e2e Project",
 		"-scope-id", orgId,
 		"-format", "json",
 	)
