@@ -13,7 +13,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   could be written to stdout along with a message that they could not
   successfully be evented instead of being written to the event log
   ([PR](https://github.com/hashicorp/boundary/pull/2544))
-* workers: Fixed a panic that can happen in certain situations ([PR]())
+* workers: Fixed a panic that can happen in certain situations
+  ([PR](https://github.com/hashicorp/boundary/pull/2553))
 
 ## 0.11.0 (2022/09/27)
 
@@ -30,7 +31,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   for some operations to consistently fail. In this case, the worker will need
   to be deleted and re-authorized. We apologize for any issues this causes and
   this should be remedied going forward.
-* Workers 
 
 ### Bug Fixes
 
