@@ -925,6 +925,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		}
 	}
 
+	// Randomize the workers
+	rand.Shuffle(len(selectedWorkers), func(i, j int) {
+		selectedWorkers[i], selectedWorkers[j] = selectedWorkers[j], selectedWorkers[i]
+	})
+
 	var vaultReqs []credential.Request
 	var staticIds []string
 	var dynCreds []*session.DynamicCredential
