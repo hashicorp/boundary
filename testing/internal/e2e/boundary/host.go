@@ -17,9 +17,7 @@ import (
 // Returns the id of the new host catalog.
 func CreateNewHostCatalogApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) string {
 	hcClient := hostcatalogs.NewClient(client)
-	newHostCatalogResult, err := hcClient.Create(ctx, "static", projectId,
-		hostcatalogs.WithName("e2e Automated Test Host Catalog"),
-	)
+	newHostCatalogResult, err := hcClient.Create(ctx, "static", projectId, hostcatalogs.WithName("e2e Host Catalog"))
 	require.NoError(t, err)
 	newHostCatalogId := newHostCatalogResult.Item.Id
 	t.Logf("Created Host Catalog: %s", newHostCatalogId)
@@ -31,7 +29,7 @@ func CreateNewHostCatalogApi(t testing.TB, ctx context.Context, client *api.Clie
 // Returns the id of the new host set.
 func CreateNewHostSetApi(t testing.TB, ctx context.Context, client *api.Client, hostCatalogId string) string {
 	hsClient := hostsets.NewClient(client)
-	newHostSetResult, err := hsClient.Create(ctx, hostCatalogId)
+	newHostSetResult, err := hsClient.Create(ctx, hostCatalogId, hostsets.WithName("e2e Host"))
 	require.NoError(t, err)
 	newHostSetId := newHostSetResult.Item.Id
 	t.Logf("Created Host Set: %s", newHostSetId)
@@ -66,7 +64,7 @@ func AddHostToHostSetApi(t testing.TB, ctx context.Context, client *api.Client, 
 func CreateNewHostCatalogCli(t testing.TB, projectId string) string {
 	output := e2e.RunCommand(context.Background(), "boundary", "host-catalogs", "create", "static",
 		"-scope-id", projectId,
-		"-name", "e2e Automated Test Host Catalog",
+		"-name", "e2e Host Catalog",
 		"-format", "json",
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -84,7 +82,7 @@ func CreateNewHostCatalogCli(t testing.TB, projectId string) string {
 func CreateNewHostSetCli(t testing.TB, hostCatalogId string) string {
 	output := e2e.RunCommand(context.Background(), "boundary", "host-sets", "create", "static",
 		"-host-catalog-id", hostCatalogId,
-		"-name", "e2e Automated Test Host Set",
+		"-name", "e2e Host Set",
 		"-format", "json",
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
