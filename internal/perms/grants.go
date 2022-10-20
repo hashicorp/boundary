@@ -408,7 +408,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 		}
 		// Set but empty output fields...
 		if grant.OutputFields != nil && len(grant.OutputFields) == 0 {
-			return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string has output_fields set but empty")
+			grant.OutputFields = OutputFieldsMap{"": true}
 		}
 		// This might be zero if output fields is populated
 		if len(grant.actions) > 0 {

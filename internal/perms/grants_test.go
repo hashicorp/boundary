@@ -422,6 +422,40 @@ func Test_Parse(t *testing.T) {
 			err:   `perms.Parse: parsed grant string contains no id or type: parameter violation: error #100`,
 		},
 		{
+			name:  "empty output fields",
+			input: "id=*;type=*;actions=read,list;output_fields=",
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "*",
+				typ: resource.All,
+				actions: map[action.Type]bool{
+					action.Read: true,
+					action.List: true,
+				},
+				OutputFields: OutputFieldsMap{"": true},
+			},
+		},
+		{
+			name:  "empty output fields json",
+			input: `{"id": "*", "type": "*", "actions": ["read", "list"], "output_fields": []}`,
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "*",
+				typ: resource.All,
+				actions: map[action.Type]bool{
+					action.Read: true,
+					action.List: true,
+				},
+				OutputFields: OutputFieldsMap{"": true},
+			},
+		},
+		{
 			name:  "wildcard id and type and actions with list",
 			input: "id=*;type=*;actions=read,list",
 			expected: Grant{
