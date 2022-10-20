@@ -12,6 +12,8 @@ jobs:
   test:
     name: "test"
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
