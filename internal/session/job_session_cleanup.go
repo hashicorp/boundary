@@ -4,20 +4,14 @@ import (
 	"context"
 	"database/sql"
 	stderrors "errors"
-	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/scheduler"
-	"github.com/hashicorp/boundary/internal/server"
 )
-
-// deadWorkerConnCloseMinGrace is the minimum allowable setting for
-// the closeConnectionsForDeadWorkers method. This is synced with
-// the default server liveness setting.
-const deadWorkerConnCloseMinGrace = server.DefaultLiveness
 
 type closeConnectionsForDeadWorkersResult struct {
 	WorkerId                string
@@ -37,10 +31,10 @@ type closeConnectionsForDeadWorkersResult struct {
 type sessionConnectionCleanupJob struct {
 	writer db.Writer
 
-	// The amount of time to give disconnected workers before marking
-	// their connections as closed.  This should be at larger than the liveness
-	// setting for the worker.
-	gracePeriod time.Duration
+	// The amount of time to give disconnected workers before marking their
+	// connections as closed. This should be larger than the liveness setting
+	// for the worker.
+	gracePeriod *atomic.Int64
 
 	// The total number of connections closed in the last run.
 	totalClosed int
@@ -49,15 +43,16 @@ type sessionConnectionCleanupJob struct {
 // newSessionConnectionCleanupJob instantiates the session cleanup job.
 func newSessionConnectionCleanupJob(
 	writer db.Writer,
-	gracePeriod time.Duration,
+	gracePeriod *atomic.Int64,
 ) (*sessionConnectionCleanupJob, error) {
 	const op = "session.newNewSessionConnectionCleanupJob"
 	switch {
 	case writer == nil:
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db writer")
-	case gracePeriod < deadWorkerConnCloseMinGrace:
-		return nil, errors.NewDeprecated(
-			errors.InvalidParameter, op, fmt.Sprintf("invalid gracePeriod, must be greater than %s", deadWorkerConnCloseMinGrace))
+	case gracePeriod == nil:
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing grace period")
+	case gracePeriod.Load() == 0:
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "grace period is zero")
 	}
 
 	return &sessionConnectionCleanupJob{
@@ -99,7 +94,8 @@ func (j *sessionConnectionCleanupJob) Run(ctx context.Context) error {
 	j.totalClosed = 0
 
 	// Run the atomic dead worker cleanup job.
-	results, err := j.closeConnectionsForDeadWorkers(ctx, j.gracePeriod)
+	gracePeriod := time.Duration(j.gracePeriod.Load())
+	results, err := j.closeConnectionsForDeadWorkers(ctx, gracePeriod)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -109,7 +105,7 @@ func (j *sessionConnectionCleanupJob) Run(ctx context.Context) error {
 			event.WithInfo(
 				"public_id", result.WorkerId,
 				"update_time", result.LastUpdateTime,
-				"grace_period_seconds", j.gracePeriod.Seconds(),
+				"grace_period_seconds", gracePeriod.Seconds(),
 				"number_connections_closed", result.NumberConnectionsClosed,
 			))
 

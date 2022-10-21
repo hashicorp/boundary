@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -28,11 +29,12 @@ type workerServiceServer struct {
 	pbs.UnsafeServerCoordinationServiceServer
 	pbs.UnsafeSessionServiceServer
 
-	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    session.RepositoryFactory
-	connectionRepoFn common.ConnectionRepoFactory
-	updateTimes      *sync.Map
-	kms              *kms.Kms
+	serversRepoFn       common.ServersRepoFactory
+	sessionRepoFn       session.RepositoryFactory
+	connectionRepoFn    common.ConnectionRepoFactory
+	updateTimes         *sync.Map
+	kms                 *kms.Kms
+	livenessTimeToStale *atomic.Int64
 }
 
 var (
@@ -46,13 +48,15 @@ func NewWorkerServiceServer(
 	connectionRepoFn common.ConnectionRepoFactory,
 	updateTimes *sync.Map,
 	kms *kms.Kms,
+	livenessTimeToStale *atomic.Int64,
 ) *workerServiceServer {
 	return &workerServiceServer{
-		serversRepoFn:    serversRepoFn,
-		sessionRepoFn:    sessionRepoFn,
-		connectionRepoFn: connectionRepoFn,
-		updateTimes:      updateTimes,
-		kms:              kms,
+		serversRepoFn:       serversRepoFn,
+		sessionRepoFn:       sessionRepoFn,
+		connectionRepoFn:    connectionRepoFn,
+		updateTimes:         updateTimes,
+		kms:                 kms,
+		livenessTimeToStale: livenessTimeToStale,
 	}
 }
 
@@ -121,7 +125,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
-	controllers, err := serverRepo.ListControllers(ctx)
+	controllers, err := serverRepo.ListControllers(ctx, server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting current controllers"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting current controllers: %v", err)

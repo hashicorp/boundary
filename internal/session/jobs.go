@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -13,7 +14,7 @@ import (
 const deleteTerminatedThreshold = time.Hour
 
 // RegisterJobs registers session related jobs with the provided scheduler.
-func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, w db.Writer, r db.Reader, k *kms.Kms, gracePeriod time.Duration) error {
+func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, w db.Writer, r db.Reader, k *kms.Kms, gracePeriod *atomic.Int64) error {
 	const op = "session.RegisterJobs"
 
 	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(w, gracePeriod)
