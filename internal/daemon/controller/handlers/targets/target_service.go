@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
@@ -98,15 +100,16 @@ var (
 type Service struct {
 	pbs.UnsafeTargetServiceServer
 
-	repoFn           target.RepositoryFactory
-	iamRepoFn        common.IamRepoFactory
-	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    session.RepositoryFactory
-	pluginHostRepoFn common.PluginHostRepoFactory
-	staticHostRepoFn common.StaticRepoFactory
-	vaultCredRepoFn  common.VaultCredentialRepoFactory
-	staticCredRepoFn common.StaticCredentialRepoFactory
-	kmsCache         *kms.Kms
+	repoFn                  target.RepositoryFactory
+	iamRepoFn               common.IamRepoFactory
+	serversRepoFn           common.ServersRepoFactory
+	sessionRepoFn           session.RepositoryFactory
+	pluginHostRepoFn        common.PluginHostRepoFactory
+	staticHostRepoFn        common.StaticRepoFactory
+	vaultCredRepoFn         common.VaultCredentialRepoFactory
+	staticCredRepoFn        common.StaticCredentialRepoFactory
+	kmsCache                *kms.Kms
+	workerStatusGracePeriod *atomic.Int64
 }
 
 var _ pbs.TargetServiceServer = (*Service)(nil)
@@ -123,6 +126,7 @@ func NewService(
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
 	staticCredRepoFn common.StaticCredentialRepoFactory,
+	workerStatusGracePeriod *atomic.Int64,
 ) (Service, error) {
 	const op = "targets.NewService"
 	if repoFn == nil {
@@ -150,15 +154,16 @@ func NewService(
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
 	}
 	return Service{
-		repoFn:           repoFn,
-		iamRepoFn:        iamRepoFn,
-		serversRepoFn:    serversRepoFn,
-		sessionRepoFn:    sessionRepoFn,
-		pluginHostRepoFn: pluginHostRepoFn,
-		staticHostRepoFn: staticHostRepoFn,
-		vaultCredRepoFn:  vaultCredRepoFn,
-		staticCredRepoFn: staticCredRepoFn,
-		kmsCache:         kmsCache,
+		repoFn:                  repoFn,
+		iamRepoFn:               iamRepoFn,
+		serversRepoFn:           serversRepoFn,
+		sessionRepoFn:           sessionRepoFn,
+		pluginHostRepoFn:        pluginHostRepoFn,
+		staticHostRepoFn:        staticHostRepoFn,
+		vaultCredRepoFn:         vaultCredRepoFn,
+		staticCredRepoFn:        staticCredRepoFn,
+		kmsCache:                kmsCache,
+		workerStatusGracePeriod: workerStatusGracePeriod,
 	}, nil
 }
 
@@ -813,7 +818,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// worker IDs below is used to contain their IDs in the same order. This is
 	// used to fetch tags for filtering. But we avoid allocation unless we
 	// actually need it.
-	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
+	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Duration(s.workerStatusGracePeriod.Load())))
 	if err != nil {
 		return nil, err
 	}
