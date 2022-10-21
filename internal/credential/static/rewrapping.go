@@ -11,15 +11,32 @@ import (
 func init() {
 	kms.RegisterTableRewrapFn("credential_static_username_password_credential", credStaticUsernamePasswordRewrapFn)
 	kms.RegisterTableRewrapFn("credential_static_ssh_private_key_credential", credStaticSshPrivKeyRewrapFn)
+	kms.RegisterTableRewrapFn("credential_static_json_credential", credStaticJsonRewrapFn)
 }
 
 func credStaticUsernamePasswordRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "static.credStaticUsernamePasswordRewrapFn"
 	var creds []*UsernamePasswordCredential
-	// Indexes exist on public id, store id. neither of which are queryable via scope.
+	// Indexes exist on (store_id, etc), so we can query static stores via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
-	if err := reader.SearchWhere(ctx, &creds, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+	rows, err := reader.Query(ctx, credStaticUsernamePasswordRewrapQuery, []interface{}{scopeId, dataKeyVersionId})
+	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
+	}
+	defer rows.Close()
+	for rows.Next() {
+		cred := allocUsernamePasswordCredential()
+		if err := rows.Scan(
+			&cred.PublicId,
+			&cred.CtPassword,
+			&cred.KeyId,
+		); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to failed to scan row"))
+		}
+		creds = append(creds, cred)
+	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to iterate over retrieved rows"))
 	}
 	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
@@ -42,10 +59,27 @@ func credStaticUsernamePasswordRewrapFn(ctx context.Context, dataKeyVersionId, s
 func credStaticSshPrivKeyRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "static.credStaticSshPrivKeyRewrapFn"
 	var creds []*SshPrivateKeyCredential
-	// Indexes exist on public id, store id. neither of which are queryable via scope.
+	// Indexes exist on (store_id, etc), so we can query static stores via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
-	if err := reader.SearchWhere(ctx, &creds, "key_id=?", []interface{}{dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+	rows, err := reader.Query(ctx, credStaticSshPrivKeyRewrapQuery, []interface{}{scopeId, dataKeyVersionId})
+	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
+	}
+	defer rows.Close()
+	for rows.Next() {
+		cred := allocSshPrivateKeyCredential()
+		if err := rows.Scan(
+			&cred.PublicId,
+			&cred.PrivateKeyEncrypted,
+			&cred.PrivateKeyPassphraseEncrypted,
+			&cred.KeyId,
+		); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to failed to scan row"))
+		}
+		creds = append(creds, cred)
+	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to iterate over retrieved rows"))
 	}
 	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
 	if err != nil {
@@ -60,6 +94,48 @@ func credStaticSshPrivKeyRewrapFn(ctx context.Context, dataKeyVersionId, scopeId
 		}
 		if _, err := writer.Update(ctx, cred, []string{"PrivateKeyEncrypted", "PrivateKeyPassphraseEncrypted", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update ssh private key row with rewrapped fields"))
+		}
+	}
+	return nil
+}
+
+func credStaticJsonRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+	const op = "static.credStaticJsonRewrapFn"
+	var creds []*JsonCredential
+	// Indexes exist on (store_id, etc), so we can query static stores via scope and refine with key id.
+	// This is the fastest query we can use without creating a new index on key_id.
+	rows, err := reader.Query(ctx, credStaticJsonRewrapQuery, []interface{}{scopeId, dataKeyVersionId})
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
+	}
+	defer rows.Close()
+	for rows.Next() {
+		cred := allocJsonCredential()
+		if err := rows.Scan(
+			&cred.PublicId,
+			&cred.ObjectEncrypted,
+			&cred.KeyId,
+		); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to failed to scan row"))
+		}
+		creds = append(creds, cred)
+	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to iterate over retrieved rows"))
+	}
+	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
+	}
+	for _, cred := range creds {
+		if err := cred.decrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt json credential"))
+		}
+		if err := cred.encrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt json credential"))
+		}
+		if _, err := writer.Update(ctx, cred, []string{"ObjectEncrypted", "KeyId"}, nil); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update json credential row with rewrapped fields"))
 		}
 	}
 	return nil
