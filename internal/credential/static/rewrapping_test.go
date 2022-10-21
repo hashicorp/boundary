@@ -145,3 +145,50 @@ func TestRewrap_credStaticSshPrivKeyRewrapFn(t *testing.T) {
 	assert.Equal(t, []byte("passphrase"), got2.GetPrivateKeyPassphrase())
 	assert.Equal(t, cred2.GetPrivateKeyPassphraseHmac(), got2.GetPrivateKeyPassphraseHmac())
 }
+
+func TestRewrap_credStaticJsonRewrapFn(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	rw := db.New(conn)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
+	obj, objBytes, err := TestJsonObject()
+	assert.NoError(t, err)
+	cred, err := NewJsonCredential(ctx, cs.GetPublicId(), obj)
+	assert.NoError(t, err)
+
+	cred.PublicId, err = credential.NewJsonCredentialId(ctx)
+	assert.NoError(t, err)
+
+	kmsWrapper, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
+	assert.NoError(t, err)
+
+	assert.NoError(t, cred.encrypt(ctx, kmsWrapper))
+	assert.NoError(t, rw.Create(context.Background(), cred))
+
+	// now things are stored in the db, we can rotate and rewrap
+	assert.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
+	assert.NoError(t, credStaticJsonRewrapFn(ctx, cred.GetKeyId(), prj.PublicId, rw, rw, kmsCache))
+
+	// now we pull the credential back from the db, decrypt it with the new key, and ensure things match
+	got := allocJsonCredential()
+	got.PublicId = cred.PublicId
+	assert.NoError(t, rw.LookupById(ctx, got))
+
+	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
+	assert.NoError(t, err)
+	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
+	assert.NoError(t, err)
+
+	// decrypt with the new key version and check to make sure things match
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
+	assert.NotEmpty(t, got.GetKeyId())
+	assert.NotEqual(t, cred.GetKeyId(), got.GetKeyId())
+	assert.Equal(t, newKeyVersionId, got.GetKeyId())
+	assert.Equal(t, objBytes, got.GetObject())
+	assert.NotEmpty(t, got.GetObjectHmac())
+	assert.Equal(t, cred.GetObjectHmac(), got.GetObjectHmac())
+}

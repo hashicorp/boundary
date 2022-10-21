@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/stretchr/testify/assert"
@@ -98,4 +99,50 @@ func TestRewrap_workerAuthRewrapFn(t *testing.T) {
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
 	assert.NotEqual(t, workerAuth.GetControllerEncryptionPrivKey(), got.GetControllerEncryptionPrivKey())
 	assert.Equal(t, controllerEncryptionPrivKey, decryptedGotPrivKey)
+}
+
+func TestRewrap_workerAuthServerLedActivationTokenRewrapFn(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	iam.TestScopes(t, iam.TestRepo(t, conn, wrapper)) // despite not looking like it, this is necessary for some reason
+
+	worker := TestPkiWorker(t, conn, wrapper)
+	kmsWrapper, err := kmsCache.GetWrapper(ctx, worker.GetScopeId(), kms.KeyPurposeDatabase)
+	assert.NoError(t, err)
+	token := &WorkerAuthServerLedActivationToken{
+		WorkerAuthServerLedActivationToken: &store.WorkerAuthServerLedActivationToken{
+			WorkerId:     worker.GetPublicId(),
+			TokenId:      "not a real token id lmao",
+			CreationTime: []byte("marshaled timestamppb.Timestamp indeed"),
+		},
+	}
+
+	// encrypt the entry and store in db
+	assert.NoError(t, token.encrypt(ctx, kmsWrapper))
+	assert.NoError(t, rw.Create(ctx, token))
+
+	// now things are stored in the db, we can rotate and rewrap
+	assert.NoError(t, kmsCache.RotateKeys(ctx, scope.Global.String()))
+	assert.NoError(t, workerAuthServerLedActivationTokenRewrapFn(ctx, token.GetKeyId(), worker.GetScopeId(), rw, rw, kmsCache))
+
+	// now we pull the auth back from the db, decrypt it with the new key, and ensure things match
+	got := allocWorkerAuthServerLedActivationToken()
+	got.WorkerId = worker.GetPublicId()
+	assert.NoError(t, rw.LookupById(ctx, got))
+
+	kmsWrapper2, err := kmsCache.GetWrapper(context.Background(), worker.GetScopeId(), kms.KeyPurposeDatabase, kms.WithKeyId(got.GetKeyId()))
+	assert.NoError(t, err)
+	newKeyVersionId, err := kmsWrapper2.KeyId(ctx)
+	assert.NoError(t, err)
+
+	// decrypt with the new key version and check to make sure things match
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
+	assert.NotEmpty(t, got.GetKeyId())
+	assert.NotEqual(t, token.GetKeyId(), got.GetKeyId())
+	assert.Equal(t, newKeyVersionId, got.GetKeyId())
+	assert.NotEqual(t, token.GetCreationTimeEncrypted(), got.GetCreationTimeEncrypted())
+	assert.Equal(t, token.GetCreationTime(), got.GetCreationTime())
 }
