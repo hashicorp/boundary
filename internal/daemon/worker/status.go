@@ -125,13 +125,15 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		status := s.GetStatus()
 		sessionId := s.GetId()
 		localConnections := s.GetLocalConnections()
-		connectionCount += uint64(len(localConnections))
 		connections := make([]*pbs.Connection, 0, len(localConnections))
 		for k, v := range localConnections {
 			connections = append(connections, &pbs.Connection{
 				ConnectionId: k,
 				Status:       v.Status,
 			})
+			if v.Status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED {
+				connectionCount++
+			}
 		}
 		jobInfo.SessionId = sessionId
 		activeJobs = append(activeJobs, &pbs.JobStatus{
