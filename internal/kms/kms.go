@@ -273,13 +273,31 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 // referencing the private_id column of the data key version table.
 // Supported options:
 //   - WithTx
+//   - WithReader (requires WithWriter)
+//   - WithWriter (requires WithReader)
 func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
 	const op = "kms.(Kms).ListDataKeyVersionReferencers"
 
 	opts := getOpts(opt...)
 	kmsOpts := []wrappingKms.Option{
-		// underlying key version refs function supports WithReaderWriter option, but the interfaces don't match and can't be passed
 		wrappingKms.WithTx(opts.withTx),
+	}
+
+	switch {
+	case !isNil(opts.withReader) && isNil(opts.withWriter):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing writer")
+	case isNil(opts.withReader) && !isNil(opts.withWriter):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing reader")
+	case !isNil(opts.withReader) && !isNil(opts.withWriter):
+		r, ok := opts.withReader.(*db.Db)
+		if !ok {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to convert reader to db.Db")
+		}
+		w, ok := opts.withWriter.(*db.Db)
+		if !ok {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to convert writer to db.Db")
+		}
+		kmsOpts = append(kmsOpts, wrappingKms.WithReaderWriter(db.NewChangeSafeDbwReader(r), db.NewChangeSafeDbwWriter(w)))
 	}
 
 	refs, err := k.underlying.ListDataKeyVersionReferencers(ctx, kmsOpts...)
