@@ -11,6 +11,7 @@ import (
 func init() {
 	kms.RegisterTableRewrapFn("worker_auth_ca_certificate", workerAuthCertRewrapFn)
 	kms.RegisterTableRewrapFn("worker_auth_authorized", workerAuthRewrapFn)
+	kms.RegisterTableRewrapFn("worker_auth_server_led_activation_token", workerAuthServerLedActivationTokenRewrapFn)
 }
 
 func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
@@ -88,6 +89,51 @@ func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, r
 		workerAuth.KeyId = newKeyVersionId
 		if _, err := writer.Update(ctx, workerAuth, []string{"ControllerEncryptionPrivKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update worker auth row with rewrapped fields"))
+		}
+	}
+	return nil
+}
+
+func workerAuthServerLedActivationTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+	const op = "server.workerAuthServerLedActivationTokenRewrapFn"
+	var tokens []*WorkerAuthServerLedActivationToken
+	// An index exists on worker_id, so we can query workers via scope and refine with key id.
+	// This is the fastest query we can use without creating a new index on key_id.
+	rows, err := reader.Query(ctx, workerAuthServerLedActivationTokenRewrapQuery, []interface{}{scopeId, dataKeyVersionId})
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
+	}
+	defer rows.Close()
+	for rows.Next() {
+		token := allocWorkerAuthServerLedActivationToken()
+		if err := rows.Scan(
+			&token.WorkerId,
+			&token.CreationTimeEncrypted,
+			&token.KeyId,
+		); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan row"))
+		}
+		tokens = append(tokens, token)
+	}
+	if err := rows.Err(); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to iterate over retrieved rows"))
+	}
+	wrapper, err := kmsRepo.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
+	}
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to retrieve updated key version id"))
+	}
+	for _, token := range tokens {
+		if err := token.decrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt activation token"))
+		}
+		if err := token.encrypt(ctx, wrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt activation token"))
+		}
+		if _, err := writer.Update(ctx, token, []string{"CreationTimeEncrypted", "KeyId"}, nil); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update activation token row with rewrapped fields"))
 		}
 	}
 	return nil

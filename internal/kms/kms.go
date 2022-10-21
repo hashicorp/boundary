@@ -269,6 +269,26 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	return nil
 }
 
+// ListDataKeyVersionReferencers will list the names of all tables
+// referencing the private_id column of the data key version table.
+// Supported options:
+//   - WithTx
+func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
+	const op = "kms.(Kms).ListDataKeyVersionReferencers"
+
+	opts := getOpts(opt...)
+	kmsOpts := []wrappingKms.Option{
+		// underlying key version refs function supports WithReaderWriter option, but the interfaces don't match and can't be passed
+		wrappingKms.WithTx(opts.withTx),
+	}
+
+	refs, err := k.underlying.ListDataKeyVersionReferencers(ctx, kmsOpts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return refs, nil
+}
+
 // VerifyGlobalRoot will verify that the global root wrapper is reasonable.
 func (k *Kms) VerifyGlobalRoot(ctx context.Context) error {
 	const op = "kms.(Kms).VerifyGlobalRoot"

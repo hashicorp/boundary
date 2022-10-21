@@ -32,4 +32,11 @@ begin;
   create trigger immutable_columns before update on worker_auth_authorized
     for each row execute function immutable_columns('worker_key_identifier', 'worker_id', 'worker_signing_pub_key', 'worker_encryption_pub_key', 'nonce', 'create_time');
 
+
+  -- With the addition of the registered tables test, we found one more table that needs its encrypted column made mutable
+  drop trigger immutable_columns on worker_auth_server_led_activation_token;
+
+  create trigger immutable_columns before update on worker_auth_server_led_activation_token
+    for each row execute procedure immutable_columns('worker_id', 'token_id');
+
 commit;
