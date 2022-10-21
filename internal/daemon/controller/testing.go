@@ -423,9 +423,14 @@ type TestControllerOpts struct {
 	// (overrides address provided in config, if any)
 	PublicClusterAddr string
 
-	// The amount of time to wait before marking connections as closed when a
+	// The amount of time to wait before marking connections as canceling when a
 	// worker has not reported in
-	StatusGracePeriodDuration time.Duration
+	WorkerStatusGracePeriodDuration time.Duration
+
+	// The period of time after which it will consider other controllers to be
+	// no longer accessible, based on time since their last status update in the
+	// database
+	LivenessTimeToStaleDuration time.Duration
 
 	// The amount of time between the scheduler waking up to run it's registered
 	// jobs.
@@ -605,8 +610,12 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 	}
 
-	// Initialize status grace period
-	tc.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
+	if opts.WorkerStatusGracePeriodDuration != 0 {
+		opts.Config.Controller.WorkerStatusGracePeriodDuration = opts.WorkerStatusGracePeriodDuration
+	}
+	if opts.LivenessTimeToStaleDuration != 0 {
+		opts.Config.Controller.LivenessTimeToStaleDuration = opts.LivenessTimeToStaleDuration
+	}
 
 	tc.name = opts.Config.Controller.Name
 
@@ -731,20 +740,21 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		opts = new(TestControllerOpts)
 	}
 	nextOpts := &TestControllerOpts{
-		DatabaseUrl:                 tc.c.conf.DatabaseUrl,
-		DefaultPasswordAuthMethodId: tc.c.conf.DevPasswordAuthMethodId,
-		DefaultOidcAuthMethodId:     tc.c.conf.DevOidcAuthMethodId,
-		RootKms:                     tc.c.conf.RootKms,
-		WorkerAuthKms:               tc.c.conf.WorkerAuthKms,
-		RecoveryKms:                 tc.c.conf.RecoveryKms,
-		Name:                        opts.Name,
-		Logger:                      tc.c.conf.Logger,
-		DefaultLoginName:            tc.b.DevLoginName,
-		DefaultPassword:             tc.b.DevPassword,
-		DisableKmsKeyCreation:       true,
-		DisableAuthMethodCreation:   true,
-		PublicClusterAddr:           opts.PublicClusterAddr,
-		StatusGracePeriodDuration:   opts.StatusGracePeriodDuration,
+		DatabaseUrl:                     tc.c.conf.DatabaseUrl,
+		DefaultPasswordAuthMethodId:     tc.c.conf.DevPasswordAuthMethodId,
+		DefaultOidcAuthMethodId:         tc.c.conf.DevOidcAuthMethodId,
+		RootKms:                         tc.c.conf.RootKms,
+		WorkerAuthKms:                   tc.c.conf.WorkerAuthKms,
+		RecoveryKms:                     tc.c.conf.RecoveryKms,
+		Name:                            opts.Name,
+		Logger:                          tc.c.conf.Logger,
+		DefaultLoginName:                tc.b.DevLoginName,
+		DefaultPassword:                 tc.b.DevPassword,
+		DisableKmsKeyCreation:           true,
+		DisableAuthMethodCreation:       true,
+		PublicClusterAddr:               opts.PublicClusterAddr,
+		WorkerStatusGracePeriodDuration: opts.WorkerStatusGracePeriodDuration,
+		LivenessTimeToStaleDuration:     opts.LivenessTimeToStaleDuration,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger
@@ -768,7 +778,7 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string)
 	ctx := context.TODO()
 	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerStatusName)
 	waitStatusStart := time.Now()
-	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
+	ctx, cancel := context.WithTimeout(tc.ctx, time.Duration(tc.c.workerStatusGracePeriod.Load()))
 	defer cancel()
 	var err error
 	for {

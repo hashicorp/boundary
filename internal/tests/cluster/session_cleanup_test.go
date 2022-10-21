@@ -86,11 +86,11 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		pl, err := net.Listen("tcp", "localhost:0")
 		require.NoError(err)
 		c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-			Config:                    conf,
-			InitialResourcesSuffix:    "1234567890",
-			Logger:                    logger.Named("c1"),
-			PublicClusterAddr:         pl.Addr().String(),
-			StatusGracePeriodDuration: controllerGracePeriod(burdenCase),
+			Config:                          conf,
+			InitialResourcesSuffix:          "1234567890",
+			Logger:                          logger.Named("c1"),
+			PublicClusterAddr:               pl.Addr().String(),
+			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
 		defer c1.Shutdown()
 
@@ -108,10 +108,10 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 		require.NotEmpty(t, proxy.ListenerAddr())
 
 		w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-			WorkerAuthKms:             c1.Config().WorkerAuthKms,
-			InitialUpstreams:          []string{proxy.ListenerAddr()},
-			Logger:                    logger.Named("w1"),
-			StatusGracePeriodDuration: workerGracePeriod(burdenCase),
+			WorkerAuthKms:                       c1.Config().WorkerAuthKms,
+			InitialUpstreams:                    []string{proxy.ListenerAddr()},
+			Logger:                              logger.Named("w1"),
+			SuccessfulStatusGracePeriodDuration: workerGracePeriod(burdenCase),
 		})
 		defer w1.Shutdown()
 
@@ -216,11 +216,11 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		pl1, err := net.Listen("tcp", "localhost:0")
 		require.NoError(err)
 		c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-			Config:                    conf1,
-			InitialResourcesSuffix:    "1234567890",
-			Logger:                    logger.Named("c1"),
-			PublicClusterAddr:         pl1.Addr().String(),
-			StatusGracePeriodDuration: controllerGracePeriod(burdenCase),
+			Config:                          conf1,
+			InitialResourcesSuffix:          "1234567890",
+			Logger:                          logger.Named("c1"),
+			PublicClusterAddr:               pl1.Addr().String(),
+			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
 		defer c1.Shutdown()
 
@@ -230,9 +230,9 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		pl2, err := net.Listen("tcp", "localhost:0")
 		require.NoError(err)
 		c2 := c1.AddClusterControllerMember(t, &controller.TestControllerOpts{
-			Logger:                    logger.Named("c2"),
-			PublicClusterAddr:         pl2.Addr().String(),
-			StatusGracePeriodDuration: controllerGracePeriod(burdenCase),
+			Logger:                          logger.Named("c2"),
+			PublicClusterAddr:               pl2.Addr().String(),
+			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
 		defer c2.Shutdown()
 		expectWorkers(t, c1)
@@ -268,10 +268,10 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 		// ** Worker **
 		// ************
 		w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-			WorkerAuthKms:             c1.Config().WorkerAuthKms,
-			InitialUpstreams:          []string{p1.ListenerAddr(), p2.ListenerAddr()},
-			Logger:                    logger.Named("w1"),
-			StatusGracePeriodDuration: workerGracePeriod(burdenCase),
+			WorkerAuthKms:                       c1.Config().WorkerAuthKms,
+			InitialUpstreams:                    []string{p1.ListenerAddr(), p2.ListenerAddr()},
+			Logger:                              logger.Named("w1"),
+			SuccessfulStatusGracePeriodDuration: workerGracePeriod(burdenCase),
 		})
 		defer w1.Shutdown()
 

@@ -5,10 +5,18 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
+
+// FIXME: This is really ugly -- but not as ugly as plumbing this value into the
+// interface. We should figure out something better. For now, it will at least
+// keep sync with any changes to the value once it's initialized as the worker
+// will set it in its new function; it can also be overridden in tests if
+// desired with normal global variable caveats.
+var CloseCallTimeout = new(atomic.Int64)
 
 // Manager stores session information locally and exposes ways to operate on the
 // set of sessions locally in batch.

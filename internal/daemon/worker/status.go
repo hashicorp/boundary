@@ -57,7 +57,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager se
 				continue
 			}
 
-			event.WriteSysEvent(cancelCtx, op, "starting worker status send")
+			event.WriteSysEvent(cancelCtx, op, "starting worker status send", "status_timeout", time.Duration(w.statusCallTimeoutDuration.Load()).String(), "grace_period", time.Duration(w.successfulStatusGracePeriod.Load()).String())
 			w.sendWorkerStatus(cancelCtx, sessionManager, addrReceivers)
 			event.WriteSysEvent(cancelCtx, op, "worker status send finished")
 			timer.Reset(getRandomInterval())
@@ -85,7 +85,7 @@ func (w *Worker) LastStatusSuccess() *LastStatusInformation {
 func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	const op = "worker.(Worker).WaitForNextSuccessfulStatusUpdate"
 	waitStatusStart := time.Now()
-	ctx, cancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
+	ctx, cancel := context.WithTimeout(w.baseContext, time.Duration(w.successfulStatusGracePeriod.Load()))
 	defer cancel()
 	event.WriteSysEvent(ctx, op, "waiting for next status report to controller")
 	for {
@@ -159,7 +159,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	if w.updateTags.Load() {
 		tags = w.tags.Load().([]*pb.TagPair)
 	}
-	statusCtx, statusCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
+	statusCtx, statusCancel := context.WithTimeout(cancelCtx, time.Duration(w.statusCallTimeoutDuration.Load()))
 	defer statusCancel()
 
 	keyId := w.WorkerAuthCurrentKeyId.Load()
@@ -225,7 +225,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		}
 	} else if w.conf.RawConfig.HcpbClusterId != "" && len(w.conf.RawConfig.Worker.InitialUpstreams) == 0 {
 		// This is a worker that is one hop away from managed workers, so attempt to get that list
-		hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, common.StatusTimeout)
+		hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, time.Duration(w.statusCallTimeoutDuration.Load()))
 		defer hcpbWorkersCancel()
 		workersResp, err := client.ListHcpbWorkers(hcpbWorkersCtx, &pbs.ListHcpbWorkersRequest{})
 		if err != nil {
@@ -394,7 +394,7 @@ func (w *Worker) lastSuccessfulStatusTime() time.Time {
 
 func (w *Worker) isPastGrace() (bool, time.Time, time.Duration) {
 	t := w.lastSuccessfulStatusTime()
-	u := w.conf.StatusGracePeriodDuration
+	u := time.Duration(w.successfulStatusGracePeriod.Load())
 	v := time.Since(t)
 	return v > u, t, u
 }
