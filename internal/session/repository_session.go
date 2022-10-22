@@ -493,7 +493,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			if err := updatedSession.encrypt(ctx, databaseWrapper); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"CtTofuToken"}, nil)
+			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"CtTofuToken", "KeyId"}, nil)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
