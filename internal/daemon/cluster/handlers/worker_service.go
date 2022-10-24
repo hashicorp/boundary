@@ -271,7 +271,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 	if sessionInfo.WorkerFilter != "" {
 		if req.WorkerId == "" {
 			event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no id information from worker"))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled: %v", err)
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled")
 		}
 		serversRepo, err := ws.serversRepoFn()
 		if err != nil {
