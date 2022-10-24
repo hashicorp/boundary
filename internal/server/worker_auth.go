@@ -5,6 +5,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/server/store"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -19,6 +21,30 @@ const (
 type WorkerAuth struct {
 	*store.WorkerAuth
 	tableName string `gorm:"-"`
+}
+
+func (w *WorkerAuth) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "server.(WorkerAuth).encrypt"
+	if len(w.ControllerEncryptionPrivKey) == 0 {
+		return errors.New(ctx, errors.InvalidParameter, op, "no private key provided")
+	}
+	if err := structwrapping.WrapStruct(ctx, cipher, w.WorkerAuth, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+	}
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
+	}
+	w.KeyId = keyId
+	return nil
+}
+
+func (w *WorkerAuth) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "server.(WorkerAuth).decrypt"
+	if err := structwrapping.UnwrapStruct(ctx, cipher, w.WorkerAuth, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+	}
+	return nil
 }
 
 // WorkerAuthSet is intended to store a set of WorkerAuth records
@@ -57,7 +83,7 @@ func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, op
 		l.WorkerEncryptionPubKey = opts.withWorkerKeys.workerEncryptionPubKey
 	}
 	if &opts.withControllerEncryptionPrivateKey != nil {
-		l.ControllerEncryptionPrivKey = opts.withControllerEncryptionPrivateKey
+		l.CtControllerEncryptionPrivKey = opts.withControllerEncryptionPrivateKey
 	}
 	if opts.withKeyId != "" {
 		l.KeyId = opts.withKeyId
@@ -96,7 +122,7 @@ func (w *WorkerAuth) ValidateNewWorkerAuth(ctx context.Context) error {
 	if w.WorkerEncryptionPubKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing WorkerEncryptionPubKey")
 	}
-	if w.ControllerEncryptionPrivKey == nil {
+	if w.CtControllerEncryptionPrivKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing ControllerEncryptionPrivKey")
 	}
 	if w.KeyId == "" {

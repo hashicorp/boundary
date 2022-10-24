@@ -45,12 +45,12 @@ func TestRewrap_workerAuthCertRewrapFn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
-	decryptedGotPrivKey, err := decrypt(ctx, got.GetPrivateKey(), kmsWrapper2)
+	decryptedGotPrivKey, err := decrypt(ctx, got.GetCtPrivateKey(), kmsWrapper2)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, currentRoot.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
-	assert.NotEqual(t, currentRoot.GetPrivateKey(), got.GetPrivateKey())
+	assert.NotEqual(t, currentRoot.GetCtPrivateKey(), got.GetCtPrivateKey())
 	assert.Equal(t, roots.Current.PrivateKeyPkcs8, decryptedGotPrivKey)
 }
 
@@ -70,10 +70,10 @@ func TestRewrap_workerAuthRewrapFn(t *testing.T) {
 	workerAuth := TestWorkerAuth(t, conn, worker, currentKeyId)
 
 	// TestWorkerAuth doesn't encrypt the entry, so do that really quick
-	controllerEncryptionPrivKey := workerAuth.ControllerEncryptionPrivKey
-	workerAuth.ControllerEncryptionPrivKey, err = encrypt(ctx, workerAuth.ControllerEncryptionPrivKey, kmsWrapper)
+	controllerEncryptionPrivKey := workerAuth.CtControllerEncryptionPrivKey
+	workerAuth.CtControllerEncryptionPrivKey, err = encrypt(ctx, workerAuth.CtControllerEncryptionPrivKey, kmsWrapper)
 	assert.NoError(t, err)
-	rows, err := rw.Update(ctx, workerAuth, []string{"ControllerEncryptionPrivKey"}, nil)
+	rows, err := rw.Update(ctx, workerAuth, []string{"CtControllerEncryptionPrivKey"}, nil)
 	assert.Equal(t, 1, rows)
 	assert.NoError(t, err)
 
@@ -92,12 +92,12 @@ func TestRewrap_workerAuthRewrapFn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
-	decryptedGotPrivKey, err := decrypt(ctx, got.ControllerEncryptionPrivKey, kmsWrapper2)
+	decryptedGotPrivKey, err := decrypt(ctx, got.CtControllerEncryptionPrivKey, kmsWrapper2)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, workerAuth.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
-	assert.NotEqual(t, workerAuth.GetControllerEncryptionPrivKey(), got.GetControllerEncryptionPrivKey())
+	assert.NotEqual(t, workerAuth.GetCtControllerEncryptionPrivKey(), got.GetCtControllerEncryptionPrivKey())
 	assert.Equal(t, controllerEncryptionPrivKey, decryptedGotPrivKey)
 }
 

@@ -134,7 +134,7 @@ func StoreNodeInformationTx(ctx context.Context, writer db.Writer, databaseWrapp
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	nodeAuth.ControllerEncryptionPrivKey, err = encrypt(ctx, node.ServerEncryptionPrivateKeyBytes, databaseWrapper)
+	nodeAuth.CtControllerEncryptionPrivKey, err = encrypt(ctx, node.ServerEncryptionPrivateKeyBytes, databaseWrapper)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -236,12 +236,9 @@ func (r *WorkerAuthRepositoryStorage) convertRootCertificate(ctx context.Context
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	rootCert.KeyId, err = databaseWrapper.KeyId(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	rootCert.PrivateKey, err = encrypt(ctx, cert.PrivateKeyPkcs8, databaseWrapper)
-	if err != nil {
+
+	rootCert.PrivateKey = cert.PrivateKeyPkcs8
+	if err = rootCert.encrypt(ctx, databaseWrapper); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
@@ -398,7 +395,7 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	node.ServerEncryptionPrivateKeyBytes, err = decrypt(ctx, authorizedWorker.ControllerEncryptionPrivKey, databaseWrapper)
+	node.ServerEncryptionPrivateKeyBytes, err = decrypt(ctx, authorizedWorker.CtControllerEncryptionPrivKey, databaseWrapper)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -538,7 +535,7 @@ func (r *WorkerAuthRepositoryStorage) findPriorEncryptionKey(ctx context.Context
 	// Create the EncryptionKey using the prior worker auth record
 	priorKey := &types.EncryptionKey{
 		KeyId:           workerAuthSet.Previous.WorkerKeyIdentifier,
-		PrivateKeyPkcs8: workerAuthSet.Previous.ControllerEncryptionPrivKey,
+		PrivateKeyPkcs8: workerAuthSet.Previous.CtControllerEncryptionPrivKey,
 		PrivateKeyType:  types.KEYTYPE_X25519,
 		PublicKeyPkix:   workerAuthSet.Previous.WorkerEncryptionPubKey,
 		PublicKeyType:   types.KEYTYPE_X25519,
@@ -599,7 +596,7 @@ func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, 
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		rootCert.PrivateKeyPkcs8, err = decrypt(ctx, rootCertificate.PrivateKey, databaseWrapper)
+		rootCert.PrivateKeyPkcs8, err = decrypt(ctx, rootCertificate.CtPrivateKey, databaseWrapper)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}

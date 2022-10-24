@@ -26,20 +26,14 @@ func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeI
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
 	}
-	newKeyVersionId, err := wrapper.KeyId(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to retrieve updated key version id"))
-	}
 	for _, cert := range certs {
-		privateKey, err := decrypt(ctx, cert.PrivateKey, wrapper)
-		if err != nil {
+		if err := cert.decrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt worker auth certificate"))
 		}
-		if cert.PrivateKey, err = encrypt(ctx, privateKey, wrapper); err != nil {
+		if err := cert.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt worker auth certificate"))
 		}
-		cert.KeyId = newKeyVersionId
-		if _, err := writer.Update(ctx, cert, []string{"PrivateKey", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, cert, []string{"CtPrivateKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update worker auth certificate row with rewrapped fields"))
 		}
 	}
@@ -60,7 +54,7 @@ func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, r
 		workerAuth := allocWorkerAuth()
 		if err := rows.Scan(
 			&workerAuth.WorkerKeyIdentifier,
-			&workerAuth.ControllerEncryptionPrivKey,
+			&workerAuth.CtControllerEncryptionPrivKey,
 			&workerAuth.KeyId,
 		); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan row"))
@@ -74,20 +68,14 @@ func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, r
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
 	}
-	newKeyVersionId, err := wrapper.KeyId(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to retrieve updated key version id"))
-	}
 	for _, workerAuth := range auths {
-		privateKey, err := decrypt(ctx, workerAuth.ControllerEncryptionPrivKey, wrapper)
-		if err != nil {
+		if err := workerAuth.decrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt worker auth"))
 		}
-		if workerAuth.ControllerEncryptionPrivKey, err = encrypt(ctx, privateKey, wrapper); err != nil {
+		if err := workerAuth.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt worker auth"))
 		}
-		workerAuth.KeyId = newKeyVersionId
-		if _, err := writer.Update(ctx, workerAuth, []string{"ControllerEncryptionPrivKey", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, workerAuth, []string{"CtControllerEncryptionPrivKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update worker auth row with rewrapped fields"))
 		}
 	}
