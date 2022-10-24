@@ -58,6 +58,7 @@ func CreateNewOrgCli(t testing.TB) string {
 
 	newOrgId := newOrgResult.Item.Id
 	t.Cleanup(func() {
+		AuthenticateAdminCli(t)
 		output := e2e.RunCommand(ctx, "boundary", "scopes", "delete", "-id", newOrgId)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
