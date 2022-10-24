@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSessionCancelCli uses the boundary cli to start and then cancel a session
-func TestSessionCancelCli(t *testing.T) {
+// TestSessionCancelAdminCli uses the boundary cli to start and then cancel a session
+func TestSessionCancelAdminCli(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -35,6 +35,7 @@ func TestSessionCancelCli(t *testing.T) {
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
+		t.Log("Starting session...")
 		errChan <- e2e.RunCommand(ctxCancel, "boundary", "connect",
 			"-target-id", newTargetId,
 			"-exec", "/usr/bin/ssh", "--",
