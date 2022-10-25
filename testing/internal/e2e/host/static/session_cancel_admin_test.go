@@ -36,17 +36,20 @@ func TestSessionCancelAdminCli(t *testing.T) {
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
 		t.Log("Starting session...")
-		errChan <- e2e.RunCommand(ctxCancel, "boundary", "connect",
-			"-target-id", newTargetId,
-			"-exec", "/usr/bin/ssh", "--",
-			"-l", c.TargetSshUser,
-			"-i", c.TargetSshKeyPath,
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-			"-p", "{{boundary.port}}", // this is provided by boundary
-			"{{boundary.ip}}",
-			"hostname -i; sleep 60",
+		errChan <- e2e.RunCommand(ctxCancel, "boundary",
+			e2e.WithArgs(
+				"connect",
+				"-target-id", newTargetId,
+				"-exec", "/usr/bin/ssh", "--",
+				"-l", c.TargetSshUser,
+				"-i", c.TargetSshKeyPath,
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				"-p", "{{boundary.port}}", // this is provided by boundary
+				"{{boundary.ip}}",
+				"hostname -i; sleep 60",
+			),
 		)
 	}()
 	t.Cleanup(cancel)
@@ -56,7 +59,9 @@ func TestSessionCancelAdminCli(t *testing.T) {
 	var session *sessions.Session
 	err = backoff.RetryNotify(
 		func() error {
-			output := e2e.RunCommand(ctx, "boundary", "sessions", "list", "-scope-id", newProjectId, "-format", "json")
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("sessions", "list", "-scope-id", newProjectId, "-format", "json"),
+			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
@@ -91,10 +96,14 @@ func TestSessionCancelAdminCli(t *testing.T) {
 	require.Equal(t, "active", session.Status)
 
 	// Cancel session
-	output := e2e.RunCommand(ctx, "boundary", "sessions", "cancel", "-id", session.Id)
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("sessions", "cancel", "-id", session.Id),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	output = e2e.RunCommand(ctx, "boundary", "sessions", "read", "-id", session.Id, "-format", "json")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionReadResult sessions.SessionReadResult
 	err = json.Unmarshal(output.Stdout, &newSessionReadResult)

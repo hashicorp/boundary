@@ -4,7 +4,6 @@ package boundary
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -73,12 +72,15 @@ func AuthenticateCli(t testing.TB, loginName string, password string) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	os.Setenv("E2E_TEST_BOUNDARY_PASSWORD", password)
-	output := e2e.RunCommand(context.Background(), "boundary", "authenticate", "password",
-		"-addr", c.Address,
-		"-auth-method-id", c.AuthMethodId,
-		"-login-name", loginName,
-		"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
+	output := e2e.RunCommand(context.Background(), "boundary",
+		e2e.WithArgs(
+			"authenticate", "password",
+			"-addr", c.Address,
+			"-auth-method-id", c.AuthMethodId,
+			"-login-name", loginName,
+			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
+		),
+		e2e.WithEnv("E2E_TEST_BOUNDARY_PASSWORD", password),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 }

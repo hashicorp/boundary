@@ -31,11 +31,14 @@ func CreateNewUserApi(t testing.TB, ctx context.Context, client *api.Client, sco
 // Returns the id of the new user
 func CreateNewUserCli(t testing.TB, scopeId string) string {
 	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "users", "create",
-		"-scope-id", scopeId,
-		"-name", "e2e User",
-		"-description", "e2e User",
-		"-format", "json",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"users", "create",
+			"-scope-id", scopeId,
+			"-name", "e2e User",
+			"-description", "e2e User",
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
@@ -46,7 +49,9 @@ func CreateNewUserCli(t testing.TB, scopeId string) string {
 	newUserId := newUserResult.Item.Id
 	t.Cleanup(func() {
 		AuthenticateAdminCli(t)
-		output := e2e.RunCommand(ctx, "boundary", "users", "delete", "-id", newUserId)
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("users", "delete", "-id", newUserId),
+		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	t.Logf("Created User: %s", newUserId)
@@ -56,9 +61,12 @@ func CreateNewUserCli(t testing.TB, scopeId string) string {
 
 // SetAccountToUserCli sets an account to a the specified user using the cli.
 func SetAccountToUserCli(t testing.TB, userId string, accountId string) {
-	output := e2e.RunCommand(context.Background(), "boundary", "users", "set-accounts",
-		"-id", userId,
-		"-account", accountId,
+	output := e2e.RunCommand(context.Background(), "boundary",
+		e2e.WithArgs(
+			"users", "set-accounts",
+			"-id", userId,
+			"-account", accountId,
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 }

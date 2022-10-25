@@ -30,17 +30,20 @@ func TestConnectTargetCli(t *testing.T) {
 
 	// Connect to target and print host's IP address
 	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "connect",
-		"-target-id", newTargetId,
-		"-exec", "/usr/bin/ssh", "--",
-		"-l", c.TargetSshUser,
-		"-i", c.TargetSshKeyPath,
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		"-p", "{{boundary.port}}", // this is provided by boundary
-		"{{boundary.ip}}",
-		"hostname", "-i",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect",
+			"-target-id", newTargetId,
+			"-exec", "/usr/bin/ssh", "--",
+			"-l", c.TargetSshUser,
+			"-i", c.TargetSshKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"-p", "{{boundary.port}}", // this is provided by boundary
+			"{{boundary.ip}}",
+			"hostname", "-i",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 

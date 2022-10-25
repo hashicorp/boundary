@@ -45,10 +45,13 @@ func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, 
 // Returns the id of the new org.
 func CreateNewOrgCli(t testing.TB) string {
 	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "scopes", "create",
-		"-name", "e2e Org",
-		"-scope-id", "global",
-		"-format", "json",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"scopes", "create",
+			"-name", "e2e Org",
+			"-scope-id", "global",
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
@@ -59,7 +62,9 @@ func CreateNewOrgCli(t testing.TB) string {
 	newOrgId := newOrgResult.Item.Id
 	t.Cleanup(func() {
 		AuthenticateAdminCli(t)
-		output := e2e.RunCommand(ctx, "boundary", "scopes", "delete", "-id", newOrgId)
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("scopes", "delete", "-id", newOrgId),
+		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -72,10 +77,13 @@ func CreateNewOrgCli(t testing.TB) string {
 // Returns the id of the new project.
 func CreateNewProjectCli(t testing.TB, orgId string) string {
 	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "scopes", "create",
-		"-name", "e2e Project",
-		"-scope-id", orgId,
-		"-format", "json",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"scopes", "create",
+			"-name", "e2e Project",
+			"-scope-id", orgId,
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 

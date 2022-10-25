@@ -3,7 +3,6 @@ package boundary
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
@@ -47,14 +46,17 @@ func CreateNewAccountCli(t testing.TB, loginName string) (string, string) {
 	ctx := context.Background()
 	password, err := base62.Random(16)
 	require.NoError(t, err)
-	os.Setenv("E2E_TEST_ACCOUNT_PASSWORD", password)
-	output := e2e.RunCommand(ctx, "boundary", "accounts", "create", "password",
-		"-auth-method-id", c.AuthMethodId,
-		"-login-name", loginName,
-		"-password", "env://E2E_TEST_ACCOUNT_PASSWORD",
-		"-name", "e2e Account "+loginName,
-		"-description", "e2e Account",
-		"-format", "json",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"accounts", "create", "password",
+			"-auth-method-id", c.AuthMethodId,
+			"-login-name", loginName,
+			"-password", "env://E2E_TEST_ACCOUNT_PASSWORD",
+			"-name", "e2e Account "+loginName,
+			"-description", "e2e Account",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_TEST_ACCOUNT_PASSWORD", password),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
@@ -65,7 +67,9 @@ func CreateNewAccountCli(t testing.TB, loginName string) (string, string) {
 	newAccountId := newAccountResult.Item.Id
 	t.Cleanup(func() {
 		AuthenticateAdminCli(t)
-		output := e2e.RunCommand(ctx, "boundary", "accounts", "delete", "-id", newAccountId)
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
+		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 

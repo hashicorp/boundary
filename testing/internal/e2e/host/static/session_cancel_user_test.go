@@ -42,18 +42,21 @@ func TestSessionCancelUserCli(t *testing.T) {
 	// Try to connect to the target as a user without permissions
 	ctx := context.Background()
 	boundary.AuthenticateCli(t, acctName, acctPassword)
-	output := e2e.RunCommand(ctx, "boundary", "connect",
-		"-target-id", newTargetId,
-		"-format", "json",
-		"-exec", "/usr/bin/ssh", "--",
-		"-l", c.TargetSshUser,
-		"-i", c.TargetSshKeyPath,
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		"-p", "{{boundary.port}}", // this is provided by boundary
-		"{{boundary.ip}}",
-		"hostname -i",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect",
+			"-target-id", newTargetId,
+			"-format", "json",
+			"-exec", "/usr/bin/ssh", "--",
+			"-l", c.TargetSshUser,
+			"-i", c.TargetSshKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"-p", "{{boundary.port}}", // this is provided by boundary
+			"{{boundary.ip}}",
+			"hostname -i",
+		),
 	)
 	require.Error(t, output.Err, string(output.Stdout), string(output.Stderr))
 	var response e2e.CliError
@@ -64,10 +67,13 @@ func TestSessionCancelUserCli(t *testing.T) {
 
 	// Create a role
 	boundary.AuthenticateAdminCli(t)
-	output = e2e.RunCommand(ctx, "boundary", "roles", "create",
-		"-scope-id", newProjectId,
-		"-name", "e2e Role",
-		"-format", "json",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"roles", "create",
+			"-scope-id", newProjectId,
+			"-name", "e2e Role",
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newRoleResult roles.RoleCreateResult
@@ -77,16 +83,22 @@ func TestSessionCancelUserCli(t *testing.T) {
 	t.Logf("Created Role: %s", newRoleId)
 
 	// Add grant to role
-	output = e2e.RunCommand(ctx, "boundary", "roles", "add-grants",
-		"-id", newRoleId,
-		"-grant", "id=*;type=target;actions=authorize-session",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"roles", "add-grants",
+			"-id", newRoleId,
+			"-grant", "id=*;type=target;actions=authorize-session",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Add user to role
-	output = e2e.RunCommand(ctx, "boundary", "roles", "add-principals",
-		"-id", newRoleId,
-		"-principal", newUserId,
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"roles", "add-principals",
+			"-id", newRoleId,
+			"-principal", newUserId,
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
@@ -96,17 +108,20 @@ func TestSessionCancelUserCli(t *testing.T) {
 	go func() {
 		boundary.AuthenticateCli(t, acctName, acctPassword)
 		t.Log("Starting session as user...")
-		errChan <- e2e.RunCommand(ctxCancel, "boundary", "connect",
-			"-target-id", newTargetId,
-			"-exec", "/usr/bin/ssh", "--",
-			"-l", c.TargetSshUser,
-			"-i", c.TargetSshKeyPath,
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-			"-p", "{{boundary.port}}", // this is provided by boundary
-			"{{boundary.ip}}",
-			"hostname -i; sleep 60",
+		errChan <- e2e.RunCommand(ctxCancel, "boundary",
+			e2e.WithArgs(
+				"connect",
+				"-target-id", newTargetId,
+				"-exec", "/usr/bin/ssh", "--",
+				"-l", c.TargetSshUser,
+				"-i", c.TargetSshKeyPath,
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				"-p", "{{boundary.port}}", // this is provided by boundary
+				"{{boundary.ip}}",
+				"hostname -i; sleep 60",
+			),
 		)
 	}()
 	t.Cleanup(cancel)
@@ -115,7 +130,9 @@ func TestSessionCancelUserCli(t *testing.T) {
 	var session *sessions.Session
 	err = backoff.RetryNotify(
 		func() error {
-			output := e2e.RunCommand(ctx, "boundary", "sessions", "list", "-scope-id", newProjectId, "-format", "json")
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("sessions", "list", "-scope-id", newProjectId, "-format", "json"),
+			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
@@ -150,10 +167,14 @@ func TestSessionCancelUserCli(t *testing.T) {
 	require.Equal(t, "active", session.Status)
 
 	// Cancel session
-	output = e2e.RunCommand(ctx, "boundary", "sessions", "cancel", "-id", session.Id)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("sessions", "cancel", "-id", session.Id),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	output = e2e.RunCommand(ctx, "boundary", "sessions", "read", "-id", session.Id, "-format", "json")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionReadResult sessions.SessionReadResult
 	err = json.Unmarshal(output.Stdout, &newSessionReadResult)

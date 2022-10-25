@@ -36,11 +36,14 @@ func TestConnectTargetWithAuthzTokenCli(t *testing.T) {
 
 	// Create credentials
 	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "credentials", "create", "ssh-private-key",
-		"-credential-store-id", newCredentialStoreId,
-		"-username", c.TargetSshUser,
-		"-private-key", "file://"+c.TargetSshKeyPath,
-		"-format", "json",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credentials", "create", "ssh-private-key",
+			"-credential-store-id", newCredentialStoreId,
+			"-username", c.TargetSshUser,
+			"-private-key", "file://"+c.TargetSshKeyPath,
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newCredentialsResult credentials.CredentialCreateResult
@@ -50,14 +53,19 @@ func TestConnectTargetWithAuthzTokenCli(t *testing.T) {
 	t.Logf("Created Credentials: %s", newCredentialsId)
 
 	// Add credentials to target
-	output = e2e.RunCommand(ctx, "boundary", "targets", "add-credential-sources",
-		"-id", newTargetId,
-		"-brokered-credential-source", newCredentialsId,
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "add-credential-sources",
+			"-id", newTargetId,
+			"-brokered-credential-source", newCredentialsId,
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Get credentials for target
-	output = e2e.RunCommand(ctx, "boundary", "targets", "authorize-session", "-id", newTargetId, "-format", "json")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionAuthorizationResult targets.SessionAuthorizationResult
 	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
@@ -86,17 +94,20 @@ func TestConnectTargetWithAuthzTokenCli(t *testing.T) {
 	require.NoError(t, err)
 
 	// Connect to target and print host's IP address using retrieved credentials
-	output = e2e.RunCommand(ctx, "boundary", "connect",
-		"-authz-token", newAuthToken,
-		"-exec", "/usr/bin/ssh", "--",
-		"-l", retrievedUser,
-		"-i", retrievedKeyPath,
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		"-p", "{{boundary.port}}", // this is provided by boundary
-		"{{boundary.ip}}",
-		"hostname", "-i",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect",
+			"-authz-token", newAuthToken,
+			"-exec", "/usr/bin/ssh", "--",
+			"-l", retrievedUser,
+			"-i", retrievedKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"-p", "{{boundary.port}}", // this is provided by boundary
+			"{{boundary.ip}}",
+			"hostname", "-i",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
