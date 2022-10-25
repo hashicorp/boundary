@@ -136,6 +136,8 @@ jobs:
         run: |
           unzip ${{steps.download.outputs.download-path}}/*.zip -d enos/support
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
+      - name: Output Terraform version info
+        enos scenario exec --chdir ./enos ${{ matrix.filter }} builder:crt --cmd "version"
       - name: Run Enos scenario
         id: run
         # Continue once and retry
