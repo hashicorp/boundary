@@ -38,7 +38,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	}
 	m = m.Clone()
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	if opts.withPublicId != "" {
 		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
@@ -307,7 +307,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	}
 
 	dbArgs := []db.Option{}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.

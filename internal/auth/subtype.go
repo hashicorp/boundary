@@ -17,6 +17,9 @@ type AuthMethod interface {
 type Account interface {
 	boundary.Resource
 	GetAuthMethodId() string
+	GetLoginName() string
+	GetEmail() string
+	GetSubject() string
 }
 
 type ManagedGroup interface {
