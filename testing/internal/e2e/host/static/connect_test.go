@@ -50,7 +50,7 @@ func TestConnectTargetCli(t *testing.T) {
 	t.Log("Successfully connected to target")
 }
 
-// TestCreateTargetApi uses the boundary go api to create a number of supporting objects
+// TestCreateTargetApi uses the Go api to create a number of supporting objects
 // to connect to a target. This test does not connect to the target due to the complexity
 // when not using the cli.
 func TestCreateTargetApi(t *testing.T) {

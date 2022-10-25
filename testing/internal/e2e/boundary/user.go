@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewUserCli creates a new user using the go api.
+// CreateNewUserCli creates a new user using the Go api.
 // Returns the id of the new user
 func CreateNewUserApi(t testing.TB, ctx context.Context, client *api.Client, scopeId string) string {
 	uClient := users.NewClient(client)

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewOrgApi creates a new organization in boundary using the go api.
+// CreateNewOrgApi creates a new organization in boundary using the Go api.
 // Returns the id of the new org.
 func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) string {
 	scopeClient := scopes.NewClient(client)
@@ -28,7 +28,7 @@ func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) stri
 	return newOrgId
 }
 
-// CreateNewProjectApi creates a new project in boundary using the go api. The project will be created
+// CreateNewProjectApi creates a new project in boundary using the Go api. The project will be created
 // under the provided org id.
 // Returns the id of the new project.
 func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, orgId string) string {

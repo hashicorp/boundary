@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewAccountApi creates a new account using the go api.
+// CreateNewAccountApi creates a new account using the Go api.
 // Returns the id of the new account as well as the password that was generated
 func CreateNewAccountApi(t testing.TB, ctx context.Context, client *api.Client, loginName string) (accountId string, password string) {
 	c, err := loadConfig()

@@ -174,7 +174,7 @@ func TestSessionCancelUserCli(t *testing.T) {
 	t.Log("Successfully cancelled session")
 }
 
-// TestCreateUserApi uses the go api to create a new user and add some grants to the user
+// TestCreateUserApi uses the Go api to create a new user and add some grants to the user
 func TestCreateUserApi(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()

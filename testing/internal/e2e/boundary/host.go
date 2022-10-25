@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewHostCatalogApi creates a new host catalog in boundary using the go api.
+// CreateNewHostCatalogApi creates a new host catalog in boundary using the Go api.
 // Returns the id of the new host catalog.
 func CreateNewHostCatalogApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) string {
 	hcClient := hostcatalogs.NewClient(client)
@@ -25,7 +25,7 @@ func CreateNewHostCatalogApi(t testing.TB, ctx context.Context, client *api.Clie
 	return newHostCatalogId
 }
 
-// CreateNewHostSetApi creates a new host set in boundary using the go api.
+// CreateNewHostSetApi creates a new host set in boundary using the Go api.
 // Returns the id of the new host set.
 func CreateNewHostSetApi(t testing.TB, ctx context.Context, client *api.Client, hostCatalogId string) string {
 	hsClient := hostsets.NewClient(client)
@@ -37,7 +37,7 @@ func CreateNewHostSetApi(t testing.TB, ctx context.Context, client *api.Client, 
 	return newHostSetId
 }
 
-// CreateNewHostApi creates a new host in boundary using the go api
+// CreateNewHostApi creates a new host in boundary using the Go api
 // Returns the id of the new host.
 func CreateNewHostApi(t testing.TB, ctx context.Context, client *api.Client, hostCatalogId string, address string) string {
 	hClient := hosts.NewClient(client)
@@ -52,7 +52,7 @@ func CreateNewHostApi(t testing.TB, ctx context.Context, client *api.Client, hos
 	return newHostId
 }
 
-// AddHostToHostSetApi adds a host to a host set using the go api
+// AddHostToHostSetApi adds a host to a host set using the Go api
 func AddHostToHostSetApi(t testing.TB, ctx context.Context, client *api.Client, hostSetId string, hostId string) {
 	hsClient := hostsets.NewClient(client)
 	_, err := hsClient.AddHosts(ctx, hostSetId, 0, []string{hostId}, hostsets.WithAutomaticVersioning(true))

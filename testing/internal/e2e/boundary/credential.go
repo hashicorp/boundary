@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewCredentialStoreStaticApi creates a new static credential store using the go api.
+// CreateNewCredentialStoreStaticApi creates a new static credential store using the Go api.
 // Returns the id of the new credential store
 func CreateNewCredentialStoreStaticApi(t testing.TB, ctx context.Context, client *api.Client, projectId string) string {
 	csClient := credentialstores.NewClient(client)

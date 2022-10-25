@@ -84,7 +84,7 @@ func TestConnectTargetWithSshCli(t *testing.T) {
 	t.Log("Successfully connected to target")
 }
 
-// TestCreateTargetWithStaticCredentialStoreApi uses the boundary go api to create a credential using
+// TestCreateTargetWithStaticCredentialStoreApi uses the Go api to create a credential using
 // boundary's built-in credential store. The test then attaches that credential to a target.
 func TestCreateTargetWithStaticCredentialStoreApi(t *testing.T) {
 	e2e.MaybeSkipTest(t)

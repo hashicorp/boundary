@@ -250,9 +250,9 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps1))
 }
 
-// TestCreateAwsDynamicHostCatalogApi uses the boundary go api to create a host catalog with the AWS
-// plugin. The test sets up an AWS dynamic host catalog, creates a host set, and sets up a target to
-// the host set.
+// TestCreateAwsDynamicHostCatalogApi uses the Go api to create a host catalog with the AWS plugin.
+// The test sets up an AWS dynamic host catalog, creates a host set, and sets up a target to the
+// host set.
 func TestCreateAwsDynamicHostCatalogApi(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()

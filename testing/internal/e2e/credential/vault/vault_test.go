@@ -178,9 +178,9 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	t.Log("Successfully connected to target")
 }
 
-// TestCreateVaultCredentialStoreApi uses the boundary go api along with the vault cli to
-// add secrets management for a target. The test sets up vault as a credential stores and creates
-// a set of credentials in vault that is attached to a target.
+// TestCreateVaultCredentialStoreApi uses the Go api along with the vault cli to add secrets
+// management for a target. The test sets up vault as a credential stores and creates a set of
+// credentials in vault that is attached to a target.
 func TestCreateVaultCredentialStoreApi(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
