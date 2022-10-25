@@ -137,7 +137,21 @@ jobs:
           unzip ${{steps.download.outputs.download-path}}/*.zip -d enos/support
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
       - name: Output Terraform version info
-        enos scenario exec --chdir ./enos ${{ matrix.filter }} builder:crt --cmd "version"
+        # Use the same env vars from the following step
+        env:
+          ENOS_VAR_aws_region: us-east-1
+          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
+          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
+          ENOS_VAR_local_boundary_dir: ./support/
+          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
+          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
+          ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
+          ENOS_VAR_skip_failing_bats_tests: "true"
+        run: |
+          mkdir -p ./enos/terraform-plugin-cache
+          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
+          enos scenario check --chdir ./enos ${{ matrix.filter }} builder:crt && \
+          enos scenario exec --chdir ./enos ${{ matrix.filter }} builder:crt --cmd "version"
       - name: Run Enos scenario
         id: run
         # Continue once and retry
