@@ -142,7 +142,7 @@ func (c *PasswordCommand) Run(args []string) int {
 
 	aClient := authmethods.NewClient(client)
 	result, err := aClient.Authenticate(c.Context, c.FlagAuthMethodId, "login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": c.flagLoginName,
 			"password":   c.flagPassword,
 		})

@@ -115,7 +115,7 @@ func TestClaimsScope_Create(t *testing.T) {
 				}
 				assert.NoError(err)
 				found := AllocClaimsScope()
-				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and scope = ?", []interface{}{tt.args.authMethodId, tt.args.claimsScope}))
+				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and scope = ?", []any{tt.args.authMethodId, tt.args.claimsScope}))
 			}
 		})
 	}
@@ -192,7 +192,7 @@ func TestClaimsScope_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := AllocClaimsScope()
-			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and scope = ?", []interface{}{tt.claimsScope.OidcMethodId, tt.claimsScope.Scope})
+			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and scope = ?", []any{tt.claimsScope.OidcMethodId, tt.claimsScope.Scope})
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}

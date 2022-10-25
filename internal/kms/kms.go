@@ -241,7 +241,7 @@ func stdNewKmsPurposes() []wrappingKms.KeyPurpose {
 	return purposes
 }
 
-func isNil(i interface{}) bool {
+func isNil(i any) bool {
 	if i == nil {
 		return true
 	}

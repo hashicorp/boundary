@@ -123,7 +123,7 @@ func (c *Command) printListTable(items []*credentialstores.CredentialStore) stri
 }
 
 func printItemTable(item *credentialstores.CredentialStore, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

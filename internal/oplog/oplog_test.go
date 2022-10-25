@@ -62,7 +62,7 @@ func Test_BasicOplog(t *testing.T) {
 		entryId := l.Id
 
 		var foundEntry Entry
-		err = dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{entryId})
+		err = dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []any{entryId})
 		require.NoError(err)
 		foundEntry.Cipherer = cipherer
 		err = foundEntry.DecryptData(context.Background())
@@ -408,7 +408,7 @@ func Test_Replay(t *testing.T) {
 		userCreateItems := &oplog_test.TestUser{
 			Name: "foo-" + testId(t),
 		}
-		require.NoError(dbw.New(db).CreateItems(context.Background(), []interface{}{userCreateItems}))
+		require.NoError(dbw.New(db).CreateItems(context.Background(), []any{userCreateItems}))
 
 		err = newLogEntry.WriteEntryWith(context.Background(), &Writer{tx.DB()}, ticket,
 			&Message{Message: userCreate, TypeName: "user", OpType: OpType_OP_TYPE_CREATE},
@@ -425,7 +425,7 @@ func Test_Replay(t *testing.T) {
 		require.NoError(err)
 
 		var foundEntry Entry
-		require.NoError(tx.LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{newLogEntry.Id}))
+		require.NoError(tx.LookupWhere(testCtx, &foundEntry, "id = ?", []any{newLogEntry.Id}))
 		foundEntry.Cipherer = cipherer
 		err = foundEntry.DecryptData(context.Background())
 		require.NoError(err)
@@ -436,7 +436,7 @@ func Test_Replay(t *testing.T) {
 
 		var foundReplayedUser oplog_test.TestUser
 		foundReplayedUser.Table = foundReplayedUser.TableName() + tableSuffix
-		require.NoError(tx.LookupWhere(testCtx, &foundReplayedUser, "id = ?", []interface{}{userCreate.Id}))
+		require.NoError(tx.LookupWhere(testCtx, &foundReplayedUser, "id = ?", []any{userCreate.Id}))
 		require.NoError(err)
 
 		assert.Equal(foundUser.Id, foundReplayedUser.Id)
@@ -447,7 +447,7 @@ func Test_Replay(t *testing.T) {
 		assert.Equal(foundReplayedUser.Email, loginName+"@hashicorp.com")
 
 		foundReplayedUser.Id = 0
-		require.NoError(tx.LookupWhere(testCtx, &foundReplayedUser, "id = ?", []interface{}{userCreateItems.Id}, dbw.WithDebug(true)))
+		require.NoError(tx.LookupWhere(testCtx, &foundReplayedUser, "id = ?", []any{userCreateItems.Id}, dbw.WithDebug(true)))
 		require.NoError(err)
 	})
 
@@ -495,7 +495,7 @@ func Test_Replay(t *testing.T) {
 		require.NoError(err)
 
 		var foundEntry2 Entry
-		err = tx2.LookupWhere(testCtx, &foundEntry2, "id = ?", []interface{}{newLogEntry2.Id})
+		err = tx2.LookupWhere(testCtx, &foundEntry2, "id = ?", []any{newLogEntry2.Id})
 		require.NoError(err)
 		foundEntry2.Cipherer = cipherer
 		err = foundEntry2.DecryptData(context.Background())
@@ -508,11 +508,11 @@ func Test_Replay(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser2 oplog_test.TestUser
-		err = tx2.LookupWhere(testCtx, &foundUser2, "id = ?", []interface{}{userCreate2.Id})
+		err = tx2.LookupWhere(testCtx, &foundUser2, "id = ?", []any{userCreate2.Id})
 		assert.ErrorIs(err, dbw.ErrRecordNotFound)
 
 		var foundReplayedUser2 oplog_test.TestUser
-		err = tx2.LookupWhere(testCtx, &foundReplayedUser2, "id = ?", []interface{}{userCreate2.Id})
+		err = tx2.LookupWhere(testCtx, &foundReplayedUser2, "id = ?", []any{userCreate2.Id})
 		assert.ErrorIs(err, dbw.ErrRecordNotFound)
 	})
 	t.Run("replay:deleteitems", func(t *testing.T) {
@@ -537,7 +537,7 @@ func Test_Replay(t *testing.T) {
 		deleteUser2 := oplog_test.TestUser{
 			Id: userCreate2.Id,
 		}
-		_, err = tx2.DeleteItems(testCtx, []interface{}{&deleteUser2})
+		_, err = tx2.DeleteItems(testCtx, []any{&deleteUser2})
 		require.NoError(err)
 
 		newLogEntry2, err := NewEntry(
@@ -559,7 +559,7 @@ func Test_Replay(t *testing.T) {
 		require.NoError(err)
 
 		var foundEntry2 Entry
-		err = tx2.LookupWhere(testCtx, &foundEntry2, "id = ?", []interface{}{newLogEntry2.Id})
+		err = tx2.LookupWhere(testCtx, &foundEntry2, "id = ?", []any{newLogEntry2.Id})
 		require.NoError(err)
 		foundEntry2.Cipherer = cipherer
 		err = foundEntry2.DecryptData(context.Background())
@@ -572,11 +572,11 @@ func Test_Replay(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser2 oplog_test.TestUser
-		err = tx2.LookupWhere(testCtx, &foundUser2, "id = ?", []interface{}{userCreate2.Id})
+		err = tx2.LookupWhere(testCtx, &foundUser2, "id = ?", []any{userCreate2.Id})
 		assert.ErrorIs(err, dbw.ErrRecordNotFound)
 
 		var foundReplayedUser2 oplog_test.TestUser
-		err = tx2.LookupWhere(testCtx, &foundReplayedUser2, "id = ?", []interface{}{userCreate2.Id})
+		err = tx2.LookupWhere(testCtx, &foundReplayedUser2, "id = ?", []any{userCreate2.Id})
 		assert.ErrorIs(err, dbw.ErrRecordNotFound)
 	})
 }
@@ -625,7 +625,7 @@ func Test_WriteEntryWith(t *testing.T) {
 		require.NoError(err)
 
 		var foundEntry Entry
-		require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{newLogEntry.Id}))
+		require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []any{newLogEntry.Id}))
 		require.NoError(err)
 		foundEntry.Cipherer = cipherer
 		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
@@ -773,7 +773,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 				Opts: []dbw.Option{
 					dbw.WithOnConflict(&dbw.OnConflict{
 						Target: dbw.Columns{"name"},
-						Action: dbw.SetColumnValues(map[string]interface{}{"name": dbw.Expr("NULL")}),
+						Action: dbw.SetColumnValues(map[string]any{"name": dbw.Expr("NULL")}),
 					}),
 				},
 			},
@@ -788,7 +788,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 				Opts: []dbw.Option{
 					dbw.WithOnConflict(&dbw.OnConflict{
 						Target: dbw.Columns{"name"},
-						Action: dbw.SetColumnValues(map[string]interface{}{"name": testId(t)}),
+						Action: dbw.SetColumnValues(map[string]any{"name": testId(t)}),
 					}),
 				},
 			},
@@ -869,7 +869,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 			}
 			require.NoError(err)
 			var foundEntry Entry
-			require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{tt.e.Id}))
+			require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []any{tt.e.Id}))
 			require.NoError(err)
 			foundEntry.Cipherer = cipherer
 			types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
@@ -900,7 +900,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 
 			var foundReplayedUser oplog_test.TestUser
 			foundReplayedUser.Table = foundReplayedUser.TableName() + tableSuffix
-			require.NoError(dbw.New(tt.w.DB).LookupWhere(testCtx, &foundReplayedUser, "id = ?", []interface{}{entryUser.Id}))
+			require.NoError(dbw.New(tt.w.DB).LookupWhere(testCtx, &foundReplayedUser, "id = ?", []any{entryUser.Id}))
 			require.NoError(err)
 
 			assert.Equal(foundUser.Id, foundReplayedUser.Id)

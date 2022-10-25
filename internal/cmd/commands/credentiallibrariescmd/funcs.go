@@ -114,7 +114,7 @@ func (c *Command) printListTable(items []*credentiallibraries.CredentialLibrary)
 }
 
 func printItemTable(item *credentiallibraries.CredentialLibrary, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

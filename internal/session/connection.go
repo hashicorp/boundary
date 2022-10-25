@@ -78,7 +78,7 @@ func AllocConnection() Connection {
 }
 
 // Clone creates a clone of the Connection.
-func (c *Connection) Clone() interface{} {
+func (c *Connection) Clone() any {
 	clone := &Connection{
 		PublicId:           c.PublicId,
 		SessionId:          c.SessionId,

@@ -144,7 +144,7 @@ func (j *sessionConnectionCleanupJob) closeWorkerlessConnections(ctx context.Con
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
 			var err error
-			count, err = w.Exec(ctx, closeWorkerlessConnections, []interface{}{})
+			count, err = w.Exec(ctx, closeWorkerlessConnections, []any{})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -166,7 +166,7 @@ func (j *sessionConnectionCleanupJob) closeWorkerlessConnections(ctx context.Con
 // The only input to the method is the grace period, in seconds.
 func (j *sessionConnectionCleanupJob) closeConnectionsForDeadWorkers(ctx context.Context, gracePeriod time.Duration) ([]closeConnectionsForDeadWorkersResult, error) {
 	const op = "session.(sessionConnectionCleanupJob).closeConnectionsForDeadWorkers"
-	args := []interface{}{
+	args := []any{
 		sql.Named("grace_period_seconds", gracePeriod.Seconds()),
 	}
 	results := make([]closeConnectionsForDeadWorkersResult, 0)

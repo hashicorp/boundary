@@ -177,7 +177,7 @@ func convertToDbwOpts(ctx context.Context, opts *OperationOptions) ([]dbw.Option
 					expr := dbw.ExprValue{
 						Sql: pbVal.ExprValue.GetSql(),
 					}
-					args := make([]interface{}, 0, len(pbVal.ExprValue.GetArgs()))
+					args := make([]any, 0, len(pbVal.ExprValue.GetArgs()))
 					for _, a := range pbVal.ExprValue.GetArgs() {
 						args = append(args, a.AsInterface())
 					}
@@ -200,7 +200,7 @@ func convertToDbwOpts(ctx context.Context, opts *OperationOptions) ([]dbw.Option
 	}
 	if opts.GetWithWhereClause() != "" {
 		sql := opts.GetWithWhereClause()
-		args := make([]interface{}, 0, len(opts.GetWithWhereClauseArgs()))
+		args := make([]any, 0, len(opts.GetWithWhereClauseArgs()))
 		for _, a := range opts.GetWithWhereClauseArgs() {
 			args = append(args, a.AsInterface())
 		}
@@ -444,7 +444,7 @@ func (e *Entry) Replay(ctx context.Context, tx *Writer, types *TypeCatalog, tabl
 			// TODO: jimlambrt 12/2021 -> while this will work for
 			// CreateItems(...) it's hardly efficient.  We'll need to refactor
 			// oplog quite a bit to support a multi-message operation.
-			if err := rw.CreateItems(ctx, []interface{}{m.Message}, m.Opts...); err != nil {
+			if err := rw.CreateItems(ctx, []any{m.Message}, m.Opts...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		case OpType_OP_TYPE_UPDATE:
@@ -459,7 +459,7 @@ func (e *Entry) Replay(ctx context.Context, tx *Writer, types *TypeCatalog, tabl
 			// TODO: jimlambrt 12/2021 -> while this will work for
 			// DeleteItems(...) it's hardly efficient.  We'll need to refactor
 			// oplog quite a bit to support a multi-message operation.
-			if _, err := rw.DeleteItems(ctx, []interface{}{m.Message}, m.Opts...); err != nil {
+			if _, err := rw.DeleteItems(ctx, []any{m.Message}, m.Opts...); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		default:

@@ -328,7 +328,7 @@ func TestCreate(t *testing.T) {
 				},
 				CredentialType: string(credential.UsernamePasswordType),
 				CredentialMappingOverrides: func() *structpb.Struct {
-					v := map[string]interface{}{
+					v := map[string]any{
 						usernameAttribute: "user-test",
 						"invalid":         "invalid-test",
 					}
@@ -452,7 +452,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 				CredentialMappingOverrides: func() *structpb.Struct {
-					v := map[string]interface{}{
+					v := map[string]any{
 						usernameAttribute: "user-test",
 					}
 					ret, err := structpb.NewStruct(v)
@@ -480,7 +480,7 @@ func TestCreate(t *testing.T) {
 					},
 					CredentialType: string(credential.UsernamePasswordType),
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute: "user-test",
 						}
 						ret, err := structpb.NewStruct(v)
@@ -501,7 +501,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 				CredentialMappingOverrides: func() *structpb.Struct {
-					v := map[string]interface{}{
+					v := map[string]any{
 						usernameAttribute: "user-test",
 						passwordAttribute: "pass-test",
 					}
@@ -530,7 +530,7 @@ func TestCreate(t *testing.T) {
 					},
 					CredentialType: string(credential.UsernamePasswordType),
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute: "user-test",
 							passwordAttribute: "pass-test",
 						}
@@ -585,7 +585,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 				CredentialMappingOverrides: func() *structpb.Struct {
-					v := map[string]interface{}{
+					v := map[string]any{
 						usernameAttribute:     "user-test",
 						privateKeyAttribute:   "pk-test",
 						pkPassphraseAttribute: "pass-test",
@@ -615,7 +615,7 @@ func TestCreate(t *testing.T) {
 					},
 					CredentialType: string(credential.SshPrivateKeyType),
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute:     "user-test",
 							privateKeyAttribute:   "pk-test",
 							pkPassphraseAttribute: "pass-test",
@@ -765,7 +765,7 @@ func TestGet(t *testing.T) {
 					},
 					CredentialType: "username_password",
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute: "user",
 							passwordAttribute: "pass",
 						}
@@ -797,7 +797,7 @@ func TestGet(t *testing.T) {
 					},
 					CredentialType: "ssh_private_key",
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute:     "user",
 							privateKeyAttribute:   "pk",
 							pkPassphraseAttribute: "pass",
@@ -1048,7 +1048,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(usernameAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute: "changed-user",
 						}
 						ret, err := structpb.NewStruct(v)
@@ -1077,7 +1077,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(passwordAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							passwordAttribute: "changed-pass",
 						}
 						ret, err := structpb.NewStruct(v)
@@ -1106,7 +1106,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(passwordAttrField, usernameAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute: "changed-user",
 							passwordAttribute: "changed-pass",
 						}
@@ -1132,7 +1132,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(passwordAttrField, usernameAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute: "new-user",
 							passwordAttribute: "new-pass",
 						}
@@ -1144,7 +1144,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				v := map[string]interface{}{
+				v := map[string]any{
 					usernameAttribute: "new-user",
 					passwordAttribute: "new-pass",
 				}
@@ -1207,7 +1207,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(passwordAttrField, usernameAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute: nil,
 							passwordAttribute: nil,
 						}
@@ -1232,7 +1232,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(passwordAttrField, usernameAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute: nil,
 							passwordAttribute: nil,
 						}
@@ -1263,7 +1263,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(usernameAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute: "changed-user",
 						}
 						ret, err := structpb.NewStruct(v)
@@ -1293,7 +1293,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(privateKeyAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							privateKeyAttribute: "changed-pk",
 						}
 						ret, err := structpb.NewStruct(v)
@@ -1323,7 +1323,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(passphraseAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							pkPassphraseAttribute: "changed-pass",
 						}
 						ret, err := structpb.NewStruct(v)
@@ -1353,7 +1353,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField, passphraseAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute:     "changed-user",
 							privateKeyAttribute:   "changed-pk",
 							pkPassphraseAttribute: "changed-pass",
@@ -1381,7 +1381,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField, passphraseAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute:     "new-user",
 							privateKeyAttribute:   "new-pk",
 							pkPassphraseAttribute: "new-pass",
@@ -1394,7 +1394,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				v := map[string]interface{}{
+				v := map[string]any{
 					usernameAttribute:     "new-user",
 					privateKeyAttribute:   "new-pk",
 					pkPassphraseAttribute: "new-pass",
@@ -1460,7 +1460,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField, passphraseAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute:     nil,
 							privateKeyAttribute:   nil,
 							pkPassphraseAttribute: nil,
@@ -1486,7 +1486,7 @@ func TestUpdate(t *testing.T) {
 				UpdateMask: fieldmask(privateKeyAttrField, usernameAttrField),
 				Item: &pb.CredentialLibrary{
 					CredentialMappingOverrides: func() *structpb.Struct {
-						v := map[string]interface{}{
+						v := map[string]any{
 							usernameAttribute:   nil,
 							privateKeyAttribute: nil,
 						}

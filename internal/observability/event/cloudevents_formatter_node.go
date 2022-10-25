@@ -106,8 +106,8 @@ func (f *cloudEventsFormatterFilter) Rotate(w wrapping.Wrapper, _ ...Option) err
 	return nil
 }
 
-func newPredicate(allow, deny []*filter) func(ctx context.Context, ce interface{}) (bool, error) {
-	return func(ctx context.Context, ce interface{}) (bool, error) {
+func newPredicate(allow, deny []*filter) func(ctx context.Context, ce any) (bool, error) {
+	return func(ctx context.Context, ce any) (bool, error) {
 		if len(allow) == 0 && len(deny) == 0 {
 			return true, nil
 		}
@@ -154,7 +154,7 @@ func newFilter(f string) (*filter, error) {
 
 // Match returns if the provided interface matches the filter. If the filter
 // does not match the structure of the object being Matched, false is returned.
-func (f *filter) Match(item interface{}) bool {
+func (f *filter) Match(item any) bool {
 	if f.eval == nil {
 		return true
 	}

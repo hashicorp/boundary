@@ -283,11 +283,11 @@ func TestCreateAwsDynamicHostCatalogApi(t *testing.T) {
 	newHostCatalogResult, err := hcClient.Create(ctx, "plugin", newProjectId,
 		hostcatalogs.WithName("e2e Automated Test Host Catalog"),
 		hostcatalogs.WithPluginName("aws"),
-		hostcatalogs.WithAttributes(map[string]interface{}{
+		hostcatalogs.WithAttributes(map[string]any{
 			"disable_credential_rotation": true,
 			"region":                      "us-east-1",
 		}),
-		hostcatalogs.WithSecrets(map[string]interface{}{
+		hostcatalogs.WithSecrets(map[string]any{
 			"access_key_id":     c.AwsAccessKeyId,
 			"secret_access_key": c.AwsSecretAccessKey,
 		}),
@@ -299,7 +299,7 @@ func TestCreateAwsDynamicHostCatalogApi(t *testing.T) {
 	// Create a host set and add to catalog
 	hsClient := hostsets.NewClient(client)
 	newHostSetResult, err := hsClient.Create(ctx, newHostCatalogId,
-		hostsets.WithAttributes(map[string]interface{}{
+		hostsets.WithAttributes(map[string]any{
 			"filters": c.AwsHostSetFilter1,
 		}),
 		hostsets.WithName("e2e Automated Test Host Set"),

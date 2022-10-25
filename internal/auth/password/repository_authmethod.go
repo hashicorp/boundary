@@ -199,7 +199,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, authMethod *AuthMetho
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"Name":               authMethod.Name,
 			"Description":        authMethod.Description,
 			"MinPasswordLength":  authMethod.MinPasswordLength,
@@ -323,7 +323,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		}
 	}
 
-	var args []interface{}
+	var args []any
 	var where []string
 	switch {
 	case authMethodId != "":

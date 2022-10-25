@@ -547,7 +547,7 @@ func Test_convertValueObjects(t *testing.T) {
 	testPublicId := "test-id"
 
 	testAlgs := []string{string(RS256), string(RS384)}
-	var testSigningAlgs []interface{}
+	var testSigningAlgs []any
 	for _, a := range []Alg{RS256, RS384} {
 		obj, err := NewSigningAlg(ctx, testPublicId, Alg(a))
 		require.NoError(t, err)
@@ -555,7 +555,7 @@ func Test_convertValueObjects(t *testing.T) {
 	}
 
 	testAuds := []string{"alice", "eve"}
-	var testAudiences []interface{}
+	var testAudiences []any
 	for _, a := range testAuds {
 		obj, err := NewAudClaim(ctx, testPublicId, a)
 		require.NoError(t, err)
@@ -566,10 +566,10 @@ func Test_convertValueObjects(t *testing.T) {
 	testCerts := []string{pem}
 	c, err := NewCertificate(ctx, testPublicId, pem)
 	require.NoError(t, err)
-	testCertificates := []interface{}{c}
+	testCertificates := []any{c}
 
 	testScopes := []string{"profile", "email"}
-	testClaimsScopes := make([]interface{}, 0, len(testScopes))
+	testClaimsScopes := make([]any, 0, len(testScopes))
 	for _, s := range testScopes {
 		obj, err := NewClaimsScope(ctx, testPublicId, s)
 		require.NoError(t, err)
@@ -577,7 +577,7 @@ func Test_convertValueObjects(t *testing.T) {
 	}
 
 	testClaimMaps := []string{"oid=sub", "display_name=name"}
-	testAccountClaimMaps := make([]interface{}, 0, len(testClaimMaps))
+	testAccountClaimMaps := make([]any, 0, len(testClaimMaps))
 	acms, err := ParseAccountClaimMaps(ctx, testClaimMaps...)
 	require.NoError(t, err)
 	for _, m := range acms {
@@ -707,7 +707,7 @@ func Test_convertValueObjects(t *testing.T) {
 	}
 }
 
-type converted []interface{}
+type converted []any
 
 func (a converted) Len() int      { return len(a) }
 func (a converted) Swap(i, j int) { a[i], a[j] = a[j], a[i] }

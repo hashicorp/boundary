@@ -1828,7 +1828,7 @@ func (w workerList) workerInfos() []*pb.WorkerInfo {
 func (w workerList) filtered(eval *bexpr.Evaluator) (workerList, error) {
 	var ret []*server.Worker
 	for _, worker := range w {
-		filterInput := map[string]interface{}{
+		filterInput := map[string]any{
 			"name": worker.GetName(),
 			"tags": worker.CanonicalTags(),
 		}

@@ -272,7 +272,7 @@ var jsonNumberRegex = regexp.MustCompile(`^-?(?:0|[1-9]\d*)(?:\.\d+)?$`)
 // HandleAttributeFlags takes in a command and a func to call for default (that
 // is, set to nil) and non-default values. Suffix can be used to allow this
 // logic to be used for various needs, e.g. -attr vs -secret.
-func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields []base.CombinedSliceFlagValue, defaultFunc func(), setFunc func(map[string]interface{})) error {
+func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields []base.CombinedSliceFlagValue, defaultFunc func(), setFunc func(map[string]any)) error {
 	// If we were given a fullly defined field, use that as-is
 	switch fullField {
 	case "":
@@ -286,7 +286,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			return fmt.Errorf("error parsing %s flag as a URL: %w", suffix, err)
 		}
 		// We should be able to parse the string as a JSON object
-		var setMap map[string]interface{}
+		var setMap map[string]any
 		if err := json.Unmarshal([]byte(parsedString), &setMap); err != nil {
 			return fmt.Errorf("error parsing %s flag as JSON: %w", suffix, err)
 		}
@@ -294,7 +294,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 		return nil
 	}
 
-	setMap := map[string]interface{}{}
+	setMap := map[string]any{}
 
 	for _, field := range sepFields {
 		if len(field.Keys) == 0 {
@@ -302,7 +302,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			continue
 		}
 
-		var val interface{}
+		var val any
 		var err error
 
 		// First, perform any needed parsing if we are given the type
@@ -367,7 +367,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 				}
 
 			case strings.HasPrefix(field.Value, "["): // serialized JSON array
-				var s []interface{}
+				var s []any
 				u := json.NewDecoder(bytes.NewBufferString(field.Value))
 				u.UseNumber()
 				if err := u.Decode(&s); err != nil {
@@ -376,7 +376,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 				val = s
 
 			case strings.HasPrefix(field.Value, "{"): // serialized JSON map
-				var m map[string]interface{}
+				var m map[string]any
 				u := json.NewDecoder(bytes.NewBufferString(field.Value))
 				u.UseNumber()
 				if err := u.Decode(&m); err != nil {
@@ -413,14 +413,14 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 					// Nothing currently exists
 					currMap[segment] = val
 
-				case []interface{}:
+				case []any:
 					// It's already a slice, so just append
 					currMap[segment] = append(t, val)
 
 				default:
 					// It's not a slice, so create a new slice with the
 					// exisitng and new values
-					currMap[segment] = []interface{}{t, val}
+					currMap[segment] = []any{t, val}
 				}
 
 			default:
@@ -429,11 +429,11 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 				case nil:
 					// We haven't hit this segment before, so create a new
 					// object leading off of it and set it to current
-					newMap := map[string]interface{}{}
+					newMap := map[string]any{}
 					currMap[segment] = newMap
 					currMap = newMap
 
-				case map[string]interface{}:
+				case map[string]any:
 					// We've seen this before and already have a map so just set
 					// that as our new location
 					currMap = t

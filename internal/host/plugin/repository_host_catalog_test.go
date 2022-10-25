@@ -184,7 +184,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					ProjectId: prj.GetPublicId(),
 					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{
+						st, err := structpb.NewStruct(map[string]any{
 							"k1":                "foo",
 							"nilkey":            nil,
 							normalizeToSliceKey: "normalizeme",
@@ -201,7 +201,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					ProjectId: prj.GetPublicId(),
 					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{"k1": "foo"})
+						st, err := structpb.NewStruct(map[string]any{"k1": "foo"})
 						require.NoError(t, err)
 						b, err := proto.Marshal(st)
 						require.NoError(t, err)
@@ -221,7 +221,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					Attributes:  []byte{},
 				},
 				Secrets: func() *structpb.Struct {
-					st, err := structpb.NewStruct(map[string]interface{}{
+					st, err := structpb.NewStruct(map[string]any{
 						"k1": "v1",
 						"k2": 2,
 						"k3": nil,
@@ -239,7 +239,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				},
 			},
 			wantSecret: func() *structpb.Struct {
-				st, err := structpb.NewStruct(map[string]interface{}{
+				st, err := structpb.NewStruct(map[string]any{
 					"k1": "v1",
 					"k2": 2,
 					"k3": nil,
@@ -343,7 +343,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
 			cSecret := allocHostCatalogSecret()
-			err = rw.LookupWhere(ctx, &cSecret, "catalog_id=?", []interface{}{got.GetPublicId()})
+			err = rw.LookupWhere(ctx, &cSecret, "catalog_id=?", []any{got.GetPublicId()})
 			if tt.wantSecret == nil {
 				assert.Nil(got.Secrets)
 				require.Error(err)
@@ -571,14 +571,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	changeAttributes := func(m map[string]interface{}) changeHostCatalogFunc {
+	changeAttributes := func(m map[string]any) changeHostCatalogFunc {
 		return func(c *HostCatalog) *HostCatalog {
 			c.Attributes = mustMarshal(m)
 			return c
 		}
 	}
 
-	changeSecrets := func(m map[string]interface{}) changeHostCatalogFunc {
+	changeSecrets := func(m map[string]any) changeHostCatalogFunc {
 		return func(c *HostCatalog) *HostCatalog {
 			c.Secrets = mustStruct(m)
 			return c
@@ -650,7 +650,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkAttributes := func(want map[string]interface{}) checkFunc {
+	checkAttributes := func(want map[string]any) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
@@ -662,14 +662,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkSecrets := func(want map[string]interface{}) checkFunc {
+	checkSecrets := func(want map[string]any) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
 			require := require.New(t)
 
 			cSecret := allocHostCatalogSecret()
-			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", []interface{}{gotCatalog.GetPublicId()})
+			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", []any{gotCatalog.GetPublicId()})
 			require.NoError(err)
 			require.Empty(cSecret.Secret)
 			require.NotEmpty(cSecret.CtSecret)
@@ -690,7 +690,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			assert := assert.New(t)
 
 			cSecret := allocHostCatalogSecret()
-			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", []interface{}{gotCatalog.GetPublicId()})
+			err := dbRW.LookupWhere(ctx, &cSecret, "catalog_id=?", []any{gotCatalog.GetPublicId()})
 			assert.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		}
@@ -744,7 +744,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkUpdateCatalogRequestCurrentAttributes := func(want map[string]interface{}) checkFunc {
+	checkUpdateCatalogRequestCurrentAttributes := func(want map[string]any) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
@@ -752,7 +752,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkUpdateCatalogRequestNewAttributes := func(want map[string]interface{}) checkFunc {
+	checkUpdateCatalogRequestNewAttributes := func(want map[string]any) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
@@ -760,7 +760,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkUpdateCatalogRequestPersistedSecrets := func(want map[string]interface{}) checkFunc {
+	checkUpdateCatalogRequestPersistedSecrets := func(want map[string]any) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
@@ -768,7 +768,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		}
 	}
 
-	checkUpdateCatalogRequestSecrets := func(want map[string]interface{}) checkFunc {
+	checkUpdateCatalogRequestSecrets := func(want map[string]any) checkFunc {
 		return func(t *testing.T, ctx context.Context) {
 			t.Helper()
 			assert := assert.New(t)
@@ -883,7 +883,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
 				checkName("foo"),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -901,7 +901,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewNameNil(),
 				checkName(""),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -919,7 +919,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName(testDuplicateCatalogNameAltScope),
 				checkName(testDuplicateCatalogNameAltScope),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -937,7 +937,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescription("foo"),
 				checkDescription("foo"),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -955,7 +955,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkUpdateCatalogRequestCurrentDescriptionNil(),
 				checkUpdateCatalogRequestNewDescriptionNil(),
 				checkDescription(""),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -964,7 +964,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 		{
 			name: "update attributes (add)",
-			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]any{
 				"baz": "qux",
 			})},
 			version:   2,
@@ -972,18 +972,18 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkSecretsHmac(true),
-				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateCatalogRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{
-					"foo": "bar",
-					"baz": "qux",
-				}),
-				checkAttributes(map[string]interface{}{
+				checkUpdateCatalogRequestNewAttributes(map[string]any{
 					"foo": "bar",
 					"baz": "qux",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkAttributes(map[string]any{
+					"foo": "bar",
+					"baz": "qux",
+				}),
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -992,7 +992,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 		{
 			name: "update attributes (overwrite)",
-			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]any{
 				"foo":               "baz",
 				normalizeToSliceKey: "normalizeme",
 			})},
@@ -1001,18 +1001,18 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkSecretsHmac(true),
-				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateCatalogRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{
+				checkUpdateCatalogRequestNewAttributes(map[string]any{
 					"foo":               "baz",
 					normalizeToSliceKey: []any{"normalizeme"},
 				}),
-				checkAttributes(map[string]interface{}{
+				checkAttributes(map[string]any{
 					"foo":               "baz",
 					normalizeToSliceKey: []any{"normalizeme"},
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -1021,7 +1021,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 		{
 			name: "update attributes (null)",
-			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]any{
 				"foo": nil,
 			})},
 			version:   2,
@@ -1029,12 +1029,12 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkSecretsHmac(true),
-				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateCatalogRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{}),
-				checkAttributes(map[string]interface{}{}),
-				checkSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestNewAttributes(map[string]any{}),
+				checkAttributes(map[string]any{}),
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -1043,7 +1043,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 		{
 			name: "update attributes (combined)",
-			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeAttributes(map[string]any{
 				"a":   "b",
 				"foo": "baz",
 			})},
@@ -1052,18 +1052,18 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkSecretsHmac(true),
-				checkUpdateCatalogRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateCatalogRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateCatalogRequestNewAttributes(map[string]interface{}{
+				checkUpdateCatalogRequestNewAttributes(map[string]any{
 					"a":   "b",
 					"foo": "baz",
 				}),
-				checkAttributes(map[string]interface{}{
+				checkAttributes(map[string]any{
 					"a":   "b",
 					"foo": "baz",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -1072,7 +1072,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 		{
 			name: "update secrets",
-			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]any{
 				"three": "four",
 				"five":  "six",
 			})},
@@ -1081,14 +1081,14 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkSecretsHmac(true),
-				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
-				checkUpdateCatalogRequestSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestSecrets(map[string]any{
 					"three": "four",
 					"five":  "six",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"three": "four",
 					"five":  "six",
 				}),
@@ -1099,7 +1099,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		{
 			name:               "update secrets, return nil secrets from plugin",
 			withRespSecretsNil: true,
-			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{
+			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]any{
 				"three": "four",
 			})},
 			version:   2,
@@ -1107,13 +1107,13 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3), // incremented due to secrets_hmac
 				checkSecretsHmac(true),
-				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
-				checkUpdateCatalogRequestSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestSecrets(map[string]any{
 					"three": "four",
 				}),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"one": "two",
 				}),
 				checkNumUpdated(1),
@@ -1121,16 +1121,16 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		},
 		{
 			name:        "delete secrets",
-			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]interface{}{})},
+			changeFuncs: []changeHostCatalogFunc{changeSecrets(map[string]any{})},
 			version:     2,
 			fieldMask:   []string{"secrets"},
 			wantCheckFuncs: []checkFunc{
 				checkVersion(3),
 				checkSecretsHmac(false),
-				checkUpdateCatalogRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
-				checkUpdateCatalogRequestSecrets(map[string]interface{}{}),
+				checkUpdateCatalogRequestSecrets(map[string]any{}),
 				checkSecretsDeleted(),
 				checkNumUpdated(1),
 				checkVerifyCatalogOplog(oplog.OpType_OP_TYPE_UPDATE),
@@ -1140,7 +1140,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			name: "update name and secrets",
 			changeFuncs: []changeHostCatalogFunc{
 				changeName("foo"),
-				changeSecrets(map[string]interface{}{
+				changeSecrets(map[string]any{
 					"three": "four",
 				}),
 			},
@@ -1151,11 +1151,11 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 				checkSecretsHmac(true),
 				checkUpdateCatalogRequestCurrentNameNil(),
 				checkUpdateCatalogRequestNewName("foo"),
-				checkUpdateCatalogRequestSecrets(map[string]interface{}{
+				checkUpdateCatalogRequestSecrets(map[string]any{
 					"three": "four",
 				}),
 				checkName("foo"),
-				checkSecrets(map[string]interface{}{
+				checkSecrets(map[string]any{
 					"three": "four",
 				}),
 				checkNumUpdated(1),
@@ -1176,7 +1176,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		// Set up some secrets
 		scopeWrapper, err := dbKmsCache.GetWrapper(ctx, cat.GetProjectId(), kms.KeyPurposeDatabase)
 		require.NoError(err)
-		cat.Secrets = mustStruct(map[string]interface{}{
+		cat.Secrets = mustStruct(map[string]any{
 			"one": "two",
 		})
 		require.NoError(cat.hmacSecrets(ctx, scopeWrapper))
@@ -1187,7 +1187,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 		require.NoError(err)
 
 		// Set some (default) attributes on our test catalog and update SecretsHmac at the same time
-		cat.Attributes = mustMarshal(map[string]interface{}{
+		cat.Attributes = mustMarshal(map[string]any{
 			"foo": "bar",
 		})
 		numCatUpdated, err := dbRW.Update(ctx, cat, []string{"attributes", "SecretsHmac"}, []string{})
@@ -1575,7 +1575,7 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	require.NotNil(t, repo)
 
 	// Updating an empty catalog should not trigger an update.
-	emptyTestCatalog.Attributes = mustMarshal(map[string]interface{}{"foo": "bar"})
+	emptyTestCatalog.Attributes = mustMarshal(map[string]any{"foo": "bar"})
 	var catalogsUpdated int
 	_, _, catalogsUpdated, err = repo.UpdateCatalog(ctx, emptyTestCatalog, emptyTestCatalog.Version, []string{"attributes"})
 	require.NoError(t, err)
@@ -1612,7 +1612,7 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	require.GreaterOrEqual(t, time.Until(jj.GetNextScheduledRun().GetTimestamp().AsTime()), time.Second)
 
 	// Updating attributes should trigger update
-	testCatalog.Attributes = mustMarshal(map[string]interface{}{"foo": "bar"})
+	testCatalog.Attributes = mustMarshal(map[string]any{"foo": "bar"})
 	_, _, catalogsUpdated, err = repo.UpdateCatalog(ctx, testCatalog, testCatalog.Version, []string{"attributes"})
 	require.NoError(t, err)
 	require.Equal(t, 1, catalogsUpdated)
@@ -1644,7 +1644,7 @@ func assertPluginBasedPublicId(t *testing.T, prefix, actual string) {
 
 // mustStruct creates a structpb.Struct, and panics if there is an
 // error.
-func mustStruct(in map[string]interface{}) *structpb.Struct {
+func mustStruct(in map[string]any) *structpb.Struct {
 	out, err := structpb.NewStruct(in)
 	if err != nil {
 		panic(err)
@@ -1655,7 +1655,7 @@ func mustStruct(in map[string]interface{}) *structpb.Struct {
 
 // mustMarshal behaves like mustStruct but also converts the Struct
 // to wire-format data.
-func mustMarshal(in map[string]interface{}) []byte {
+func mustMarshal(in map[string]any) []byte {
 	b, err := proto.Marshal(mustStruct(in))
 	if err != nil {
 		panic(err)

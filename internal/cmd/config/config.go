@@ -145,18 +145,18 @@ type Controller struct {
 	Scheduler         *Scheduler `hcl:"scheduler"`
 
 	// AuthTokenTimeToLive is the total valid lifetime of a token denoted by time.Duration
-	AuthTokenTimeToLive         interface{} `hcl:"auth_token_time_to_live"`
+	AuthTokenTimeToLive         any `hcl:"auth_token_time_to_live"`
 	AuthTokenTimeToLiveDuration time.Duration
 
 	// AuthTokenTimeToStale is the total time a token can go unused before becoming invalid
 	// denoted by time.Duration
-	AuthTokenTimeToStale         interface{} `hcl:"auth_token_time_to_stale"`
+	AuthTokenTimeToStale         any `hcl:"auth_token_time_to_stale"`
 	AuthTokenTimeToStaleDuration time.Duration
 
 	// GracefulShutdownWait is the amount of time that we'll wait before actually
 	// starting the Controller shutdown. This allows the health endpoint to
 	// return a status code to indicate that the instance is shutting down.
-	GracefulShutdownWait         interface{} `hcl:"graceful_shutdown_wait_duration"`
+	GracefulShutdownWait         any `hcl:"graceful_shutdown_wait_duration"`
 	GracefulShutdownWaitDuration time.Duration
 
 	// StatusGracePeriod represents the period of time (as a duration) that the
@@ -197,14 +197,14 @@ type Worker struct {
 
 	// The ControllersRaw field is deprecated and users should use InitialUpstreamsRaw instead.
 	// TODO: remove this field when support is discontinued.
-	ControllersRaw interface{} `hcl:"controllers"`
+	ControllersRaw any `hcl:"controllers"`
 
 	// We use a raw interface for parsing so that people can use JSON-like
 	// syntax that maps directly to the filter input or possibly more familiar
 	// key=value syntax, as well as accepting a string denoting an env or file
 	// pointer. This is trued up in the Parse function below.
 	Tags    map[string][]string `hcl:"-"`
-	TagsRaw interface{}         `hcl:"tags"`
+	TagsRaw any                 `hcl:"tags"`
 
 	// StatusGracePeriod represents the period of time (as a duration) that the
 	// worker will wait before disconnecting connections if it cannot make a
@@ -226,10 +226,10 @@ type Database struct {
 	Url                     string         `hcl:"url"`
 	MigrationUrl            string         `hcl:"migration_url"`
 	MaxOpenConnections      int            `hcl:"-"`
-	MaxOpenConnectionsRaw   interface{}    `hcl:"max_open_connections"`
+	MaxOpenConnectionsRaw   any            `hcl:"max_open_connections"`
 	MaxIdleConnections      *int           `hcl:"-"`
-	MaxIdleConnectionsRaw   interface{}    `hcl:"max_idle_connections"`
-	ConnMaxIdleTime         interface{}    `hcl:"max_idle_time"`
+	MaxIdleConnectionsRaw   any            `hcl:"max_idle_connections"`
+	ConnMaxIdleTime         any            `hcl:"max_idle_time"`
 	ConnMaxIdleTimeDuration *time.Duration `hcl:"-"`
 
 	// SkipSharedLockAcquisition allows skipping grabbing the database shared
@@ -244,13 +244,13 @@ type Scheduler struct {
 	// JobRunInterval is the time interval between waking up the
 	// scheduler to run pending jobs.
 	//
-	JobRunInterval         interface{} `hcl:"job_run_interval"`
+	JobRunInterval         any `hcl:"job_run_interval"`
 	JobRunIntervalDuration time.Duration
 
 	// MonitorInterval is the time interval between waking up the
 	// scheduler to monitor for jobs that are defunct.
 	//
-	MonitorInterval         interface{} `hcl:"monitor_interval"`
+	MonitorInterval         any `hcl:"monitor_interval"`
 	MonitorIntervalDuration time.Duration
 }
 
@@ -593,7 +593,7 @@ func Parse(d string) (*Config, error) {
 					return nil, fmt.Errorf("Error parsing worker tags: %w", err)
 				}
 
-				var temp []map[string]interface{}
+				var temp []map[string]any
 				err = hcl.Decode(&temp, rawTags)
 				if err != nil {
 					return nil, fmt.Errorf("Error decoding raw worker tags: %w", err)
@@ -606,7 +606,7 @@ func Parse(d string) (*Config, error) {
 			// HCL allows multiple labeled blocks with the same name, turning it
 			// into a slice of maps, hence the slice here. This format is the
 			// one that ends up matching the JSON that we use in the expression.
-			case []map[string]interface{}:
+			case []map[string]any:
 				for _, m := range t {
 					for k, v := range m {
 						// We allow the user to pass in only the keys in HCL, and
@@ -642,7 +642,7 @@ func Parse(d string) (*Config, error) {
 
 			// However for those that are used to other systems, we also accept
 			// key=value pairs
-			case []interface{}:
+			case []any:
 				var strs []string
 				if err := mapstructure.WeakDecode(t, &strs); err != nil {
 					return nil, fmt.Errorf("Error decoding the worker's %q section: %w", "tags", err)
@@ -778,7 +778,7 @@ func parseWorkerUpstreams(c *Config) ([]string, error) {
 	}
 
 	switch t := rawUpstreams.(type) {
-	case []interface{}: // An array was configured directly in Boundary's HCL Config file.
+	case []any:
 		var upstreams []string
 		err := mapstructure.WeakDecode(rawUpstreams, &upstreams)
 		if err != nil {
@@ -887,14 +887,14 @@ func parseEventing(eventObj *ast.ObjectItem) (*event.EventerConfig, error) {
 // Specifically, the fields that this method strips are:
 // - KMS.Config
 // - Telemetry.CirconusAPIToken
-func (c *Config) Sanitized() map[string]interface{} {
+func (c *Config) Sanitized() map[string]any {
 	// Create shared config if it doesn't exist (e.g. in tests) so that map
 	// keys are actually populated
 	if c.SharedConfig == nil {
 		c.SharedConfig = new(configutil.SharedConfig)
 	}
 	sharedResult := c.SharedConfig.Sanitized()
-	result := map[string]interface{}{}
+	result := map[string]any{}
 	for k, v := range sharedResult {
 		result[k] = v
 	}

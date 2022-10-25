@@ -105,7 +105,7 @@ type RoleInfo struct {
 }
 
 func generateInitialRoleTableOutput(in *RoleInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Role ID": in.RoleId,
 		"Name":    in.Name,
 	}
@@ -137,7 +137,7 @@ type AuthInfo struct {
 }
 
 func generateInitialAuthTableOutput(in *AuthInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Scope ID":         in.ScopeId,
 		"Auth Method ID":   in.AuthMethodId,
 		"Auth Method Name": in.AuthMethodName,
@@ -170,7 +170,7 @@ type ScopeInfo struct {
 }
 
 func generateInitialScopeTableOutput(in *ScopeInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Scope ID": in.ScopeId,
 		"Type":     in.Type,
 		"Name":     in.Name,
@@ -204,7 +204,7 @@ type HostInfo struct {
 }
 
 func generateInitialHostResourcesTableOutput(in *HostInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Host Catalog ID":   in.HostCatalogId,
 		"Host Catalog Name": in.HostCatalogName,
 		"Host Set ID":       in.HostSetId,
@@ -242,7 +242,7 @@ type TargetInfo struct {
 }
 
 func generateInitialTargetTableOutput(in *TargetInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Target ID":                in.TargetId,
 		"Default Port":             in.DefaultPort,
 		"Session Max Seconds":      in.SessionMaxSeconds,

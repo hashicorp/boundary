@@ -93,7 +93,7 @@ func (a *audit) FlushEvent() bool {
 
 // ComposedFrom is part of the eventlogger.Gatable interface.  It's important to
 // remember that the receiver will always be nil when this is called by the eventlogger.GatedFilter
-func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType, interface{}, error) {
+func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType, any, error) {
 	const op = "event.(audit).ComposedFrom"
 	if len(events) == 0 {
 		return "", nil, fmt.Errorf("%s: missing events: %w", op, ErrInvalidParameter)

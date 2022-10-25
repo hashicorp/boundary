@@ -1535,7 +1535,7 @@ func TestAuthenticate_OIDC_Start(t *testing.T) {
 				Attrs: &pbs.AuthenticateRequest_OidcStartAttributes{
 					OidcStartAttributes: &pbs.OidcStartAttributes{
 						RoundtripPayload: func() *structpb.Struct {
-							ret, err := structpb.NewStruct(map[string]interface{}{
+							ret, err := structpb.NewStruct(map[string]any{
 								"foo": "bar",
 								"baz": true,
 							})

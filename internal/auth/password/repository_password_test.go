@@ -171,7 +171,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	// Get the credential for the new account and verify the KDF used the
 	// original argon2 configuration
 	origCred := &Argon2Credential{Argon2Credential: &store.Argon2Credential{}}
-	require.NoError(rw.LookupWhere(ctx, origCred, "password_account_id = ?", []interface{}{origAcct.PublicId}))
+	require.NoError(rw.LookupWhere(ctx, origCred, "password_account_id = ?", []any{origAcct.PublicId}))
 	assert.Equal(origAcct.PublicId, origCred.PasswordAccountId)
 	assert.Equal(origConfId, origCred.PasswordConfId)
 	assert.Equal(origCred.CreateTime, origCred.UpdateTime, "create and update times are equal")

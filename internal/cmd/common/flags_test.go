@@ -176,7 +176,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 	tests := []struct {
 		name        string
 		args        []base.CombinedSliceFlagValue
-		expectedMap map[string]interface{}
+		expectedMap map[string]any
 		expectedErr string
 	}{
 		{
@@ -193,7 +193,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 					Value: `"baz"`,
 				},
 			},
-			expectedMap: map[string]interface{}{
+			expectedMap: map[string]any{
 				"foo": "bar",
 				"bar": "baz",
 			},
@@ -212,7 +212,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 					Value: "5",
 				},
 			},
-			expectedMap: map[string]interface{}{
+			expectedMap: map[string]any{
 				"foo": float64(-1.2),
 				"bar": int64(5),
 			},
@@ -253,7 +253,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 					Value: "false",
 				},
 			},
-			expectedMap: map[string]interface{}{
+			expectedMap: map[string]any{
 				"foo": true,
 				"bar": false,
 			},
@@ -318,26 +318,26 @@ func TestHandleAttributeFlags(t *testing.T) {
 					Value: `{"b": true, "n": 6, "s": "scoopde", "a": ["bar"], "m": {"hip": "hop"}}`,
 				},
 			},
-			expectedMap: map[string]interface{}{
+			expectedMap: map[string]any{
 				"b1": true,
 				"b2": false,
 				"s1": "scoopde",
 				"s2": "woop",
 				"n1": float64(-1.2),
 				"n2": int64(5),
-				"a": []interface{}{
+				"a": []any{
 					"foo",
 					json.Number("1.5"),
 					true,
-					[]interface{}{"bar"},
-					map[string]interface{}{"hip": "hop"},
+					[]any{"bar"},
+					map[string]any{"hip": "hop"},
 				},
-				"m": map[string]interface{}{
+				"m": map[string]any{
 					"b": true,
 					"n": json.Number("6"),
 					"s": "scoopde",
-					"a": []interface{}{"bar"},
-					"m": map[string]interface{}{"hip": "hop"},
+					"a": []any{"bar"},
+					"m": map[string]any{"hip": "hop"},
 				},
 				"nil": nil,
 			},
@@ -381,14 +381,14 @@ func TestHandleAttributeFlags(t *testing.T) {
 					Value: "null",
 				},
 			},
-			expectedMap: map[string]interface{}{
-				"bools": []interface{}{true, false},
-				"strings": map[string]interface{}{
+			expectedMap: map[string]any{
+				"bools": []any{true, false},
+				"strings": map[string]any{
 					"s1": "scoopde",
 					"s2": nil,
 				},
-				"numbers": map[string]interface{}{
-					"reps": []interface{}{float64(-1.2), int64(5)},
+				"numbers": map[string]any{
+					"reps": []any{float64(-1.2), int64(5)},
 				},
 			},
 		},
@@ -402,7 +402,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 				// state over; just like in the real CLI where each run would have
 				// pristine state.
 				c := new(base.Command)
-				var outMap map[string]interface{}
+				var outMap map[string]any
 
 				args := make([]base.CombinedSliceFlagValue, 0, len(tt.args))
 				for _, arg := range tt.args {
@@ -410,7 +410,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 					args = append(args, arg)
 				}
 
-				err := HandleAttributeFlags(c, typ, "", args, func() {}, func(in map[string]interface{}) { outMap = in })
+				err := HandleAttributeFlags(c, typ, "", args, func() {}, func(in map[string]any) { outMap = in })
 				if tt.expectedErr != "" {
 					require.Error(err)
 					assert.Contains(err.Error(), tt.expectedErr)

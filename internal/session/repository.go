@@ -18,7 +18,7 @@ import (
 
 // Clonable provides a cloning interface
 type Cloneable interface {
-	Clone() interface{}
+	Clone() any
 }
 
 // Repository is the session database repository
@@ -72,9 +72,9 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 	}, nil
 }
 
-func (r *Repository) listPermissionWhereClauses() ([]string, []interface{}) {
+func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 	var where []string
-	var args []interface{}
+	var args []any
 
 	if r.permissions == nil {
 		return where, args

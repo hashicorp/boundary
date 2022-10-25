@@ -2453,7 +2453,7 @@ func TestAuthorizeSession(t *testing.T) {
 				}},
 				// TODO: validate the contents of the authorization token is what is expected
 			}
-			wantSecret := map[string]interface{}{
+			wantSecret := map[string]any{
 				"certificate":      "-----BEGIN CERTIFICATE-----\n",
 				"issuing_ca":       "-----BEGIN CERTIFICATE-----\n",
 				"private_key":      "-----BEGIN RSA PRIVATE KEY-----\n",
@@ -2780,7 +2780,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"password": "my-pass",
 						"username": "my-user",
 					}
@@ -2806,7 +2806,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"password": "my-pass",
 						"username": "my-user",
 					}
@@ -2832,7 +2832,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"password": "static-password",
 						"username": "static-username",
 					}
@@ -2858,7 +2858,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"private_key": string(testdata.PEMBytes["ed25519"]),
 						"username":    "static-username",
 					}
@@ -2884,7 +2884,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"private_key": "my-pk",
 						"username":    "my-user",
 					}
@@ -2910,7 +2910,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"username":    "my-user",
 						"private_key": "my-special-pk",
 					}
@@ -2936,7 +2936,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"private_key_passphrase": testdata.PEMEncryptedKeys[0].EncryptionKey,
 						"private_key":            string(testdata.PEMEncryptedKeys[0].PEMBytes),
 						"username":               "static-username",
@@ -2963,7 +2963,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"username":               "my-user",
 						"private_key":            "my-pk",
 						"private_key_passphrase": "my-pass",
@@ -2990,7 +2990,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"username":               "my-user",
 						"private_key":            "my-special-pk",
 						"private_key_passphrase": "my-special-pass",
@@ -3132,7 +3132,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	// Set previous token to expired in the database and revoke in Vault to validate a
 	// credential store with an expired token is correctly returned over the API
 	num, err := rw.Exec(context.Background(), "update credential_vault_token set status = ? where store_id = ?",
-		[]interface{}{vault.ExpiredToken, expiredStore.PublicId})
+		[]any{vault.ExpiredToken, expiredStore.PublicId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 	v.RevokeToken(t, tok1)
@@ -3319,9 +3319,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 }
 
-func decodeJsonSecret(t *testing.T, in string) map[string]interface{} {
+func decodeJsonSecret(t *testing.T, in string) map[string]any {
 	t.Helper()
-	ret := make(map[string]interface{})
+	ret := make(map[string]any)
 	dec := json.NewDecoder(base64.NewDecoder(base64.StdEncoding, strings.NewReader(in)))
 	require.NoError(t, dec.Decode(&ret))
 	return ret

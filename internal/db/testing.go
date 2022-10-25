@@ -143,7 +143,7 @@ func AssertPublicId(t testing.TB, prefix, actual string) {
 
 // TestDeleteWhere allows you to easily delete resources for testing purposes
 // including all the current resources.
-func TestDeleteWhere(t testing.TB, conn *DB, i interface{}, whereClause string, args ...interface{}) {
+func TestDeleteWhere(t testing.TB, conn *DB, i any, whereClause string, args ...any) {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -193,7 +193,7 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	}
 
 	where := whereBase
-	whereArgs := []interface{}{
+	whereArgs := []any{
 		whereKey,
 		resourceId,
 	}
@@ -214,7 +214,7 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	}
 
 	var foundEntry oplog.Entry
-	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", []interface{}{metadata.EntryId}); err != nil {
+	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", []any{metadata.EntryId}); err != nil {
 		return err
 	}
 	return nil

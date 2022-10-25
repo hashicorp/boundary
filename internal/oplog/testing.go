@@ -66,7 +66,7 @@ func testUser(t testing.TB, db *dbw.DB, name, phoneNumber, email string) *oplog_
 func testFindUser(t testing.TB, db *dbw.DB, userId uint32) *oplog_test.TestUser {
 	t.Helper()
 	var foundUser oplog_test.TestUser
-	require.NoError(t, dbw.New(db).LookupWhere(context.Background(), &foundUser, "id = ?", []interface{}{userId}))
+	require.NoError(t, dbw.New(db).LookupWhere(context.Background(), &foundUser, "id = ?", []any{userId}))
 	return &foundUser
 }
 
@@ -139,7 +139,7 @@ where ccu.table_name = ?
 order by ccu.table_name,pgc.conname `
 
 	rw := dbw.New(db)
-	rows, err := rw.Query(testCtx, constraintSql, []interface{}{tableName})
+	rows, err := rw.Query(testCtx, constraintSql, []any{tableName})
 	require.NoError(err)
 	type result struct {
 		Name      string

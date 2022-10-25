@@ -85,7 +85,7 @@ insert into static_host_catalog
 	(scope_id, public_id, name)
 values
 	(?, ?, ?)
-`, []interface{}{proj.GetPublicId(), hostCatalogId, "my-host-catalog"})
+`, []any{proj.GetPublicId(), hostCatalogId, "my-host-catalog"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -96,7 +96,7 @@ insert into static_host_set
 	(public_id, catalog_id)
 values
 	(?, ?)
-`, []interface{}{hostSetId, hostCatalogId})
+`, []any{hostSetId, hostCatalogId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -107,7 +107,7 @@ insert into static_host
 	(public_id, catalog_id, address)
 values
 	(?, ?, ?)
-`, []interface{}{hostId, hostCatalogId, "0.0.0.0"})
+`, []any{hostId, hostCatalogId, "0.0.0.0"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -117,7 +117,7 @@ insert into static_host_set_member
 	(host_id, set_id)
 values
 	(?, ?)
-`, []interface{}{hostId, hostSetId})
+`, []any{hostId, hostSetId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -128,7 +128,7 @@ insert into target_tcp
 	(public_id, scope_id, name, session_max_seconds, session_connection_limit)
 values
 	(?, ?, ?, ?, ?);
-`, []interface{}{targetId, proj.GetPublicId(), "my-credential-sources", 28800, -1})
+`, []any{targetId, proj.GetPublicId(), "my-credential-sources", 28800, -1})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -139,7 +139,7 @@ insert into credential_vault_store
   (public_id, scope_id, vault_address)
 values
   (?, ?, ?);
-`, []interface{}{vaultStoreId, proj.GetPublicId(), "http://vault"})
+`, []any{vaultStoreId, proj.GetPublicId(), "http://vault"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -154,7 +154,7 @@ insert into credential_static_store
 	(public_id, scope_id, name)
 values
 	(?, ?, ?)
-`, []interface{}{staticStoreId, proj.GetPublicId(), "my-static-credential-store"})
+`, []any{staticStoreId, proj.GetPublicId(), "my-static-credential-store"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -171,9 +171,9 @@ values
 	egressCred, err := target.NewStaticCredential(targetId, cred2.PublicId, "egress")
 	require.NoError(t, err)
 
-	err = rw.CreateItems(ctx, []interface{}{appCredLib, egressCredLib})
+	err = rw.CreateItems(ctx, []any{appCredLib, egressCredLib})
 	require.NoError(t, err)
-	err = rw.CreateItems(ctx, []interface{}{appCred, egressCred})
+	err = rw.CreateItems(ctx, []any{appCred, egressCred})
 	require.NoError(t, err)
 
 	dynCreds := []*session.DynamicCredential{
@@ -191,7 +191,7 @@ insert into target_host_set
 	(target_id, host_set_id)
 values
 	(?, ?)
-	`, []interface{}{targetId, hostSetId})
+	`, []any{targetId, hostSetId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -206,7 +206,7 @@ values
 		(public_id, user_id, host_id, target_id, host_set_id, auth_token_id, scope_id, certificate, expiration_time, endpoint)
 	values
 		(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, []interface{}{sessionId, uId, hostId, targetId, hostSetId, at.GetPublicId(), proj.GetPublicId(), cert, expirationTime, "tcp://127.0.0.1:22"})
+	`, []any{sessionId, uId, hostId, targetId, hostSetId, at.GetPublicId(), proj.GetPublicId(), cert, expirationTime, "tcp://127.0.0.1:22"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -216,7 +216,7 @@ insert into session_credential_dynamic
 values
 	(?, ?, ?),
 	(?, ?, ?);
-`, []interface{}{
+`, []any{
 		sessionId, dynCreds[0].LibraryId, dynCreds[0].CredentialPurpose,
 		sessionId, dynCreds[1].LibraryId, dynCreds[1].CredentialPurpose,
 	})
@@ -229,7 +229,7 @@ insert into session_credential_static
 values
 	(?, ?, ?),
 	(?, ?, ?);
-`, []interface{}{
+`, []any{
 		sessionId, staticCreds[0].CredentialStaticId, staticCreds[0].CredentialPurpose,
 		sessionId, staticCreds[1].CredentialStaticId, staticCreds[1].CredentialPurpose,
 	})
@@ -261,42 +261,42 @@ values
 
 	// Validate migrations
 	lookupLib := &target.CredentialLibrary{}
-	err = rw.LookupWhere(ctx, lookupLib, "credential_library_id = ?", []interface{}{appCredLib.GetCredentialLibraryId()})
+	err = rw.LookupWhere(ctx, lookupLib, "credential_library_id = ?", []any{appCredLib.GetCredentialLibraryId()})
 	require.NoError(t, err)
 	assert.Equal(t, "brokered", lookupLib.CredentialPurpose)
 
 	lookupLib = &target.CredentialLibrary{}
-	err = rw.LookupWhere(ctx, lookupLib, "credential_library_id = ?", []interface{}{egressCredLib.GetCredentialLibraryId()})
+	err = rw.LookupWhere(ctx, lookupLib, "credential_library_id = ?", []any{egressCredLib.GetCredentialLibraryId()})
 	require.NoError(t, err)
 	assert.Equal(t, "injected_application", lookupLib.CredentialPurpose)
 
 	lookupCred := &target.StaticCredential{}
-	err = rw.LookupWhere(ctx, lookupCred, "credential_static_id = ?", []interface{}{appCred.GetCredentialId()})
+	err = rw.LookupWhere(ctx, lookupCred, "credential_static_id = ?", []any{appCred.GetCredentialId()})
 	require.NoError(t, err)
 	assert.Equal(t, "brokered", lookupCred.CredentialPurpose)
 
 	lookupCred = &target.StaticCredential{}
-	err = rw.LookupWhere(ctx, lookupCred, "credential_static_id = ?", []interface{}{egressCred.GetCredentialId()})
+	err = rw.LookupWhere(ctx, lookupCred, "credential_static_id = ?", []any{egressCred.GetCredentialId()})
 	require.NoError(t, err)
 	assert.Equal(t, "injected_application", lookupCred.CredentialPurpose)
 
 	lookupDynCred := &session.DynamicCredential{}
-	err = rw.LookupWhere(ctx, lookupDynCred, "session_id = ? and library_id = ?", []interface{}{sessionId, appCredLib.GetCredentialLibraryId()})
+	err = rw.LookupWhere(ctx, lookupDynCred, "session_id = ? and library_id = ?", []any{sessionId, appCredLib.GetCredentialLibraryId()})
 	require.NoError(t, err)
 	assert.Equal(t, "brokered", lookupDynCred.CredentialPurpose)
 
 	lookupDynCred = &session.DynamicCredential{}
-	err = rw.LookupWhere(ctx, lookupDynCred, "session_id = ? and library_id = ?", []interface{}{sessionId, egressCredLib.GetCredentialLibraryId()})
+	err = rw.LookupWhere(ctx, lookupDynCred, "session_id = ? and library_id = ?", []any{sessionId, egressCredLib.GetCredentialLibraryId()})
 	require.NoError(t, err)
 	assert.Equal(t, "injected_application", lookupDynCred.CredentialPurpose)
 
 	lookupStaticCred := &session.StaticCredential{}
-	err = rw.LookupWhere(ctx, lookupStaticCred, "session_id = ? and credential_static_id = ?", []interface{}{sessionId, appCred.GetCredentialId()})
+	err = rw.LookupWhere(ctx, lookupStaticCred, "session_id = ? and credential_static_id = ?", []any{sessionId, appCred.GetCredentialId()})
 	require.NoError(t, err)
 	assert.Equal(t, "brokered", lookupStaticCred.CredentialPurpose)
 
 	lookupStaticCred = &session.StaticCredential{}
-	err = rw.LookupWhere(ctx, lookupStaticCred, "session_id = ? and credential_static_id = ?", []interface{}{sessionId, egressCred.GetCredentialId()})
+	err = rw.LookupWhere(ctx, lookupStaticCred, "session_id = ? and credential_static_id = ?", []any{sessionId, egressCred.GetCredentialId()})
 	require.NoError(t, err)
 	assert.Equal(t, "injected_application", lookupStaticCred.CredentialPurpose)
 }

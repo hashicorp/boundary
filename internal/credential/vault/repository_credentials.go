@@ -103,7 +103,7 @@ func (r *Repository) Revoke(ctx context.Context, sessionId string) error {
 
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			if _, err := w.Exec(ctx, revokeCredentialsQuery, []interface{}{sessionId}); err != nil {
+			if _, err := w.Exec(ctx, revokeCredentialsQuery, []any{sessionId}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			return nil

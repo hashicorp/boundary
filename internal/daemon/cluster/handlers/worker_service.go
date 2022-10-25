@@ -293,7 +293,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "worker_id", req.WorkerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 		}
-		filterInput := map[string]interface{}{
+		filterInput := map[string]any{
 			"name": w.GetName(),
 			"tags": tagMap,
 		}

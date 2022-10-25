@@ -40,7 +40,7 @@ var expectedGrpcClientCodes = []codes.Code{
 // observations for the collectors associated with gRPC connections
 // between the cluster and its clients.
 func InstrumentClusterClient() grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		r := metric.NewGrpcRequestRecorder(method, grpcRequestLatency)
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		r.Record(err)

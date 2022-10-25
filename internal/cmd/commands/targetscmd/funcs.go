@@ -494,7 +494,7 @@ func (c *Command) printListTable(items []*targets.Target) string {
 }
 
 func printItemTable(item *targets.Target, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -530,10 +530,10 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
-	var hostSourceMaps []map[string]interface{}
+	var hostSourceMaps []map[string]any
 	if len(item.HostSources) > 0 {
 		for _, set := range item.HostSources {
-			m := map[string]interface{}{
+			m := map[string]any{
 				"ID":              set.Id,
 				"Host Catalog ID": set.HostCatalogId,
 			}
@@ -544,14 +544,14 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 		}
 	}
 
-	var credentialSourceMaps map[credential.Purpose][]map[string]interface{}
+	var credentialSourceMaps map[credential.Purpose][]map[string]any
 	if len(item.BrokeredCredentialSources) > 0 {
 		if credentialSourceMaps == nil {
-			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
+			credentialSourceMaps = make(map[credential.Purpose][]map[string]any)
 		}
-		var brokeredCredentialSourceMaps []map[string]interface{}
+		var brokeredCredentialSourceMaps []map[string]any
 		for _, source := range item.BrokeredCredentialSources {
-			m := map[string]interface{}{
+			m := map[string]any{
 				"ID":                  source.Id,
 				"Credential Store ID": source.CredentialStoreId,
 			}
@@ -564,11 +564,11 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 	}
 	if len(item.InjectedApplicationCredentialSources) > 0 {
 		if credentialSourceMaps == nil {
-			credentialSourceMaps = make(map[credential.Purpose][]map[string]interface{})
+			credentialSourceMaps = make(map[credential.Purpose][]map[string]any)
 		}
-		var injectedApplicationCredentialSourceMaps []map[string]interface{}
+		var injectedApplicationCredentialSourceMaps []map[string]any
 		for _, source := range item.InjectedApplicationCredentialSources {
-			m := map[string]interface{}{
+			m := map[string]any{
 				"ID":                  source.Id,
 				"Credential Store ID": source.CredentialStoreId,
 			}
@@ -656,7 +656,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 		case "table":
 			var ret []string
 
-			nonAttributeMap := map[string]interface{}{
+			nonAttributeMap := map[string]any{
 				"Session ID":          item.SessionId,
 				"Target ID":           item.TargetId,
 				"Scope ID":            item.Scope.Id,
@@ -810,7 +810,7 @@ func exampleOutput() string {
 				CredentialStoreId: "clvlt_0987654321",
 			},
 		},
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"default_port": 22,
 		},
 	}

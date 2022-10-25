@@ -356,7 +356,7 @@ func loadCurrentDekVersions(t *testing.T, rw *db.Db) []dekVersion {
 		require.NoError(t, err)
 		require.NoError(t, err)
 		for rows.Next() {
-			result := map[string]interface{}{}
+			result := map[string]any{}
 			require.NoError(t, rw.ScanRows(context.Background(), rows, &result))
 			var v dekVersion
 			switch versionType {

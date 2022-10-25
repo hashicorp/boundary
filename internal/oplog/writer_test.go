@@ -67,7 +67,7 @@ func Test_WriterDelete(t *testing.T) {
 
 		_, err = dbw.New(w.DB).Delete(testCtx, &user)
 		require.NoError(err)
-		err = dbw.New(w.DB).LookupWhere(testCtx, &foundUser, "id = ?", []interface{}{user.Id})
+		err = dbw.New(w.DB).LookupWhere(testCtx, &foundUser, "id = ?", []any{user.Id})
 		require.Error(err)
 		assert.ErrorIs(err, dbw.ErrRecordNotFound)
 	})

@@ -347,7 +347,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		vc.SetToken(token)
 
 		certPath := path.Join("pki", "issue", "boundary")
-		certOptions := map[string]interface{}{
+		certOptions := map[string]any{
 			"common_name": "boundary.com",
 		}
 		certSecret, err := vc.Logical().Write(certPath, certOptions)
@@ -378,7 +378,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		vc.SetToken(token)
 
 		certPath := path.Join("gary", "issue", "boundary")
-		certOptions := map[string]interface{}{
+		certOptions := map[string]any{
 			"common_name": "boundary.com",
 		}
 		certSecret, err := vc.Logical().Write(certPath, certOptions)
@@ -409,7 +409,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		vc.SetToken(token)
 
 		certPath := path.Join("pki", "issue", "gary")
-		certOptions := map[string]interface{}{
+		certOptions := map[string]any{
 			"common_name": "boundary.com",
 		}
 		certSecret, err := vc.Logical().Write(certPath, certOptions)
@@ -612,7 +612,7 @@ func TestTestVaultServer_CreateKVSecret(t *testing.T) {
 		require.NotNil(got.Data)
 		require.NotNil(got.Data["data"])
 
-		gotData, ok := got.Data["data"].(map[string]interface{})
+		gotData, ok := got.Data["data"].(map[string]any)
 		require.True(ok)
 		require.NotNil(gotData["foo"])
 

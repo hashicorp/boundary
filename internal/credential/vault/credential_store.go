@@ -191,9 +191,9 @@ func (cs *CredentialStore) client(ctx context.Context) (vaultClient, error) {
 	return c, nil
 }
 
-func (cs *CredentialStore) softDeleteQuery() (query string, queryValues []interface{}) {
+func (cs *CredentialStore) softDeleteQuery() (query string, queryValues []any) {
 	query = softDeleteStoreQuery
-	queryValues = []interface{}{
+	queryValues = []any{
 		cs.PublicId,
 	}
 	return

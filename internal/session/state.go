@@ -87,7 +87,7 @@ func allocState() State {
 }
 
 // Clone creates a clone of the State
-func (s *State) Clone() interface{} {
+func (s *State) Clone() any {
 	clone := &State{
 		SessionId: s.SessionId,
 		Status:    s.Status,

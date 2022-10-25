@@ -124,7 +124,7 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, _ *base.FlagSets, opts *[]c
 		}
 		fallthrough
 	default:
-		mappings := make(map[string]interface{}, len(c.flagCredentialMapping))
+		mappings := make(map[string]any, len(c.flagCredentialMapping))
 		for _, mapping := range c.flagCredentialMapping {
 			switch {
 			case len(mapping.Keys) != 1 || mapping.Keys[0] == "" || mapping.Value == "":
