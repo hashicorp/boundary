@@ -25,8 +25,8 @@ func CreateNewCredentialStoreStaticApi(t testing.TB, ctx context.Context, client
 
 // CreateNewCredentialStoreStaticCli creates a new static credential store using the cli.
 // Returns the id of the new credential store
-func CreateNewCredentialStoreStaticCli(t testing.TB, projectId string) string {
-	output := e2e.RunCommand(context.Background(), "boundary",
+func CreateNewCredentialStoreStaticCli(t testing.TB, ctx context.Context, projectId string) string {
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-stores", "create", "static",
 			"-scope-id", projectId,

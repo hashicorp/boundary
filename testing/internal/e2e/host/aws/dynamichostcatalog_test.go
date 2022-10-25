@@ -50,12 +50,12 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateAdminCli(t)
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 
 	// Create a dynamic host catalog
-	ctx := context.Background()
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-catalogs", "create", "plugin",
@@ -228,8 +228,8 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	assert.Equal(t, expectedHostCatalogCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 
 	// Create target
-	newTargetId := boundary.CreateNewTargetCli(t, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId1)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId1)
 
 	// Connect to target
 	output = e2e.RunCommand(ctx, "boundary",

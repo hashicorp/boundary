@@ -23,19 +23,19 @@ func TestConnectTargetWithSshCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateAdminCli(t)
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, newHostCatalogId, c.TargetIp)
-	boundary.AddHostToHostSetCli(t, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, newProjectId)
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
 
 	// Create credentials
-	ctx := context.Background()
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "create", "ssh-private-key",

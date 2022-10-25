@@ -25,23 +25,23 @@ func TestSessionCancelUserCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateAdminCli(t)
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, newHostCatalogId, c.TargetIp)
-	boundary.AddHostToHostSetCli(t, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, acctName)
-	newUserId := boundary.CreateNewUserCli(t, "global")
-	boundary.SetAccountToUserCli(t, newUserId, newAccountId)
+	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, acctName)
+	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 
 	// Try to connect to the target as a user without permissions
-	ctx := context.Background()
-	boundary.AuthenticateCli(t, acctName, acctPassword)
+	boundary.AuthenticateCli(t, ctx, acctName, acctPassword)
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
@@ -66,7 +66,7 @@ func TestSessionCancelUserCli(t *testing.T) {
 	t.Log("Successfully received an error when connecting to target as a user without permissions")
 
 	// Create a role
-	boundary.AuthenticateAdminCli(t)
+	boundary.AuthenticateAdminCli(t, ctx)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"roles", "create",
@@ -106,7 +106,7 @@ func TestSessionCancelUserCli(t *testing.T) {
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
-		boundary.AuthenticateCli(t, acctName, acctPassword)
+		boundary.AuthenticateCli(t, ctx, acctName, acctPassword)
 		t.Log("Starting session as user...")
 		errChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(

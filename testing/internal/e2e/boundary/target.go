@@ -41,8 +41,8 @@ func AddHostSourceToTargetApi(t testing.TB, ctx context.Context, client *api.Cli
 
 // CreateNewTargetCli creates a new target in boundary using the cli
 // Returns the id of the new target.
-func CreateNewTargetCli(t testing.TB, projectId string, defaultPort string) string {
-	output := e2e.RunCommand(context.Background(), "boundary",
+func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string) string {
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"targets", "create", "tcp",
 			"-scope-id", projectId,
@@ -62,8 +62,8 @@ func CreateNewTargetCli(t testing.TB, projectId string, defaultPort string) stri
 }
 
 // AddHostSourceToTargetCli adds a host source (host set or host) to a target using the cli
-func AddHostSourceToTargetCli(t testing.TB, targetId string, hostSourceId string) {
-	output := e2e.RunCommand(context.Background(), "boundary",
+func AddHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId string, hostSourceId string) {
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "add-host-sources", "-id", targetId, "-host-source", hostSourceId),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))

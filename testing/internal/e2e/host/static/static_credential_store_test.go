@@ -20,13 +20,13 @@ func TestStaticCredentialStoreCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateAdminCli(t)
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, newProjectId)
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
 
 	// Create ssh key credentials
-	ctx := context.Background()
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credentials", "create", "ssh-private-key",

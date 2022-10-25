@@ -61,8 +61,8 @@ func AddHostToHostSetApi(t testing.TB, ctx context.Context, client *api.Client, 
 
 // CreateNewHostCatalogCli creates a new host catalog in boundary using the cli.
 // Returns the id of the new host catalog.
-func CreateNewHostCatalogCli(t testing.TB, projectId string) string {
-	output := e2e.RunCommand(context.Background(), "boundary",
+func CreateNewHostCatalogCli(t testing.TB, ctx context.Context, projectId string) string {
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-catalogs", "create", "static",
 			"-scope-id", projectId,
@@ -82,8 +82,8 @@ func CreateNewHostCatalogCli(t testing.TB, projectId string) string {
 
 // CreateNewHostSetCli creates a new host set in boundary using the cli.
 // Returns the id of the new host set.
-func CreateNewHostSetCli(t testing.TB, hostCatalogId string) string {
-	output := e2e.RunCommand(context.Background(), "boundary",
+func CreateNewHostSetCli(t testing.TB, ctx context.Context, hostCatalogId string) string {
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"host-sets", "create", "static",
 			"-host-catalog-id", hostCatalogId,
@@ -103,8 +103,8 @@ func CreateNewHostSetCli(t testing.TB, hostCatalogId string) string {
 
 // CreateNewHostCli creates a new host in boundary using the cli.
 // Returns the id of the new host.
-func CreateNewHostCli(t testing.TB, hostCatalogId string, address string) string {
-	output := e2e.RunCommand(context.Background(), "boundary",
+func CreateNewHostCli(t testing.TB, ctx context.Context, hostCatalogId string, address string) string {
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"hosts", "create", "static",
 			"-host-catalog-id", hostCatalogId,
@@ -124,8 +124,8 @@ func CreateNewHostCli(t testing.TB, hostCatalogId string, address string) string
 }
 
 // AddHostToHostSetCli adds a host to a host set using the cli
-func AddHostToHostSetCli(t testing.TB, hostSetId string, hostId string) {
-	output := e2e.RunCommand(context.Background(), "boundary",
+func AddHostToHostSetCli(t testing.TB, ctx context.Context, hostSetId string, hostId string) {
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("host-sets", "add-hosts", "-id", hostSetId, "-host", hostId),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))

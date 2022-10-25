@@ -39,11 +39,10 @@ func CreateNewAccountApi(t testing.TB, ctx context.Context, client *api.Client, 
 
 // CreateNewAccountCli creates a new account using the cli.
 // Returns the id of the new account as well as the password that was generated
-func CreateNewAccountCli(t testing.TB, loginName string) (string, string) {
+func CreateNewAccountCli(t testing.TB, ctx context.Context, loginName string) (string, string) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	password, err := base62.Random(16)
 	require.NoError(t, err)
 	output := e2e.RunCommand(ctx, "boundary",
@@ -66,7 +65,7 @@ func CreateNewAccountCli(t testing.TB, loginName string) (string, string) {
 
 	newAccountId := newAccountResult.Item.Id
 	t.Cleanup(func() {
-		AuthenticateAdminCli(t)
+		AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
 		)

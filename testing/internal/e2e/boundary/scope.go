@@ -43,8 +43,7 @@ func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, 
 
 // CreateNewOrgCli creates a new organization in boundary using the cli.
 // Returns the id of the new org.
-func CreateNewOrgCli(t testing.TB) string {
-	ctx := context.Background()
+func CreateNewOrgCli(t testing.TB, ctx context.Context) string {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "create",
@@ -61,7 +60,7 @@ func CreateNewOrgCli(t testing.TB) string {
 
 	newOrgId := newOrgResult.Item.Id
 	t.Cleanup(func() {
-		AuthenticateAdminCli(t)
+		AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("scopes", "delete", "-id", newOrgId),
 		)
@@ -75,8 +74,7 @@ func CreateNewOrgCli(t testing.TB) string {
 // CreateNewProjectCli creates a new project in boundary using the cli. The project will be created
 // under the provided org id.
 // Returns the id of the new project.
-func CreateNewProjectCli(t testing.TB, orgId string) string {
-	ctx := context.Background()
+func CreateNewProjectCli(t testing.TB, ctx context.Context, orgId string) string {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "create",
