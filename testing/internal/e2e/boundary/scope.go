@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CreateNewOrgApi creates a new organization in boundary using the go api.
+// CreateNewOrgApi creates a new organization in boundary using the Go api.
 // Returns the id of the new org.
 func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) string {
 	scopeClient := scopes.NewClient(client)
@@ -28,7 +28,7 @@ func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) stri
 	return newOrgId
 }
 
-// CreateNewProjectApi creates a new project in boundary using the go api. The project will be created
+// CreateNewProjectApi creates a new project in boundary using the Go api. The project will be created
 // under the provided org id.
 // Returns the id of the new project.
 func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, orgId string) string {
@@ -43,12 +43,14 @@ func CreateNewProjectApi(t testing.TB, ctx context.Context, client *api.Client, 
 
 // CreateNewOrgCli creates a new organization in boundary using the cli.
 // Returns the id of the new org.
-func CreateNewOrgCli(t testing.TB) string {
-	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "scopes", "create",
-		"-name", "e2e Org",
-		"-scope-id", "global",
-		"-format", "json",
+func CreateNewOrgCli(t testing.TB, ctx context.Context) string {
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"scopes", "create",
+			"-name", "e2e Org",
+			"-scope-id", "global",
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
@@ -58,7 +60,10 @@ func CreateNewOrgCli(t testing.TB) string {
 
 	newOrgId := newOrgResult.Item.Id
 	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "boundary", "scopes", "delete", "-id", newOrgId)
+		AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("scopes", "delete", "-id", newOrgId),
+		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -69,12 +74,14 @@ func CreateNewOrgCli(t testing.TB) string {
 // CreateNewProjectCli creates a new project in boundary using the cli. The project will be created
 // under the provided org id.
 // Returns the id of the new project.
-func CreateNewProjectCli(t testing.TB, orgId string) string {
-	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "scopes", "create",
-		"-name", "e2e Project",
-		"-scope-id", orgId,
-		"-format", "json",
+func CreateNewProjectCli(t testing.TB, ctx context.Context, orgId string) string {
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"scopes", "create",
+			"-name", "e2e Project",
+			"-scope-id", orgId,
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 

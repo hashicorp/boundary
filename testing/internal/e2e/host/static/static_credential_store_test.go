@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -21,18 +20,21 @@ func TestStaticCredentialStoreCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateCli(t)
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, newProjectId)
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
 
 	// Create ssh key credentials
-	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "credentials", "create", "ssh-private-key",
-		"-credential-store-id", newCredentialStoreId,
-		"-username", c.TargetSshUser,
-		"-private-key", "file://"+c.TargetSshKeyPath,
-		"-format", "json",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credentials", "create", "ssh-private-key",
+			"-credential-store-id", newCredentialStoreId,
+			"-username", c.TargetSshUser,
+			"-private-key", "file://"+c.TargetSshKeyPath,
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var keyCredentialsResult credentials.CredentialCreateResult
@@ -42,12 +44,15 @@ func TestStaticCredentialStoreCli(t *testing.T) {
 	t.Logf("Created SSH Private Key Credentials: %s", keyCredentialsId)
 
 	// Create username/password credentials
-	os.Setenv("E2E_CREDENTIALS_PASSWORD", "password")
-	output = e2e.RunCommand(ctx, "boundary", "credentials", "create", "username-password",
-		"-credential-store-id", newCredentialStoreId,
-		"-username", c.TargetSshUser,
-		"-password", "env://E2E_CREDENTIALS_PASSWORD",
-		"-format", "json",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credentials", "create", "username-password",
+			"-credential-store-id", newCredentialStoreId,
+			"-username", c.TargetSshUser,
+			"-password", "env://E2E_CREDENTIALS_PASSWORD",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_CREDENTIALS_PASSWORD", "password"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var pwCredentialsResult credentials.CredentialCreateResult
@@ -57,11 +62,15 @@ func TestStaticCredentialStoreCli(t *testing.T) {
 	t.Logf("Created Username/Password Credentials: %s", pwCredentialsId)
 
 	// Delete credential store
-	output = e2e.RunCommand(ctx, "boundary", "credential-stores", "delete", "-id", newCredentialStoreId)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("credential-stores", "delete", "-id", newCredentialStoreId),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand(ctx, "boundary", "credential-stores", "read", "-id", newCredentialStoreId, "-format", "json")
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("credential-stores", "read", "-id", newCredentialStoreId, "-format", "json"),
+			)
 			if output.Err == nil {
 				return fmt.Errorf("Deleted credential can still be read: '%s'", output.Stdout)
 			}

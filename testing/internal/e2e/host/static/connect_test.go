@@ -18,29 +18,32 @@ func TestConnectTargetCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateCli(t)
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, newHostCatalogId, c.TargetIp)
-	boundary.AddHostToHostSetCli(t, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Connect to target and print host's IP address
-	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "connect",
-		"-target-id", newTargetId,
-		"-exec", "/usr/bin/ssh", "--",
-		"-l", c.TargetSshUser,
-		"-i", c.TargetSshKeyPath,
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		"-p", "{{boundary.port}}", // this is provided by boundary
-		"{{boundary.ip}}",
-		"hostname", "-i",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect",
+			"-target-id", newTargetId,
+			"-exec", "/usr/bin/ssh", "--",
+			"-l", c.TargetSshUser,
+			"-i", c.TargetSshKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"-p", "{{boundary.port}}", // this is provided by boundary
+			"{{boundary.ip}}",
+			"hostname", "-i",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
@@ -50,7 +53,7 @@ func TestConnectTargetCli(t *testing.T) {
 	t.Log("Successfully connected to target")
 }
 
-// TestCreateTargetApi uses the boundary go api to create a number of supporting objects
+// TestCreateTargetApi uses the Go api to create a number of supporting objects
 // to connect to a target. This test does not connect to the target due to the complexity
 // when not using the cli.
 func TestCreateTargetApi(t *testing.T) {

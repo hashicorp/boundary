@@ -52,24 +52,29 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateCli(t)
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, newHostCatalogId, c.TargetIp)
-	boundary.AddHostToHostSetCli(t, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Configure vault
-	ctx := context.Background()
+
 	vaultAddr, boundaryPolicyName := vault.Setup(t)
 
-	output := e2e.RunCommand(ctx, "vault", "secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2")
+	output := e2e.RunCommand(ctx, "vault",
+		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault", "secrets", "disable", c.VaultSecretPath)
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("secrets", "disable", c.VaultSecretPath),
+		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -79,14 +84,17 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	t.Log("Created Vault Credential")
 
 	// Create vault token for boundary
-	output = e2e.RunCommand(ctx, "vault", "token", "create",
-		"-no-default-policy=true",
-		"-policy="+boundaryPolicyName,
-		"-policy="+credentialPolicyName,
-		"-orphan=true",
-		"-period=20m",
-		"-renewable=true",
-		"-format=json",
+	output = e2e.RunCommand(ctx, "vault",
+		e2e.WithArgs(
+			"token", "create",
+			"-no-default-policy=true",
+			"-policy="+boundaryPolicyName,
+			"-policy="+credentialPolicyName,
+			"-orphan=true",
+			"-period=20m",
+			"-renewable=true",
+			"-format=json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var tokenCreateResult createTokenResponse
@@ -96,11 +104,14 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	output = e2e.RunCommand(ctx, "boundary", "credential-stores", "create", "vault",
-		"-scope-id", newProjectId,
-		"-vault-address", vaultAddr,
-		"-vault-token", credStoreToken,
-		"-format", "json",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credential-stores", "create", "vault",
+			"-scope-id", newProjectId,
+			"-vault-address", vaultAddr,
+			"-vault-token", credStoreToken,
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newCredentialStoreResult credentialstores.CredentialStoreCreateResult
@@ -110,12 +121,15 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	t.Logf("Created Credential Store: %s", newCredentialStoreId)
 
 	// Create a credential library
-	output = e2e.RunCommand(ctx, "boundary", "credential-libraries", "create", "vault",
-		"-credential-store-id", newCredentialStoreId,
-		"-vault-path", c.VaultSecretPath+"/data/"+secretName,
-		"-name", "e2e Automated Test Vault Credential Library",
-		"-credential-type", "ssh_private_key",
-		"-format", "json",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credential-libraries", "create", "vault",
+			"-credential-store-id", newCredentialStoreId,
+			"-vault-path", c.VaultSecretPath+"/data/"+secretName,
+			"-name", "e2e Automated Test Vault Credential Library",
+			"-credential-type", "ssh_private_key",
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newCredentialLibraryResult credentiallibraries.CredentialLibraryCreateResult
@@ -125,14 +139,19 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
 
 	// Add brokered credentials to target
-	output = e2e.RunCommand(ctx, "boundary", "targets", "add-credential-sources",
-		"-id", newTargetId,
-		"-brokered-credential-source", newCredentialLibraryId,
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "add-credential-sources",
+			"-id", newTargetId,
+			"-brokered-credential-source", newCredentialLibraryId,
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Get credentials for target
-	output = e2e.RunCommand(ctx, "boundary", "targets", "authorize-session", "-id", newTargetId, "-format", "json")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionAuthorizationResult targets.SessionAuthorizationResult
 	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
@@ -158,17 +177,20 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	require.NoError(t, err)
 
 	// Connect to target and print host's IP address using retrieved credentials
-	output = e2e.RunCommand(ctx, "boundary", "connect",
-		"-target-id", newTargetId,
-		"-exec", "/usr/bin/ssh", "--",
-		"-l", retrievedUser,
-		"-i", retrievedKeyPath,
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		"-p", "{{boundary.port}}", // this is provided by boundary
-		"{{boundary.ip}}",
-		"hostname", "-i",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect",
+			"-target-id", newTargetId,
+			"-exec", "/usr/bin/ssh", "--",
+			"-l", retrievedUser,
+			"-i", retrievedKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"-p", "{{boundary.port}}", // this is provided by boundary
+			"{{boundary.ip}}",
+			"hostname", "-i",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
@@ -178,9 +200,9 @@ func TestCreateVaultCredentialStoreCli(t *testing.T) {
 	t.Log("Successfully connected to target")
 }
 
-// TestCreateVaultCredentialStoreApi uses the boundary go api along with the vault cli to
-// add secrets management for a target. The test sets up vault as a credential stores and creates
-// a set of credentials in vault that is attached to a target.
+// TestCreateVaultCredentialStoreApi uses the Go api along with the vault cli to add secrets
+// management for a target. The test sets up vault as a credential stores and creates a set of
+// credentials in vault that is attached to a target.
 func TestCreateVaultCredentialStoreApi(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
@@ -202,10 +224,14 @@ func TestCreateVaultCredentialStoreApi(t *testing.T) {
 	// Configure vault
 	vaultAddr, boundaryPolicyName := vault.Setup(t)
 
-	output := e2e.RunCommand(ctx, "vault", "secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2")
+	output := e2e.RunCommand(ctx, "vault",
+		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault", "secrets", "disable", c.VaultSecretPath)
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("secrets", "disable", c.VaultSecretPath),
+		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
@@ -215,14 +241,17 @@ func TestCreateVaultCredentialStoreApi(t *testing.T) {
 	t.Log("Created Vault Credential")
 
 	// Create vault token for boundary
-	output = e2e.RunCommand(ctx, "vault", "token", "create",
-		"-no-default-policy=true",
-		"-policy="+boundaryPolicyName,
-		"-policy="+credentialPolicyName,
-		"-orphan=true",
-		"-period=20m",
-		"-renewable=true",
-		"-format=json",
+	output = e2e.RunCommand(ctx, "vault",
+		e2e.WithArgs(
+			"token", "create",
+			"-no-default-policy=true",
+			"-policy="+boundaryPolicyName,
+			"-policy="+credentialPolicyName,
+			"-orphan=true",
+			"-period=20m",
+			"-renewable=true",
+			"-format=json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var tokenCreateResult createTokenResponse

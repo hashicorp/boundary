@@ -50,20 +50,23 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateCli(t)
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 
 	// Create a dynamic host catalog
-	ctx := context.Background()
-	output := e2e.RunCommand(ctx, "boundary", "host-catalogs", "create", "plugin",
-		"-scope-id", newProjectId,
-		"-plugin-name", "aws",
-		"-attr", "disable_credential_rotation=true",
-		"-attr", "region=us-east-1",
-		"-secret", "access_key_id=env://E2E_AWS_ACCESS_KEY_ID",
-		"-secret", "secret_access_key=env://E2E_AWS_SECRET_ACCESS_KEY",
-		"-format", "json",
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"host-catalogs", "create", "plugin",
+			"-scope-id", newProjectId,
+			"-plugin-name", "aws",
+			"-attr", "disable_credential_rotation=true",
+			"-attr", "region=us-east-1",
+			"-secret", "access_key_id=env://E2E_AWS_ACCESS_KEY_ID",
+			"-secret", "secret_access_key=env://E2E_AWS_SECRET_ACCESS_KEY",
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newHostCatalogResult hostcatalogs.HostCatalogCreateResult
@@ -73,11 +76,14 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	t.Logf("Created Host Catalog: %s", newHostCatalogId)
 
 	// Create a host set
-	output = e2e.RunCommand(ctx, "boundary", "host-sets", "create", "plugin",
-		"-host-catalog-id", newHostCatalogId,
-		"-attr", "filters="+c.AwsHostSetFilter1,
-		"-name", "e2e Automated Test Host Set",
-		"-format", "json",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"host-sets", "create", "plugin",
+			"-host-catalog-id", newHostCatalogId,
+			"-attr", "filters="+c.AwsHostSetFilter1,
+			"-name", "e2e Automated Test Host Set",
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newHostSetResult hostsets.HostSetCreateResult
@@ -92,9 +98,12 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	var actualHostSetCount1 int
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand(ctx, "boundary", "host-sets", "read",
-				"-id", newHostSetId1,
-				"-format", "json",
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs(
+					"host-sets", "read",
+					"-id", newHostSetId1,
+					"-format", "json",
+				),
 			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
@@ -128,11 +137,14 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	assert.Equal(t, expectedHostSetCount1, actualHostSetCount1, "Numbers of hosts in host set did not match expected amount")
 
 	// Create another host set
-	output = e2e.RunCommand(ctx, "boundary", "host-sets", "create", "plugin",
-		"-host-catalog-id", newHostCatalogId,
-		"-attr", "filters="+c.AwsHostSetFilter2,
-		"-name", "e2e Automated Test Host Set2",
-		"-format", "json",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"host-sets", "create", "plugin",
+			"-host-catalog-id", newHostCatalogId,
+			"-attr", "filters="+c.AwsHostSetFilter2,
+			"-name", "e2e Automated Test Host Set2",
+			"-format", "json",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newHostSetResult2 hostsets.HostSetCreateResult
@@ -146,9 +158,8 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	var actualHostSetCount2 int
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand(ctx, "boundary", "host-sets", "read",
-				"-id", newHostSetId2,
-				"-format", "json",
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("host-sets", "read", "-id", newHostSetId2, "-format", "json"),
 			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
@@ -185,9 +196,8 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	var actualHostCatalogCount int
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand(ctx, "boundary", "hosts", "list",
-				"-host-catalog-id", newHostCatalogId,
-				"-format", "json",
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("hosts", "list", "-host-catalog-id", newHostCatalogId, "-format", "json"),
 			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
@@ -218,21 +228,24 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	assert.Equal(t, expectedHostCatalogCount, actualHostCatalogCount, "Numbers of hosts in host catalog did not match expected amount")
 
 	// Create target
-	newTargetId := boundary.CreateNewTargetCli(t, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId1)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId1)
 
 	// Connect to target
-	output = e2e.RunCommand(ctx, "boundary", "connect",
-		"-target-id", newTargetId,
-		"-exec", "/usr/bin/ssh", "--",
-		"-l", c.TargetSshUser,
-		"-i", c.TargetSshKeyPath,
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-		"-p", "{{boundary.port}}", // this is provided by boundary
-		"{{boundary.ip}}",
-		"hostname", "-i",
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect",
+			"-target-id", newTargetId,
+			"-exec", "/usr/bin/ssh", "--",
+			"-l", c.TargetSshUser,
+			"-i", c.TargetSshKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"-p", "{{boundary.port}}", // this is provided by boundary
+			"{{boundary.ip}}",
+			"hostname", "-i",
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
@@ -250,9 +263,9 @@ func TestCreateAwsDynamicHostCatalogCli(t *testing.T) {
 	require.True(t, hostIpInList, fmt.Sprintf("Connected host (%s) is not in expected list (%s)", hostIp, targetIps1))
 }
 
-// TestCreateAwsDynamicHostCatalogApi uses the boundary go api to create a host catalog with the AWS
-// plugin. The test sets up an AWS dynamic host catalog, creates a host set, and sets up a target to
-// the host set.
+// TestCreateAwsDynamicHostCatalogApi uses the Go api to create a host catalog with the AWS plugin.
+// The test sets up an AWS dynamic host catalog, creates a host set, and sets up a target to the
+// host set.
 func TestCreateAwsDynamicHostCatalogApi(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()

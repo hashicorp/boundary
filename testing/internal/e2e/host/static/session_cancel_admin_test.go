@@ -15,47 +15,53 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSessionCancelCli uses the boundary cli to start and then cancel a session
-func TestSessionCancelCli(t *testing.T) {
+// TestSessionCancelAdminCli uses the boundary cli to start and then cancel a session
+func TestSessionCancelAdminCli(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	boundary.AuthenticateCli(t)
-	newOrgId := boundary.CreateNewOrgCli(t)
-	newProjectId := boundary.CreateNewProjectCli(t, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, newHostCatalogId, c.TargetIp)
-	boundary.AddHostToHostSetCli(t, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, newTargetId, newHostSetId)
+	ctx := context.Background()
+	boundary.AuthenticateAdminCli(t, ctx)
+	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
-		errChan <- e2e.RunCommand(ctxCancel, "boundary", "connect",
-			"-target-id", newTargetId,
-			"-exec", "/usr/bin/ssh", "--",
-			"-l", c.TargetSshUser,
-			"-i", c.TargetSshKeyPath,
-			"-o", "UserKnownHostsFile=/dev/null",
-			"-o", "StrictHostKeyChecking=no",
-			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
-			"-p", "{{boundary.port}}", // this is provided by boundary
-			"{{boundary.ip}}",
-			"hostname -i; sleep 60",
+		t.Log("Starting session...")
+		errChan <- e2e.RunCommand(ctxCancel, "boundary",
+			e2e.WithArgs(
+				"connect",
+				"-target-id", newTargetId,
+				"-exec", "/usr/bin/ssh", "--",
+				"-l", c.TargetSshUser,
+				"-i", c.TargetSshKeyPath,
+				"-o", "UserKnownHostsFile=/dev/null",
+				"-o", "StrictHostKeyChecking=no",
+				"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+				"-p", "{{boundary.port}}", // this is provided by boundary
+				"{{boundary.ip}}",
+				"hostname -i; sleep 60",
+			),
 		)
 	}()
 	t.Cleanup(cancel)
 
 	// Get list of sessions
-	ctx := context.Background()
 	var session *sessions.Session
 	err = backoff.RetryNotify(
 		func() error {
-			output := e2e.RunCommand(ctx, "boundary", "sessions", "list", "-scope-id", newProjectId, "-format", "json")
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("sessions", "list", "-scope-id", newProjectId, "-format", "json"),
+			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
@@ -90,10 +96,14 @@ func TestSessionCancelCli(t *testing.T) {
 	require.Equal(t, "active", session.Status)
 
 	// Cancel session
-	output := e2e.RunCommand(ctx, "boundary", "sessions", "cancel", "-id", session.Id)
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("sessions", "cancel", "-id", session.Id),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	output = e2e.RunCommand(ctx, "boundary", "sessions", "read", "-id", session.Id, "-format", "json")
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newSessionReadResult sessions.SessionReadResult
 	err = json.Unmarshal(output.Stdout, &newSessionReadResult)
