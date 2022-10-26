@@ -15,4 +15,10 @@ begin;
   comment on table auth_oidc_account is
     'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
 
+  -- Fixes incorrect comments in 30/04_kms_keys.up.sql
+  comment on table kms_data_key is
+    'kms_data_key contains deks (data keys) for specific purposes';
+  comment on table kms_data_key_version is
+    'kms_data_key_version contains versions of a kms_data_key (dek aka data keys)';
+
 commit;
