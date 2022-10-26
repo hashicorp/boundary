@@ -21,4 +21,14 @@ begin;
   comment on table kms_data_key_version is
     'kms_data_key_version contains versions of a kms_data_key (dek aka data keys)';
 
+  -- Fixes incorrect comments in 0/01_domain_types.up.sql
+  comment on domain wt_scope_id is
+    '"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
+
+  comment on domain wt_user_id is
+    '"u_anon", "u_auth", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
+
+  comment on domain wt_role_id is
+    'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
+
 commit;
