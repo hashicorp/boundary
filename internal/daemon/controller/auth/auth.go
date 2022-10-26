@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -242,7 +243,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			}
 		}
 		ret.UserId = v.requestInfo.UserIdOverride
-		ret.UserData.User.Id = template.StringPointer(ret.UserId)
+		ret.UserData.User.Id = util.Pointer(ret.UserId)
 		if reqInfo != nil {
 			reqInfo.UserId = ret.UserId
 		}
@@ -492,7 +493,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 
 	// This will always be set, so further down below we can switch on whether
 	// it's empty
-	userData.User.Id = template.StringPointer(AnonymousUserId)
+	userData.User.Id = util.Pointer(AnonymousUserId)
 
 	// Validate the token and fetch the corresponding user ID
 	switch v.requestInfo.TokenFormat {
@@ -502,7 +503,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	case uint32(AuthTokenTypeRecoveryKms):
 		// We validated the encrypted token in decryptToken and handled the
 		// nonces there, so just set the user
-		userData.User.Id = template.StringPointer("u_recovery")
+		userData.User.Id = util.Pointer("u_recovery")
 
 	case uint32(AuthTokenTypeBearer), uint32(AuthTokenTypeSplitCookie):
 		if v.requestInfo.Token == "" {
@@ -522,11 +523,11 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			break
 		}
 		if at != nil {
-			userData.Account.Id = template.StringPointer(at.GetAuthAccountId())
-			userData.User.Id = template.StringPointer(at.GetIamUserId())
+			userData.Account.Id = util.Pointer(at.GetAuthAccountId())
+			userData.User.Id = util.Pointer(at.GetIamUserId())
 			if *userData.User.Id == "" {
 				event.WriteError(ctx, op, stderrors.New("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon"), event.WithInfo("token_id", at.GetPublicId()))
-				userData.User.Id = template.StringPointer(AnonymousUserId)
+				userData.User.Id = util.Pointer(AnonymousUserId)
 				userData.Account.Id = nil
 			}
 		}
@@ -543,9 +544,9 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		retErr = errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup user"))
 		return
 	}
-	userData.User.Name = template.StringPointer(u.Name)
-	userData.User.Email = template.StringPointer(u.Email)
-	userData.User.FullName = template.StringPointer(u.FullName)
+	userData.User.Name = util.Pointer(u.Name)
+	userData.User.Email = util.Pointer(u.Email)
+	userData.User.FullName = util.Pointer(u.FullName)
 
 	if userData.Account.Id != nil && *userData.Account.Id != "" && v.passwordAuthRepoFn != nil && v.oidcAuthRepoFn != nil {
 		const domain = "auth"
@@ -578,10 +579,10 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg("error looking up account"))
 			return
 		}
-		userData.Account.Name = template.StringPointer(acct.GetName())
-		userData.Account.Email = template.StringPointer(acct.GetEmail())
-		userData.Account.LoginName = template.StringPointer(acct.GetLoginName())
-		userData.Account.Subject = template.StringPointer(acct.GetSubject())
+		userData.Account.Name = util.Pointer(acct.GetName())
+		userData.Account.Email = util.Pointer(acct.GetEmail())
+		userData.Account.LoginName = util.Pointer(acct.GetLoginName())
+		userData.Account.Subject = util.Pointer(acct.GetSubject())
 	}
 
 	// Look up scope details to return. We can skip a lookup when using the

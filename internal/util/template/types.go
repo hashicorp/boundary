@@ -31,8 +31,3 @@ type Account struct {
 	Subject   *string
 	Email     *string
 }
-
-func StringPointer(in string) *string {
-	out := in
-	return &out
-}

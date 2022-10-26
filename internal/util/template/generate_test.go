@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,17 +70,17 @@ func TestGenerate(t *testing.T) {
 	ctx := context.Background()
 	data := Data{
 		User: User{
-			Id:       StringPointer("userId"),
-			Name:     StringPointer("userName"),
-			FullName: StringPointer("userFullName"),
-			Email:    StringPointer("user@email.com"),
+			Id:       util.Pointer("userId"),
+			Name:     util.Pointer("userName"),
+			FullName: util.Pointer("userFullName"),
+			Email:    util.Pointer("user@email.com"),
 		},
 		Account: Account{
-			Id:        StringPointer("accountId"),
-			Name:      StringPointer("accountName"),
-			LoginName: StringPointer("accountLoginName"),
-			Subject:   StringPointer("accountSubject"),
-			Email:     StringPointer("account@email.com"),
+			Id:        util.Pointer("accountId"),
+			Name:      util.Pointer("accountName"),
+			LoginName: util.Pointer("accountLoginName"),
+			Subject:   util.Pointer("accountSubject"),
+			Email:     util.Pointer("account@email.com"),
 		},
 	}
 	raw := strings.TrimSpace(`
