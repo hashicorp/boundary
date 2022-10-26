@@ -9,6 +9,9 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
+// Parsed contains information about a template parsed via New. Technically
+// `raw` and `funcMap` are not required to be cached here as they are part of
+// the `template.Template` object but it is useful for tests.
 type Parsed struct {
 	raw     string
 	tmpl    *template.Template

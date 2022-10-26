@@ -318,7 +318,7 @@ func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op err
 	case MethodPost:
 		body := string(pl.HttpRequestBody)
 		if body != "" {
-			parsedTmpl, err := template.New(ctx, string(pl.HttpRequestBody))
+			parsedTmpl, err := template.New(ctx, body)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
