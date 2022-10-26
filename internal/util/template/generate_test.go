@@ -100,7 +100,13 @@ func TestGenerate(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(parsed)
 
-	out, err := parsed.Generate(ctx, data)
+	// Empty should result in empty result
+	out, err := parsed.Generate(ctx, Data{})
+	require.NoError(err)
+	assert.Empty(strings.TrimSpace(out))
+
+	// Do again with non-empty data
+	out, err = parsed.Generate(ctx, data)
 	require.NoError(err)
 
 	exp := strings.TrimSpace(`
