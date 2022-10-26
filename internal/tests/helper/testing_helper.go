@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
@@ -107,34 +108,67 @@ func NewTestSession(
 func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
 	t.Helper()
 	require := require.New(t)
-	conn, resp, err := websocket.Dial(
-		ctx,
-		fmt.Sprintf("wss://%s/v1/proxy", s.WorkerAddr),
-		&websocket.DialOptions{
-			HTTPClient: &http.Client{
-				Transport: s.Transport,
-			},
-			Subprotocols: []string{globals.TcpProxyV1},
+
+	var conn *websocket.Conn
+	var resp *http.Response
+	var err error
+	var handshakeResult proxy.HandshakeResult
+	// A retry was added here to mitigate some flakiness.
+	// Occasionally, `wspb.Read` would throw an error due to "received header with unexpected
+	// rsv bits set: false:false:true". It was unclear what the cause of this was, so we
+	// resorted to retrying the connection.
+	err = backoff.RetryNotify(
+		func() error {
+			conn, resp, err = websocket.Dial(
+				ctx,
+				fmt.Sprintf("wss://%s/v1/proxy", s.WorkerAddr),
+				&websocket.DialOptions{
+					HTTPClient: &http.Client{
+						Transport: s.Transport,
+					},
+					Subprotocols: []string{globals.TcpProxyV1},
+				},
+			)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+			if conn == nil {
+				return backoff.Permanent(errors.New("conn is nil"))
+			}
+			if resp == nil {
+				return backoff.Permanent(errors.New("resp is nil"))
+			}
+			if resp.Header.Get("Sec-WebSocket-Protocol") != globals.TcpProxyV1 {
+				return backoff.Permanent(errors.New(
+					fmt.Sprintf("Unexpected header. Expected: %s, Actual: %s",
+						globals.TcpProxyV1,
+						resp.Header.Get("Sec-WebSocket-Protocol"),
+					)))
+			}
+
+			// Send and receive/check the handshake.
+			if s.tofuToken == "" {
+				s.tofuToken, err = base62.Random(20)
+				if err != nil {
+					return backoff.Permanent(errors.New("Error creating token"))
+				}
+			}
+			handshake := proxy.ClientHandshake{TofuToken: s.tofuToken}
+			t.Logf("Using token: %s", s.tofuToken)
+
+			err = wspb.Write(ctx, conn, &handshake)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+
+			err = wspb.Read(ctx, conn, &handshakeResult)
+			return err
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 1),
+		func(err error, td time.Duration) {
+			t.Logf("Issue with reading websocket: %s. Retrying...", err)
 		},
 	)
-	require.NoError(err)
-	require.NotNil(conn)
-	require.NotNil(resp)
-	require.Equal(resp.Header.Get("Sec-WebSocket-Protocol"), globals.TcpProxyV1)
-
-	// Send the handshake.
-	if s.tofuToken == "" {
-		s.tofuToken, err = base62.Random(20)
-	}
-
-	require.NoError(err)
-	handshake := proxy.ClientHandshake{TofuToken: s.tofuToken}
-	err = wspb.Write(ctx, conn, &handshake)
-	require.NoError(err)
-
-	// Receive/check the handshake
-	var handshakeResult proxy.HandshakeResult
-	err = wspb.Read(ctx, conn, &handshakeResult)
 	require.NoError(err)
 
 	// This is just a cursory check to make sure that the handshake is
