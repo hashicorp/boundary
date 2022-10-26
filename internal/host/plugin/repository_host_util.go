@@ -12,16 +12,16 @@ import (
 
 // valueToInterfaceMap is a map that has a function to convert values into an
 // array
-type valueToInterfaceMap map[string]interface{}
+type valueToInterfaceMap map[string]any
 
-func (m valueToInterfaceMap) toArray() []interface{} {
+func (m valueToInterfaceMap) toArray() []any {
 	switch {
 	case m == nil:
 		return nil
 	case len(m) == 0:
-		return make([]interface{}, 0)
+		return make([]any, 0)
 	default:
-		ret := make([]interface{}, 0, len(m))
+		ret := make([]any, 0, len(m))
 		for _, v := range m {
 			ret = append(ret, v)
 		}

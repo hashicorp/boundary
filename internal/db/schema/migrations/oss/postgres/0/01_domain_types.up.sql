@@ -18,6 +18,7 @@ create domain wt_scope_id as text
 check(
   length(trim(value)) > 10 or value = 'global'
 );
+-- Comment fixed in 57/01_fix_comments.up.sql
 comment on domain wt_scope_id is
 '"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
@@ -25,6 +26,7 @@ create domain wt_user_id as text not null
 check(
   length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth' or value = 'u_recovery'
 );
+-- Comment fixed in 57/01_fix_comments.up.sql
 comment on domain wt_scope_id is
 '"u_anon", "u_auth", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
@@ -32,6 +34,7 @@ create domain wt_role_id as text not null
 check(
   length(trim(value)) > 10
 );
+-- Comment fixed in 57/01_fix_comments.up.sql
 comment on domain wt_scope_id is
 'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 

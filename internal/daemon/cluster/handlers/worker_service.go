@@ -287,7 +287,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 	if sessionInfo.WorkerFilter != "" {
 		if req.WorkerId == "" {
 			event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no id information from worker"))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled: %v", err)
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled")
 		}
 		serversRepo, err := ws.serversRepoFn()
 		if err != nil {
@@ -309,7 +309,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "worker_id", req.WorkerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 		}
-		filterInput := map[string]interface{}{
+		filterInput := map[string]any{
 			"name": w.GetName(),
 			"tags": tagMap,
 		}

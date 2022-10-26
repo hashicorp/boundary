@@ -28,7 +28,7 @@ type Attributes interface {
 	VetForUpdate([]string) map[string]string
 }
 
-type attributeFunc func(interface{}) Attributes
+type attributeFunc func(any) Attributes
 
 type setAttributeFunc func(target.Target, *pb.Target) error
 
@@ -39,7 +39,7 @@ type registryEntry struct {
 }
 
 type registry struct {
-	sync.Map
+	*sync.Map
 }
 
 func (r registry) get(s subtypes.Subtype) (*registryEntry, error) {
@@ -67,7 +67,7 @@ func (r registry) maskManager(s subtypes.Subtype) (handlers.MaskManager, error) 
 // newAttribute creates an Attribute for the given subtype. It delegates the
 // allocation of the Attribute to the registered attrFunc for the given
 // subtype. An error is returned if the provided subtype is not registered
-func (r registry) newAttribute(s subtypes.Subtype, m interface{}) (Attributes, error) {
+func (r registry) newAttribute(s subtypes.Subtype, m any) (Attributes, error) {
 	re, err := r.get(s)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,9 @@ func (r registry) setAttributes(s subtypes.Subtype, in target.Target, out *pb.Ta
 	return re.setAttrFunc(in, out)
 }
 
-var subtypeRegistry = registry{}
+var subtypeRegistry = registry{
+	Map: new(sync.Map),
+}
 
 // Register registers a subtype for used by the service handler.
 func Register(s subtypes.Subtype, maskManager handlers.MaskManager, af attributeFunc, sf setAttributeFunc) {

@@ -14,65 +14,65 @@ import (
 
 type testCase struct {
 	name     string
-	dst      map[string]interface{}
-	src      map[string]interface{}
-	expected map[string]interface{}
+	dst      map[string]any
+	src      map[string]any
+	expected map[string]any
 }
 
 var testCases = []testCase{
 	{
 		name: "merge",
-		dst: map[string]interface{}{
+		dst: map[string]any{
 			"foo": "bar",
 		},
-		src: map[string]interface{}{
+		src: map[string]any{
 			"baz": "qux",
 		},
-		expected: map[string]interface{}{
+		expected: map[string]any{
 			"foo": "bar",
 			"baz": "qux",
 		},
 	},
 	{
 		name: "overwrite",
-		dst: map[string]interface{}{
+		dst: map[string]any{
 			"foo": "bar",
 		},
-		src: map[string]interface{}{
+		src: map[string]any{
 			"foo": "baz",
 		},
-		expected: map[string]interface{}{
+		expected: map[string]any{
 			"foo": "baz",
 		},
 	},
 	{
 		name: "delete",
-		dst: map[string]interface{}{
+		dst: map[string]any{
 			"foo": "bar",
 			"baz": "qux",
 		},
-		src: map[string]interface{}{
+		src: map[string]any{
 			"baz": nil,
 		},
-		expected: map[string]interface{}{
+		expected: map[string]any{
 			"foo": "bar",
 		},
 	},
 	{
 		name: "recursive",
-		dst: map[string]interface{}{
-			"nested": map[string]interface{}{
+		dst: map[string]any{
+			"nested": map[string]any{
 				"a": "b",
 			},
 			"foo": "bar",
 		},
-		src: map[string]interface{}{
-			"nested": map[string]interface{}{
+		src: map[string]any{
+			"nested": map[string]any{
 				"c": "d",
 			},
 		},
-		expected: map[string]interface{}{
-			"nested": map[string]interface{}{
+		expected: map[string]any{
+			"nested": map[string]any{
 				"a": "b",
 				"c": "d",
 			},
@@ -82,40 +82,40 @@ var testCases = []testCase{
 	{
 		name: "nested with nil",
 		dst:  nil,
-		src: map[string]interface{}{
+		src: map[string]any{
 			"a": "b",
-			"nested": map[string]interface{}{
+			"nested": map[string]any{
 				"c": "d",
 				"e": nil,
 			},
 			"f": nil,
 		},
-		expected: map[string]interface{}{
+		expected: map[string]any{
 			"a": "b",
-			"nested": map[string]interface{}{
+			"nested": map[string]any{
 				"c": "d",
 			},
 		},
 	},
 	{
 		name: "overwrite with map in src",
-		dst: map[string]interface{}{
+		dst: map[string]any{
 			"foo": "bar",
 		},
-		src: map[string]interface{}{
-			"foo": map[string]interface{}{
+		src: map[string]any{
+			"foo": map[string]any{
 				"a": "b",
 			},
 		},
-		expected: map[string]interface{}{
-			"foo": map[string]interface{}{
+		expected: map[string]any{
+			"foo": map[string]any{
 				"a": "b",
 			},
 		},
 	},
 	{
 		name: "nil src",
-		dst: map[string]interface{}{
+		dst: map[string]any{
 			"foo": "bar",
 		},
 		src:      nil,
@@ -124,21 +124,21 @@ var testCases = []testCase{
 	{
 		name: "nil dst",
 		dst:  nil,
-		src: map[string]interface{}{
+		src: map[string]any{
 			"foo": "bar",
 		},
-		expected: map[string]interface{}{
+		expected: map[string]any{
 			"foo": "bar",
 		},
 	},
 	{
 		name: "nil dst with src nil value",
 		dst:  nil,
-		src: map[string]interface{}{
+		src: map[string]any{
 			"foo": "bar",
 			"fiz": nil,
 		},
-		expected: map[string]interface{}{
+		expected: map[string]any{
 			"foo": "bar",
 		},
 	},
@@ -163,7 +163,7 @@ func TestPatchStruct(t *testing.T) {
 			actual := PatchStruct(dst, src)
 			require.Empty(cmp.Diff(mustStruct(tc.expected), actual,
 				cmpopts.IgnoreUnexported(structpb.Struct{}, structpb.Value{}),
-				cmpopts.SortSlices(func(x, y interface{}) bool {
+				cmpopts.SortSlices(func(x, y any) bool {
 					return x.(*host.IpAddress).Address < y.(*host.IpAddress).Address
 				})))
 			require.Equal(dstOrig, dst)
@@ -195,7 +195,7 @@ func TestPatchBytesErr(t *testing.T) {
 	})
 }
 
-func mustStruct(in map[string]interface{}) *structpb.Struct {
+func mustStruct(in map[string]any) *structpb.Struct {
 	out, err := structpb.NewStruct(in)
 	if err != nil {
 		panic(err)
@@ -204,7 +204,7 @@ func mustStruct(in map[string]interface{}) *structpb.Struct {
 	return out
 }
 
-func mustMarshal(in map[string]interface{}) []byte {
+func mustMarshal(in map[string]any) []byte {
 	b, err := proto.Marshal(mustStruct(in))
 	if err != nil {
 		panic(err)

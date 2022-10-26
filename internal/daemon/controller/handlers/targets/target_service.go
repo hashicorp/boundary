@@ -703,6 +703,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			"No workers are available to handle this session, or all have been filtered.")
 	}
 
+	// Randomize the workers
+	rand.Shuffle(len(selectedWorkers), func(i, j int) {
+		selectedWorkers[i], selectedWorkers[j] = selectedWorkers[j], selectedWorkers[i]
+	})
+
 	requestedId := req.GetHostId()
 	staticHostRepo, err := s.staticHostRepoFn()
 	if err != nil {
@@ -1823,7 +1828,7 @@ func (w workerList) workerInfos() []*pb.WorkerInfo {
 func (w workerList) filtered(eval *bexpr.Evaluator) (workerList, error) {
 	var ret []*server.Worker
 	for _, worker := range w {
-		filterInput := map[string]interface{}{
+		filterInput := map[string]any{
 			"name": worker.GetName(),
 			"tags": worker.CanonicalTags(),
 		}

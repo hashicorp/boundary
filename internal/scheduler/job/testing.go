@@ -45,7 +45,7 @@ func testRun(conn *db.DB, pluginId, name, cId string) (*Run, error) {
 	rw := db.New(conn)
 	run := allocRun()
 	ctx := context.Background()
-	rows, err := rw.Query(ctx, query, []interface{}{pluginId, name, cId})
+	rows, err := rw.Query(ctx, query, []any{pluginId, name, cId})
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime t
 	rw := db.New(conn)
 	run := allocRun()
 	ctx := context.Background()
-	rows, err := rw.Query(ctx, query, []interface{}{pluginId, name, cId, updateTime})
+	rows, err := rw.Query(ctx, query, []any{pluginId, name, cId, updateTime})
 	if err != nil {
 		return nil, err
 	}

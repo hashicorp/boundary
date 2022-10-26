@@ -296,7 +296,7 @@ func transformResponse(msg proto.Message) error {
 //	type:"password" password_attributes:{login_name:"tim"}
 func AttributeTransformerInterceptor(_ context.Context) grpc.UnaryServerInterceptor {
 	const op = "subtypes.AttributeTransformInterceptor"
-	return func(interceptorCtx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(interceptorCtx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		if reqMsg, ok := req.(proto.Message); ok {
 			if err := transformRequest(reqMsg); err != nil {
 				fieldErrs := map[string]string{

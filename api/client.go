@@ -594,7 +594,7 @@ func copyHeaders(in http.Header) http.Header {
 // NewRequest creates a new raw request object to query the Boundary controller
 // configured for this client. This is an advanced method and generally
 // doesn't need to be called externally.
-func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body interface{}, opt ...Option) (*retryablehttp.Request, error) {
+func (c *Client) NewRequest(ctx context.Context, method, requestPath string, body any, opt ...Option) (*retryablehttp.Request, error) {
 	if c == nil {
 		return nil, fmt.Errorf("client is nil")
 	}
@@ -602,7 +602,7 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 	// Figure out what to do with the body. If it's already a reader it might
 	// be marshaled or raw bytes in a reader, so pass it through. Otherwise
 	// attempt JSON encoding and then pop in a bytes.Buffer.
-	var rawBody interface{}
+	var rawBody any
 	if body != nil {
 		switch t := body.(type) {
 		case io.ReadCloser, io.Reader:

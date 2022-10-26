@@ -16,10 +16,10 @@ import (
 func TestAttributeTransformerInterceptor(t *testing.T) {
 	cases := []struct {
 		name             string
-		req              interface{}
-		handlerResp      interface{}
-		expectHandlerReq interface{}
-		excpetResp       interface{}
+		req              any
+		handlerResp      any
+		expectHandlerReq any
+		excpetResp       any
 	}{
 		{
 			"TestCreateResource/SubResourceRequest",
@@ -28,7 +28,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 					Type: "sub_resource",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -63,7 +63,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 					Type: "sub_resource",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -79,7 +79,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 					OtherId: "trsr_parent",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -116,7 +116,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 					Type:    "sub_resource",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -132,7 +132,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 				Item: &attribute.TestResource{
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -167,7 +167,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 					Type: "sub_resource",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -182,7 +182,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 				Id: "trsr_one",
 				Attrs: &attribute.TestNoItemAttributes_Attributes{
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -193,7 +193,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 				Id: "trsr_one",
 				Attrs: &attribute.TestNoItemAttributes_Attributes{
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -212,7 +212,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 				Id: "trsr_one",
 				Attrs: &attribute.TestNoItemAttributes_Attributes{
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -237,7 +237,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 						Type: "default",
 						Attrs: &attribute.TestResource_Attributes{
 							Attributes: func() *structpb.Struct {
-								attrs, _ := structpb.NewStruct(map[string]interface{}{
+								attrs, _ := structpb.NewStruct(map[string]any{
 									"name": "test",
 								})
 								return attrs
@@ -248,7 +248,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 						Type: "unknown",
 						Attrs: &attribute.TestResource_Attributes{
 							Attributes: func() *structpb.Struct {
-								attrs, _ := structpb.NewStruct(map[string]interface{}{
+								attrs, _ := structpb.NewStruct(map[string]any{
 									"name": "test",
 								})
 								return attrs
@@ -264,7 +264,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 						Type: "sub_resource",
 						Attrs: &attribute.TestResource_Attributes{
 							Attributes: func() *structpb.Struct {
-								attrs, _ := structpb.NewStruct(map[string]interface{}{
+								attrs, _ := structpb.NewStruct(map[string]any{
 									"name": "test",
 								})
 								return attrs
@@ -275,7 +275,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 						Type: "default",
 						Attrs: &attribute.TestResource_Attributes{
 							Attributes: func() *structpb.Struct {
-								attrs, _ := structpb.NewStruct(map[string]interface{}{
+								attrs, _ := structpb.NewStruct(map[string]any{
 									"name": "test",
 								})
 								return attrs
@@ -286,7 +286,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 						Type: "unknown",
 						Attrs: &attribute.TestResource_Attributes{
 							Attributes: func() *structpb.Struct {
-								attrs, _ := structpb.NewStruct(map[string]interface{}{
+								attrs, _ := structpb.NewStruct(map[string]any{
 									"name": "test",
 								})
 								return attrs
@@ -301,7 +301,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+			handler := func(ctx context.Context, req any) (any, error) {
 				require.Empty(t, cmp.Diff(req, tc.expectHandlerReq, protocmp.Transform()))
 				return tc.handlerResp, nil
 			}
@@ -316,7 +316,7 @@ func TestAttributeTransformerInterceptor(t *testing.T) {
 func TestAttributeTransformerInterceptorRequestErrors(t *testing.T) {
 	cases := []struct {
 		name string
-		req  interface{}
+		req  any
 		want error
 	}{
 		{
@@ -326,7 +326,7 @@ func TestAttributeTransformerInterceptorRequestErrors(t *testing.T) {
 					Type: "sub_resource",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"foo": "test",
 							})
 							return attrs
@@ -342,7 +342,7 @@ func TestAttributeTransformerInterceptorRequestErrors(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+			handler := func(ctx context.Context, req any) (any, error) {
 				t.Fatalf("handler should not be called")
 				return nil, nil
 			}

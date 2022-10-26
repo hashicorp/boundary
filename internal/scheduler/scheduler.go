@@ -300,7 +300,7 @@ func (s *Scheduler) monitorJobs(ctx context.Context) {
 
 		case <-timer.C:
 			// Update progress of all running jobs
-			s.runningJobs.Range(func(_, v interface{}) bool {
+			s.runningJobs.Range(func(_, v any) bool {
 				err := s.updateRunningJobProgress(ctx, v.(*runningJob))
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error updating job progress"))

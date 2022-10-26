@@ -5,6 +5,7 @@ package metric
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
@@ -64,6 +65,34 @@ func (sh *statsHandler) HandleRPC(ctx context.Context, s stats.RPCStats) {
 		}
 		sh.reqLatency.With(labels).Observe(v.EndTime.Sub(v.BeginTime).Seconds())
 	}
+}
+
+type requestRecorder struct {
+	reqLatency prometheus.ObserverVec
+	labels     prometheus.Labels
+
+	// measurements
+	start time.Time
+}
+
+// NewGrpcRequestRecorder creates a requestRecorder struct which is used to measure gRPC client request latencies.
+func NewGrpcRequestRecorder(fullMethodName string, reqLatency prometheus.ObserverVec) requestRecorder {
+	service, method := SplitMethodName(fullMethodName)
+	r := requestRecorder{
+		reqLatency: reqLatency,
+		labels: prometheus.Labels{
+			LabelGrpcMethod:  method,
+			LabelGrpcService: service,
+		},
+		start: time.Now(),
+	}
+
+	return r
+}
+
+func (r requestRecorder) Record(err error) {
+	r.labels[LabelGrpcCode] = StatusFromError(err).Code().String()
+	r.reqLatency.With(r.labels).Observe(time.Since(r.start).Seconds())
 }
 
 // StatusFromError retrieves the *status.Status from the provided error.  It'll

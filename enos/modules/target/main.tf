@@ -53,6 +53,8 @@ resource "aws_instance" "target" {
   tags = merge(var.additional_tags, {
     "Name" : "boundary-target-${count.index}",
     "Type" : "target",
+    "Project" : "Enos",
+    "Project Name" : "qti-enos-boundary",
     "Environment" : var.environment
     "Enos User" : var.enos_user,
   })

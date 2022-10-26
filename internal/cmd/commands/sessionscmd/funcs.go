@@ -167,7 +167,7 @@ func (c *Command) printListTable(items []*sessions.Session) string {
 }
 
 func printItemTable(item *sessions.Session, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -213,10 +213,10 @@ func printItemTable(item *sessions.Session, resp *api.Response) string {
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
-	var statesMaps []map[string]interface{}
+	var statesMaps []map[string]any
 	if len(item.States) > 0 {
 		for _, state := range item.States {
-			m := map[string]interface{}{
+			m := map[string]any{
 				"Status":     state.Status,
 				"Start Time": state.StartTime.Local().Format(time.RFC1123),
 			}

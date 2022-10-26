@@ -368,7 +368,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "valid",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.Secrets = mustStruct(map[string]any{"foo": "bar"})
 				cat.SecretsHmac = nil
 				return cat
 			},
@@ -378,7 +378,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "valid-different-val",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"zip": "zap"})
+				cat.Secrets = mustStruct(map[string]any{"zip": "zap"})
 				cat.SecretsHmac = nil
 				return cat
 			},
@@ -387,7 +387,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "valid-original-val",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.Secrets = mustStruct(map[string]any{"foo": "bar"})
 				cat.SecretsHmac = nil
 				return cat
 			},
@@ -397,7 +397,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "hmac-missing-wrapper",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.Secrets = mustStruct(map[string]any{"foo": "bar"})
 				cat.SecretsHmac = []byte("foobar")
 				return cat
 			},
@@ -406,7 +406,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 		{
 			name: "hmac-bad-wrapper",
 			hcFn: func() *HostCatalog {
-				cat.Secrets = mustStruct(map[string]interface{}{"foo": "bar"})
+				cat.Secrets = mustStruct(map[string]any{"foo": "bar"})
 				cat.SecretsHmac = nil
 				return cat
 			},

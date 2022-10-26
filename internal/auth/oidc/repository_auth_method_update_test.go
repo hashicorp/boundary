@@ -784,8 +784,8 @@ func Test_valueObjectChanges(t *testing.T) {
 		old          []string
 		dbMask       []string
 		nullFields   []string
-		wantAdd      []interface{}
-		wantDel      []interface{}
+		wantAdd      []any
+		wantDel      []any
 		wantErrMatch *errors.Template
 	}{
 		{
@@ -795,21 +795,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"ES256", "ES384"},
 			old:    []string{"RS256", "RS384", "RS512"},
 			dbMask: []string{string(SigningAlgVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", ES256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", ES384)
 				require.NoError(t, err)
-				return []interface{}{a, a2}
+				return []any{a, a2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", RS256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", RS384)
 				require.NoError(t, err)
 				a3, err := NewSigningAlg(ctx, "am-public-id", RS512)
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 		},
 		{
@@ -819,17 +819,17 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{pem1, pem2},
 			old:    []string{pem3},
 			dbMask: []string{string(CertificateVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				c, err := NewCertificate(ctx, "am-public-id", pem1)
 				require.NoError(t, err)
 				c2, err := NewCertificate(ctx, "am-public-id", pem2)
 				require.NoError(t, err)
-				return []interface{}{c, c2}
+				return []any{c, c2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				c, err := NewCertificate(ctx, "am-public-id", pem3)
 				require.NoError(t, err)
-				return []interface{}{c}
+				return []any{c}
 			}(),
 		},
 		{
@@ -839,21 +839,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"new-aud1", "new-aud2"},
 			old:    []string{"old-aud1", "old-aud2", "old-aud3"},
 			dbMask: []string{string(AudClaimVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "new-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "new-aud2")
 				require.NoError(t, err)
-				return []interface{}{a, a2}
+				return []any{a, a2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
 				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 		},
 
@@ -864,14 +864,14 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:        nil,
 			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
 			nullFields: []string{string(AudClaimVO)},
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
 				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 		},
 		{
@@ -881,21 +881,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"new-scope1", "new-scope2"},
 			old:    []string{"old-scope1", "old-scope2", "old-scope3"},
 			dbMask: []string{string(ClaimsScopesVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				cs, err := NewClaimsScope(ctx, "am-public-id", "new-scope1")
 				require.NoError(t, err)
 				cs2, err := NewClaimsScope(ctx, "am-public-id", "new-scope2")
 				require.NoError(t, err)
-				return []interface{}{cs, cs2}
+				return []any{cs, cs2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				cs, err := NewClaimsScope(ctx, "am-public-id", "old-scope1")
 				require.NoError(t, err)
 				cs2, err := NewClaimsScope(ctx, "am-public-id", "old-scope2")
 				require.NoError(t, err)
 				cs3, err := NewClaimsScope(ctx, "am-public-id", "old-scope3")
 				require.NoError(t, err)
-				return []interface{}{cs, cs2, cs3}
+				return []any{cs, cs2, cs3}
 			}(),
 		},
 		{
@@ -905,14 +905,14 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:        nil,
 			old:        []string{"old-scope1", "old-scope2", "old-scope3"},
 			nullFields: []string{string(ClaimsScopesVO)},
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				cs, err := NewClaimsScope(ctx, "am-public-id", "old-scope1")
 				require.NoError(t, err)
 				cs2, err := NewClaimsScope(ctx, "am-public-id", "old-scope2")
 				require.NoError(t, err)
 				cs3, err := NewClaimsScope(ctx, "am-public-id", "old-scope3")
 				require.NoError(t, err)
-				return []interface{}{cs, cs2, cs3}
+				return []any{cs, cs2, cs3}
 			}(),
 		},
 		{
@@ -921,14 +921,14 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:        nil,
 			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
 			nullFields: []string{string(AudClaimVO)},
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
 				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -939,14 +939,14 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:        nil,
 			old:        []string{"old-aud1", "old-aud2", "old-aud3"},
 			nullFields: []string{string(AudClaimVO)},
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewAudClaim(ctx, "am-public-id", "old-aud1")
 				require.NoError(t, err)
 				a2, err := NewAudClaim(ctx, "am-public-id", "old-aud2")
 				require.NoError(t, err)
 				a3, err := NewAudClaim(ctx, "am-public-id", "old-aud3")
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -957,21 +957,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"ES256", "ES256"},
 			old:    []string{"RS256", "RS384", "RS512"},
 			dbMask: []string{string(SigningAlgVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", ES256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", ES384)
 				require.NoError(t, err)
-				return []interface{}{a, a2}
+				return []any{a, a2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", RS256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", RS384)
 				require.NoError(t, err)
 				a3, err := NewSigningAlg(ctx, "am-public-id", RS512)
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},
@@ -982,21 +982,21 @@ func Test_valueObjectChanges(t *testing.T) {
 			new:    []string{"ES256", "ES384"},
 			old:    []string{"RS256", "RS256", "RS512"},
 			dbMask: []string{string(SigningAlgVO)},
-			wantAdd: func() []interface{} {
+			wantAdd: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", ES256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", ES384)
 				require.NoError(t, err)
-				return []interface{}{a, a2}
+				return []any{a, a2}
 			}(),
-			wantDel: func() []interface{} {
+			wantDel: func() []any {
 				a, err := NewSigningAlg(ctx, "am-public-id", RS256)
 				require.NoError(t, err)
 				a2, err := NewSigningAlg(ctx, "am-public-id", RS384)
 				require.NoError(t, err)
 				a3, err := NewSigningAlg(ctx, "am-public-id", RS512)
 				require.NoError(t, err)
-				return []interface{}{a, a2, a3}
+				return []any{a, a2, a3}
 			}(),
 			wantErrMatch: errors.T(errors.InvalidParameter),
 		},

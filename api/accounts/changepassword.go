@@ -35,7 +35,7 @@ func (c *Client) ChangePassword(ctx context.Context, accountId, currentPassword,
 		version = existingTarget.Item.Version
 	}
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"version":          version,
 		"current_password": currentPassword,
 		"new_password":     newPassword,

@@ -143,7 +143,7 @@ func (g Grant) CanonicalString() string {
 // MarshalJSON provides a custom marshaller for grants
 func (g Grant) MarshalJSON() ([]byte, error) {
 	const op = "perms.(Grant).MarshalJSON"
-	res := make(map[string]interface{}, 4)
+	res := make(map[string]any, 4)
 	if g.id != "" {
 		res["id"] = g.id
 	}
@@ -173,7 +173,7 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 // when JSON is detected.
 func (g *Grant) unmarshalJSON(data []byte) error {
 	const op = "perms.(Grant).unmarshalJSON"
-	raw := make(map[string]interface{}, 4)
+	raw := make(map[string]any, 4)
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decode))
 	}
@@ -195,7 +195,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		}
 	}
 	if rawActions, ok := raw["actions"]; ok {
-		interfaceActions, ok := rawActions.([]interface{})
+		interfaceActions, ok := rawActions.([]any)
 		if !ok {
 			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "actions"))
 		}
@@ -215,7 +215,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		}
 	}
 	if rawOutputFields, ok := raw["output_fields"]; ok {
-		interfaceOutputFields, ok := rawOutputFields.([]interface{})
+		interfaceOutputFields, ok := rawOutputFields.([]any)
 		if !ok {
 			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "output_fields"))
 		}

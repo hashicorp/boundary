@@ -14,7 +14,7 @@ func TestAuthenticateResultMarshaling(t *testing.T) {
 
 	exp := &AuthenticateResult{
 		Command: "foo",
-		Attributes: map[string]interface{}{
+		Attributes: map[string]any{
 			"key": "value",
 		},
 		attributesRaw: json.RawMessage(`{"key":"value"}`),

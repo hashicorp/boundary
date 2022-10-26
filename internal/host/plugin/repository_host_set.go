@@ -131,9 +131,9 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 		}
 	}
 
-	var preferredEndpoints []interface{}
+	var preferredEndpoints []any
 	if s.PreferredEndpoints != nil {
-		preferredEndpoints = make([]interface{}, 0, len(s.PreferredEndpoints))
+		preferredEndpoints = make([]any, 0, len(s.PreferredEndpoints))
 		for i, e := range s.PreferredEndpoints {
 			obj, err := host.NewPreferredEndpoint(ctx, s.PublicId, uint32(i+1), e)
 			if err != nil {
@@ -385,9 +385,9 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 	}
 
 	// Get the preferred endpoints to write out.
-	var preferredEndpoints []interface{}
+	var preferredEndpoints []any
 	if endpointOp == endpointOpUpdate {
-		preferredEndpoints = make([]interface{}, 0, len(newSet.PreferredEndpoints))
+		preferredEndpoints = make([]any, 0, len(newSet.PreferredEndpoints))
 		for i, e := range newSet.PreferredEndpoints {
 			obj, err := host.NewPreferredEndpoint(ctx, newSet.PublicId, uint32(i+1), e)
 			if err != nil {
@@ -447,7 +447,7 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 			case endpointOpDelete, endpointOpUpdate:
 				if len(currentSet.PreferredEndpoints) > 0 {
 					// Delete all old endpoint entries.
-					var peps []interface{}
+					var peps []any
 					for i := 1; i <= len(currentSet.PreferredEndpoints); i++ {
 						p := host.AllocPreferredEndpoint()
 						p.HostSetId, p.Priority = currentSet.GetPublicId(), uint32(i)
@@ -700,7 +700,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		limit = opts.WithLimit
 	}
 
-	args := make([]interface{}, 0, 1)
+	args := make([]any, 0, 1)
 	var where string
 
 	switch {
@@ -794,7 +794,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 
 	// Fist, look up the sets corresponding to the set IDs
 	var setAggs []*hostSetAgg
-	if err := r.reader.SearchWhere(ctx, &setAggs, "public_id in (?)", []interface{}{setIds}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &setAggs, "public_id in (?)", []any{setIds}); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve sets %v", setIds)))
 	}
 	if len(setAggs) == 0 {
@@ -810,7 +810,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 	}
 
 	var setMembers []*HostSetMember
-	if err := r.reader.SearchWhere(ctx, &setMembers, "set_id in (?)", []interface{}{setIds}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &setMembers, "set_id in (?)", []any{setIds}); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve set members for sets %v", setIds)))
 	}
 	if len(setMembers) == 0 {
@@ -826,7 +826,7 @@ func (r *Repository) Endpoints(ctx context.Context, setIds []string) ([]*host.En
 		hostIds = append(hostIds, hid)
 	}
 	var hostAggs []*hostAgg
-	if err := r.reader.SearchWhere(ctx, &hostAggs, "public_id in (?)", []interface{}{hostIds}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &hostAggs, "public_id in (?)", []any{hostIds}); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve hosts %v", hostIds)))
 	}
 	if len(hostAggs) == 0 {

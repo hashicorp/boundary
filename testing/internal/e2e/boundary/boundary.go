@@ -46,7 +46,7 @@ func NewApiClient() (*api.Client, error) {
 	ctx := context.Background()
 	authmethodsClient := authmethods.NewClient(client)
 	authenticationResult, err := authmethodsClient.Authenticate(ctx, c.AuthMethodId, "login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": c.AdminLoginName,
 			"password":   c.AdminLoginPassword,
 		},
@@ -59,16 +59,28 @@ func NewApiClient() (*api.Client, error) {
 	return client, err
 }
 
-// AuthenticateCli uses the cli to authenticate the specified Boundary instance.
-func AuthenticateCli(t testing.TB) {
+// AuthenticateAdminCli uses the cli to authenticate the specified Boundary instance as an admin
+func AuthenticateAdminCli(t testing.TB, ctx context.Context) {
 	c, err := loadConfig()
 	require.NoError(t, err)
 
-	output := e2e.RunCommand("boundary", "authenticate", "password",
-		"-addr", c.Address,
-		"-auth-method-id", c.AuthMethodId,
-		"-login-name", c.AdminLoginName,
-		"-password", "env://E2E_PASSWORD_ADMIN_PASSWORD",
+	AuthenticateCli(t, ctx, c.AdminLoginName, c.AdminLoginPassword)
+}
+
+// AuthenticateCli uses the cli to authenticate the specified Boundary instance
+func AuthenticateCli(t testing.TB, ctx context.Context, loginName string, password string) {
+	c, err := loadConfig()
+	require.NoError(t, err)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"authenticate", "password",
+			"-addr", c.Address,
+			"-auth-method-id", c.AuthMethodId,
+			"-login-name", loginName,
+			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
+		),
+		e2e.WithEnv("E2E_TEST_BOUNDARY_PASSWORD", password),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 }

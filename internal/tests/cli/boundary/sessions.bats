@@ -7,6 +7,7 @@ load _helpers
 
 @test "boundary/session: admin user can connect to default target" {
   run login $DEFAULT_LOGIN
+  echo "$output"
   [ "$status" -eq 0 ]
 
   run connect_nc $DEFAULT_TARGET
@@ -21,11 +22,11 @@ load _helpers
 
 @test "boundary/session/connect: unpriv user can connect to default target" {
   run login $DEFAULT_UNPRIVILEGED_LOGIN
-  echo $output
+  echo "$output"
   [ "$status" -eq 0 ]
 
   run connect_nc $DEFAULT_TARGET
-  echo $output
+  echo "$output"
   [ "$status" -eq 0 ]
 
   # Run twice so we have two values for later testing
@@ -39,15 +40,18 @@ load _helpers
 # So for now, verify they're not the same.
 @test "boundary/session: verify admin and unpriv user see different counts" {
   run login $DEFAULT_UNPRIVILEGED_LOGIN
+  echo "$output"
   [ "$status" -eq 0 ]
 
-  run count_sessions $DEFAULT_P_ID
+  run count_sessions_include_terminated $DEFAULT_P_ID
+  echo "Number of sessions (unpriv): $output"
   [ "$status" -eq 0 ]
   unpriv_sessions="$output"
 
   run login $DEFAULT_LOGIN
   [ "$status" -eq 0 ]
-  run count_sessions $DEFAULT_P_ID
+  run count_sessions_include_terminated $DEFAULT_P_ID
+  echo "Number of sessions (admin): $output"
   [ "$status" -eq 0 ]
   admin_sessions="$output"
 
@@ -57,8 +61,10 @@ load _helpers
 @test "boundary/session: verify read and cancellation permissions on admin session" {
   # Find an admin session
   run login $DEFAULT_LOGIN
+  echo "$output"
   [ "$status" -eq 0 ]
-  run list_sessions $DEFAULT_P_ID
+  run list_sessions_include_terminated $DEFAULT_P_ID
+  echo "$output"
   [ "$status" -eq 0 ]
   id=$(echo "$output" | jq -r "[.items[]|select(.user_id == \"$DEFAULT_USER\")][0].id")
 
@@ -74,19 +80,20 @@ load _helpers
   run login $DEFAULT_LOGIN
   [ "$status" -eq 0 ]
   run read_session $id
+  echo "$output"
   [ "$status" -eq 0 ]
-  echo $output
+  echo "$output"
   run cancel_session $id
   [ "$status" -eq 0 ]
-  echo $output
+  echo "$output"
 }
 
 @test "boundary/session: verify read and cancellation permissions on unpriv session" {
   # Find an unpriv session
   run login $DEFAULT_UNPRIVILEGED_LOGIN
   [ "$status" -eq 0 ]
-  run list_sessions $DEFAULT_P_ID
-  echo $output
+  run list_sessions_include_terminated $DEFAULT_P_ID
+  echo "$output"
   [ "$status" -eq 0 ]
   id=$(echo "$output" | jq -r "[.items[]|select(.user_id == \"$DEFAULT_UNPRIVILEGED_USER\")][0].id")
 

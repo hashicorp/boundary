@@ -43,7 +43,7 @@ var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-w
 
 func structListValue(t *testing.T, ss ...string) *structpb.ListValue {
 	t.Helper()
-	var val []interface{}
+	var val []any
 	for _, s := range ss {
 		val = append(val, s)
 	}

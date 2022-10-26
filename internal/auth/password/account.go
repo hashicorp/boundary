@@ -33,11 +33,11 @@ func NewAccount(authMethodId string, opt ...Option) (*Account, error) {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	a := &Account{
 		Account: &store.Account{
 			AuthMethodId: authMethodId,
-			LoginName:    opts.withLoginName,
+			LoginName:    opts.WithLoginName,
 			Name:         opts.withName,
 			Description:  opts.withDescription,
 		},
@@ -63,6 +63,18 @@ func (a *Account) TableName() string {
 // SetTableName sets the table name.
 func (a *Account) SetTableName(n string) {
 	a.tableName = n
+}
+
+// GetEmail returns the email, which will always be empty as this type doesn't
+// currently support email
+func (a *Account) GetEmail() string {
+	return ""
+}
+
+// GetSubject returns the subject, which will always be empty as this type
+// doesn't currently support subject
+func (a *Account) GetSubject() string {
+	return ""
 }
 
 func (a *Account) oplog(op oplog.OpType) oplog.Metadata {

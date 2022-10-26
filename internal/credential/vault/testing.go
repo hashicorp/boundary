@@ -226,7 +226,7 @@ func testTokens(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projectId, 
 		num := r.Int31()
 		inToken := createTestToken(t, conn, wrapper, projectId, storeId, fmt.Sprintf("vault-token-%s-%d-%v", storeId, i, num), fmt.Sprintf("accessor-%s-%d-%v", storeId, i, num))
 		outToken := allocToken()
-		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", []interface{}{inToken.TokenHmac}))
+		require.NoError(w.LookupWhere(ctx, &outToken, "token_hmac = ?", []any{inToken.TokenHmac}))
 		require.NoError(outToken.decrypt(ctx, databaseWrapper))
 
 		tokens = append(tokens, outToken)
@@ -736,7 +736,7 @@ func (v *TestVaultServer) LookupLease(t testing.TB, leaseId string) *vault.Secre
 	t.Helper()
 	require := require.New(t)
 	vc := v.client(t).cl
-	credData := map[string]interface{}{"lease_id": leaseId}
+	credData := map[string]any{"lease_id": leaseId}
 	secret, err := vc.Logical().Write("sys/leases/lookup", credData)
 	require.NoError(err)
 	require.NotNil(secret)
@@ -804,7 +804,7 @@ func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secre
 
 	// Generate a root CA
 	caPath := path.Join(mountPath, "root/generate/internal")
-	caOptions := map[string]interface{}{
+	caOptions := map[string]any{
 		"common_name": t.Name(),
 		"ttl":         maxTTL.String(),
 	}
@@ -814,7 +814,7 @@ func (v *TestVaultServer) MountPKI(t testing.TB, opt ...TestOption) *vault.Secre
 
 	// Create default role
 	rolePath := path.Join(mountPath, "roles", opts.roleName)
-	roleOptions := map[string]interface{}{
+	roleOptions := map[string]any{
 		"allow_any_name": true,
 		"ttl":            defaultTTL.String(),
 	}
@@ -872,10 +872,10 @@ type TestVaultServer struct {
 	serverCertBundle *testCertBundle
 	clientCertBundle *testCertBundle
 
-	pool              interface{}
-	vaultContainer    interface{}
-	network           interface{}
-	postgresContainer interface{}
+	pool              any
+	vaultContainer    any
+	network           any
+	postgresContainer any
 }
 
 // NewTestVaultServer creates and returns a TestVaultServer. Some Vault

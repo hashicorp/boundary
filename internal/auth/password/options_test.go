@@ -10,37 +10,37 @@ import (
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
 	t.Run("WithPublicId", func(t *testing.T) {
-		opts := getOpts(WithPublicId("test id"))
+		opts := GetOpts(WithPublicId("test id"))
 		testOpts := getDefaultOptions()
 		testOpts.withPublicId = "test id"
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithLoginName", func(t *testing.T) {
-		opts := getOpts(WithLoginName("test"))
+		opts := GetOpts(WithLoginName("test"))
 		testOpts := getDefaultOptions()
-		testOpts.withLoginName = "test"
+		testOpts.WithLoginName = "test"
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithName", func(t *testing.T) {
-		opts := getOpts(WithName("test"))
+		opts := GetOpts(WithName("test"))
 		testOpts := getDefaultOptions()
 		testOpts.withName = "test"
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithDescription", func(t *testing.T) {
-		opts := getOpts(WithDescription("test desc"))
+		opts := GetOpts(WithDescription("test desc"))
 		testOpts := getDefaultOptions()
 		testOpts.withDescription = "test desc"
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithLimit", func(t *testing.T) {
-		opts := getOpts(WithLimit(5))
+		opts := GetOpts(WithLimit(5))
 		testOpts := getDefaultOptions()
 		testOpts.withLimit = 5
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithPassword", func(t *testing.T) {
-		opts := getOpts(WithPassword("test password"))
+		opts := GetOpts(WithPassword("test password"))
 		testOpts := getDefaultOptions()
 		testOpts.password = "test password"
 		testOpts.withPassword = true
@@ -49,7 +49,7 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithConfiguration", func(t *testing.T) {
 		conf := NewArgon2Configuration()
 		conf.KeyLength = conf.KeyLength * 2
-		opts := getOpts(WithConfiguration(conf))
+		opts := GetOpts(WithConfiguration(conf))
 		testOpts := getDefaultOptions()
 		c, ok := testOpts.withConfig.(*Argon2Configuration)
 		require.True(t, ok, "need an Argon2Configuration")
@@ -59,7 +59,7 @@ func Test_GetOpts(t *testing.T) {
 	})
 	t.Run("WithOrderByCreateTime", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithOrderByCreateTime(true))
+		opts := GetOpts(WithOrderByCreateTime(true))
 		testOpts := getDefaultOptions()
 		testOpts.withOrderByCreateTime = true
 		testOpts.ascending = true

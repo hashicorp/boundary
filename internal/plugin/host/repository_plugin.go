@@ -112,7 +112,7 @@ func (r *Repository) LookupPluginByName(ctx context.Context, name string, _ ...O
 	}
 	p := allocPlugin()
 
-	if err := r.reader.LookupWhere(ctx, p, "name=?", []interface{}{name}); err != nil {
+	if err := r.reader.LookupWhere(ctx, p, "name=?", []any{name}); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
@@ -134,7 +134,7 @@ func (r *Repository) ListPlugins(ctx context.Context, scopeIds []string, opt ...
 		limit = opts.withLimit
 	}
 	var plugins []*Plugin
-	err := r.reader.SearchWhere(ctx, &plugins, "scope_id in (?)", []interface{}{scopeIds}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &plugins, "scope_id in (?)", []any{scopeIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

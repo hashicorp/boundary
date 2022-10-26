@@ -841,9 +841,9 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 }
 
 func tagsToMapProto(in map[string][]string) (map[string]*structpb.ListValue, error) {
-	b := make(map[string][]interface{})
+	b := make(map[string][]any)
 	for k, v := range in {
-		result := make([]interface{}, 0, len(v))
+		result := make([]any, 0, len(v))
 		for _, t := range v {
 			result = append(result, t)
 		}

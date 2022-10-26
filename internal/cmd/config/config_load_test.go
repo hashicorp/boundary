@@ -26,7 +26,7 @@ func TestLoad(t *testing.T) {
 					EntSharedConfig: configutil.EntSharedConfig{},
 					Listeners: []*listenerutil.ListenerConfig{
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "api",
 								"tls_disable": true,
@@ -93,7 +93,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "cluster",
 								"tls_disable": true,
@@ -160,7 +160,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "proxy",
 								"tls_disable": true,
@@ -227,7 +227,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "ops",
 								"tls_disable": true,
@@ -351,7 +351,7 @@ func TestLoad(t *testing.T) {
 					Description:                        "A worker",
 					PublicAddr:                         "",
 					InitialUpstreams:                   []string{"boundary:9201"},
-					InitialUpstreamsRaw:                []interface{}{"boundary:9201"},
+					InitialUpstreamsRaw:                []any{"boundary:9201"},
 					ControllersRaw:                     nil,
 					Tags:                               nil,
 					TagsRaw:                            nil,
@@ -430,7 +430,7 @@ func TestLoad(t *testing.T) {
 					EntSharedConfig: configutil.EntSharedConfig{},
 					Listeners: []*listenerutil.ListenerConfig{
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "api",
 								"tls_disable": true,
@@ -497,7 +497,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "cluster",
 								"tls_disable": true,
@@ -564,7 +564,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "ops",
 								"tls_disable": true,
@@ -631,7 +631,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "proxy",
 								"tls_disable": true,
@@ -755,7 +755,7 @@ func TestLoad(t *testing.T) {
 					Description:                        "A worker",
 					PublicAddr:                         "",
 					InitialUpstreams:                   []string{"boundary:9201"},
-					InitialUpstreamsRaw:                []interface{}{"boundary:9201"},
+					InitialUpstreamsRaw:                []any{"boundary:9201"},
 					ControllersRaw:                     nil,
 					Tags:                               nil,
 					TagsRaw:                            nil,
@@ -834,7 +834,7 @@ func TestLoad(t *testing.T) {
 					EntSharedConfig: configutil.EntSharedConfig{},
 					Listeners: []*listenerutil.ListenerConfig{
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "api",
 								"tls_disable": true,
@@ -901,7 +901,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "cluster",
 								"tls_disable": true,
@@ -968,7 +968,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "ops",
 								"tls_disable": true,
@@ -1035,7 +1035,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "proxy",
 								"tls_disable": true,
@@ -1159,7 +1159,7 @@ func TestLoad(t *testing.T) {
 					Description:                        "A worker",
 					PublicAddr:                         "",
 					InitialUpstreams:                   []string{"boundary:9201"},
-					InitialUpstreamsRaw:                []interface{}{"boundary:9201"},
+					InitialUpstreamsRaw:                []any{"boundary:9201"},
 					ControllersRaw:                     nil,
 					Tags:                               nil,
 					TagsRaw:                            nil,
@@ -1238,7 +1238,7 @@ func TestLoad(t *testing.T) {
 					EntSharedConfig: configutil.EntSharedConfig{},
 					Listeners: []*listenerutil.ListenerConfig{
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "api",
 								"tls_disable": true,
@@ -1305,7 +1305,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "cluster",
 								"tls_disable": true,
@@ -1372,7 +1372,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "proxy",
 								"tls_disable": true,
@@ -1439,7 +1439,7 @@ func TestLoad(t *testing.T) {
 							CorsAllowedHeadersRaw:                    nil,
 						},
 						{
-							RawConfig: map[string]interface{}{
+							RawConfig: map[string]any{
 								"address":     "boundary",
 								"purpose":     "ops",
 								"tls_disable": true,
@@ -1563,7 +1563,7 @@ func TestLoad(t *testing.T) {
 					Description:                        "A worker",
 					PublicAddr:                         "",
 					InitialUpstreams:                   []string{"boundary:9201"},
-					InitialUpstreamsRaw:                []interface{}{"boundary:9201"},
+					InitialUpstreamsRaw:                []any{"boundary:9201"},
 					ControllersRaw:                     nil,
 					Tags:                               nil,
 					TagsRaw:                            nil,

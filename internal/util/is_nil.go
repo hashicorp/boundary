@@ -3,7 +3,7 @@ package util
 import "reflect"
 
 // IsNil checks if the interface is nil
-func IsNil(i interface{}) bool {
+func IsNil(i any) bool {
 	if i == nil {
 		return true
 	}

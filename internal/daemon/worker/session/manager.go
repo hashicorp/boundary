@@ -127,7 +127,7 @@ func (m *manager) RequestCloseConnections(ctx context.Context, closeInfo map[str
 	return closeConnections(ctx, m.controllerSessionConn, m, closeInfo)
 }
 
-func isNil(i interface{}) bool {
+func isNil(i any) bool {
 	if i == nil {
 		return true
 	}

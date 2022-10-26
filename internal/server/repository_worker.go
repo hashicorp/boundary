@@ -84,7 +84,7 @@ func lookupWorkerByName(ctx context.Context, reader db.Reader, name string) (*Wo
 	}
 
 	wAgg := &workerAggregate{}
-	err := reader.LookupWhere(ctx, &wAgg, "name = ?", []interface{}{name})
+	err := reader.LookupWhere(ctx, &wAgg, "name = ?", []any{name})
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
@@ -179,7 +179,7 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 	}
 
 	var where []string
-	var whereArgs []interface{}
+	var whereArgs []any
 	if liveness > 0 {
 		where = append(where, fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds())))
 	}
@@ -319,7 +319,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				workerCreateConflict := &db.OnConflict{
 					Target: db.Columns{"public_id"},
 					Action: append(db.SetColumns([]string{"address", "release_version", "operational_state"}),
-						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
+						db.SetColumnValues(map[string]any{"last_status_time": "now()"})...),
 				}
 				var withRowsAffected int64
 				err := w.Create(ctx, workerClone, db.WithOnConflict(workerCreateConflict), db.WithReturnRowsAffected(&withRowsAffected),
@@ -381,7 +381,7 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 	case isNil(w):
 		return errors.New(ctx, errors.InvalidParameter, op, "db.Writer is nil")
 	}
-	_, err := w.Exec(ctx, deleteTagsByWorkerIdSql, []interface{}{ts.String(), id})
+	_, err := w.Exec(ctx, deleteTagsByWorkerIdSql, []any{ts.String(), id})
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("couldn't delete existing tags for worker %q", id)))
 	}
@@ -391,7 +391,7 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 	// Otherwise, go through and stage each tuple for insertion
 	// below.
 	if len(tags) > 0 {
-		uTags := make([]interface{}, 0, len(tags))
+		uTags := make([]any, 0, len(tags))
 		for _, v := range tags {
 			if v == nil {
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("found nil tag value for worker %s", id))
@@ -444,7 +444,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			nameField: worker.Name,
 			descField: worker.Description,
 		},
@@ -722,7 +722,7 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 	}
 
 	rowsDeleted := 0
-	deleteTags := make([]interface{}, 0, len(tags))
+	deleteTags := make([]any, 0, len(tags))
 	for _, t := range tags {
 		if t == nil {
 			return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "found nil tag value in input")

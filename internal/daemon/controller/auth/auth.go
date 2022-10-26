@@ -85,7 +85,7 @@ type VerifyResults struct {
 	// RoundTripValue can be set to allow the function performing authentication
 	// (often accompanied by lookup(s)) to return a result of that lookup to the
 	// calling function. It is opaque to this package.
-	RoundTripValue interface{}
+	RoundTripValue any
 
 	// Used for additional verification
 	v *verifier
