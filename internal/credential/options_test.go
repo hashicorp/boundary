@@ -16,6 +16,6 @@ func Test_GetOpts(t *testing.T) {
 		assert.Empty(t, opts.WithTemplateData)
 		opts, err := GetOpts(WithTemplateData(template.Data{User: template.User{Id: util.Pointer("foo")}}))
 		require.NoError(t, err)
-		assert.Equal(t, "foo", opts.WithTemplateData.User.Id)
+		assert.Equal(t, "foo", *opts.WithTemplateData.User.Id)
 	})
 }
