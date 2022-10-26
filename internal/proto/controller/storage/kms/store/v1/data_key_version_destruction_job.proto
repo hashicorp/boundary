@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package controller.storage.kms.store.v1;
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
+
+// DataKeyVersionDestructionJob is used to read and write
+// data from the kms_data_key_version_destruction_job table.
+message DataKeyVersionDestructionJob {
+  // key_id is the private id of the data key version being destroyed.
+  // @inject_tag: gorm:"primary_key"
+  string key_id = 10;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+}

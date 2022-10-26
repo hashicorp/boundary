@@ -65,7 +65,6 @@ func (c *RotateKeysCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *RotateKeysCommand) Run(args []string) int {
-	// this is the function that is run by the cli
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {

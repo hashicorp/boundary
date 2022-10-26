@@ -1,5 +1,5 @@
 begin;
-  select plan(16);
+  select plan(15);
   select wtt_load('widgets', 'iam', 'kms');
 
   -- Should fail when inserting an unknown key_id
@@ -25,14 +25,6 @@ begin;
     values
       ('kdkv_______colors');
   select lives_ok('insert_new_key_id', 'insert of valid key_id in kms_data_key_version_destruction_job failed');
-
-  -- Should fail when inserting an unknown key_id
-  prepare run_insert_unknown_key_id as
-    insert into kms_data_key_version_destruction_job_run
-      (key_id, table_name, total_count)
-    values
-      ('kdkv___unknown', 'auth_token', 100);
-  select throws_ok('run_insert_unknown_key_id', '23503', null, 'insert of unknown key_id in kms_data_key_version_destruction_job_run succeeded');
 
   -- Should fail when inserting an unknown table_name
   prepare run_insert_unknown_table_name as

@@ -920,6 +920,16 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
+		"scopes list-key-version-destruction-jobs": func() (cli.Command, error) {
+			return &scopescmd.ListKeyVersionDestructionJobsCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"scopes destroy-key-version": func() (cli.Command, error) {
+			return &scopescmd.DestroyKeyVersionCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"sessions": func() (cli.Command, error) {
 			return &sessionscmd.Command{

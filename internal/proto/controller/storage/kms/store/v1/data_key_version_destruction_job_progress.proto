@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package controller.storage.kms.store.v1;
+
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
+
+message DataKeyVersionDestructionJobProgress {
+  // The id of the data key version that is being revoked
+  // @inject_tag: gorm:"not_null"
+  string key_id = 10;
+
+  // Scope id this data key version belongs to.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 20;
+
+  // create_time from the RDBMS
+  // @inject_tag: `gorm:"not_null"`
+  timestamp.v1.Timestamp create_time = 30;
+
+  // The status of this data key version destruction job
+  // One of "pending", "running" or "completed"
+  // @inject_tag: `gorm:"not_null"`
+  string status = 40;
+
+  // The number of rows that have been rewrapped
+  // @inject_tag: `gorm:"not_null"`
+  int64 completed_count = 50;
+
+  // The total number of rows that need rewrapping
+  // @inject_tag: `gorm:"not_null"`
+  int64 total_count = 60;
+}

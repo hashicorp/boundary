@@ -1,14 +1,17 @@
 package scopes_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -151,4 +154,103 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
+}
+
+func TestKeyDestruction(t *testing.T) {
+	ctx := context.Background()
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: time.Second})
+	t.Cleanup(tc.Shutdown)
+	c := tc.Client()
+	c.SetToken(tc.Token().Token)
+	sc := scopes.NewClient(c)
+
+	keys, err := sc.ListKeys(ctx, "global")
+	require.NoError(t, err)
+	assert.Len(t, keys.Items, 7)
+	for _, key := range keys.Items {
+		assert.Len(t, key.Versions, 1)
+	}
+
+	_, err = sc.RotateKeys(ctx, "global", false)
+	require.NoError(t, err)
+
+	keys, err = sc.ListKeys(ctx, "global")
+	require.NoError(t, err)
+	assert.Len(t, keys.Items, 7)
+	for _, key := range keys.Items {
+		assert.Len(t, key.Versions, 2)
+	}
+
+	// Root key is always last, by virtue of sorting by ID
+	rootKeyVersion := keys.Items[len(keys.Items)-1].Versions[1]
+	var destroyKeyVersion *scopes.KeyVersion
+	for _, key := range keys.Items {
+		if key.Purpose == kms.KeyPurposeDatabase.String() {
+			destroyKeyVersion = key.Versions[1]
+		}
+	}
+
+	jobs, err := sc.ListKeyVersionDestructionJobs(ctx, "global")
+	require.NoError(t, err)
+	assert.Len(t, jobs.Items, 0)
+
+	result, err := sc.DestroyKeyVersion(ctx, "global", rootKeyVersion.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "completed", result.State)
+
+	jobs, err = sc.ListKeyVersionDestructionJobs(ctx, "global")
+	require.NoError(t, err)
+	assert.Len(t, jobs.Items, 0)
+
+	keys, err = sc.ListKeys(ctx, "global")
+	require.NoError(t, err)
+	assert.Len(t, keys.Items, 7)
+	for _, key := range keys.Items {
+		switch key.Purpose {
+		case "rootKey":
+			assert.Len(t, key.Versions, 1)
+		default:
+			assert.Len(t, key.Versions, 2)
+		}
+	}
+
+	result, err = sc.DestroyKeyVersion(ctx, "global", destroyKeyVersion.Id)
+	require.NoError(t, err)
+	assert.Equal(t, "pending", result.State)
+
+	jobs, err = sc.ListKeyVersionDestructionJobs(ctx, "global")
+	require.NoError(t, err)
+	assert.Len(t, jobs.Items, 1)
+
+	// The configured scheduler monitoring interval is 1 second. The jobs become available 1
+	// second after the last successful run. We need to re-encrypt data in 4 different tables,
+	// and then we need to destroy the key. This job will take between 4 and 5 seconds to run,
+	// depending on the timing of the first started run.
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	t.Cleanup(cancel)
+	for {
+		jobs, err = sc.ListKeyVersionDestructionJobs(ctx, "global")
+		require.NoError(t, err)
+		if len(jobs.Items) == 0 {
+			break
+		}
+		select {
+		case <-time.After(time.Second):
+		case <-ctx.Done():
+			t.Log(jobs.GetItems()[0])
+			t.Fatal("Test timed out waiting for destruction to finish")
+		}
+	}
+
+	keys, err = sc.ListKeys(ctx, "global")
+	require.NoError(t, err)
+	assert.Len(t, keys.Items, 7)
+	for _, key := range keys.Items {
+		switch key.Purpose {
+		case "rootKey", "database":
+			assert.Len(t, key.Versions, 1)
+		default:
+			assert.Len(t, key.Versions, 2)
+		}
+	}
 }
