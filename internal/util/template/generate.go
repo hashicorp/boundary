@@ -60,5 +60,10 @@ func (p *Parsed) Generate(ctx context.Context, data interface{}) (string, error)
 		return "", errors.Wrap(ctx, err, op, errors.WithMsg("error executing template"))
 	}
 
-	return str.String(), nil
+	out := str.String()
+	if strings.Contains(out, "<nil>") {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "template execution resulted in nil value")
+	}
+
+	return out, nil
 }

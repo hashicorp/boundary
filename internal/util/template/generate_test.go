@@ -59,10 +59,14 @@ func TestErrors(t *testing.T) {
 	assert.Error(err)
 	assert.Empty(out)
 
-	// Good
-	out, err = parsed.Generate(ctx, Data{})
-	assert.NoError(err)
-	assert.Equal(out, "Foobar:")
+	// Nil internal data
+	_, err = parsed.Generate(ctx, Data{})
+	assert.Error(err)
+
+	// Good data
+	out, err = parsed.Generate(ctx, Data{User: User{Name: util.Pointer("name")}})
+	require.NoError(err)
+	assert.Equal("Foobar:name", out)
 }
 
 func TestGenerate(t *testing.T) {
