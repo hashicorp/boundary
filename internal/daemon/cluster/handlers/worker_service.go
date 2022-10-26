@@ -156,7 +156,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		AuthorizedWorkers:   &pbs.AuthorizedWorkerList{WorkerKeyIdentifiers: authorizedWorkers},
 	}
 
-	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))
+	stateReport := make([]*session.StateReport, 0, len(req.GetJobs()))
 
 	for _, jobStatus := range req.GetJobs() {
 		switch jobStatus.Job.GetType() {
@@ -173,15 +173,19 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 				continue
 			}
 
-			sr := session.StateReport{
-				SessionId:     si.GetSessionId(),
-				ConnectionIds: make([]string, 0, len(si.GetConnections())),
+			sr := &session.StateReport{
+				SessionId:   si.GetSessionId(),
+				Connections: make([]*session.Connection, 0, len(si.GetConnections())),
 			}
 			for _, conn := range si.GetConnections() {
 				switch conn.Status {
 				case pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
 					pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
-					sr.ConnectionIds = append(sr.ConnectionIds, conn.GetConnectionId())
+					sr.Connections = append(sr.Connections, &session.Connection{
+						PublicId:  conn.GetConnectionId(),
+						BytesUp:   conn.GetBytesUp(),
+						BytesDown: conn.GetBytesDown(),
+					})
 				}
 			}
 			stateReport = append(stateReport, sr)
@@ -207,9 +211,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 	for _, na := range notActive {
 		var connChanges []*pbs.Connection
-		for _, connId := range na.ConnectionIds {
+		for _, conn := range na.Connections {
 			connChanges = append(connChanges, &pbs.Connection{
-				ConnectionId: connId,
+				ConnectionId: conn.GetPublicId(),
 				Status:       session.StatusClosed.ProtoVal(),
 			})
 		}

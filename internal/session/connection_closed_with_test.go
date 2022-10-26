@@ -15,8 +15,8 @@ func TestClosedWith_validate(t *testing.T) {
 	sessionConnection := TestConnection(t, conn, session.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
 	type fields struct {
 		ConnectionId string
-		BytesUp      uint64
-		BytesDown    uint64
+		BytesUp      int64
+		BytesDown    int64
 		ClosedReason ClosedReason
 	}
 	tests := []struct {

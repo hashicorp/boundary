@@ -127,6 +127,8 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			connections = append(connections, &pbs.Connection{
 				ConnectionId: k,
 				Status:       v.Status,
+				BytesUp:      v.BytesUp(),
+				BytesDown:    v.BytesDown(),
 			})
 		}
 		jobInfo.SessionId = sessionId
@@ -337,7 +339,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 // connections, regardless of whether or not the session is still active.
 func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionState bool, sessionManager session.Manager) {
 	const op = "worker.(Worker).cleanupConnections"
-	closeInfo := make(map[string]string)
+	closeInfo := make(map[string]*session.ConnectionCloseData)
 	cleanSessionIds := make([]string, 0)
 	sessionManager.ForEachLocalSession(func(s session.Session) bool {
 		switch {
@@ -348,8 +350,19 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			// Cancel connections without regard to individual connection
 			// state.
 			closedIds := s.CancelAllLocalConnections()
+			localConns := s.GetLocalConnections()
 			for _, connId := range closedIds {
-				closeInfo[connId] = s.GetId()
+				var bytesUp, bytesDown int64
+				connInfo, ok := localConns[connId]
+				if ok {
+					bytesUp = connInfo.BytesUp()
+					bytesDown = connInfo.BytesDown()
+				}
+				closeInfo[connId] = &session.ConnectionCloseData{
+					SessionId: s.GetId(),
+					BytesUp:   bytesUp,
+					BytesDown: bytesDown,
+				}
 				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", s.GetId(), "connection_id", connId)
 			}
 
@@ -364,7 +377,7 @@ func (w *Worker) cleanupConnections(cancelCtx context.Context, ignoreSessionStat
 			// state (ie: only ones that the controller has requested be
 			// terminated).
 			for _, connId := range s.CancelOpenLocalConnections() {
-				closeInfo[connId] = s.GetId()
+				closeInfo[connId] = &session.ConnectionCloseData{SessionId: s.GetId()}
 				event.WriteSysEvent(cancelCtx, op, "terminated connection due to cancellation or expiration", "session_id", s.GetId(), "connection_id", connId)
 			}
 		}
