@@ -15,6 +15,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2544))
 * workers: Fixed a panic that can happen in certain situations
   ([PR](https://github.com/hashicorp/boundary/pull/2553))
+* workers: PKI Worker daemons now get disconnected from upstreams when their
+  corresponding resource is deleted ([PR](https://github.com/hashicorp/boundary/pull))
 
 ## 0.11.0 (2022/09/27)
 
