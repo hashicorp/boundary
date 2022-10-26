@@ -17,10 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSessionCancelUserCli uses the cli to create a new user and sets up the right permissions for
+// TestCliSessionCancelUser uses the cli to create a new user and sets up the right permissions for
 // the user to connect to the created target. The test also confirms that an admin can cancel the
 // user's session.
-func TestSessionCancelUserCli(t *testing.T) {
+func TestCliSessionCancelUser(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -195,8 +195,8 @@ func TestSessionCancelUserCli(t *testing.T) {
 	t.Log("Successfully cancelled session")
 }
 
-// TestCreateUserApi uses the Go api to create a new user and add some grants to the user
-func TestCreateUserApi(t *testing.T) {
+// TestApiCreateUser uses the Go api to create a new user and add some grants to the user
+func TestApiCreateUser(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)

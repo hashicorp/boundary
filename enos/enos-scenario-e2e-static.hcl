@@ -1,5 +1,4 @@
-# This scenario requires access to the boundary team's test AWS account
-scenario "e2e_host_aws" {
+scenario "e2e_static" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
@@ -80,50 +79,7 @@ scenario "e2e_host_aws" {
     }
   }
 
-  step "create_tag1" {
-    module = module.random_stringifier
-  }
-
-  step "create_tag1_inputs" {
-    module     = module.generate_aws_host_tag_vars
-    depends_on = [step.create_tag1]
-
-    variables {
-      tag_name  = step.create_tag1.string
-      tag_value = "true"
-    }
-  }
-
-  step "create_targets_with_tag1" {
-    module     = module.target
-    depends_on = [step.create_base_infra]
-
-    variables {
-      ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      aws_ssh_keypair_name = var.aws_ssh_keypair_name
-      enos_user            = var.enos_user
-      instance_type        = var.target_instance_type
-      vpc_id               = step.create_base_infra.vpc_id
-      target_count         = 2
-      additional_tags      = step.create_tag1_inputs.tag_map
-    }
-  }
-
-  step "create_tag2" {
-    module = module.random_stringifier
-  }
-
-  step "create_tag2_inputs" {
-    module     = module.generate_aws_host_tag_vars
-    depends_on = [step.create_tag2]
-
-    variables {
-      tag_name  = step.create_tag2.string
-      tag_value = "test"
-    }
-  }
-
-  step "create_targets_with_tag2" {
+  step "create_target" {
     module     = module.target
     depends_on = [step.create_base_infra]
 
@@ -134,27 +90,6 @@ scenario "e2e_host_aws" {
       instance_type        = var.target_instance_type
       vpc_id               = step.create_base_infra.vpc_id
       target_count         = 1
-      additional_tags      = step.create_tag2_inputs.tag_map
-    }
-  }
-
-  step "create_test_id" {
-    module = module.random_stringifier
-    variables {
-      length = 5
-    }
-  }
-
-  step "iam_setup" {
-    module = module.iam_setup
-    depends_on = [
-      step.create_base_infra,
-      step.create_test_id
-    ]
-
-    variables {
-      test_id    = step.create_test_id.string
-      test_email = var.test_email
     }
   }
 
@@ -162,26 +97,19 @@ scenario "e2e_host_aws" {
     module = module.test_e2e
     depends_on = [
       step.create_boundary_cluster,
-      step.create_targets_with_tag1,
-      step.create_targets_with_tag2,
-      step.iam_setup
+      step.create_target
     ]
 
     variables {
-      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/host/aws"
+      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/static"
       alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id           = step.create_boundary_cluster.auth_method_id
       auth_login_name          = step.create_boundary_cluster.auth_login_name
       auth_password            = step.create_boundary_cluster.auth_password
       local_boundary_dir       = local.local_boundary_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
+      target_ip                = step.create_target.target_ips[0]
       target_user              = "ubuntu"
-      aws_access_key_id        = step.iam_setup.access_key_id
-      aws_secret_access_key    = step.iam_setup.secret_access_key
-      aws_host_set_filter1     = step.create_tag1_inputs.tag_string
-      aws_host_set_ips1        = step.create_targets_with_tag1.target_ips
-      aws_host_set_filter2     = step.create_tag2_inputs.tag_string
-      aws_host_set_ips2        = step.create_targets_with_tag2.target_ips
     }
   }
 
