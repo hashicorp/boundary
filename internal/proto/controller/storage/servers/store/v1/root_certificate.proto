@@ -45,7 +45,7 @@ message RootCertificate {
   // The private key associated with this certificate
   // This is a ciphertext field
   // @inject_tag: `gorm:"column:private_key;not_null"` wrapping:"ct,private_key"`
-  bytes ct_private_key = 65;
+  bytes ct_private_key = 61;
 
   // The id of the kms database key used for encrypting this entry.
   // @inject_tag: `gorm:"not_null"`

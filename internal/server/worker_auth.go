@@ -60,6 +60,11 @@ type WorkerKeys struct {
 	workerEncryptionPubKey []byte
 }
 
+// newWorkerAuth initializes a new in-memory WorkerAuth struct.
+// supported options:
+// - withWorkerKeys
+// - withControllerEncryptionPrivateKey (assigns the value to the plain-text field)
+// - withNonce
 func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, opt ...Option) (*WorkerAuth, error) {
 	const op = "server.newWorkerAuth"
 	opts := GetOpts(opt...)
@@ -83,10 +88,7 @@ func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, op
 		l.WorkerEncryptionPubKey = opts.withWorkerKeys.workerEncryptionPubKey
 	}
 	if &opts.withControllerEncryptionPrivateKey != nil {
-		l.CtControllerEncryptionPrivKey = opts.withControllerEncryptionPrivateKey
-	}
-	if opts.withKeyId != "" {
-		l.KeyId = opts.withKeyId
+		l.ControllerEncryptionPrivKey = opts.withControllerEncryptionPrivateKey
 	}
 	if opts.withNonce != nil {
 		l.Nonce = opts.withNonce
@@ -123,7 +125,7 @@ func (w *WorkerAuth) ValidateNewWorkerAuth(ctx context.Context) error {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing WorkerEncryptionPubKey")
 	}
 	if w.CtControllerEncryptionPrivKey == nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing ControllerEncryptionPrivKey")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing encrypted ControllerEncryptionPrivKey")
 	}
 	if w.KeyId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing KeyId")

@@ -128,21 +128,15 @@ func StoreNodeInformationTx(ctx context.Context, writer db.Writer, databaseWrapp
 	nodeAuth.WorkerEncryptionPubKey = node.EncryptionPublicKeyBytes
 	nodeAuth.WorkerSigningPubKey = node.CertificatePublicKeyPkix
 	nodeAuth.Nonce = node.RegistrationNonce
+	nodeAuth.ControllerEncryptionPrivKey = node.ServerEncryptionPrivateKeyBytes
 
-	var err error
-	nodeAuth.KeyId, err = databaseWrapper.KeyId(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	nodeAuth.CtControllerEncryptionPrivKey, err = encrypt(ctx, node.ServerEncryptionPrivateKeyBytes, databaseWrapper)
-	if err != nil {
+	if err := nodeAuth.encrypt(ctx, databaseWrapper); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
 	// Get workerId from state passed in
 	var result workerAuthWorkerId
-	err = mapstructure.Decode(node.State.AsMap(), &result)
-	if err != nil {
+	if err := mapstructure.Decode(node.State.AsMap(), &result); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	nodeAuth.WorkerId = result.WorkerId
@@ -230,6 +224,7 @@ func (r *WorkerAuthRepositoryStorage) convertRootCertificate(ctx context.Context
 	rootCert.PublicKey = cert.PublicKeyPkix
 	rootCert.State = cert.Id
 	rootCert.IssuingCa = CaId
+	rootCert.PrivateKey = cert.PrivateKeyPkcs8
 
 	// Encrypt the private key
 	databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
@@ -237,13 +232,11 @@ func (r *WorkerAuthRepositoryStorage) convertRootCertificate(ctx context.Context
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	rootCert.PrivateKey = cert.PrivateKeyPkcs8
 	if err = rootCert.encrypt(ctx, databaseWrapper); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	err = rootCert.ValidateNewRootCertificate(ctx)
-	if err != nil {
+	if err = rootCert.ValidateNewRootCertificate(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
@@ -395,10 +388,10 @@ func (r *WorkerAuthRepositoryStorage) loadNodeInformation(ctx context.Context, n
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	node.ServerEncryptionPrivateKeyBytes, err = decrypt(ctx, authorizedWorker.CtControllerEncryptionPrivKey, databaseWrapper)
-	if err != nil {
+	if err = authorizedWorker.decrypt(ctx, databaseWrapper); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
+	node.ServerEncryptionPrivateKeyBytes = authorizedWorker.ControllerEncryptionPrivKey
 
 	workerIdInfo := workerAuthWorkerId{WorkerId: authorizedWorker.GetWorkerId()}
 	s := structs.New(workerIdInfo)
@@ -585,21 +578,21 @@ func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, 
 			return nodee.ErrNotFound
 		}
 
-		rootCert.CertificateDer = rootCertificate.Certificate
-		rootCert.NotAfter = rootCertificate.NotValidAfter.Timestamp
-		rootCert.NotBefore = rootCertificate.NotValidBefore.Timestamp
-		rootCert.PublicKeyPkix = rootCertificate.PublicKey
-		rootCert.PrivateKeyType = types.KEYTYPE_ED25519
-
 		// decrypt private key
 		databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase, kms.WithKeyId(rootCertificate.KeyId))
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		rootCert.PrivateKeyPkcs8, err = decrypt(ctx, rootCertificate.CtPrivateKey, databaseWrapper)
-		if err != nil {
+		if err = rootCertificate.decrypt(ctx, databaseWrapper); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+
+		rootCert.CertificateDer = rootCertificate.Certificate
+		rootCert.NotAfter = rootCertificate.NotValidAfter.Timestamp
+		rootCert.NotBefore = rootCertificate.NotValidBefore.Timestamp
+		rootCert.PublicKeyPkix = rootCertificate.PublicKey
+		rootCert.PrivateKeyType = types.KEYTYPE_ED25519
+		rootCert.PrivateKeyPkcs8 = rootCertificate.PrivateKey
 
 		if c == string(NextState) {
 			cert.Next = rootCert
