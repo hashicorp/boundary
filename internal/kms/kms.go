@@ -2,6 +2,7 @@ package kms
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"reflect"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"golang.org/x/exp/slices"
 )
 
 // Kms is a way to access wrappers for a given scope and purpose. Since keys can
@@ -22,6 +24,7 @@ import (
 type Kms struct {
 	underlying          *wrappingKms.Kms
 	reader              db.Reader
+	writer              db.Writer
 	derivedPurposeCache sync.Map
 }
 
@@ -44,6 +47,7 @@ func New(ctx context.Context, reader *db.Db, writer *db.Db, _ ...Option) (*Kms, 
 	return &Kms{
 		underlying: k,
 		reader:     reader,
+		writer:     writer,
 	}, nil
 }
 
@@ -305,6 +309,254 @@ func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) 
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return refs, nil
+}
+
+// ListDataKeyVersionDestructionJobs lists any in-progress data key destruction jobs in the scope.
+// Options are ignored.
+func (k *Kms) ListDataKeyVersionDestructionJobs(ctx context.Context, scopeId string, _ ...Option) ([]*DataKeyVersionDestructionJobProgress, error) {
+	var jobs []*DataKeyVersionDestructionJobProgress
+	if err := k.reader.SearchWhere(ctx, &jobs, "scope_id=?", []interface{}{scopeId}); err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
+// MonitorTableRewrappingRuns checks for pending rewrapping job runs for the
+// specified table name, and attempts to execute each job run and start rewrapping
+// data in the specified table. This may be a long running operation.
+// Options are ignored.
+func (k *Kms) MonitorTableRewrappingRuns(ctx context.Context, tableName string, _ ...Option) (retErr error) {
+	const op = "kms.(Kms).MonitorTableRewrappingRuns"
+
+	rewrapFn, ok := tableNameToRewrapFn[tableName]
+	if !ok {
+		return errors.E(ctx, errors.WithMsg("no rewrapper for table %q", tableName), errors.WithOp(op))
+	}
+
+	run := allocDataKeyVersionDestructionJobRun()
+	// Check if there is already another run running for another table name. If so,
+	// we exit early since we are limited to 1 run at a time. Note that we exclude
+	// our own table name from the search, since if there is a running run for our
+	// table name, thanks to the scheduler guaranteeing that only one instance of a job
+	// is running at a time, it means we were interrupted in our processing last time
+	// and should simply resume that running run.
+	err := k.reader.LookupWhere(ctx, &run, "is_running=true and table_name!=?", []any{tableName})
+	switch {
+	case err == nil:
+		// Another run was already running
+		return nil
+	case errors.Match(errors.T(errors.RecordNotFound), err):
+		// Great, no running run, lets continue
+	default:
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to find any running runs"))
+	}
+	// Find the oldest or currently running run for our tablename
+	run = allocDataKeyVersionDestructionJobRun()
+	rows, err := k.reader.Query(ctx, oldestPendingOrRunningRun, []any{tableName})
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query pending runs for %q", tableName))
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := k.reader.ScanRows(ctx, rows, &run); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan pending run for %q", tableName))
+		}
+	}
+	if run.KeyId == "" {
+		// No queued runs, lets try again later
+		return nil
+	}
+	if !run.IsRunning {
+		// No running job, lets try to become the running job
+		run.IsRunning = true
+		if _, err := k.writer.Update(ctx, &run, []string{"IsRunning"}, nil); err != nil {
+			// Unique error means some other run started running since we last checked.
+			if errors.Match(errors.T(errors.NotUnique), err) {
+				return nil
+			}
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to become running run for %q", tableName))
+		}
+	}
+
+	defer func() {
+		if retErr != nil {
+			// Create new context in case we failed because the context was canceled
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+		}
+		// Update the progress of this run
+		args := []any{
+			sql.Named("key_id", run.KeyId),
+			sql.Named("table_name", tableName),
+		}
+		if _, err := k.writer.Exec(ctx, fmt.Sprintf(updateCompletedCountQueryTemplate, tableName), args); err != nil {
+			if retErr != nil {
+				// Just emit an error, don't mutate the returned error
+				_ = errors.E(ctx, errors.WithWrap(err))
+			} else {
+				retErr = err
+			}
+		}
+	}()
+
+	rows, err = k.reader.Query(ctx, dataKeyVersionIdScopeIdQuery, []any{run.KeyId})
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get scope id for data key version"))
+	}
+	defer rows.Close()
+	var scopeId string
+	for rows.Next() {
+		if err := k.reader.ScanRows(ctx, rows, &scopeId); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan scope id for data key version"))
+		}
+	}
+
+	// Call the function to rewrap the data in the table. The progress will be automatically
+	// updated by the deferred function.
+	return rewrapFn(ctx, run.KeyId, scopeId, k.reader, k.writer, k)
+}
+
+// MonitorDataKeyVersionDestruction monitors any pending destruction jobs. If
+// a job has finished rewrapping all rows, it will destroy the key version
+// by calling RevokeKeyVersion on the underlying kms.
+func (k *Kms) MonitorDataKeyVersionDestruction(ctx context.Context) error {
+	const op = "kms.(Kms).MonitorDataKeyVersionDestruction"
+
+	rows, err := k.reader.Query(ctx, finishedDestructionJobsQuery, nil)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to find completed destruction jobs"))
+	}
+	defer rows.Close()
+	var completedDataKeyVersionIds []string
+	for rows.Next() {
+		if err := k.reader.ScanRows(ctx, rows, &completedDataKeyVersionIds); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
+	for _, dataKeyVersionId := range completedDataKeyVersionIds {
+		// Finally, revoke the key, deleting it from the database.
+		// This will error if anything still references it that isn't
+		// meant to be cascade deleted.
+		if err := k.underlying.RevokeKeyVersion(ctx, dataKeyVersionId); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
+	return nil
+}
+
+// DestroyKeyVersion starts the process of destroying a key version in the scope.
+// If the key version is a KEK, this simply rewraps any existing DEK version's encrypted with
+// the KEK and destroys the key version. If the key version is a DEK, this creates a
+// key version destruction job, which will rewrap existing data and destroy the key
+// asynchronously. As a special case, if the DEK currently encrypts no data, the DEK is
+// immediately destroyed. The boolean return value indicates whether the key was immediately
+// destroyed.
+// Options are ignored.
+func (k *Kms) DestroyKeyVersion(ctx context.Context, scopeId string, keyVersionId string, _ ...Option) (bool, error) {
+	const op = "kms.(Kms).DestroyKeyVersion"
+
+	scopeKeys, err := k.underlying.ListKeys(ctx, scopeId)
+	if err != nil {
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return false, errors.New(ctx, errors.RecordNotFound, op, "scope ID not found")
+		}
+		return false, errors.Wrap(ctx, err, op)
+	}
+	var foundKey *wrappingKms.Key
+keyLoop:
+	for _, key := range scopeKeys {
+		for _, version := range key.Versions {
+			if version.Id == keyVersionId {
+				foundKey = &key
+				break keyLoop
+			}
+		}
+	}
+	if foundKey == nil {
+		return false, errors.New(ctx, errors.KeyNotFound, op, "key version was not found in the scope")
+	}
+	// Sort versions just in case they aren't already sorted
+	slices.SortFunc(foundKey.Versions, func(i, j wrappingKms.KeyVersion) bool {
+		return i.Version < j.Version
+	})
+	if foundKey.Versions[len(foundKey.Versions)-1].Id == keyVersionId {
+		// Attempted to destroy currently active key
+		return false, errors.New(ctx, errors.InvalidParameter, op, "cannot destroy a currently active key version")
+	}
+	switch foundKey.Purpose {
+	case wrappingKms.KeyPurpose(KeyPurposeOplog.String()):
+		return false, errors.New(ctx, errors.InvalidParameter, op, "oplog key versions cannot be destroyed")
+	case wrappingKms.KeyPurposeRootKey:
+		// Simple case, just rewrap and destroy synchronously
+		if err := k.underlying.RewrapKeys(ctx, scopeId); err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		if err := k.underlying.RevokeKeyVersion(ctx, keyVersionId); err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		return true, nil
+	}
+
+	tablesNeedingRewrapping := 0
+	if _, err := k.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		var tables []*DataKeyVersionDestructionJobRunAllowedTableName
+		if err := r.SearchWhere(ctx, &tables, "1=1", nil, db.WithLimit(-1)); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to look up allowed table names"))
+		}
+		// Start by adding any job runs necessary by looking up the number of
+		// rows encrypted with the key that's being destroyed.
+		for _, table := range tables {
+			rows, err := r.Query(ctx, fmt.Sprintf(findAffectedRowsForKeyQueryTemplate, table.GetTableName()), []interface{}{keyVersionId})
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get affected rows for %q", table.GetTableName()))
+			}
+			defer rows.Close()
+			var numRows uint
+			for rows.Next() {
+				if err := r.ScanRows(ctx, rows, &numRows); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan number of rows for %q", table.GetTableName()))
+				}
+			}
+			if numRows == 0 {
+				// No rows to rewrap 🎉
+				continue
+			}
+			run := allocDataKeyVersionDestructionJobRun()
+			run.KeyId = keyVersionId
+			run.DataKeyVersionDestructionJobRun.TableName = table.GetTableName()
+			run.TotalCount = int64(numRows)
+			if err := w.Create(ctx, &run); err != nil {
+				// Unique error means the key version ID already existed
+				if errors.Match(errors.T(errors.NotUnique), err) {
+					return errors.New(ctx, errors.InvalidParameter, op, "key version is already destroying", errors.WithWrap(err))
+				}
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to insert new key version destruction job run"))
+			}
+			tablesNeedingRewrapping++
+		}
+		if tablesNeedingRewrapping == 0 {
+			// Data key encrypted no data, just return
+			return nil
+		}
+		job := allocDataKeyVersionDestructionJob()
+		job.KeyId = keyVersionId
+		// Create the destruction job since we know we have at least one job run.
+		if err := w.Create(ctx, &job); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to insert new key version destruction job"))
+		}
+		return nil
+	}); err != nil {
+		return false, err
+	}
+	if tablesNeedingRewrapping == 0 {
+		// DEK encrypted no data, just destroy synchronously
+		if err := k.underlying.RevokeKeyVersion(ctx, keyVersionId); err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		return true, nil
+	}
+	return false, err
 }
 
 // VerifyGlobalRoot will verify that the global root wrapper is reasonable.

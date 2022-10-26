@@ -419,6 +419,101 @@ func (x *Key) GetVersions() []*KeyVersion {
 	return nil
 }
 
+// KeyVersionDestructionJob holds information about a pending key version destruction job.
+type KeyVersionDestructionJob struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The ID of the Key version this job relates to.
+	KeyVersionId string `protobuf:"bytes,10,opt,name=key_version_id,json=keyVersionId,proto3" json:"key_version_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	// Scope information for this resource.
+	Scope *ScopeInfo `protobuf:"bytes,20,opt,name=scope,proto3" json:"scope,omitempty"`
+	// The current status of the key version destruction job. One of "pending", "running" or "completed".
+	Status string `protobuf:"bytes,30,opt,name=status,proto3" json:"status,omitempty" class:"public"` // @gotags: `class:"public"`
+	// The time this key version destruction job was created.
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	// The number of rows that have been successfully re-encrypted with a new key version.
+	// All rows must be re-encrypted before the key version can be destroyed.
+	CompletedCount int64 `protobuf:"varint,50,opt,name=completed_count,json=completedCount,proto3" json:"completed_count,omitempty" class:"public"` // @gotags: `class:"public"`
+	// The total number of rows that need re-encrypting.
+	TotalCount int64 `protobuf:"varint,60,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty" class:"public"` // @gotags: `class:"public"`
+}
+
+func (x *KeyVersionDestructionJob) Reset() {
+	*x = KeyVersionDestructionJob{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_resources_scopes_v1_scope_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *KeyVersionDestructionJob) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyVersionDestructionJob) ProtoMessage() {}
+
+func (x *KeyVersionDestructionJob) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_scopes_v1_scope_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyVersionDestructionJob.ProtoReflect.Descriptor instead.
+func (*KeyVersionDestructionJob) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_scopes_v1_scope_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KeyVersionDestructionJob) GetKeyVersionId() string {
+	if x != nil {
+		return x.KeyVersionId
+	}
+	return ""
+}
+
+func (x *KeyVersionDestructionJob) GetScope() *ScopeInfo {
+	if x != nil {
+		return x.Scope
+	}
+	return nil
+}
+
+func (x *KeyVersionDestructionJob) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *KeyVersionDestructionJob) GetCreatedTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedTime
+	}
+	return nil
+}
+
+func (x *KeyVersionDestructionJob) GetCompletedCount() int64 {
+	if x != nil {
+		return x.CompletedCount
+	}
+	return 0
+}
+
+func (x *KeyVersionDestructionJob) GetTotalCount() int64 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
+}
+
 var File_controller_api_resources_scopes_v1_scope_proto protoreflect.FileDescriptor
 
 var file_controller_api_resources_scopes_v1_scope_proto_rawDesc = []byte{
@@ -527,12 +622,31 @@ var file_controller_api_resources_scopes_v1_scope_proto_rawDesc = []byte{
 	0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f,
 	0x75, 0x72, 0x63, 0x65, 0x73, 0x2e, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e,
 	0x4b, 0x65, 0x79, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x08, 0x76, 0x65, 0x72, 0x73,
-	0x69, 0x6f, 0x6e, 0x73, 0x42, 0x4e, 0x5a, 0x4c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
-	0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75,
-	0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x73, 0x64, 0x6b, 0x2f, 0x70, 0x62, 0x73, 0x2f, 0x63, 0x6f,
-	0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73,
-	0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x3b, 0x73, 0x63,
-	0x6f, 0x70, 0x65, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x69, 0x6f, 0x6e, 0x73, 0x22, 0xa7, 0x02, 0x0a, 0x18, 0x4b, 0x65, 0x79, 0x56, 0x65, 0x72, 0x73,
+	0x69, 0x6f, 0x6e, 0x44, 0x65, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x4a, 0x6f,
+	0x62, 0x12, 0x24, 0x0a, 0x0e, 0x6b, 0x65, 0x79, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
+	0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x6b, 0x65, 0x79, 0x56, 0x65,
+	0x72, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x43, 0x0a, 0x05, 0x73, 0x63, 0x6f, 0x70, 0x65,
+	0x18, 0x14, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2d, 0x2e, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c,
+	0x6c, 0x65, 0x72, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65,
+	0x73, 0x2e, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x63, 0x6f, 0x70,
+	0x65, 0x49, 0x6e, 0x66, 0x6f, 0x52, 0x05, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x12, 0x16, 0x0a, 0x06,
+	0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x73, 0x74,
+	0x61, 0x74, 0x75, 0x73, 0x12, 0x3e, 0x0a, 0x0c, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f,
+	0x74, 0x69, 0x6d, 0x65, 0x18, 0x28, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f,
+	0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d,
+	0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x0c, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f,
+	0x74, 0x69, 0x6d, 0x65, 0x12, 0x27, 0x0a, 0x0f, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65,
+	0x64, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x32, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0e, 0x63,
+	0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x1f, 0x0a,
+	0x0b, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x3c, 0x20, 0x01,
+	0x28, 0x03, 0x52, 0x0a, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x42, 0x4e,
+	0x5a, 0x4c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73,
+	0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f,
+	0x73, 0x64, 0x6b, 0x2f, 0x70, 0x62, 0x73, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c,
+	0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73,
+	0x2f, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x3b, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -547,35 +661,38 @@ func file_controller_api_resources_scopes_v1_scope_proto_rawDescGZIP() []byte {
 	return file_controller_api_resources_scopes_v1_scope_proto_rawDescData
 }
 
-var file_controller_api_resources_scopes_v1_scope_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_controller_api_resources_scopes_v1_scope_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_controller_api_resources_scopes_v1_scope_proto_goTypes = []interface{}{
-	(*ScopeInfo)(nil),              // 0: controller.api.resources.scopes.v1.ScopeInfo
-	(*Scope)(nil),                  // 1: controller.api.resources.scopes.v1.Scope
-	(*KeyVersion)(nil),             // 2: controller.api.resources.scopes.v1.KeyVersion
-	(*Key)(nil),                    // 3: controller.api.resources.scopes.v1.Key
-	nil,                            // 4: controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry
-	(*wrapperspb.StringValue)(nil), // 5: google.protobuf.StringValue
-	(*timestamppb.Timestamp)(nil),  // 6: google.protobuf.Timestamp
-	(*structpb.ListValue)(nil),     // 7: google.protobuf.ListValue
+	(*ScopeInfo)(nil),                // 0: controller.api.resources.scopes.v1.ScopeInfo
+	(*Scope)(nil),                    // 1: controller.api.resources.scopes.v1.Scope
+	(*KeyVersion)(nil),               // 2: controller.api.resources.scopes.v1.KeyVersion
+	(*Key)(nil),                      // 3: controller.api.resources.scopes.v1.Key
+	(*KeyVersionDestructionJob)(nil), // 4: controller.api.resources.scopes.v1.KeyVersionDestructionJob
+	nil,                              // 5: controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry
+	(*wrapperspb.StringValue)(nil),   // 6: google.protobuf.StringValue
+	(*timestamppb.Timestamp)(nil),    // 7: google.protobuf.Timestamp
+	(*structpb.ListValue)(nil),       // 8: google.protobuf.ListValue
 }
 var file_controller_api_resources_scopes_v1_scope_proto_depIdxs = []int32{
 	0,  // 0: controller.api.resources.scopes.v1.Scope.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	5,  // 1: controller.api.resources.scopes.v1.Scope.name:type_name -> google.protobuf.StringValue
-	5,  // 2: controller.api.resources.scopes.v1.Scope.description:type_name -> google.protobuf.StringValue
-	6,  // 3: controller.api.resources.scopes.v1.Scope.created_time:type_name -> google.protobuf.Timestamp
-	6,  // 4: controller.api.resources.scopes.v1.Scope.updated_time:type_name -> google.protobuf.Timestamp
-	5,  // 5: controller.api.resources.scopes.v1.Scope.primary_auth_method_id:type_name -> google.protobuf.StringValue
-	4,  // 6: controller.api.resources.scopes.v1.Scope.authorized_collection_actions:type_name -> controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry
-	6,  // 7: controller.api.resources.scopes.v1.KeyVersion.created_time:type_name -> google.protobuf.Timestamp
+	6,  // 1: controller.api.resources.scopes.v1.Scope.name:type_name -> google.protobuf.StringValue
+	6,  // 2: controller.api.resources.scopes.v1.Scope.description:type_name -> google.protobuf.StringValue
+	7,  // 3: controller.api.resources.scopes.v1.Scope.created_time:type_name -> google.protobuf.Timestamp
+	7,  // 4: controller.api.resources.scopes.v1.Scope.updated_time:type_name -> google.protobuf.Timestamp
+	6,  // 5: controller.api.resources.scopes.v1.Scope.primary_auth_method_id:type_name -> google.protobuf.StringValue
+	5,  // 6: controller.api.resources.scopes.v1.Scope.authorized_collection_actions:type_name -> controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry
+	7,  // 7: controller.api.resources.scopes.v1.KeyVersion.created_time:type_name -> google.protobuf.Timestamp
 	0,  // 8: controller.api.resources.scopes.v1.Key.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	6,  // 9: controller.api.resources.scopes.v1.Key.created_time:type_name -> google.protobuf.Timestamp
+	7,  // 9: controller.api.resources.scopes.v1.Key.created_time:type_name -> google.protobuf.Timestamp
 	2,  // 10: controller.api.resources.scopes.v1.Key.versions:type_name -> controller.api.resources.scopes.v1.KeyVersion
-	7,  // 11: controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	0,  // 11: controller.api.resources.scopes.v1.KeyVersionDestructionJob.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	7,  // 12: controller.api.resources.scopes.v1.KeyVersionDestructionJob.created_time:type_name -> google.protobuf.Timestamp
+	8,  // 13: controller.api.resources.scopes.v1.Scope.AuthorizedCollectionActionsEntry.value:type_name -> google.protobuf.ListValue
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_scopes_v1_scope_proto_init() }
@@ -632,6 +749,18 @@ func file_controller_api_resources_scopes_v1_scope_proto_init() {
 				return nil
 			}
 		}
+		file_controller_api_resources_scopes_v1_scope_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*KeyVersionDestructionJob); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -639,7 +768,7 @@ func file_controller_api_resources_scopes_v1_scope_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_api_resources_scopes_v1_scope_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

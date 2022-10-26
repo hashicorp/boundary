@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package controller.storage.kms.store.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
+
+// DataKeyVersionDestructionJobRun is used to read and write
+// data from the kms_data_key_version_destruction_job_run table.
+message DataKeyVersionDestructionJobRun {
+  // key_id is the private id of the data key version being destroyed.
+  // @inject_tag: gorm:"primary_key"
+  string key_id = 10;
+
+  // table_name is the table name that is being rewrapped by this run.
+  // @inject_tag: gorm:"primary_key"
+  string table_name = 20;
+
+  // total_count is the total number of rows that need to be rewrapped
+  // in this table.
+  // @inject_tag: `gorm:"not_null"`
+  int64 total_count = 30;
+
+  // completed_count is the number of rows that have completed rewrapping.
+  // @inject_tag: `gorm:"not_null"`
+  int64 completed_count = 40;
+
+  // is_running defines whether this run is currently running. Only
+  // one run is allowed to be running at a time.
+  // @inject_tag: `gorm:"not_null"`
+  bool is_running = 50;
+}

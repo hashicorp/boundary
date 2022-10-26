@@ -18,7 +18,8 @@ begin;
     key_id kms_private_id not null
       references kms_data_key_version_destruction_job (key_id)
         on delete cascade
-        on update cascade,
+        on update cascade
+        deferrable initially deferred,
     table_name text not null,
     total_count bigint not null
       constraint total_count_cannot_be_negative

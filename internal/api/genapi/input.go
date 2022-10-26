@@ -168,6 +168,18 @@ var inputStructs = []*structInfo{
 		skipOptions: true,
 	},
 	{
+		inProto:     &scopes.KeyVersionDestructionJob{},
+		outFile:     "scopes/key_version_destruction_job.gen.go",
+		skipOptions: true,
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "CompletedCount", JsonTags: []string{"string"}},
+			{Name: "TotalCount", JsonTags: []string{"string"}},
+		},
+	},
+	{
 		inProto: &scopes.Scope{},
 		outFile: "scopes/scope.gen.go",
 		templates: []*template.Template{

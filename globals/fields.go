@@ -89,4 +89,6 @@ const (
 	KeyPurposeField                             = "purpose"
 	KeyVersionsField                            = "key_versions"
 	KeyVersionIdField                           = "key_version_id"
+	CompletedCountField                         = "completed_count"
+	TotalCountField                             = "total_count"
 )
