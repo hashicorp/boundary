@@ -834,9 +834,9 @@ var inputStructs = []*structInfo{
 		inProto: &sessions.Connection{},
 		outFile: "sessions/connection.gen.go",
 		fieldOverrides: []fieldInfo{
-			// uint64 fields get marshalled by protobuf as strings, so we have
+			// int64 fields get marshalled by protobuf as strings, so we have
 			// to tell the json parser that their json representation is a
-			// string but they go into Go uint64 types.
+			// string but they go into Go int64 types.
 			{Name: "BytesUp", JsonTags: []string{"string"}},
 			{Name: "BytesDown", JsonTags: []string{"string"}},
 		},
