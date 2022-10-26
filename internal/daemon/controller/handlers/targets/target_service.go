@@ -213,7 +213,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	finalItems := make([]*pb.Target, 0, len(tl))
 	for _, item := range tl {
 		pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target}
-		outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserData.User.Id)
+		outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
 
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
@@ -819,7 +819,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	expTime := timestamppb.Now()
 	expTime.Seconds += int64(t.GetSessionMaxSeconds())
 	sessionComposition := session.ComposedOf{
-		UserId:             authResults.UserData.User.Id,
+		UserId:             authResults.UserId,
 		HostId:             chosenEndpoint.HostId,
 		TargetId:           t.GetPublicId(),
 		HostSetId:          chosenEndpoint.SetId,
@@ -956,7 +956,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		CreatedTime:        sess.CreateTime.GetTimestamp(),
 		Type:               t.GetType().String(),
 		AuthorizationToken: encodedMarshaledSad,
-		UserId:             authResults.UserData.User.Id,
+		UserId:             authResults.UserId,
 		HostId:             chosenEndpoint.HostId,
 		HostSetId:          chosenEndpoint.SetId,
 		Endpoint:           endpointUrl.String(),

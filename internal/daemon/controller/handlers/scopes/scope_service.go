@@ -169,7 +169,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 			continue
 		}
 
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserData.User.Id)
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
@@ -399,7 +399,7 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	if err != nil {
 		return nil, err
 	}
-	out, err := repo.CreateScope(ctx, iamScope, authResults.UserData.User.Id, opts...)
+	out, err := repo.CreateScope(ctx, iamScope, authResults.UserId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create scope"))
 	}

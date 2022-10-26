@@ -281,7 +281,7 @@ func filterAuthorizedResourceIds(
 			}
 
 			if resourceInfo.GetUserId() != "" {
-				if authorizedActions.OnlySelf() && resourceInfo.GetUserId() != input.AuthResults.UserData.User.Id {
+				if authorizedActions.OnlySelf() && resourceInfo.GetUserId() != input.AuthResults.UserId {
 					continue
 				}
 			}

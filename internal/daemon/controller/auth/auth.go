@@ -60,7 +60,10 @@ type key int
 var verifierKey key
 
 type VerifyResults struct {
-	UserData    template.Data
+	UserData template.Data
+	// This is copied out from UserData above but used to avoid nil checks in
+	// lots of places that embed this value
+	UserId      string
 	AuthTokenId string
 	Error       error
 	Scope       *scopes.ScopeInfo
@@ -238,11 +241,12 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 				ParentScopeId: scp.GetParentId(),
 			}
 		}
-		ret.UserData.User.Id = v.requestInfo.UserIdOverride
+		ret.UserId = v.requestInfo.UserIdOverride
+		ret.UserData.User.Id = template.StringPointer(ret.UserId)
 		if reqInfo != nil {
-			reqInfo.UserId = ret.UserData.User.Id
+			reqInfo.UserId = ret.UserId
 		}
-		ea.UserInfo = &event.UserInfo{UserId: ret.UserData.User.Id}
+		ea.UserInfo = &event.UserInfo{UserId: ret.UserId}
 		ret.Error = nil
 		return
 	}
@@ -273,6 +277,9 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		return
 	}
 
+	if ret.UserData.User.Id != nil {
+		ret.UserId = *ret.UserData.User.Id
+	}
 	ret.AuthTokenId = v.requestInfo.PublicId
 	ret.AuthenticationFinished = authResults.AuthenticationFinished
 	if !authResults.Authorized {
@@ -289,7 +296,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 					}{
 						Msg:      "failed authz info for request",
 						Resource: v.res,
-						UserId:   ret.UserData.User.Id,
+						UserId:   ret.UserId,
 						Action:   v.act.String(),
 					}))
 			if err != nil {
@@ -299,11 +306,11 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			// If the anon user was used (either no token, or invalid (perhaps
 			// expired) token), return a 401. That way if it's an authn'd user
 			// that is not authz'd we'll return 403 to be explicit.
-			if ret.UserData.User.Id == AnonymousUserId {
+			if ret.UserId == AnonymousUserId {
 				ret.Error = handlers.UnauthenticatedError()
 			}
 			ea.UserInfo = &event.UserInfo{
-				UserId: ret.UserData.User.Id,
+				UserId: ret.UserId,
 			}
 			return
 		}
@@ -318,17 +325,23 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		})
 	}
 	ea.UserInfo = &event.UserInfo{
-		UserId:        ret.UserData.User.Id,
-		AuthAccountId: userData.Account.Id,
+		UserId: ret.UserId,
+	}
+	if userData.Account.Id != nil {
+		ea.UserInfo.AuthAccountId = *userData.Account.Id
 	}
 	ea.GrantsInfo = &event.GrantsInfo{
 		Grants: grants,
 	}
-	ea.UserName = userData.User.FullName
-	ea.UserEmail = userData.User.Email
+	if userData.User.FullName != nil {
+		ea.UserName = *userData.User.FullName
+	}
+	if userData.User.Email != nil {
+		ea.UserEmail = *userData.User.Email
+	}
 
 	if reqInfo != nil {
-		reqInfo.UserId = ret.UserData.User.Id
+		reqInfo.UserId = ret.UserId
 		reqInfo.OutputFields = authResults.OutputFields
 	}
 
@@ -476,7 +489,10 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	// Make the linter happy
 	_ = retErr
 	scopeInfo = new(scopes.ScopeInfo)
-	userData.User.Id = AnonymousUserId
+
+	// This will always be set, so further down below we can switch on whether
+	// it's empty
+	userData.User.Id = template.StringPointer(AnonymousUserId)
 
 	// Validate the token and fetch the corresponding user ID
 	switch v.requestInfo.TokenFormat {
@@ -486,7 +502,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	case uint32(AuthTokenTypeRecoveryKms):
 		// We validated the encrypted token in decryptToken and handled the
 		// nonces there, so just set the user
-		userData.User.Id = "u_recovery"
+		userData.User.Id = template.StringPointer("u_recovery")
 
 	case uint32(AuthTokenTypeBearer), uint32(AuthTokenTypeSplitCookie):
 		if v.requestInfo.Token == "" {
@@ -506,12 +522,12 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			break
 		}
 		if at != nil {
-			userData.Account.Id = at.GetAuthAccountId()
-			userData.User.Id = at.GetIamUserId()
-			if userData.User.Id == "" {
+			userData.Account.Id = template.StringPointer(at.GetAuthAccountId())
+			userData.User.Id = template.StringPointer(at.GetIamUserId())
+			if *userData.User.Id == "" {
 				event.WriteError(ctx, op, stderrors.New("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon"), event.WithInfo("token_id", at.GetPublicId()))
-				userData.User.Id = AnonymousUserId
-				userData.Account.Id = ""
+				userData.User.Id = template.StringPointer(AnonymousUserId)
+				userData.Account.Id = nil
 			}
 		}
 	}
@@ -522,34 +538,34 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		return
 	}
 
-	u, _, err := iamRepo.LookupUser(ctx, userData.User.Id)
+	u, _, err := iamRepo.LookupUser(ctx, *userData.User.Id)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup user"))
 		return
 	}
-	userData.User.Name = u.Name
-	userData.User.Email = u.Email
-	userData.User.FullName = u.FullName
+	userData.User.Name = template.StringPointer(u.Name)
+	userData.User.Email = template.StringPointer(u.Email)
+	userData.User.FullName = template.StringPointer(u.FullName)
 
-	if userData.Account.Id != "" && v.passwordAuthRepoFn != nil && v.oidcAuthRepoFn != nil {
+	if userData.Account.Id != nil && *userData.Account.Id != "" && v.passwordAuthRepoFn != nil && v.oidcAuthRepoFn != nil {
 		const domain = "auth"
 		var acct auth.Account
 		var err error
-		switch subtypes.SubtypeFromId(domain, userData.Account.Id) {
+		switch subtypes.SubtypeFromId(domain, *userData.Account.Id) {
 		case password.Subtype:
 			repo, repoErr := v.passwordAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get password auth repo"))
 				return
 			}
-			acct, err = repo.LookupAccount(ctx, userData.Account.Id)
+			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
 		case oidc.Subtype:
 			repo, repoErr := v.oidcAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get oidc auth repo"))
 				return
 			}
-			acct, err = repo.LookupAccount(ctx, userData.Account.Id)
+			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
 		default:
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg("unrecognized account id type"))
 			return
@@ -562,10 +578,10 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg("error looking up account"))
 			return
 		}
-		userData.Account.Name = acct.GetName()
-		userData.Account.Email = acct.GetEmail()
-		userData.Account.LoginName = acct.GetLoginName()
-		userData.Account.Subject = acct.GetSubject()
+		userData.Account.Name = template.StringPointer(acct.GetName())
+		userData.Account.Email = template.StringPointer(acct.GetEmail())
+		userData.Account.LoginName = template.StringPointer(acct.GetLoginName())
+		userData.Account.Subject = template.StringPointer(acct.GetSubject())
 	}
 
 	// Look up scope details to return. We can skip a lookup when using the
@@ -611,7 +627,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
-	grantTuples, err = iamRepo.GrantsForUser(v.ctx, userData.User.Id)
+	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op)
 		return
@@ -621,12 +637,17 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	// that we've since restricted, e.g. "id=foo;actions=create,read". These
 	// will simply not have an effect.
 	for _, pair := range grantTuples {
+		permsOpts := []perms.Option{
+			perms.WithUserId(*userData.User.Id),
+			perms.WithSkipFinalValidation(true),
+		}
+		if userData.Account.Id != nil {
+			permsOpts = append(permsOpts, perms.WithAccountId(*userData.Account.Id))
+		}
 		parsed, err := perms.Parse(
 			pair.ScopeId,
 			pair.Grant,
-			perms.WithUserId(userData.User.Id),
-			perms.WithAccountId(userData.Account.Id),
-			perms.WithSkipFinalValidation(true))
+			permsOpts...)
 		if err != nil {
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
 			return
@@ -635,7 +656,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	}
 
 	retAcl = perms.NewACL(parsedGrants...)
-	aclResults = retAcl.Allowed(*v.res, v.act, userData.User.Id)
+	aclResults = retAcl.Allowed(*v.res, v.act, *userData.User.Id)
 	// We don't set authenticated above because setting this but not authorized
 	// is used for further permissions checks, such as during recursive listing.
 	// So we want to make sure any code relying on that has the full set of
@@ -666,6 +687,13 @@ func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActi
 		return availableActions
 	}
 
+	// If there is no user ID set by definition there are no actions to fetch.
+	// This shouldn't happen because we should always fall back to at least the
+	// anonymous user so it's defense in depth.
+	if r.UserData.User.Id == nil {
+		return nil
+	}
+
 	opts := getOpts(opt...)
 	res := opts.withResource
 	// If not passed in, use what's already been populated through verification
@@ -685,7 +713,7 @@ func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActi
 
 	ret := make(action.ActionSet, 0, len(availableActions))
 	for _, act := range availableActions {
-		if r.v.acl.Allowed(*res, act, r.UserData.User.Id).Authorized {
+		if r.v.acl.Allowed(*res, act, *r.UserData.User.Id).Authorized {
 			ret = append(ret, act)
 		}
 	}
@@ -701,9 +729,14 @@ func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) p
 		return perms.OutputFieldsMap{"*": true}
 	case r.v.requestInfo.DisableAuthEntirely:
 		return nil
+	case r.UserData.User.Id == nil:
+		// If there is no user ID set by definition there are no actions to fetch.
+		// This shouldn't happen because we should always fall back to at least the
+		// anonymous user so it's defense in depth.
+		return nil
 	}
 
-	return r.v.acl.Allowed(res, act, r.UserData.User.Id).OutputFields
+	return r.v.acl.Allowed(res, act, *r.UserData.User.Id).OutputFields
 }
 
 // ACL returns the perms.ACL of the verifier.

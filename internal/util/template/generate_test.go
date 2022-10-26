@@ -69,17 +69,17 @@ func TestGenerate(t *testing.T) {
 	ctx := context.Background()
 	data := Data{
 		User: User{
-			Id:       "userId",
-			Name:     "userName",
-			FullName: "userFullName",
-			Email:    "user@email.com",
+			Id:       StringPointer("userId"),
+			Name:     StringPointer("userName"),
+			FullName: StringPointer("userFullName"),
+			Email:    StringPointer("user@email.com"),
 		},
 		Account: Account{
-			Id:        "accountId",
-			Name:      "accountName",
-			LoginName: "accountLoginName",
-			Subject:   "accountSubject",
-			Email:     "account@email.com",
+			Id:        StringPointer("accountId"),
+			Name:      StringPointer("accountName"),
+			LoginName: StringPointer("accountLoginName"),
+			Subject:   StringPointer("accountSubject"),
+			Email:     StringPointer("account@email.com"),
 		},
 	}
 	raw := strings.TrimSpace(`
@@ -100,13 +100,12 @@ func TestGenerate(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(parsed)
 
-	// Empty should result in empty result
-	out, err := parsed.Generate(ctx, Data{})
-	require.NoError(err)
-	assert.Empty(strings.TrimSpace(out))
+	// Ensure we error with required data
+	_, err = parsed.Generate(ctx, Data{})
+	require.Error(err)
 
 	// Do again with non-empty data
-	out, err = parsed.Generate(ctx, data)
+	out, err := parsed.Generate(ctx, data)
 	require.NoError(err)
 
 	exp := strings.TrimSpace(`
