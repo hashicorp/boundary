@@ -39,7 +39,7 @@ type registryEntry struct {
 }
 
 type registry struct {
-	sync.Map
+	*sync.Map
 }
 
 func (r registry) get(s subtypes.Subtype) (*registryEntry, error) {
@@ -91,7 +91,9 @@ func (r registry) setAttributes(s subtypes.Subtype, in target.Target, out *pb.Ta
 	return re.setAttrFunc(in, out)
 }
 
-var subtypeRegistry = registry{}
+var subtypeRegistry = registry{
+	Map: new(sync.Map),
+}
 
 // Register registers a subtype for used by the service handler.
 func Register(s subtypes.Subtype, maskManager handlers.MaskManager, af attributeFunc, sf setAttributeFunc) {

@@ -3,7 +3,9 @@ package authtoken
 import (
 	"time"
 
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 )
 
 var (
@@ -31,6 +33,8 @@ type options struct {
 	withLimit                    int
 	withStatus                   Status
 	withPublicId                 string
+	withPasswordOptions          []password.Option
+	withIamOptions               []iam.Option
 }
 
 func getDefaultOptions() options {
@@ -89,5 +93,23 @@ func WithStatus(status Status) Option {
 func WithPublicId(id string) Option {
 	return func(o *options) {
 		o.withPublicId = id
+	}
+}
+
+// WithPasswordOptions allows passing through options for the password package.
+// This is useful for things like tests where you may use testing helper
+// functions in this package but they also create password resources.
+func WithPasswordOptions(with ...password.Option) Option {
+	return func(o *options) {
+		o.withPasswordOptions = with
+	}
+}
+
+// WithIamOptions allows passing through options for the IAM package. This is
+// useful for things like tests where you may use testing helper functions in
+// this package but they also create IAM resources.
+func WithIamOptions(with ...iam.Option) Option {
+	return func(o *options) {
+		o.withIamOptions = with
 	}
 }

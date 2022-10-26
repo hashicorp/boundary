@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,5 +51,21 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withPublicId = "test-id"
 		assert.Equal(opts, testOpts)
+	})
+
+	t.Run("WithPasswordOptions", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getDefaultOptions()
+		assert.Empty(opts.withPasswordOptions)
+		opts = getOpts(WithPasswordOptions(password.WithName("foobar")))
+		assert.NotEmpty(opts.withPasswordOptions)
+	})
+
+	t.Run("WithIamOptions", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getDefaultOptions()
+		assert.Empty(opts.withIamOptions)
+		opts = getOpts(WithIamOptions(iam.WithName("foobar")))
+		assert.NotEmpty(opts.withIamOptions)
 	})
 }

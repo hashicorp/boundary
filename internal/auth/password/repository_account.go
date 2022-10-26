@@ -57,7 +57,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		return nil, errors.New(ctx, errors.TooShort, op, fmt.Sprintf("username: %s, must be longer than %d", a.LoginName, cc.MinLoginNameLength))
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	a = a.clone()
 	if opts.withPublicId != "" {
@@ -148,7 +148,7 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 	if withAuthMethodId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.

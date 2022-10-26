@@ -11,6 +11,9 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
+// IamRepoFactory is a factory function that returns a repository and any error
+type IamRepoFactory func() (*Repository, error)
+
 // Resource declares the shared behavior of IAM Resources
 type Resource interface {
 	// GetPublicId is the resource ID used to access the resource via an API

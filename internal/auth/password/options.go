@@ -1,7 +1,7 @@
 package password
 
-// getOpts - iterate the inbound Options and return a struct.
-func getOpts(opt ...Option) options {
+// GetOpts - iterate the inbound Options and return a struct.
+func GetOpts(opt ...Option) options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
@@ -16,7 +16,7 @@ type Option func(*options)
 type options struct {
 	withName              string
 	withDescription       string
-	withLoginName         string
+	WithLoginName         string
 	withLimit             int
 	withConfig            Configuration
 	withPublicId          string
@@ -56,7 +56,7 @@ func WithName(name string) Option {
 // WithLoginName provides an optional login name.
 func WithLoginName(loginName string) Option {
 	return func(o *options) {
-		o.withLoginName = loginName
+		o.WithLoginName = loginName
 	}
 }
 
