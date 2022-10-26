@@ -94,7 +94,7 @@ scenario "e2e_credential_vault" {
       sg_additional_ips = step.create_boundary_cluster.controller_ips
       unseal_method     = "awskms"
       vault_release = {
-        version = "1.11.0"
+        version = "1.12.0"
         edition = "oss"
       }
       vpc_id = step.create_base_infra.vpc_id
