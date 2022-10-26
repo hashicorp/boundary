@@ -2348,7 +2348,7 @@ func TestAuthorizeSession(t *testing.T) {
 	plugin.TestRunSetSync(t, conn, kms, plgm)
 
 	v := vault.NewTestVaultServer(t)
-	v.MountPKI(t)
+	v.MountPKI(t, vault.WithTestMountPath("pki/"+userName))
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "pki"}))
 
 	vaultStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
@@ -2361,7 +2361,7 @@ func TestAuthorizeSession(t *testing.T) {
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path: &wrapperspb.StringValue{
-					Value: path.Join("pki", "issue", "boundary"),
+					Value: path.Join("pki/{{ .User.Name}}", "issue", "boundary"),
 				},
 				HttpMethod: &wrapperspb.StringValue{
 					Value: "POST",

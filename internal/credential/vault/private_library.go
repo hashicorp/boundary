@@ -312,22 +312,38 @@ func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op err
 
 	var secret *vault.Secret
 	var reqErr error
+
+	// Template the path
+	path := pl.VaultPath
+	if path != "" {
+		parsedTmpl, err := template.New(ctx, path)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		path, err = parsedTmpl.Generate(ctx, opts.WithTemplateData)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	// Template the body
+	body := string(pl.HttpRequestBody)
+	if body != "" {
+		parsedTmpl, err := template.New(ctx, body)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		body, err = parsedTmpl.Generate(ctx, opts.WithTemplateData)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	switch Method(pl.HttpMethod) {
 	case MethodGet:
-		secret, reqErr = client.get(ctx, pl.VaultPath)
+		secret, reqErr = client.get(ctx, path)
 	case MethodPost:
-		body := string(pl.HttpRequestBody)
-		if body != "" {
-			parsedTmpl, err := template.New(ctx, body)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
-			}
-			body, err = parsedTmpl.Generate(ctx, opts.WithTemplateData)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
-			}
-		}
-		secret, reqErr = client.post(ctx, pl.VaultPath, []byte(body))
+		secret, reqErr = client.post(ctx, path, []byte(body))
 	default:
 		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", pl.PublicId))
 	}
