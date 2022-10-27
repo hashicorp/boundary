@@ -218,7 +218,10 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	w.updateTags.Store(false)
 
 	if authorized := result.GetAuthorizedWorkers(); authorized != nil {
-		cluster.DisconnectUnauthorized(w.pkiConnManager, connectedWorkerKeyIds, authorized.GetWorkerKeyIdentifiers())
+		err := cluster.DisconnectUnauthorized(cancelCtx, w.pkiConnManager, connectedWorkerKeyIds, authorized.GetWorkerKeyIdentifiers())
+		if err != nil {
+			event.WriteError(cancelCtx, op, err)
+		}
 	}
 	var addrs []string
 	// This may be empty if we are in a multiple hop scenario

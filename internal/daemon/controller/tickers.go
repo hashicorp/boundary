@@ -198,7 +198,7 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get authorized workers from repo"))
 					break
 				}
-				cluster.DisconnectUnauthorized(m, wKeyIds, authorized)
+				cluster.DisconnectUnauthorized(cancelCtx, m, wKeyIds, authorized)
 			}
 
 			timer.Reset(getRandomInterval())

@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"io"
 	"net"
 	"sort"
@@ -74,6 +75,8 @@ func TestNewDownstreamManager(t *testing.T) {
 }
 
 func TestDisconnectUnauthorized(t *testing.T) {
+	assert.Error(t, DisconnectUnauthorized(context.Background(), nil, []string{}, []string{}))
+
 	dm := NewDownstreamManager()
 	w1, _ := net.Pipe()
 	dm.addConnection("w1", w1)
@@ -89,7 +92,7 @@ func TestDisconnectUnauthorized(t *testing.T) {
 	assert.NoError(t, w2b.SetReadDeadline(time.Now()))
 	assert.NoError(t, w3.SetReadDeadline(time.Now()))
 
-	DisconnectUnauthorized(dm, dm.Connected(), []string{"w3"})
+	assert.NoError(t, DisconnectUnauthorized(context.Background(), dm, dm.Connected(), []string{"w3"}))
 	assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 	assert.ErrorIs(t, w2a.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 	assert.ErrorIs(t, w2b.SetReadDeadline(time.Now()), io.ErrClosedPipe)

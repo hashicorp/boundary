@@ -1,8 +1,11 @@
 package cluster
 
 import (
+	"context"
 	"net"
 	"sync"
+
+	"github.com/hashicorp/boundary/internal/errors"
 )
 
 // DownstreamManager associates downstream worker key identifiers with the
@@ -54,7 +57,11 @@ func (m *DownstreamManager) Connected() []string {
 
 // DisconnectUnauthorized calls disconnects for all ids which are present in
 // the connected but not in the authorized slice of key ids.
-func DisconnectUnauthorized(dm *DownstreamManager, connected, authorized []string) {
+func DisconnectUnauthorized(ctx context.Context, dm *DownstreamManager, connected, authorized []string) error {
+	const op = "cluster.DisconnectUnauthorized"
+	if dm == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "DownstreamManager is nil")
+	}
 	am := make(map[string]struct{}, len(authorized))
 	for _, i := range authorized {
 		am[i] = struct{}{}
@@ -64,4 +71,5 @@ func DisconnectUnauthorized(dm *DownstreamManager, connected, authorized []strin
 			dm.Disconnect(i)
 		}
 	}
+	return nil
 }
