@@ -334,11 +334,11 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 		id := strings.TrimSuffix(strings.TrimPrefix(grant.id, "{{"), "}}")
 		id = strings.TrimSpace(id)
 		switch id {
-		case "user.id":
+		case "user.id", ".User.Id":
 			if opts.withUserId != "" {
 				grant.id = opts.withUserId
 			}
-		case "account.id":
+		case "account.id", ".Account.Id":
 			if opts.withAccountId != "" {
 				grant.id = opts.withAccountId
 			}
