@@ -734,7 +734,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			}
 
 			acl := NewACL(grants...)
-			perms := acl.ListPermissions(tt.scopes, tt.resourceType, tt.actionSet)
+			perms := acl.ListPermissions(tt.scopes, tt.resourceType, tt.actionSet, "")
 			require.ElementsMatch(t, tt.expPermissions, perms)
 		})
 	}

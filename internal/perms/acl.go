@@ -234,7 +234,8 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 // or for action.All in order for a Permission to be created for the scope.
 // The set of "id actions" is resource dependant, but will generally include all
 // actions that can be taken on an individual resource.
-func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, requestedType resource.Type, idActions action.ActionSet) []Permission {
+func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, requestedType resource.Type, idActions action.ActionSet,
+	userId string) []Permission {
 	perms := make([]Permission, 0, len(requestedScopes))
 	for scopeId := range requestedScopes {
 		p := Permission{
@@ -242,6 +243,10 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, reque
 			Resource: requestedType,
 			Action:   action.List,
 			OnlySelf: true, // default to only self to be restrictive
+		}
+		if userId == "u_recovery" {
+			perms = append(perms, p)
+			continue
 		}
 
 		// Get grants for a specific scope id from the source of truth.
