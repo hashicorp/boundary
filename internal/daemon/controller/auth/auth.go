@@ -756,7 +756,6 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 			// ordering coming back isn't in parent-first ordering our map
 			// lookup might fail.
 			deferredScopes = append(deferredScopes, scp)
-			//TODO make recovery user a global
 		case len(aSet) == 1 || r.UserId == perms.RecoveryUserId:
 			if aSet[0] != action.List {
 				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")

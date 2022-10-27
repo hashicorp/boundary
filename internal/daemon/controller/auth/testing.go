@@ -2,10 +2,10 @@ package auth
 
 import (
 	"context"
-	"github.com/hashicorp/boundary/internal/perms"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 )
 
