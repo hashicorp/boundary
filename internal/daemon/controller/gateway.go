@@ -57,6 +57,8 @@ func newGrpcServer(
 	iamRepoFn common.IamRepoFactory,
 	authTokenRepoFn common.AuthTokenRepoFactory,
 	serversRepoFn common.ServersRepoFactory,
+	passwordAuthRepoFn common.PasswordAuthRepoFactory,
+	oidcAuthRepoFn common.OidcAuthRepoFactory,
 	kms *kms.Kms,
 	eventer *event.Eventer,
 ) (*grpc.Server, string, error) {
@@ -65,7 +67,7 @@ func newGrpcServer(
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate gateway ticket"))
 	}
-	requestCtxInterceptor, err := requestCtxInterceptor(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, kms, ticket, eventer)
+	requestCtxInterceptor, err := requestCtxInterceptor(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, kms, ticket, eventer)
 	if err != nil {
 		return nil, "", err
 	}

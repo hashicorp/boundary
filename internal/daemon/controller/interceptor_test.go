@@ -311,7 +311,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			interceptor, err := requestCtxInterceptor(factoryCtx, tt.iamRepoFn, tt.authTokenRepoFn, tt.serversRepoFn, tt.kms, tt.ticket, tt.eventer)
+			interceptor, err := requestCtxInterceptor(factoryCtx, tt.iamRepoFn, tt.authTokenRepoFn, tt.serversRepoFn, nil, nil, tt.kms, tt.ticket, tt.eventer)
 			if tt.wantFactoryErr {
 				require.Error(err)
 				assert.Nil(interceptor)
