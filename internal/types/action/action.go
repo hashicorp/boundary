@@ -63,7 +63,7 @@ const (
 
 	// When adding new actions, be sure to update:
 	//
-	// * The Test_AnonRestrictions and Test_RecoveryUser tests: update the following line to include the last action:
+	// * The Test_AnonRestrictions and tests: update the following line to include the last action:
 	// 		for j := action.Type(1); j <= action.<action>; j++ {
 )
 
