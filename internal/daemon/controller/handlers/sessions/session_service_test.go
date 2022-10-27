@@ -294,9 +294,6 @@ func TestList(t *testing.T) {
 	o, pWithSessions := iam.TestScopes(t, iamRepo)
 	oOther, pWithOtherSessions := iam.TestScopes(t, iamRepo)
 
-	fmt.Println(fmt.Sprintf("First scope is: %v", o))
-	fmt.Println(fmt.Sprintf("second scope is: %v", oOther))
-
 	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
 	uId := at.GetIamUserId()
 
