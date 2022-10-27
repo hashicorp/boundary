@@ -106,11 +106,12 @@ func TestCliSessionCancelUser(t *testing.T) {
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
-		boundary.AuthenticateCli(t, ctx, acctName, acctPassword)
+		token := boundary.GetAuthenticationTokenCli(t, ctx, acctName, acctPassword)
 		t.Log("Starting session as user...")
 		errChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
+				"-token", "env://E2E_AUTH_TOKEN",
 				"-target-id", newTargetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
@@ -122,6 +123,7 @@ func TestCliSessionCancelUser(t *testing.T) {
 				"{{boundary.ip}}",
 				"hostname -i; sleep 60",
 			),
+			e2e.WithEnv("E2E_AUTH_TOKEN", token),
 		)
 	}()
 	t.Cleanup(cancel)

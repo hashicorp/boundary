@@ -3,6 +3,7 @@ package boundary
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -18,6 +19,11 @@ type config struct {
 	AuthMethodId       string `envconfig:"E2E_PASSWORD_AUTH_METHOD_ID" required:"true"` // e.g. ampw_1234567890
 	AdminLoginName     string `envconfig:"E2E_PASSWORD_ADMIN_LOGIN_NAME" default:"admin"`
 	AdminLoginPassword string `envconfig:"E2E_PASSWORD_ADMIN_PASSWORD" required:"true"`
+}
+
+type authenticateCliOutput struct {
+	Item     *authmethods.AuthenticateResult
+	response *api.Response
 }
 
 func loadConfig() (*config, error) {
@@ -83,4 +89,30 @@ func AuthenticateCli(t testing.TB, ctx context.Context, loginName string, passwo
 		e2e.WithEnv("E2E_TEST_BOUNDARY_PASSWORD", password),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
+}
+
+// GetAuthenticationTokenCli uses the cli to get an auth token that can be used in subsequent
+// commands
+func GetAuthenticationTokenCli(t testing.TB, ctx context.Context, loginName string, password string) string {
+	c, err := loadConfig()
+	require.NoError(t, err)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"authenticate", "password",
+			"-addr", c.Address,
+			"-auth-method-id", c.AuthMethodId,
+			"-login-name", loginName,
+			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_TEST_BOUNDARY_PASSWORD", password),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	var authenticationResult authenticateCliOutput
+	err = json.Unmarshal(output.Stdout, &authenticationResult)
+	require.NoError(t, err)
+
+	return fmt.Sprint(authenticationResult.Item.Attributes["token"])
 }
