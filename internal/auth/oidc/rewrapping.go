@@ -14,6 +14,21 @@ func init() {
 
 func authMethodRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "oidc.authMethodRewrapFn"
+	if dataKeyVersionId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing data key version id")
+	}
+	if scopeId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if reader == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing database reader")
+	}
+	if writer == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing database writer")
+	}
+	if kmsRepo == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing kms repository")
+	}
 	var authMethods []*AuthMethod
 	// There are indexes on (scope id, <other>), so we can query on scope and refine via key id.
 	// This is the fastest query we can use without creating a new index on key_id.

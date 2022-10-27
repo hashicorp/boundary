@@ -14,8 +14,30 @@ func init() {
 	kms.RegisterTableRewrapFn("credential_static_json_credential", credStaticJsonRewrapFn)
 }
 
+func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) string {
+	if dataKeyVersionId == "" {
+		return "missing data key version id"
+	}
+	if scopeId == "" {
+		return "missing scope id"
+	}
+	if reader == nil {
+		return "missing database reader"
+	}
+	if writer == nil {
+		return "missing database writer"
+	}
+	if kmsRepo == nil {
+		return "missing kms repository"
+	}
+	return ""
+}
+
 func credStaticUsernamePasswordRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "static.credStaticUsernamePasswordRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var creds []*UsernamePasswordCredential
 	// Indexes exist on (store_id, etc), so we can query static stores via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
@@ -58,6 +80,9 @@ func credStaticUsernamePasswordRewrapFn(ctx context.Context, dataKeyVersionId, s
 
 func credStaticSshPrivKeyRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "static.credStaticSshPrivKeyRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var creds []*SshPrivateKeyCredential
 	// Indexes exist on (store_id, etc), so we can query static stores via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
@@ -101,6 +126,9 @@ func credStaticSshPrivKeyRewrapFn(ctx context.Context, dataKeyVersionId, scopeId
 
 func credStaticJsonRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "static.credStaticJsonRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var creds []*JsonCredential
 	// Indexes exist on (store_id, etc), so we can query static stores via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.

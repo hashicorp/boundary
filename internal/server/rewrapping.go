@@ -14,8 +14,30 @@ func init() {
 	kms.RegisterTableRewrapFn("worker_auth_server_led_activation_token", workerAuthServerLedActivationTokenRewrapFn)
 }
 
+func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) string {
+	if dataKeyVersionId == "" {
+		return "missing data key version id"
+	}
+	if scopeId == "" {
+		return "missing scope id"
+	}
+	if reader == nil {
+		return "missing database reader"
+	}
+	if writer == nil {
+		return "missing database writer"
+	}
+	if kmsRepo == nil {
+		return "missing kms repository"
+	}
+	return ""
+}
+
 func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "server.workerAuthCertRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var certs []*RootCertificate
 	// Indexes on public id, state. neither of which are queryable via scope.
 	// This is the fastest query we can use without creating a new index on key_id.
@@ -42,6 +64,9 @@ func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeI
 
 func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "server.workerAuthRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var auths []*WorkerAuth
 	// An index exists on (worker_id, state), so we can query workers via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
@@ -84,6 +109,9 @@ func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, r
 
 func workerAuthServerLedActivationTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "server.workerAuthServerLedActivationTokenRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var tokens []*WorkerAuthServerLedActivationToken
 	// An index exists on worker_id, so we can query workers via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.

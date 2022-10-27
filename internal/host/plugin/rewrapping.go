@@ -14,6 +14,21 @@ func init() {
 
 func hostCatalogSecretRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "plugin.hostCatalogSecretRewrapFn"
+	if dataKeyVersionId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing data key version id")
+	}
+	if scopeId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if reader == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing database reader")
+	}
+	if writer == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing database writer")
+	}
+	if kmsRepo == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing kms repository")
+	}
 	var secrets []*HostCatalogSecret
 	// The only index on this table is on catalog id and there are no references to catalog id.
 	// This is the fastest query we can use without creating a new index on key_id.

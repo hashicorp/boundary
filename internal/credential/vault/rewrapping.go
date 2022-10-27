@@ -13,8 +13,30 @@ func init() {
 	kms.RegisterTableRewrapFn("credential_vault_token", credVaultTokenRewrapFn)
 }
 
+func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) string {
+	if dataKeyVersionId == "" {
+		return "missing data key version id"
+	}
+	if scopeId == "" {
+		return "missing scope id"
+	}
+	if reader == nil {
+		return "missing database reader"
+	}
+	if writer == nil {
+		return "missing database writer"
+	}
+	if kmsRepo == nil {
+		return "missing kms repository"
+	}
+	return ""
+}
+
 func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "vault.credVaultClientCertificateRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var certs []*ClientCertificate
 	// only index is store id, and store isn't queryable via scope.
 	// This is the fastest query we can use without creating a new index on key_id.
@@ -41,6 +63,9 @@ func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId, s
 
 func credVaultTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "vault.credVaultTokenRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var tokens []*Token
 	// Indexes exist on token hmac, store id, expiration time. none of which are queryable via scope or key.
 	// This is the fastest query we can use without creating a new index on key_id.

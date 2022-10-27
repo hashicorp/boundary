@@ -14,6 +14,21 @@ func init() {
 
 func authTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "authtoken.authTokenRewrapFn"
+	if dataKeyVersionId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing data key version id")
+	}
+	if scopeId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if reader == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing database reader")
+	}
+	if writer == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing database writer")
+	}
+	if kmsRepo == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing kms repository")
+	}
 	var credentials []*AuthToken
 	// Indexes exist on public id and token, and the only reference to public id is session, which may not exist for all rows we need.
 	// This is the fastest query we can use without creating a new index on key_id.
