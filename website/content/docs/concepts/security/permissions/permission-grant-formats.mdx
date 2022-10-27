@@ -112,11 +112,19 @@ Such a grant is essentially a full administrator grant for a scope.
 A few template possibilities exist, which will at grant evaluation time
 substitute the given value into the ID field of the grant string:
 
-- `{{account.id}}`: The substituted value is the account ID associated with the
+- `{{.Account.Id}}`: The substituted value is the account ID associated with the
   token used to perform the action. As an example,
-  `id={{account.id}};actions=read,change-password"` is one of Boundary's default
-  grants to allow users that have authenticated with the Password auth method to
-  change their own password.
+  `id={{.Account.Id}};actions=read,change-password"` is one of Boundary's
+  default grants to allow users that have authenticated with the Password auth
+  method to change their own password.
+  - **NOTE**: Prior to Boundary 0.11.1, `{{account.id}}` must be used instead.
+    Boundary 0.11.1+ changes this for consistency with other places within
+    Boundary that are gaining templating support, but supports both formats for
+    backwards compatibility.
 
-- `{{user.id}}`: The substituted value is the user ID associated with the token
+- `{{.User.Id}}`: The substituted value is the user ID associated with the token
   used to perform the action.
+  - **NOTE**: Prior to Boundary 0.11.1, `{{user.id}}` must be used instead.
+    Boundary 0.11.1+ changes this for consistency with other places within
+    Boundary that are gaining templating support, but supports both formats for
+    backwards compatibility.
