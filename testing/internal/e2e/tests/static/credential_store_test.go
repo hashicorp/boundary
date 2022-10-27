@@ -27,6 +27,12 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
 
 	// Create ssh key credentials
@@ -63,6 +69,40 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	pwCredentialsId := pwCredentialsResult.Item.Id
 	t.Logf("Created Username/Password Credentials: %s", pwCredentialsId)
+
+	// Get credentials for target (expect empty)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	var newSessionAuthorizationResult targets.SessionAuthorizationResult
+	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
+	require.NoError(t, err)
+	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
+
+	// Add credentials to target
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "add-credential-sources",
+			"-id", newTargetId,
+			"-brokered-credential-source", pwCredentialsId,
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Get credentials for target
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
+	require.NoError(t, err)
+
+	newSessionAuthorization := newSessionAuthorizationResult.Item
+	retrievedUser := fmt.Sprintf("%s", newSessionAuthorization.Credentials[0].Credential["username"])
+	retrievedPassword := fmt.Sprintf("%s", newSessionAuthorization.Credentials[0].Credential["password"])
+	assert.Equal(t, c.TargetSshUser, retrievedUser)
+	assert.Equal(t, "password", retrievedPassword)
 
 	// Delete credential store
 	output = e2e.RunCommand(ctx, "boundary",
