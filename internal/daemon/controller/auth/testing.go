@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"github.com/hashicorp/boundary/internal/perms"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
@@ -20,7 +21,7 @@ func DisabledAuthTestContext(iamRepoFn common.IamRepoFactory, scopeId string, op
 	}
 	reqInfo.UserIdOverride = opts.withUserId
 	if reqInfo.UserIdOverride == "" {
-		reqInfo.UserIdOverride = "u_auth"
+		reqInfo.UserIdOverride = perms.AdminUserId
 	}
 	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
 	return NewVerifierContext(requestContext, iamRepoFn, nil, nil, opts.withKms, &reqInfo)

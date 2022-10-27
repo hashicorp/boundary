@@ -8,7 +8,11 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 )
 
-const AnonymousUserId = "u_anon"
+const (
+	AdminUserId     = "u_auth"
+	AnonymousUserId = "u_anon"
+	RecoveryUserId  = "u_recovery"
+)
 
 // ACL provides an entry point into the permissions engine for determining if an
 // action is allowed on a resource based on a principal's (user or group) grants.
@@ -244,7 +248,9 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, reque
 			Action:   action.List,
 			OnlySelf: true, // default to only self to be restrictive
 		}
-		if userId == "u_recovery" {
+		if userId == RecoveryUserId {
+			p.All = true
+			p.OnlySelf = false
 			perms = append(perms, p)
 			continue
 		}

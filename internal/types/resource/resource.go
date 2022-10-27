@@ -31,7 +31,7 @@ const (
 	// * The Grant.validateType function and test
 	// * The perms.topLevelType function
 	// * The scopes service collection actions for appropriate scopes
-	// * The Test_AnonRestrictions test: update the following line to include the last resource:
+	// * The Test_AnonRestrictions and Test_RecoveryUser test: update the following line to include the last resource:
 	//      for i := resource.Type(1); i <= resource.<Resource>; i++ {
 )
 

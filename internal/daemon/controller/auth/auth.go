@@ -459,7 +459,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	case uint32(AuthTokenTypeRecoveryKms):
 		// We validated the encrypted token in decryptToken and handled the
 		// nonces there, so just set the user
-		userId = "u_recovery"
+		userId = perms.RecoveryUserId
 
 	case uint32(AuthTokenTypeBearer), uint32(AuthTokenTypeSplitCookie):
 		if v.requestInfo.Token == "" {
@@ -757,7 +757,7 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 			// lookup might fail.
 			deferredScopes = append(deferredScopes, scp)
 			//TODO make recovery user a global
-		case len(aSet) == 1 || r.UserId == "u_recovery":
+		case len(aSet) == 1 || r.UserId == perms.RecoveryUserId:
 			if aSet[0] != action.List {
 				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
 			}

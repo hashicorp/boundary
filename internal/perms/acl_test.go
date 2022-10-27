@@ -377,6 +377,7 @@ func Test_ACLAllowed(t *testing.T) {
 func TestACL_ListPermissions(t *testing.T) {
 	tests := []struct {
 		name           string
+		userId         string
 		aclGrants      []scopeGrant
 		scopes         map[string]*scopes.ScopeInfo // *scopes.ScopeInfo isn't used at the moment.
 		resourceType   resource.Type
@@ -720,10 +721,64 @@ func TestACL_ListPermissions(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:         "Allow recovery user full access to sessions",
+			userId:       RecoveryUserId,
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
+			resourceType: resource.Session,
+			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.List,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+				{
+					ScopeId:     "o_2",
+					Resource:    resource.Session,
+					Action:      action.List,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+			},
+		},
+		{
+			name:         "Allow recovery user full access to targets",
+			userId:       RecoveryUserId,
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
+			resourceType: resource.Target,
+			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Target,
+					Action:      action.List,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+				{
+					ScopeId:     "o_2",
+					Resource:    resource.Target,
+					Action:      action.List,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			userId := tt.userId
+			if userId == "" {
+				userId = "u_1234567890"
+			}
 			var grants []Grant
 			for _, sg := range tt.aclGrants {
 				for _, g := range sg.grants {
@@ -734,7 +789,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			}
 
 			acl := NewACL(grants...)
-			perms := acl.ListPermissions(tt.scopes, tt.resourceType, tt.actionSet, "")
+			perms := acl.ListPermissions(tt.scopes, tt.resourceType, tt.actionSet, userId)
 			require.ElementsMatch(t, tt.expPermissions, perms)
 		})
 	}
@@ -829,6 +884,56 @@ func Test_AnonRestrictions(t *testing.T) {
 						// Should always fail
 						assert.False(results.Authorized)
 					}
+				}
+			}
+		})
+	}
+}
+
+// Test_RecoveryUser loops through every resource and action and ensures
+// that it is allowed for the recovery user
+func Test_RecoveryUser(t *testing.T) {
+	t.Parallel()
+
+	type input struct {
+		name              string
+		grant             string
+		templatedType     bool
+		shouldHaveSuccess bool
+	}
+	tests := []input{
+		{
+			name:  "wildcard-id-and-type",
+			grant: "id=*;type=*;actions=%s",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require, assert := require.New(t), assert.New(t)
+			for i := resource.Type(1); i <= resource.Credential; i++ {
+				if i == resource.Controller || i == resource.Worker {
+					continue
+				}
+				for j := action.Type(1); j <= action.ReadCertificateAuthority; j++ {
+					res := Resource{
+						ScopeId: scope.Global.String(),
+						Id:      "foobar",
+						Type:    resource.Type(i),
+					}
+					grant := test.grant
+					if test.templatedType {
+						grant = fmt.Sprintf(grant, resource.Type(i).String(), action.Type(j).String())
+					} else {
+						grant = fmt.Sprintf(grant, action.Type(j).String())
+					}
+
+					parsedGrant, err := Parse(scope.Global.String(), grant, WithSkipFinalValidation(true))
+					require.NoError(err)
+
+					acl := NewACL(parsedGrant)
+					results := acl.Allowed(res, action.Type(j), RecoveryUserId)
+
+					assert.True(results.Authorized)
 				}
 			}
 		})
