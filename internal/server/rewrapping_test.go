@@ -45,13 +45,12 @@ func TestRewrap_workerAuthCertRewrapFn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
-	decryptedGotPrivKey, err := decrypt(ctx, got.GetCtPrivateKey(), kmsWrapper2)
-	assert.NoError(t, err)
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, currentRoot.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
 	assert.NotEqual(t, currentRoot.GetCtPrivateKey(), got.GetCtPrivateKey())
-	assert.Equal(t, roots.Current.PrivateKeyPkcs8, decryptedGotPrivKey)
+	assert.Equal(t, roots.Current.PrivateKeyPkcs8, got.GetPrivateKey())
 }
 
 func TestRewrap_workerAuthRewrapFn(t *testing.T) {
@@ -87,13 +86,12 @@ func TestRewrap_workerAuthRewrapFn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
-	decryptedGotPrivKey, err := decrypt(ctx, got.CtControllerEncryptionPrivKey, kmsWrapper2)
-	assert.NoError(t, err)
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, workerAuth.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
 	assert.NotEqual(t, workerAuth.GetCtControllerEncryptionPrivKey(), got.GetCtControllerEncryptionPrivKey())
-	assert.Equal(t, workerAuth.ControllerEncryptionPrivKey, decryptedGotPrivKey)
+	assert.Equal(t, workerAuth.ControllerEncryptionPrivKey, got.GetControllerEncryptionPrivKey())
 }
 
 func TestRewrap_workerAuthServerLedActivationTokenRewrapFn(t *testing.T) {

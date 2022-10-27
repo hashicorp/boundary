@@ -866,49 +866,6 @@ func (r *WorkerAuthRepositoryStorage) listCertificateAuthority(ctx context.Conte
 	return certIds, nil
 }
 
-// encrypt value before writing it to the db
-func encrypt(ctx context.Context, value []byte, wrapper wrapping.Wrapper) ([]byte, error) {
-	const op = "server.(WorkerAuthRepositoryStorage).encrypt"
-	if value == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing value")
-	}
-	if wrapper == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
-	}
-
-	blobInfo, err := wrapper.Encrypt(ctx, value)
-	if err != nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "error encrypting recovery info", errors.WithWrap(err))
-	}
-	marshaledBlob, err := proto.Marshal(blobInfo)
-	if err != nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "error marshaling encrypted blob", errors.WithWrap(err))
-	}
-	return marshaledBlob, nil
-}
-
-func decrypt(ctx context.Context, value []byte, wrapper wrapping.Wrapper) ([]byte, error) {
-	const op = "server.(WorkerAuthRepositoryStorage).decrypt"
-	if value == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing value")
-	}
-	if wrapper == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
-	}
-
-	blobInfo := new(wrapping.BlobInfo)
-	if err := proto.Unmarshal(value, blobInfo); err != nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "error decoding encrypted blob", errors.WithWrap(err))
-	}
-
-	marshaledInfo, err := wrapper.Decrypt(ctx, blobInfo)
-	if err != nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "error decrypting recovery info", errors.WithWrap(err))
-	}
-
-	return marshaledInfo, nil
-}
-
 // FindWorkerAuthByWorkerId takes a workerId and returns the WorkerAuthSet for this worker.
 func (r *WorkerAuthRepositoryStorage) FindWorkerAuthByWorkerId(ctx context.Context, workerId string) (*WorkerAuthSet, error) {
 	const op = "server.(WorkerAuthRepositoryStorage).FindWorkerAuthByWorkerId"
