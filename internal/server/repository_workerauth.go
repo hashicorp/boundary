@@ -526,6 +526,7 @@ func (r *WorkerAuthRepositoryStorage) FilterToAuthorizedWorkerKeyIds(ctx context
 	}
 	rows, err := r.reader.Query(ctx, authorizedWorkerQuery, []interface{}{workerKeyIds})
 	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	defer rows.Close()
 

@@ -463,9 +463,7 @@ func TestFilterToAuthorizedWorkerKeyIds(t *testing.T) {
 	var keyId1 string
 	w1 := TestPkiWorker(t, conn, rootWrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId1))
 	var keyId2 string
-	w2 := TestPkiWorker(t, conn, rootWrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId2))
-
-	_, _ = w1, w2
+	TestPkiWorker(t, conn, rootWrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId2))
 
 	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{"not-found-key-id", keyId1})
 	assert.NoError(t, err)
