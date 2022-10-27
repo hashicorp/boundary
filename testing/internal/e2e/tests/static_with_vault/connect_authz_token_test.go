@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/credentiallibraries"
@@ -18,17 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type createTokenResponse struct {
-	Auth struct {
-		Client_Token string
-	}
-}
-
-// TestCliVaultConnectTarget uses the boundary and vault clis to add secrets management
-// for a target. The test sets up vault as a credential store, creates a set of credentials
-// in vault to be attached to a target, and attempts to connect to that target using those
-// credentials.
-func TestCliVaultConnectTarget(t *testing.T) {
+// TestCliVaultConnectTargetWithAuthzToken uses the boundary and vault clis to add secrets
+// management for a target. The test sets up vault as a credential store, creates a set of
+// credentials in vault to be attached to a target, and attempts to connect to that target (with the
+// authz-token option) using those credentials.
+func TestCliVaultConnectTargetWithAuthzToken(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -146,6 +139,9 @@ func TestCliVaultConnectTarget(t *testing.T) {
 	require.Equal(t, string(k), retrievedKey)
 	t.Log("Successfully retrieved credentials for target")
 
+	// Get auth token for session
+	newAuthToken := newSessionAuthorizationResult.Item.AuthorizationToken
+
 	// Create key file
 	retrievedKeyPath := fmt.Sprintf("%s/%s", t.TempDir(), "target_private_key.pem")
 	f, err := os.Create(retrievedKeyPath)
@@ -159,7 +155,7 @@ func TestCliVaultConnectTarget(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-target-id", newTargetId,
+			"-authz-token", newAuthToken,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", retrievedUser,
 			"-i", retrievedKeyPath,
@@ -172,9 +168,5 @@ func TestCliVaultConnectTarget(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-
-	parts := strings.Fields(string(output.Stdout))
-	hostIp := parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 }
