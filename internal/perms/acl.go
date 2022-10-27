@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	AdminUserId     = "u_auth"
-	AnonymousUserId = "u_anon"
-	RecoveryUserId  = "u_recovery"
+	AnyAuthenticatedUserId = "u_auth"
+	AnonymousUserId        = "u_anon"
+	RecoveryUserId         = "u_recovery"
 )
 
 // ACL provides an entry point into the permissions engine for determining if an
@@ -238,8 +238,10 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 // or for action.All in order for a Permission to be created for the scope.
 // The set of "id actions" is resource dependant, but will generally include all
 // actions that can be taken on an individual resource.
-func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, requestedType resource.Type,
-	idActions action.ActionSet, userId string,
+func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
+	requestedType resource.Type,
+	idActions action.ActionSet,
+	userId string,
 ) []Permission {
 	perms := make([]Permission, 0, len(requestedScopes))
 	for scopeId := range requestedScopes {

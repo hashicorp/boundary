@@ -87,7 +87,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	switch {
 	case userId == "",
 		userId == perms.AnonymousUserId,
-		userId == perms.AdminUserId,
+		userId == perms.AnyAuthenticatedUserId,
 		userId == perms.RecoveryUserId,
 		opts.withSkipAdminRoleCreation:
 		// TODO: Cause a log entry. The repo doesn't have a logger right now,
@@ -338,7 +338,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					principals := []any{}
 					userId := "u_anon"
 					if s.Type == scope.Project.String() {
-						userId = perms.AdminUserId
+						userId = perms.AnyAuthenticatedUserId
 					}
 					rolePrincipal, err := NewUserRole(defaultRolePublicId, userId)
 					if err != nil {
