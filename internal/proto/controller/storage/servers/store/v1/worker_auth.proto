@@ -25,10 +25,15 @@ message WorkerAuth {
   // @inject_tag: `gorm:"not_null"`
   bytes worker_encryption_pub_key = 40;
 
+  // The plain-text private key associated with this certificate. We are not storing this
+  // in the database.
+  // @inject_tag: `gorm:"-"` wrapping:"pt,private_key"`
+  bytes controller_encryption_priv_key = 50;
+
   // The private key associated with this certificate
   // This is a ciphertext field
-  // @inject_tag: `gorm:"not_null"`
-  bytes controller_encryption_priv_key = 50;
+  // @inject_tag: `gorm:"column:controller_encryption_priv_key;not_null"` wrapping:"ct,private_key"`
+  bytes ct_controller_encryption_priv_key = 51;
 
   // The id of the kms database key used for encrypting this entry.
   // @inject_tag: `gorm:"not_null"`

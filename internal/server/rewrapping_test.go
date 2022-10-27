@@ -45,13 +45,12 @@ func TestRewrap_workerAuthCertRewrapFn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
-	decryptedGotPrivKey, err := decrypt(ctx, got.GetPrivateKey(), kmsWrapper2)
-	assert.NoError(t, err)
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, currentRoot.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
-	assert.NotEqual(t, currentRoot.GetPrivateKey(), got.GetPrivateKey())
-	assert.Equal(t, roots.Current.PrivateKeyPkcs8, decryptedGotPrivKey)
+	assert.NotEqual(t, currentRoot.GetCtPrivateKey(), got.GetCtPrivateKey())
+	assert.Equal(t, roots.Current.PrivateKeyPkcs8, got.GetPrivateKey())
 }
 
 func TestRewrap_workerAuthRewrapFn(t *testing.T) {
@@ -65,15 +64,10 @@ func TestRewrap_workerAuthRewrapFn(t *testing.T) {
 	worker := TestPkiWorker(t, conn, wrapper)
 	kmsWrapper, err := kmsCache.GetWrapper(ctx, worker.GetScopeId(), kms.KeyPurposeDatabase)
 	assert.NoError(t, err)
-	currentKeyId, err := kmsWrapper.KeyId(ctx)
-	assert.NoError(t, err)
-	workerAuth := TestWorkerAuth(t, conn, worker, currentKeyId)
+	workerAuth := TestWorkerAuth(t, conn, worker, kmsWrapper)
 
-	// TestWorkerAuth doesn't encrypt the entry, so do that really quick
-	controllerEncryptionPrivKey := workerAuth.ControllerEncryptionPrivKey
-	workerAuth.ControllerEncryptionPrivKey, err = encrypt(ctx, workerAuth.ControllerEncryptionPrivKey, kmsWrapper)
-	assert.NoError(t, err)
-	rows, err := rw.Update(ctx, workerAuth, []string{"ControllerEncryptionPrivKey"}, nil)
+	// TestWorkerAuth DOES encrypt the entry, so just store in the db
+	rows, err := rw.Update(ctx, workerAuth, []string{"CtControllerEncryptionPrivKey"}, nil)
 	assert.Equal(t, 1, rows)
 	assert.NoError(t, err)
 
@@ -92,13 +86,12 @@ func TestRewrap_workerAuthRewrapFn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// decrypt with the new key version and check to make sure things match
-	decryptedGotPrivKey, err := decrypt(ctx, got.ControllerEncryptionPrivKey, kmsWrapper2)
-	assert.NoError(t, err)
+	assert.NoError(t, got.decrypt(ctx, kmsWrapper2))
 	assert.NotEmpty(t, got.GetKeyId())
 	assert.NotEqual(t, workerAuth.GetKeyId(), got.GetKeyId())
 	assert.Equal(t, newKeyVersionId, got.GetKeyId())
-	assert.NotEqual(t, workerAuth.GetControllerEncryptionPrivKey(), got.GetControllerEncryptionPrivKey())
-	assert.Equal(t, controllerEncryptionPrivKey, decryptedGotPrivKey)
+	assert.NotEqual(t, workerAuth.GetCtControllerEncryptionPrivKey(), got.GetCtControllerEncryptionPrivKey())
+	assert.Equal(t, workerAuth.ControllerEncryptionPrivKey, got.GetControllerEncryptionPrivKey())
 }
 
 func TestRewrap_workerAuthServerLedActivationTokenRewrapFn(t *testing.T) {

@@ -13,8 +13,30 @@ func init() {
 	kms.RegisterTableRewrapFn("session_credential", sessionCredentialRewrapFn)
 }
 
+func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) string {
+	if dataKeyVersionId == "" {
+		return "missing data key version id"
+	}
+	if scopeId == "" {
+		return "missing scope id"
+	}
+	if reader == nil {
+		return "missing database reader"
+	}
+	if writer == nil {
+		return "missing database writer"
+	}
+	if kmsRepo == nil {
+		return "missing kms repository"
+	}
+	return ""
+}
+
 func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "session.sessionCredentialRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var creds []*credential
 	// An index exists on (session_id, credential_sha256), so we can query workers via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
@@ -63,6 +85,9 @@ func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId st
 
 func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "session.sessionRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var sessions []*Session
 	// An index exists on (project_id, user_id, termination_reason), so we can query sessions via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.

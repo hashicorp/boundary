@@ -14,8 +14,30 @@ func init() {
 	kms.RegisterTableRewrapFn("worker_auth_server_led_activation_token", workerAuthServerLedActivationTokenRewrapFn)
 }
 
+func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) string {
+	if dataKeyVersionId == "" {
+		return "missing data key version id"
+	}
+	if scopeId == "" {
+		return "missing scope id"
+	}
+	if reader == nil {
+		return "missing database reader"
+	}
+	if writer == nil {
+		return "missing database writer"
+	}
+	if kmsRepo == nil {
+		return "missing kms repository"
+	}
+	return ""
+}
+
 func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "server.workerAuthCertRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var certs []*RootCertificate
 	// Indexes on public id, state. neither of which are queryable via scope.
 	// This is the fastest query we can use without creating a new index on key_id.
@@ -26,20 +48,14 @@ func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeI
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
 	}
-	newKeyVersionId, err := wrapper.KeyId(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to retrieve updated key version id"))
-	}
 	for _, cert := range certs {
-		privateKey, err := decrypt(ctx, cert.PrivateKey, wrapper)
-		if err != nil {
+		if err := cert.decrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt worker auth certificate"))
 		}
-		if cert.PrivateKey, err = encrypt(ctx, privateKey, wrapper); err != nil {
+		if err := cert.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt worker auth certificate"))
 		}
-		cert.KeyId = newKeyVersionId
-		if _, err := writer.Update(ctx, cert, []string{"PrivateKey", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, cert, []string{"CtPrivateKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update worker auth certificate row with rewrapped fields"))
 		}
 	}
@@ -48,6 +64,9 @@ func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeI
 
 func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "server.workerAuthRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var auths []*WorkerAuth
 	// An index exists on (worker_id, state), so we can query workers via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
@@ -60,7 +79,7 @@ func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, r
 		workerAuth := allocWorkerAuth()
 		if err := rows.Scan(
 			&workerAuth.WorkerKeyIdentifier,
-			&workerAuth.ControllerEncryptionPrivKey,
+			&workerAuth.CtControllerEncryptionPrivKey,
 			&workerAuth.KeyId,
 		); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to scan row"))
@@ -74,20 +93,14 @@ func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, r
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
 	}
-	newKeyVersionId, err := wrapper.KeyId(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to retrieve updated key version id"))
-	}
 	for _, workerAuth := range auths {
-		privateKey, err := decrypt(ctx, workerAuth.ControllerEncryptionPrivKey, wrapper)
-		if err != nil {
+		if err := workerAuth.decrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt worker auth"))
 		}
-		if workerAuth.ControllerEncryptionPrivKey, err = encrypt(ctx, privateKey, wrapper); err != nil {
+		if err := workerAuth.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt worker auth"))
 		}
-		workerAuth.KeyId = newKeyVersionId
-		if _, err := writer.Update(ctx, workerAuth, []string{"ControllerEncryptionPrivKey", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, workerAuth, []string{"CtControllerEncryptionPrivKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update worker auth row with rewrapped fields"))
 		}
 	}
@@ -96,6 +109,9 @@ func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, r
 
 func workerAuthServerLedActivationTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
 	const op = "server.workerAuthServerLedActivationTokenRewrapFn"
+	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
+		return errors.New(ctx, errors.InvalidParameter, op, errStr)
+	}
 	var tokens []*WorkerAuthServerLedActivationToken
 	// An index exists on worker_id, so we can query workers via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
