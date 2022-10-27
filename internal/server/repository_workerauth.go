@@ -518,7 +518,7 @@ func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *
 }
 
 // FilterToAuthorizedWorkerKeyIds returns all the worker key identifiers that
-// are authorizable from the slice of key identifiers provided to the function.
+// are authorized from the slice of key identifiers provided to the function.
 func (r *WorkerAuthRepositoryStorage) FilterToAuthorizedWorkerKeyIds(ctx context.Context, workerKeyIds []string) ([]string, error) {
 	const op = "server.(WorkerAuthRepositoryStorage).FilterToAuthorizedWorkerKeyIds"
 	if len(workerKeyIds) == 0 {
