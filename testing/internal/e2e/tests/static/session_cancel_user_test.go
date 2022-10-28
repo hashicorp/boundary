@@ -17,10 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSessionCancelUserCli uses the cli to create a new user and sets up the right permissions for
+// TestCliSessionCancelUser uses the cli to create a new user and sets up the right permissions for
 // the user to connect to the created target. The test also confirms that an admin can cancel the
 // user's session.
-func TestSessionCancelUserCli(t *testing.T) {
+func TestCliSessionCancelUser(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -106,11 +106,12 @@ func TestSessionCancelUserCli(t *testing.T) {
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
-		boundary.AuthenticateCli(t, ctx, acctName, acctPassword)
+		token := boundary.GetAuthenticationTokenCli(t, ctx, acctName, acctPassword)
 		t.Log("Starting session as user...")
 		errChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
+				"-token", "env://E2E_AUTH_TOKEN",
 				"-target-id", newTargetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
@@ -122,6 +123,7 @@ func TestSessionCancelUserCli(t *testing.T) {
 				"{{boundary.ip}}",
 				"hostname -i; sleep 60",
 			),
+			e2e.WithEnv("E2E_AUTH_TOKEN", token),
 		)
 	}()
 	t.Cleanup(cancel)
@@ -195,8 +197,8 @@ func TestSessionCancelUserCli(t *testing.T) {
 	t.Log("Successfully cancelled session")
 }
 
-// TestCreateUserApi uses the Go api to create a new user and add some grants to the user
-func TestCreateUserApi(t *testing.T) {
+// TestApiCreateUser uses the Go api to create a new user and add some grants to the user
+func TestApiCreateUser(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)

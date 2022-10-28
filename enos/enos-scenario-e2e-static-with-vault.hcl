@@ -1,4 +1,4 @@
-scenario "e2e_host_static" {
+scenario "e2e_static_with_vault" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
@@ -79,6 +79,28 @@ scenario "e2e_host_static" {
     }
   }
 
+  step "create_vault_cluster" {
+    module = module.vault
+    depends_on = [
+      step.create_base_infra,
+    ]
+
+    variables {
+      ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      instance_type     = var.vault_instance_type
+      instance_count    = 1
+      kms_key_arn       = step.create_base_infra.kms_key_arn
+      storage_backend   = "raft"
+      sg_additional_ips = step.create_boundary_cluster.controller_ips
+      unseal_method     = "awskms"
+      vault_release = {
+        version = "1.12.0"
+        edition = "oss"
+      }
+      vpc_id = step.create_base_infra.vpc_id
+    }
+  }
+
   step "create_target" {
     module     = module.target
     depends_on = [step.create_base_infra]
@@ -97,11 +119,12 @@ scenario "e2e_host_static" {
     module = module.test_e2e
     depends_on = [
       step.create_boundary_cluster,
-      step.create_target
+      step.create_target,
+      step.create_vault_cluster
     ]
 
     variables {
-      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/host/static"
+      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/static_with_vault"
       alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id           = step.create_boundary_cluster.auth_method_id
       auth_login_name          = step.create_boundary_cluster.auth_login_name
@@ -110,6 +133,8 @@ scenario "e2e_host_static" {
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
       target_ip                = step.create_target.target_ips[0]
       target_user              = "ubuntu"
+      vault_addr               = step.create_vault_cluster.instance_public_ips[0]
+      vault_root_token         = step.create_vault_cluster.vault_root_token
     }
   }
 

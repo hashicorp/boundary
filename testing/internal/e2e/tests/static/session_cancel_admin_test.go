@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSessionCancelAdminCli uses the boundary cli to start and then cancel a session
-func TestSessionCancelAdminCli(t *testing.T) {
+// TestCliSessionCancelAdmin uses the boundary cli to start and then cancel a session
+func TestCliSessionCancelAdmin(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)

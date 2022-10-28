@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConnectTargetCli uses the boundary cli to create a number of supporting objects
+// TestCliConnectTarget uses the boundary cli to create a number of supporting objects
 // to connect to a target. It then attempts to connect to that target and verifies that
 // the connection was successful.
-func TestConnectTargetCli(t *testing.T) {
+func TestCliConnectTarget(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -51,26 +51,4 @@ func TestConnectTargetCli(t *testing.T) {
 	hostIp := parts[len(parts)-1]
 	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
-}
-
-// TestCreateTargetApi uses the Go api to create a number of supporting objects
-// to connect to a target. This test does not connect to the target due to the complexity
-// when not using the cli.
-func TestCreateTargetApi(t *testing.T) {
-	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
-	require.NoError(t, err)
-
-	client, err := boundary.NewApiClient()
-	require.NoError(t, err)
-	ctx := context.Background()
-
-	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
-	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
-	newHostId := boundary.CreateNewHostApi(t, ctx, client, newHostCatalogId, c.TargetIp)
-	boundary.AddHostToHostSetApi(t, ctx, client, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetApi(t, ctx, client, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
 }
