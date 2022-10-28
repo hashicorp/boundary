@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -627,7 +628,10 @@ func TestRepository_ListGroups(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := allocGroup(); ; return &i }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any {
+				i := allocGroup()
+				return &i
+			}(), "1=1")
 			testGroups := []*Group{}
 			for i := 0; i < tt.createCnt; i++ {
 				testGroups = append(testGroups, TestGroup(t, conn, tt.createScopeId))
@@ -733,7 +737,10 @@ func TestRepository_ListMembers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := allocGroupMember(); ; return &i }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any {
+				i := allocGroupMember()
+				return &i
+			}(), "1=1")
 			gm := []*GroupMemberUser{}
 			for i := 0; i < tt.createCnt; i++ {
 				u := TestUser(t, repo, org.PublicId)
@@ -834,7 +841,7 @@ func TestRepository_AddGroupMembers(t *testing.T) {
 			name: "recovery-user",
 			args: args{
 				groupId: group.PublicId,
-				userIds: []string{"u_recovery"},
+				userIds: []string{globals.RecoveryUserId},
 			},
 			wantErr: true,
 		},

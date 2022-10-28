@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -723,7 +724,7 @@ func TestACL_ListPermissions(t *testing.T) {
 		},
 		{
 			name:         "Allow recovery user full access to sessions",
-			userId:       RecoveryUserId,
+			userId:       globals.RecoveryUserId,
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Session,
 			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
@@ -748,7 +749,7 @@ func TestACL_ListPermissions(t *testing.T) {
 		},
 		{
 			name:         "Allow recovery user full access to targets",
-			userId:       RecoveryUserId,
+			userId:       globals.RecoveryUserId,
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Target,
 			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
@@ -867,7 +868,7 @@ func Test_AnonRestrictions(t *testing.T) {
 					require.NoError(err)
 
 					acl := NewACL(parsedGrant)
-					results := acl.Allowed(res, action.Type(j), AnonymousUserId)
+					results := acl.Allowed(res, action.Type(j), globals.AnonymousUserId)
 
 					switch test.shouldHaveSuccess {
 					case true:

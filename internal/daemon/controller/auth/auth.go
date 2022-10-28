@@ -52,10 +52,6 @@ const (
 	AuthTokenTypeRecoveryKms
 )
 
-const (
-	AnonymousUserId = "u_anon"
-)
-
 type key int
 
 var verifierKey key
@@ -307,7 +303,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			// If the anon user was used (either no token, or invalid (perhaps
 			// expired) token), return a 401. That way if it's an authn'd user
 			// that is not authz'd we'll return 403 to be explicit.
-			if ret.UserId == AnonymousUserId {
+			if ret.UserId == globals.AnonymousUserId {
 				ret.Error = handlers.UnauthenticatedError()
 			}
 			ea.UserInfo = &event.UserInfo{
@@ -493,7 +489,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 
 	// This will always be set, so further down below we can switch on whether
 	// it's empty
-	userData.User.Id = util.Pointer(AnonymousUserId)
+	userData.User.Id = util.Pointer(globals.AnonymousUserId)
 
 	// Validate the token and fetch the corresponding user ID
 	switch v.requestInfo.TokenFormat {
@@ -503,7 +499,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	case uint32(AuthTokenTypeRecoveryKms):
 		// We validated the encrypted token in decryptToken and handled the
 		// nonces there, so just set the user
-		userData.User.Id = util.Pointer("u_recovery")
+		userData.User.Id = util.Pointer(globals.RecoveryUserId)
 
 	case uint32(AuthTokenTypeBearer), uint32(AuthTokenTypeSplitCookie):
 		if v.requestInfo.Token == "" {
@@ -527,7 +523,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			userData.User.Id = util.Pointer(at.GetIamUserId())
 			if *userData.User.Id == "" {
 				event.WriteError(ctx, op, stderrors.New("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon"), event.WithInfo("token_id", at.GetPublicId()))
-				userData.User.Id = util.Pointer(AnonymousUserId)
+				userData.User.Id = util.Pointer(globals.AnonymousUserId)
 				userData.Account.Id = nil
 			}
 		}
@@ -855,7 +851,7 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 			// ordering coming back isn't in parent-first ordering our map
 			// lookup might fail.
 			deferredScopes = append(deferredScopes, scp)
-		case len(aSet) == 1 || r.UserId == perms.RecoveryUserId:
+		case len(aSet) == 1 || r.UserId == globals.RecoveryUserId:
 			if aSet[0] != action.List {
 				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
 			}

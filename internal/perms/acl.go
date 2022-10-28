@@ -3,15 +3,10 @@ package perms
 import (
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
-)
-
-const (
-	AnyAuthenticatedUserId = "u_auth"
-	AnonymousUserId        = "u_anon"
-	RecoveryUserId         = "u_recovery"
 )
 
 // ACL provides an entry point into the permissions engine for determining if an
@@ -142,7 +137,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 		// general-purpose cases below (3 and 4). See notes there about ID being
 		// present or not.
 		case !opts.withSkipAnonymousUserRestrictions &&
-			(userId == AnonymousUserId || userId == ""):
+			(userId == globals.AnonymousUserId || userId == ""):
 			switch {
 			// Allow discovery of scopes, so that auth methods within can be
 			// discovered
@@ -251,7 +246,7 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
 			Action:   action.List,
 			OnlySelf: true, // default to only self to be restrictive
 		}
-		if userId == RecoveryUserId {
+		if userId == globals.RecoveryUserId {
 			p.All = true
 			p.OnlySelf = false
 			perms = append(perms, p)

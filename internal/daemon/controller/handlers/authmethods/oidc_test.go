@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -196,7 +197,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 	}{
 		{
 			name:      "unauthenticated",
-			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)),
+			reqCtx:    auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)),
 			respCount: 1,
 		},
 		{
