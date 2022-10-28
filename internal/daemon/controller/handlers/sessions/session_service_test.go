@@ -314,6 +314,7 @@ func TestList(t *testing.T) {
 
 	var wantSession []*pb.Session
 	var wantOtherSession []*pb.Session
+	var wantAllSessions []*pb.Session
 	var wantIncludeTerminatedSessions []*pb.Session
 	for i := 0; i < 10; i++ {
 		sess := session.TestSession(t, conn, wrap, session.ComposedOf{
@@ -330,7 +331,7 @@ func TestList(t *testing.T) {
 
 		status, states := convertStates(sess.States)
 
-		wantSession = append(wantSession, &pb.Session{
+		firstOrgSession := &pb.Session{
 			Id:                sess.GetPublicId(),
 			ScopeId:           pWithSessions.GetPublicId(),
 			AuthTokenId:       at.GetPublicId(),
@@ -350,7 +351,9 @@ func TestList(t *testing.T) {
 			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Connections:       []*pb.Connection{}, // connections should not be returned for list
-		})
+		}
+		wantSession = append(wantSession, firstOrgSession)
+		wantAllSessions = append(wantAllSessions, firstOrgSession)
 
 		wantIncludeTerminatedSessions = append(wantIncludeTerminatedSessions, wantSession[i])
 
@@ -368,7 +371,7 @@ func TestList(t *testing.T) {
 
 		status, states = convertStates(sess.States)
 
-		wantOtherSession = append(wantOtherSession, &pb.Session{
+		otherOrgSession := &pb.Session{
 			Id:                sess.GetPublicId(),
 			ScopeId:           pWithSessions.GetPublicId(),
 			AuthTokenId:       at.GetPublicId(),
@@ -388,7 +391,10 @@ func TestList(t *testing.T) {
 			Type:              tcp.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions,
 			Connections:       []*pb.Connection{}, // connections should not be returned for list
-		})
+		}
+		wantOtherSession = append(wantOtherSession, otherOrgSession)
+
+		wantAllSessions = append(wantAllSessions, otherOrgSession)
 	}
 
 	{
@@ -439,41 +445,47 @@ func TestList(t *testing.T) {
 	}
 
 	cases := []struct {
-		name     string
-		req      *pbs.ListSessionsRequest
-		res      *pbs.ListSessionsResponse
-		otherRes *pbs.ListSessionsResponse
-		err      error
+		name          string
+		req           *pbs.ListSessionsRequest
+		res           *pbs.ListSessionsResponse
+		otherRes      *pbs.ListSessionsResponse
+		allSessionRes *pbs.ListSessionsResponse
+		err           error
 	}{
 		{
-			name:     "List Many Sessions",
-			req:      &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
-			res:      &pbs.ListSessionsResponse{Items: wantSession},
-			otherRes: &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			name:          "List Many Sessions",
+			req:           &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
+			res:           &pbs.ListSessionsResponse{Items: wantSession},
+			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			allSessionRes: &pbs.ListSessionsResponse{Items: wantSession},
 		},
 		{
-			name:     "List Many Include Terminated",
-			req:      &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), IncludeTerminated: true},
-			res:      &pbs.ListSessionsResponse{Items: wantIncludeTerminatedSessions},
-			otherRes: &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			name:          "List Many Include Terminated",
+			req:           &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), IncludeTerminated: true},
+			res:           &pbs.ListSessionsResponse{Items: wantIncludeTerminatedSessions},
+			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			allSessionRes: &pbs.ListSessionsResponse{Items: wantIncludeTerminatedSessions},
 		},
 		{
-			name:     "List No Sessions",
-			req:      &pbs.ListSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
-			res:      &pbs.ListSessionsResponse{},
-			otherRes: &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			name:          "List No Sessions",
+			req:           &pbs.ListSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
+			res:           &pbs.ListSessionsResponse{},
+			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			allSessionRes: &pbs.ListSessionsResponse{},
 		},
 		{
-			name:     "List Sessions Recursively",
-			req:      &pbs.ListSessionsRequest{ScopeId: scope.Global.String(), Recursive: true},
-			res:      &pbs.ListSessionsResponse{Items: wantSession},
-			otherRes: &pbs.ListSessionsResponse{Items: wantOtherSession},
+			name:          "List Sessions Recursively",
+			req:           &pbs.ListSessionsRequest{ScopeId: scope.Global.String(), Recursive: true},
+			res:           &pbs.ListSessionsResponse{Items: wantSession},
+			otherRes:      &pbs.ListSessionsResponse{Items: wantOtherSession},
+			allSessionRes: &pbs.ListSessionsResponse{Items: wantAllSessions},
 		},
 		{
-			name:     "Filter To Single Sessions",
-			req:      &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantSession[4].Id)},
-			res:      &pbs.ListSessionsResponse{Items: wantSession[4:5]},
-			otherRes: &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			name:          "Filter To Single Sessions",
+			req:           &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantSession[4].Id)},
+			res:           &pbs.ListSessionsResponse{Items: wantSession[4:5]},
+			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			allSessionRes: &pbs.ListSessionsResponse{Items: wantSession[4:5]},
 		},
 		{
 			name: "Filter To Many Sessions",
@@ -481,14 +493,16 @@ func TestList(t *testing.T) {
 				ScopeId: scope.Global.String(), Recursive: true,
 				Filter: fmt.Sprintf(`"/item/scope/id" matches "^%s"`, pWithSessions.GetPublicId()[:8]),
 			},
-			res:      &pbs.ListSessionsResponse{Items: wantSession},
-			otherRes: &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			res:           &pbs.ListSessionsResponse{Items: wantSession},
+			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			allSessionRes: &pbs.ListSessionsResponse{Items: wantSession},
 		},
 		{
-			name:     "Filter To Nothing",
-			req:      &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: `"/item/id" == ""`},
-			res:      &pbs.ListSessionsResponse{},
-			otherRes: &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			name:          "Filter To Nothing",
+			req:           &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: `"/item/id" == ""`},
+			res:           &pbs.ListSessionsResponse{},
+			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+			allSessionRes: &pbs.ListSessionsResponse{},
 		},
 		{
 			name:     "Filter Bad Format",
@@ -543,6 +557,30 @@ func TestList(t *testing.T) {
 				assert.True(got.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
 				assert.Equal(0, len(wantSess.GetConnections())) // no connections on list
 				wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
+			}
+
+			// Test with recovery user
+			recoveryRequestInfo := authpb.RequestInfo{
+				TokenFormat: uint32(auth.AuthTokenTypeRecoveryKms),
+				PublicId:    at.GetPublicId(),
+				Token:       at.GetToken(),
+			}
+			recoveryRequestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+			recoveryCtx := auth.NewVerifierContext(recoveryRequestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &recoveryRequestInfo)
+			recoveryGot, gErr := s.ListSessions(recoveryCtx, tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListSessions(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			}
+			require.NoError(gErr)
+			if tc.allSessionRes != nil {
+				require.Equal(len(tc.allSessionRes.GetItems()), len(recoveryGot.GetItems()), "Didn't get expected number of sessions: %v", recoveryGot.GetItems())
+				for i, wantSess := range tc.allSessionRes.GetItems() {
+					assert.True(recoveryGot.GetItems()[i].GetExpirationTime().AsTime().Sub(wantSess.GetExpirationTime().AsTime()) < 10*time.Millisecond)
+					assert.Equal(0, len(wantSess.GetConnections())) // no connections on list
+					wantSess.ExpirationTime = recoveryGot.GetItems()[i].GetExpirationTime()
+				}
 			}
 		})
 	}
