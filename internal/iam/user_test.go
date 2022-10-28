@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -79,7 +80,7 @@ func Test_UserHardcoded(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
-	for _, v := range []string{"u_anon", "u_auth"} {
+	for _, v := range []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId} {
 		foundUser := AllocUser()
 		foundUser.PublicId = v
 		err := w.LookupByPublicId(context.Background(), &foundUser)
@@ -281,13 +282,13 @@ func Test_UserDelete(t *testing.T) {
 		},
 		{
 			name:            "anon-user",
-			user:            func() *User { u := AllocUser(); u.PublicId = "u_anon"; return &u }(),
+			user:            func() *User { u := AllocUser(); u.PublicId = globals.AnonymousUserId; return &u }(),
 			wantErr:         true,
 			wantRowsDeleted: 0,
 		},
 		{
 			name:            "auth-user",
-			user:            func() *User { u := AllocUser(); u.PublicId = "u_auth"; return &u }(),
+			user:            func() *User { u := AllocUser(); u.PublicId = globals.AnyAuthenticatedUserId; return &u }(),
 			wantErr:         true,
 			wantRowsDeleted: 0,
 		},

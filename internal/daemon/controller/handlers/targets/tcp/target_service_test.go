@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -237,7 +238,7 @@ func TestList(t *testing.T) {
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	ar := iam.TestRole(t, conn, proj.GetPublicId())
-	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), auth.AnonymousUserId)
+	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), globals.AnonymousUserId)
 	_ = iam.TestRoleGrant(t, conn, ar.GetPublicId(), "id=*;type=target;actions=*")
 
 	otherOrg, otherProj := iam.TestScopes(t, iamRepo)

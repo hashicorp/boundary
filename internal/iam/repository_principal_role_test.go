@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -117,7 +118,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			name: "recovery-user",
 			args: args{
 				roleVersion:     1,
-				specificUserIds: []string{"u_recovery"},
+				specificUserIds: []string{globals.RecoveryUserId},
 			},
 			wantErr: true,
 		},
@@ -525,8 +526,8 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			u := TestUser(t, repo, org.PublicId)
 			results = append(results, u.PublicId)
 		}
-		results = append(results, "u_anon")
-		results = append(results, "u_auth")
+		results = append(results, globals.AnonymousUserId)
+		results = append(results, globals.AnyAuthenticatedUserId)
 		return results
 	}
 	createGrpsFn := func() []string {

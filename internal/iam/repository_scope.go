@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
@@ -86,9 +86,9 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var adminRoleRaw any
 	switch {
 	case userId == "",
-		userId == perms.AnonymousUserId,
-		userId == perms.AnyAuthenticatedUserId,
-		userId == perms.RecoveryUserId,
+		userId == globals.AnonymousUserId,
+		userId == globals.AnyAuthenticatedUserId,
+		userId == globals.RecoveryUserId,
 		opts.withSkipAdminRoleCreation:
 		// TODO: Cause a log entry. The repo doesn't have a logger right now,
 		// and ideally we will be using context to pass around log info scoped
@@ -336,9 +336,9 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				// Principals
 				{
 					principals := []any{}
-					userId := "u_anon"
+					userId := globals.AnonymousUserId
 					if s.Type == scope.Project.String() {
-						userId = perms.AnyAuthenticatedUserId
+						userId = globals.AnyAuthenticatedUserId
 					}
 					rolePrincipal, err := NewUserRole(defaultRolePublicId, userId)
 					if err != nil {
