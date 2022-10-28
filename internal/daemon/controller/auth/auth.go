@@ -849,13 +849,13 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 
 		// We only expect the action set to be nothing, or list. In case
 		// this is not the case, we bail out.
-		switch len(aSet) {
-		case 0:
+		switch {
+		case len(aSet) == 0:
 			// Defer until we've read all scopes. We do this because if the
 			// ordering coming back isn't in parent-first ordering our map
 			// lookup might fail.
 			deferredScopes = append(deferredScopes, scp)
-		case 1:
+		case len(aSet) == 1 || r.UserId == perms.RecoveryUserId:
 			if aSet[0] != action.List {
 				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
 			}
