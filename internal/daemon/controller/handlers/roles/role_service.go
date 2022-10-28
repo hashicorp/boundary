@@ -975,7 +975,7 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
-		if id == perms.RecoveryUserId {
+		if id == globals.RecoveryUserId {
 			badFields["principal_ids"] = "u_recovery cannot be assigned to a role"
 			break
 		}
@@ -1001,7 +1001,7 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
-		if id == perms.RecoveryUserId {
+		if id == globals.RecoveryUserId {
 			badFields["principal_ids"] = "u_recovery cannot be assigned to a role"
 			break
 		}

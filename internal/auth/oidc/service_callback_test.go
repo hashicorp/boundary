@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	authStore "github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -17,11 +18,10 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
-
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/cap/oidc"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -289,7 +289,7 @@ func Test_Callback(t *testing.T) {
 			_, err := rw.Exec(ctx, "delete from auth_token", nil)
 			require.NoError(err)
 			// start with no users in the db
-			excludeUsers := []any{"u_anon", "u_auth", "u_recovery"}
+			excludeUsers := []any{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, globals.RecoveryUserId}
 			_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 			require.NoError(err)
 			// start with no oplog entries
@@ -438,7 +438,7 @@ func Test_Callback(t *testing.T) {
 		_, err := rw.Exec(ctx, "delete from auth_token", nil)
 		require.NoError(err)
 		// start with no users in the db
-		excludeUsers := []any{"u_anon", "u_auth", "u_recovery"}
+		excludeUsers := []any{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, globals.RecoveryUserId}
 		_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 		require.NoError(err)
 		// start with no oplog entries
@@ -500,7 +500,7 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 		_, err := rw.Exec(ctx, "delete from auth_token", nil)
 		require.NoError(err)
 		// start with no users in the db
-		excludeUsers := []any{"u_anon", "u_auth", "u_recovery"}
+		excludeUsers := []any{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, globals.RecoveryUserId}
 		_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 		require.NoError(err)
 		// start with no oplog entries
