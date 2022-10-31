@@ -65,42 +65,11 @@ func TestCliSessionCancelUser(t *testing.T) {
 	require.Equal(t, 403, response.Status)
 	t.Log("Successfully received an error when connecting to target as a user without permissions")
 
-	// Create a role
+	// Create a role for user
 	boundary.AuthenticateAdminCli(t, ctx)
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"roles", "create",
-			"-scope-id", newProjectId,
-			"-name", "e2e Role",
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newRoleResult roles.RoleCreateResult
-	err = json.Unmarshal(output.Stdout, &newRoleResult)
-	require.NoError(t, err)
-	newRoleId := newRoleResult.Item.Id
-	t.Logf("Created Role: %s", newRoleId)
-
-	// Add grant to role
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"roles", "add-grants",
-			"-id", newRoleId,
-			"-grant", "id=*;type=target;actions=authorize-session",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-
-	// Add user to role
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"roles", "add-principals",
-			"-id", newRoleId,
-			"-principal", newUserId,
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
+	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
