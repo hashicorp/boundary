@@ -199,9 +199,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	return func() {
 		go w.workerAuthSplitListener.Start()
-		go httpServer.Serve(proxyListener)
-		go ln.GrpcServer.Serve(eventingListener)
-		go handleSecondaryConnection(cancelCtx, reverseGrpcListener, w.downstreamRoutes, -1)
+		go httpServer.Serve(metric.InstrumentWorkerClusterTrackingListener(proxyListener, "proxy"))
+		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(eventingListener, "grpc"))
+		go handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(reverseGrpcListener, "reverse-grpc"), w.downstreamRoutes, -1)
 	}, nil
 }
 

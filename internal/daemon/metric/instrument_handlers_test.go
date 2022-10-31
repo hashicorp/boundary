@@ -2,7 +2,9 @@ package metric
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -25,6 +27,125 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 	},
 	ListGrpcLabels,
 )
+
+type testPrometheusGauge struct {
+	prometheus.Metric
+	prometheus.Collector
+
+	incCalledN int
+	decCalledN int
+	t          *testing.T
+}
+
+func (tpg *testPrometheusGauge) Set(float64) { tpg.t.Fatal("testPrometheusGauge Set() called") }
+func (tpg *testPrometheusGauge) Inc()        { tpg.incCalledN++ }
+func (tpg *testPrometheusGauge) Dec()        { tpg.decCalledN++ }
+func (tpg *testPrometheusGauge) Add(float64) { tpg.t.Fatal("testPrometheusGauge Add() called") }
+func (tpg *testPrometheusGauge) Sub(float64) { tpg.t.Fatal("testPrometheusGauge Sub() called") }
+func (tpg *testPrometheusGauge) SetToCurrentTime() {
+	tpg.t.Fatal("testPrometheusGauge SetToCurrentTime() called")
+}
+
+type testListener struct {
+	net.Listener
+	lastClientConn net.Conn
+}
+
+func (l *testListener) Accept() (net.Conn, error) {
+	s, c := net.Pipe()
+	l.lastClientConn = c
+	return s, nil
+}
+
+func (l *testListener) Close() error {
+	return l.lastClientConn.Close()
+}
+
+type erroringListener struct {
+	net.Listener
+}
+
+func (l *erroringListener) Accept() (net.Conn, error) {
+	return nil, errors.New("error for testcase")
+}
+
+func TestNewConnectionTrackingListener(t *testing.T) {
+	t.Run("listener-err",
+		func(t *testing.T) {
+			tpg := &testPrometheusGauge{t: t}
+			el := &erroringListener{}
+			ctl := newConnectionTrackingListener(el, tpg)
+			require.NotNil(t, ctl)
+
+			cc, err := ctl.Accept()
+			assert.Nil(t, cc)
+			assert.Contains(t, "error for testcase", err.Error())
+		})
+	t.Run("inc-dec",
+		func(t *testing.T) {
+			tpg := &testPrometheusGauge{t: t}
+			l := &testListener{}
+			exit := make(chan error, 1)
+			defer func() { close(exit) }()
+
+			ctl := newConnectionTrackingListener(l, tpg)
+			require.NotNil(t, ctl)
+			assert.Equal(t, 0, tpg.incCalledN)
+
+			cc, err := ctl.Accept()
+			require.Nil(t, err)
+			require.NotNil(t, cc)
+			assert.Equal(t, 1, tpg.incCalledN)
+
+			exit <- cc.Close()
+			require.NoError(t, <-exit)
+			assert.Equal(t, 1, tpg.decCalledN)
+		},
+	)
+	t.Run("more-inc-dec",
+		func(t *testing.T) {
+			tpg := &testPrometheusGauge{t: t}
+			l1 := &testListener{}
+			l2 := &testListener{}
+			l3 := &testListener{}
+			exit := make(chan error, 3)
+			defer func() { close(exit) }()
+
+			ctl1 := newConnectionTrackingListener(l1, tpg)
+			require.NotNil(t, ctl1)
+			assert.Equal(t, 0, tpg.incCalledN)
+
+			cc1, err := ctl1.Accept()
+			require.Nil(t, err)
+			require.NotNil(t, cc1)
+			assert.Equal(t, 1, tpg.incCalledN)
+
+			ctl2 := newConnectionTrackingListener(l2, tpg)
+			require.NotNil(t, ctl2)
+			cc2, err := ctl2.Accept()
+			require.Nil(t, err)
+			require.NotNil(t, cc2)
+			assert.Equal(t, 2, tpg.incCalledN)
+
+			exit <- cc1.Close()
+			require.NoError(t, <-exit)
+			exit <- cc2.Close()
+			require.NoError(t, <-exit)
+			assert.Equal(t, 2, tpg.decCalledN)
+
+			ctl3 := newConnectionTrackingListener(l3, tpg)
+			require.NotNil(t, ctl3)
+			cc3, err := ctl3.Accept()
+			require.Nil(t, err)
+			require.NotNil(t, cc3)
+			assert.Equal(t, 3, tpg.incCalledN)
+
+			exit <- cc3.Close()
+			require.NoError(t, <-exit)
+			assert.Equal(t, 3, tpg.decCalledN)
+		},
+	)
+}
 
 func TestNewStatsHandler(t *testing.T) {
 	cases := []struct {

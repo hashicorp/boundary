@@ -2,6 +2,7 @@ package metric
 
 import (
 	"context"
+	"net"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/metric"
@@ -24,10 +25,20 @@ var grpcServerRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec
 		Namespace: globals.MetricNamespace,
 		Subsystem: workerClusterSubsystem,
 		Name:      "grpc_request_duration_seconds",
-		Help:      "Histogram of latencies for gRPC requests between the a worker server and a worker client.",
+		Help:      "Histogram of latencies for gRPC requests between a worker server and a worker client.",
 		Buckets:   prometheus.DefBuckets,
 	},
 	metric.ListGrpcLabels,
+)
+
+var grpcServerActiveConnections = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: workerClusterSubsystem,
+		Name:      "grpc_active_connections",
+		Help:      "Count of active connections to this worker server.",
+	},
+	[]string{metric.LabelConnectionPurpose},
 )
 
 // All the codes expected to be returned by boundary or the grpc framework to
@@ -42,6 +53,10 @@ var expectedGrpcCodes = []codes.Code{
 	codes.Unavailable, codes.Unauthenticated,
 }
 
+func InstrumentWorkerClusterTrackingListener(l net.Listener, purpose string) net.Listener {
+	return metric.NewConnectionTrackingListener(l, grpcServerActiveConnections, prometheus.Labels{metric.LabelConnectionPurpose: purpose})
+}
+
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
 // cluster-specific metrics for a gRPC server.
 func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
@@ -52,5 +67,5 @@ func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterServerCollectors(r prometheus.Registerer, server *grpc.Server) {
-	metric.InitializeGrpcCollectorsFromServer(r, grpcServerRequestLatency, server, expectedGrpcCodes)
+	metric.InitializeGrpcCollectorsFromServer(r, grpcServerRequestLatency, *grpcServerActiveConnections, server, expectedGrpcCodes)
 }
