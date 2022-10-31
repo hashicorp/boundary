@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/users"
@@ -17,10 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliSessionCancelUser uses the cli to create a new user and sets up the right permissions for
-// the user to connect to the created target. The test also confirms that an admin can cancel the
-// user's session.
-func TestCliSessionCancelUser(t *testing.T) {
+// TestCliSessionCancelGroup uses the cli to create a new user and sets up the right permissions for
+// the user to connect to the created target (via a group). The test also confirms that an admin can
+// cancel the user's session.
+func TestCliSessionCancelGroup(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -65,11 +66,36 @@ func TestCliSessionCancelUser(t *testing.T) {
 	require.Equal(t, 403, response.Status)
 	t.Log("Successfully received an error when connecting to target as a user without permissions")
 
-	// Create a role for user
+	// Create a group
 	boundary.AuthenticateAdminCli(t, ctx)
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"groups", "create",
+			"-scope-id", "global",
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	var newGroupResult groups.GroupCreateResult
+	err = json.Unmarshal(output.Stdout, &newGroupResult)
+	require.NoError(t, err)
+	newGroupId := newGroupResult.Item.Id
+	t.Logf("Created Group: %s", newGroupId)
+
+	// Add user to group
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"groups", "add-members",
+			"-id", newGroupId,
+			"-member", newUserId,
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Create a role for a group
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
+	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newGroupId)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
@@ -166,8 +192,8 @@ func TestCliSessionCancelUser(t *testing.T) {
 	t.Log("Successfully cancelled session")
 }
 
-// TestApiCreateUser uses the Go api to create a new user and add some grants to the user
-func TestApiCreateUser(t *testing.T) {
+// TestApiCreateGroup uses the Go api to create a new group and add some grants to the group
+func TestApiCreateGroup(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -191,6 +217,15 @@ func TestApiCreateUser(t *testing.T) {
 	uClient := users.NewClient(client)
 	uClient.SetAccounts(ctx, newUserId, 0, []string{newAcctId})
 
+	gClient := groups.NewClient(client)
+	newGroupResult, err := gClient.Create(ctx, "global")
+	require.NoError(t, err)
+	newGroupId := newGroupResult.Item.Id
+	t.Logf("Created Group: %s", newGroupId)
+
+	_, err = gClient.AddMembers(ctx, newGroupId, 0, []string{newUserId}, groups.WithAutomaticVersioning(true))
+	require.NoError(t, err)
+
 	rClient := roles.NewClient(client)
 	newRoleResult, err := rClient.Create(ctx, newProjectId)
 	require.NoError(t, err)
@@ -202,7 +237,7 @@ func TestApiCreateUser(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err = rClient.AddPrincipals(ctx, newRoleId, 0, []string{newUserId},
+	_, err = rClient.AddPrincipals(ctx, newRoleId, 0, []string{newGroupId},
 		roles.WithAutomaticVersioning(true),
 	)
 	require.NoError(t, err)
