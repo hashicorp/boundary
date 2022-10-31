@@ -121,7 +121,7 @@ jobs:
       - name: Download Vault AMD64 binary for integration testing
         if: steps.dep-cache.outputs.cache-hit != 'true'
         run: |
-          wget https://releases.hashicorp.com/vault/1.11.4/vault_1.11.4_linux_amd64.zip -O /tmp/test-deps/vault.zip
+          wget https://releases.hashicorp.com/vault/1.12.0/vault_1.12.0_linux_amd64.zip -O /tmp/test-deps/vault.zip
       - name: Install Vault for integration testing
         if: matrix.filter == 'e2e_static_with_vault'
         run: |
