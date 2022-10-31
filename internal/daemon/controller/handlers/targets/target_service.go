@@ -841,7 +841,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess, workerList(selectedWorkers).addresses())
+	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, workerList(selectedWorkers).addresses())
 	if err != nil {
 		return nil, err
 	}
@@ -937,7 +937,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		CreatedTime:     sess.CreateTime.GetTimestamp(),
 		Type:            t.GetType().String(),
 		Certificate:     sess.Certificate,
-		PrivateKey:      privKey,
+		PrivateKey:      sess.CertificatePrivateKey,
 		HostId:          chosenEndpoint.HostId,
 		Endpoint:        endpointUrl.String(),
 		WorkerInfo:      workerList(selectedWorkers).workerInfos(),

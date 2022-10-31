@@ -76,9 +76,14 @@ type Session struct {
 	// ProjectId for the session
 	ProjectId string `json:"project_id,omitempty" gorm:"default:null"`
 	// Certificate to use when connecting (or if using custom certs, to
-	// serve as the "login"). Raw DER bytes.  Private key is not, and should not be
-	// stored in the database.
+	// serve as the "login"). Raw DER bytes.
 	Certificate []byte `json:"certificate,omitempty" gorm:"default:null"`
+	// CtCertificatePrivateKey is the ciphertext certificate private key which is stored in the database
+	CtCertificatePrivateKey []byte `json:"ct_certificate_private_key,omitempty" gorm:"column:certificate_private_key;default:null" wrapping:"ct,certificate_private_key"`
+	// CertificatePrivateKey is the certificate private key in plaintext.
+	// This may not be set for some sessions, in which case the private
+	// key should be derived from the encryption key referenced in key_id.
+	CertificatePrivateKey []byte `json:"certificate_private_key,omitempty" gorm:"-" wrapping:"pt,certificate_private_key"`
 	// ExpirationTime - after this time the connection will be expired, e.g. forcefully terminated
 	ExpirationTime *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
 	// CtTofuToken is the ciphertext Tofutoken value stored in the database
@@ -100,10 +105,7 @@ type Session struct {
 	// Worker filter
 	WorkerFilter string `json:"-" gorm:"default:null"`
 
-	// key_id is the key ID that was used for the encryption operation. It can be
-	// used to identify a specific version of the key needed to decrypt the value,
-	// which is useful for caching purposes.
-	// @inject_tag: `gorm:"not_null"`
+	// key_id is the ID of the key version used to encrypt any fields in this struct
 	KeyId string `json:"key_id,omitempty" gorm:"default:null"`
 
 	// States for the session which are for read only and are ignored during
@@ -217,6 +219,14 @@ func (s *Session) Clone() interface{} {
 	if s.Certificate != nil {
 		clone.Certificate = make([]byte, len(s.Certificate))
 		copy(clone.Certificate, s.Certificate)
+	}
+	if s.CertificatePrivateKey != nil {
+		clone.CertificatePrivateKey = make([]byte, len(s.CertificatePrivateKey))
+		copy(clone.CertificatePrivateKey, s.CertificatePrivateKey)
+	}
+	if s.CtCertificatePrivateKey != nil {
+		clone.CtCertificatePrivateKey = make([]byte, len(s.CtCertificatePrivateKey))
+		copy(clone.CtCertificatePrivateKey, s.CtCertificatePrivateKey)
 	}
 	if s.ExpirationTime != nil {
 		clone.ExpirationTime = &timestamp.Timestamp{
@@ -381,7 +391,7 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 	if len(addresses) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
 	}
-	pubKey, privKey, err := DeriveED25519Key(ctx, wrapper, userId, jobId)
+	pubKey, privKey, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -429,8 +439,32 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 
 func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).encrypt"
-	if err := structwrapping.WrapStruct(ctx, cipher, s, nil); err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+	// Split encryption per field since they can be independently nil.
+	if len(s.TofuToken) > 0 {
+		type tofuToken struct {
+			TofuToken   []byte `wrapping:"pt,tofu_token"`
+			CtTofuToken []byte `wrapping:"ct,tofu_token"`
+		}
+		v := &tofuToken{
+			TofuToken: s.TofuToken,
+		}
+		if err := structwrapping.WrapStruct(ctx, cipher, v); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to encrypt tofu token"))
+		}
+		s.CtTofuToken = v.CtTofuToken
+	}
+	if len(s.CertificatePrivateKey) > 0 {
+		type certPk struct {
+			CertificatePrivateKey   []byte `wrapping:"pt,certificate_private_key"`
+			CtCertificatePrivateKey []byte `wrapping:"ct,certificate_private_key"`
+		}
+		v := &certPk{
+			CertificatePrivateKey: s.CertificatePrivateKey,
+		}
+		if err := structwrapping.WrapStruct(ctx, cipher, v); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to encrypt certificate private key"))
+		}
+		s.CtCertificatePrivateKey = v.CtCertificatePrivateKey
 	}
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
@@ -442,32 +476,59 @@ func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 
 func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).decrypt"
-	if err := structwrapping.UnwrapStruct(ctx, cipher, s, nil); err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+	// Split decryption per field since they can be independently nil.
+	if len(s.CtTofuToken) > 0 {
+		type tofuToken struct {
+			TofuToken   []byte `wrapping:"pt,tofu_token"`
+			CtTofuToken []byte `wrapping:"ct,tofu_token"`
+		}
+		v := &tofuToken{
+			CtTofuToken: s.CtTofuToken,
+		}
+		if err := structwrapping.UnwrapStruct(ctx, cipher, v); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt tofu token"))
+		}
+		s.TofuToken = v.TofuToken
 	}
+	if len(s.CtCertificatePrivateKey) > 0 {
+		type certPk struct {
+			CertificatePrivateKey   []byte `wrapping:"pt,certificate_private_key"`
+			CtCertificatePrivateKey []byte `wrapping:"ct,certificate_private_key"`
+		}
+		v := &certPk{
+			CtCertificatePrivateKey: s.CtCertificatePrivateKey,
+		}
+		if err := structwrapping.UnwrapStruct(ctx, cipher, v); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt certificate private key"))
+		}
+		s.CertificatePrivateKey = v.CertificatePrivateKey
+	}
+
 	return nil
 }
 
 type sessionListView struct {
 	// Session fields
-	PublicId          string               `json:"public_id,omitempty" gorm:"primary_key"`
-	UserId            string               `json:"user_id,omitempty" gorm:"default:null"`
-	HostId            string               `json:"host_id,omitempty" gorm:"default:null"`
-	TargetId          string               `json:"target_id,omitempty" gorm:"default:null"`
-	HostSetId         string               `json:"host_set_id,omitempty" gorm:"default:null"`
-	AuthTokenId       string               `json:"auth_token_id,omitempty" gorm:"default:null"`
-	ProjectId         string               `json:"project_id,omitempty" gorm:"default:null"`
-	Certificate       []byte               `json:"certificate,omitempty" gorm:"default:null"`
-	ExpirationTime    *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
-	CtTofuToken       []byte               `json:"ct_tofu_token,omitempty" gorm:"column:tofu_token;default:null" wrapping:"ct,tofu_token"`
-	TofuToken         []byte               `json:"tofu_token,omitempty" gorm:"-" wrapping:"pt,tofu_token"`
-	TerminationReason string               `json:"termination_reason,omitempty" gorm:"default:null"`
-	CreateTime        *timestamp.Timestamp `json:"create_time,omitempty" gorm:"default:current_timestamp"`
-	UpdateTime        *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	Version           uint32               `json:"version,omitempty" gorm:"default:null"`
-	Endpoint          string               `json:"-" gorm:"default:null"`
-	ConnectionLimit   int32                `json:"connection_limit,omitempty" gorm:"default:null"`
-	KeyId             string               `json:"key_id,omitempty" gorm:"default:null"`
+	PublicId                string               `json:"public_id,omitempty" gorm:"primary_key"`
+	UserId                  string               `json:"user_id,omitempty" gorm:"default:null"`
+	HostId                  string               `json:"host_id,omitempty" gorm:"default:null"`
+	TargetId                string               `json:"target_id,omitempty" gorm:"default:null"`
+	HostSetId               string               `json:"host_set_id,omitempty" gorm:"default:null"`
+	AuthTokenId             string               `json:"auth_token_id,omitempty" gorm:"default:null"`
+	ProjectId               string               `json:"project_id,omitempty" gorm:"default:null"`
+	Certificate             []byte               `json:"certificate,omitempty" gorm:"default:null"`
+	CtCertificatePrivateKey []byte               `json:"ct_certificate_private_key,omitempty" gorm:"column:certificate_private_key;default:null" wrapping:"ct,certificate_private_key"`
+	CertificatePrivateKey   []byte               `json:"certificate_private_key,omitempty" gorm:"-"  wrapping:"pt,certificate_private_key"`
+	ExpirationTime          *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
+	CtTofuToken             []byte               `json:"ct_tofu_token,omitempty" gorm:"column:tofu_token;default:null" wrapping:"ct,tofu_token"`
+	TofuToken               []byte               `json:"tofu_token,omitempty" gorm:"-" wrapping:"pt,tofu_token"`
+	TerminationReason       string               `json:"termination_reason,omitempty" gorm:"default:null"`
+	CreateTime              *timestamp.Timestamp `json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	UpdateTime              *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	Version                 uint32               `json:"version,omitempty" gorm:"default:null"`
+	Endpoint                string               `json:"-" gorm:"default:null"`
+	ConnectionLimit         int32                `json:"connection_limit,omitempty" gorm:"default:null"`
+	KeyId                   string               `json:"key_id,omitempty" gorm:"default:null"`
 
 	// State fields
 	Status          string               `json:"state,omitempty" gorm:"column:state"`

@@ -68,7 +68,7 @@ func TestState(t testing.TB, conn *db.DB, sessionId string, state Status) *State
 
 // TestSession creates a test session composed of c in the repository. Options
 // are passed into New, and withServerId is handled locally.
-func TestSession(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
+func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
 	t.Helper()
 	ctx := context.Background()
 	opts := getOpts(opt...)
@@ -83,12 +83,14 @@ func TestSession(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, c Composed
 	id, err := newId()
 	require.NoError(err)
 	s.PublicId = id
-	_, certBytes, err := newCert(ctx, wrapper, c.UserId, id, []string{"127.0.0.1", "localhost"}, c.ExpirationTime.Timestamp.AsTime())
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	wrapper, err := kmsCache.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeSessions)
+	require.NoError(err)
+	privateKey, certBytes, err := newCert(ctx, wrapper, c.UserId, id, []string{"127.0.0.1", "localhost"}, c.ExpirationTime.Timestamp.AsTime())
 	require.NoError(err)
 	s.Certificate = certBytes
-	if len(s.TofuToken) != 0 {
-		err = s.encrypt(ctx, wrapper)
-	}
+	s.CertificatePrivateKey = privateKey
+	err = s.encrypt(ctx, wrapper)
 	require.NoError(err)
 	err = rw.Create(ctx, s, opts.withDbOpts...)
 	if e, ok := err.(*errors.Err); err != nil && ok && e.Code == errors.NotUnique {

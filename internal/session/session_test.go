@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -20,6 +21,7 @@ func TestSession_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	composedOf := testSessionCredentialParams(t, conn, wrapper, iamRepo)
 	exp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
@@ -181,7 +183,9 @@ func TestSession_Create(t *testing.T) {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
-				_, certBytes, err := newCert(ctx, wrapper, got.UserId, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime())
+				wrapper, err := kmsCache.GetWrapper(ctx, tt.args.composedOf.ProjectId, kms.KeyPurposeSessions)
+				require.NoError(err)
+				privKey, certBytes, err := newCert(ctx, wrapper, got.UserId, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime())
 				if tt.wantAddrErr {
 					require.Error(err)
 					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -189,6 +193,7 @@ func TestSession_Create(t *testing.T) {
 				}
 				require.NoError(err)
 				got.Certificate = certBytes
+				got.CertificatePrivateKey = privKey
 				err = db.New(conn).Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)

@@ -443,7 +443,7 @@ values
 `
 )
 
-func batchInsertsessionCredentialDynamic(creds []*DynamicCredential) (string, []interface{}, error) {
+func batchInsertSessionCredentialDynamic(creds []*DynamicCredential) (string, []interface{}, error) {
 	if len(creds) <= 0 {
 		return "", nil, fmt.Errorf("empty slice of DynamicCredential, cannot build query")
 	}

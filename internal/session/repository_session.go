@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/subtle"
 	"database/sql"
 	"fmt"
@@ -20,62 +19,62 @@ import (
 // its State of "Pending".  The following fields must be empty when creating a
 // session: WorkerId, and PublicId.  No options are
 // currently supported.
-func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, workerAddresses []string, _ ...Option) (*Session, ed25519.PrivateKey, error) {
+func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.Wrapper, newSession *Session, workerAddresses []string, _ ...Option) (*Session, error) {
 	const op = "session.(Repository).CreateSession"
 	if newSession == nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session")
 	}
 	if newSession.PublicId != "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id is not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id is not empty")
 	}
 	if len(newSession.Certificate) != 0 {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "certificate is not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "certificate is not empty")
 	}
 	if newSession.TargetId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if newSession.HostId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing host id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host id")
 	}
 	if newSession.UserId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	if newSession.HostSetId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing host set id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host set id")
 	}
 	if newSession.AuthTokenId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
 	}
 	if newSession.ProjectId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	if newSession.CtTofuToken != nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "ct is not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "ct is not empty")
 	}
 	if newSession.TofuToken != nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "tofu token is not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "tofu token is not empty")
 	}
 	if newSession.ExpirationTime == nil || newSession.ExpirationTime.Timestamp.AsTime().IsZero() {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
 	}
 	if len(workerAddresses) == 0 {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
 	}
 
 	id, err := newId()
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	privKey, certBytes, err := newCert(ctx, sessionWrapper, newSession.UserId, id, workerAddresses, newSession.ExpirationTime.Timestamp.AsTime())
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	newSession.Certificate = certBytes
+	newSession.CertificatePrivateKey = privKey
 	newSession.PublicId = id
-	newSession.KeyId, err = sessionWrapper.KeyId(ctx)
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to get session wrapper key id"))
+	if err := newSession.encrypt(ctx, sessionWrapper); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to encrypt session"))
 	}
 
 	var returnedSession *Session
@@ -115,7 +114,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 			}
 
 			// TODO: after upgrading to gorm v2 this batch insert can be replaced, since gorm v2 supports batch inserts
-			q, batchInsertArgs, err := batchInsertsessionCredentialDynamic(newSession.DynamicCredentials)
+			q, batchInsertArgs, err := batchInsertSessionCredentialDynamic(newSession.DynamicCredentials)
 			if err == nil {
 				rows, err := w.Query(ctx, q, batchInsertArgs)
 				if err != nil {
@@ -148,20 +147,23 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		},
 	)
 	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	return returnedSession, privKey, nil
+	return returnedSession, nil
 }
 
 // LookupSession will look up a session in the repository and return the session
 // with its states.  Returned States are ordered by start time descending.  If the
 // session is not found, it will return nil, nil, nil. No options are currently
 // supported.
-func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...Option) (*Session, *AuthzSummary, error) {
+// Supported Options:
+//   - WithIgnoreDecryptionFailures
+func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, *AuthzSummary, error) {
 	const op = "session.(Repository).LookupSession"
 	if sessionId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
+	opts := getOpts(opt...)
 	session := AllocSession()
 	session.PublicId = sessionId
 	_, err := r.writer.DoTx(
@@ -199,6 +201,9 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 				return errors.Wrap(ctx, err, op)
 			}
 			session.Connections = connections
+			if err := decryptAndMaybeUpdateSession(ctx, r.kms, &session, w); err != nil && !opts.withIgnoreDecryptionFailures {
+				return errors.Wrap(ctx, err, op)
+			}
 			return nil
 		},
 	)
@@ -207,17 +212,6 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 			return nil, nil, nil
 		}
 		return nil, nil, errors.Wrap(ctx, err, op)
-	}
-	if len(session.CtTofuToken) > 0 {
-		databaseWrapper, err := r.kms.GetWrapper(ctx, session.ProjectId, kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-		}
-		if err := session.decrypt(ctx, databaseWrapper); err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("cannot decrypt session value"))
-		}
-	} else {
-		session.CtTofuToken = nil
 	}
 
 	authzSummary, err := r.sessionAuthzSummary(ctx, sessionId)
@@ -340,7 +334,9 @@ func (r *Repository) DeleteSession(ctx context.Context, publicId string, _ ...Op
 // session state to "canceling" for the given reason, so the workers can get the
 // "canceling signal" during their next status heartbeat. CancelSession is
 // idempotent.
-func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32) (*Session, error) {
+// Supported Options:
+//   - WithIgnoreDecryptionFailures
+func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessionVersion uint32, opt ...Option) (*Session, error) {
 	const op = "session.(Repository).CancelSession"
 	if sessionId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
@@ -348,7 +344,7 @@ func (r *Repository) CancelSession(ctx context.Context, sessionId string, sessio
 	if sessionVersion == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session version")
 	}
-	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCanceling)
+	s, ss, err := r.updateState(ctx, sessionId, sessionVersion, StatusCanceling, opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -481,19 +477,22 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			if err := reader.LookupById(ctx, &foundSession); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
 			}
-			databaseWrapper, err := r.kms.GetWrapper(ctx, foundSession.ProjectId, kms.KeyPurposeDatabase)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+			if err := decryptAndMaybeUpdateSession(ctx, r.kms, &foundSession, w); err != nil {
+				return errors.Wrap(ctx, err, op)
 			}
 			if len(foundSession.TofuToken) > 0 && subtle.ConstantTimeCompare(foundSession.TofuToken, tofuToken) != 1 {
 				return errors.New(ctx, errors.TokenMismatch, op, "tofu token mismatch")
 			}
 
 			updatedSession.TofuToken = tofuToken
-			if err := updatedSession.encrypt(ctx, databaseWrapper); err != nil {
+			sessionWrapper, err := r.kms.GetWrapper(ctx, foundSession.ProjectId, kms.KeyPurposeSessions)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get session wrapper"))
+			}
+			if err := updatedSession.encrypt(ctx, sessionWrapper); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"CtTofuToken"}, nil)
+			rowsUpdated, err := w.Update(ctx, &updatedSession, []string{"CtTofuToken", "KeyId"}, nil)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -518,7 +517,9 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 // updateState will update the session's state using the session id and its
 // version. updateState is idempotent. States are ordered by start time
 // descending. No options are currently supported.
-func (r *Repository) updateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, _ ...Option) (*Session, []*State, error) {
+// Supported Options:
+//   - WithIgnoreDecryptionFailures
+func (r *Repository) updateState(ctx context.Context, sessionId string, sessionVersion uint32, s Status, opt ...Option) (*Session, []*State, error) {
 	const op = "session.(Repository).updateState"
 	if sessionId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
@@ -532,6 +533,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 	if s == StatusActive {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "you must call ActivateSession to update a session's state to active")
 	}
+	opts := getOpts(opt...)
 
 	var rowsAffected int
 	updatedSession := AllocSession()
@@ -552,16 +554,8 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 			if rowsUpdated != 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated session and %d rows updated", rowsUpdated))
 			}
-			if len(updatedSession.CtTofuToken) > 0 {
-				databaseWrapper, err := r.kms.GetWrapper(ctx, updatedSession.ProjectId, kms.KeyPurposeDatabase)
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-				}
-				if err := updatedSession.decrypt(ctx, databaseWrapper); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("cannot decrypt session value"))
-				}
-			} else {
-				updatedSession.CtTofuToken = nil
+			if err := decryptAndMaybeUpdateSession(ctx, r.kms, &updatedSession, w); err != nil && !opts.withIgnoreDecryptionFailures {
+				return errors.Wrap(ctx, err, op)
 			}
 
 			rowsAffected, err = w.Exec(ctx, updateSessionState, []interface{}{
@@ -679,4 +673,55 @@ func fetchConnections(ctx context.Context, r db.Reader, sessionId string, opt ..
 		return nil, nil
 	}
 	return connections, nil
+}
+
+// decryptAndMaybeUpdateSession switches between the database key and session key based on whether
+// the session uses a legacy private key or not. It also updates the encrypted session
+// in the database (if necessary). Eventually we should be able to remove this function
+// and use the session key unconditionally.
+func decryptAndMaybeUpdateSession(ctx context.Context, kmsRepo *kms.Kms, session *Session, writer db.Writer) error {
+	const op = "session.decryptAndMaybeUpdateSession"
+	sessionWrapper, err := kmsRepo.GetWrapper(ctx, session.ProjectId, kms.KeyPurposeSessions, kms.WithKeyId(session.KeyId))
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+	}
+	if len(session.CtCertificatePrivateKey) > 0 {
+		// New-style session with private key stored in DB, just decrypt.
+		if err := session.decrypt(ctx, sessionWrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to decrypt session value"))
+		}
+		return nil
+	}
+	// No certificate private key present, this is a legacy session with a
+	// private key derived from the key. Derive it again and store it back
+	// in the DB.
+	_, session.CertificatePrivateKey, err = DeriveED25519Key(ctx, sessionWrapper, session.UserId, session.GetPublicId())
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("Error deriving session key"))
+	}
+	updatedFields := []string{"CtCertificatePrivateKey", "KeyId"}
+	if len(session.CtTofuToken) > 0 {
+		// If the TOFU token was set on this session, we can decrypt it using
+		// the database key.
+		databaseWrapper, err := kmsRepo.GetWrapper(ctx, session.ProjectId, kms.KeyPurposeDatabase)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+		}
+		if err := session.decrypt(ctx, databaseWrapper); err != nil {
+			// Note; we can hit this error if the database key that
+			// was used to encrypt the TOFU token is no longer available
+			// in the wrapper. Try to return a useful error to the user.
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to decrypt session TOFU token. You may need to recreate your session."))
+		}
+		updatedFields = append(updatedFields, "CtTofuToken")
+	}
+	// Rewrap with the session wrapper. Next time we look up this session
+	// all values will be encrypted using the session key.
+	if err := session.encrypt(ctx, sessionWrapper); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to encrypt session value"))
+	}
+	if _, err := writer.Update(ctx, session, updatedFields, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update session value"))
+	}
+	return nil
 }

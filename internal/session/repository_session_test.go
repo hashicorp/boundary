@@ -275,9 +275,9 @@ func TestRepository_CreateSession(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	kms := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, wrapper)
 	ctx := context.Background()
-	repo, err := NewRepository(ctx, rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	workerAddresses := []string{"1.2.3.4"}
@@ -399,8 +399,9 @@ func TestRepository_CreateSession(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var wrapper wrapping.Wrapper
 			if tt.args.composedOf.ProjectId != "" {
-				wrapper, err = kms.GetWrapper(context.Background(), tt.args.composedOf.ProjectId, 1)
+				wrapper, err = kmsCache.GetWrapper(context.Background(), tt.args.composedOf.ProjectId, kms.KeyPurposeSessions)
 				require.NoError(t, err)
 			}
 
@@ -418,7 +419,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 				StaticCredentials:  tt.args.composedOf.StaticCredentials,
 			}
-			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
+			ses, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
 
 			if tt.wantErr {
 				assert.Error(err)
@@ -428,7 +429,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(ses)
-			assert.NotNil(privKey)
+			assert.NotNil(ses.CertificatePrivateKey)
 			assert.NotNil(ses.States)
 			assert.NotNil(ses.CreateTime)
 			assert.NotNil(ses.States[0].StartTime)
@@ -439,7 +440,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.Len(ses.DynamicCredentials, len(s.DynamicCredentials))
 			assert.Len(ses.StaticCredentials, len(s.StaticCredentials))
 			foundSession, _, err := repo.LookupSession(context.Background(), ses.PublicId)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(keyId, foundSession.KeyId)
 
 			// Account for slight offsets in nanos
@@ -1200,22 +1201,6 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 				// override the table name so we can delete this thing, since
 				// it's default table name is a non-writable view.
 				t.SetTableName("auth_token")
-				return cancelFk{
-					s:      s,
-					fkType: t,
-				}
-			}(),
-		},
-		{
-			name: "Scope",
-			cancelFk: func() cancelFk {
-				s := setupFn()
-
-				t := &iam.Scope{
-					Scope: &iamStore.Scope{
-						PublicId: s.ProjectId,
-					},
-				}
 				return cancelFk{
 					s:      s,
 					fkType: t,

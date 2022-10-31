@@ -134,40 +134,36 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 			}
 			prevSessionId = sv.PublicId
 			workingSession = &Session{
-				PublicId:          sv.PublicId,
-				UserId:            sv.UserId,
-				HostId:            sv.HostId,
-				TargetId:          sv.TargetId,
-				HostSetId:         sv.HostSetId,
-				AuthTokenId:       sv.AuthTokenId,
-				ProjectId:         sv.ProjectId,
-				Certificate:       sv.Certificate,
-				ExpirationTime:    sv.ExpirationTime,
-				CtTofuToken:       sv.CtTofuToken,
-				TofuToken:         sv.TofuToken, // will always be nil since it's not stored in the database.
-				TerminationReason: sv.TerminationReason,
-				CreateTime:        sv.CreateTime,
-				UpdateTime:        sv.UpdateTime,
-				Version:           sv.Version,
-				Endpoint:          sv.Endpoint,
-				ConnectionLimit:   sv.ConnectionLimit,
-				KeyId:             sv.KeyId,
+				PublicId:                sv.PublicId,
+				UserId:                  sv.UserId,
+				HostId:                  sv.HostId,
+				TargetId:                sv.TargetId,
+				HostSetId:               sv.HostSetId,
+				AuthTokenId:             sv.AuthTokenId,
+				ProjectId:               sv.ProjectId,
+				Certificate:             sv.Certificate,
+				CtCertificatePrivateKey: sv.CtCertificatePrivateKey,
+				CertificatePrivateKey:   sv.CertificatePrivateKey, // will always be nil since it's not stored in the database.
+				ExpirationTime:          sv.ExpirationTime,
+				CtTofuToken:             sv.CtTofuToken,
+				TofuToken:               sv.TofuToken, // will always be nil since it's not stored in the database.
+				TerminationReason:       sv.TerminationReason,
+				CreateTime:              sv.CreateTime,
+				UpdateTime:              sv.UpdateTime,
+				Version:                 sv.Version,
+				Endpoint:                sv.Endpoint,
+				ConnectionLimit:         sv.ConnectionLimit,
+				KeyId:                   sv.KeyId,
 			}
 			if opts.withListingConvert {
-				workingSession.CtTofuToken = nil // CtTofuToken should not returned in lists
-				workingSession.TofuToken = nil   // TofuToken should not returned in lists
-				workingSession.KeyId = ""        // KeyId should not be returned in lists
+				workingSession.CtCertificatePrivateKey = nil // CtCertificatePrivateKey should not returned in lists
+				workingSession.CertificatePrivateKey = nil   // CertificatePrivateKey should not returned in lists
+				workingSession.CtTofuToken = nil             // CtTofuToken should not returned in lists
+				workingSession.TofuToken = nil               // TofuToken should not returned in lists
+				workingSession.KeyId = ""                    // KeyId should not be returned in lists
 			} else {
-				if len(workingSession.CtTofuToken) > 0 {
-					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ProjectId, kms.KeyPurposeDatabase)
-					if err != nil {
-						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-					}
-					if err := workingSession.decrypt(ctx, databaseWrapper); err != nil {
-						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("cannot decrypt session value"))
-					}
-				} else {
-					workingSession.CtTofuToken = nil
+				if err := decryptAndMaybeUpdateSession(ctx, r.kms, workingSession, r.writer); err != nil {
+					return nil, errors.Wrap(ctx, err, op)
 				}
 			}
 		}
