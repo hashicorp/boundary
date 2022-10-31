@@ -34,12 +34,12 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 	metric.ListGrpcLabels,
 )
 
-// grpcActiveConnections keeps a count of the current active connections to a controller.
-var grpcActiveConnections = prometheus.NewGaugeVec(
+// activeConnections keeps a count of the current active connections to a controller.
+var activeConnections = prometheus.NewGaugeVec(
 	prometheus.GaugeOpts{
 		Namespace: globals.MetricNamespace,
 		Subsystem: clusterSubSystem,
-		Name:      "grpc_active_connections",
+		Name:      "active_connections",
 		Help:      "Count of active connections to this controller.",
 	},
 	[]string{metric.LabelConnectionPurpose},
@@ -58,7 +58,7 @@ var expectedGrpcCodes = []codes.Code{
 }
 
 func InstrumentClusterTrackingListener(l net.Listener, purpose string) net.Listener {
-	return metric.NewConnectionTrackingListener(l, grpcActiveConnections, prometheus.Labels{metric.LabelConnectionPurpose: purpose})
+	return metric.NewConnectionTrackingListener(l, activeConnections, prometheus.Labels{metric.LabelConnectionPurpose: purpose})
 }
 
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
@@ -71,5 +71,5 @@ func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterCollectors(r prometheus.Registerer, server *grpc.Server) {
-	metric.InitializeGrpcCollectorsFromServer(r, grpcRequestLatency, *grpcActiveConnections, server, expectedGrpcCodes)
+	metric.InitializeGrpcCollectorsFromServer(r, grpcRequestLatency, *activeConnections, server, expectedGrpcCodes)
 }
