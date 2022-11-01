@@ -40,7 +40,7 @@ var activeConnections = prometheus.NewGaugeVec(
 		Namespace: globals.MetricNamespace,
 		Subsystem: clusterSubSystem,
 		Name:      "active_connections",
-		Help:      "Count of active connections to this controller.",
+		Help:      "Count of active network connections to this controller.",
 	},
 	[]string{metric.LabelConnectionPurpose},
 )
@@ -58,7 +58,8 @@ var expectedGrpcCodes = []codes.Code{
 }
 
 func InstrumentClusterTrackingListener(l net.Listener, purpose string) net.Listener {
-	return metric.NewConnectionTrackingListener(l, activeConnections, prometheus.Labels{metric.LabelConnectionPurpose: purpose})
+	p := prometheus.Labels{metric.LabelConnectionPurpose: purpose}
+	return metric.NewConnectionTrackingListener(l, activeConnections.With(p))
 }
 
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes

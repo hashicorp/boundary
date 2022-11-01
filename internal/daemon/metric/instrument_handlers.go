@@ -104,12 +104,7 @@ type connectionTrackingListener struct {
 
 // NewConnectionTrackingListener registers a new Prometheus gauge with an unique connection type label
 // and wraps an existing listener to track when connections are accepted and closed.
-func NewConnectionTrackingListener(l net.Listener, g *prometheus.GaugeVec, connType prometheus.Labels) *connectionTrackingListener {
-	return newConnectionTrackingListener(l, g.With(connType))
-}
-
-// This is a separate function for testing purposes
-func newConnectionTrackingListener(l net.Listener, g prometheus.Gauge) *connectionTrackingListener {
+func NewConnectionTrackingListener(l net.Listener, g prometheus.Gauge) *connectionTrackingListener {
 	return &connectionTrackingListener{Listener: l, connCount: g}
 }
 

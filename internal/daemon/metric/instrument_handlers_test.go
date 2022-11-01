@@ -57,38 +57,98 @@ func (l *testListener) Accept() (net.Conn, error) {
 	return s, nil
 }
 
-func (l *testListener) Close() error {
-	return l.lastClientConn.Close()
-}
-
-type erroringListener struct {
+type erroringAcceptListener struct {
 	net.Listener
 }
 
-func (l *erroringListener) Accept() (net.Conn, error) {
+func (l *erroringAcceptListener) Accept() (net.Conn, error) {
 	return nil, errors.New("error for testcase")
 }
 
+type erroringCloseListener struct {
+	net.Listener
+	lastClientConn net.Conn
+}
+
+func (l *erroringCloseListener) Accept() (net.Conn, error) {
+	s, c := net.Pipe()
+	l.lastClientConn = c
+	return &erroringConn{Conn: s}, nil
+}
+
+type erroringConn struct {
+	net.Conn
+}
+
+func (c *erroringConn) Close() error {
+	c.Conn.Close()
+	return errors.New("error for testcase")
+}
+
 func TestNewConnectionTrackingListener(t *testing.T) {
-	t.Run("listener-err",
+	t.Run("accept-err",
 		func(t *testing.T) {
 			tpg := &testPrometheusGauge{t: t}
-			el := &erroringListener{}
-			ctl := newConnectionTrackingListener(el, tpg)
+			el := &erroringAcceptListener{}
+			ctl := NewConnectionTrackingListener(el, tpg)
 			require.NotNil(t, ctl)
 
 			cc, err := ctl.Accept()
 			assert.Nil(t, cc)
 			assert.Contains(t, "error for testcase", err.Error())
 		})
+	t.Run("accept-multiple",
+		func(t *testing.T) {
+			tpg := &testPrometheusGauge{t: t}
+			n := 10
+			for i := 0; i < n; i++ {
+				l := &testListener{}
+				ctl := NewConnectionTrackingListener(l, tpg)
+				require.NotNil(t, ctl)
+				cc, err := ctl.Accept()
+				assert.NotNil(t, cc)
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, n, tpg.incCalledN)
+		})
+	t.Run("close-err",
+		func(t *testing.T) {
+			tpg := &testPrometheusGauge{t: t}
+			el := &erroringCloseListener{}
+			ctl := NewConnectionTrackingListener(el, tpg)
+			require.NotNil(t, ctl)
+
+			cc, err := ctl.Accept()
+			require.NotNil(t, cc)
+			require.NoError(t, err)
+			assert.Equal(t, 1, tpg.incCalledN)
+
+			assert.Error(t, cc.Close())
+			assert.Equal(t, 1, tpg.decCalledN)
+		})
+	t.Run("close-repeat-calls",
+		func(t *testing.T) {
+			tpg := &testPrometheusGauge{t: t}
+			l := &testListener{}
+			ctl := NewConnectionTrackingListener(l, tpg)
+			require.NotNil(t, ctl)
+
+			cc, err := ctl.Accept()
+			require.Nil(t, err)
+			require.NotNil(t, cc)
+			assert.Equal(t, 0, tpg.decCalledN)
+
+			for i := 0; i <= 5; i++ {
+				assert.NoError(t, cc.Close())
+			}
+			assert.Equal(t, 1, tpg.decCalledN)
+		})
 	t.Run("inc-dec",
 		func(t *testing.T) {
 			tpg := &testPrometheusGauge{t: t}
 			l := &testListener{}
-			exit := make(chan error, 1)
-			defer func() { close(exit) }()
 
-			ctl := newConnectionTrackingListener(l, tpg)
+			ctl := NewConnectionTrackingListener(l, tpg)
 			require.NotNil(t, ctl)
 			assert.Equal(t, 0, tpg.incCalledN)
 
@@ -97,8 +157,7 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			require.NotNil(t, cc)
 			assert.Equal(t, 1, tpg.incCalledN)
 
-			exit <- cc.Close()
-			require.NoError(t, <-exit)
+			require.NoError(t, cc.Close())
 			assert.Equal(t, 1, tpg.decCalledN)
 		},
 	)
@@ -108,10 +167,8 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			l1 := &testListener{}
 			l2 := &testListener{}
 			l3 := &testListener{}
-			exit := make(chan error, 3)
-			defer func() { close(exit) }()
 
-			ctl1 := newConnectionTrackingListener(l1, tpg)
+			ctl1 := NewConnectionTrackingListener(l1, tpg)
 			require.NotNil(t, ctl1)
 			assert.Equal(t, 0, tpg.incCalledN)
 
@@ -120,28 +177,25 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			require.NotNil(t, cc1)
 			assert.Equal(t, 1, tpg.incCalledN)
 
-			ctl2 := newConnectionTrackingListener(l2, tpg)
+			ctl2 := NewConnectionTrackingListener(l2, tpg)
 			require.NotNil(t, ctl2)
 			cc2, err := ctl2.Accept()
 			require.Nil(t, err)
 			require.NotNil(t, cc2)
 			assert.Equal(t, 2, tpg.incCalledN)
 
-			exit <- cc1.Close()
-			require.NoError(t, <-exit)
-			exit <- cc2.Close()
-			require.NoError(t, <-exit)
+			require.NoError(t, cc1.Close())
+			require.NoError(t, cc2.Close())
 			assert.Equal(t, 2, tpg.decCalledN)
 
-			ctl3 := newConnectionTrackingListener(l3, tpg)
+			ctl3 := NewConnectionTrackingListener(l3, tpg)
 			require.NotNil(t, ctl3)
 			cc3, err := ctl3.Accept()
 			require.Nil(t, err)
 			require.NotNil(t, cc3)
 			assert.Equal(t, 3, tpg.incCalledN)
 
-			exit <- cc3.Close()
-			require.NoError(t, <-exit)
+			require.NoError(t, cc3.Close())
 			assert.Equal(t, 3, tpg.decCalledN)
 		},
 	)
