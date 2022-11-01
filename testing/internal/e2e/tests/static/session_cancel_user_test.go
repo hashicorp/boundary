@@ -98,49 +98,36 @@ func TestCliSessionCancelUser(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	// Get list of sessions
+	// Wait for session to be active
 	var session *sessions.Session
 	err = backoff.RetryNotify(
 		func() error {
+			// List sessions
 			output := e2e.RunCommand(ctx, "boundary",
 				e2e.WithArgs("sessions", "list", "-scope-id", newProjectId, "-format", "json"),
 			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
-
 			var sessionListResult sessions.SessionListResult
 			err := json.Unmarshal(output.Stdout, &sessionListResult)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
 
+			// Check if there is one session
 			sessionCount := len(sessionListResult.Items)
 			if sessionCount == 0 {
 				return errors.New("No items are appearing in the session list")
 			}
-
 			t.Logf("Found %d session(s)", sessionCount)
 			if sessionCount != 1 {
 				return backoff.Permanent(errors.New("Only one session was expected to be found"))
 			}
 
+			// Check if session is active
 			session = sessionListResult.Items[0]
-			return nil
-		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
-		func(err error, td time.Duration) {
-			t.Logf("%s. Retrying...", err.Error())
-		},
-	)
-	require.NoError(t, err)
-	assert.Equal(t, newTargetId, session.TargetId)
-	assert.Equal(t, newHostId, session.HostId)
-
-	// Wait for session to be active
-	err = backoff.RetryNotify(
-		func() error {
-			output := e2e.RunCommand(ctx, "boundary",
+			output = e2e.RunCommand(ctx, "boundary",
 				e2e.WithArgs("sessions", "read", "-id", session.Id),
 			)
 			if output.Err != nil {
@@ -148,7 +135,7 @@ func TestCliSessionCancelUser(t *testing.T) {
 			}
 
 			var sessionReadResult sessions.SessionReadResult
-			err := json.Unmarshal(output.Stdout, &sessionReadResult)
+			err = json.Unmarshal(output.Stdout, &sessionReadResult)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
@@ -167,6 +154,9 @@ func TestCliSessionCancelUser(t *testing.T) {
 			t.Logf("%s. Retrying...", err.Error())
 		},
 	)
+	require.NoError(t, err)
+	assert.Equal(t, newTargetId, session.TargetId)
+	assert.Equal(t, newHostId, session.HostId)
 
 	// Cancel session
 	output = e2e.RunCommand(ctx, "boundary",
