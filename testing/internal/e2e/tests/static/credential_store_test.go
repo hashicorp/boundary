@@ -111,7 +111,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand(ctx, "boundary",
+			output := e2e.RunCommand(ctx, "boundary",
 				e2e.WithArgs("credential-stores", "read", "-id", newCredentialStoreId, "-format", "json"),
 			)
 			if output.Err == nil {
@@ -119,7 +119,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 			}
 
 			var response e2e.CliError
-			err = json.Unmarshal(output.Stderr, &response)
+			err := json.Unmarshal(output.Stderr, &response)
 			require.NoError(t, err)
 			statusCode := response.Status
 			if statusCode != 404 {

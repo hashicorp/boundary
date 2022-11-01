@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -67,7 +68,7 @@ func TestCliSessionCancelAdmin(t *testing.T) {
 			}
 
 			var sessionListResult sessions.SessionListResult
-			err = json.Unmarshal(output.Stdout, &sessionListResult)
+			err := json.Unmarshal(output.Stdout, &sessionListResult)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
@@ -93,7 +94,37 @@ func TestCliSessionCancelAdmin(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, newTargetId, session.TargetId)
 	assert.Equal(t, newHostId, session.HostId)
-	require.Equal(t, "active", session.Status)
+
+	// Wait for session to be active
+	err = backoff.RetryNotify(
+		func() error {
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("sessions", "read", "-id", session.Id),
+			)
+			if output.Err != nil {
+				return backoff.Permanent(errors.New(string(output.Stderr)))
+			}
+
+			var sessionReadResult sessions.SessionReadResult
+			err := json.Unmarshal(output.Stdout, &sessionReadResult)
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+
+			if sessionReadResult.Item.Status != "active" {
+				return errors.New(fmt.Sprintf("Waiting for session to be active... Expected: %s, Actual: %s",
+					"active",
+					sessionReadResult.Item.Status,
+				))
+			}
+
+			return nil
+		},
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
+		func(err error, td time.Duration) {
+			t.Logf("%s. Retrying...", err.Error())
+		},
+	)
 
 	// Cancel session
 	output := e2e.RunCommand(ctx, "boundary",

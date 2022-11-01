@@ -60,7 +60,7 @@ func TestCliConnectTargetWithLocalhost(t *testing.T) {
 			}
 
 			var sessionListResult sessions.SessionListResult
-			err = json.Unmarshal(output.Stdout, &sessionListResult)
+			err := json.Unmarshal(output.Stdout, &sessionListResult)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
