@@ -86,7 +86,7 @@ func TestCliSessionCancelAdmin(t *testing.T) {
 			// Check if session is active
 			session = sessionListResult.Items[0]
 			output = e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("sessions", "read", "-id", session.Id),
+				e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
 			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
