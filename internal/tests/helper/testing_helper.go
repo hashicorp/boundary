@@ -111,14 +111,14 @@ func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
 
 	var conn *websocket.Conn
 	var resp *http.Response
-	var err error
 	var handshakeResult proxy.HandshakeResult
 	// A retry was added here to mitigate some flakiness.
 	// Occasionally, `wspb.Read` would throw an error due to "received header with unexpected
 	// rsv bits set: false:false:true". It was unclear what the cause of this was, so we
 	// resorted to retrying the connection.
-	err = backoff.RetryNotify(
+	err := backoff.RetryNotify(
 		func() error {
+			var err error
 			conn, resp, err = websocket.Dial(
 				ctx,
 				fmt.Sprintf("wss://%s/v1/proxy", s.WorkerAddr),
@@ -131,12 +131,6 @@ func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
 			)
 			if err != nil {
 				return backoff.Permanent(err)
-			}
-			if conn == nil {
-				return backoff.Permanent(errors.New("conn is nil"))
-			}
-			if resp == nil {
-				return backoff.Permanent(errors.New("resp is nil"))
 			}
 			if resp.Header.Get("Sec-WebSocket-Protocol") != globals.TcpProxyV1 {
 				return backoff.Permanent(errors.New(
@@ -161,10 +155,9 @@ func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
 				return backoff.Permanent(err)
 			}
 
-			err = wspb.Read(ctx, conn, &handshakeResult)
-			return err
+			return wspb.Read(ctx, conn, &handshakeResult)
 		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(1*time.Second), 1),
+		backoff.WithMaxRetries(backoff.NewConstantBackOff(time.Second), 1),
 		func(err error, td time.Duration) {
 			t.Logf("Issue with reading websocket: %s. Retrying...", err)
 		},
