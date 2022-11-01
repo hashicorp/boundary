@@ -98,7 +98,7 @@ func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
 	var actualHostSetCount1 int
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand(ctx, "boundary",
+			output := e2e.RunCommand(ctx, "boundary",
 				e2e.WithArgs(
 					"host-sets", "read",
 					"-id", newHostSetId1,
@@ -110,7 +110,7 @@ func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
 			}
 
 			var hostSetsReadResult hostsets.HostSetReadResult
-			err = json.Unmarshal(output.Stdout, &hostSetsReadResult)
+			err := json.Unmarshal(output.Stdout, &hostSetsReadResult)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
@@ -158,7 +158,7 @@ func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
 	var actualHostSetCount2 int
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand(ctx, "boundary",
+			output := e2e.RunCommand(ctx, "boundary",
 				e2e.WithArgs("host-sets", "read", "-id", newHostSetId2, "-format", "json"),
 			)
 			if output.Err != nil {
@@ -166,7 +166,7 @@ func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
 			}
 
 			var hostSetsReadResult hostsets.HostSetReadResult
-			err = json.Unmarshal(output.Stdout, &hostSetsReadResult)
+			err := json.Unmarshal(output.Stdout, &hostSetsReadResult)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
@@ -196,7 +196,7 @@ func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
 	var actualHostCatalogCount int
 	err = backoff.RetryNotify(
 		func() error {
-			output = e2e.RunCommand(ctx, "boundary",
+			output := e2e.RunCommand(ctx, "boundary",
 				e2e.WithArgs("hosts", "list", "-host-catalog-id", newHostCatalogId, "-format", "json"),
 			)
 			if output.Err != nil {
@@ -204,7 +204,7 @@ func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
 			}
 
 			var hostCatalogListResult hostcatalogs.HostCatalogListResult
-			err = json.Unmarshal(output.Stdout, &hostCatalogListResult)
+			err := json.Unmarshal(output.Stdout, &hostCatalogListResult)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
