@@ -8,13 +8,13 @@ import (
 const errorVersion = "v0.1"
 
 type err struct {
-	Error       string                 `json:"error"`
-	ErrorFields error                  `json:"error_fields"`
-	Id          Id                     `json:"id,omitempty"`
-	Version     string                 `json:"version"`
-	Op          Op                     `json:"op,omitempty"`
-	RequestInfo *RequestInfo           `json:"request_info,omitempty"`
-	Info        map[string]interface{} `json:"info,omitempty"`
+	Error       string         `json:"error"`
+	ErrorFields error          `json:"error_fields"`
+	Id          Id             `json:"id,omitempty"`
+	Version     string         `json:"version"`
+	Op          Op             `json:"op,omitempty"`
+	RequestInfo *RequestInfo   `json:"request_info,omitempty"`
+	Info        map[string]any `json:"info,omitempty"`
 }
 
 func newError(fromOperation Op, e error, opt ...Option) (*err, error) {

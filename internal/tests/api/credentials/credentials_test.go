@@ -255,7 +255,7 @@ func TestCrudJson(t *testing.T) {
 	}
 	credClient := credentials.NewClient(client)
 
-	obj := map[string]interface{}{
+	obj := map[string]any{
 		"username": "admin",
 		"password": "pass",
 	}
@@ -303,7 +303,7 @@ func TestCrudJson(t *testing.T) {
 	require.NotNil(cs)
 	checkResource("update", cred.Item, "bar", 2)
 
-	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.WithJsonCredentialObject(map[string]interface{}{
+	cred, err = credClient.Update(tc.Context(), cred.Item.Id, cred.Item.Version, credentials.WithJsonCredentialObject(map[string]any{
 		"username": "not_admin",
 		"password": "not_password",
 	}))

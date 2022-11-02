@@ -143,7 +143,7 @@ func (r *TokenRenewalJob) Run(ctx context.Context) error {
 	// Fetch all tokens that will reach their renewal point within the renewalWindow.
 	// This is done to avoid constantly scheduling the token renewal job when there are multiple tokens
 	// set to renew in sequence.
-	err := r.reader.SearchWhere(ctx, &ps, `token_renewal_time < wt_add_seconds_to_now(?)`, []interface{}{renewalWindow.Seconds()}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &ps, `token_renewal_time < wt_add_seconds_to_now(?)`, []any{renewalWindow.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -206,7 +206,7 @@ func (r *TokenRenewalJob) renewToken(ctx context.Context, s *clientStore) error 
 		}
 
 		// Set credentials associated with this token to expired as Vault will already cascade delete them
-		_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []interface{}{ExpiredCredential, token.TokenHmac})
+		_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []any{ExpiredCredential, token.TokenHmac})
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
 		}
@@ -439,7 +439,7 @@ func (r *TokenRevocationJob) revokeToken(ctx context.Context, s *clientStore) er
 	}
 
 	// Set credentials associated with this token to revoked as Vault will already cascade revoke them
-	_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []interface{}{RevokedCredential, token.TokenHmac})
+	_, err = r.writer.Exec(ctx, updateCredentialStatusByTokenQuery, []any{RevokedCredential, token.TokenHmac})
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("error updating credentials to revoked after revoking token"))
 	}
@@ -531,7 +531,7 @@ func (r *CredentialRenewalJob) Run(ctx context.Context) error {
 	// Fetch all active credentials that will reach their renewal point within the renewalWindow.
 	// This is done to avoid constantly scheduling the credential renewal job when there are
 	// multiple credentials set to renew in sequence.
-	err := r.reader.SearchWhere(ctx, &creds, `renewal_time < wt_add_seconds_to_now(?) and status = ?`, []interface{}{renewalWindow.Seconds(), ActiveCredential}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &creds, `renewal_time < wt_add_seconds_to_now(?) and status = ?`, []any{renewalWindow.Seconds(), ActiveCredential}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -691,7 +691,7 @@ func (r *CredentialRevocationJob) Run(ctx context.Context) error {
 	}
 
 	var creds []*privateCredential
-	err := r.reader.SearchWhere(ctx, &creds, "status = ?", []interface{}{RevokeCredential}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &creds, "status = ?", []any{RevokeCredential}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -835,7 +835,7 @@ func (r *CredentialStoreCleanupJob) Run(ctx context.Context) error {
 	// operations. Push cleanup to the database once bulk
 	// operations are added.
 	var stores []*CredentialStore
-	err := r.reader.SearchWhere(ctx, &stores, credStoreCleanupWhereClause, []interface{}{RevokeToken}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &stores, credStoreCleanupWhereClause, []any{RevokeToken}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

@@ -20,8 +20,8 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.2
-	github.com/hashicorp/boundary/api v0.0.29
-	github.com/hashicorp/boundary/sdk v0.0.21
+	github.com/hashicorp/boundary/api v0.0.30
+	github.com/hashicorp/boundary/sdk v0.0.24
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
@@ -91,6 +91,7 @@ require github.com/hashicorp/go-dbw v0.0.0-20220725170111-b7cb3aa3d628
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220711120347-32232bae6803
 	github.com/hashicorp/nodeenrollment v0.1.17
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -113,7 +114,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
-	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.0.0 // indirect

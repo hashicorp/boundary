@@ -158,6 +158,7 @@ create table auth_oidc_account (
     constraint auth_oidc_account_auth_method_id_public_id_uq
       unique(auth_method_id, public_id)
 );
+-- Comment fixed in 57/01_fix_comments.up.sql
 comment on table auth_oidc_method is
 'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
 

@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
+	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
@@ -190,6 +191,13 @@ func TestStoreWorkerAuth(t *testing.T) {
 	storage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
+	// Look for node info and expect to find nothing
+	nodeLookup := &types.NodeInformation{
+		Id: keyId,
+	}
+	err = storage.Load(ctx, nodeLookup)
+	assert.Equal(err, nodee.ErrNotFound)
+
 	// The AuthorizeNode request will result in a WorkerAuth record being stored
 	_, err = registration.AuthorizeNode(ctx, storage, fetchReq, nodeenrollment.WithState(state))
 	require.NoError(err)
@@ -201,9 +209,6 @@ func TestStoreWorkerAuth(t *testing.T) {
 	assert.Len(nodeInfos, 1)
 
 	// Validate the stored fields match those from the worker
-	nodeLookup := &types.NodeInformation{
-		Id: keyId,
-	}
 	err = storage.Load(ctx, nodeLookup)
 	require.NoError(err)
 	assert.NotEmpty(nodeLookup)
@@ -211,6 +216,12 @@ func TestStoreWorkerAuth(t *testing.T) {
 	assert.Equal(nodeInfo.RegistrationNonce, nodeLookup.RegistrationNonce)
 	assert.Equal(nodeInfo.CertificatePublicKeyPkix, nodeLookup.CertificatePublicKeyPkix)
 	assert.Equal(nodeInfo.State.AsMap(), nodeLookup.State.AsMap())
+	assert.Empty(nodeInfo.PreviousEncryptionKey)
+
+	// Validate that we can find the workerAuth set and key identifier
+	workerAuthSet, err := storage.FindWorkerAuthByWorkerId(ctx, worker.PublicId)
+	assert.NoError(err)
+	assert.Equal(workerAuthSet.Current.WorkerKeyIdentifier, keyId)
 
 	// Validate that we can find the workerAuth set and key identifier
 	workerAuthSet, err := storage.FindWorkerAuthByWorkerId(ctx, worker.PublicId)

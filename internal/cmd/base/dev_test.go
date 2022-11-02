@@ -30,7 +30,7 @@ func Test_oidcLogger_Errorf(t *testing.T) {
 	tests := []struct {
 		name string
 		fmt  string
-		args []interface{}
+		args []any
 	}{
 		{
 			name: "no-args",
@@ -39,7 +39,7 @@ func Test_oidcLogger_Errorf(t *testing.T) {
 		{
 			name: "with-args",
 			fmt:  "%s: simple",
-			args: []interface{}{"error"},
+			args: []any{"error"},
 		},
 	}
 	for _, tt := range tests {
@@ -54,9 +54,9 @@ func Test_oidcLogger_Errorf(t *testing.T) {
 			gotEvent := &cloudevents.Event{}
 			err = json.Unmarshal(b, gotEvent)
 			require.NoErrorf(err, "json: %s", string(b))
-			expected := gotEvent.Data.(map[string]interface{})
+			expected := gotEvent.Data.(map[string]any)
 			expected["error"] = fmt.Sprintf(tt.fmt, tt.args...)
-			assert.Equal(expected, gotEvent.Data.(map[string]interface{}))
+			assert.Equal(expected, gotEvent.Data.(map[string]any))
 		})
 	}
 }
@@ -76,7 +76,7 @@ func Test_oidcLogger_Infof(t *testing.T) {
 	tests := []struct {
 		name string
 		fmt  string
-		args []interface{}
+		args []any
 	}{
 		{
 			name: "no-args",
@@ -85,7 +85,7 @@ func Test_oidcLogger_Infof(t *testing.T) {
 		{
 			name: "with-args",
 			fmt:  "%s: simple",
-			args: []interface{}{"info"},
+			args: []any{"info"},
 		},
 	}
 	for _, tt := range tests {
@@ -100,9 +100,9 @@ func Test_oidcLogger_Infof(t *testing.T) {
 			gotEvent := &cloudevents.Event{}
 			err = json.Unmarshal(b, gotEvent)
 			require.NoErrorf(err, "json: %s", string(b))
-			expected := gotEvent.Data.(map[string]interface{})
+			expected := gotEvent.Data.(map[string]any)
 			expected["msg"] = fmt.Sprintf(tt.fmt, tt.args...)
-			assert.Equal(expected, gotEvent.Data.(map[string]interface{}))
+			assert.Equal(expected, gotEvent.Data.(map[string]any))
 		})
 	}
 }

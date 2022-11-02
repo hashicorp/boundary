@@ -3,37 +3,27 @@ package boundary
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
+	"testing"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/stretchr/testify/require"
 )
 
 type config struct {
-	Address            string `envconfig:"BOUNDARY_ADDR"`               // e.g. http://127.0.0.1:9200
-	AuthMethodId       string `envconfig:"E2E_PASSWORD_AUTH_METHOD_ID"` // e.g. ampw_1234567890
+	Address            string `envconfig:"BOUNDARY_ADDR" required:"true"`               // e.g. http://127.0.0.1:9200
+	AuthMethodId       string `envconfig:"E2E_PASSWORD_AUTH_METHOD_ID" required:"true"` // e.g. ampw_1234567890
 	AdminLoginName     string `envconfig:"E2E_PASSWORD_ADMIN_LOGIN_NAME" default:"admin"`
-	AdminLoginPassword string `envconfig:"E2E_PASSWORD_ADMIN_PASSWORD"`
+	AdminLoginPassword string `envconfig:"E2E_PASSWORD_ADMIN_PASSWORD" required:"true"`
 }
 
-func (c *config) validate() error {
-	if c.Address == "" {
-		return errors.New("Address is empty. Set environment variable: BOUNDARY_ADDR")
-	}
-	if c.AuthMethodId == "" {
-		return errors.New("AuthMethodId is empty. Set environment variable: E2E_PASSWORD_AUTH_METHOD_ID")
-	}
-	if c.AdminLoginName == "" {
-		return errors.New("AdminLoginName is empty. Set environment variable: E2E_PASSWORD_ADMIN_LOGIN_NAME")
-	}
-	if c.AdminLoginPassword == "" {
-		return errors.New("AdminLoginPassword is empty. Set environment variable: E2E_PASSWORD_ADMIN_PASSWORD")
-	}
-
-	return nil
+type authenticateCliOutput struct {
+	Item     *authmethods.AuthenticateResult
+	response *api.Response
 }
 
 func loadConfig() (*config, error) {
@@ -53,10 +43,6 @@ func NewApiClient() (*api.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = c.validate()
-	if err != nil {
-		return nil, err
-	}
 
 	client, err := api.NewClient(&api.Config{Addr: c.Address})
 	if err != nil {
@@ -66,7 +52,7 @@ func NewApiClient() (*api.Client, error) {
 	ctx := context.Background()
 	authmethodsClient := authmethods.NewClient(client)
 	authenticationResult, err := authmethodsClient.Authenticate(ctx, c.AuthMethodId, "login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": c.AdminLoginName,
 			"password":   c.AdminLoginPassword,
 		},
@@ -79,23 +65,54 @@ func NewApiClient() (*api.Client, error) {
 	return client, err
 }
 
-// AuthenticateCli uses the cli to authenticate the specified Boundary instance.
-// Returns the result of the command.
-func AuthenticateCli() *e2e.CommandResult {
+// AuthenticateAdminCli uses the cli to authenticate the specified Boundary instance as an admin
+func AuthenticateAdminCli(t testing.TB, ctx context.Context) {
 	c, err := loadConfig()
-	if err != nil {
-		return &e2e.CommandResult{Err: err}
-	}
-	err = c.validate()
-	if err != nil {
-		return &e2e.CommandResult{Err: err}
-	}
+	require.NoError(t, err)
 
-	return e2e.RunCommand(
-		"boundary", "authenticate", "password",
-		"-addr", c.Address,
-		"-auth-method-id", c.AuthMethodId,
-		"-login-name", c.AdminLoginName,
-		"-password", "env://E2E_PASSWORD_ADMIN_PASSWORD",
+	AuthenticateCli(t, ctx, c.AdminLoginName, c.AdminLoginPassword)
+}
+
+// AuthenticateCli uses the cli to authenticate the specified Boundary instance
+func AuthenticateCli(t testing.TB, ctx context.Context, loginName string, password string) {
+	c, err := loadConfig()
+	require.NoError(t, err)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"authenticate", "password",
+			"-addr", c.Address,
+			"-auth-method-id", c.AuthMethodId,
+			"-login-name", loginName,
+			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
+		),
+		e2e.WithEnv("E2E_TEST_BOUNDARY_PASSWORD", password),
 	)
+	require.NoError(t, output.Err, string(output.Stderr))
+}
+
+// GetAuthenticationTokenCli uses the cli to get an auth token that can be used in subsequent
+// commands
+func GetAuthenticationTokenCli(t testing.TB, ctx context.Context, loginName string, password string) string {
+	c, err := loadConfig()
+	require.NoError(t, err)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"authenticate", "password",
+			"-addr", c.Address,
+			"-auth-method-id", c.AuthMethodId,
+			"-login-name", loginName,
+			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
+			"-format", "json",
+		),
+		e2e.WithEnv("E2E_TEST_BOUNDARY_PASSWORD", password),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	var authenticationResult authenticateCliOutput
+	err = json.Unmarshal(output.Stdout, &authenticationResult)
+	require.NoError(t, err)
+
+	return fmt.Sprint(authenticationResult.Item.Attributes["token"])
 }

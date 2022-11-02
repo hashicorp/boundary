@@ -131,7 +131,7 @@ func setAuthToken(ctx context.Context, t *testing.T, client *api.Client) {
 		ctx,
 		"ampw_1234567890",
 		"login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": "admin",
 			"password":   "passpass",
 		},

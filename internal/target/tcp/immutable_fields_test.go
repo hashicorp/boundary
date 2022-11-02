@@ -219,7 +219,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupWhere(context.Background(), orig, "target_id = ? and host_set_id = ?", []interface{}{new.TargetId, new.HostSetId})
+			err := rw.LookupWhere(context.Background(), orig, "target_id = ? and host_set_id = ?", []any{new.TargetId, new.HostSetId})
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
@@ -227,7 +227,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupWhere(context.Background(), after, "target_id = ? and host_set_id = ?", []interface{}{new.TargetId, new.HostSetId})
+			err = rw.LookupWhere(context.Background(), after, "target_id = ? and host_set_id = ?", []any{new.TargetId, new.HostSetId})
 			require.NoError(err)
 			assert.True(proto.Equal(orig.(*target.TargetHostSet), after.(*target.TargetHostSet)))
 		})

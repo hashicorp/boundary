@@ -53,7 +53,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 					Id:      "1",
 					Version: errorVersion,
 					Op:      Op("text"),
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"msg": "hello",
 					},
 				},
@@ -72,7 +72,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 			},
 			e: &eventlogger.Event{
 				Type: eventlogger.EventType(ObservationType),
-				Payload: map[string]interface{}{
+				Payload: map[string]any{
 					"id":         "1",
 					"version":    observationVersion,
 					"latency-ms": 10,
@@ -92,7 +92,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 			},
 			e: &eventlogger.Event{
 				Type: eventlogger.EventType(ObservationType),
-				Payload: map[string]interface{}{
+				Payload: map[string]any{
 					"id":         "1",
 					"version":    observationVersion,
 					"latency-ms": 10,
@@ -161,7 +161,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 					Version: errorVersion,
 					Error:   ErrInvalidParameter.Error(),
 					Op:      Op("text"),
-					Info:    map[string]interface{}{"name": "alice"},
+					Info:    map[string]any{"name": "alice"},
 				},
 			},
 			want: []string{
@@ -185,7 +185,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 					Id:      "1",
 					Version: errorVersion,
 					Op:      Op("match-filter"),
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"msg": "hello",
 					},
 				},
@@ -209,7 +209,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 					Id:      "1",
 					Version: errorVersion,
 					Op:      Op("doesn't match"),
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"msg": "hello",
 					},
 				},
@@ -267,7 +267,7 @@ func TestHclogFormatter_Process(t *testing.T) {
 		require.NoError(err)
 		b, ok := gotEvent.Format(string(JSONHclogSinkFormat))
 		require.True(ok)
-		var rep map[string]interface{}
+		var rep map[string]any
 		require.NoError(json.Unmarshal(b, &rep))
 		assert.NotEmpty(rep["serialized"])
 		assert.NotEmpty(rep["serialized_hmac"])

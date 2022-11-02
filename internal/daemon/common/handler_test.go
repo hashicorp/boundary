@@ -302,13 +302,13 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 				info := event.RequestInfo{
 					Method: "GET",
 					Path:   "/greeting",
-					Id:     got.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
+					Id:     got.Data.(map[string]any)["request_info"].(map[string]any)["id"].(string),
 				}
-				hdr := map[string]interface{}{
+				hdr := map[string]any{
 					"status":     http.StatusTeapot,
-					"start":      got.Data.(map[string]interface{})["start"].(string),
-					"stop":       got.Data.(map[string]interface{})["stop"].(string),
-					"latency-ms": got.Data.(map[string]interface{})["latency-ms"].(float64),
+					"start":      got.Data.(map[string]any)["start"].(string),
+					"stop":       got.Data.(map[string]any)["stop"].(string),
+					"latency-ms": got.Data.(map[string]any)["latency-ms"].(float64),
 				}
 				wantJson := testJson(t, event.ObservationType, &info, event.Op(tt.name), got, hdr, nil)
 				assert.JSONEq(string(wantJson), string(actualJson))
@@ -333,12 +333,12 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 					Method: "GET",
 					Path:   "/greeting",
 					// Id:     got.Data.(map[string]interface{})["id"].(string),
-					Id: got.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
+					Id: got.Data.(map[string]any)["request_info"].(map[string]any)["id"].(string),
 				}
-				hdr := map[string]interface{}{
-					"id":        got.Data.(map[string]interface{})["id"].(string),
-					"timestamp": got.Data.(map[string]interface{})["timestamp"].(string),
-					"response":  got.Data.(map[string]interface{})["response"].(map[string]interface{}),
+				hdr := map[string]any{
+					"id":        got.Data.(map[string]any)["id"].(string),
+					"timestamp": got.Data.(map[string]any)["timestamp"].(string),
+					"response":  got.Data.(map[string]any)["response"].(map[string]any),
 				}
 				wantJson := testJson(t, event.AuditType, &info, event.Op(tt.name), got, hdr, nil)
 				assert.JSONEq(string(wantJson), string(actualJson))
@@ -466,7 +466,7 @@ type testMockBroker struct {
 	errorOnFlush           bool
 }
 
-func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
+func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload any) (eventlogger.Status, error) {
 	const op = "common.(testMockBroker).Send"
 	_, isGateable := payload.(gated.Gateable)
 	switch {
@@ -488,12 +488,12 @@ func (b *testMockBroker) SetSuccessThreshold(t eventlogger.EventType, successThr
 }
 
 type eventJson struct {
-	CreatedAt string                 `json:"created_at"`
-	EventType string                 `json:"event_type"`
-	Payload   map[string]interface{} `json:"payload"`
+	CreatedAt string         `json:"created_at"`
+	EventType string         `json:"event_type"`
+	Payload   map[string]any `json:"payload"`
 }
 
-func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, caller event.Op, got *cloudevents.Event, hdr, details map[string]interface{}) []byte {
+func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, caller event.Op, got *cloudevents.Event, hdr, details map[string]any) []byte {
 	t.Helper()
 	const (
 		testAuditVersion       = "v0.1"
@@ -503,10 +503,10 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 
 	require := require.New(t)
 
-	var payload map[string]interface{}
+	var payload map[string]any
 	switch eventType {
 	case event.ObservationType:
-		payload = map[string]interface{}{
+		payload = map[string]any{
 			event.RequestInfoField: reqInfo,
 			event.VersionField:     testObservationVersion,
 		}
@@ -514,8 +514,8 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 			payload[k] = v
 		}
 	case event.AuditType:
-		payload = map[string]interface{}{
-			event.IdField:          got.Data.(map[string]interface{})[event.IdField].(string),
+		payload = map[string]any{
+			event.IdField:          got.Data.(map[string]any)[event.IdField].(string),
 			event.RequestInfoField: reqInfo,
 			event.VersionField:     testAuditVersion,
 			event.TypeField:        event.ApiRequest,
@@ -536,11 +536,11 @@ func testJson(t *testing.T, eventType event.Type, reqInfo *event.RequestInfo, ca
 
 	if details != nil {
 		details[event.OpField] = string(caller)
-		d := got.Data.(map[string]interface{})[event.DetailsField].([]interface{})[0].(map[string]interface{})
-		j.Data.(map[string]interface{})[event.DetailsField] = []struct {
-			CreatedAt string                 `json:"created_at"`
-			Type      string                 `json:"type"`
-			Payload   map[string]interface{} `json:"payload"`
+		d := got.Data.(map[string]any)[event.DetailsField].([]any)[0].(map[string]any)
+		j.Data.(map[string]any)[event.DetailsField] = []struct {
+			CreatedAt string         `json:"created_at"`
+			Type      string         `json:"type"`
+			Payload   map[string]any `json:"payload"`
 		}{
 			{
 				CreatedAt: d[event.CreatedAtField].(string),

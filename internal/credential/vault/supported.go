@@ -302,7 +302,7 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	t.Log(connUrl)
 
 	postgresConfPath := path.Join(mountPath, "config/postgresql")
-	postgresConfOptions := map[string]interface{}{
+	postgresConfOptions := map[string]any{
 		"plugin_name":    "postgresql-database-plugin",
 		"connection_url": connUrl,
 		"allowed_roles":  "opened,closed",
@@ -330,7 +330,7 @@ grant closed_role to "{{name}}";
 	)
 
 	openedRolePath := path.Join(mountPath, "roles", "opened")
-	openedRoleOptions := map[string]interface{}{
+	openedRoleOptions := map[string]any{
 		"db_name":             "postgresql",
 		"creation_statements": vaultOpenedCreationStatement,
 	}
@@ -338,7 +338,7 @@ grant closed_role to "{{name}}";
 	require.NoError(err)
 
 	closedRolePath := path.Join(mountPath, "roles", "closed")
-	closedRoleOptions := map[string]interface{}{
+	closedRoleOptions := map[string]any{
 		"db_name":             "postgresql",
 		"creation_statements": vaultClosedCreationStatement,
 	}

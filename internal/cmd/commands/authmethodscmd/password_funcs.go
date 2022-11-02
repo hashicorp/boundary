@@ -76,10 +76,10 @@ func extraPasswordFlagsFuncImpl(c *PasswordCommand, set *base.FlagSets, f *base.
 }
 
 func extraPasswordFlagHandlingFuncImpl(c *PasswordCommand, _ *base.FlagSets, opts *[]authmethods.Option) bool {
-	var attributes map[string]interface{}
-	addAttribute := func(name string, value interface{}) {
+	var attributes map[string]any
+	addAttribute := func(name string, value any) {
 		if attributes == nil {
-			attributes = make(map[string]interface{})
+			attributes = make(map[string]any)
 		}
 		attributes[name] = value
 	}

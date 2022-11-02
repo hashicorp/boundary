@@ -26,7 +26,7 @@ type baseCred struct {
 	*Credential
 
 	lib        *issueCredentialLibrary
-	secretData map[string]interface{}
+	secretData map[string]any
 }
 
 func (bc *baseCred) Secret() credential.SecretData { return bc.secretData }
@@ -284,8 +284,8 @@ func (pl *issueCredentialLibrary) client(ctx context.Context) (vaultClient, erro
 type dynamicCred interface {
 	credential.Dynamic
 	getExpiration() time.Duration
-	insertQuery() (query string, queryValues []interface{})
-	updateSessionQuery(purpose credential.Purpose) (query string, queryValues []interface{})
+	insertQuery() (query string, queryValues []any)
+	updateSessionQuery(purpose credential.Purpose) (query string, queryValues []any)
 }
 
 // retrieveCredential retrieves a dynamic credential from Vault for the
@@ -395,7 +395,7 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 
 	query := fmt.Sprintf(selectLibrariesQuery, inClause)
 
-	var params []interface{}
+	var params []any
 	for idx, v := range libIds {
 		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), v))
 	}

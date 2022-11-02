@@ -422,7 +422,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 			var err error
 			if tt.directUpdate {
 				g := updateGrp.Clone()
-				var resource interface{}
+				var resource any
 				resource, updatedRows, err = repo.update(context.Background(), g.(*Group), updateGrp.Version, tt.args.fieldMaskPaths, nil, tt.args.opt...)
 				if err == nil {
 					groupAfterUpdate = resource.(*Group)
@@ -655,7 +655,7 @@ func TestRepository_ListGroups_Multiple_Scopes(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, proj := TestScopes(t, repo)
 
-	db.TestDeleteWhere(t, conn, func() interface{} { g := allocGroup(); return &g }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { g := allocGroup(); return &g }(), "1=1")
 
 	const numPerScope = 10
 	var total int

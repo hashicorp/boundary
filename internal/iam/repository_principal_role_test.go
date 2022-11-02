@@ -126,8 +126,8 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { r := allocUserRole(); return &r }(), "1=1")
-			db.TestDeleteWhere(t, conn, func() interface{} { g := allocGroupRole(); return &g }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { r := allocUserRole(); return &r }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { g := allocGroupRole(); return &g }(), "1=1")
 			orgs, projects := createScopesFn()
 			var userIds, groupIds []string
 
@@ -265,7 +265,7 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { r := allocRole(); return &r }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
 			role := TestRole(t, conn, tt.createScopeId)
 			userRoles := make([]string, 0, tt.createCnt)
 			groupRoles := make([]string, 0, tt.createCnt)

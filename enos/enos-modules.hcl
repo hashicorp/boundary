@@ -2,6 +2,14 @@ module "az_finder" {
   source = "./modules/az_finder"
 }
 
+module "bats_deps" {
+  source = "./modules/bats_deps"
+}
+
+module "binary_finder" {
+  source = "./modules/binary_finder"
+}
+
 module "boundary" {
   source  = "app.terraform.io/hashicorp-qti/aws-boundary/enos"
   version = ">= 0.2.6"
@@ -19,16 +27,20 @@ module "boundary" {
   alb_listener_api_port = var.alb_listener_api_port
 }
 
-module "bats_deps" {
-  source = "./modules/bats_deps"
-}
-
 module "build_crt" {
   source = "./modules/build_crt"
 }
 
 module "build_local" {
   source = "./modules/build_local"
+}
+
+module "generate_aws_host_tag_vars" {
+  source = "./modules/generate_aws_host_tag_vars"
+}
+
+module "iam_setup" {
+  source = "./modules/iam_setup"
 }
 
 module "infra" {
@@ -58,8 +70,19 @@ module "target" {
   enos_user    = var.enos_user
 }
 
-module "test_smoke" {
-  source = "./modules/test_smoke"
+module "vault" {
+  source = "app.terraform.io/hashicorp-qti/aws-vault/enos"
+
+  project_name = "qti-enos-boundary"
+  environment  = var.environment
+  common_tags = {
+    "Project" : "Enos",
+    "Project Name" : "qti-enos-boundary",
+    "Enos User" : var.enos_user,
+    "Environment" : var.environment
+  }
+
+  ssh_aws_keypair = var.aws_ssh_keypair_name
 }
 
 module "test_cli_ui" {
@@ -68,4 +91,8 @@ module "test_cli_ui" {
 
 module "test_e2e" {
   source = "./modules/test_e2e"
+}
+
+module "test_smoke" {
+  source = "./modules/test_smoke"
 }

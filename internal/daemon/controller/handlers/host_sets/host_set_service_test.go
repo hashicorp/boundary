@@ -843,7 +843,7 @@ func TestCreate_Plugin(t *testing.T) {
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"int":         1,
 		"zero int":    0,
 		"string":      "foo",
@@ -852,7 +852,7 @@ func TestCreate_Plugin(t *testing.T) {
 		"zero bytes":  nil,
 		"bool":        true,
 		"zero bool":   false,
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"int":         1,
 			"zero int":    0,
 			"string":      "foo",
@@ -867,7 +867,7 @@ func TestCreate_Plugin(t *testing.T) {
 	require.NoError(t, err)
 	// The result should clear out all keys with nil values...
 	delete(attrs, "zero bytes")
-	delete(attrs["nested"].(map[string]interface{}), "zero bytes")
+	delete(attrs["nested"].(map[string]any), "zero bytes")
 	testOutputAttrs, err := structpb.NewStruct(attrs)
 	require.NoError(t, err)
 
@@ -1492,7 +1492,7 @@ func TestUpdate_Plugin(t *testing.T) {
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 
 	freshSet := func(t *testing.T) *pb.HostSet {
-		attr, err := structpb.NewStruct(map[string]interface{}{
+		attr, err := structpb.NewStruct(map[string]any{
 			"foo": "bar",
 		})
 		require.NoError(t, err)
@@ -1579,7 +1579,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			changes: []updateFn{
 				clearReadOnlyFields(),
 				updateAttrs(func() *structpb.Struct {
-					attr, err := structpb.NewStruct(map[string]interface{}{
+					attr, err := structpb.NewStruct(map[string]any{
 						"newkey": "newvalue",
 						"foo":    nil,
 					})
@@ -1588,7 +1588,7 @@ func TestUpdate_Plugin(t *testing.T) {
 				}()),
 			},
 			check: func(t *testing.T, in *pb.HostSet) {
-				assert.Equal(t, map[string]interface{}{"newkey": "newvalue"}, in.GetAttributes().AsMap())
+				assert.Equal(t, map[string]any{"newkey": "newvalue"}, in.GetAttributes().AsMap())
 			},
 		},
 		{

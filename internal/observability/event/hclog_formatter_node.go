@@ -28,7 +28,7 @@ type hclogFormatterFilter struct {
 	// jsonFormat allows you to specify that the hclog entry should be in JSON
 	// fmt.
 	jsonFormat bool
-	predicate  func(ctx context.Context, i interface{}) (bool, error)
+	predicate  func(ctx context.Context, i any) (bool, error)
 	allow      []*filter
 	deny       []*filter
 	signer     signer
@@ -144,19 +144,19 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 		}
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	switch string(e.Type) {
 	case string(ErrorType), string(AuditType), string(SystemType):
 		s := structs.New(e.Payload)
 		s.TagName = "json"
 		m = s.Map()
 	case string(ObservationType):
-		m = e.Payload.(map[string]interface{})
+		m = e.Payload.(map[string]any)
 	default:
 		return nil, fmt.Errorf("%s: unknown event type %s", op, e.Type)
 	}
 
-	args := make([]interface{}, 0, len(m))
+	args := make([]any, 0, len(m))
 	for k, v := range m {
 		if k == requestInfoField && v == nil {
 			continue
@@ -170,7 +170,7 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 			}
 			switch {
 			case valueKind == reflect.Map:
-				for sk, sv := range v.(map[string]interface{}) {
+				for sk, sv := range v.(map[string]any) {
 					args = append(args, k+":"+sk, sv)
 				}
 				continue
@@ -189,7 +189,7 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 			switch {
 			case k == errorFields && v == nil:
 				continue
-			case k == infoField && len(v.(map[string]interface{})) == 0:
+			case k == infoField && len(v.(map[string]any)) == 0:
 				continue
 			case k == wrappedField && v == nil:
 				continue
@@ -223,7 +223,7 @@ func (f *hclogFormatterFilter) Process(ctx context.Context, e *eventlogger.Event
 	return e, nil
 }
 
-func hclogBytes(eventType eventlogger.EventType, jsonFormat bool, args []interface{}) (*bytes.Buffer, error) {
+func hclogBytes(eventType eventlogger.EventType, jsonFormat bool, args []any) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	logger := hclog.New(&hclog.LoggerOptions{
 		Output:     &buf,

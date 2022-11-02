@@ -17,7 +17,7 @@ func (r *Repository) lookupClientStore(ctx context.Context, publicId string) (*c
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
 	ps := allocClientStore()
-	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ?", []interface{}{publicId}); err != nil {
+	if err := r.reader.LookupWhere(ctx, &ps, "public_id = ?", []any{publicId}); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}

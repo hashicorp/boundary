@@ -21,7 +21,7 @@ func GetOpts(opt ...Option) Options {
 	return opts
 }
 
-func getDbwOptions(ctx context.Context, rw *Db, i interface{}, opType OpType, opt ...Option) ([]dbw.Option, error) {
+func getDbwOptions(ctx context.Context, rw *Db, i any, opType OpType, opt ...Option) ([]dbw.Option, error) {
 	const op = "db.getDbwOptions"
 	opts := GetOpts(opt...)
 	dbwOpts := make([]dbw.Option, 0, len(opt))
@@ -32,7 +32,7 @@ func getDbwOptions(ctx context.Context, rw *Db, i interface{}, opType OpType, op
 	before := oplogBefore
 	if !opts.withSkipVetForWrite && (opType != DeleteOp && opType != DeleteItemsOp) {
 		if vetter, ok := i.(VetForWriter); ok {
-			before = func(i interface{}) error {
+			before = func(i any) error {
 				if err := vetter.VetForWrite(ctx, rw, opType, opt...); err != nil {
 					return err
 				}
@@ -161,7 +161,7 @@ type Options struct {
 	withSkipVetForWrite bool
 
 	withWhereClause     string
-	withWhereClauseArgs []interface{}
+	withWhereClauseArgs []any
 	withOrder           string
 
 	// withPrngValues is used to switch the ID generation to a pseudo-random mode
@@ -281,7 +281,7 @@ func WithSkipVetForWrite(enable bool) Option {
 
 // WithWhere provides an option to provide a where clause with arguments for an
 // operation.
-func WithWhere(whereClause string, args ...interface{}) Option {
+func WithWhere(whereClause string, args ...any) Option {
 	return func(o *Options) {
 		o.withWhereClause = whereClause
 		o.withWhereClauseArgs = append(o.withWhereClauseArgs, args...)

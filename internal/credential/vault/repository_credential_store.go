@@ -383,7 +383,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		}
 	}
 	dbMask, nullFields := dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			nameField:          cs.Name,
 			descriptionField:   cs.Description,
 			namespaceField:     cs.Namespace,
@@ -405,7 +405,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		clientCertKey = cs.ClientCertificate().GetCertificateKey()
 	}
 	certDbMask, certNullFields := dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			certificateField:    clientCert,
 			certificateKeyField: clientCertKey,
 		},
@@ -657,7 +657,7 @@ func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []stri
 		limit = opts.withLimit
 	}
 	var credentialStores []*listLookupStore
-	err := r.reader.SearchWhere(ctx, &credentialStores, "project_id in (?)", []interface{}{projectIds}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &credentialStores, "project_id in (?)", []any{projectIds}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

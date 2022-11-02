@@ -95,7 +95,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				cred.SessionId = newSession.PublicId
 			}
 
-			var staticCreds []interface{}
+			var staticCreds []any
 			for _, cred := range newSession.StaticCredentials {
 				cred.SessionId = newSession.PublicId
 				staticCreds = append(staticCreds, cred)
@@ -108,7 +108,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 
 				// Get static creds back from the db for return
 				var c []*StaticCredential
-				if err := read.SearchWhere(ctx, &c, "session_id = ?", []interface{}{newSession.PublicId}); err != nil {
+				if err := read.SearchWhere(ctx, &c, "session_id = ?", []any{newSession.PublicId}); err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
 				returnedSession.StaticCredentials = c
@@ -179,7 +179,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 			session.States = states
 
 			var dynamicCreds []*DynamicCredential
-			if err := read.SearchWhere(ctx, &dynamicCreds, "session_id = ?", []interface{}{sessionId}); err != nil {
+			if err := read.SearchWhere(ctx, &dynamicCreds, "session_id = ?", []any{sessionId}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			if len(dynamicCreds) > 0 {
@@ -187,7 +187,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, _ ...O
 			}
 
 			var staticCreds []*StaticCredential
-			if err := read.SearchWhere(ctx, &staticCreds, "session_id = ?", []interface{}{sessionId}); err != nil {
+			if err := read.SearchWhere(ctx, &staticCreds, "session_id = ?", []any{sessionId}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			if len(staticCreds) > 0 {
@@ -401,7 +401,7 @@ func (r *Repository) terminateSessionIfPossible(ctx context.Context, sessionId s
 		func(reader db.Reader, w db.Writer) error {
 			var err error
 			rowsAffected, err = w.Exec(ctx, terminateSessionIfPossible,
-				[]interface{}{sql.Named("public_id", sessionId)})
+				[]any{sql.Named("public_id", sessionId)})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -422,7 +422,7 @@ type AuthzSummary struct {
 
 func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*AuthzSummary, error) {
 	const op = "session.(Repository).sessionAuthzSummary"
-	rows, err := r.reader.Query(ctx, remainingConnectionsCte, []interface{}{sql.Named("session_id", sessionId)})
+	rows, err := r.reader.Query(ctx, remainingConnectionsCte, []any{sql.Named("session_id", sessionId)})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -466,7 +466,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, activateStateCte, []interface{}{
+			rowsAffected, err := w.Exec(ctx, activateStateCte, []any{
 				sql.Named("session_id", sessionId),
 				sql.Named("version", sessionVersion),
 			})
@@ -564,7 +564,7 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 				updatedSession.CtTofuToken = nil
 			}
 
-			rowsAffected, err = w.Exec(ctx, updateSessionState, []interface{}{
+			rowsAffected, err = w.Exec(ctx, updateSessionState, []any{
 				sql.Named("session_id", sessionId),
 				sql.Named("status", s.String()),
 			})
@@ -660,7 +660,7 @@ func (r *Repository) deleteSessionsTerminatedBefore(ctx context.Context, thresho
 func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*State, error) {
 	const op = "session.fetchStates"
 	var states []*State
-	if err := r.SearchWhere(ctx, &states, "session_id = ?", []interface{}{sessionId}, opt...); err != nil {
+	if err := r.SearchWhere(ctx, &states, "session_id = ?", []any{sessionId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if len(states) == 0 {
@@ -672,7 +672,7 @@ func fetchStates(ctx context.Context, r db.Reader, sessionId string, opt ...db.O
 func fetchConnections(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) ([]*Connection, error) {
 	const op = "session.fetchConnections"
 	var connections []*Connection
-	if err := r.SearchWhere(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...); err != nil {
+	if err := r.SearchWhere(ctx, &connections, "session_id = ?", []any{sessionId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if len(connections) == 0 {

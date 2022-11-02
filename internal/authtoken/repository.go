@@ -299,7 +299,7 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 	// use the view, to bring in the required account columns. Just don't forget
 	// to convert them before returning them
 	var atvs []*authTokenView
-	if err := r.reader.SearchWhere(ctx, &atvs, "auth_account_id in (select public_id from auth_account where scope_id in (?))", []interface{}{withScopeIds}, db.WithLimit(opts.withLimit)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &atvs, "auth_account_id in (select public_id from auth_account where scope_id in (?))", []any{withScopeIds}, db.WithLimit(opts.withLimit)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	authTokens := make([]*AuthToken, 0, len(atvs))
@@ -422,7 +422,7 @@ func (r *Repository) IssueAuthToken(ctx context.Context, tokenRequestId string) 
 func (r *Repository) CloseExpiredPendingTokens(ctx context.Context) (int, error) {
 	const op = "authtoken.(Repository).CloseExpiredPendingTokens"
 
-	args := []interface{}{string(FailedStatus), string(PendingStatus)}
+	args := []any{string(FailedStatus), string(PendingStatus)}
 	const sql = `update auth_token set status = ? where status = ? and now() > expiration_time`
 	var tokensClosed int
 	_, err := r.writer.DoTx(

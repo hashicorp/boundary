@@ -270,7 +270,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 		subInfo := map[string]*capoidc.TestSubject{
 			b.DevLoginName: {
 				Password: b.DevPassword,
-				UserInfo: map[string]interface{}{
+				UserInfo: map[string]any{
 					"email": "admin@localhost",
 					"name":  "Admin User",
 				},
@@ -279,7 +279,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 		if b.DevOidcSetup.createUnpriv {
 			subInfo[b.DevUnprivilegedLoginName] = &capoidc.TestSubject{
 				Password: b.DevUnprivilegedPassword,
-				UserInfo: map[string]interface{}{
+				UserInfo: map[string]any{
 					"email": "user@localhost",
 					"name":  "Unprivileged User",
 				},
@@ -294,7 +294,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 			capoidc.WithTestHost(b.DevOidcSetup.hostAddr),
 			capoidc.WithTestPort(b.DevOidcSetup.oidcPort),
 			capoidc.WithTestDefaults(&capoidc.TestProviderDefaults{
-				CustomClaims: map[string]interface{}{
+				CustomClaims: map[string]any{
 					"mode": "dev",
 				},
 				SubjectInfo: subInfo,
@@ -437,12 +437,12 @@ type oidcLogger struct {
 }
 
 // Errorf will use the sys eventer to emit an error event
-func (l *oidcLogger) Errorf(format string, args ...interface{}) {
+func (l *oidcLogger) Errorf(format string, args ...any) {
 	event.WriteError(l.Ctx, l.caller(), fmt.Errorf(format, args...))
 }
 
 // Infof will use the sys eventer to emit an system event
-func (l *oidcLogger) Infof(format string, args ...interface{}) {
+func (l *oidcLogger) Infof(format string, args ...any) {
 	event.WriteSysEvent(l.Ctx, l.caller(), fmt.Sprintf(format, args...))
 }
 

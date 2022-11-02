@@ -27,7 +27,7 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 	require.NoError(err)
 
 	if len(opts.WithHostSources) > 0 {
-		newHostSets := make([]interface{}, 0, len(opts.WithHostSources))
+		newHostSets := make([]any, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
 			hostSet, err := target.NewTargetHostSet(tar.GetPublicId(), s)
 			require.NoError(err)
@@ -37,7 +37,7 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 		require.NoError(err)
 	}
 	if len(opts.WithCredentialLibraries) > 0 {
-		newCredLibs := make([]interface{}, 0, len(opts.WithCredentialLibraries))
+		newCredLibs := make([]any, 0, len(opts.WithCredentialLibraries))
 		for _, cl := range opts.WithCredentialLibraries {
 			cl.TargetId = tar.GetPublicId()
 			newCredLibs = append(newCredLibs, cl)
@@ -46,7 +46,7 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 		require.NoError(err)
 	}
 	if len(opts.WithStaticCredentials) > 0 {
-		newCreds := make([]interface{}, 0, len(opts.WithStaticCredentials))
+		newCreds := make([]any, 0, len(opts.WithStaticCredentials))
 		for _, c := range opts.WithStaticCredentials {
 			c.TargetId = tar.GetPublicId()
 			newCreds = append(newCreds, c)

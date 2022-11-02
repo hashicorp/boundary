@@ -281,28 +281,28 @@ func Test_WriteObservation(t *testing.T) {
 	noEventId.Id = ""
 
 	type observationPayload struct {
-		header  []interface{}
-		details []interface{}
+		header  []any
+		details []any
 	}
 
 	testPayloads := []observationPayload{
 		{
-			header: []interface{}{"name", "bar"},
+			header: []any{"name", "bar"},
 		},
 		{
-			header: []interface{}{"list", []string{"1", "2"}},
+			header: []any{"list", []string{"1", "2"}},
 		},
 		{
-			details: []interface{}{"file", "temp-file.txt"},
+			details: []any{"file", "temp-file.txt"},
 		},
 	}
 
-	testWantHeader := map[string]interface{}{
+	testWantHeader := map[string]any{
 		"name": "bar",
 		"list": []string{"1", "2"},
 	}
 
-	testWantDetails := map[string]interface{}{
+	testWantDetails := map[string]any{
 		"file": "temp-file.txt",
 	}
 
@@ -311,8 +311,8 @@ func Test_WriteObservation(t *testing.T) {
 		noOperation             bool
 		noFlush                 bool
 		observationPayload      []observationPayload
-		header                  map[string]interface{}
-		details                 map[string]interface{}
+		header                  map[string]any
+		details                 map[string]any
 		ctx                     context.Context
 		observationSinkFileName string
 		setup                   func() error
@@ -326,10 +326,10 @@ func Test_WriteObservation(t *testing.T) {
 			ctx:     testCtxNoEventInfoId,
 			observationPayload: []observationPayload{
 				{
-					header: []interface{}{"name", "bar"},
+					header: []any{"name", "bar"},
 				},
 			},
-			header: map[string]interface{}{
+			header: map[string]any{
 				"name": "bar",
 			},
 			observationSinkFileName: c.AllEvents.Name(),
@@ -375,10 +375,10 @@ func Test_WriteObservation(t *testing.T) {
 			ctx:     context.Background(),
 			observationPayload: []observationPayload{
 				{
-					header: []interface{}{"name", "bar"},
+					header: []any{"name", "bar"},
 				},
 			},
-			header: map[string]interface{}{
+			header: map[string]any{
 				"name": "bar",
 			},
 			observationSinkFileName: c.AllEvents.Name(),
@@ -397,10 +397,10 @@ func Test_WriteObservation(t *testing.T) {
 			}(),
 			observationPayload: []observationPayload{
 				{
-					header: []interface{}{"name", "bar"},
+					header: []any{"name", "bar"},
 				},
 			},
-			header: map[string]interface{}{
+			header: map[string]any{
 				"name": "bar",
 			},
 			observationSinkFileName: c.AllEvents.Name(),
@@ -478,7 +478,7 @@ func Test_WriteObservation(t *testing.T) {
 		testCtx, err = event.NewRequestInfoContext(testCtx, info)
 		require.NoError(err)
 
-		hdr := map[string]interface{}{
+		hdr := map[string]any{
 			"list": []string{"1", "2"},
 		}
 		require.NoError(event.WriteObservation(testCtx, "not-enabled", event.WithHeader(hdr), event.WithFlush()))
@@ -496,31 +496,31 @@ func Test_Filtering(t *testing.T) {
 		name  string
 		allow []string
 		deny  []string
-		hdr   []interface{}
+		hdr   []any
 		found bool
 	}{
 		{
 			name:  "allowed",
 			allow: []string{`"/data/list" contains "1"`},
-			hdr:   []interface{}{"list", []string{"1", "2"}},
+			hdr:   []any{"list", []string{"1", "2"}},
 			found: true,
 		},
 		{
 			name:  "not-allowed",
 			allow: []string{`"/data/list" contains "22"`},
-			hdr:   []interface{}{"list", []string{"1", "2"}},
+			hdr:   []any{"list", []string{"1", "2"}},
 			found: false,
 		},
 		{
 			name:  "deny",
 			deny:  []string{`"/data/list" contains "1"`},
-			hdr:   []interface{}{"list", []string{"1", "2"}},
+			hdr:   []any{"list", []string{"1", "2"}},
 			found: false,
 		},
 		{
 			name:  "not-deny",
 			deny:  []string{`"/data/list" contains "22"`},
-			hdr:   []interface{}{"list", []string{"1", "2"}},
+			hdr:   []any{"list", []string{"1", "2"}},
 			found: true,
 		},
 	}
@@ -566,7 +566,7 @@ func Test_DefaultEventerConfig(t *testing.T) {
 	})
 }
 
-func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *cloudevents.Event, hdr, details map[string]interface{}) []byte {
+func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.Op, got *cloudevents.Event, hdr, details map[string]any) []byte {
 	t.Helper()
 	require := require.New(t)
 
@@ -580,24 +580,24 @@ func testObservationJsonFromCtx(t *testing.T, ctx context.Context, caller event.
 		SpecVersion:     got.SpecVersion,
 		Type:            got.Type,
 		DataContentType: got.DataContentType,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			event.RequestInfoField: reqInfo,
 			event.VersionField:     testObservationVersion,
 		},
 	}
 	if hdr != nil {
-		h := j.Data.(map[string]interface{})
+		h := j.Data.(map[string]any)
 		for k, v := range hdr {
 			h[k] = v
 		}
 	}
 	if details != nil {
 		details[event.OpField] = string(caller)
-		d := got.Data.(map[string]interface{})[event.DetailsField].([]interface{})[0].(map[string]interface{})
-		j.Data.(map[string]interface{})[event.DetailsField] = []struct {
-			CreatedAt string                 `json:"created_at"`
-			Type      string                 `json:"type"`
-			Payload   map[string]interface{} `json:"payload"`
+		d := got.Data.(map[string]any)[event.DetailsField].([]any)[0].(map[string]any)
+		j.Data.(map[string]any)[event.DetailsField] = []struct {
+			CreatedAt string         `json:"created_at"`
+			Type      string         `json:"type"`
+			Payload   map[string]any `json:"payload"`
 		}{
 			{
 				CreatedAt: d[event.CreatedAtField].(string),
@@ -896,9 +896,9 @@ func Test_WriteAudit(t *testing.T) {
 					DataContentType: gotAudit.DataContentType,
 					Time:            gotAudit.Time,
 					Type:            "audit",
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"auth":      tt.wantAudit.Auth,
-						"id":        gotAudit.Data.(map[string]interface{})["id"],
+						"id":        gotAudit.Data.(map[string]any)["id"],
 						"timestamp": now,
 						"request":   tt.wantAudit.Request,
 						"type":      apiRequest,
@@ -906,13 +906,13 @@ func Test_WriteAudit(t *testing.T) {
 					},
 				}
 				if tt.wantAudit.Id != "" {
-					wantEvent.Data.(map[string]interface{})["id"] = tt.wantAudit.Id
-					wantEvent.Data.(map[string]interface{})["request_info"] = event.RequestInfo{
-						Id: gotAudit.Data.(map[string]interface{})["request_info"].(map[string]interface{})["id"].(string),
+					wantEvent.Data.(map[string]any)["id"] = tt.wantAudit.Id
+					wantEvent.Data.(map[string]any)["request_info"] = event.RequestInfo{
+						Id: gotAudit.Data.(map[string]any)["request_info"].(map[string]any)["id"].(string),
 					}
 				}
 				if tt.wantAudit.Response != nil {
-					wantEvent.Data.(map[string]interface{})["response"] = tt.wantAudit.Response
+					wantEvent.Data.(map[string]any)["response"] = tt.wantAudit.Response
 				}
 				wantJson, err := json.Marshal(wantEvent)
 				require.NoError(err)
@@ -1086,10 +1086,10 @@ func Test_WriteError(t *testing.T) {
 				err = json.Unmarshal(b, gotError)
 				require.NoErrorf(err, "json: %s", string(b))
 
-				if _, ok := gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Msg"]; ok {
+				if _, ok := gotError.Data.(map[string]any)["error_fields"].(map[string]any)["Msg"]; ok {
 					actualError := fakeError{
-						Msg:  gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Msg"].(string),
-						Code: gotError.Data.(map[string]interface{})["error_fields"].(map[string]interface{})["Code"].(string),
+						Msg:  gotError.Data.(map[string]any)["error_fields"].(map[string]any)["Msg"].(string),
+						Code: gotError.Data.(map[string]any)["error_fields"].(map[string]any)["Code"].(string),
 					}
 					assert.Equal(tt.e, &actualError)
 				}
@@ -1120,7 +1120,7 @@ func Test_WriteSysEvent(t *testing.T) {
 	tests := []struct {
 		name         string
 		ctx          context.Context
-		data         []interface{}
+		data         []any
 		msg          string
 		info         *event.RequestInfo
 		setup        func() error
@@ -1138,14 +1138,14 @@ func Test_WriteSysEvent(t *testing.T) {
 			name:        "missing-caller",
 			ctx:         ctx,
 			msg:         "hello",
-			data:        []interface{}{"data", "test-data"},
+			data:        []any{"data", "test-data"},
 			noOperation: true,
 		},
 		{
 			name:         "syseventer-not-initialized",
 			ctx:          context.Background(),
 			msg:          "hello",
-			data:         []interface{}{"data", "test-data"},
+			data:         []any{"data", "test-data"},
 			sinkFileName: c.AllEvents.Name(),
 			noOutput:     true,
 		},
@@ -1153,7 +1153,7 @@ func Test_WriteSysEvent(t *testing.T) {
 			name: "use-syseventer",
 			ctx:  context.Background(),
 			msg:  "hello",
-			data: []interface{}{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
+			data: []any{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
 			setup: func() error {
 				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
 			},
@@ -1168,7 +1168,7 @@ func Test_WriteSysEvent(t *testing.T) {
 				return ctx
 			}(),
 			msg:  "hello",
-			data: []interface{}{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
+			data: []any{"data", "test-data", event.ServerName, "test-server", event.ServerAddress, "localhost"},
 			setup: func() error {
 				return event.InitSysEventer(testLogger, testLock, "use-syseventer", event.WithEventerConfig(&c.EventerConfig))
 			},
@@ -1207,7 +1207,7 @@ func Test_WriteSysEvent(t *testing.T) {
 
 				expected := event.ConvertArgs(tt.data...)
 				expected["msg"] = tt.msg
-				assert.Equal(expected, gotSysEvent.Data.(map[string]interface{})["data"].(map[string]interface{}))
+				assert.Equal(expected, gotSysEvent.Data.(map[string]any)["data"].(map[string]any))
 			}
 		})
 	}
@@ -1216,40 +1216,40 @@ func Test_WriteSysEvent(t *testing.T) {
 func TestConvertArgs(t *testing.T) {
 	tests := []struct {
 		name string
-		args []interface{}
-		want map[string]interface{}
+		args []any
+		want map[string]any
 	}{
 		{
 			name: "no-args",
-			args: []interface{}{},
+			args: []any{},
 			want: nil,
 		},
 		{
 			name: "nil-first-arg",
-			args: []interface{}{nil},
-			want: map[string]interface{}{
+			args: []any{nil},
+			want: map[string]any{
 				event.MissingKey: nil,
 			},
 		},
 		{
 			name: "odd-number-of-args",
-			args: []interface{}{1, 2, 3},
-			want: map[string]interface{}{
+			args: []any{1, 2, 3},
+			want: map[string]any{
 				"1":              2,
 				event.MissingKey: 3,
 			},
 		},
 		{
 			name: "struct-key",
-			args: []interface{}{[]struct{ name string }{{name: "alice"}}, 1},
-			want: map[string]interface{}{
+			args: []any{[]struct{ name string }{{name: "alice"}}, 1},
+			want: map[string]any{
 				"[{alice}]": 1,
 			},
 		},
 		{
 			name: "test-key-with-stringer",
-			args: []interface{}{testIntKeyWithStringer(11), "eleven"},
-			want: map[string]interface{}{
+			args: []any{testIntKeyWithStringer(11), "eleven"},
+			want: map[string]any{
 				"*11*": "eleven",
 			},
 		},

@@ -92,7 +92,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 
 	dbMask, nullFields := dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			NameField:             am.Name,
 			DescriptionField:      am.Description,
 			IssuerField:           am.Issuer,
@@ -435,27 +435,27 @@ func validVoName(name voName) bool {
 }
 
 // factoryFunc defines a func type for value object factories
-type factoryFunc func(ctx context.Context, publicId string, i interface{}) (interface{}, error)
+type factoryFunc func(ctx context.Context, publicId string, i any) (any, error)
 
 // supportedFactories are the currently supported factoryFunc for value objects
 var supportedFactories = map[voName]factoryFunc{
-	SigningAlgVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	SigningAlgVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewSigningAlg(ctx, publicId, Alg(str))
 	},
-	CertificateVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	CertificateVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewCertificate(ctx, publicId, str)
 	},
-	AudClaimVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	AudClaimVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewAudClaim(ctx, publicId, str)
 	},
-	ClaimsScopesVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	ClaimsScopesVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		str := fmt.Sprintf("%s", i)
 		return NewClaimsScope(ctx, publicId, str)
 	},
-	AccountClaimMapsVO: func(ctx context.Context, publicId string, i interface{}) (interface{}, error) {
+	AccountClaimMapsVO: func(ctx context.Context, publicId string, i any) (any, error) {
 		const op = "oidc.AccountClaimMapsFactory"
 		str := fmt.Sprintf("%s", i)
 		acm, err := ParseAccountClaimMaps(ctx, str)
@@ -487,7 +487,7 @@ func valueObjectChanges(
 	oldVOs,
 	dbMask,
 	nullFields []string,
-) (add []interface{}, del []interface{}, e error) {
+) (add []any, del []any, e error) {
 	const op = "valueObjectChanges"
 	if publicId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
@@ -518,10 +518,10 @@ func valueObjectChanges(
 	for _, a := range oldVOs {
 		foundVOs[a] = true
 	}
-	var adds []interface{}
-	var deletes []interface{}
+	var adds []any
+	var deletes []any
 	if strutil.StrListContains(nullFields, string(valueObjectName)) {
-		deletes = make([]interface{}, 0, len(oldVOs))
+		deletes = make([]any, 0, len(oldVOs))
 		for _, v := range oldVOs {
 			deleteObj, err := factory(ctx, publicId, v)
 			if err != nil {
@@ -532,7 +532,7 @@ func valueObjectChanges(
 		}
 	}
 	if strutil.StrListContains(dbMask, string(valueObjectName)) {
-		adds = make([]interface{}, 0, len(newVOs))
+		adds = make([]any, 0, len(newVOs))
 		for _, v := range newVOs {
 			if _, ok := foundVOs[v]; ok {
 				delete(foundVOs, v)

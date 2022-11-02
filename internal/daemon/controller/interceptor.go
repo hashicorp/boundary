@@ -75,10 +75,10 @@ func requestCtxInterceptor(
 	}
 	// Authorization unary interceptor function to handle authorize per RPC call
 	return func(interceptorCtx context.Context,
-		req interface{},
+		req any,
 		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	) (any, error) {
 		md, ok := metadata.FromIncomingContext(interceptorCtx)
 		if !ok {
 			return nil, errors.New(interceptorCtx, errors.Internal, op, "No metadata")
@@ -151,9 +151,9 @@ func errorInterceptor(
 ) grpc.UnaryServerInterceptor {
 	const op = "controller.errorInterceptor"
 	return func(interceptorCtx context.Context,
-		req interface{},
+		req any,
 		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error,
+		handler grpc.UnaryHandler) (any, error,
 	) {
 		// call the handler...
 		h, handlerErr := handler(interceptorCtx, req)
@@ -202,9 +202,9 @@ func statusCodeInterceptor(
 ) grpc.UnaryServerInterceptor {
 	const op = "controller.statusCodeInterceptor"
 	return func(interceptorCtx context.Context,
-		req interface{},
+		req any,
 		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error,
+		handler grpc.UnaryHandler) (any, error,
 	) {
 		// call the handler...
 		h, handlerErr := handler(interceptorCtx, req)
@@ -222,7 +222,7 @@ func statusCodeInterceptor(
 	}
 }
 
-func isNil(i interface{}) bool {
+func isNil(i any) bool {
 	if i == nil {
 		return true
 	}
@@ -238,9 +238,9 @@ func auditRequestInterceptor(
 ) grpc.UnaryServerInterceptor {
 	const op = "controller.auditRequestInterceptor"
 	return func(interceptorCtx context.Context,
-		req interface{},
+		req any,
 		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error,
+		handler grpc.UnaryHandler) (any, error,
 	) {
 		if msg, ok := req.(proto.Message); ok {
 			// Clone the request before writing it to the audit log,
@@ -260,9 +260,9 @@ func auditResponseInterceptor(
 ) grpc.UnaryServerInterceptor {
 	const op = "controller.auditResponseInterceptor"
 	return func(interceptorCtx context.Context,
-		req interface{},
+		req any,
 		_ *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error,
+		handler grpc.UnaryHandler) (any, error,
 	) {
 		// call the handler...
 		resp, err := handler(interceptorCtx, req)
@@ -286,10 +286,10 @@ func workerRequestInfoInterceptor(ctx context.Context, eventer *event.Eventer) (
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing eventer")
 	}
 	return func(interceptorCtx context.Context,
-		req interface{},
+		req any,
 		srvInfo *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	) (any, error) {
 		var err error
 		id, err := event.NewId(event.IdPrefix)
 		if err != nil {
@@ -318,7 +318,7 @@ func workerRequestInfoInterceptor(ctx context.Context, eventer *event.Eventer) (
 
 func recoveryHandler() grpc_recovery.RecoveryHandlerFuncContext {
 	const op = "controller.recoveryHandler"
-	return func(ctx context.Context, p interface{}) (err error) {
+	return func(ctx context.Context, p any) (err error) {
 		event.WriteError(
 			ctx,
 			op,

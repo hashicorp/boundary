@@ -126,11 +126,11 @@ func Test_Repository_create(t *testing.T) {
 		assert.True(proto.Equal(foundScope, retScope.(*Scope)))
 
 		var metadata store.Metadata
-		err = rw.LookupWhere(context.Background(), &metadata, "key = ? and value = ?", []interface{}{"resource-public-id", s.PublicId})
+		err = rw.LookupWhere(context.Background(), &metadata, "key = ? and value = ?", []any{"resource-public-id", s.PublicId})
 		require.NoError(err)
 
 		var foundEntry oplog.Entry
-		err = rw.LookupWhere(context.Background(), &foundEntry, "id = ?", []interface{}{metadata.EntryId})
+		err = rw.LookupWhere(context.Background(), &foundEntry, "id = ?", []any{metadata.EntryId})
 		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
@@ -315,7 +315,7 @@ func TestRepository_update(t *testing.T) {
 			for _, f := range tt.args.setToNullPaths {
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
-			err = rw.LookupWhere(context.Background(), &foundResource, where, []interface{}{tt.args.resource.GetPublicId()})
+			err = rw.LookupWhere(context.Background(), &foundResource, where, []any{tt.args.resource.GetPublicId()})
 			require.NoError(err)
 			assert.Equal(tt.args.resource.GetPublicId(), foundResource.GetPublicId())
 			assert.Equal(tt.wantName, foundResource.GetName())

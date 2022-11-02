@@ -193,7 +193,7 @@ func TestDevWorker(t *testing.T) {
 			Name:                "w_1234567890",
 			Description:         "A default worker created in dev mode",
 			InitialUpstreams:    []string{"127.0.0.1"},
-			InitialUpstreamsRaw: []interface{}{"127.0.0.1"},
+			InitialUpstreamsRaw: []any{"127.0.0.1"},
 			Tags: map[string][]string{
 				"type": {"dev", "local"},
 			},
@@ -399,7 +399,7 @@ func TestDevCombined(t *testing.T) {
 			Name:                "w_1234567890",
 			Description:         "A default worker created in dev mode",
 			InitialUpstreams:    []string{"127.0.0.1"},
-			InitialUpstreamsRaw: []interface{}{"127.0.0.1"},
+			InitialUpstreamsRaw: []any{"127.0.0.1"},
 			Tags: map[string][]string{
 				"type": {"dev", "local"},
 			},

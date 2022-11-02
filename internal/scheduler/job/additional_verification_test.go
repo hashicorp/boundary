@@ -100,7 +100,7 @@ func TestPlugin(t *testing.T) {
 		conn, _ := db.TestSetup(t, "postgres")
 		rw := db.New(conn)
 
-		rows, err := rw.Query(context.Background(), upsertJobQuery, []interface{}{
+		rows, err := rw.Query(context.Background(), upsertJobQuery, []any{
 			sql.Named("plugin_id", defaultPluginId),
 			sql.Named("name", "same-job-name"),
 			sql.Named("description", "description"),
@@ -119,7 +119,7 @@ func TestPlugin(t *testing.T) {
 		require.Equal(1, numRows)
 
 		// Calling upsertJob with same name and pluginId should not insert a new job
-		rows, err = rw.Query(context.Background(), upsertJobQuery, []interface{}{
+		rows, err = rw.Query(context.Background(), upsertJobQuery, []any{
 			sql.Named("plugin_id", defaultPluginId),
 			sql.Named("name", "same-job-name"),
 			sql.Named("description", "description"),
@@ -140,12 +140,12 @@ func TestPlugin(t *testing.T) {
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err = rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
+		numRows, err = rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []any{testPluginId})
 		require.NoError(err)
 		assert.Equal(1, numRows)
 
 		// Calling upsertJob with the same name and different pluginId should create a new job
-		rows, err = rw.Query(context.Background(), upsertJobQuery, []interface{}{
+		rows, err = rw.Query(context.Background(), upsertJobQuery, []any{
 			sql.Named("plugin_id", testPluginId),
 			sql.Named("name", "same-job-name"),
 			sql.Named("description", "description"),
@@ -172,12 +172,12 @@ func TestPlugin(t *testing.T) {
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []any{testPluginId})
 		assert.NoError(err)
 		assert.Equal(1, numRows)
 
 		newPluginId := "pi_newtest1234"
-		numUpdated, err := rw.Exec(context.Background(), "update plugin set public_id = ? where public_id = ?", []interface{}{newPluginId, testPluginId})
+		numUpdated, err := rw.Exec(context.Background(), "update plugin set public_id = ? where public_id = ?", []any{newPluginId, testPluginId})
 		require.Error(err)
 		assert.Equal("db.Exec: immutable column: plugin.public_id: integrity violation: error #1003", err.Error())
 		assert.Equal(0, numUpdated)
@@ -188,18 +188,18 @@ func TestPlugin(t *testing.T) {
 		conn, _ := db.TestSetup(t, "postgres")
 		rw := db.New(conn)
 
-		numDeleted, err := rw.Exec(context.Background(), "delete from plugin where public_id = ?", []interface{}{defaultPluginId})
+		numDeleted, err := rw.Exec(context.Background(), "delete from plugin where public_id = ?", []any{defaultPluginId})
 		require.Error(err)
 		assert.Equal("db.Exec: deletion of system plugin not allowed: integrity violation: error #1104", err.Error())
 		assert.Equal(0, numDeleted)
 
 		// Create test plugin id
 		testPluginId := "pi_test1234"
-		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []interface{}{testPluginId})
+		numRows, err := rw.Exec(context.Background(), "insert into plugin(public_id, scope_id) values (?, 'global')", []any{testPluginId})
 		assert.NoError(err)
 		assert.Equal(1, numRows)
 
-		numDeleted, err = rw.Exec(context.Background(), "delete from plugin where public_id = ?", []interface{}{testPluginId})
+		numDeleted, err = rw.Exec(context.Background(), "delete from plugin where public_id = ?", []any{testPluginId})
 		assert.NoError(err)
 		assert.Equal(1, numDeleted)
 	})

@@ -23,7 +23,7 @@ var _ oplog.ReplayableMessage = (*Account)(nil)
 var _ proto.Message = (*Account)(nil)
 
 // upsertAccount will create/update account using claims from the user's ID and Access Tokens.
-func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenClaims, AccessTokenClaims map[string]interface{}) (*Account, error) {
+func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenClaims, AccessTokenClaims map[string]any) (*Account, error) {
 	const op = "oidc.(Repository).upsertAccount"
 	if am == nil || am.AuthMethod == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method")
@@ -74,7 +74,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 	}
 
 	columns := []string{"public_id", "auth_method_id", "issuer", "subject"}
-	values := []interface{}{
+	values := []any{
 		sql.Named("1", pubId),
 		sql.Named("2", am.PublicId),
 		sql.Named("3", iss),
@@ -110,7 +110,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create new acct for oplog"))
 	}
 
-	var foundName interface{}
+	var foundName any
 	switch {
 	case AccessTokenClaims[fromName] != nil:
 		foundName = AccessTokenClaims[fromName]
@@ -128,7 +128,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 		nullMasks = append(nullMasks, NameField)
 	}
 
-	var foundEmail interface{}
+	var foundEmail any
 	switch {
 	case AccessTokenClaims[fromEmail] != nil:
 		foundEmail = AccessTokenClaims[fromEmail]
@@ -184,7 +184,7 @@ func (r *Repository) upsertAccount(ctx context.Context, am *AuthMethod, IdTokenC
 			if rowCnt > 1 {
 				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("expected 1 row but got: %d", rowCnt))
 			}
-			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer = ? and subject = ?", []interface{}{am.PublicId, iss, sub}); err != nil {
+			if err := reader.LookupWhere(ctx, &updatedAcct, "auth_method_id = ? and issuer = ? and subject = ?", []any{am.PublicId, iss, sub}); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to look up auth oidc account for: %s / %s / %s", am.PublicId, iss, sub)))
 			}
 			// include the version incase of predictable account public ids based on a calculation using authmethod id and subject
@@ -243,11 +243,11 @@ func upsertOplog(ctx context.Context, w db.Writer, oplogWrapper wrapping.Wrapper
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 	}
 	metadata := acct.oplog(operation, scopeId)
-	acctAsReplayable, ok := interface{}(acct).(oplog.ReplayableMessage)
+	acctAsReplayable, ok := any(acct).(oplog.ReplayableMessage)
 	if !ok {
 		return errors.New(ctx, errors.Internal, op, "account is not replayable")
 	}
-	acctAsProto, ok := interface{}(acct).(proto.Message)
+	acctAsProto, ok := any(acct).(proto.Message)
 	if !ok {
 		return errors.New(ctx, errors.Internal, op, "account is not a proto message")
 	}

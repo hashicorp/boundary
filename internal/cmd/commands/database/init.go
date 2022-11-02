@@ -297,9 +297,9 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		c.UI.Info("Global-scope KMS keys successfully created.")
 	}
 
-	var jsonMap map[string]interface{}
+	var jsonMap map[string]any
 	if base.Format(c.UI) == "json" {
-		jsonMap = make(map[string]interface{})
+		jsonMap = make(map[string]any)
 		defer func() {
 			b, err := base.JsonFormatter{}.Format(jsonMap)
 			if err != nil {

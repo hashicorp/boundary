@@ -29,7 +29,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 	role := allocRole()
 	role.PublicId = roleId
 
-	newRoleGrants := make([]interface{}, 0, len(grants))
+	newRoleGrants := make([]any, 0, len(grants))
 	for _, grant := range grants {
 		roleGrant, err := NewRoleGrant(roleId, grant)
 		if err != nil {
@@ -153,7 +153,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 
 			// Find existing grants
 			roleGrants := []*RoleGrant{}
-			if err := reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}); err != nil {
+			if err := reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []any{roleId}); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to search for grants"))
 			}
 			found := map[string]bool{}
@@ -163,7 +163,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 
 			// Check incoming grants to see if they exist and if so add to
 			// delete slice
-			deleteRoleGrants := make([]interface{}, 0, len(grants))
+			deleteRoleGrants := make([]any, 0, len(grants))
 			for _, grant := range grants {
 				// Use a fake scope, just want to get out a canonical string
 				perm, err := perms.Parse("o_abcd1234", grant, perms.WithSkipFinalValidation(true))
@@ -244,7 +244,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 
 	// Find existing grants
 	roleGrants := []*RoleGrant{}
-	if err := r.reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &roleGrants, "role_id = ?", []any{roleId}); err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to search for grants"))
 	}
 	found := map[string]*RoleGrant{}
@@ -254,8 +254,8 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 
 	// Check incoming grants to see if they exist and if so act appropriately
 	currentRoleGrants := make([]*RoleGrant, 0, len(grants)+len(found))
-	addRoleGrants := make([]interface{}, 0, len(grants))
-	deleteRoleGrants := make([]interface{}, 0, len(grants))
+	addRoleGrants := make([]any, 0, len(grants))
+	deleteRoleGrants := make([]any, 0, len(grants))
 	for _, grant := range grants {
 		// Use a fake scope, just want to get out a canonical string
 		perm, err := perms.Parse("o_abcd1234", grant, perms.WithSkipFinalValidation(true))
@@ -380,7 +380,7 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	var roleGrants []*RoleGrant
-	if err := r.list(ctx, &roleGrants, "role_id = ?", []interface{}{roleId}, opt...); err != nil {
+	if err := r.list(ctx, &roleGrants, "role_id = ?", []any{roleId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup role grants"))
 	}
 	return roleGrants, nil
@@ -477,7 +477,7 @@ select role_id as role_id, role_scope as scope_id, role_grant as grant from fina
 	}
 
 	var grants []perms.GrantTuple
-	rows, err := r.reader.Query(ctx, query, []interface{}{userId})
+	rows, err := r.reader.Query(ctx, query, []any{userId})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

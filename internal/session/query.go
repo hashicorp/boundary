@@ -424,16 +424,16 @@ values
 `
 )
 
-func batchInsertsessionCredentialDynamic(creds []*DynamicCredential) (string, []interface{}, error) {
+func batchInsertsessionCredentialDynamic(creds []*DynamicCredential) (string, []any, error) {
 	if len(creds) <= 0 {
 		return "", nil, fmt.Errorf("empty slice of DynamicCredential, cannot build query")
 	}
 	batchInsertParams := make([]string, 0, len(creds))
-	batchInsertArgs := make([]interface{}, 0, len(creds)*3)
+	batchInsertArgs := make([]any, 0, len(creds)*3)
 
 	for _, cred := range creds {
 		batchInsertParams = append(batchInsertParams, sessionCredentialDynamicBatchInsertValue)
-		batchInsertArgs = append(batchInsertArgs, []interface{}{cred.SessionId, cred.LibraryId, cred.CredentialPurpose}...)
+		batchInsertArgs = append(batchInsertArgs, []any{cred.SessionId, cred.LibraryId, cred.CredentialPurpose}...)
 	}
 
 	q := sessionCredentialDynamicBatchInsertBase + strings.Join(batchInsertParams, ",") + sessionCredentialDynamicBatchInsertReturning

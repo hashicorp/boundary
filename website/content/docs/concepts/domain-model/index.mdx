@@ -45,8 +45,7 @@ The next level of access management is a [Grant](/docs/concepts/security/permiss
 
 For example, a grant can specify the List Action against a specific resource. Grants can specify resource types or resource IDs and may also be implemented as a rule.
 
-The highest-level in Boundary utilizes the concepts of [Roles](/docs/concepts/domain-model/roles). Roles are a collection of zero or more grants. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.  Roles belong to a single scope and their lifecycle is dependent on the existence of that scope. Should the scope be deleted, the role would be deleted too. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.
-The diagram below illustrates the relationship between the different IAM components within Boundary.
+The highest-level in Boundary utilizes the concepts of [Roles](/docs/concepts/domain-model/roles). Roles are a collection of zero or more grants. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.  Roles belong to a single scope and their lifecycle is dependent on the existence of that scope. Should the scope be deleted, the role would be deleted too. The diagram below illustrates the relationship between the different IAM components within Boundary.
 
 ![](/img/component-relationship.png)
 

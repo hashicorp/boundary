@@ -1,5 +1,9 @@
 begin;
 
+  -- The 'comment on function' statements below are not for the functions in the
+  -- file. They incorrectly override the comments for functions declared in
+  -- 7/01_functions.up.sql. Fixes are contained in 57/01_fix_comments.up.sql.
+
     create function wt_sub_seconds(sec integer, ts timestamp with time zone) returns timestamp with time zone
     as $$
     select ts - sec * '1 second'::interval;

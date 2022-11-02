@@ -39,7 +39,7 @@ type Resource interface {
 }
 
 type Cloneable interface {
-	Clone() interface{}
+	Clone() any
 }
 
 // ResourceWithScope defines an interface for Resources that have a scope
@@ -72,7 +72,7 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 		}
 	}
 	var p Scope
-	if err := reader.LookupWhere(ctx, &p, "public_id = ?", []interface{}{resource.GetScopeId()}); err != nil {
+	if err := reader.LookupWhere(ctx, &p, "public_id = ?", []any{resource.GetScopeId()}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &p, nil

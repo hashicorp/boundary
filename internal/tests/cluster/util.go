@@ -16,7 +16,7 @@ func expectWorkers(t *testing.T, c *controller.TestController, workers ...*worke
 	for _, w := range workers {
 		workerMap[w.Name()] = w
 	}
-	updateTimes.Range(func(k, v interface{}) bool {
+	updateTimes.Range(func(k, v any) bool {
 		require.NotNil(t, k)
 		require.NotNil(t, v)
 		if workerMap[k.(string)] == nil {

@@ -130,7 +130,7 @@ func (c *OidcCommand) Run(args []string) int {
 				return
 
 			case <-time.After(1500 * time.Millisecond):
-				result, err = aClient.Authenticate(c.Context, c.FlagAuthMethodId, "token", map[string]interface{}{
+				result, err = aClient.Authenticate(c.Context, c.FlagAuthMethodId, "token", map[string]any{
 					"token_id": startResp.TokenId,
 				})
 				if err != nil {

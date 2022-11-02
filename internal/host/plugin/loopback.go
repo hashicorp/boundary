@@ -92,7 +92,7 @@ func (l *loopbackPlugin) onCreateSet(ctx context.Context, req *plgpb.OnCreateSet
 		attrsMap := attrs.AsMap()
 		if field := attrsMap[loopbackPluginHostInfoAttrField]; field != nil {
 			switch t := field.(type) {
-			case []interface{}:
+			case []any:
 				for _, h := range t {
 					hostInfo := new(loopbackPluginHostInfo)
 					if err := mapstructure.Decode(h, hostInfo); err != nil {
@@ -100,7 +100,7 @@ func (l *loopbackPlugin) onCreateSet(ctx context.Context, req *plgpb.OnCreateSet
 					}
 					l.hostMap[set.GetId()] = append(l.hostMap[set.GetId()], hostInfo)
 				}
-			case map[string]interface{}:
+			case map[string]any:
 				hostInfo := new(loopbackPluginHostInfo)
 				if err := mapstructure.Decode(t, hostInfo); err != nil {
 					return nil, errors.Wrap(ctx, err, op)
@@ -128,7 +128,7 @@ func (l *loopbackPlugin) onUpdateSet(ctx context.Context, req *plgpb.OnUpdateSet
 		attrsMap := attrs.AsMap()
 		if field := attrsMap[loopbackPluginHostInfoAttrField]; field != nil {
 			switch t := field.(type) {
-			case []interface{}:
+			case []any:
 				for _, h := range t {
 					hostInfo := new(loopbackPluginHostInfo)
 					if err := mapstructure.Decode(h, hostInfo); err != nil {
@@ -136,7 +136,7 @@ func (l *loopbackPlugin) onUpdateSet(ctx context.Context, req *plgpb.OnUpdateSet
 					}
 					hosts = append(hosts, hostInfo)
 				}
-			case map[string]interface{}:
+			case map[string]any:
 				hostInfo := new(loopbackPluginHostInfo)
 				if err := mapstructure.Decode(t, hostInfo); err != nil {
 					return nil, errors.Wrap(ctx, err, op)

@@ -57,7 +57,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandSuccess
 	}
 
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if verInfo.CgoEnabled {
 		nonAttributeMap["Cgo Enabled"] = verInfo.CgoEnabled
 	}

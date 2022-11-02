@@ -93,7 +93,7 @@ func allocGroupMember() GroupMemberUser {
 }
 
 // Clone creates a clone of the GroupMember
-func (m *GroupMemberUser) Clone() interface{} {
+func (m *GroupMemberUser) Clone() any {
 	cp := proto.Clone(m.GroupMemberUser)
 	return &GroupMemberUser{
 		GroupMemberUser: cp.(*store.GroupMemberUser),

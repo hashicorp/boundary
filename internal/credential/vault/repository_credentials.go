@@ -47,7 +47,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 				fmt.Errorf("WARNING: credential will expire before job scheduler can run"),
 				event.WithInfo("credential_public_id", cred.GetPublicId()),
 				event.WithInfo("credential_library_public_id", lib.GetPublicId()),
-				event.WithInfo("runJobsInterval", runJobsInterval),
+				event.WithInfo("runJobsInterval", runJobsInterval.String()),
 			)
 		}
 
@@ -103,7 +103,7 @@ func (r *Repository) Revoke(ctx context.Context, sessionId string) error {
 
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			if _, err := w.Exec(ctx, revokeCredentialsQuery, []interface{}{sessionId}); err != nil {
+			if _, err := w.Exec(ctx, revokeCredentialsQuery, []any{sessionId}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			return nil

@@ -31,7 +31,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 					Type: "sub_resource",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -57,7 +57,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 					Type: "default",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -70,7 +70,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 					Type: "default",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -86,7 +86,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 					Type: "unknown",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -99,7 +99,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 					Type: "unknown",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -115,7 +115,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Item: &attribute.TestResource{
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -141,7 +141,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Item: &attribute.TestResource{
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -154,7 +154,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Item: &attribute.TestResource{
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -170,7 +170,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Item: &attribute.TestResource{
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -183,7 +183,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Item: &attribute.TestResource{
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -229,7 +229,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Id: "trsr_one",
 				Attrs: &attribute.TestNoItemAttributes_Attributes{
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -251,7 +251,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Item: &attribute.TestNoOneOf{
 					Type: "sub_resource",
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -262,7 +262,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Item: &attribute.TestNoOneOf{
 					Type: "sub_resource",
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -276,7 +276,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Id: "trsr_one",
 				Item: &attribute.TestNoOneOf{
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -287,7 +287,7 @@ func TestTransformRequestAttributes(t *testing.T) {
 				Id: "trsr_one",
 				Item: &attribute.TestNoOneOf{
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -328,7 +328,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 						Type: "default",
 						Attrs: &attribute.TestResource_Attributes{
 							Attributes: func() *structpb.Struct {
-								attrs, _ := structpb.NewStruct(map[string]interface{}{
+								attrs, _ := structpb.NewStruct(map[string]any{
 									"name": "test",
 								})
 								return attrs
@@ -343,7 +343,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 						Type: "sub_resource",
 						Attrs: &attribute.TestResource_Attributes{
 							Attributes: func() *structpb.Struct {
-								attrs, _ := structpb.NewStruct(map[string]interface{}{
+								attrs, _ := structpb.NewStruct(map[string]any{
 									"name": "test",
 								})
 								return attrs
@@ -354,7 +354,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 						Type: "default",
 						Attrs: &attribute.TestResource_Attributes{
 							Attributes: func() *structpb.Struct {
-								attrs, _ := structpb.NewStruct(map[string]interface{}{
+								attrs, _ := structpb.NewStruct(map[string]any{
 									"name": "test",
 								})
 								return attrs
@@ -383,7 +383,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 					Type: "sub_resource",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -400,7 +400,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 					Type: "plugin",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -414,7 +414,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 					Type: "plugin",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -442,7 +442,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 					Type: "sub_resource",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -470,7 +470,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 					Type: "sub_resource",
 					Attrs: &attribute.TestResource_Attributes{
 						Attributes: func() *structpb.Struct {
-							attrs, _ := structpb.NewStruct(map[string]interface{}{
+							attrs, _ := structpb.NewStruct(map[string]any{
 								"name": "test",
 							})
 							return attrs
@@ -517,7 +517,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 					Id:   "trsr_one",
 					Type: "sub_resource",
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -529,7 +529,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 					Id:   "trsr_one",
 					Type: "sub_resource",
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -544,7 +544,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 					Id:   "trsr_one",
 					Type: "sub_resource",
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -556,7 +556,7 @@ func TestTransformResponseAttributes(t *testing.T) {
 					Id:   "trsr_one",
 					Type: "sub_resource",
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -612,7 +612,7 @@ func TestCustomTransformRequest(t *testing.T) {
 		SecondaryId:  "secondary_id",
 		Attrs: &attribute.TestCustomTransformation_Attributes{
 			Attributes: func() *structpb.Struct {
-				attrs, _ := structpb.NewStruct(map[string]interface{}{
+				attrs, _ := structpb.NewStruct(map[string]any{
 					"name": "test",
 				})
 				return attrs
@@ -664,7 +664,7 @@ func TestCustomTransformResponse(t *testing.T) {
 		SecondaryId:  "secondary_id",
 		Attrs: &attribute.TestCustomTransformation_Attributes{
 			Attributes: func() *structpb.Struct {
-				attrs, _ := structpb.NewStruct(map[string]interface{}{
+				attrs, _ := structpb.NewStruct(map[string]any{
 					"name": "test",
 				})
 				return attrs

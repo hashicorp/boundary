@@ -14,7 +14,7 @@ type Response struct {
 	resp *http.Response
 
 	Body *bytes.Buffer
-	Map  map[string]interface{}
+	Map  map[string]any
 }
 
 // HttpResponse returns the underlying HTTP response
@@ -27,7 +27,7 @@ func (r *Response) StatusCode() int {
 	return r.resp.StatusCode
 }
 
-func (r *Response) Decode(inStruct interface{}) (*Error, error) {
+func (r *Response) Decode(inStruct any) (*Error, error) {
 	if r == nil || r.resp == nil {
 		return nil, fmt.Errorf("nil response, cannot decode")
 	}
@@ -57,7 +57,7 @@ func (r *Response) Decode(inStruct interface{}) (*Error, error) {
 			reader := bytes.NewReader(r.Body.Bytes())
 			dec := json.NewDecoder(reader)
 			dec.UseNumber()
-			r.Map = make(map[string]interface{})
+			r.Map = make(map[string]any)
 			if err := dec.Decode(&r.Map); err != nil {
 				return nil, fmt.Errorf("error decoding response to map: %w; response was %s", err, r.Body.String())
 			}

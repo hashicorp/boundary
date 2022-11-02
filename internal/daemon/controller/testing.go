@@ -164,7 +164,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.Context(),
 		tc.b.DevPasswordAuthMethodId,
 		"login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": tc.b.DevLoginName,
 			"password":   tc.b.DevPassword,
 		},
@@ -190,7 +190,7 @@ func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
 		tc.Context(),
 		tc.b.DevPasswordAuthMethodId,
 		"login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": tc.b.DevUnprivilegedLoginName,
 			"password":   tc.b.DevUnprivilegedPassword,
 		},
@@ -794,7 +794,7 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string)
 		}
 
 		var waitStatusCurrent time.Time
-		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v interface{}) bool {
+		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v any) bool {
 			if k == nil || v == nil {
 				err = fmt.Errorf("nil key or value on entry: key=%#v value=%#v", k, v)
 				return false

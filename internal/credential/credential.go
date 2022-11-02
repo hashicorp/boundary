@@ -67,7 +67,7 @@ var ValidPurposes = []Purpose{
 }
 
 // SecretData represents secret data.
-type SecretData interface{}
+type SecretData any
 
 // Credential is an entity containing secret data.
 type Credential interface {

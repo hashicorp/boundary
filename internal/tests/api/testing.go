@@ -26,27 +26,27 @@ func CloudEventFromFile(t testing.TB, fileName string) *cloudevents.Event {
 
 // GetEventDetails is a testing helper will return the details from the event
 // payload for a given messageType (request or response)
-func GetEventDetails(t testing.TB, e *cloudevents.Event, messageType string) map[string]interface{} {
+func GetEventDetails(t testing.TB, e *cloudevents.Event, messageType string) map[string]any {
 	t.Helper()
 	require := require.New(t)
 	require.NotNil(e)
 	require.NotEmpty(messageType)
-	data, ok := e.Data.(map[string]interface{})
+	data, ok := e.Data.(map[string]any)
 	require.Truef(ok, "event was not a map[string]interface")
-	msgType, ok := data[messageType].(map[string]interface{})
+	msgType, ok := data[messageType].(map[string]any)
 	require.Truef(ok, "event data did not contain a %q.  Current keys: %q", messageType, reflect.ValueOf(data).MapKeys())
-	details, ok := msgType["details"].(map[string]interface{})
+	details, ok := msgType["details"].(map[string]any)
 	require.Truef(ok, `%q of event did not contain "details"`, messageType)
 	return details
 }
 
 // AssertRedactedValues will assert that the values for the given keys within
 // the data have been redacted
-func AssertRedactedValues(t testing.TB, data interface{}, keys ...string) {
+func AssertRedactedValues(t testing.TB, data any, keys ...string) {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
 	require.NotNil(data)
-	dataMap, ok := data.(map[string]interface{})
+	dataMap, ok := data.(map[string]any)
 	require.Truef(ok, "data must be a map[string]interface{}")
 
 	rMap := make(map[string]bool, len(keys))
@@ -55,7 +55,7 @@ func AssertRedactedValues(t testing.TB, data interface{}, keys ...string) {
 	}
 	for k, v := range dataMap {
 		switch typ := v.(type) {
-		case []interface{}:
+		case []any:
 			for _, s := range typ {
 				if _, ok := rMap[k]; ok {
 					assert.Equalf(encrypt.RedactedData, s, "expected %s to be redacted and it was set to: %s", k, v)

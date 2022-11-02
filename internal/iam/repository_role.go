@@ -70,7 +70,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"name":         role.Name,
 			"description":  role.Description,
 			"GrantScopeId": role.GrantScopeId,
@@ -188,7 +188,7 @@ func (r *Repository) ListRoles(ctx context.Context, withScopeIds []string, opt .
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope ids")
 	}
 	var roles []*Role
-	err := r.list(ctx, &roles, "scope_id in (?)", []interface{}{withScopeIds}, opt...)
+	err := r.list(ctx, &roles, "scope_id in (?)", []any{withScopeIds}, opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
