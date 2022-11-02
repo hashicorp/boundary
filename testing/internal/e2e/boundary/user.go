@@ -48,9 +48,21 @@ func CreateNewUserCli(t testing.TB, ctx context.Context, scopeId string) string 
 	newUserId := newUserResult.Item.Id
 	t.Cleanup(func() {
 		AuthenticateAdminCli(t, context.Background())
-		e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("users", "delete", "-id", newUserId, "-format", "json"),
 		)
+		// Only allow an error if it's due to a Resource Not Found (404)
+		// This was needed since there's a test that already deletes the user and would run into an
+		// error during cleanup
+		if output.Err != nil {
+			var response e2e.CliError
+			err := json.Unmarshal(output.Stderr, &response)
+			require.NoError(t, err)
+			statusCode := response.Status
+			require.Condition(t, func() bool {
+				return statusCode == 404
+			})
+		}
 	})
 	t.Logf("Created User: %s", newUserId)
 
