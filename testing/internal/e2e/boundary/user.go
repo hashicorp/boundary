@@ -48,10 +48,9 @@ func CreateNewUserCli(t testing.TB, ctx context.Context, scopeId string) string 
 	newUserId := newUserResult.Item.Id
 	t.Cleanup(func() {
 		AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
+		e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("users", "delete", "-id", newUserId),
 		)
-		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	t.Logf("Created User: %s", newUserId)
 
