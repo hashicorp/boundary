@@ -3,9 +3,9 @@ package vault
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -14,14 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//go:embed testdata/boundary-controller-policy.hcl
-var boundaryPolicyFile embed.FS
-
 type config struct {
 	VaultAddr  string `envconfig:"VAULT_ADDR" required:"true"` // e.g. "http://127.0.0.1:8200"
 	VaultToken string `envconfig:"VAULT_TOKEN" required:"true"`
 }
 
+// CreateTokenResponse parses the json response from running `vault token create`
 type CreateTokenResponse struct {
 	Auth struct {
 		Client_Token string
@@ -46,14 +44,8 @@ func Setup(t testing.TB) (vaultAddr string, boundaryPolicyName string, kvPolicyF
 	vaultAddr = c.VaultAddr
 
 	// Set up boundary policy
-	data, err := boundaryPolicyFile.ReadFile("testdata/boundary-controller-policy.hcl")
+	boundaryPolicyFilePath, err := filepath.Abs("testdata/boundary-controller-policy.hcl")
 	require.NoError(t, err)
-	boundaryPolicyFilePath := fmt.Sprintf("%s/%s", t.TempDir(), "boundary-controller-policy.hcl")
-	f, err := os.Create(boundaryPolicyFilePath)
-	require.NoError(t, err)
-	_, err = f.WriteString(string(data))
-	require.NoError(t, err)
-
 	boundaryPolicyName = WritePolicy(t, context.Background(), boundaryPolicyFilePath)
 
 	// Create kv policy
