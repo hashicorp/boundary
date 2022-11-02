@@ -15,12 +15,13 @@ import (
 )
 
 const (
-	LabelGrpcService = "grpc_service"
-	LabelGrpcMethod  = "grpc_method"
-	LabelGrpcCode    = "grpc_code"
-	LabelHttpPath    = "path"
-	LabelHttpMethod  = "method"
-	LabelHttpCode    = "code"
+	LabelConnectionPurpose = "purpose"
+	LabelGrpcService       = "grpc_service"
+	LabelGrpcMethod        = "grpc_method"
+	LabelGrpcCode          = "grpc_code"
+	LabelHttpPath          = "path"
+	LabelHttpMethod        = "method"
+	LabelHttpCode          = "code"
 
 	invalidPathValue = "invalid"
 )
@@ -89,11 +90,11 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 // InitializeGrpcCollectorsFromServer registers and zeroes a Prometheus
 // histogram, finding all service and method labels from the provided gRPC
 // server.
-func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, server *grpc.Server, codes []codes.Code) {
+func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, g prometheus.GaugeVec, server *grpc.Server, codes []codes.Code) {
 	if r == nil {
 		return
 	}
-	r.MustRegister(v)
+	r.MustRegister(v, g)
 
 	for serviceName, info := range server.GetServiceInfo() {
 		for _, mInfo := range info.Methods {

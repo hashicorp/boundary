@@ -4,7 +4,9 @@ package metric
 
 import (
 	"context"
+	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -93,6 +95,37 @@ func NewGrpcRequestRecorder(fullMethodName string, reqLatency prometheus.Observe
 func (r requestRecorder) Record(err error) {
 	r.labels[LabelGrpcCode] = StatusFromError(err).Code().String()
 	r.reqLatency.With(r.labels).Observe(time.Since(r.start).Seconds())
+}
+
+type connectionTrackingListener struct {
+	net.Listener
+	connCount prometheus.Gauge
+}
+
+// NewConnectionTrackingListener registers a new Prometheus gauge with an unique connection type label
+// and wraps an existing listener to track when connections are accepted and closed.
+func NewConnectionTrackingListener(l net.Listener, g prometheus.Gauge) *connectionTrackingListener {
+	return &connectionTrackingListener{Listener: l, connCount: g}
+}
+
+type connectionTrackingListenerConn struct {
+	net.Conn
+	dec   sync.Once
+	gauge prometheus.Gauge
+}
+
+func (c *connectionTrackingListenerConn) Close() error {
+	c.dec.Do(func() { c.gauge.Dec() })
+	return c.Conn.Close()
+}
+
+func (l *connectionTrackingListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	l.connCount.Inc()
+	return &connectionTrackingListenerConn{Conn: conn, gauge: l.connCount}, nil
 }
 
 // StatusFromError retrieves the *status.Status from the provided error.  It'll

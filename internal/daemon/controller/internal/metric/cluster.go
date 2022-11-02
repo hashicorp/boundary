@@ -2,6 +2,7 @@ package metric
 
 import (
 	"context"
+	"net"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/metric"
@@ -33,6 +34,17 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 	metric.ListGrpcLabels,
 )
 
+// activeConnections keeps a count of the current active connections to a controller.
+var activeConnections = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: clusterSubSystem,
+		Name:      "active_connections",
+		Help:      "Count of active network connections to this controller.",
+	},
+	[]string{metric.LabelConnectionPurpose},
+)
+
 // All the codes expected to be returned by boundary or the grpc framework to
 // requests to the cluster server.
 var expectedGrpcCodes = []codes.Code{
@@ -45,6 +57,11 @@ var expectedGrpcCodes = []codes.Code{
 	codes.Unavailable, codes.Unauthenticated,
 }
 
+func InstrumentClusterTrackingListener(l net.Listener, purpose string) net.Listener {
+	p := prometheus.Labels{metric.LabelConnectionPurpose: purpose}
+	return metric.NewConnectionTrackingListener(l, activeConnections.With(p))
+}
+
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
 // cluster specific metrics. Use with the cluster gRPC server.
 func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
@@ -55,5 +72,5 @@ func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterCollectors(r prometheus.Registerer, server *grpc.Server) {
-	metric.InitializeGrpcCollectorsFromServer(r, grpcRequestLatency, server, expectedGrpcCodes)
+	metric.InitializeGrpcCollectorsFromServer(r, grpcRequestLatency, *activeConnections, server, expectedGrpcCodes)
 }
