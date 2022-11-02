@@ -109,6 +109,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 		e2e.WithArgs("credential-stores", "delete", "-id", newCredentialStoreId),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
+	t.Log("Waiting for credential store to be deleted...")
 	err = backoff.RetryNotify(
 		func() error {
 			output := e2e.RunCommand(ctx, "boundary",

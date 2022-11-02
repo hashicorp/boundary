@@ -50,6 +50,7 @@ func TestCliConnectTargetWithLocalhost(t *testing.T) {
 	t.Cleanup(cancel)
 
 	// Wait for session to appear
+	t.Log("Waiting for session to appear...")
 	err = backoff.RetryNotify(
 		func() error {
 			output := e2e.RunCommand(ctx, "boundary",
