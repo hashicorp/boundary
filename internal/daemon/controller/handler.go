@@ -57,18 +57,36 @@ type HandlerProperties struct {
 	CancelCtx      context.Context
 }
 
+func isUiRequest(req *http.Request) bool {
+	return !strings.HasPrefix(req.URL.Path, "/v1/")
+}
+
+// createMuxWithEndpoints performs all response logic for boundary, using isUiRequest
+// for unified logic between responses and headers.
+func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handler, error) {
+	grpcGwMux := newGrpcGatewayMux()
+	if err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...); err != nil {
+		return nil, err
+	}
+
+	uiHandler := handleUi(c)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if isUiRequest(req) {
+			uiHandler.ServeHTTP(w, req)
+		} else {
+			grpcGwMux.ServeHTTP(w, req)
+		}
+	}), nil
+}
+
 // apiHandler returns an http.Handler for the services. This can be used on
 // its own to mount the Controller API within another web server.
 func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
-	mux := http.NewServeMux()
-
-	grpcGwMux := newGrpcGatewayMux()
-	err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...)
+	mux, err := createMuxWithEndpoints(c, props)
 	if err != nil {
 		return nil, err
 	}
-	mux.Handle("/v1/", grpcGwMux)
-	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
@@ -80,7 +98,12 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	}
 	metricsHandler := metric.InstrumentApiHandler(eventsHandler)
 
-	return metricsHandler, nil
+	// This wrap MUST be performed last. If you add a new wrapper, do so above.
+	handler, err := listenerutil.WrapCustomHeadersHandler(metricsHandler, props.ListenerConfig, isUiRequest)
+	if err != nil {
+		return nil, err
+	}
+	return handler, nil
 }
 
 // GetHealthHandler returns a gRPC Gateway mux that is registered against the
