@@ -58,10 +58,7 @@ func CreateNewUserCli(t testing.TB, ctx context.Context, scopeId string) string 
 			var response e2e.CliError
 			err := json.Unmarshal(output.Stderr, &response)
 			require.NoError(t, err)
-			statusCode := response.Status
-			require.Condition(t, func() bool {
-				return statusCode == 404
-			})
+			require.Equal(t, 404, int(response.Status))
 		}
 	})
 	t.Logf("Created User: %s", newUserId)

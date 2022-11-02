@@ -61,7 +61,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	var response e2e.CliError
 	err = json.Unmarshal(output.Stderr, &response)
 	require.NoError(t, err)
-	require.Equal(t, 403, response.Status)
+	require.Equal(t, 403, int(response.Status))
 	t.Log("Successfully received an error when connecting to target as a user without permissions")
 
 	// Create a group
