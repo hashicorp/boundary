@@ -33,8 +33,8 @@ func registerControllerServerCoordinationService(ctx context.Context, c *Control
 		return fmt.Errorf("%s: server is nil", op)
 	}
 
-	workerService := handlers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
-		c.workerStatusUpdateTimes, c.kms)
+	workerService := handlers.NewWorkerServiceServer(c.ServersRepoFn, c.WorkerAuthRepoStorageFn,
+		c.SessionRepoFn, c.ConnectionRepoFn, c.workerStatusUpdateTimes, c.kms)
 	pbs.RegisterServerCoordinationServiceServer(server, workerService)
 	return nil
 }
@@ -51,8 +51,8 @@ func registerControllerSessionService(ctx context.Context, c *Controller, server
 		return fmt.Errorf("%s: server is nil", op)
 	}
 
-	workerService := handlers.NewWorkerServiceServer(c.ServersRepoFn, c.SessionRepoFn, c.ConnectionRepoFn,
-		c.workerStatusUpdateTimes, c.kms)
+	workerService := handlers.NewWorkerServiceServer(c.ServersRepoFn, c.WorkerAuthRepoStorageFn,
+		c.SessionRepoFn, c.ConnectionRepoFn, c.workerStatusUpdateTimes, c.kms)
 	pbs.RegisterSessionServiceServer(server, workerService)
 	return nil
 }

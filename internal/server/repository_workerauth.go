@@ -517,6 +517,34 @@ func (r *WorkerAuthRepositoryStorage) findWorkerAuth(ctx context.Context, node *
 	return worker, nil
 }
 
+// FilterToAuthorizedWorkerKeyIds returns all the worker key identifiers that
+// are authorized from the slice of key identifiers provided to the function.
+func (r *WorkerAuthRepositoryStorage) FilterToAuthorizedWorkerKeyIds(ctx context.Context, workerKeyIds []string) ([]string, error) {
+	const op = "server.(WorkerAuthRepositoryStorage).FilterToAuthorizedWorkerKeyIds"
+	if len(workerKeyIds) == 0 {
+		return nil, nil
+	}
+	rows, err := r.reader.Query(ctx, authorizedWorkerQuery, []interface{}{workerKeyIds})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	defer rows.Close()
+
+	type rowsResult struct {
+		WorkerKeyIdentifier string
+	}
+	var ret []string
+	for rows.Next() {
+		var result rowsResult
+		err = r.reader.ScanRows(ctx, rows, &result)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		ret = append(ret, result.WorkerKeyIdentifier)
+	}
+	return ret, nil
+}
+
 func (r *WorkerAuthRepositoryStorage) findPriorEncryptionKey(ctx context.Context, workerId string) (*types.EncryptionKey, error) {
 	const op = "server.(WorkerAuthRepositoryStorage).findPriorEncryptionKey"
 	if workerId == "" {

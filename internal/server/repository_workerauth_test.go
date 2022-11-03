@@ -444,6 +444,49 @@ func TestStoreNodeInformationTx(t *testing.T) {
 	}
 }
 
+func TestFilterToAuthorizedWorkerKeyIds(t *testing.T) {
+	ctx := context.Background()
+	rootWrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	// Ensures the global scope contains a valid root key
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	rw := db.New(conn)
+	repo, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	got, err := repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{})
+	require.NoError(t, err)
+	assert.Empty(t, got)
+
+	var keyId1 string
+	w1 := TestPkiWorker(t, conn, rootWrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId1))
+	var keyId2 string
+	TestPkiWorker(t, conn, rootWrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId2))
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{"not-found-key-id", keyId1})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId1}, got)
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId2, "not-found-key-id"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId2}, got)
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{keyId1, keyId2}, got)
+
+	workerRepo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+	_, err = workerRepo.DeleteWorker(ctx, w1.GetPublicId())
+	require.NoError(t, err)
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId2}, got)
+}
+
 type mockTestWrapper struct {
 	wrapping.Wrapper
 	decryptError bool
