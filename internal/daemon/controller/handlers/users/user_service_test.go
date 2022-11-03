@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -186,13 +187,13 @@ func TestList(t *testing.T) {
 	// Populate expected values for recursive test
 	var totalUsers []*pb.User
 	ctx := auth.DisabledAuthTestContext(repoFn, "global")
-	anon, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_anon"})
+	anon, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: globals.AnonymousUserId})
 	require.NoError(t, err)
 	totalUsers = append(totalUsers, anon.GetItem())
-	authUser, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_auth"})
+	authUser, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: globals.AnyAuthenticatedUserId})
 	require.NoError(t, err)
 	totalUsers = append(totalUsers, authUser.GetItem())
-	recovery, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: "u_recovery"})
+	recovery, err := s.GetUser(ctx, &pbs.GetUserRequest{Id: globals.RecoveryUserId})
 	require.NoError(t, err)
 	totalUsers = append(totalUsers, recovery.GetItem())
 
@@ -227,7 +228,7 @@ func TestList(t *testing.T) {
 	}
 
 	// Populate these users into the total
-	ctx = auth.DisabledAuthTestContext(repoFn, oWithUsers.GetPublicId(), auth.WithUserId("u_auth"))
+	ctx = auth.DisabledAuthTestContext(repoFn, oWithUsers.GetPublicId(), auth.WithUserId(globals.AnyAuthenticatedUserId))
 	usersInOrg, err := s.ListUsers(ctx, &pbs.ListUsersRequest{ScopeId: oWithUsers.GetPublicId()})
 	require.NoError(t, err)
 	totalUsers = append(totalUsers, usersInOrg.GetItems()...)
@@ -302,7 +303,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListUsers(%q) got response %q, wanted %q", tc.req, got, tc.res)
 			// Test with anon user
 
-			got, gErr = s.ListUsers(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListUsers(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {

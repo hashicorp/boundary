@@ -148,7 +148,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		scopeIds, err = authResults.ScopesAuthorizedForList(ctx, req.GetScopeId(), resource.Session)
 	}
 
-	listPerms := authResults.ACL().ListPermissions(scopeIds, resource.Session, IdActions)
+	listPerms := authResults.ACL().ListPermissions(scopeIds, resource.Session, IdActions, authResults.UserId)
 
 	repo, err := s.repoFn(session.WithPermissions(&perms.UserPermissions{
 		UserId:      authResults.UserId,

@@ -66,7 +66,7 @@ func (o OutputFieldsMap) SelfOrDefaults(userId string) OutputFieldsMap {
 		// This shouldn't happen, and if it does, don't allow anything to be
 		// output
 		return OutputFieldsMap{}
-	case userId == AnonymousUserId:
+	case userId == globals.AnonymousUserId:
 		return OutputFieldsMap{
 			globals.IdField:                          true,
 			globals.ScopeField:                       true,
