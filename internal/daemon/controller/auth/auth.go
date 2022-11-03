@@ -10,13 +10,15 @@ import (
 
 	"github.com/hashicorp/boundary/api/recovery"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/daemon/controller/common"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/iam"
-
-	"github.com/hashicorp/boundary/internal/daemon/controller/common"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/perms"
@@ -25,6 +27,9 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/mr-tron/base58"
@@ -47,15 +52,14 @@ const (
 	AuthTokenTypeRecoveryKms
 )
 
-const (
-	AnonymousUserId = "u_anon"
-)
-
 type key int
 
 var verifierKey key
 
 type VerifyResults struct {
+	UserData template.Data
+	// This is copied out from UserData above but used to avoid nil checks in
+	// lots of places that embed this value
 	UserId      string
 	AuthTokenId string
 	Error       error
@@ -92,15 +96,47 @@ type VerifyResults struct {
 }
 
 type verifier struct {
-	iamRepoFn       common.IamRepoFactory
-	authTokenRepoFn common.AuthTokenRepoFactory
-	serversRepoFn   common.ServersRepoFactory
-	kms             *kms.Kms
-	requestInfo     *authpb.RequestInfo
-	res             *perms.Resource
-	act             action.Type
-	ctx             context.Context
-	acl             perms.ACL
+	iamRepoFn          common.IamRepoFactory
+	authTokenRepoFn    common.AuthTokenRepoFactory
+	serversRepoFn      common.ServersRepoFactory
+	passwordAuthRepoFn common.PasswordAuthRepoFactory
+	oidcAuthRepoFn     common.OidcAuthRepoFactory
+	kms                *kms.Kms
+	requestInfo        *authpb.RequestInfo
+	res                *perms.Resource
+	act                action.Type
+	ctx                context.Context
+	acl                perms.ACL
+}
+
+// TODO (jefferai 10/2022): NewVerifierContextWithAccounts performs the function
+// of NewVerifierContext (see the docs for that function) but with extra
+// parameters that can be used to look up account information. This is not
+// intended to be a long-lived function; see
+// https://hashicorp.atlassian.net/browse/ICU-6571 and
+// https://hashicorp.atlassian.net/browse/ICU-6572
+//
+// This is being added for a quick turnaround purpose and to avoid making large
+// numbers of changes to tests when we may do a much bigger refactor; when those
+// items are addressed this can be removed.
+func NewVerifierContextWithAccounts(ctx context.Context,
+	iamRepoFn common.IamRepoFactory,
+	authTokenRepoFn common.AuthTokenRepoFactory,
+	serversRepoFn common.ServersRepoFactory,
+	passwordAuthRepoFn common.PasswordAuthRepoFactory,
+	oidcAuthRepoFn common.OidcAuthRepoFactory,
+	kms *kms.Kms,
+	requestInfo *authpb.RequestInfo,
+) context.Context {
+	return context.WithValue(ctx, verifierKey, &verifier{
+		iamRepoFn:          iamRepoFn,
+		authTokenRepoFn:    authTokenRepoFn,
+		serversRepoFn:      serversRepoFn,
+		passwordAuthRepoFn: passwordAuthRepoFn,
+		oidcAuthRepoFn:     oidcAuthRepoFn,
+		kms:                kms,
+		requestInfo:        requestInfo,
+	})
 }
 
 // NewVerifierContext creates a context that carries a verifier object from the
@@ -114,13 +150,7 @@ func NewVerifierContext(ctx context.Context,
 	kms *kms.Kms,
 	requestInfo *authpb.RequestInfo,
 ) context.Context {
-	return context.WithValue(ctx, verifierKey, &verifier{
-		iamRepoFn:       iamRepoFn,
-		authTokenRepoFn: authTokenRepoFn,
-		serversRepoFn:   serversRepoFn,
-		kms:             kms,
-		requestInfo:     requestInfo,
-	})
+	return NewVerifierContextWithAccounts(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, nil, nil, kms, requestInfo)
 }
 
 // Verify takes in a context that has expected parameters as values and runs an
@@ -209,6 +239,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			}
 		}
 		ret.UserId = v.requestInfo.UserIdOverride
+		ret.UserData.User.Id = util.Pointer(ret.UserId)
 		if reqInfo != nil {
 			reqInfo.UserId = ret.UserId
 		}
@@ -235,14 +266,17 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 
 	var authResults perms.ACLResults
 	var grantTuples []perms.GrantTuple
-	var accountId, userName, userEmail string
+	var userData template.Data
 	var err error
-	authResults, ret.UserId, accountId, userName, userEmail, ret.Scope, v.acl, grantTuples, err = v.performAuthCheck(ctx)
+	authResults, ret.UserData, ret.Scope, v.acl, grantTuples, err = v.performAuthCheck(ctx)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error performing authn/authz check"))
 		return
 	}
 
+	if ret.UserData.User.Id != nil {
+		ret.UserId = *ret.UserData.User.Id
+	}
 	ret.AuthTokenId = v.requestInfo.PublicId
 	ret.AuthenticationFinished = authResults.AuthenticationFinished
 	if !authResults.Authorized {
@@ -269,7 +303,7 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 			// If the anon user was used (either no token, or invalid (perhaps
 			// expired) token), return a 401. That way if it's an authn'd user
 			// that is not authz'd we'll return 403 to be explicit.
-			if ret.UserId == AnonymousUserId {
+			if ret.UserId == globals.AnonymousUserId {
 				ret.Error = handlers.UnauthenticatedError()
 			}
 			ea.UserInfo = &event.UserInfo{
@@ -288,14 +322,20 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		})
 	}
 	ea.UserInfo = &event.UserInfo{
-		UserId:        ret.UserId,
-		AuthAccountId: accountId,
+		UserId: ret.UserId,
+	}
+	if userData.Account.Id != nil {
+		ea.UserInfo.AuthAccountId = *userData.Account.Id
 	}
 	ea.GrantsInfo = &event.GrantsInfo{
 		Grants: grants,
 	}
-	ea.UserName = userName
-	ea.UserEmail = userEmail
+	if userData.User.FullName != nil {
+		ea.UserName = *userData.User.FullName
+	}
+	if userData.User.Email != nil {
+		ea.UserEmail = *userData.User.Email
+	}
 
 	if reqInfo != nil {
 		reqInfo.UserId = ret.UserId
@@ -434,10 +474,7 @@ func (v *verifier) decryptToken(ctx context.Context) {
 
 func (v verifier) performAuthCheck(ctx context.Context) (
 	aclResults perms.ACLResults,
-	userId string,
-	accountId string,
-	userName string,
-	userEmail string,
+	userData template.Data,
 	scopeInfo *scopes.ScopeInfo,
 	retAcl perms.ACL,
 	grantTuples []perms.GrantTuple,
@@ -449,7 +486,10 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	// Make the linter happy
 	_ = retErr
 	scopeInfo = new(scopes.ScopeInfo)
-	userId = AnonymousUserId
+
+	// This will always be set, so further down below we can switch on whether
+	// it's empty
+	userData.User.Id = util.Pointer(globals.AnonymousUserId)
 
 	// Validate the token and fetch the corresponding user ID
 	switch v.requestInfo.TokenFormat {
@@ -459,7 +499,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	case uint32(AuthTokenTypeRecoveryKms):
 		// We validated the encrypted token in decryptToken and handled the
 		// nonces there, so just set the user
-		userId = "u_recovery"
+		userData.User.Id = util.Pointer(globals.RecoveryUserId)
 
 	case uint32(AuthTokenTypeBearer), uint32(AuthTokenTypeSplitCookie):
 		if v.requestInfo.Token == "" {
@@ -479,12 +519,12 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			break
 		}
 		if at != nil {
-			accountId = at.GetAuthAccountId()
-			userId = at.GetIamUserId()
-			if userId == "" {
+			userData.Account.Id = util.Pointer(at.GetAuthAccountId())
+			userData.User.Id = util.Pointer(at.GetIamUserId())
+			if *userData.User.Id == "" {
 				event.WriteError(ctx, op, stderrors.New("perform auth check: valid token did not map to a user, likely because no account is associated with the user any longer; continuing as u_anon"), event.WithInfo("token_id", at.GetPublicId()))
-				userId = AnonymousUserId
-				accountId = ""
+				userData.User.Id = util.Pointer(globals.AnonymousUserId)
+				userData.Account.Id = nil
 			}
 		}
 	}
@@ -495,13 +535,51 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		return
 	}
 
-	u, _, err := iamRepo.LookupUser(ctx, userId)
+	u, _, err := iamRepo.LookupUser(ctx, *userData.User.Id)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup user"))
 		return
 	}
-	userEmail = u.Email
-	userName = u.FullName
+	userData.User.Name = util.Pointer(u.Name)
+	userData.User.Email = util.Pointer(u.Email)
+	userData.User.FullName = util.Pointer(u.FullName)
+
+	if userData.Account.Id != nil && *userData.Account.Id != "" && v.passwordAuthRepoFn != nil && v.oidcAuthRepoFn != nil {
+		const domain = "auth"
+		var acct auth.Account
+		var err error
+		switch subtypes.SubtypeFromId(domain, *userData.Account.Id) {
+		case password.Subtype:
+			repo, repoErr := v.passwordAuthRepoFn()
+			if repoErr != nil {
+				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get password auth repo"))
+				return
+			}
+			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
+		case oidc.Subtype:
+			repo, repoErr := v.oidcAuthRepoFn()
+			if repoErr != nil {
+				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get oidc auth repo"))
+				return
+			}
+			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
+		default:
+			retErr = errors.Wrap(ctx, err, op, errors.WithMsg("unrecognized account id type"))
+			return
+		}
+		if err != nil {
+			if errors.IsNotFoundError(err) {
+				retErr = errors.Wrap(ctx, err, op, errors.WithMsg("account doesn't exist"))
+				return
+			}
+			retErr = errors.Wrap(ctx, err, op, errors.WithMsg("error looking up account"))
+			return
+		}
+		userData.Account.Name = util.Pointer(acct.GetName())
+		userData.Account.Email = util.Pointer(acct.GetEmail())
+		userData.Account.LoginName = util.Pointer(acct.GetLoginName())
+		userData.Account.Subject = util.Pointer(acct.GetSubject())
+	}
 
 	// Look up scope details to return. We can skip a lookup when using the
 	// global scope
@@ -546,7 +624,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 
 	// Fetch and parse grants for this user ID (which may include grants for
 	// u_anon and u_auth)
-	grantTuples, err = iamRepo.GrantsForUser(v.ctx, userId)
+	grantTuples, err = iamRepo.GrantsForUser(v.ctx, *userData.User.Id)
 	if err != nil {
 		retErr = errors.Wrap(ctx, err, op)
 		return
@@ -556,12 +634,17 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	// that we've since restricted, e.g. "id=foo;actions=create,read". These
 	// will simply not have an effect.
 	for _, pair := range grantTuples {
+		permsOpts := []perms.Option{
+			perms.WithUserId(*userData.User.Id),
+			perms.WithSkipFinalValidation(true),
+		}
+		if userData.Account.Id != nil {
+			permsOpts = append(permsOpts, perms.WithAccountId(*userData.Account.Id))
+		}
 		parsed, err := perms.Parse(
 			pair.ScopeId,
 			pair.Grant,
-			perms.WithUserId(userId),
-			perms.WithAccountId(accountId),
-			perms.WithSkipFinalValidation(true))
+			permsOpts...)
 		if err != nil {
 			retErr = errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed to parse grant %#v", pair.Grant)))
 			return
@@ -570,7 +653,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	}
 
 	retAcl = perms.NewACL(parsedGrants...)
-	aclResults = retAcl.Allowed(*v.res, v.act, userId)
+	aclResults = retAcl.Allowed(*v.res, v.act, *userData.User.Id)
 	// We don't set authenticated above because setting this but not authorized
 	// is used for further permissions checks, such as during recursive listing.
 	// So we want to make sure any code relying on that has the full set of
@@ -601,6 +684,13 @@ func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActi
 		return availableActions
 	}
 
+	// If there is no user ID set by definition there are no actions to fetch.
+	// This shouldn't happen because we should always fall back to at least the
+	// anonymous user so it's defense in depth.
+	if r.UserData.User.Id == nil {
+		return nil
+	}
+
 	opts := getOpts(opt...)
 	res := opts.withResource
 	// If not passed in, use what's already been populated through verification
@@ -620,7 +710,7 @@ func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActi
 
 	ret := make(action.ActionSet, 0, len(availableActions))
 	for _, act := range availableActions {
-		if r.v.acl.Allowed(*res, act, r.UserId).Authorized {
+		if r.v.acl.Allowed(*res, act, *r.UserData.User.Id).Authorized {
 			ret = append(ret, act)
 		}
 	}
@@ -636,9 +726,14 @@ func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) p
 		return perms.OutputFieldsMap{"*": true}
 	case r.v.requestInfo.DisableAuthEntirely:
 		return nil
+	case r.UserData.User.Id == nil:
+		// If there is no user ID set by definition there are no actions to fetch.
+		// This shouldn't happen because we should always fall back to at least the
+		// anonymous user so it's defense in depth.
+		return nil
 	}
 
-	return r.v.acl.Allowed(res, act, r.UserId).OutputFields
+	return r.v.acl.Allowed(res, act, *r.UserData.User.Id).OutputFields
 }
 
 // ACL returns the perms.ACL of the verifier.
@@ -750,13 +845,13 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 
 		// We only expect the action set to be nothing, or list. In case
 		// this is not the case, we bail out.
-		switch len(aSet) {
-		case 0:
+		switch {
+		case len(aSet) == 0:
 			// Defer until we've read all scopes. We do this because if the
 			// ordering coming back isn't in parent-first ordering our map
 			// lookup might fail.
 			deferredScopes = append(deferredScopes, scp)
-		case 1:
+		case len(aSet) == 1 || r.UserId == globals.RecoveryUserId:
 			if aSet[0] != action.List {
 				return nil, errors.New(ctx, errors.Internal, op, "unexpected action in set")
 			}

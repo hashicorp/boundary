@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
@@ -131,7 +132,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	// will expect the defaults.
 	globalRole := iam.TestRole(t, conn, scope.Global.String())
 	iam.TestUserRole(t, conn, globalRole.PublicId, token.UserId)
-	iam.TestUserRole(t, conn, globalRole.PublicId, auth.AnonymousUserId)
+	iam.TestUserRole(t, conn, globalRole.PublicId, globals.AnonymousUserId)
 	iam.TestRoleGrant(t, conn, globalRole.PublicId, "id=*;type=auth-method;actions=list,no-op")
 
 	// Create some users at the org level, and some role grants for them

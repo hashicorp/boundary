@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -334,11 +335,11 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 		id := strings.TrimSuffix(strings.TrimPrefix(grant.id, "{{"), "}}")
 		id = strings.TrimSpace(id)
 		switch id {
-		case "user.id":
+		case "user.id", ".User.Id":
 			if opts.withUserId != "" {
 				grant.id = opts.withUserId
 			}
-		case "account.id":
+		case "account.id", ".Account.Id":
 			if opts.withAccountId != "" {
 				grant.id = opts.withAccountId
 			}
@@ -422,7 +423,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 			}
 			var allowed bool
 			for k := range grant.actions {
-				results := acl.Allowed(r, k, AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
+				results := acl.Allowed(r, k, globals.AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
 				if results.Authorized {
 					allowed = true
 					break

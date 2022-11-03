@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -85,9 +86,9 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var adminRoleRaw any
 	switch {
 	case userId == "",
-		userId == "u_anon",
-		userId == "u_auth",
-		userId == "u_recovery",
+		userId == globals.AnonymousUserId,
+		userId == globals.AnyAuthenticatedUserId,
+		userId == globals.RecoveryUserId,
 		opts.withSkipAdminRoleCreation:
 		// TODO: Cause a log entry. The repo doesn't have a logger right now,
 		// and ideally we will be using context to pass around log info scoped
@@ -312,7 +313,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 						}
 						grants = append(grants, roleGrant)
 
-						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{account.id}};actions=read,change-password")
+						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{.Account.Id}};actions=read,change-password")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
@@ -335,9 +336,9 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				// Principals
 				{
 					principals := []any{}
-					userId := "u_anon"
+					userId := globals.AnonymousUserId
 					if s.Type == scope.Project.String() {
-						userId = "u_auth"
+						userId = globals.AnyAuthenticatedUserId
 					}
 					rolePrincipal, err := NewUserRole(defaultRolePublicId, userId)
 					if err != nil {

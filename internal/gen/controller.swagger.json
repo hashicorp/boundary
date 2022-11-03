@@ -5070,12 +5070,12 @@
         },
         "bytes_up": {
           "type": "string",
-          "format": "uint64",
+          "format": "int64",
           "title": "bytes_up of the connection"
         },
         "bytes_down": {
           "type": "string",
-          "format": "uint64",
+          "format": "int64",
           "title": "bytes_down of the connection"
         },
         "closed_reason": {

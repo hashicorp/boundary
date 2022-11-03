@@ -4,6 +4,33 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* Vault Parameter Templating: In `vault` credential libraries, the paths and any
+  POST bodies can contain templated parameters using Go template syntax (similar
+  to Consul-Template). The following template parameters are supported (note
+  that account values are tied to the account associated with the token making
+  the call):
+    * `{{ .User.Id }}`: the user's ID
+    * `{{ .User.Name }}`: the user's name (from the user resource)
+    * `{{ .User.FullName }}`: the user's name (from the account corresponding to
+    theprimary auth method in the user's scope; this may not be populated or
+    maybe different than the account name in the template)
+    * `{{ .User.Email }}`: the user's email address (same caveat as `FullName`)
+    * `{{ .Account.Id }}`: the account's ID
+    * `{{ .Account.Name }}`: the account's name (from the account resource)
+    * `{{ .Account.LoginName }}`: the account's login name (if used by that type
+    of ccount)
+    * `{{ .Account.Subject }}`: the account's subject (if used by that type
+    of ccount)
+    * `{{ .Account.Email }}`: the account's email (if used by that type
+    of account)
+
+    Additionally, there is currently a single function that strips the rest of a
+    string after a specified substring; this is useful for pulling an user/account name from an email address. In the following example it uses the account email can be any other parameter:
+    
+    * `{{ truncateFrom .Account.Email "@" }}`: this would turn `foo@example.com` into `foo`
+
 ### Bug Fixes
 
 * accounts: Deleted auth accounts would still show up as being associated with a
@@ -18,6 +45,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2544))
 * workers: Fixed a panic that can happen in certain situations
   ([PR](https://github.com/hashicorp/boundary/pull/2553))
+
+### Deprecations/Changes
+
+* In order to standardize on the templating format, [templates in
+  grants](https://developer.hashicorp.com/boundary/docs/concepts/security/permissions/permission-grant-formats#templates)
+  now are documented to use the new capitalization and format; however, the
+  previous style will continue to work. 
 
 ## 0.11.0 (2022/09/27)
 

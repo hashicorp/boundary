@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
-	"nhooyr.io/websocket"
 )
 
 // Config provides the core parameters needed for a worker to create a proxy between
@@ -20,7 +19,7 @@ type Config struct {
 	// there are any load balancers or proxies between the user and the worker,
 	// then it will be the address of the last one before the worker.
 	ClientAddress  *net.TCPAddr
-	ClientConn     *websocket.Conn
+	ClientConn     net.Conn
 	RemoteEndpoint string
 
 	Session      session.Session

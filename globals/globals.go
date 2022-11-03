@@ -6,6 +6,10 @@ const (
 	TcpProxyV1     = "boundary-tcp-proxy-v1"
 	ServiceTokenV1 = "s1"
 	SessionPrefix  = "s_"
+
+	AnyAuthenticatedUserId = "u_auth"
+	AnonymousUserId        = "u_anon"
+	RecoveryUserId         = "u_recovery"
 )
 
 type (

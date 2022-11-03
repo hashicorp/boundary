@@ -2,6 +2,8 @@ package sessionscmd
 
 import (
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -230,6 +232,20 @@ func printItemTable(item *sessions.Session, resp *api.Response) string {
 		}
 	}
 
+	var connectionsMaps []map[string]interface{}
+	for _, sc := range item.Connections {
+		cm := map[string]interface{}{
+			"Client Address":   net.JoinHostPort(sc.ClientTcpAddress, strconv.FormatUint(uint64(sc.ClientTcpPort), 10)),
+			"Endpoint Address": net.JoinHostPort(sc.EndpointTcpAddress, strconv.FormatUint(uint64(sc.EndpointTcpPort), 10)),
+			"Bytes Up":         sc.BytesUp,
+			"Bytes Down":       sc.BytesDown,
+		}
+		if len(sc.ClosedReason) != 0 {
+			cm["Closed Reason"] = sc.ClosedReason
+		}
+		connectionsMaps = append(connectionsMaps, cm)
+	}
+
 	ret := []string{
 		"",
 		"Session information:",
@@ -260,6 +276,19 @@ func printItemTable(item *sessions.Session, resp *api.Response) string {
 		for _, m := range statesMaps {
 			ret = append(ret,
 				base.WrapMap(4, maxLength, m),
+				"",
+			)
+		}
+	}
+
+	if len(item.Connections) > 0 {
+		ret = append(ret,
+			"",
+			"  Connections:",
+		)
+		for _, c := range connectionsMaps {
+			ret = append(ret,
+				base.WrapMap(4, maxLength, c),
 				"",
 			)
 		}

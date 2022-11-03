@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -15,8 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSessionCancelAdminCli uses the boundary cli to start and then cancel a session
-func TestSessionCancelAdminCli(t *testing.T) {
+func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -31,15 +31,24 @@ func TestSessionCancelAdminCli(t *testing.T) {
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	acctName := "e2e-account"
+	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, acctName)
+	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
+	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
-		t.Log("Starting session...")
+		token := boundary.GetAuthenticationTokenCli(t, ctx, acctName, acctPassword)
+		t.Log("Starting session as user...")
 		errChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
+				"-token", "env://E2E_AUTH_TOKEN",
 				"-target-id", newTargetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
@@ -51,38 +60,44 @@ func TestSessionCancelAdminCli(t *testing.T) {
 				"{{boundary.ip}}",
 				"hostname -i; sleep 60",
 			),
+			e2e.WithEnv("E2E_AUTH_TOKEN", token),
 		)
 	}()
 	t.Cleanup(cancel)
+	session := boundary.WaitForSessionToBeActiveCli(t, ctx, newProjectId)
+	assert.Equal(t, newTargetId, session.TargetId)
+	assert.Equal(t, newHostId, session.HostId)
 
-	// Get list of sessions
-	var session *sessions.Session
+	// Delete User
+	t.Log("Deleting user...")
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("users", "delete", "-id", newUserId))
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	// Check is session has terminated
+	t.Log("Waiting for session to be canceling/terminated...")
 	err = backoff.RetryNotify(
 		func() error {
-			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("sessions", "list", "-scope-id", newProjectId, "-format", "json"),
+			// Check if session is active
+			output = e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
 			)
 			if output.Err != nil {
 				return backoff.Permanent(errors.New(string(output.Stderr)))
 			}
 
-			var sessionListResult sessions.SessionListResult
-			err = json.Unmarshal(output.Stdout, &sessionListResult)
+			var sessionReadResult sessions.SessionReadResult
+			err = json.Unmarshal(output.Stdout, &sessionReadResult)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
 
-			sessionCount := len(sessionListResult.Items)
-			if sessionCount == 0 {
-				return errors.New("No items are appearing in the session list")
+			if sessionReadResult.Item.Status != "canceling" && sessionReadResult.Item.Status != "terminated" {
+				return errors.New(fmt.Sprintf("Session has unexpected status. Expected: %s, Actual: %s",
+					"`canceling` or `terminated`",
+					sessionReadResult.Item.Status,
+				))
 			}
 
-			t.Logf("Found %d session(s)", sessionCount)
-			if sessionCount != 1 {
-				return backoff.Permanent(errors.New("Only one session was expected to be found"))
-			}
-
-			session = sessionListResult.Items[0]
 			return nil
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
@@ -91,35 +106,5 @@ func TestSessionCancelAdminCli(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	assert.Equal(t, newTargetId, session.TargetId)
-	assert.Equal(t, newHostId, session.HostId)
-	require.Equal(t, "active", session.Status)
-
-	// Cancel session
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("sessions", "cancel", "-id", session.Id),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newSessionReadResult sessions.SessionReadResult
-	err = json.Unmarshal(output.Stdout, &newSessionReadResult)
-	require.NoError(t, err)
-	require.Condition(t, func() bool {
-		return newSessionReadResult.Item.Status == "canceling" || newSessionReadResult.Item.Status == "terminated"
-	})
-
-	// Check output from session
-	select {
-	case output := <-errChan:
-		// `boundary connect` returns a 255 when cancelled
-		require.Equal(t, output.ExitCode, 255, string(output.Stdout), string(output.Stderr))
-	case <-time.After(time.Second * 5):
-		t.Fatal("Timed out waiting for session command to exit")
-	}
-
-	t.Log("Successfully cancelled session")
+	t.Log("Session successfully ended after user was deleted")
 }

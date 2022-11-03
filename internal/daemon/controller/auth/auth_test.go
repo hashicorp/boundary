@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
@@ -204,7 +205,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 			name:              "no-auth-data",
 			opt:               []Option{WithScopeId(o.PublicId)},
 			wantAuthAuditData: true,
-			wantUserId:        "u_anon",
+			wantUserId:        globals.AnonymousUserId,
 		},
 		{
 			name:              "disable-auth",

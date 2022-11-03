@@ -192,7 +192,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	}
 
 	// Get all user permissions for the requested scope(s).
-	userPerms := authResults.ACL().ListPermissions(authzScopes, resource.Target, IdActions)
+	userPerms := authResults.ACL().ListPermissions(authzScopes, resource.Target, IdActions, authResults.UserId)
 	if len(userPerms) == 0 {
 		return &pbs.ListTargetsResponse{}, nil
 	}
@@ -853,7 +853,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		dynamic, err = credRepo.Issue(ctx, sess.GetPublicId(), vaultReqs)
+		dynamic, err = credRepo.Issue(ctx, sess.GetPublicId(), vaultReqs, credential.WithTemplateData(authResults.UserData))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

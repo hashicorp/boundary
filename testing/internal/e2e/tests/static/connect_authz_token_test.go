@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConnectTargetWithAuthzTokenCli uses the boundary cli to connect to a target using the
+// TestCliConnectTargetWithAuthzToken uses the boundary cli to connect to a target using the
 // `authz_token` option
-func TestConnectTargetWithAuthzTokenCli(t *testing.T) {
+func TestCliConnectTargetWithAuthzToken(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
