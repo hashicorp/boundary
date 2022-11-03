@@ -520,6 +520,33 @@ func (r *WorkerAuthRepositoryStorage) findCertBundles(ctx context.Context, worke
 	return certBundle, nil
 }
 
+// FilterToAuthorizedWorkerKeyIds returns all the worker key identifiers that
+// are authorizable from the slice of key identifiers provided to the function.
+func (r *WorkerAuthRepositoryStorage) FilterToAuthorizedWorkerKeyIds(ctx context.Context, workerKeyIds []string) ([]string, error) {
+	const op = "server.(WorkerAuthRepositoryStorage).FilterToAuthorizedWorkerKeyIds"
+	if len(workerKeyIds) == 0 {
+		return nil, nil
+	}
+	rows, err := r.reader.Query(ctx, authorizedWorkerQuery, []interface{}{workerKeyIds})
+	if err != nil {
+	}
+	defer rows.Close()
+
+	type rowsResult struct {
+		WorkerKeyIdentifier string
+	}
+	var ret []string
+	for rows.Next() {
+		var result rowsResult
+		err = r.reader.ScanRows(ctx, rows, &result)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		ret = append(ret, result.WorkerKeyIdentifier)
+	}
+	return ret, nil
+}
+
 func (r *WorkerAuthRepositoryStorage) loadRootCertificates(ctx context.Context, cert *types.RootCertificates) error {
 	const op = "server.(WorkerAuthRepositoryStorage).loadRootCertificates"
 	if cert == nil {

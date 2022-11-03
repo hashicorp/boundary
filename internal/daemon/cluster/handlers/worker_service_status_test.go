@@ -2,6 +2,8 @@ package handlers_test
 
 import (
 	"context"
+	"crypto/rand"
+	"sort"
 	"sync"
 	"testing"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
@@ -46,6 +49,9 @@ func TestStatus(t *testing.T) {
 	})
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
@@ -89,7 +95,7 @@ func TestStatus(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -119,7 +125,8 @@ func TestStatus(t *testing.T) {
 						Address: "127.0.0.1",
 					},
 				},
-				WorkerId: worker1.PublicId,
+				WorkerId:          worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{},
 			},
 		},
 		{
@@ -158,7 +165,8 @@ func TestStatus(t *testing.T) {
 						Address: "127.0.0.1",
 					},
 				},
-				WorkerId: worker1.PublicId,
+				WorkerId:          worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{},
 			},
 		},
 		{
@@ -209,6 +217,7 @@ func TestStatus(t *testing.T) {
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
+						pbs.AuthorizedWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
 				),
@@ -232,6 +241,9 @@ func TestStatusSessionClosed(t *testing.T) {
 	})
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
@@ -287,7 +299,7 @@ func TestStatusSessionClosed(t *testing.T) {
 	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -355,7 +367,8 @@ func TestStatusSessionClosed(t *testing.T) {
 						RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
 					},
 				},
-				WorkerId: worker1.PublicId,
+				WorkerId:          worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{},
 			},
 		},
 	}
@@ -387,6 +400,7 @@ func TestStatusSessionClosed(t *testing.T) {
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
+						pbs.AuthorizedWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
 				),
@@ -413,6 +427,9 @@ func TestStatusDeadConnection(t *testing.T) {
 
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
@@ -466,7 +483,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -508,7 +525,8 @@ func TestStatusDeadConnection(t *testing.T) {
 				Address: "127.0.0.1",
 			},
 		},
-		WorkerId: worker1.PublicId,
+		WorkerId:          worker1.PublicId,
+		AuthorizedWorkers: &pbs.AuthorizedWorkerList{},
 	}
 
 	got, err := s.Status(ctx, req)
@@ -525,6 +543,7 @@ func TestStatusDeadConnection(t *testing.T) {
 				pbs.Job_SessionInfo{},
 				pbs.SessionJobInfo{},
 				pbs.Connection{},
+				pbs.AuthorizedWorkerList{},
 			),
 			cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
 		),
@@ -553,6 +572,9 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	})
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
@@ -619,7 +641,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -648,7 +670,8 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 						Address: "127.0.0.1",
 					},
 				},
-				WorkerId: worker1.PublicId,
+				WorkerId:          worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{},
 			},
 		},
 		{
@@ -686,7 +709,8 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 						Address: "127.0.0.1",
 					},
 				},
-				WorkerId: worker1.PublicId,
+				WorkerId:          worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{},
 			},
 		},
 	}
@@ -716,6 +740,154 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 						pbs.Job_SessionInfo{},
 						pbs.SessionJobInfo{},
 						pbs.Connection{},
+						pbs.AuthorizedWorkerList{},
+					),
+					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
+				),
+			)
+		})
+	}
+}
+
+func TestStatusAuthorizedWorkers(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+
+	err := kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
+	require.NoError(t, err)
+
+	serverRepo, _ := server.NewRepository(rw, rw, kmsCache)
+	serverRepo.UpsertController(ctx, &store.Controller{
+		PrivateId: "test_controller1",
+		Address:   "127.0.0.1",
+	})
+	serversRepoFn := func() (*server.Repository, error) {
+		return serverRepo, nil
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	}
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kmsCache, opts...)
+	}
+	connRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kmsCache)
+	}
+
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
+	var w1KeyId, w2KeyId string
+	_ = server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w1KeyId))
+	_ = server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w2KeyId))
+
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kmsCache)
+	require.NotNil(t, s)
+
+	cases := []struct {
+		name       string
+		wantErr    bool
+		wantErrMsg string
+		req        *pbs.StatusRequest
+		want       *pbs.StatusResponse
+	}{
+		{
+			name:    "No downstreams",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetName(),
+					Address:  worker1.GetAddress(),
+				},
+				ConnectedWorkerKeyIdentifiers: []string{},
+			},
+			want: &pbs.StatusResponse{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
+					{
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
+					},
+				},
+				WorkerId:          worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{},
+			},
+		},
+		{
+			name:    "Unauthorized ConnectedWorkers",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetName(),
+					Address:  worker1.GetAddress(),
+				},
+			},
+			want: &pbs.StatusResponse{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
+					{
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
+					},
+				},
+				WorkerId:          worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{},
+			},
+		},
+		{
+			name:    "Some authorized connected downstreams",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetName(),
+					Address:  worker1.GetAddress(),
+				},
+				ConnectedWorkerKeyIdentifiers: []string{w1KeyId, w2KeyId, "unknown"},
+			},
+			want: &pbs.StatusResponse{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
+					{
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
+					},
+				},
+				WorkerId: worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{
+					WorkerKeyIdentifiers: []string{w1KeyId, w2KeyId},
+				},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			got, err := s.Status(ctx, tc.req)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Equal(got, &pbs.StatusResponse{})
+				assert.Equal(tc.wantErrMsg, err.Error())
+				return
+			}
+			sort.Strings(got.GetAuthorizedWorkers().GetWorkerKeyIdentifiers())
+			sort.Strings(tc.want.GetAuthorizedWorkers().GetWorkerKeyIdentifiers())
+			assert.Empty(
+				cmp.Diff(
+					tc.want,
+					got,
+					cmpopts.IgnoreUnexported(
+						pbs.StatusResponse{},
+						pb.ServerWorkerStatus{},
+						pbs.UpstreamServer{},
+						pbs.JobChangeRequest{},
+						pbs.Job{},
+						pbs.Job_SessionInfo{},
+						pbs.SessionJobInfo{},
+						pbs.Connection{},
+						pbs.AuthorizedWorkerList{},
 					),
 					cmpopts.IgnoreFields(pb.ServerWorkerStatus{}, "Tags"),
 				),
@@ -739,6 +911,9 @@ func TestWorkerOperationalStatus(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return serverRepo, nil
 	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
 	sessionRepoFn := func(opt ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms)
 	}
@@ -748,7 +923,7 @@ func TestWorkerOperationalStatus(t *testing.T) {
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	cases := []struct {

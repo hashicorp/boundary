@@ -30,4 +30,12 @@ const (
 		)
 		select * from worker_auth_authorized where worker_id in (select * from key_id_to_worker_id)
 	`
+
+	authorizedWorkerQuery = `
+		select distinct w.worker_key_identifier 
+		from 
+			worker_auth_certificate_bundle as w
+		where
+			w.worker_key_identifier in (?)
+	`
 )

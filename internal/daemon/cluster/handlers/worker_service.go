@@ -29,6 +29,7 @@ type workerServiceServer struct {
 	pbs.UnsafeSessionServiceServer
 
 	serversRepoFn    common.ServersRepoFactory
+	workerAuthRepoFn common.WorkerAuthRepoStorageFactory
 	sessionRepoFn    session.RepositoryFactory
 	connectionRepoFn common.ConnectionRepoFactory
 	updateTimes      *sync.Map
@@ -42,6 +43,7 @@ var (
 
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
+	workerAuthRepoFn common.WorkerAuthRepoStorageFactory,
 	sessionRepoFn session.RepositoryFactory,
 	connectionRepoFn common.ConnectionRepoFactory,
 	updateTimes *sync.Map,
@@ -49,6 +51,7 @@ func NewWorkerServiceServer(
 ) *workerServiceServer {
 	return &workerServiceServer{
 		serversRepoFn:    serversRepoFn,
+		workerAuthRepoFn: workerAuthRepoFn,
 		sessionRepoFn:    sessionRepoFn,
 		connectionRepoFn: connectionRepoFn,
 		updateTimes:      updateTimes,
@@ -135,9 +138,22 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 		responseControllers = append(responseControllers, thisController)
 	}
+
+	workerAuthRepo, err := ws.workerAuthRepoFn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting worker auth repo"))
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to lookup worker auth info: %v", err)
+	}
+	authorizedWorkers, err := workerAuthRepo.FilterToAuthorizedWorkerKeyIds(ctx, req.GetConnectedWorkerKeyIdentifiers())
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting authorizable worker key ids"))
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting authorized worker key ids: %v", err)
+	}
+
 	ret := &pbs.StatusResponse{
 		CalculatedUpstreams: responseControllers,
 		WorkerId:            wrk.GetPublicId(),
+		AuthorizedWorkers:   &pbs.AuthorizedWorkerList{WorkerKeyIdentifiers: authorizedWorkers},
 	}
 
 	stateReport := make([]*session.StateReport, 0, len(req.GetJobs()))

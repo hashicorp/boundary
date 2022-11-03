@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -133,6 +134,8 @@ type Worker struct {
 	TestOverrideAuthRotationPeriod time.Duration
 
 	statusLock sync.Mutex
+
+	pkiConnManager *cluster.DownstreamManager
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -155,6 +158,7 @@ func New(conf *Config) (*Worker, error) {
 		nonceFn:                base62.Random,
 		WorkerAuthCurrentKeyId: new(ua.String),
 		operationalState:       new(atomic.Value),
+		pkiConnManager:         cluster.NewDownstreamManager(),
 	}
 
 	if downstreamRouterFactory != nil {

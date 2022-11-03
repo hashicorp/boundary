@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
@@ -164,6 +165,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			event.WithInfoMsg("error making status request to controller"))
 	}
 	versionInfo := version.Get()
+	connectedWorkerKeyIds := w.pkiConnManager.Connected()
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		WorkerStatus: &pb.ServerWorkerStatus{
@@ -175,7 +177,8 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			ReleaseVersion:   versionInfo.FullVersionNumber(false),
 			OperationalState: w.operationalState.Load().(server.OperationalState).String(),
 		},
-		UpdateTags: w.updateTags.Load(),
+		ConnectedWorkerKeyIdentifiers: connectedWorkerKeyIds,
+		UpdateTags:                    w.updateTags.Load(),
 	})
 	if err != nil {
 		event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error making status request to controller"))
@@ -213,6 +216,10 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	}
 
 	w.updateTags.Store(false)
+
+	if authorized := result.GetAuthorizedWorkers(); authorized != nil {
+		cluster.DisconnectUnauthorized(w.pkiConnManager, connectedWorkerKeyIds, authorized.GetWorkerKeyIdentifiers())
+	}
 	var addrs []string
 	// This may be empty if we are in a multiple hop scenario
 	if len(result.CalculatedUpstreams) > 0 {
