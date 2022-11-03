@@ -95,6 +95,10 @@ message StatusRequest {
   // is easier and going the other route doesn't provide much benefit -- if you
   // get access to the key and spoof the connection, you're already compromised.
   servers.v1.ServerWorkerStatus worker_status = 40;
+
+  // The worker key identifiers presented by all downstreams connected to this
+  // worker
+  repeated string connected_worker_key_identifiers = 50;
 }
 
 enum CHANGETYPE {
@@ -107,6 +111,10 @@ enum CHANGETYPE {
 message JobChangeRequest {
   Job job = 1;
   CHANGETYPE request_type = 2;
+}
+
+message AuthorizedWorkerList {
+  repeated string worker_key_identifiers = 1;
 }
 
 message StatusResponse {
@@ -126,6 +134,10 @@ message StatusResponse {
   // The ID of the worker which made the request. The worker can send this value in subsequent requests so the
   // controller does not need to do a database lookup for the id using the name field.
   string worker_id = 40; // @gotags: `class:"public"`
+
+  // Of the worker key identifiers provided in the request, these are the ones
+  // which are authorized to remain connected.
+  AuthorizedWorkerList authorized_workers = 50;
 }
 
 // WorkerInfo contains information about workers for the HcpbWorkerResponse message

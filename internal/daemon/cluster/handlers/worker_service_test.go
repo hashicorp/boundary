@@ -39,6 +39,9 @@ func TestLookupSession(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kms)
 	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
@@ -122,7 +125,7 @@ func TestLookupSession(t *testing.T) {
 	err = repo.AddSessionCredentials(ctx, sessWithCreds.ProjectId, sessWithCreds.GetPublicId(), workerCreds)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms)
 	require.NotNil(t, s)
 
 	cases := []struct {
@@ -214,6 +217,9 @@ func TestHcpbWorkers(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kmsCache)
 	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kmsCache, opts...)
 	}
@@ -231,7 +237,7 @@ func TestHcpbWorkers(t *testing.T) {
 		server.TestPkiWorker(t, conn, wrapper, opt...)
 	}
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kmsCache)
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kmsCache)
 	require.NotNil(t, s)
 
 	res, err := s.ListHcpbWorkers(ctx, &pbs.ListHcpbWorkersRequest{})

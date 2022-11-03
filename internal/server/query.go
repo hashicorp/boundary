@@ -23,4 +23,12 @@ const (
 		delete from worker_auth_ca_certificate
  		where state = @state;
 	`
+
+	authorizedWorkerQuery = `
+		select distinct w.worker_key_identifier 
+		from 
+			worker_auth_certificate_bundle as w
+		where
+			w.worker_key_identifier in (?)
+	`
 )
