@@ -51,8 +51,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	// Create credentials in vault
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
 	passwordSecretName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
-	kvPolicyName := "kv-read"
-	vault.WritePolicy(t, ctx, kvPolicyName, kvPolicyFilePath)
+	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Log("Created Vault Credentials")
 
 	// Create vault token for boundary
@@ -224,8 +223,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	// Create credential in vault
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
 	passwordSecretName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
-	kvPolicyName := "kv-read"
-	vault.WritePolicy(t, ctx, kvPolicyName, kvPolicyFilePath)
+	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Log("Created Vault Credentials")
 
 	// Create vault token for boundary

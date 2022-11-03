@@ -59,8 +59,7 @@ func TestCliVaultConnectTarget(t *testing.T) {
 
 	// Create credential in vault
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
-	kvPolicyName := "kv-read"
-	vault.WritePolicy(t, ctx, kvPolicyName, kvPolicyFilePath)
+	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Log("Created Vault Credential")
 
 	// Create vault token for boundary

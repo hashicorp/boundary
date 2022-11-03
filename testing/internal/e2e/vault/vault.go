@@ -3,10 +3,9 @@ package vault
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"os"
-	"path"
-	"runtime"
 	"testing"
 
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -14,6 +13,9 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/stretchr/testify/require"
 )
+
+//go:embed testdata/boundary-controller-policy.hcl
+var boundaryPolicyFile embed.FS
 
 type config struct {
 	VaultAddr  string `envconfig:"VAULT_ADDR" required:"true"` // e.g. "http://127.0.0.1:8200"
@@ -38,13 +40,18 @@ func Setup(t testing.TB) (vaultAddr string, boundaryPolicyName string, kvPolicyF
 	vaultAddr = c.VaultAddr
 
 	// Set up boundary policy
-	_, filename, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	boundaryPolicyName = "boundary-controller"
-	WritePolicy(t, context.Background(), boundaryPolicyName, path.Join(path.Dir(filename), "boundary-controller-policy.hcl"))
+	data, err := boundaryPolicyFile.ReadFile("testdata/boundary-controller-policy.hcl")
+	require.NoError(t, err)
+	boundaryPolicyFilePath := fmt.Sprintf("%s/%s", t.TempDir(), "boundary-controller-policy.hcl")
+	f, err := os.Create(boundaryPolicyFilePath)
+	require.NoError(t, err)
+	_, err = f.WriteString(string(data))
+	require.NoError(t, err)
+
+	boundaryPolicyName = WritePolicy(t, context.Background(), boundaryPolicyFilePath)
 
 	// Create kv policy
-	kvPolicyFilePath = fmt.Sprintf("%s/%s", t.TempDir(), "kv-policy-test.hcl")
+	kvPolicyFilePath = fmt.Sprintf("%s/%s", t.TempDir(), "kv-policy.hcl")
 	_, err = os.Create(kvPolicyFilePath)
 	require.NoError(t, err)
 
@@ -114,8 +121,11 @@ func CreateKvPasswordCredential(t testing.TB, secretPath string, user string, kv
 }
 
 // WritePolicy adds a policy to vault. Provide a name for the policy that you want to create as well
-// as the path to the file that contains the policy definition.
-func WritePolicy(t testing.TB, ctx context.Context, policyName string, policyFilePath string) {
+// as the path to the file that contains the policy definition. Returns a policy name
+func WritePolicy(t testing.TB, ctx context.Context, policyFilePath string) string {
+	policyName, err := base62.Random(16)
+	require.NoError(t, err)
+
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("policy", "write", policyName, policyFilePath),
 	)
@@ -126,4 +136,6 @@ func WritePolicy(t testing.TB, ctx context.Context, policyName string, policyFil
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
+
+	return policyName
 }
