@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // Clonable provides a cloning interface
@@ -29,21 +31,23 @@ type Repository struct {
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
-
-	permissions *perms.UserPermissions
+	permissions  *perms.UserPermissions
+	randomReader io.Reader
 }
 
 // RepositoryFactory is a function that creates a Repository.
 type RepositoryFactory func(opt ...Option) (*Repository, error)
 
-// NewRepository creates a new session Repository. Supports the options: WithLimit
-// which sets a default limit on results returned by repo operations.
+// NewRepository creates a new session Repository. Supports the options:
+//   - WithLimit, which sets a default limit on results returned by repo operations.
+//   - WithPermissions
+//   - WithRandomReader
 func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "session.NewRepository"
-	if r == nil {
+	if util.IsNil(r) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
-	if w == nil {
+	if util.IsNil(w) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
@@ -69,6 +73,7 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		kms:          kms,
 		defaultLimit: opts.withLimit,
 		permissions:  opts.withPermissions,
+		randomReader: opts.withRandomReader,
 	}, nil
 }
 

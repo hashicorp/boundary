@@ -1,6 +1,8 @@
 package session
 
 import (
+	"crypto/rand"
+	"io"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -35,11 +37,13 @@ type options struct {
 	withTerminated               bool
 	withPermissions              *perms.UserPermissions
 	withIgnoreDecryptionFailures bool
+	withRandomReader             io.Reader
 }
 
 func getDefaultOptions() options {
 	return options{
 		withWorkerStateDelay: 10 * time.Second,
+		withRandomReader:     rand.Reader,
 	}
 }
 
@@ -137,5 +141,13 @@ func WithPermissions(p *perms.UserPermissions) Option {
 func WithIgnoreDecryptionFailures(ignoreFailures bool) Option {
 	return func(o *options) {
 		o.withIgnoreDecryptionFailures = ignoreFailures
+	}
+}
+
+// WithRandomReader is used to configure the random source
+// to use when generating secrets. Defaults to crypto/rand.Reader.
+func WithRandomReader(rand io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = rand
 	}
 }

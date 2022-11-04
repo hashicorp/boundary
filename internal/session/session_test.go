@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/x509"
 	"testing"
 	"time"
@@ -185,7 +186,7 @@ func TestSession_Create(t *testing.T) {
 				got.PublicId = id
 				wrapper, err := kmsCache.GetWrapper(ctx, tt.args.composedOf.ProjectId, kms.KeyPurposeSessions)
 				require.NoError(err)
-				privKey, certBytes, err := newCert(ctx, wrapper, got.UserId, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime())
+				privKey, certBytes, err := newCert(ctx, wrapper, got.UserId, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime(), rand.Reader)
 				if tt.wantAddrErr {
 					require.Error(err)
 					assert.True(errors.Match(errors.T(tt.wantIsErr), err))

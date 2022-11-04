@@ -3,8 +3,8 @@ package session
 import (
 	"context"
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/x509"
+	"io"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -377,7 +377,7 @@ func contains(ss []string, t string) bool {
 }
 
 // newCert creates a new session certificate. If addresses are supplied, they will be parsed and added to IP or DNS SANs as appropriate.
-func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string, addresses []string, exp time.Time) (ed25519.PrivateKey, []byte, error) {
+func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string, addresses []string, exp time.Time, rand io.Reader) (ed25519.PrivateKey, []byte, error) {
 	const op = "session.newCert"
 	if wrapper == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
@@ -391,7 +391,7 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 	if len(addresses) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
 	}
-	pubKey, privKey, err := ed25519.GenerateKey(nil)
+	pubKey, privKey, err := ed25519.GenerateKey(rand)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -430,7 +430,7 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 		}
 	}
 
-	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
+	certBytes, err := x509.CreateCertificate(rand, template, template, pubKey, privKey)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.GenCert))
 	}

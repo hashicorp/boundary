@@ -66,7 +66,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	privKey, certBytes, err := newCert(ctx, sessionWrapper, newSession.UserId, id, workerAddresses, newSession.ExpirationTime.Timestamp.AsTime())
+	privKey, certBytes, err := newCert(ctx, sessionWrapper, newSession.UserId, id, workerAddresses, newSession.ExpirationTime.Timestamp.AsTime(), r.randomReader)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
