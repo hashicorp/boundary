@@ -310,9 +310,13 @@ func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) 
 // ListDataKeyVersionDestructionJobs lists any in-progress data key destruction jobs in the scope.
 // Options are ignored.
 func (k *Kms) ListDataKeyVersionDestructionJobs(ctx context.Context, scopeId string, _ ...Option) ([]*DataKeyVersionDestructionJobProgress, error) {
+	const op = "kms.(Kms).ListDataKeyVersionDestructionJobs"
+	if scopeId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
 	var jobs []*DataKeyVersionDestructionJobProgress
 	if err := k.reader.SearchWhere(ctx, &jobs, "scope_id=?", []interface{}{scopeId}); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return jobs, nil
 }
@@ -323,6 +327,9 @@ func (k *Kms) ListDataKeyVersionDestructionJobs(ctx context.Context, scopeId str
 // Options are ignored.
 func (k *Kms) MonitorTableRewrappingRuns(ctx context.Context, tableName string, _ ...Option) (retErr error) {
 	const op = "kms.(Kms).MonitorTableRewrappingRuns"
+	if tableName == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing table name")
+	}
 
 	rewrapFn, ok := tableNameToRewrapFn[tableName]
 	if !ok {
@@ -410,7 +417,10 @@ func (k *Kms) MonitorTableRewrappingRuns(ctx context.Context, tableName string, 
 
 	// Call the function to rewrap the data in the table. The progress will be automatically
 	// updated by the deferred function.
-	return rewrapFn(ctx, run.KeyId, scopeId, k.reader, k.writer, k)
+	if err := rewrapFn(ctx, run.KeyId, scopeId, k.reader, k.writer, k); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
 }
 
 // MonitorDataKeyVersionDestruction monitors any pending destruction jobs. If
@@ -451,6 +461,12 @@ func (k *Kms) MonitorDataKeyVersionDestruction(ctx context.Context) error {
 // Options are ignored.
 func (k *Kms) DestroyKeyVersion(ctx context.Context, scopeId string, keyVersionId string, _ ...Option) (bool, error) {
 	const op = "kms.(Kms).DestroyKeyVersion"
+	if scopeId == "" {
+		return false, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
+	if keyVersionId == "" {
+		return false, errors.New(ctx, errors.InvalidParameter, op, "missing key version id")
+	}
 
 	scopeKeys, err := k.underlying.ListKeys(ctx, scopeId)
 	if err != nil {

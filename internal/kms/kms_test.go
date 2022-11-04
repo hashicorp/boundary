@@ -184,6 +184,11 @@ func Test_ListKeys(t *testing.T) {
 		_, err := kmsCache.ListKeys(testCtx, "myscope")
 		assert.True(t, errors.IsNotFoundError(err))
 	})
+	t.Run("empty-scope", func(t *testing.T) {
+		t.Parallel()
+		_, err := kmsCache.ListKeys(testCtx, "")
+		assert.Error(t, err)
+	})
 }
 
 func Test_RotateKeys(t *testing.T) {
@@ -270,7 +275,66 @@ func Test_RotateKeys(t *testing.T) {
 		assert.ErrorContains(t, err, "unable to convert writer")
 	})
 
+	t.Run("both reader and writer succeed", func(t *testing.T) {
+		t.Parallel()
+		err = kmsCache.RotateKeys(testCtx, "global", WithReaderWriter(rw, rw))
+		require.NoError(t, err)
+	})
+
 	// other options are passed directly and shouldn't need to be tested
+}
+
+func Test_ListDataKeyVersionReferencers(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	extWrapper := db.TestWrapper(t)
+	kmsCache := TestKms(t, conn, extWrapper)
+	t.Run("returns-something", func(t *testing.T) {
+		referencers, err := kmsCache.ListDataKeyVersionReferencers(testCtx)
+		require.NoError(t, err)
+		// Don't want to check the length or explicit tables
+		// as this will make the test fail whenever we add or
+		// remove a reference. Lets just sanity check that it's
+		// got at least one element in it.
+		assert.NotEmpty(t, referencers)
+	})
+	t.Run("errors when just a writer is specified", func(t *testing.T) {
+		withWriter := func(writer db.Writer) Option {
+			return func(o *options) {
+				o.withWriter = writer
+			}
+		}
+		_, err := kmsCache.ListDataKeyVersionReferencers(testCtx, withWriter(rw))
+		require.Error(t, err)
+	})
+	t.Run("errors when just a reader is specified", func(t *testing.T) {
+		withReader := func(reader db.Reader) Option {
+			return func(o *options) {
+				o.withReader = reader
+			}
+		}
+		_, err := kmsCache.ListDataKeyVersionReferencers(testCtx, withReader(rw))
+		require.Error(t, err)
+	})
+	t.Run("errors when an invalid writer is specified", func(t *testing.T) {
+		_, err := kmsCache.ListDataKeyVersionReferencers(testCtx, WithReaderWriter(rw, &invalidWriter{}))
+		require.Error(t, err)
+	})
+	t.Run("errors when an invalid reader is specified", func(t *testing.T) {
+		_, err := kmsCache.ListDataKeyVersionReferencers(testCtx, WithReaderWriter(&invalidReader{}, rw))
+		require.Error(t, err)
+	})
+	t.Run("succeeds-with-reader-writer", func(t *testing.T) {
+		referencers, err := kmsCache.ListDataKeyVersionReferencers(testCtx, WithReaderWriter(rw, rw))
+		require.NoError(t, err)
+		// Don't want to check the length or explicit tables
+		// as this will make the test fail whenever we add or
+		// remove a reference. Lets just sanity check that it's
+		// got at least one element in it.
+		assert.NotEmpty(t, referencers)
+	})
 }
 
 func Test_ListDataKeyVersionDestructionJobs(t *testing.T) {
@@ -286,6 +350,10 @@ func Test_ListDataKeyVersionDestructionJobs(t *testing.T) {
 	keys, err := kmsCache.ListKeys(testCtx, "global")
 	require.NoError(t, err)
 
+	t.Run("errors-on-empty-scope-ids", func(t *testing.T) {
+		_, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "")
+		assert.Error(t, err)
+	})
 	t.Run("lists-no-jobs-when-there-are-none", func(t *testing.T) {
 		jobs, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "global")
 		require.NoError(t, err)
@@ -373,6 +441,10 @@ func TestMonitorTableRewrappingRuns(t *testing.T) {
 		err = kmsCache.MonitorTableRewrappingRuns(testCtx, "auth_token")
 		require.NoError(t, err)
 		assert.False(t, callbackCalled, "auth_token callback should not have been called")
+	})
+	t.Run("returns-an-error-when-given-empty-table-name", func(t *testing.T) {
+		err = kmsCache.MonitorTableRewrappingRuns(testCtx, "")
+		require.Error(t, err)
 	})
 	t.Run("returns-an-error-when-no-rewrapping-function-registered", func(t *testing.T) {
 		tableNameToRewrapFn = make(map[string]RewrapFn)
@@ -581,7 +653,7 @@ func TestMonitorTableRewrappingRuns(t *testing.T) {
 		// Wait for function to return
 		select {
 		case err := <-monitorErrCh:
-			require.Equal(t, err, context.Canceled)
+			require.True(t, errors.Is(err, context.Canceled))
 		case <-time.After(5 * time.Second):
 			t.Fatalf("Function has not returned 5 seconds after callback finished")
 			return
@@ -682,6 +754,14 @@ func TestDestroyKeyVersion(t *testing.T) {
 	sqldb, err := conn.SqlDB(testCtx)
 	require.NoError(t, err)
 
+	t.Run("returns-an-error-when-given-an-empty-scope-id", func(t *testing.T) {
+		_, err := kmsCache.DestroyKeyVersion(testCtx, "", "krkv_DoesntExist")
+		assert.Error(t, err)
+	})
+	t.Run("returns-an-error-when-given-an-empty-key-version-id", func(t *testing.T) {
+		_, err := kmsCache.DestroyKeyVersion(testCtx, "global", "")
+		assert.Error(t, err)
+	})
 	t.Run("returns-an-error-when-attempting-to-destroy-an-unknown-key-version", func(t *testing.T) {
 		_, err := kmsCache.DestroyKeyVersion(testCtx, "global", "krkv_DoesntExist")
 		require.Error(t, err)
@@ -821,6 +901,33 @@ func TestDestroyKeyVersion(t *testing.T) {
 		require.Error(t, err)
 		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err), "error did not match InvalidParameter as expected: %v", err)
 	})
+}
+
+func Test_RegisterTableRewrapFn(t *testing.T) {
+	rewrapFn := func(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+		return nil
+	}
+	RegisterTableRewrapFn("a_table", rewrapFn)
+	t.Cleanup(func() {
+		tableNameToRewrapFn = map[string]RewrapFn{}
+	})
+	assert.Panics(t, func() {
+		RegisterTableRewrapFn("a_table", rewrapFn)
+	})
+}
+
+func Test_ListTablesSupportingRewrap(t *testing.T) {
+	assert.Empty(t, ListTablesSupportingRewrap())
+	rewrapFn := func(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+		return nil
+	}
+	RegisterTableRewrapFn("a_table", rewrapFn)
+	t.Cleanup(func() {
+		tableNameToRewrapFn = map[string]RewrapFn{}
+	})
+	registeredTables := ListTablesSupportingRewrap()
+	assert.Len(t, registeredTables, 1)
+	assert.Equal(t, registeredTables[0], "a_table")
 }
 
 type invalidReader struct {
