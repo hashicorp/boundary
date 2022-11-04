@@ -538,6 +538,9 @@ func Parse(d string) (*Config, error) {
 			}
 			result.Controller.WorkerStatusGracePeriodDuration = t
 		}
+		if result.Controller.WorkerStatusGracePeriodDuration < 0 {
+			return nil, errors.New("Controller worker status grace period value is negative")
+		}
 
 		livenessTimeToStale := result.Controller.LivenessTimeToStale
 		if livenessTimeToStale == nil {
@@ -549,6 +552,9 @@ func Parse(d string) (*Config, error) {
 				return result, err
 			}
 			result.Controller.LivenessTimeToStaleDuration = t
+		}
+		if result.Controller.LivenessTimeToStaleDuration < 0 {
+			return nil, errors.New("Controller liveness time to stale value is negative")
 		}
 
 		if result.Controller.Database != nil {
@@ -647,6 +653,9 @@ func Parse(d string) (*Config, error) {
 			}
 			result.Worker.StatusCallTimeoutDuration = t
 		}
+		if result.Worker.StatusCallTimeoutDuration < 0 {
+			return nil, errors.New("Status call timeout value is negative")
+		}
 
 		successfulStatusGracePeriod := result.Worker.SuccessfulStatusGracePeriod
 		if successfulStatusGracePeriod == nil {
@@ -658,6 +667,9 @@ func Parse(d string) (*Config, error) {
 				return result, err
 			}
 			result.Worker.SuccessfulStatusGracePeriodDuration = t
+		}
+		if result.Worker.SuccessfulStatusGracePeriodDuration < 0 {
+			return nil, errors.New("Successful status grace period value is negative")
 		}
 
 		switch {
