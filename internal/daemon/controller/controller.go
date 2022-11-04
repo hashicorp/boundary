@@ -99,7 +99,8 @@ type Controller struct {
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
 
-	// Timing variables
+	// Timing variables. These are atomics for SIGHUP support, and are int64
+	// because they are casted to time.Duration.
 	workerStatusGracePeriod *atomic.Int64
 	livenessTimeToStale     *atomic.Int64
 

@@ -118,7 +118,8 @@ type Worker struct {
 	downstreamWorkers downstreamers
 	downstreamRoutes  downstreamRouter
 
-	// Timing variables
+	// Timing variables. These are atomics for SIGHUP support, and are int64
+	// because they are casted to time.Duration.
 	successfulStatusGracePeriod *atomic.Int64
 	statusCallTimeoutDuration   *atomic.Int64
 
