@@ -236,7 +236,7 @@ type Worker struct {
 	// SuccessfulStatusGracePeriod represents the period of time (as a duration)
 	// that the worker will wait before disconnecting connections if it cannot
 	// successfully complete a status report to a controller. This cannot be
-	// less than SuccessfulCallTimeout.
+	// less than StatusCallTimeout.
 	//
 	// TODO: This is currently not documented and considered internal.
 	SuccessfulStatusGracePeriod         interface{}   `hcl:"successful_status_grace_period"`
