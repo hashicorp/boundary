@@ -11,6 +11,12 @@ import (
 // RegisterJobs registers kms related jobs with the provided scheduler.
 func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, kmsRepo *kms.Kms) error {
 	const op = "kmsjob.RegisterJobs"
+	if s == nil {
+		return errors.New(ctx, errors.Internal, "nil scheduler", op, errors.WithoutEvent())
+	}
+	if kmsRepo == nil {
+		return errors.New(ctx, errors.Internal, "nil kms repo", op, errors.WithoutEvent())
+	}
 
 	dataKeyVersionDestructionMonitorJob, err := newDataKeyVersionDestructionMonitorJob(ctx, kmsRepo)
 	if err != nil {

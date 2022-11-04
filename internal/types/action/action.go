@@ -62,9 +62,8 @@ const (
 	ReadCertificateAuthority           Type = 51
 	ListScopeKeys                      Type = 52
 	RotateScopeKeys                    Type = 53
-	RevokeScopeKeys                    Type = 54
-	ListScopeKeyVersionDestructionJobs Type = 55
-	DestroyScopeKeyVersion             Type = 56
+	ListScopeKeyVersionDestructionJobs Type = 54
+	DestroyScopeKeyVersion             Type = 55
 
 	// When adding new actions, be sure to update:
 	//
@@ -126,7 +125,6 @@ var Map = map[string]Type{
 	ReadCertificateAuthority.String():           ReadCertificateAuthority,
 	ListScopeKeys.String():                      ListScopeKeys,
 	RotateScopeKeys.String():                    RotateScopeKeys,
-	RevokeScopeKeys.String():                    RevokeScopeKeys,
 	ListScopeKeyVersionDestructionJobs.String(): ListScopeKeyVersionDestructionJobs,
 	DestroyScopeKeyVersion.String():             DestroyScopeKeyVersion,
 }
@@ -196,7 +194,6 @@ func (a Type) String() string {
 		"read-certificate-authority",
 		"list-keys",
 		"rotate-keys",
-		"revoke-keys",
 		"list-key-version-destruction-jobs",
 		"destroy-key-version",
 	}[a]

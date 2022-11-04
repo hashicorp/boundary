@@ -53,6 +53,7 @@ type Entry struct {
 	// @inject_tag: gorm:"not_null"
 	KeyId string `protobuf:"bytes,9,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" gorm:"not_null"`
 	// the scope id associated with the key used to encrypt the data.
+	// This value is populated from the key_id in a trigger.
 	// @inject_tag: gorm:"default:null"
 	ScopeId string `protobuf:"bytes,10,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"default:null"`
 }

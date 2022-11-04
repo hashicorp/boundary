@@ -236,7 +236,7 @@ func (k *Kms) ListKeys(ctx context.Context, scopeId string, _ ...Option) ([]wrap
 }
 
 // RotateKeys rotates all keys in a given scope.
-// Options supported: withRandomReader, withTx, withRewrap, withReader, withWriter
+// Options supported: withRandomReader, withRewrap, withReader, withWriter
 // When withReader or withWriter is used, both must be passed and the caller will
 // be responsible for managing the underlying db transactions.
 func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) error {
@@ -245,7 +245,6 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	opts := getOpts(opt...)
 	kmsOpts := []wrappingKms.Option{
 		wrappingKms.WithRandomReader(opts.withRandomReader),
-		wrappingKms.WithTx(opts.withTx),
 		wrappingKms.WithRewrap(opts.withRewrap),
 	}
 
@@ -276,16 +275,13 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 // ListDataKeyVersionReferencers will list the names of all tables
 // referencing the private_id column of the data key version table.
 // Supported options:
-//   - WithTx
 //   - WithReader (requires WithWriter)
 //   - WithWriter (requires WithReader)
 func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
 	const op = "kms.(Kms).ListDataKeyVersionReferencers"
 
 	opts := getOpts(opt...)
-	kmsOpts := []wrappingKms.Option{
-		wrappingKms.WithTx(opts.withTx),
-	}
+	kmsOpts := []wrappingKms.Option{}
 
 	switch {
 	case !isNil(opts.withReader) && isNil(opts.withWriter):

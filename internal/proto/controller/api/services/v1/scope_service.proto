@@ -89,8 +89,7 @@ service ScopeService {
   }
 
   // ListKeys lists all the keys found in the scope specified. If the scope
-  // is not found an error is returned. If the scope is empty, the global
-  // scope is used.
+  // is not found an error is returned.
   rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {
     option (google.api.http) = {
       get: "/v1/scopes/{id}:list-keys"

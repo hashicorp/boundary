@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
@@ -48,7 +49,7 @@ func TestKeyDestructionCli(t *testing.T) {
 	var keys scopes.KeyListResult
 	err := json.Unmarshal(output.Stdout, &keys)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	for _, key := range keys.Items {
 		assert.Len(t, key.Versions, 1)
 	}
@@ -88,7 +89,7 @@ func TestKeyDestructionCli(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 	err = json.Unmarshal(output.Stdout, &keys)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	var rootKeyVersionToDestroy *scopes.KeyVersion
 	var databaseKeyVersionToDestroy *scopes.KeyVersion
 	for _, key := range keys.Items {
@@ -186,7 +187,7 @@ func TestKeyDestructionCli(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 	err = json.Unmarshal(output.Stdout, &keys)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	for _, key := range keys.Items {
 		switch key.Purpose {
 		case "rootKey", "database":
@@ -218,7 +219,7 @@ func TestKeyDestructionApi(t *testing.T) {
 
 	keys, err := sc.ListKeys(ctx, scope.Item.Id)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	// Assert that all keys have the same number of versions
 	for _, key := range keys.Items {
 		assert.Len(t, key.Versions, 1)
@@ -242,7 +243,7 @@ func TestKeyDestructionApi(t *testing.T) {
 
 	keys, err = sc.ListKeys(ctx, scope.Item.Id)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	// Assert that all keys have the same number of versions,
 	// one higher than before
 	var rootKeyVersionToDestroy *scopes.KeyVersion
@@ -303,7 +304,7 @@ func TestKeyDestructionApi(t *testing.T) {
 
 	keys, err = sc.ListKeys(ctx, scope.Item.Id)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	for _, key := range keys.Items {
 		switch key.Purpose {
 		case "rootKey", "database":

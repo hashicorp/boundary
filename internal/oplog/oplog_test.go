@@ -64,7 +64,7 @@ func Test_BasicOplog(t *testing.T) {
 		var foundEntry Entry
 		err = dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{entryId})
 		require.NoError(err)
-		foundEntry.Cipherer = cipherer
+		foundEntry.Wrapper = cipherer
 		err = foundEntry.DecryptData(context.Background())
 		require.NoError(err)
 		require.Equal(keyId, foundEntry.KeyId)
@@ -422,7 +422,7 @@ func Test_Replay(t *testing.T) {
 
 		var foundEntry Entry
 		require.NoError(tx.LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{newLogEntry.Id}))
-		foundEntry.Cipherer = cipherer
+		foundEntry.Wrapper = cipherer
 		err = foundEntry.DecryptData(context.Background())
 		require.NoError(err)
 
@@ -493,7 +493,7 @@ func Test_Replay(t *testing.T) {
 		var foundEntry2 Entry
 		err = tx2.LookupWhere(testCtx, &foundEntry2, "id = ?", []interface{}{newLogEntry2.Id})
 		require.NoError(err)
-		foundEntry2.Cipherer = cipherer
+		foundEntry2.Wrapper = cipherer
 		err = foundEntry2.DecryptData(context.Background())
 		require.NoError(err)
 
@@ -557,7 +557,7 @@ func Test_Replay(t *testing.T) {
 		var foundEntry2 Entry
 		err = tx2.LookupWhere(testCtx, &foundEntry2, "id = ?", []interface{}{newLogEntry2.Id})
 		require.NoError(err)
-		foundEntry2.Cipherer = cipherer
+		foundEntry2.Wrapper = cipherer
 		err = foundEntry2.DecryptData(context.Background())
 		require.NoError(err)
 
@@ -622,7 +622,7 @@ func Test_WriteEntryWith(t *testing.T) {
 		var foundEntry Entry
 		require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{newLogEntry.Id}))
 		require.NoError(err)
-		foundEntry.Cipherer = cipherer
+		foundEntry.Wrapper = cipherer
 		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 		require.NoError(err)
 		err = foundEntry.DecryptData(context.Background())
@@ -865,7 +865,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 			var foundEntry Entry
 			require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{tt.e.Id}))
 			require.NoError(err)
-			foundEntry.Cipherer = cipherer
+			foundEntry.Wrapper = cipherer
 			types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 			require.NoError(err)
 			err = foundEntry.DecryptData(context.Background())
@@ -885,7 +885,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 			testMsgOpts := dbw.GetOpts(tt.msg.Opts...)
 			assert.Equal(entryOpts, testMsgOpts)
 
-			foundEntry.Cipherer = cipherer
+			foundEntry.Wrapper = cipherer
 			err = foundEntry.DecryptData(context.Background())
 			require.NoError(err)
 			err = foundEntry.Replay(context.Background(), tt.w, types, tableSuffix)

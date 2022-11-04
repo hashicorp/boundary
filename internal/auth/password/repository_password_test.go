@@ -213,6 +213,11 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	require.True(ok, "want *Argon2Configuration")
 	assert.NotEqual(origConfId, upArgonConf.PrivateId)
 
+	// Change the key used to encrypt the password too, to test
+	// that it gets updated appropriately
+	err = kmsCache.RotateKeys(ctx, o.GetPublicId())
+	require.NoError(err)
+
 	// Authenticate and verify the credential ID has not changed
 	auth2Acct, err := repo.Authenticate(ctx, o.GetPublicId(), authMethodId, loginName, passwd)
 	require.NoError(err)
@@ -242,6 +247,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	assert.NotEqual(origCred.PasswordConfId, auth2Cred.PasswordConfId, "the configuration Id should be different")
 	assert.NotEqual(origCred.Salt, auth2Cred.Salt, "a new salt value should be generated")
 	assert.NotEqual(origCred.DerivedKey, auth2Cred.DerivedKey, "the derived key should be different")
+	assert.NotEqual(origCred.KeyId, auth2Cred.KeyId)
 
 	assert.NoError(db.TestVerifyOplog(t, rw, auth2Cred.PrivateId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 }

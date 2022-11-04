@@ -406,7 +406,7 @@ func Test_Callback(t *testing.T) {
 			foundAcct, foundOidcAcct := false, false
 			for _, e := range entries {
 				cnt += 1
-				e.Cipherer = oplogWrapper
+				e.Wrapper = oplogWrapper
 				err := e.DecryptData(ctx)
 				require.NoError(err)
 				msgs, err := e.UnmarshalData(ctx, types)

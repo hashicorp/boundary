@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"google.golang.org/grpc/codes"
@@ -59,7 +60,6 @@ var (
 		action.List,
 		action.ListScopeKeys,
 		action.RotateScopeKeys,
-		action.RevokeScopeKeys,
 		action.ListScopeKeyVersionDestructionJobs,
 		action.DestroyScopeKeyVersion,
 	}
@@ -114,13 +114,13 @@ type Service struct {
 var _ pbs.ScopeServiceServer = (*Service)(nil)
 
 // NewService returns a project service which handles project related requests to boundary.
-func NewService(repo common.IamRepoFactory, kmsRepo *kms.Kms) (Service, error) {
+func NewService(ctx context.Context, repo common.IamRepoFactory, kmsRepo *kms.Kms) (Service, error) {
 	const op = "scopes.(Service).NewService"
-	if repo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
+	if util.IsNil(repo) {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
 	if kmsRepo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
 	return Service{repoFn: repo, kmsRepo: kmsRepo}, nil
 }

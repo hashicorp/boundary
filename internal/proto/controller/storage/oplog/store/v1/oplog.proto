@@ -40,6 +40,7 @@ message Entry {
   string key_id = 9;
 
   // the scope id associated with the key used to encrypt the data.
+  // This value is populated from the key_id in a trigger.
   // @inject_tag: gorm:"default:null"
   string scope_id = 10;
 }

@@ -124,8 +124,12 @@ func TestAction(t *testing.T) {
 			want:   "rotate-keys",
 		},
 		{
-			action: RevokeScopeKeys,
-			want:   "revoke-keys",
+			action: ListScopeKeyVersionDestructionJobs,
+			want:   "list-key-version-destruction-jobs",
+		},
+		{
+			action: DestroyScopeKeyVersion,
+			want:   "destroy-key-version",
 		},
 	}
 	for _, tt := range tests {

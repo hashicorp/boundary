@@ -45,8 +45,7 @@ type ScopeServiceClient interface {
 	// provided Scope IDs are malformed or not provided an error is returned.
 	DeleteScope(ctx context.Context, in *DeleteScopeRequest, opts ...grpc.CallOption) (*DeleteScopeResponse, error)
 	// ListKeys lists all the keys found in the scope specified. If the scope
-	// is not found an error is returned. If the scope is empty, the global
-	// scope is used.
+	// is not found an error is returned.
 	ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysResponse, error)
 	// RotateKeys rotates and optionally rewraps all the keys found in the
 	// scope specified. If the scope is not found an error is returned. If
@@ -180,8 +179,7 @@ type ScopeServiceServer interface {
 	// provided Scope IDs are malformed or not provided an error is returned.
 	DeleteScope(context.Context, *DeleteScopeRequest) (*DeleteScopeResponse, error)
 	// ListKeys lists all the keys found in the scope specified. If the scope
-	// is not found an error is returned. If the scope is empty, the global
-	// scope is used.
+	// is not found an error is returned.
 	ListKeys(context.Context, *ListKeysRequest) (*ListKeysResponse, error)
 	// RotateKeys rotates and optionally rewraps all the keys found in the
 	// scope specified. If the scope is not found an error is returned. If

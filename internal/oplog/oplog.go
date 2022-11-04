@@ -9,6 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog/store"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
@@ -37,7 +38,7 @@ type Message struct {
 // Entry represents an oplog entry
 type Entry struct {
 	*store.Entry
-	Cipherer wrapping.Wrapper `gorm:"-"`
+	Wrapper  wrapping.Wrapper `gorm:"-"`
 	Ticketer Ticketer         `gorm:"-"`
 }
 
@@ -45,12 +46,12 @@ type Entry struct {
 type Metadata map[string][]string
 
 // NewEntry creates a new Entry
-func NewEntry(ctx context.Context, aggregateName string, metadata Metadata, cipherer wrapping.Wrapper, ticketer Ticketer) (*Entry, error) {
+func NewEntry(ctx context.Context, aggregateName string, metadata Metadata, wrapper wrapping.Wrapper, ticketer Ticketer) (*Entry, error) {
 	const op = "oplog.NewEntry"
-	if cipherer == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil cipherer")
+	if util.IsNil(wrapper) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil wrapper")
 	}
-	keyId, err := cipherer.KeyId(ctx)
+	keyId, err := wrapper.KeyId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -60,7 +61,7 @@ func NewEntry(ctx context.Context, aggregateName string, metadata Metadata, ciph
 			Version:       Version,
 			KeyId:         keyId,
 		},
-		Cipherer: cipherer,
+		Wrapper:  wrapper,
 		Ticketer: ticketer,
 	}
 	if len(metadata) > 0 {
@@ -85,10 +86,10 @@ func NewEntry(ctx context.Context, aggregateName string, metadata Metadata, ciph
 
 func (e *Entry) validate(ctx context.Context) error {
 	const op = "oplog.(Entry).validate"
-	if e.Cipherer == nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "nil cipherer")
+	if util.IsNil(e.Wrapper) {
+		return errors.New(ctx, errors.InvalidParameter, op, "nil wrapper")
 	}
-	if e.Ticketer == nil {
+	if util.IsNil(e.Ticketer) {
 		return errors.New(ctx, errors.InvalidParameter, op, "nil ticketer")
 	}
 	if e.Entry == nil {
@@ -335,7 +336,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx *Writer, ticket *store.Ti
 	}
 	e.Data = append(e.Data, queue.Bytes()...)
 
-	if e.Cipherer != nil {
+	if e.Wrapper != nil {
 		if err := e.encryptData(ctx); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -363,7 +364,7 @@ func (e *Entry) Write(ctx context.Context, tx *Writer, ticket *store.Ticket) err
 	if ticket.Version == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket version")
 	}
-	if e.Cipherer != nil {
+	if e.Wrapper != nil {
 		if err := e.encryptData(ctx); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -382,7 +383,7 @@ func (e *Entry) Write(ctx context.Context, tx *Writer, ticket *store.Ticket) err
 func (e *Entry) encryptData(ctx context.Context) error {
 	const op = "oplog.(Entry).EncryptData"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
-	if err := structwrapping.WrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
+	if err := structwrapping.WrapStruct(ctx, e.Wrapper, e.Entry, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	return nil
@@ -392,7 +393,7 @@ func (e *Entry) encryptData(ctx context.Context) error {
 func (e *Entry) DecryptData(ctx context.Context) error {
 	const op = "oplog.(Entry).DecryptData"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
-	if err := structwrapping.UnwrapStruct(ctx, e.Cipherer, e.Entry, nil); err != nil {
+	if err := structwrapping.UnwrapStruct(ctx, e.Wrapper, e.Entry, nil); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil

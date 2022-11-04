@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 func init() {
@@ -20,10 +21,10 @@ func hostCatalogSecretRewrapFn(ctx context.Context, dataKeyVersionId, scopeId st
 	if scopeId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	if reader == nil {
+	if util.IsNil(reader) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing database reader")
 	}
-	if writer == nil {
+	if util.IsNil(writer) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing database writer")
 	}
 	if kmsRepo == nil {

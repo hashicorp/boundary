@@ -42,4 +42,11 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withKeyId = "100"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithRewrap", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithRewrap(true))
+		testOpts := getDefaultOptions()
+		testOpts.withRewrap = true
+		assert.Equal(opts, testOpts)
+	})
 }

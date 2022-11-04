@@ -177,7 +177,7 @@ func Test_ListKeys(t *testing.T) {
 		t.Parallel()
 		keys, err := kmsCache.ListKeys(testCtx, "global")
 		require.NoError(t, err)
-		require.Len(t, keys, 7)
+		require.Len(t, keys, len(ValidDekPurposes())+1)
 	})
 	t.Run("unknown-scope", func(t *testing.T) {
 		t.Parallel()
@@ -202,7 +202,7 @@ func Test_RotateKeys(t *testing.T) {
 		// we're not trying to test the ListKeys function, although we need to use it to validate the rotation
 		keys, err := kmsCache.ListKeys(testCtx, "global")
 		require.NoError(t, err)
-		require.Len(t, keys, 7)
+		require.Len(t, keys, len(ValidDekPurposes())+1)
 
 		// act
 		err = kmsCache.RotateKeys(testCtx, "global")

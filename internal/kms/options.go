@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
@@ -33,7 +32,6 @@ type options struct {
 	withRandomReader             io.Reader
 	withReader                   db.Reader
 	withWriter                   db.Writer
-	withTx                       *dbw.RW
 	withRewrap                   bool
 }
 
@@ -121,17 +119,6 @@ func WithReaderWriter(r db.Reader, w db.Writer) Option {
 	return func(o *options) {
 		o.withReader = r
 		o.withWriter = w
-	}
-}
-
-// WithTx allows the caller to pass an inflight transaction to be used for all
-// database operations. If WithTx(...) is used, then the caller is responsible
-// for managing the transaction. The purpose of the WithTx(...) option is to
-// allow the caller to create the scope and all of its keys in the same
-// transaction.
-func WithTx(tx *dbw.RW) Option {
-	return func(o *options) {
-		o.withTx = tx
 	}
 }
 

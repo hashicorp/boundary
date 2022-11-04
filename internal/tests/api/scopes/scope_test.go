@@ -166,7 +166,7 @@ func TestKeyDestruction(t *testing.T) {
 
 	keys, err := sc.ListKeys(ctx, "global")
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	for _, key := range keys.Items {
 		assert.Len(t, key.Versions, 1)
 	}
@@ -176,7 +176,7 @@ func TestKeyDestruction(t *testing.T) {
 
 	keys, err = sc.ListKeys(ctx, "global")
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	for _, key := range keys.Items {
 		assert.Len(t, key.Versions, 2)
 	}
@@ -204,7 +204,7 @@ func TestKeyDestruction(t *testing.T) {
 
 	keys, err = sc.ListKeys(ctx, "global")
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	for _, key := range keys.Items {
 		switch key.Purpose {
 		case "rootKey":
@@ -244,7 +244,7 @@ func TestKeyDestruction(t *testing.T) {
 
 	keys, err = sc.ListKeys(ctx, "global")
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, 7)
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
 	for _, key := range keys.Items {
 		switch key.Purpose {
 		case "rootKey", "database":
