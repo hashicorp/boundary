@@ -102,8 +102,11 @@ type connectionTrackingListener struct {
 	connCount prometheus.Gauge
 }
 
-// NewConnectionTrackingListener registers a new Prometheus gauge with an unique connection type label
-// and wraps an existing listener to track when connections are accepted and closed.
+// NewConnectionTrackingListener registers a new Prometheus gauge with an unique
+// connection type label and wraps an existing listener to track when connections
+// are accepted and closed.
+// Multiple calls to Close() a listener connection will only decrement the gauge
+// once. A call to Close() will decrement the gauge even if Close() errors.
 func NewConnectionTrackingListener(l net.Listener, g prometheus.Gauge) *connectionTrackingListener {
 	return &connectionTrackingListener{Listener: l, connCount: g}
 }

@@ -17,15 +17,27 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const testSubsystem = "test_metric"
+
 var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Namespace: globals.MetricNamespace,
-		Subsystem: "test_metric",
+		Subsystem: testSubsystem,
 		Name:      "grpc_request_duration_seconds",
 		Help:      "Test histogram.",
 		Buckets:   prometheus.DefBuckets,
 	},
 	ListGrpcLabels,
+)
+
+var testActiveConns prometheus.GaugeVec = *prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: testSubsystem,
+		Name:      "test_active_connections",
+		Help:      "Test GaugeVec.",
+	},
+	[]string{LabelConnectionPurpose},
 )
 
 type testPrometheusGauge struct {
@@ -90,6 +102,22 @@ func (c *erroringConn) Close() error {
 }
 
 func TestNewConnectionTrackingListener(t *testing.T) {
+	t.Run("set-label",
+		func(t *testing.T) {
+			l := &testListener{}
+			labeledGauge := testActiveConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label"})
+			ctl := NewConnectionTrackingListener(l, labeledGauge)
+			require.NotNil(t, ctl)
+
+			assert.Equal(t, ctl.Listener, l)
+			cc, err := ctl.Accept()
+			require.NoError(t, err)
+			require.NotNil(t, cc)
+
+			// check purpose label was populated correctly by attempting to delete it
+			assert.Equal(t, testActiveConns.DeleteLabelValues("test_label"), true)
+			require.NoError(t, cc.Close())
+		})
 	t.Run("accept-err",
 		func(t *testing.T) {
 			tpg := &testPrometheusGauge{t: t}
@@ -100,6 +128,8 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			cc, err := ctl.Accept()
 			assert.Nil(t, cc)
 			assert.Contains(t, "error for testcase", err.Error())
+			assert.Equal(t, 0, tpg.incCalledN)
+			assert.Equal(t, 0, tpg.decCalledN)
 		})
 	t.Run("accept-multiple",
 		func(t *testing.T) {
@@ -177,14 +207,14 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			assert.Equal(t, 0, tpg.incCalledN)
 
 			cc1, err := ctl1.Accept()
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, cc1)
 			assert.Equal(t, 1, tpg.incCalledN)
 
 			ctl2 := NewConnectionTrackingListener(l2, tpg)
 			require.NotNil(t, ctl2)
 			cc2, err := ctl2.Accept()
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, cc2)
 			assert.Equal(t, 2, tpg.incCalledN)
 
@@ -195,7 +225,7 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			ctl3 := NewConnectionTrackingListener(l3, tpg)
 			require.NotNil(t, ctl3)
 			cc3, err := ctl3.Accept()
-			require.Nil(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, cc3)
 			assert.Equal(t, 3, tpg.incCalledN)
 
