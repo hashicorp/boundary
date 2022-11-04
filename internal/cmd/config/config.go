@@ -225,7 +225,7 @@ type Worker struct {
 	Tags    map[string][]string `hcl:"-"`
 	TagsRaw interface{}         `hcl:"tags"`
 
-	// SuccessfulCallTimeout represents the period of time (as a duration) that
+	// StatusCallTimeout represents the period of time (as a duration) that
 	// the worker will allow a status RPC call to attempt to finish before
 	// canceling it to try again.
 	//
