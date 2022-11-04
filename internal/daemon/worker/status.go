@@ -117,7 +117,6 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	var activeJobs []*pbs.JobStatus
 
 	// Range over known sessions and collect info
-	var connectionCount uint64
 	sessionManager.ForEachLocalSession(func(s session.Session) bool {
 		var jobInfo pbs.SessionJobInfo
 		status := s.GetStatus()
@@ -131,9 +130,6 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 				BytesUp:      v.BytesUp(),
 				BytesDown:    v.BytesDown(),
 			})
-			if v.Status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED {
-				connectionCount++
-			}
 		}
 		jobInfo.SessionId = sessionId
 		activeJobs = append(activeJobs, &pbs.JobStatus{
