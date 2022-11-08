@@ -41,7 +41,7 @@ func ValidateCreateRequest(i ApiResource, fn CustomValidatorFunc) error {
 		switch {
 		case trimmed == "":
 			badFields["name"] = "Cannot set empty string as name"
-		case !ValidNameDescription(trimmed):
+		case !ValidName(trimmed):
 			badFields["name"] = "Name contains unprintable characters"
 		default:
 			i.GetName().Value = trimmed
@@ -52,7 +52,7 @@ func ValidateCreateRequest(i ApiResource, fn CustomValidatorFunc) error {
 		switch {
 		case trimmed == "":
 			badFields["description"] = "Cannot set empty string as description"
-		case !ValidNameDescription(trimmed):
+		case !ValidDescription(trimmed):
 			badFields["description"] = "Description contains unprintable characters"
 		default:
 			i.GetDescription().Value = trimmed
@@ -100,7 +100,7 @@ func ValidateUpdateRequest(r UpdateRequest, i ApiResource, fn CustomValidatorFun
 		switch {
 		case trimmed == "":
 			badFields["name"] = "Cannot set empty string as name"
-		case !ValidNameDescription(trimmed):
+		case !ValidName(trimmed):
 			badFields["name"] = "Name contains unprintable characters"
 		default:
 			i.GetName().Value = trimmed
@@ -111,7 +111,7 @@ func ValidateUpdateRequest(r UpdateRequest, i ApiResource, fn CustomValidatorFun
 		switch {
 		case trimmed == "":
 			badFields["description"] = "Cannot set empty string as description"
-		case !ValidNameDescription(trimmed):
+		case !ValidDescription(trimmed):
 			badFields["description"] = "Description contains unprintable characters"
 		default:
 			i.GetDescription().Value = trimmed
@@ -193,9 +193,17 @@ func ValidId(i Id, prefixes ...string) bool {
 	return false
 }
 
-func ValidNameDescription(in string) bool {
+func ValidDescription(in string) bool {
 	idx := strings.IndexFunc(in, func(c rune) bool {
 		return !(unicode.IsPrint(c) || unicode.IsSpace(c))
+	})
+
+	return idx == -1
+}
+
+func ValidName(in string) bool {
+	idx := strings.IndexFunc(in, func(c rune) bool {
+		return !unicode.IsPrint(c)
 	})
 
 	return idx == -1
