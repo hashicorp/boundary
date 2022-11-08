@@ -12,13 +12,102 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/mr-tron/base58"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
+
+// NewTestMultihopWorkers creates a KMS and PKI worker with the controller as an upstream, and a
+// child PKI worker as a downstream of the KMS worker connected to the controller.
+// Tags for the PKI and child PKI worker can be passed in, if desired
+func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext context.Context, clusterAddrs []string,
+	workerAuthKms wrapping.Wrapper, serversRepoFn common.ServersRepoFactory, pkiTags,
+	childPkiTags map[string][]string,
+) (kmsWorker *TestWorker, pkiWorker *TestWorker, childPkiWorker *TestWorker) {
+	require := require.New(t)
+	kmsWorker = NewTestWorker(t, &TestWorkerOpts{
+		WorkerAuthKms:    workerAuthKms,
+		InitialUpstreams: clusterAddrs,
+		Logger:           logger.Named("kmsWorker"),
+	})
+
+	// names should not be set when using pki workers
+	pkiWorkerConf, err := config.DevWorker()
+	require.NoError(err)
+	pkiWorkerConf.Worker.Name = ""
+	if pkiTags != nil {
+		pkiWorkerConf.Worker.Tags = pkiTags
+	}
+	pkiWorkerConf.Worker.InitialUpstreams = clusterAddrs
+	pkiWorker = NewTestWorker(t, &TestWorkerOpts{
+		InitialUpstreams: clusterAddrs,
+		Logger:           logger.Named("pkiWorker"),
+		Config:           pkiWorkerConf,
+	})
+	t.Cleanup(pkiWorker.Shutdown)
+
+	// Get a server repo and worker auth repo
+	serversRepo, err := serversRepoFn()
+	require.NoError(err)
+
+	// Perform initial authentication of worker to controller
+	reqBytes, err := base58.FastBase58Decoding(pkiWorker.Worker().WorkerAuthRegistrationRequest)
+	require.NoError(err)
+
+	// Decode the proto into the request and create the worker
+	pkiWorkerReq := new(types.FetchNodeCredentialsRequest)
+	require.NoError(proto.Unmarshal(reqBytes, pkiWorkerReq))
+	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, server.WithFetchNodeCredentialsRequest(pkiWorkerReq))
+	require.NoError(err)
+
+	childPkiWorkerConf, err := config.DevWorker()
+	require.NoError(err)
+	childPkiWorkerConf.Worker.Name = ""
+	if childPkiTags != nil {
+		childPkiWorkerConf.Worker.Tags = childPkiTags
+	}
+	childPkiWorkerConf.Worker.InitialUpstreams = kmsWorker.ProxyAddrs()
+
+	childPkiWorker = NewTestWorker(t, &TestWorkerOpts{
+		InitialUpstreams: kmsWorker.ProxyAddrs(),
+		Logger:           logger.Named("childPkiWorker"),
+		Config:           childPkiWorkerConf,
+	})
+
+	// Perform initial authentication of worker to controller
+	reqBytes, err = base58.FastBase58Decoding(childPkiWorker.Worker().WorkerAuthRegistrationRequest)
+	require.NoError(err)
+
+	// Decode the proto into the request and create the worker
+	childPkiWorkerReq := new(types.FetchNodeCredentialsRequest)
+	require.NoError(proto.Unmarshal(reqBytes, childPkiWorkerReq))
+	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, server.WithFetchNodeCredentialsRequest(childPkiWorkerReq))
+	require.NoError(err)
+
+	// Sleep so that DAG gets updated
+	time.Sleep(10 * time.Second)
+
+	return kmsWorker, pkiWorker, childPkiWorker
+}
 
 // TestWorker wraps a base.Server and Worker to provide a
 // fully-programmatic worker for tests. Error checking (for instance, for

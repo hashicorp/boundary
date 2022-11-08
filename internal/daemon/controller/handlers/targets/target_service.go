@@ -197,7 +197,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	}
 
 	// Get all user permissions for the requested scope(s).
-	userPerms := authResults.ACL().ListPermissions(authzScopes, resource.Target, IdActions)
+	userPerms := authResults.ACL().ListPermissions(authzScopes, resource.Target, IdActions, authResults.UserId)
 	if len(userPerms) == 0 {
 		return &pbs.ListTargetsResponse{}, nil
 	}

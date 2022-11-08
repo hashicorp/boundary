@@ -489,7 +489,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == requestauth.AnonymousUserId))
+	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == globals.AnonymousUserId))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

@@ -3,8 +3,10 @@ package controller
 import (
 	"context"
 	"math/rand"
+	"sync"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/server/store"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -13,8 +15,9 @@ import (
 
 // In the future we could make this configurable
 const (
-	statusInterval      = 10 * time.Second
-	terminationInterval = 1 * time.Minute
+	workerConnectionMaintenanceInterval = 3 * time.Second
+	statusInterval                      = 10 * time.Second
+	terminationInterval                 = 1 * time.Minute
 )
 
 // This is exported so it can be tweaked in tests
@@ -154,4 +157,52 @@ func (c *Controller) startCloseExpiredPendingTokens(cancelCtx context.Context) {
 			timer.Reset(getRandomInterval())
 		}
 	}
+}
+
+func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.Context, wg *sync.WaitGroup, m *cluster.DownstreamManager) error {
+	const op = "controller.(Controller).startWorkerConnectionMaintenanceTicking"
+	switch {
+	case m == nil:
+		return errors.New(cancelCtx, errors.InvalidParameter, op, "DownstreamManager is nil")
+	case wg == nil:
+		return errors.New(cancelCtx, errors.InvalidParameter, op, "wait group is nil")
+	}
+	go func() {
+		defer wg.Done()
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		getRandomInterval := func() time.Duration {
+			// 0 to 0.5 adjustment to the base
+			f := r.Float64() / 2
+			// Half a chance to be faster, not slower
+			if r.Float32() > 0.5 {
+				f = -1 * f
+			}
+			return workerConnectionMaintenanceInterval + time.Duration(f*float64(workerConnectionMaintenanceInterval))
+		}
+		timer := time.NewTimer(0)
+		for {
+			select {
+			case <-cancelCtx.Done():
+				event.WriteSysEvent(cancelCtx, op, "context done, shutting down")
+				return
+
+			case <-timer.C:
+				repo, err := c.WorkerAuthRepoStorageFn()
+				if err != nil {
+					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for cluster connection maintenance"))
+					break
+				}
+				wKeyIds := m.Connected()
+				authorized, err := repo.FilterToAuthorizedWorkerKeyIds(cancelCtx, wKeyIds)
+				if err != nil {
+					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get authorized workers from repo"))
+					break
+				}
+				cluster.DisconnectUnauthorized(cancelCtx, m, wKeyIds, authorized)
+			}
+
+			timer.Reset(getRandomInterval())
+		}
+	}()
+	return nil
 }

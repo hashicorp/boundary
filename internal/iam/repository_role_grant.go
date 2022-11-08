@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -469,7 +470,7 @@ select role_id as role_id, role_scope as scope_id, role_grant as grant from fina
 
 	var query string
 	switch userId {
-	case "u_anon":
+	case globals.AnonymousUserId:
 		query = fmt.Sprintf(grantsQuery, anonUser)
 	default:
 		query = fmt.Sprintf(grantsQuery, authUser)

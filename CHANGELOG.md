@@ -31,6 +31,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     
     * `{{ truncateFrom .Account.Email "@" }}`: this would turn `foo@example.com` into `foo`
 
+* workers: PKI Worker daemons now get disconnected from upstreams when their
+  corresponding resource is deleted ([PR](https://github.com/hashicorp/boundary/pull/2573))
+
 ### Bug Fixes
 
 * sessions: Fix workers not being in random order when returned to clients at

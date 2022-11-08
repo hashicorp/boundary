@@ -710,7 +710,7 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
-		if id == "u_recovery" {
+		if id == globals.RecoveryUserId {
 			badFields["member_ids"] = "u_recovery cannot be assigned to a group."
 			break
 		}
@@ -734,7 +734,7 @@ func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
-		if id == "u_recovery" {
+		if id == globals.RecoveryUserId {
 			badFields["member_ids"] = "u_recovery cannot be assigned to a group."
 			break
 		}

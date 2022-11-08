@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
@@ -301,7 +302,7 @@ func TestList(t *testing.T) {
 	_, err = repo.DeleteScope(context.Background(), p2.GetPublicId())
 	require.NoError(t, err)
 
-	outputFields := perms.OutputFieldsMap(nil).SelfOrDefaults("u_auth")
+	outputFields := perms.OutputFieldsMap(nil).SelfOrDefaults(globals.AnyAuthenticatedUserId)
 	var initialOrgs []*pb.Scope
 	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
 	oNoProjectsProto, err := scopes.ToProto(context.Background(), oNoProjects, handlers.WithOutputFields(&outputFields))
@@ -365,7 +366,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q\nwanted\n%q", tc.req, got, tc.res)
 
 			// Now test with anonymous listing
-			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -480,7 +481,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListScopes(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 
 			// Now test with anonymous listing
-			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListScopes(auth.DisabledAuthTestContext(repoFn, tc.scopeId, auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {

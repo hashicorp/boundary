@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -377,6 +378,7 @@ func Test_ACLAllowed(t *testing.T) {
 func TestACL_ListPermissions(t *testing.T) {
 	tests := []struct {
 		name           string
+		userId         string
 		aclGrants      []scopeGrant
 		scopes         map[string]*scopes.ScopeInfo // *scopes.ScopeInfo isn't used at the moment.
 		resourceType   resource.Type
@@ -720,10 +722,64 @@ func TestACL_ListPermissions(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:         "Allow recovery user full access to sessions",
+			userId:       globals.RecoveryUserId,
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
+			resourceType: resource.Session,
+			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.List,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+				{
+					ScopeId:     "o_2",
+					Resource:    resource.Session,
+					Action:      action.List,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+			},
+		},
+		{
+			name:         "Allow recovery user full access to targets",
+			userId:       globals.RecoveryUserId,
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
+			resourceType: resource.Target,
+			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Target,
+					Action:      action.List,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+				{
+					ScopeId:     "o_2",
+					Resource:    resource.Target,
+					Action:      action.List,
+					ResourceIds: nil,
+					OnlySelf:    false,
+					All:         true,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			userId := tt.userId
+			if userId == "" {
+				userId = "u_1234567890"
+			}
 			var grants []Grant
 			for _, sg := range tt.aclGrants {
 				for _, g := range sg.grants {
@@ -734,7 +790,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			}
 
 			acl := NewACL(grants...)
-			perms := acl.ListPermissions(tt.scopes, tt.resourceType, tt.actionSet)
+			perms := acl.ListPermissions(tt.scopes, tt.resourceType, tt.actionSet, userId)
 			require.ElementsMatch(t, tt.expPermissions, perms)
 		})
 	}
@@ -812,7 +868,7 @@ func Test_AnonRestrictions(t *testing.T) {
 					require.NoError(err)
 
 					acl := NewACL(parsedGrant)
-					results := acl.Allowed(res, action.Type(j), AnonymousUserId)
+					results := acl.Allowed(res, action.Type(j), globals.AnonymousUserId)
 
 					switch test.shouldHaveSuccess {
 					case true:
