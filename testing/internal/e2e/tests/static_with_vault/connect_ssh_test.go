@@ -38,7 +38,7 @@ func TestCliVaultConnectTargetWithSsh(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Configure vault
-	vaultAddr, boundaryPolicyName := vault.Setup(t)
+	vaultAddr, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
@@ -51,8 +51,8 @@ func TestCliVaultConnectTargetWithSsh(t *testing.T) {
 	})
 
 	// Create credential in vault
-	secretName := "TestCreateVaultCredentialStoreCli"
-	credentialPolicyName := vault.CreateKvPrivateKeyCredential(t, secretName, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath)
+	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
+	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Log("Created Vault Credential")
 
 	// Create vault token for boundary
@@ -61,7 +61,7 @@ func TestCliVaultConnectTargetWithSsh(t *testing.T) {
 			"token", "create",
 			"-no-default-policy=true",
 			"-policy="+boundaryPolicyName,
-			"-policy="+credentialPolicyName,
+			"-policy="+kvPolicyName,
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
@@ -97,7 +97,7 @@ func TestCliVaultConnectTargetWithSsh(t *testing.T) {
 		e2e.WithArgs(
 			"credential-libraries", "create", "vault",
 			"-credential-store-id", newCredentialStoreId,
-			"-vault-path", c.VaultSecretPath+"/data/"+secretName,
+			"-vault-path", c.VaultSecretPath+"/data/"+privateKeySecretName,
 			"-name", "e2e Automated Test Vault Credential Library",
 			"-credential-type", "ssh_private_key",
 			"-format", "json",
