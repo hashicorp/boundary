@@ -195,7 +195,7 @@ func ValidId(i Id, prefixes ...string) bool {
 
 func ValidNameDescription(in string) bool {
 	idx := strings.IndexFunc(in, func(c rune) bool {
-		return !unicode.IsPrint(c)
+		return !(unicode.IsPrint(c) || unicode.IsSpace(c))
 	})
 
 	return idx == -1

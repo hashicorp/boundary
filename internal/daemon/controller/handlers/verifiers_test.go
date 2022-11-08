@@ -46,6 +46,7 @@ func TestValidId(t *testing.T) {
 
 func TestValidNameDescription(t *testing.T) {
 	assert.True(t, ValidNameDescription("foobar"))
+	assert.True(t, ValidNameDescription("this is\n a long description"))
 	assert.False(t, ValidNameDescription("foo\u200Bbar"))
 }
 
