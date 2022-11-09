@@ -3,6 +3,7 @@ package oplog
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db/common"
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/oplog_test"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/hashicorp/go-dbw"
+	kms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
@@ -17,8 +19,14 @@ import (
 	"gorm.io/driver/postgres"
 )
 
+// TestOplogDeleteAllEntries allows you to delete all the entries for testing.
+func TestOplogDeleteAllEntries(t testing.TB, conn *dbw.DB) {
+	_, err := dbw.New(conn).Exec(context.Background(), fmt.Sprintf("delete from %q", Entry{}.TableName()), nil)
+	require.NoError(t, err)
+}
+
 // setup the tests (initialize the database one-time and intialized testDatabaseURL)
-func setup(t testing.TB) *dbw.DB {
+func setup(ctx context.Context, t testing.TB) (*dbw.DB, wrapping.Wrapper) {
 	t.Helper()
 	require := require.New(t)
 	cleanup, url, err := testInitDbInDocker(t)
@@ -30,7 +38,25 @@ func setup(t testing.TB) *dbw.DB {
 		assert.NoError(t, db.Close(context.Background()))
 		assert.NoError(t, cleanup())
 	})
-	return db
+	rootKey := make([]byte, 32)
+	n, err := rand.Read(rootKey)
+	require.NoError(err)
+	require.Equal(n, 32)
+	root := aead.NewWrapper()
+	root.SetConfig(context.Background(), wrapping.WithKeyId("key_id"))
+	err = root.SetAesGcmKeyBytes(rootKey)
+	require.NoError(err)
+	r := dbw.New(db)
+	w := dbw.New(db)
+	kmsCache, err := kms.New(r, w, []kms.KeyPurpose{kms.KeyPurposeRootKey, "oplog"})
+	require.NoError(err)
+	err = kmsCache.AddExternalWrapper(ctx, kms.KeyPurposeRootKey, root)
+	require.NoError(err)
+	err = kmsCache.CreateKeys(ctx, "global", []kms.KeyPurpose{"oplog"})
+	require.NoError(err)
+	wrapper, err := kmsCache.GetWrapper(ctx, "global", "oplog")
+	require.NoError(err)
+	return db, wrapper
 }
 
 func testOpen(t testing.TB, dbType string, connectionUrl string) *dbw.DB {
@@ -84,19 +110,6 @@ func testInitDbInDocker(t testing.TB) (cleanup func() error, retURL string, err 
 	require.NoError(err)
 	testInitStore(t, cleanup, retURL)
 	return
-}
-
-// testWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
-func testWrapper(t testing.TB) wrapping.Wrapper {
-	t.Helper()
-	rootKey := make([]byte, 32)
-	n, err := rand.Read(rootKey)
-	require.NoError(t, err)
-	require.Equal(t, n, 32)
-	root := aead.NewWrapper()
-	err = root.SetAesGcmKeyBytes(rootKey)
-	require.NoError(t, err)
-	return root
 }
 
 // testInitStore will execute the migrations needed to initialize the store for tests

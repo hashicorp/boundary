@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -31,6 +32,7 @@ func TestKmsDeleteKeyPurpose(t testing.TB, conn *db.DB, purpose KeyPurpose) {
 
 // TestKmsDeleteAllKeys allows you to delete all the keys for testing.
 func TestKmsDeleteAllKeys(t testing.TB, conn *db.DB) {
+	oplog.TestOplogDeleteAllEntries(t, db.New(conn).UnderlyingDB()())
 	db.TestDeleteWhere(t, conn, func() interface{} { i := rootKey{}; return &i }(), "1=1")
 }
 

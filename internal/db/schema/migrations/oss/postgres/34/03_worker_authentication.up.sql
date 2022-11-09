@@ -71,6 +71,7 @@ create table worker_auth_ca_certificate(
       references worker_auth_ca(private_id)
 );
 
+-- this trigger is updated in 56/05_mutable_ciphertext_columns.up.sql
 create trigger immutable_columns before update on worker_auth_ca_certificate
   for each row execute procedure immutable_columns('serial_number', 'certificate', 'not_valid_before', 'not_valid_after', 'public_key', 'private_key', 'key_id', 'state', 'issuing_ca');
 
@@ -103,7 +104,7 @@ create table worker_auth_authorized(
 comment on table worker_auth_authorized is
   'worker_auth_authorized is a table where each row represents key and cert data associated with an authorized worker.';
 
--- Trigger updated in 55/01_worker_auth_create_time.up.sql
+-- this trigger is updated in 56/05_mutable_ciphertext_columns.up.sql
 create trigger immutable_columns before update on worker_auth_authorized
   for each row execute procedure immutable_columns('worker_key_identifier', 'worker_id', 'worker_signing_pub_key', 'worker_encryption_pub_key', 'controller_encryption_priv_key', 'key_id', 'nonce');
 

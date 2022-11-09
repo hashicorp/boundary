@@ -14,6 +14,28 @@ begin;
     ('o__foodtruck', 'project', 'p______tacos', 'Tacos'),
     ('o__foodtruck', 'project', 'p_____nachos', 'Nachos');
 
+  -- KMS
+
+  insert into kms_root_key
+    (private_id,         scope_id)
+  values
+    ('krk___foodtruck', 'o__foodtruck');
+
+  insert into kms_root_key_version
+    (private_id,         root_key_id,       key)
+  values
+    ('krkv___foodtruck', 'krk___foodtruck', 'krk___foodtruck'::bytea);
+
+  insert into kms_data_key
+    (private_id,         root_key_id,        purpose)
+  values
+    ('kdk____foodtruck', 'krk___foodtruck', 'database');
+
+  insert into kms_data_key_version
+    (private_id,         data_key_id,        root_key_version_id, key)
+  values
+    ('kdkv___foodtruck', 'kdk____foodtruck', 'krkv___foodtruck',  'kdk____foodtruck'::bytea);
+
   -- Host Catalog, Host, Host Set
   insert into static_host_catalog
     (project_id,     public_id,      name)
@@ -77,8 +99,8 @@ begin;
   insert into auth_token
     (key_id, auth_account_id, public_id, token)
   values
-    ('key', 'apa______jim', 'tok______jim', 'tok______jim'::bytea),
-    ('key', 'apa______bob', 'tok______bob', 'tok______bob'::bytea);
+    ('kdkv___foodtruck', 'apa______jim', 'tok______jim', 'tok______jim'::bytea),
+    ('kdkv___foodtruck', 'apa______bob', 'tok______bob', 'tok______bob'::bytea);
 
   -- Roles
   insert into iam_role

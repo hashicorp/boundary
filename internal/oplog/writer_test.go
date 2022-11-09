@@ -14,8 +14,8 @@ import (
 
 // Test_WriterCreate provides unit tests for Writer Create
 func Test_WriterCreate(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, _ := setup(testCtx, t)
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		tx, err := dbw.New(db).Begin(testCtx)
@@ -52,8 +52,8 @@ func Test_WriterCreate(t *testing.T) {
 
 // Test_WriterDelete provides unit tests for Writer Delete
 func Test_WriterDelete(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, _ := setup(testCtx, t)
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		tx, err := dbw.New(db).Begin(testCtx)
@@ -92,8 +92,8 @@ func Test_WriterDelete(t *testing.T) {
 
 // TestWriter_hasTable provides unit tests for Writer HasTable
 func TestWriter_hasTable(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, _ := setup(testCtx, t)
 	w := Writer{db}
 
 	t.Run("success", func(t *testing.T) {
@@ -116,8 +116,8 @@ func TestWriter_hasTable(t *testing.T) {
 
 // TestWriter_createTableLike provides unit tests for Writer createTable
 func TestWriter_createTableLike(t *testing.T) {
-	db := setup(t)
 	testCtx := context.Background()
+	db, _ := setup(testCtx, t)
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
 		w := Writer{db}
@@ -169,7 +169,7 @@ func TestWriter_createTableLike(t *testing.T) {
 // Test_WriterDropTableIfExists provides unit tests for Writer dropTableIfExists
 func Test_WriterDropTableIfExists(t *testing.T) {
 	testCtx := context.Background()
-	db := setup(t)
+	db, _ := setup(testCtx, t)
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
 		w := Writer{db}
@@ -192,7 +192,7 @@ func Test_WriterDropTableIfExists(t *testing.T) {
 }
 
 func TestWriter_Update(t *testing.T) {
-	db := setup(t)
+	db, _ := setup(context.Background(), t)
 	id := testId(t)
 	type args struct {
 		user           *oplog_test.TestUser

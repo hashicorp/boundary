@@ -1,6 +1,8 @@
 package session
 
 import (
+	"crypto/rand"
+	"io"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -22,23 +24,26 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit             int
-	withOrderByCreateTime db.OrderBy
-	withProjectIds        []string
-	withUserId            string
-	withExpirationTime    *timestamp.Timestamp
-	withTestTofu          []byte
-	withListingConvert    bool
-	withSessionIds        []string
-	withDbOpts            []db.Option
-	withWorkerStateDelay  time.Duration
-	withTerminated        bool
-	withPermissions       *perms.UserPermissions
+	withLimit                    int
+	withOrderByCreateTime        db.OrderBy
+	withProjectIds               []string
+	withUserId                   string
+	withExpirationTime           *timestamp.Timestamp
+	withTestTofu                 []byte
+	withListingConvert           bool
+	withSessionIds               []string
+	withDbOpts                   []db.Option
+	withWorkerStateDelay         time.Duration
+	withTerminated               bool
+	withPermissions              *perms.UserPermissions
+	withIgnoreDecryptionFailures bool
+	withRandomReader             io.Reader
 }
 
 func getDefaultOptions() options {
 	return options{
 		withWorkerStateDelay: 10 * time.Second,
+		withRandomReader:     rand.Reader,
 	}
 }
 
@@ -128,5 +133,23 @@ func WithTerminated(withTerminated bool) Option {
 func WithPermissions(p *perms.UserPermissions) Option {
 	return func(o *options) {
 		o.withPermissions = p
+	}
+}
+
+// WithIgnoreDecryptionFailures is used to ignore decryption
+// failures when doing lookups. This should be used sparingly.
+// It is currently only used to allow a user to cancel a session
+// in the presence of a undecryptable TOFU token.
+func WithIgnoreDecryptionFailures(ignoreFailures bool) Option {
+	return func(o *options) {
+		o.withIgnoreDecryptionFailures = ignoreFailures
+	}
+}
+
+// WithRandomReader is used to configure the random source
+// to use when generating secrets. Defaults to crypto/rand.Reader.
+func WithRandomReader(rand io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = rand
 	}
 }

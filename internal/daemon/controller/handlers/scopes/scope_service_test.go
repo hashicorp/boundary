@@ -10,15 +10,24 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -26,14 +35,11 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
-func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error)) {
+func createDefaultScopesRepoAndKms(t *testing.T) (*iam.Scope, *iam.Scope, func() (*iam.Repository, error), *kms.Kms) {
 	t.Helper()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
@@ -41,6 +47,7 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
+	kms := kms.TestKms(t, conn, wrap)
 
 	oRes, pRes := iam.TestScopes(t, iamRepo)
 
@@ -57,7 +64,7 @@ func createDefaultScopesAndRepo(t *testing.T) (*iam.Scope, *iam.Scope, func() (*
 	require.NoError(t, err)
 	pRes, _, err = repo.UpdateScope(context.Background(), pRes, 1, []string{"Name", "Description"})
 	require.NoError(t, err)
-	return oRes, pRes, repoFn
+	return oRes, pRes, repoFn, kms
 }
 
 var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
@@ -88,6 +95,10 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
 			structpb.NewStringValue("list"),
+			structpb.NewStringValue("list-keys"),
+			structpb.NewStringValue("rotate-keys"),
+			structpb.NewStringValue("list-key-version-destruction-jobs"),
+			structpb.NewStringValue("destroy-key-version"),
 		},
 	},
 	"users": {
@@ -135,6 +146,10 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
 			structpb.NewStringValue("list"),
+			structpb.NewStringValue("list-keys"),
+			structpb.NewStringValue("rotate-keys"),
+			structpb.NewStringValue("list-key-version-destruction-jobs"),
+			structpb.NewStringValue("destroy-key-version"),
 		},
 	},
 	"users": {
@@ -175,6 +190,14 @@ var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("list"),
 		},
 	},
+	"scopes": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list-keys"),
+			structpb.NewStringValue("rotate-keys"),
+			structpb.NewStringValue("list-key-version-destruction-jobs"),
+			structpb.NewStringValue("destroy-key-version"),
+		},
+	},
 	"targets": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
@@ -184,7 +207,7 @@ var projectAuthorizedCollectionActions = map[string]*structpb.ListValue{
 }
 
 func TestGet(t *testing.T) {
-	org, proj, repoFn := createDefaultScopesAndRepo(t)
+	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 	toMerge := &pbs.GetScopeRequest{
 		Id: proj.GetPublicId(),
 	}
@@ -246,7 +269,7 @@ func TestGet(t *testing.T) {
 		{
 			name:    "Get a non existing project",
 			scopeId: org.GetPublicId(),
-			req:     &pbs.GetScopeRequest{Id: "p_DoesntExis"},
+			req:     &pbs.GetScopeRequest{Id: "p_DoesntExist"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -272,7 +295,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetScopeRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := scopes.NewService(repoFn)
+			s, err := scopes.NewService(context.Background(), repoFn, kms)
 			require.NoError(err, "Couldn't create new project service.")
 
 			got, gErr := s.GetScope(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -294,6 +317,7 @@ func TestList(t *testing.T) {
 	}
 	repo, err := repoFn()
 	require.NoError(t, err)
+	kms := kms.TestKms(t, conn, wrap)
 
 	oNoProjects, p1 := iam.TestScopes(t, repo)
 	_, err = repo.DeleteScope(context.Background(), p1.GetPublicId())
@@ -353,7 +377,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(repoFn)
+			s, err := scopes.NewService(context.Background(), repoFn, kms)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
@@ -467,7 +491,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := scopes.NewService(repoFn)
+			s, err := scopes.NewService(context.Background(), repoFn, kms)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test with non-anonymous listing first
@@ -494,9 +518,9 @@ func TestList(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	org, proj, repoFn := createDefaultScopesAndRepo(t)
+	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(repoFn)
+	s, err := scopes.NewService(context.Background(), repoFn, kms)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	cases := []struct {
@@ -517,7 +541,7 @@ func TestDelete(t *testing.T) {
 			name:    "Delete bad project id Project",
 			scopeId: org.GetPublicId(),
 			req: &pbs.DeleteScopeRequest{
-				Id: "p_doesntexis",
+				Id: "p_DoesntExist",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -540,7 +564,7 @@ func TestDelete(t *testing.T) {
 			name:    "Delete bad org id Org",
 			scopeId: scope.Global.String(),
 			req: &pbs.DeleteScopeRequest{
-				Id: "p_doesntexis",
+				Id: "p_DoesntExist",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -568,9 +592,9 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	org, proj, repoFn := createDefaultScopesAndRepo(t)
+	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 
-	s, err := scopes.NewService(repoFn)
+	s, err := scopes.NewService(context.Background(), repoFn, kms)
 	require.NoError(err, "Error when getting new scopes service")
 	ctx := auth.DisabledAuthTestContext(repoFn, org.GetPublicId())
 	req := &pbs.DeleteScopeRequest{
@@ -595,7 +619,7 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	ctx := context.Background()
-	defaultOrg, defaultProj, repoFn := createDefaultScopesAndRepo(t)
+	defaultOrg, defaultProj, repoFn, kms := createDefaultScopesRepoAndKms(t)
 	defaultProjCreated := defaultProj.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.CreateScopeRequest{}
 
@@ -778,7 +802,7 @@ func TestCreate(t *testing.T) {
 				req := proto.Clone(toMerge).(*pbs.CreateScopeRequest)
 				proto.Merge(req, tc.req)
 
-				s, err := scopes.NewService(repoFn)
+				s, err := scopes.NewService(context.Background(), repoFn, kms)
 				require.NoError(err, "Error when getting new project service.")
 
 				if name != "" {
@@ -852,8 +876,8 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	org, proj, repoFn := createDefaultScopesAndRepo(t)
-	tested, err := scopes.NewService(repoFn)
+	org, proj, repoFn, kms := createDefaultScopesRepoAndKms(t)
+	tested, err := scopes.NewService(context.Background(), repoFn, kms)
 	require.NoError(t, err, "Error when getting new project service.")
 
 	iamRepo, err := repoFn()
@@ -1172,7 +1196,7 @@ func TestUpdate(t *testing.T) {
 			name:    "Update a Non Existing Project",
 			scopeId: org.GetPublicId(),
 			req: &pbs.UpdateScopeRequest{
-				Id: "p_DoesntExis",
+				Id: "p_DoesntExist",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -1282,6 +1306,1129 @@ func TestUpdate(t *testing.T) {
 				tc.res.Item.Version = ver + 1
 			}
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateScope(%q) got response\n%q, wanted\n%q", req, got, tc.res)
+		})
+	}
+}
+
+func TestListKeys(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	aToken := tc.Token()
+	uToken := tc.UnprivilegedToken()
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return tc.IamRepo(), nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return tc.ServersRepo(), nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return tc.AuthTokenRepo(), nil
+	}
+
+	privCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       aToken.Id,
+			EncryptedToken: strings.Split(aToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	unprivCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       uToken.Id,
+			EncryptedToken: strings.Split(uToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	org, proj := iam.TestScopes(t, tc.IamRepo())
+
+	org.Name = "defaultOrg"
+	org.Description = "defaultOrg"
+	org, _, err := tc.IamRepo().UpdateScope(context.Background(), org, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing keys in org
+	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"id=*;type=*;actions=list-keys"})
+	require.NoError(t, err)
+	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), listKeysRole.PublicId, 2, []string{aToken.UserId})
+	require.NoError(t, err)
+
+	proj.Name = "defaultProj"
+	proj.Description = "defaultProj"
+	proj, _, err = tc.IamRepo().UpdateScope(context.Background(), proj, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing keys in project
+	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
+	_, err = tc.IamRepo().AddRoleGrants(context.Background(), listKeysRole.PublicId, 1, []string{"id=*;type=*;actions=list-keys"})
+	require.NoError(t, err)
+	_, err = tc.IamRepo().AddPrincipalRoles(context.Background(), listKeysRole.PublicId, 2, []string{aToken.UserId})
+	require.NoError(t, err)
+
+	cases := []struct {
+		name    string
+		req     *pbs.ListKeysRequest
+		res     *pbs.ListKeysResponse
+		authCtx context.Context
+		err     error
+	}{
+		{
+			name: "List keys in the global scope",
+			req:  &pbs.ListKeysRequest{Id: "global"},
+			res: &pbs.ListKeysResponse{
+				Items: []*pb.Key{
+					{
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "tokens",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "oplog",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "database",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "audit",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "oidc",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "sessions",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Purpose: "rootKey",
+						Type:    "kek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "List keys in an existing org",
+			req:  &pbs.ListKeysRequest{Id: org.GetPublicId()},
+			res: &pbs.ListKeysResponse{
+				Items: []*pb.Key{
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "tokens",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "oplog",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "database",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "audit",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "oidc",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "sessions",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            org.PublicId,
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.Name,
+							Description:   org.Description,
+						},
+						Purpose: "rootKey",
+						Type:    "kek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name:    "List keys in a non existing org",
+			req:     &pbs.ListKeysRequest{Id: "o_DoesntExis"},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "List keys in an existing project",
+			req:  &pbs.ListKeysRequest{Id: proj.GetPublicId()},
+			res: &pbs.ListKeysResponse{
+				Items: []*pb.Key{
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "tokens",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "oplog",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "database",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "audit",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "oidc",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "sessions",
+						Type:    "dek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            proj.PublicId,
+							ParentScopeId: org.PublicId,
+							Type:          "project",
+							Name:          proj.Name,
+							Description:   proj.Description,
+						},
+						Purpose: "rootKey",
+						Type:    "kek",
+						Versions: []*pb.KeyVersion{
+							{
+								Version: 1,
+							},
+						},
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name:    "List keys in a non existing project",
+			req:     &pbs.ListKeysRequest{Id: "p_DoesntExist"},
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+			authCtx: privCtx,
+		},
+		{
+			name:    "Wrong id prefix",
+			req:     &pbs.ListKeysRequest{Id: "j_1234567890"},
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+			authCtx: privCtx,
+		},
+		{
+			name:    "space in id",
+			req:     &pbs.ListKeysRequest{Id: "p_1 23456789"},
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+			authCtx: privCtx,
+		},
+		{
+			name:    "unauthorized",
+			req:     &pbs.ListKeysRequest{Id: "global"},
+			err:     handlers.ApiErrorWithCode(codes.PermissionDenied),
+			authCtx: unprivCtx,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms())
+			require.NoError(err, "Couldn't create new project service.")
+
+			got, gErr := s.ListKeys(tt.authCtx, tt.req)
+			if tt.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tt.err), "ListKeys(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
+			} else {
+				require.NoError(gErr)
+			}
+			assert.Empty(
+				cmp.Diff(
+					tt.res,
+					got,
+					protocmp.Transform(),
+					// Sort by purpose for comparison since it is the only unique and predictable field
+					protocmp.SortRepeated(func(i, j *pb.Key) bool { return i.GetPurpose() < j.GetPurpose() }),
+					protocmp.IgnoreFields(&pb.Key{}, "id", "created_time"),
+					protocmp.IgnoreFields(&pb.KeyVersion{}, "id", "created_time"),
+				),
+				"ListKeys(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res,
+			)
+		})
+	}
+}
+
+func TestRotateKeys(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	aToken := tc.Token()
+	uToken := tc.UnprivilegedToken()
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return tc.IamRepo(), nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return tc.ServersRepo(), nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return tc.AuthTokenRepo(), nil
+	}
+
+	privCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       aToken.Id,
+			EncryptedToken: strings.Split(aToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	unprivCtx := auth.NewVerifierContext(
+		context.Background(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       uToken.Id,
+			EncryptedToken: strings.Split(uToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		})
+
+	org, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(aToken.UserId))
+
+	// Add new role for listing+rotating keys in org
+	rotateKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+	_ = iam.TestUserRole(t, tc.DbConn(), rotateKeysRole.PublicId, aToken.UserId)
+
+	// Add new role for listing+rotating keys in project
+	rotateKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
+	iam.TestRoleGrant(t, tc.DbConn(), rotateKeysRole.PublicId, "id=*;type=*;actions=rotate-keys,list-keys")
+	_ = iam.TestUserRole(t, tc.DbConn(), rotateKeysRole.PublicId, aToken.UserId)
+
+	cases := []struct {
+		name    string
+		req     *pbs.RotateKeysRequest
+		res     *pbs.RotateKeysResponse
+		authCtx context.Context
+		err     error
+	}{
+		{
+			name:    "unauthorized",
+			req:     &pbs.RotateKeysRequest{ScopeId: "global", Rewrap: false},
+			err:     handlers.ApiErrorWithCode(codes.PermissionDenied),
+			authCtx: unprivCtx,
+		},
+		{
+			name:    "Rotate keys in a non existing org",
+			req:     &pbs.RotateKeysRequest{ScopeId: "o_DoesntExis", Rewrap: false},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name:    "successfully Rotate keys in org",
+			req:     &pbs.RotateKeysRequest{ScopeId: org.GetPublicId(), Rewrap: false},
+			authCtx: privCtx,
+		},
+		{
+			name:    "successfully Rotate and rewrap keys in org",
+			req:     &pbs.RotateKeysRequest{ScopeId: org.GetPublicId(), Rewrap: true},
+			authCtx: privCtx,
+		},
+		{
+			name:    "successfully Rotate keys in project",
+			req:     &pbs.RotateKeysRequest{ScopeId: proj.GetPublicId(), Rewrap: false},
+			authCtx: privCtx,
+		},
+		{
+			name:    "successfully Rotate and rewrap keys in project",
+			req:     &pbs.RotateKeysRequest{ScopeId: proj.GetPublicId(), Rewrap: true},
+			authCtx: privCtx,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms())
+			require.NoError(err, "Couldn't create new project service.")
+
+			prevKeyVersions := map[uint32]int{}
+			var prevLatest uint32 = 0
+
+			// checking key versions before rotation
+			if tt.err == nil {
+				keys, gErr := s.ListKeys(privCtx, &pbs.ListKeysRequest{Id: tt.req.ScopeId})
+				require.NoError(gErr)
+
+				for _, key := range keys.Items {
+					for _, keyVersion := range key.Versions {
+						if keyVersion.Version > prevLatest {
+							prevLatest = keyVersion.Version
+						}
+						_, ok := prevKeyVersions[keyVersion.Version]
+						if !ok {
+							prevKeyVersions[keyVersion.Version] = 0
+						}
+						prevKeyVersions[keyVersion.Version]++
+					}
+				}
+			}
+
+			// RotateKeys returns nocontent response
+			_, kErr := s.RotateKeys(tt.authCtx, tt.req)
+
+			if tt.err != nil {
+				require.Error(kErr)
+				assert.True(errors.Is(kErr, tt.err), "RotateKeys(%+v) got error\n%v, wanted\n%v", tt.req, kErr, tt.err)
+			} else {
+				require.NoError(kErr)
+				keys, gErr := s.ListKeys(privCtx, &pbs.ListKeysRequest{Id: tt.req.ScopeId})
+				require.NoError(gErr)
+
+				keyVersions := map[uint32]int{}
+				var latest uint32 = 0
+
+				for _, key := range keys.Items {
+					for _, keyVersion := range key.Versions {
+						if keyVersion.Version > latest {
+							latest = keyVersion.Version
+						}
+						_, ok := keyVersions[keyVersion.Version]
+						if !ok {
+							keyVersions[keyVersion.Version] = 0
+						}
+						keyVersions[keyVersion.Version]++
+					}
+				}
+
+				// there should only be one new key version
+				assert.Equal(len(prevKeyVersions)+1, len(keyVersions))
+				// since we just rotated them, there should be the same number of version 1 and version 2
+				assert.Equal(prevKeyVersions[prevLatest], keyVersions[latest])
+			}
+		})
+	}
+}
+
+func TestListKeyVersionDestructionJobs(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	aToken := tc.Token()
+	uToken := tc.UnprivilegedToken()
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return tc.IamRepo(), nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return tc.ServersRepo(), nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return tc.AuthTokenRepo(), nil
+	}
+
+	privCtx := auth.NewVerifierContext(
+		tc.Context(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       aToken.Id,
+			EncryptedToken: strings.Split(aToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		},
+	)
+
+	unprivCtx := auth.NewVerifierContext(
+		tc.Context(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       uToken.Id,
+			EncryptedToken: strings.Split(uToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		},
+	)
+
+	sqldb, err := tc.DbConn().SqlDB(tc.Context())
+	require.NoError(t, err)
+
+	org, proj := iam.TestScopes(t, tc.IamRepo())
+
+	org.Name = "defaultOrg"
+	org.Description = "defaultOrg"
+	org, _, err = tc.IamRepo().UpdateScope(tc.Context(), org, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing key version destructions in org
+	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=list-key-version-destruction-jobs")
+	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
+	// Create a oidc auth method to create an encrypted value in this scope
+	databaseWrapper, err := tc.Kms().GetWrapper(tc.Context(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	_ = oidc.TestAuthMethod(t, tc.DbConn(), databaseWrapper, org.PublicId, oidc.InactiveState, "noAccounts", "fido")
+
+	proj.Name = "defaultProj"
+	proj.Description = "defaultProj"
+	proj, _, err = tc.IamRepo().UpdateScope(tc.Context(), proj, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for listing key version destructions in project
+	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=list-key-version-destruction-jobs")
+	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
+	// Create a oidc auth method to create an encrypted value in this scope
+	databaseWrapper, err = tc.Kms().GetWrapper(tc.Context(), proj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	_ = oidc.TestAuthMethod(t, tc.DbConn(), databaseWrapper, proj.PublicId, oidc.InactiveState, "noAccounts", "fido")
+
+	for _, scope := range []string{"global", org.PublicId, proj.PublicId} {
+		err = tc.Kms().RotateKeys(tc.Context(), scope)
+		require.NoError(t, err)
+		keys, err := tc.Kms().ListKeys(tc.Context(), scope)
+		require.NoError(t, err)
+
+		var kvToDestroy wrappingKms.KeyVersion
+		for _, key := range keys {
+			if key.Purpose == wrappingKms.KeyPurpose(kms.KeyPurposeDatabase.String()) {
+				kvToDestroy = key.Versions[0]
+			}
+		}
+		destroyed, err := tc.Kms().DestroyKeyVersion(tc.Context(), scope, kvToDestroy.Id)
+		require.NoError(t, err)
+		assert.False(t, destroyed)
+		t.Cleanup(func() {
+			_, err = sqldb.ExecContext(tc.Context(), "delete from kms_data_key_version_destruction_job where key_id=$1", kvToDestroy.Id)
+			require.NoError(t, err)
+		})
+	}
+
+	cases := []struct {
+		name    string
+		req     *pbs.ListKeyVersionDestructionJobsRequest
+		res     *pbs.ListKeyVersionDestructionJobsResponse
+		authCtx context.Context
+		err     error
+	}{
+		{
+			name: "List key version destruction jobs in the global scope",
+			req:  &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "global"},
+			res: &pbs.ListKeyVersionDestructionJobsResponse{
+				Items: []*pb.KeyVersionDestructionJob{
+					{
+						Scope: &pb.ScopeInfo{
+							Id:          "global",
+							Type:        "global",
+							Name:        "global",
+							Description: "Global Scope",
+						},
+						Status:         "pending",
+						CompletedCount: 0,
+						TotalCount:     7,
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "List key version destruction jobs in an existing org",
+			req:  &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: org.GetPublicId()},
+			res: &pbs.ListKeyVersionDestructionJobsResponse{
+				Items: []*pb.KeyVersionDestructionJob{
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            org.GetPublicId(),
+							ParentScopeId: "global",
+							Type:          "org",
+							Name:          org.GetName(),
+							Description:   org.GetDescription(),
+						},
+						Status:         "pending",
+						CompletedCount: 0,
+						TotalCount:     1,
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name:    "List key version destruction jobs in a non existing org",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "o_DoesntExis"},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "List key version destruction jobs in an existing project",
+			req:  &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: proj.GetPublicId()},
+			res: &pbs.ListKeyVersionDestructionJobsResponse{
+				Items: []*pb.KeyVersionDestructionJob{
+					{
+						Scope: &pb.ScopeInfo{
+							Id:            proj.GetPublicId(),
+							ParentScopeId: org.GetPublicId(),
+							Type:          "project",
+							Name:          proj.GetName(),
+							Description:   proj.GetDescription(),
+						},
+						Status:         "pending",
+						CompletedCount: 0,
+						TotalCount:     1,
+					},
+				},
+			},
+			authCtx: privCtx,
+		},
+		{
+			name:    "List key version destruction jobs in a non existing project",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "p_DoesntExist"},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name:    "Wrong id prefix",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "j_1234567890"},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "space in id",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "p_1 23456789"},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "unauthorized",
+			req:     &pbs.ListKeyVersionDestructionJobsRequest{ScopeId: "global"},
+			authCtx: unprivCtx,
+			err:     handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms())
+			require.NoError(err, "Couldn't create new project service.")
+
+			got, gErr := s.ListKeyVersionDestructionJobs(tt.authCtx, tt.req)
+			if tt.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tt.err), "ListKeyVersionDestructionJobs(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
+			} else {
+				require.NoError(gErr)
+			}
+			assert.Empty(
+				cmp.Diff(
+					tt.res,
+					got,
+					protocmp.Transform(),
+					protocmp.SortRepeated(func(i, j *pb.KeyVersionDestructionJob) bool { return i.GetTotalCount() < j.GetTotalCount() }),
+					protocmp.IgnoreFields(&pb.KeyVersionDestructionJob{}, "key_version_id", "created_time"),
+				),
+				"ListKeyVersionDestructionJobs(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res,
+			)
+		})
+	}
+}
+
+func TestDestroyKeyVersion(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	aToken := tc.Token()
+	uToken := tc.UnprivilegedToken()
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return tc.IamRepo(), nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return tc.ServersRepo(), nil
+	}
+	authTokenRepoFn := func() (*authtoken.Repository, error) {
+		return tc.AuthTokenRepo(), nil
+	}
+
+	privCtx := auth.NewVerifierContext(
+		tc.Context(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       aToken.Id,
+			EncryptedToken: strings.Split(aToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		},
+	)
+
+	unprivCtx := auth.NewVerifierContext(
+		tc.Context(),
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		tc.Kms(),
+		&authpb.RequestInfo{
+			PublicId:       uToken.Id,
+			EncryptedToken: strings.Split(uToken.Token, "_")[2],
+			TokenFormat:    uint32(auth.AuthTokenTypeBearer),
+		},
+	)
+
+	org, proj := iam.TestScopes(t, tc.IamRepo())
+
+	org.Name = "defaultOrg"
+	org.Description = "defaultOrg"
+	org, _, err := tc.IamRepo().UpdateScope(tc.Context(), org, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for destroying key versions in org
+	listKeysRole := iam.TestRole(t, tc.DbConn(), org.PublicId)
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=destroy-key-version")
+	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
+	// Create a oidc auth method to create an encrypted value in this scope
+	databaseWrapper, err := tc.Kms().GetWrapper(tc.Context(), org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	_ = oidc.TestAuthMethod(t, tc.DbConn(), databaseWrapper, org.PublicId, oidc.InactiveState, "noAccounts", "fido")
+
+	proj.Name = "defaultProj"
+	proj.Description = "defaultProj"
+	proj, _, err = tc.IamRepo().UpdateScope(tc.Context(), proj, 1, []string{"Name", "Description"})
+	require.NoError(t, err)
+
+	// Add new role for destroying key versions in project
+	listKeysRole = iam.TestRole(t, tc.DbConn(), proj.PublicId)
+	_ = iam.TestRoleGrant(t, tc.DbConn(), listKeysRole.PublicId, "id=*;type=*;actions=destroy-key-version")
+	_ = iam.TestUserRole(t, tc.DbConn(), listKeysRole.PublicId, aToken.UserId)
+	// Create a oidc auth method to create an encrypted value in this scope
+	databaseWrapper, err = tc.Kms().GetWrapper(tc.Context(), proj.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	_ = oidc.TestAuthMethod(t, tc.DbConn(), databaseWrapper, proj.PublicId, oidc.InactiveState, "noAccounts", "fido")
+
+	scopeToImmediatelyDestroyedKeyVersionId := map[string]string{}
+	scopeToPendingDestructionKeyVersionId := map[string]string{}
+	for _, scope := range []string{"global", org.PublicId, proj.PublicId} {
+		err = tc.Kms().RotateKeys(tc.Context(), scope)
+		require.NoError(t, err)
+
+		keys, err := tc.Kms().ListKeys(tc.Context(), scope)
+		require.NoError(t, err)
+
+		for _, key := range keys {
+			switch key.Purpose {
+			case wrappingKms.KeyPurpose(kms.KeyPurposeDatabase.String()):
+				scopeToPendingDestructionKeyVersionId[scope] = key.Versions[0].Id
+			case wrappingKms.KeyPurpose(kms.KeyPurposeRootKey.String()):
+				scopeToImmediatelyDestroyedKeyVersionId[scope] = key.Versions[0].Id
+			}
+		}
+	}
+
+	cases := []struct {
+		name    string
+		req     *pbs.DestroyKeyVersionRequest
+		res     *pbs.DestroyKeyVersionResponse
+		authCtx context.Context
+		err     error
+	}{
+		{
+			name: "Errors when specifying a non existing key version Id",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      "global",
+				KeyVersionId: "krkv_DoesntExist",
+			},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Creates a key version destruction job in the global scope",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      "global",
+				KeyVersionId: scopeToPendingDestructionKeyVersionId["global"],
+			},
+			res: &pbs.DestroyKeyVersionResponse{
+				State: "pending",
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "Immediately destroys a root key version in the global scope",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      "global",
+				KeyVersionId: scopeToImmediatelyDestroyedKeyVersionId["global"],
+			},
+			res: &pbs.DestroyKeyVersionResponse{
+				State: "completed",
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "Creates a key version destruction job in an existing org",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      org.GetPublicId(),
+				KeyVersionId: scopeToPendingDestructionKeyVersionId[org.GetPublicId()],
+			},
+			res: &pbs.DestroyKeyVersionResponse{
+				State: "pending",
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "Immediately destroys a root key version in an existing org",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      org.GetPublicId(),
+				KeyVersionId: scopeToImmediatelyDestroyedKeyVersionId[org.GetPublicId()],
+			},
+			res: &pbs.DestroyKeyVersionResponse{
+				State: "completed",
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "Creates a key version destruction job in an existing project",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      proj.GetPublicId(),
+				KeyVersionId: scopeToPendingDestructionKeyVersionId[proj.GetPublicId()],
+			},
+			res: &pbs.DestroyKeyVersionResponse{
+				State: "pending",
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "Immediately destroys a root key version in an existing project",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      proj.GetPublicId(),
+				KeyVersionId: scopeToImmediatelyDestroyedKeyVersionId[proj.GetPublicId()],
+			},
+			res: &pbs.DestroyKeyVersionResponse{
+				State: "completed",
+			},
+			authCtx: privCtx,
+		},
+		{
+			name: "Errors when specifying a key version that doesn't exist in the scope",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      org.GetPublicId(),
+				KeyVersionId: scopeToPendingDestructionKeyVersionId[proj.GetPublicId()],
+			},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Errors when specifying a non existing org",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      "o_DoesntExist",
+				KeyVersionId: scopeToImmediatelyDestroyedKeyVersionId[org.GetPublicId()],
+			},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Errors when specifying a non existing project",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      "p_DoesntExist",
+				KeyVersionId: scopeToImmediatelyDestroyedKeyVersionId[proj.GetPublicId()],
+			},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Wrong id prefix",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      "j_1234567890",
+				KeyVersionId: scopeToImmediatelyDestroyedKeyVersionId["global"],
+			},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "space in id",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      "p_1 23456789",
+				KeyVersionId: scopeToImmediatelyDestroyedKeyVersionId["global"],
+			},
+			authCtx: privCtx,
+			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "unauthorized",
+			req: &pbs.DestroyKeyVersionRequest{
+				ScopeId:      "global",
+				KeyVersionId: scopeToImmediatelyDestroyedKeyVersionId["global"],
+			},
+			authCtx: unprivCtx,
+			err:     handlers.ApiErrorWithCode(codes.PermissionDenied),
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			s, err := scopes.NewService(context.Background(), iamRepoFn, tc.Kms())
+			require.NoError(err, "Couldn't create new project service.")
+
+			got, gErr := s.DestroyKeyVersion(tt.authCtx, tt.req)
+			if tt.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tt.err), "DestroyKeyVersion(%+v) got error\n%v, wanted\n%v", tt.req, gErr, tt.err)
+			} else {
+				require.NoError(gErr)
+			}
+
+			assert.Empty(cmp.Diff(tt.res, got, protocmp.Transform()), "DestroyKeyVersion(%q) got response\n%q, wanted\n%q", tt.req, got, tt.res)
 		})
 	}
 }

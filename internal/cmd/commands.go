@@ -910,6 +910,26 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
+		"scopes list-keys": func() (cli.Command, error) {
+			return &scopescmd.ListKeysCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"scopes rotate-keys": func() (cli.Command, error) {
+			return &scopescmd.RotateKeysCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"scopes list-key-version-destruction-jobs": func() (cli.Command, error) {
+			return &scopescmd.ListKeyVersionDestructionJobsCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"scopes destroy-key-version": func() (cli.Command, error) {
+			return &scopescmd.DestroyKeyVersionCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"sessions": func() (cli.Command, error) {
 			return &sessionscmd.Command{

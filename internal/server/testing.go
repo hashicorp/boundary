@@ -35,7 +35,7 @@ func populateBytes(length int) []byte {
 	return fieldBytes
 }
 
-func TestKmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) string {
+func TestKmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping.Wrapper) (string, wrapping.Wrapper) {
 	t.Helper()
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -44,7 +44,7 @@ func TestKmsKey(ctx context.Context, t *testing.T, conn *db.DB, wrapper wrapping
 	testKey, err := databaseWrapper.KeyId(ctx)
 	require.NoError(t, err)
 
-	return testKey
+	return testKey, databaseWrapper
 }
 
 func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey string) *RootCertificate {
@@ -66,7 +66,7 @@ func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey 
 	return cert
 }
 
-func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *WorkerAuth {
+func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsWrapper wrapping.Wrapper) *WorkerAuth {
 	t.Helper()
 	ctx := context.Background()
 	rw := db.New(conn)
@@ -76,7 +76,6 @@ func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *W
 	controllerKey := populateBytes(defaultLength)
 	nonce := populateBytes(defaultLength)
 	opt := []Option{
-		WithKeyId(kmsKey),
 		WithWorkerKeys(workerKeys),
 		WithControllerEncryptionPrivateKey(controllerKey),
 		WithNonce(nonce),
@@ -84,8 +83,8 @@ func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsKey string) *W
 
 	workerAuth, err := newWorkerAuth(ctx, "worker-key-identifier", worker.PublicId, opt...)
 	require.NoError(t, err)
-	err = rw.Create(ctx, workerAuth)
-	require.NoError(t, err)
+	require.NoError(t, workerAuth.encrypt(ctx, kmsWrapper))
+	require.NoError(t, rw.Create(ctx, workerAuth))
 
 	return workerAuth
 }
