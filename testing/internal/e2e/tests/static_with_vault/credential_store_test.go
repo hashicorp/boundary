@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/api/credentialstores"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
@@ -27,6 +28,12 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
@@ -37,6 +44,13 @@ func TestCliVaultCredentialStore(t *testing.T) {
 
 	// Configure vault
 	vaultAddr, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	t.Cleanup(func() {
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", boundaryPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
@@ -52,6 +66,12 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
 	passwordSecretName, password := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
 	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	t.Cleanup(func() {
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", kvPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	t.Log("Created Vault Credentials")
 
 	// Create vault token for boundary
@@ -199,6 +219,11 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	ctx := context.Background()
 
 	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	t.Cleanup(func() {
+		scopeClient := scopes.NewClient(client)
+		_, err := scopeClient.Delete(ctx, newOrgId)
+		require.NoError(t, err)
+	})
 	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)

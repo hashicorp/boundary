@@ -36,6 +36,12 @@ func TestCliVaultConnectTarget(t *testing.T) {
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
@@ -46,6 +52,13 @@ func TestCliVaultConnectTarget(t *testing.T) {
 
 	// Configure vault
 	vaultAddr, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	t.Cleanup(func() {
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", boundaryPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
@@ -60,6 +73,12 @@ func TestCliVaultConnectTarget(t *testing.T) {
 	// Create credential in vault
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
 	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	t.Cleanup(func() {
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", kvPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	t.Log("Created Vault Credential")
 
 	// Create vault token for boundary

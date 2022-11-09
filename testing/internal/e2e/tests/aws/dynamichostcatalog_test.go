@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/api/hostsets"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/kelseyhightower/envconfig"
@@ -53,6 +54,12 @@ func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 
 	// Create a dynamic host catalog
@@ -276,6 +283,11 @@ func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 	ctx := context.Background()
 
 	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	t.Cleanup(func() {
+		scopeClient := scopes.NewClient(client)
+		_, err := scopeClient.Delete(ctx, newOrgId)
+		require.NoError(t, err)
+	})
 	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
 
 	// Create a dynamic host catalog

@@ -130,12 +130,6 @@ func WritePolicy(t testing.TB, ctx context.Context, policyFilePath string) strin
 		e2e.WithArgs("policy", "write", policyName, policyFilePath),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", policyName),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
 
 	return policyName
 }

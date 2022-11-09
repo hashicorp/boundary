@@ -10,6 +10,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/hashicorp/boundary/api/credentials"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
@@ -26,6 +27,12 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
@@ -152,6 +159,11 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	ctx := context.Background()
 
 	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	t.Cleanup(func() {
+		scopeClient := scopes.NewClient(client)
+		_, err := scopeClient.Delete(ctx, newOrgId)
+		require.NoError(t, err)
+	})
 	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
