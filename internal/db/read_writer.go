@@ -543,5 +543,5 @@ func wrapError(ctx context.Context, err error, op string, errOpts ...errors.Opti
 		errOpts = append(errOpts, errors.WithCode(errors.InvalidFieldMask))
 	}
 
-	return errors.Wrap(ctx, err, errors.Op(op), errOpts...)
+	return errors.Wrap(ctx, err, errors.Op(op), append(errOpts, errors.WithoutEvent())...)
 }
