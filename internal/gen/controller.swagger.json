@@ -2667,7 +2667,7 @@
     },
     "/v1/scopes/{scope_id}:list-key-version-destruction-jobs": {
       "get": {
-        "summary": "Lists all pending key version destruction jobs in the scope.",
+        "summary": "Lists all pending key version destruction jobs in a Scope.",
         "operationId": "ScopeService_ListKeyVersionDestructionJobs",
         "responses": {
           "200": {
@@ -2692,7 +2692,7 @@
     },
     "/v1/scopes:destroy-key-version": {
       "post": {
-        "summary": "Destroy the specified key version in the scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs.",
+        "summary": "Destroy the specified key version in a Scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs.",
         "operationId": "ScopeService_DestroyKeyVersion",
         "responses": {
           "200": {

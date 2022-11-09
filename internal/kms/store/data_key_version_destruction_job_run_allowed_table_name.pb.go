@@ -27,7 +27,7 @@ type DataKeyVersionDestructionJobRunAllowedTableName struct {
 
 	// The name of a table that is allowed to be used
 	// in a data key version destruction job run.
-	// @inject_tag: gorm:"not_null"
+	// @inject_tag: `gorm:"not_null"`
 	TableName string `protobuf:"bytes,10,opt,name=table_name,json=tableName,proto3" json:"table_name,omitempty" gorm:"not_null"`
 }
 

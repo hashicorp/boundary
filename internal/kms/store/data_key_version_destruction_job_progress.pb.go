@@ -27,24 +27,24 @@ type DataKeyVersionDestructionJobProgress struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The id of the data key version that is being revoked
-	// @inject_tag: gorm:"not_null"
-	KeyId string `protobuf:"bytes,10,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	// @inject_tag: `gorm:"not_null"`
+	KeyId string `protobuf:"bytes,10,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" gorm:"not_null"`
 	// Scope id this data key version belongs to.
 	// @inject_tag: `gorm:"not_null"`
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"not_null"`
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"not_null"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,30,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,30,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"not_null"`
 	// The status of this data key version destruction job
 	// One of "pending", "running" or "completed"
 	// @inject_tag: `gorm:"not_null"`
-	Status string `protobuf:"bytes,40,opt,name=status,proto3" json:"status,omitempty"`
+	Status string `protobuf:"bytes,40,opt,name=status,proto3" json:"status,omitempty" gorm:"not_null"`
 	// The number of rows that have been rewrapped
 	// @inject_tag: `gorm:"not_null"`
-	CompletedCount int64 `protobuf:"varint,50,opt,name=completed_count,json=completedCount,proto3" json:"completed_count,omitempty"`
+	CompletedCount int64 `protobuf:"varint,50,opt,name=completed_count,json=completedCount,proto3" json:"completed_count,omitempty" gorm:"not_null"`
 	// The total number of rows that need rewrapping
 	// @inject_tag: `gorm:"not_null"`
-	TotalCount int64 `protobuf:"varint,60,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	TotalCount int64 `protobuf:"varint,60,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty" gorm:"not_null"`
 }
 
 func (x *DataKeyVersionDestructionJobProgress) Reset() {

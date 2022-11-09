@@ -118,7 +118,7 @@ service ScopeService {
       get: "/v1/scopes/{scope_id}:list-key-version-destruction-jobs"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all pending key version destruction jobs in the scope."
+      summary: "Lists all pending key version destruction jobs in a Scope."
     };
   }
 
@@ -131,13 +131,13 @@ service ScopeService {
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Destroy the specified key version in the scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs."
+      summary: "Destroy the specified key version in a Scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs."
     };
   }
 }
 
 message GetScopeRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetScopeResponse {
@@ -145,9 +145,9 @@ message GetScopeResponse {
 }
 
 message ListScopesRequest {
-  string scope_id = 1;
-  bool recursive = 20 [json_name = "recursive"];
-  string filter = 30 [json_name = "filter"];
+  string scope_id = 1; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
 message ListScopesResponse {
@@ -155,18 +155,18 @@ message ListScopesResponse {
 }
 
 message CreateScopeRequest {
-  bool skip_admin_role_creation = 1;
-  bool skip_default_role_creation = 2;
+  bool skip_admin_role_creation = 1; // @gotags: `class:"public"`
+  bool skip_default_role_creation = 2; // @gotags: `class:"public"`
   resources.scopes.v1.Scope item = 3;
 }
 
 message CreateScopeResponse {
-  string uri = 1;
+  string uri = 1; // @gotags: `class:"public"`
   resources.scopes.v1.Scope item = 2;
 }
 
 message UpdateScopeRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   resources.scopes.v1.Scope item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -176,13 +176,13 @@ message UpdateScopeResponse {
 }
 
 message DeleteScopeRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message DeleteScopeResponse {}
 
 message ListKeysRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message ListKeysResponse {
@@ -190,14 +190,14 @@ message ListKeysResponse {
 }
 
 message RotateKeysRequest {
-  string scope_id = 1;
-  bool rewrap = 2;
+  string scope_id = 1; // @gotags: `class:"public"`
+  bool rewrap = 2; // @gotags: `class:"public"`
 }
 
 message RotateKeysResponse {}
 
 message ListKeyVersionDestructionJobsRequest {
-  string scope_id = 1;
+  string scope_id = 1; // @gotags: `class:"public"`
 }
 
 message ListKeyVersionDestructionJobsResponse {
@@ -205,13 +205,13 @@ message ListKeyVersionDestructionJobsResponse {
 }
 
 message DestroyKeyVersionRequest {
-  string scope_id = 1;
-  string key_version_id = 2;
+  string scope_id = 1; // @gotags: `class:"public"`
+  string key_version_id = 2; // @gotags: `class:"public"`
 }
 
 message DestroyKeyVersionResponse {
   // Destruction state. One of "pending" or "completed".
   // Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs
   // to monitor pending destruction jobs.
-  string state = 1;
+  string state = 1; // @gotags: `class:"public"`
 }

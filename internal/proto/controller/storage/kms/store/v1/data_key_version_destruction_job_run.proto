@@ -8,11 +8,11 @@ option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
 // data from the kms_data_key_version_destruction_job_run table.
 message DataKeyVersionDestructionJobRun {
   // key_id is the private id of the data key version being destroyed.
-  // @inject_tag: gorm:"primary_key"
+  // @inject_tag: `gorm:"primary_key"`
   string key_id = 10;
 
   // table_name is the table name that is being rewrapped by this run.
-  // @inject_tag: gorm:"primary_key"
+  // @inject_tag: `gorm:"primary_key"`
   string table_name = 20;
 
   // total_count is the total number of rows that need to be rewrapped

@@ -8,7 +8,7 @@ option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
 
 message DataKeyVersionDestructionJobProgress {
   // The id of the data key version that is being revoked
-  // @inject_tag: gorm:"not_null"
+  // @inject_tag: `gorm:"not_null"`
   string key_id = 10;
 
   // Scope id this data key version belongs to.

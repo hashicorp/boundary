@@ -28,10 +28,10 @@ type DataKeyVersionDestructionJobRun struct {
 	unknownFields protoimpl.UnknownFields
 
 	// key_id is the private id of the data key version being destroyed.
-	// @inject_tag: gorm:"primary_key"
+	// @inject_tag: `gorm:"primary_key"`
 	KeyId string `protobuf:"bytes,10,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" gorm:"primary_key"`
 	// table_name is the table name that is being rewrapped by this run.
-	// @inject_tag: gorm:"primary_key"
+	// @inject_tag: `gorm:"primary_key"`
 	TableName string `protobuf:"bytes,20,opt,name=table_name,json=tableName,proto3" json:"table_name,omitempty" gorm:"primary_key"`
 	// total_count is the total number of rows that need to be rewrapped
 	// in this table.

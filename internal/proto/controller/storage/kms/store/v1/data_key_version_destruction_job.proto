@@ -10,7 +10,7 @@ option go_package = "github.com/hashicorp/boundary/internal/kms/store;store";
 // data from the kms_data_key_version_destruction_job table.
 message DataKeyVersionDestructionJob {
   // key_id is the private id of the data key version being destroyed.
-  // @inject_tag: gorm:"primary_key"
+  // @inject_tag: `gorm:"primary_key"`
   string key_id = 10;
 
   // create_time from the RDBMS

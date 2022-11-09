@@ -29,7 +29,7 @@ type DataKeyVersionDestructionJob struct {
 	unknownFields protoimpl.UnknownFields
 
 	// key_id is the private id of the data key version being destroyed.
-	// @inject_tag: gorm:"primary_key"
+	// @inject_tag: `gorm:"primary_key"`
 	KeyId string `protobuf:"bytes,10,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" gorm:"primary_key"`
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
