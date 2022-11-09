@@ -349,6 +349,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		Authorization: &targets.SessionAuthorizationData{
 			SessionId:   sessionInfo.GetPublicId(),
 			Certificate: sessionInfo.Certificate,
+			PrivateKey:  sessionInfo.CertificatePrivateKey,
 		},
 		Status:          sessionInfo.States[0].Status.ProtoVal(),
 		Version:         sessionInfo.Version,
@@ -365,18 +366,6 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 	}
 	if resp.ConnectionsLeft != -1 {
 		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
-	}
-
-	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ProjectId, kms.KeyPurposeSessions, kms.WithKeyId(sessionInfo.KeyId))
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
-	}
-
-	// Derive the private key, which should match. Deriving on both ends allows
-	// us to not store it in the DB.
-	_, resp.Authorization.PrivateKey, err = session.DeriveED25519Key(ctx, wrapper, sessionInfo.UserId, sessionInfo.GetPublicId())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
 	}
 
 	return resp, nil

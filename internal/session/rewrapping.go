@@ -96,17 +96,17 @@ func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId strin
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
 	}
 	for _, session := range sessions {
-		wrapper, err := kmsRepo.GetWrapper(ctx, session.GetProjectId(), kms.KeyPurposeDatabase)
+		if err := decryptAndMaybeUpdateSession(ctx, kmsRepo, session, writer); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt session"))
+		}
+		wrapper, err := kmsRepo.GetWrapper(ctx, session.GetProjectId(), kms.KeyPurposeSessions)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to fetch kms wrapper for rewrapping"))
-		}
-		if err := session.decrypt(ctx, wrapper); err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt session"))
 		}
 		if err := session.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt session"))
 		}
-		if _, err := writer.Update(ctx, session, []string{"CtTofuToken", "KeyId"}, nil); err != nil {
+		if _, err := writer.Update(ctx, session, []string{"CtTofuToken", "CtCertificatePrivateKey", "KeyId"}, nil); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to update session row with rewrapped fields"))
 		}
 	}

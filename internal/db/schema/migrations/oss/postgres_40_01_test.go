@@ -280,7 +280,7 @@ values
 	sessionId := "s_AgLzPhDINE"
 	future := time.Now().Add(time.Hour)
 	expirationTime := fmt.Sprintf("%v-%d-%v %v:%v:%v.000", future.Year(), future.Month(), future.Day(), future.Hour(), future.Minute(), future.Second())
-	_, cert, err := session.TestCert(wrapper, uId, sessionId)
+	_, cert, err := session.TestCert(sessionId)
 	require.NoError(t, err)
 	num, err = rw.Exec(ctx, `
 	insert into session

@@ -347,6 +347,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
 	}
 	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
+		// Always add a secure random reader to the new session repository.
+		// Add it as the first option so that it can be overridden by users.
+		opt = append([]session.Option{session.WithRandomReader(c.conf.SecureRandomReader)}, opt...)
 		return session.NewRepository(ctx, dbase, dbase, c.kms, opt...)
 	}
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {

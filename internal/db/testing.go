@@ -135,11 +135,16 @@ func TestWrapper(t testing.TB) wrapping.Wrapper {
 // TestDBWrapper initializes a DB wrapper for testing
 func TestDBWrapper(t testing.TB, conn *DB, purpose kms.KeyPurpose) wrapping.Wrapper {
 	t.Helper()
-	kmsCache, err := kms.New(dbw.New(conn.wrapped.Load()), dbw.New(conn.wrapped.Load()), []kms.KeyPurpose{kms.KeyPurposeRootKey, purpose})
+	purposes := []kms.KeyPurpose{purpose}
+	if purpose != "oplog" {
+		// Always add the oplog purpose, most tests need it
+		purposes = append(purposes, "oplog")
+	}
+	kmsCache, err := kms.New(dbw.New(conn.wrapped.Load()), dbw.New(conn.wrapped.Load()), purposes)
 	require.NoError(t, err)
 	err = kmsCache.AddExternalWrapper(context.Background(), kms.KeyPurposeRootKey, TestWrapper(t))
 	require.NoError(t, err)
-	err = kmsCache.CreateKeys(context.Background(), "global", []kms.KeyPurpose{purpose})
+	err = kmsCache.CreateKeys(context.Background(), "global", purposes)
 	require.NoError(t, err)
 	wrapper, err := kmsCache.GetWrapper(context.Background(), "global", purpose)
 	require.NoError(t, err)

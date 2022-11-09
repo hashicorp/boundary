@@ -9,9 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/boundary/internal/db/schema"
-	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/stretchr/testify/require"
 )
@@ -65,12 +64,9 @@ func TestMigrations_NewForeignKeys(t *testing.T) {
 
 	// Create project
 	wrapper := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-
-	// Create a session
-	sess := session.TestSession(t, conn, wrapper, session.TestSessionParams(t, conn, wrapper, iamRepo))
-	_ = sess
+	err = kmsCache.CreateKeys(ctx, scope.Global.String())
+	require.NoError(t, err)
 
 	// Create a password account
 	pwam := password.TestAuthMethod(t, conn, "global")
