@@ -30,6 +30,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     string after a specified substring; this is useful for pulling an user/account name from an email address. In the following example it uses the account email can be any other parameter:
     
     * `{{ truncateFrom .Account.Email "@" }}`: this would turn `foo@example.com` into `foo`
+* Per-Scope Key lifecycle management: Both Key Encryption Keys (KEKs) and Data Encryption
+  Keys (DEKs) can now have their lifecycle managed by the user through the new
+  key rotation and key destruction functionality. To learn more about this new feature,
+  please visit the [docs
+  site](https://developer.hashicorp.com/boundary/docs/concepts/security/data-encryption).
+
+  Upgrade notice: If the Database purpose DEK for a scope is destroyed, sessions that
+  predate the upgrade need to be canceled via the API.
 
 * workers: PKI Worker daemons now get disconnected from upstreams when their
   corresponding resource is deleted ([PR](https://github.com/hashicorp/boundary/pull/2573))
