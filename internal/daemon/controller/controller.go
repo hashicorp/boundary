@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -99,6 +100,11 @@ type Controller struct {
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
 
+	// Timing variables. These are atomics for SIGHUP support, and are int64
+	// because they are casted to time.Duration.
+	workerStatusGracePeriod *atomic.Int64
+	livenessTimeToStale     *atomic.Int64
+
 	apiGrpcServer         *grpc.Server
 	apiGrpcServerListener grpcServerListener
 	apiGrpcGatewayTicket  string
@@ -145,6 +151,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		enabledPlugins:          conf.Server.EnabledPlugins,
 		apiListeners:            make([]*base.ServerListener, 0),
 		pkiConnManager:          cluster.NewDownstreamManager(),
+		workerStatusGracePeriod: new(atomic.Int64),
+		livenessTimeToStale:     new(atomic.Int64),
 	}
 
 	if downstreamRouterFactory != nil {
@@ -180,6 +188,19 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 					"file.",
 				err)
 		}
+	}
+
+	switch conf.RawConfig.Controller.WorkerStatusGracePeriodDuration {
+	case 0:
+		c.workerStatusGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		c.workerStatusGracePeriod.Store(int64(conf.RawConfig.Controller.WorkerStatusGracePeriodDuration))
+	}
+	switch conf.RawConfig.Controller.LivenessTimeToStaleDuration {
+	case 0:
+		c.livenessTimeToStale.Store(int64(server.DefaultLiveness))
+	default:
+		c.livenessTimeToStale.Store(int64(conf.RawConfig.Controller.LivenessTimeToStaleDuration))
 	}
 
 	clusterListeners := make([]*base.ServerListener, 0)
@@ -476,7 +497,7 @@ func (c *Controller) registerJobs() error {
 	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
-	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.StatusGracePeriodDuration); err != nil {
+	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.workerStatusGracePeriod); err != nil {
 		return err
 	}
 	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {

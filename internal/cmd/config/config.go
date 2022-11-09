@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
@@ -145,26 +146,45 @@ type Controller struct {
 	Scheduler         *Scheduler `hcl:"scheduler"`
 
 	// AuthTokenTimeToLive is the total valid lifetime of a token denoted by time.Duration
-	AuthTokenTimeToLive         interface{} `hcl:"auth_token_time_to_live"`
-	AuthTokenTimeToLiveDuration time.Duration
+	AuthTokenTimeToLive         interface{}   `hcl:"auth_token_time_to_live"`
+	AuthTokenTimeToLiveDuration time.Duration `hcl:"-"`
 
 	// AuthTokenTimeToStale is the total time a token can go unused before becoming invalid
 	// denoted by time.Duration
-	AuthTokenTimeToStale         interface{} `hcl:"auth_token_time_to_stale"`
-	AuthTokenTimeToStaleDuration time.Duration
+	AuthTokenTimeToStale         interface{}   `hcl:"auth_token_time_to_stale"`
+	AuthTokenTimeToStaleDuration time.Duration `hcl:"-"`
 
 	// GracefulShutdownWait is the amount of time that we'll wait before actually
 	// starting the Controller shutdown. This allows the health endpoint to
 	// return a status code to indicate that the instance is shutting down.
-	GracefulShutdownWait         interface{} `hcl:"graceful_shutdown_wait_duration"`
-	GracefulShutdownWaitDuration time.Duration
+	GracefulShutdownWait         interface{}   `hcl:"graceful_shutdown_wait_duration"`
+	GracefulShutdownWaitDuration time.Duration `hcl:"-"`
 
-	// StatusGracePeriod represents the period of time (as a duration) that the
-	// controller will wait before marking connections from a disconnected worker
-	// as invalid.
+	// WorkerStatusGracePeriod represents the period of time (as a duration)
+	// that the controller will wait before deciding a worker is disconnected
+	// and marking connections from it as canceling
+	//
+	// TODO: This isn't documented (on purpose) because the right place for this
+	// is central configuration so you can't drift across controllers, but we
+	// don't have that yet.
+	WorkerStatusGracePeriod         interface{}   `hcl:"worker_status_grace_period"`
+	WorkerStatusGracePeriodDuration time.Duration `hcl:"-"`
+
+	// LivenessTimeToStale represents the period of time (as a duration) after
+	// which it will consider other controllers to be no longer accessible,
+	// based on time since their last status update in the database
+	//
+	// TODO: This isn't documented (on purpose) because the right place for this
+	// is central configuration so you can't drift across controllers, but we
+	// don't have that yet.
+	LivenessTimeToStale         interface{}   `hcl:"liveness_time_to_stale"`
+	LivenessTimeToStaleDuration time.Duration `hcl:"-"`
+
+	// SchedulerRunJobInterval is the time interval between waking up the
+	// scheduler to run pending jobs.
 	//
 	// TODO: This field is currently internal.
-	StatusGracePeriodDuration time.Duration `hcl:"-"`
+	SchedulerRunJobInterval time.Duration `hcl:"-"`
 }
 
 func (c *Controller) InitNameIfEmpty() error {
@@ -206,12 +226,22 @@ type Worker struct {
 	Tags    map[string][]string `hcl:"-"`
 	TagsRaw interface{}         `hcl:"tags"`
 
-	// StatusGracePeriod represents the period of time (as a duration) that the
-	// worker will wait before disconnecting connections if it cannot make a
-	// status report to a controller.
+	// StatusCallTimeout represents the period of time (as a duration) that
+	// the worker will allow a status RPC call to attempt to finish before
+	// canceling it to try again.
 	//
-	// TODO: This field is currently internal.
-	StatusGracePeriodDuration time.Duration `hcl:"-"`
+	// TODO: This is currently not documented and considered internal.
+	StatusCallTimeout         interface{}   `hcl:"status_call_timeout"`
+	StatusCallTimeoutDuration time.Duration `hcl:"-"`
+
+	// SuccessfulStatusGracePeriod represents the period of time (as a duration)
+	// that the worker will wait before disconnecting connections if it cannot
+	// successfully complete a status report to a controller. This cannot be
+	// less than StatusCallTimeout.
+	//
+	// TODO: This is currently not documented and considered internal.
+	SuccessfulStatusGracePeriod         interface{}   `hcl:"successful_status_grace_period"`
+	SuccessfulStatusGracePeriodDuration time.Duration `hcl:"-"`
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
@@ -498,6 +528,36 @@ func Parse(d string) (*Config, error) {
 			}
 		}
 
+		workerStatusGracePeriod := result.Controller.WorkerStatusGracePeriod
+		if util.IsNil(workerStatusGracePeriod) {
+			workerStatusGracePeriod = os.Getenv("BOUNDARY_CONTROLLER_WORKER_STATUS_GRACE_PERIOD")
+		}
+		if workerStatusGracePeriod != nil {
+			t, err := parseutil.ParseDurationSecond(workerStatusGracePeriod)
+			if err != nil {
+				return result, err
+			}
+			result.Controller.WorkerStatusGracePeriodDuration = t
+		}
+		if result.Controller.WorkerStatusGracePeriodDuration < 0 {
+			return nil, errors.New("Controller worker status grace period value is negative")
+		}
+
+		livenessTimeToStale := result.Controller.LivenessTimeToStale
+		if util.IsNil(livenessTimeToStale) {
+			livenessTimeToStale = os.Getenv("BOUNDARY_CONTROLLER_LIVENESS_TIME_TO_STALE")
+		}
+		if livenessTimeToStale != nil {
+			t, err := parseutil.ParseDurationSecond(livenessTimeToStale)
+			if err != nil {
+				return result, err
+			}
+			result.Controller.LivenessTimeToStaleDuration = t
+		}
+		if result.Controller.LivenessTimeToStaleDuration < 0 {
+			return nil, errors.New("Controller liveness time to stale value is negative")
+		}
+
 		if result.Controller.Database != nil {
 			if result.Controller.Database.MaxOpenConnectionsRaw != nil {
 				switch t := result.Controller.Database.MaxOpenConnectionsRaw.(type) {
@@ -581,6 +641,47 @@ func Parse(d string) (*Config, error) {
 		result.Worker.ControllerGeneratedActivationToken, err = parseutil.ParsePath(result.Worker.ControllerGeneratedActivationToken)
 		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing worker activation token: %w", err)
+		}
+
+		statusCallTimeoutDuration := result.Worker.StatusCallTimeout
+		if util.IsNil(statusCallTimeoutDuration) {
+			statusCallTimeoutDuration = os.Getenv("BOUNDARY_WORKER_STATUS_CALL_TIMEOUT")
+		}
+		if statusCallTimeoutDuration != nil {
+			t, err := parseutil.ParseDurationSecond(statusCallTimeoutDuration)
+			if err != nil {
+				return result, err
+			}
+			result.Worker.StatusCallTimeoutDuration = t
+		}
+		if result.Worker.StatusCallTimeoutDuration < 0 {
+			return nil, errors.New("Status call timeout value is negative")
+		}
+
+		successfulStatusGracePeriod := result.Worker.SuccessfulStatusGracePeriod
+		if util.IsNil(successfulStatusGracePeriod) {
+			successfulStatusGracePeriod = os.Getenv("BOUNDARY_WORKER_SUCCESSFUL_STATUS_GRACE_PERIOD")
+		}
+		if successfulStatusGracePeriod != nil {
+			t, err := parseutil.ParseDurationSecond(successfulStatusGracePeriod)
+			if err != nil {
+				return result, err
+			}
+			result.Worker.SuccessfulStatusGracePeriodDuration = t
+		}
+		if result.Worker.SuccessfulStatusGracePeriodDuration < 0 {
+			return nil, errors.New("Successful status grace period value is negative")
+		}
+
+		switch {
+		case result.Worker.StatusCallTimeoutDuration == 0 && result.Worker.SuccessfulStatusGracePeriodDuration == 0:
+			// Nothing
+		case result.Worker.StatusCallTimeoutDuration != 0 && result.Worker.SuccessfulStatusGracePeriodDuration != 0:
+			if result.Worker.StatusCallTimeoutDuration > result.Worker.SuccessfulStatusGracePeriodDuration {
+				return nil, fmt.Errorf("Worker setting for status call timeout duration must be less than or equal to successful status grace period duration")
+			}
+		default:
+			return nil, fmt.Errorf("Worker settings for status call timeout duration and successful status grace period duration must either both be set or both be empty")
 		}
 
 		if result.Worker.TagsRaw != nil {

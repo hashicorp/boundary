@@ -285,7 +285,7 @@ type TestWorkerOpts struct {
 
 	// The amount of time to wait before marking connections as closed when a
 	// connection cannot be made back to the controller
-	StatusGracePeriodDuration time.Duration
+	SuccessfulStatusGracePeriodDuration time.Duration
 
 	// Overrides worker's nonceFn, for cases where we want to have control
 	// over the nonce we send to the Controller
@@ -344,9 +344,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	tw.b.PrometheusRegisterer = opts.PrometheusRegisterer
 
-	// Initialize status grace period
-	tw.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
-
 	if opts.Config.Worker == nil {
 		opts.Config.Worker = &config.Worker{
 			Name: opts.Name,
@@ -357,6 +354,10 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		tw.b.DevUsePkiForUpstream = true
 	}
 	tw.name = opts.Config.Worker.Name
+
+	if opts.SuccessfulStatusGracePeriodDuration != 0 {
+		opts.Config.Worker.SuccessfulStatusGracePeriod = opts.SuccessfulStatusGracePeriodDuration
+	}
 
 	serverName, err := os.Hostname()
 	if err != nil {
@@ -438,12 +439,12 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		opts = new(TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
-		WorkerAuthKms:             tw.w.conf.WorkerAuthKms,
-		WorkerAuthStorageKms:      tw.w.conf.WorkerAuthStorageKms,
-		Name:                      opts.Name,
-		InitialUpstreams:          tw.UpstreamAddrs(),
-		Logger:                    tw.w.conf.Logger,
-		StatusGracePeriodDuration: opts.StatusGracePeriodDuration,
+		WorkerAuthKms:                       tw.w.conf.WorkerAuthKms,
+		WorkerAuthStorageKms:                tw.w.conf.WorkerAuthStorageKms,
+		Name:                                opts.Name,
+		InitialUpstreams:                    tw.UpstreamAddrs(),
+		Logger:                              tw.w.conf.Logger,
+		SuccessfulStatusGracePeriodDuration: opts.SuccessfulStatusGracePeriodDuration,
 	}
 	if nextOpts.Name == "" {
 		var err error
