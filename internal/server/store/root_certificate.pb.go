@@ -103,11 +103,11 @@ type RootCertificate struct {
 	PublicKey []byte `protobuf:"bytes,50,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty" gorm:"primary_key"`
 	// The plain-text private key associated with this certificate. We are not storing this
 	// in the database.
-	// @inject_tag: `gorm:"-"` wrapping:"pt,private_key"`
+	// @inject_tag: gorm:"-" wrapping:"pt,private_key"
 	PrivateKey []byte `protobuf:"bytes,60,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty" gorm:"-" wrapping:"pt,private_key"`
 	// The private key associated with this certificate
 	// This is a ciphertext field
-	// @inject_tag: `gorm:"column:private_key;not_null"` wrapping:"ct,private_key"`
+	// @inject_tag: gorm:"column:private_key;not_null" wrapping:"ct,private_key"
 	CtPrivateKey []byte `protobuf:"bytes,61,opt,name=ct_private_key,json=ctPrivateKey,proto3" json:"ct_private_key,omitempty" gorm:"column:private_key;not_null" wrapping:"ct,private_key"`
 	// The id of the kms database key used for encrypting this entry.
 	// @inject_tag: `gorm:"not_null"`

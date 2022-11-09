@@ -43,11 +43,11 @@ type WorkerAuth struct {
 	WorkerEncryptionPubKey []byte `protobuf:"bytes,40,opt,name=worker_encryption_pub_key,json=workerEncryptionPubKey,proto3" json:"worker_encryption_pub_key,omitempty" gorm:"not_null"`
 	// The plain-text private key associated with this certificate. We are not storing this
 	// in the database.
-	// @inject_tag: `gorm:"-"` wrapping:"pt,private_key"`
+	// @inject_tag: gorm:"-" wrapping:"pt,private_key"
 	ControllerEncryptionPrivKey []byte `protobuf:"bytes,50,opt,name=controller_encryption_priv_key,json=controllerEncryptionPrivKey,proto3" json:"controller_encryption_priv_key,omitempty" gorm:"-" wrapping:"pt,private_key"`
 	// The private key associated with this certificate
 	// This is a ciphertext field
-	// @inject_tag: `gorm:"column:controller_encryption_priv_key;not_null"` wrapping:"ct,private_key"`
+	// @inject_tag: gorm:"column:controller_encryption_priv_key;not_null" wrapping:"ct,private_key"
 	CtControllerEncryptionPrivKey []byte `protobuf:"bytes,51,opt,name=ct_controller_encryption_priv_key,json=ctControllerEncryptionPrivKey,proto3" json:"ct_controller_encryption_priv_key,omitempty" gorm:"column:controller_encryption_priv_key;not_null" wrapping:"ct,private_key"`
 	// The id of the kms database key used for encrypting this entry.
 	// @inject_tag: `gorm:"not_null"`
