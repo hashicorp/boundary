@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
@@ -528,7 +529,7 @@ func Parse(d string) (*Config, error) {
 		}
 
 		workerStatusGracePeriod := result.Controller.WorkerStatusGracePeriod
-		if workerStatusGracePeriod == nil {
+		if util.IsNil(workerStatusGracePeriod) {
 			workerStatusGracePeriod = os.Getenv("BOUNDARY_CONTROLLER_WORKER_STATUS_GRACE_PERIOD")
 		}
 		if workerStatusGracePeriod != nil {
@@ -543,7 +544,7 @@ func Parse(d string) (*Config, error) {
 		}
 
 		livenessTimeToStale := result.Controller.LivenessTimeToStale
-		if livenessTimeToStale == nil {
+		if util.IsNil(livenessTimeToStale) {
 			livenessTimeToStale = os.Getenv("BOUNDARY_CONTROLLER_LIVENESS_TIME_TO_STALE")
 		}
 		if livenessTimeToStale != nil {
@@ -643,7 +644,7 @@ func Parse(d string) (*Config, error) {
 		}
 
 		statusCallTimeoutDuration := result.Worker.StatusCallTimeout
-		if statusCallTimeoutDuration == nil {
+		if util.IsNil(statusCallTimeoutDuration) {
 			statusCallTimeoutDuration = os.Getenv("BOUNDARY_WORKER_STATUS_CALL_TIMEOUT")
 		}
 		if statusCallTimeoutDuration != nil {
@@ -658,7 +659,7 @@ func Parse(d string) (*Config, error) {
 		}
 
 		successfulStatusGracePeriod := result.Worker.SuccessfulStatusGracePeriod
-		if successfulStatusGracePeriod == nil {
+		if util.IsNil(successfulStatusGracePeriod) {
 			successfulStatusGracePeriod = os.Getenv("BOUNDARY_WORKER_SUCCESSFUL_STATUS_GRACE_PERIOD")
 		}
 		if successfulStatusGracePeriod != nil {
