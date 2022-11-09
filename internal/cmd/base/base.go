@@ -115,7 +115,6 @@ type Command struct {
 	FlagRecursive         bool
 	FlagFilter            string
 	FlagTags              map[string][]string
-	FlagRewrap            bool
 
 	// Attribute values
 	FlagAttributes string

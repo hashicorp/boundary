@@ -19,6 +19,7 @@ var (
 
 type RotateKeysCommand struct {
 	*base.Command
+	FlagRewrap bool
 }
 
 func (c *RotateKeysCommand) Synopsis() string {

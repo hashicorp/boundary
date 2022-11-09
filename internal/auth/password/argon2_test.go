@@ -318,16 +318,17 @@ func TestArgon2Credential_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 
 	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
+	rootWrapper := db.TestWrapper(t)
 
-	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
 	accts := TestMultipleAccounts(t, conn, aut.PublicId, 5)
 	confs := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)
 
-	kms := kms.TestKms(t, conn, wrapper)
-	wrapper, _ = kms.GetWrapper(context.Background(), o.GetPublicId(), 1)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	wrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), 1)
+	require.NoError(t, err)
 
 	type args struct {
 		accountId string
