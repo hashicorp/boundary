@@ -310,7 +310,7 @@ func convertFromDbwOpts(ctx context.Context, opts dbw.Options) (*OperationOption
 }
 
 // WriteEntryWith the []proto.Message marshaled into the entry data as a FIFO QueueBuffer
-// if Cipherer != nil then the data is authentication encrypted
+// if Wrapper != nil then the data is authentication encrypted
 func (e *Entry) WriteEntryWith(ctx context.Context, tx *Writer, ticket *store.Ticket, msgs ...*Message) error {
 	const op = "oplog.(Entry).WriteEntryWith"
 	if tx == nil {
@@ -352,7 +352,7 @@ func (e *Entry) WriteEntryWith(ctx context.Context, tx *Writer, ticket *store.Ti
 }
 
 // Write the entry as is with whatever it has for e.Data marshaled into a FIFO QueueBuffer
-// If Cipherer != nil then the data is authentication encrypted
+// If Wrapper != nil then the data is authentication encrypted
 func (e *Entry) Write(ctx context.Context, tx *Writer, ticket *store.Ticket) error {
 	const op = "oplog.(Entry).Write"
 	if err := e.validate(ctx); err != nil {
@@ -379,7 +379,7 @@ func (e *Entry) Write(ctx context.Context, tx *Writer, ticket *store.Ticket) err
 	return nil
 }
 
-// encryptData the entry's data using its Cipherer (wrapping.Wrapper)
+// encryptData the entry's data using its Wrapper (wrapping.Wrapper)
 func (e *Entry) encryptData(ctx context.Context) error {
 	const op = "oplog.(Entry).EncryptData"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
@@ -389,7 +389,7 @@ func (e *Entry) encryptData(ctx context.Context) error {
 	return nil
 }
 
-// DecryptData will decrypt the entry's data using its Cipherer (wrapping.Wrapper)
+// DecryptData will decrypt the entry's data using its Wrapper (wrapping.Wrapper)
 func (e *Entry) DecryptData(ctx context.Context) error {
 	const op = "oplog.(Entry).DecryptData"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly

@@ -354,6 +354,11 @@ func Test_ListDataKeyVersionDestructionJobs(t *testing.T) {
 		_, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "")
 		assert.Error(t, err)
 	})
+	t.Run("lists-no-jobs-when-the-scope-id-is-invalid", func(t *testing.T) {
+		jobs, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "notascope")
+		require.NoError(t, err)
+		assert.Empty(t, jobs)
+	})
 	t.Run("lists-no-jobs-when-there-are-none", func(t *testing.T) {
 		jobs, err := kmsCache.ListDataKeyVersionDestructionJobs(testCtx, "global")
 		require.NoError(t, err)

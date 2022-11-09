@@ -18,11 +18,11 @@ import (
 // Test_BasicOplog provides some basic unit tests for oplogs
 func Test_BasicOplog(t *testing.T) {
 	testCtx := context.Background()
-	db, cipherer := setup(testCtx, t)
+	db, wrapper := setup(testCtx, t)
 
 	t.Run("EncryptData/DecryptData/UnmarshalData", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		keyId, err := cipherer.KeyId(testCtx)
+		keyId, err := wrapper.KeyId(testCtx)
 		require.NoError(err)
 
 		// now let's us optimistic locking via a ticketing system for a serialized oplog
@@ -46,7 +46,7 @@ func Test_BasicOplog(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -64,7 +64,7 @@ func Test_BasicOplog(t *testing.T) {
 		var foundEntry Entry
 		err = dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{entryId})
 		require.NoError(err)
-		foundEntry.Wrapper = cipherer
+		foundEntry.Wrapper = wrapper
 		err = foundEntry.DecryptData(context.Background())
 		require.NoError(err)
 		require.Equal(keyId, foundEntry.KeyId)
@@ -105,7 +105,7 @@ func Test_BasicOplog(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -119,13 +119,13 @@ func Test_BasicOplog(t *testing.T) {
 // Test_NewEntry provides some basic unit tests for NewEntry
 func Test_NewEntry(t *testing.T) {
 	testCtx := context.Background()
-	db, cipherer := setup(testCtx, t)
+	db, wrapper := setup(testCtx, t)
 
 	t.Run("valid", func(t *testing.T) {
 		require := require.New(t)
 		ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 		require.NoError(err)
-		keyId, err := cipherer.KeyId(testCtx)
+		keyId, err := wrapper.KeyId(testCtx)
 		require.NoError(err)
 
 		entry, err := NewEntry(
@@ -136,7 +136,7 @@ func Test_NewEntry(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -151,7 +151,7 @@ func Test_NewEntry(t *testing.T) {
 			testCtx,
 			"test-users",
 			nil,
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -169,13 +169,13 @@ func Test_NewEntry(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.Error(err)
 		assert.Equal("oplog.NewEntry: oplog.(Entry).validate: missing entry aggregate name: parameter violation: error #100", err.Error())
 	})
-	t.Run("bad cipherer", func(t *testing.T) {
+	t.Run("bad wrapper", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 		require.NoError(err)
@@ -192,7 +192,7 @@ func Test_NewEntry(t *testing.T) {
 			ticketer,
 		)
 		require.Error(err)
-		assert.Equal("oplog.NewEntry: nil cipherer: parameter violation: error #100", err.Error())
+		assert.Equal("oplog.NewEntry: nil wrapper: parameter violation: error #100", err.Error())
 	})
 	t.Run("bad ticket", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -204,7 +204,7 @@ func Test_NewEntry(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			nil,
 		)
 		require.Error(err)
@@ -214,7 +214,7 @@ func Test_NewEntry(t *testing.T) {
 
 func Test_UnmarshalData(t *testing.T) {
 	testCtx := context.Background()
-	db, cipherer := setup(testCtx, t)
+	db, wrapper := setup(testCtx, t)
 
 	// now let's us optimistic locking via a ticketing system for a serialized oplog
 	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
@@ -242,7 +242,7 @@ func Test_UnmarshalData(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -267,7 +267,7 @@ func Test_UnmarshalData(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -294,7 +294,7 @@ func Test_UnmarshalData(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -320,7 +320,7 @@ func Test_UnmarshalData(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -336,7 +336,7 @@ func Test_UnmarshalData(t *testing.T) {
 // Test_Replay provides some basic unit tests for replaying entries
 func Test_Replay(t *testing.T) {
 	testCtx := context.Background()
-	db, cipherer := setup(testCtx, t)
+	db, wrapper := setup(testCtx, t)
 
 	id := testId(t)
 
@@ -364,7 +364,7 @@ func Test_Replay(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -422,7 +422,7 @@ func Test_Replay(t *testing.T) {
 
 		var foundEntry Entry
 		require.NoError(tx.LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{newLogEntry.Id}))
-		foundEntry.Wrapper = cipherer
+		foundEntry.Wrapper = wrapper
 		err = foundEntry.DecryptData(context.Background())
 		require.NoError(err)
 
@@ -480,7 +480,7 @@ func Test_Replay(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -493,7 +493,7 @@ func Test_Replay(t *testing.T) {
 		var foundEntry2 Entry
 		err = tx2.LookupWhere(testCtx, &foundEntry2, "id = ?", []interface{}{newLogEntry2.Id})
 		require.NoError(err)
-		foundEntry2.Wrapper = cipherer
+		foundEntry2.Wrapper = wrapper
 		err = foundEntry2.DecryptData(context.Background())
 		require.NoError(err)
 
@@ -544,7 +544,7 @@ func Test_Replay(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -557,7 +557,7 @@ func Test_Replay(t *testing.T) {
 		var foundEntry2 Entry
 		err = tx2.LookupWhere(testCtx, &foundEntry2, "id = ?", []interface{}{newLogEntry2.Id})
 		require.NoError(err)
-		foundEntry2.Wrapper = cipherer
+		foundEntry2.Wrapper = wrapper
 		err = foundEntry2.DecryptData(context.Background())
 		require.NoError(err)
 
@@ -580,7 +580,7 @@ func Test_Replay(t *testing.T) {
 // Test_WriteEntryWith provides unit tests for oplog.WriteEntryWith
 func Test_WriteEntryWith(t *testing.T) {
 	testCtx := context.Background()
-	db, cipherer := setup(testCtx, t)
+	db, wrapper := setup(testCtx, t)
 
 	id := testId(t)
 	u := oplog_test.TestUser{
@@ -610,7 +610,7 @@ func Test_WriteEntryWith(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -622,7 +622,7 @@ func Test_WriteEntryWith(t *testing.T) {
 		var foundEntry Entry
 		require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{newLogEntry.Id}))
 		require.NoError(err)
-		foundEntry.Wrapper = cipherer
+		foundEntry.Wrapper = wrapper
 		types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 		require.NoError(err)
 		err = foundEntry.DecryptData(context.Background())
@@ -641,7 +641,7 @@ func Test_WriteEntryWith(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -661,7 +661,7 @@ func Test_WriteEntryWith(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -681,7 +681,7 @@ func Test_WriteEntryWith(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -694,7 +694,7 @@ func Test_WriteEntryWith(t *testing.T) {
 func TestEntry_WriteEntryWith(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	testCtx := context.Background()
-	db, cipherer := setup(testCtx, t)
+	db, wrapper := setup(testCtx, t)
 	db.Debug(true)
 
 	// setup new tables for replay
@@ -713,7 +713,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 				"deployment": []string{"amex"},
 				"project":    []string{"central-info-systems", "local-info-systems"},
 			},
-			cipherer,
+			wrapper,
 			ticketer,
 		)
 		require.NoError(err)
@@ -865,7 +865,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 			var foundEntry Entry
 			require.NoError(dbw.New(db).LookupWhere(testCtx, &foundEntry, "id = ?", []interface{}{tt.e.Id}))
 			require.NoError(err)
-			foundEntry.Wrapper = cipherer
+			foundEntry.Wrapper = wrapper
 			types, err := NewTypeCatalog(testCtx, Type{new(oplog_test.TestUser), "user"})
 			require.NoError(err)
 			err = foundEntry.DecryptData(context.Background())
@@ -885,7 +885,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 			testMsgOpts := dbw.GetOpts(tt.msg.Opts...)
 			assert.Equal(entryOpts, testMsgOpts)
 
-			foundEntry.Wrapper = cipherer
+			foundEntry.Wrapper = wrapper
 			err = foundEntry.DecryptData(context.Background())
 			require.NoError(err)
 			err = foundEntry.Replay(context.Background(), tt.w, types, tableSuffix)
@@ -909,7 +909,7 @@ func TestEntry_WriteEntryWith(t *testing.T) {
 func Test_TicketSerialization(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	testCtx := context.Background()
-	db, cipherer := setup(testCtx, t)
+	db, wrapper := setup(testCtx, t)
 
 	ticketer, err := NewTicketer(testCtx, db, WithAggregateNames(true))
 	require.NoError(err)
@@ -937,7 +937,7 @@ func Test_TicketSerialization(t *testing.T) {
 			"deployment": []string{"amex"},
 			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
-		cipherer,
+		wrapper,
 		ticketer,
 	)
 	require.NoError(err)
@@ -966,7 +966,7 @@ func Test_TicketSerialization(t *testing.T) {
 			"deployment": []string{"amex"},
 			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
-		cipherer,
+		wrapper,
 		ticketer,
 	)
 	require.NoError(err)

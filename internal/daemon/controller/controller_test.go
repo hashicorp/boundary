@@ -275,3 +275,44 @@ func TestController_NewPluginsConfig(t *testing.T) {
 		}
 	}
 }
+
+func Test_ControllerStart(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	tc := &TestController{
+		t:              t,
+		ctx:            ctx,
+		cancel:         cancel,
+		opts:           nil,
+		shutdownDoneCh: make(chan struct{}),
+		shutdownOnce:   new(sync.Once),
+	}
+	conf := TestControllerConfig(t, ctx, tc, nil)
+
+	c, err := New(ctx, conf)
+	require.NoError(t, err)
+	err = c.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, c.Shutdown())
+	})
+
+	sqlDb, err := tc.DbConn().SqlDB(ctx)
+	require.NoError(t, err)
+	rows, err := sqlDb.QueryContext(ctx, "select name from job")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, rows.Close())
+	})
+	var jobNames []string
+	for rows.Next() {
+		var jobName string
+		err := rows.Scan(&jobName)
+		require.NoError(t, err)
+		jobNames = append(jobNames, jobName)
+	}
+	require.NoError(t, rows.Err())
+	// Check that the monitor job and at least one of the rewrapping jobs has been registered
+	assert.Contains(t, jobNames, "data-key-version-destruction-monitor-job")
+	assert.Contains(t, jobNames, "session-rewrapping-job")
+}

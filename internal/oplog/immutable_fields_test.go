@@ -17,7 +17,7 @@ import (
 
 func Test_ImmutableFields(t *testing.T) {
 	testCtx := context.Background()
-	db, cipherer := setup(testCtx, t)
+	db, wrapper := setup(testCtx, t)
 
 	writer := &Writer{db}
 	id := testId(t)
@@ -46,7 +46,7 @@ func Test_ImmutableFields(t *testing.T) {
 			"deployment": []string{"amex"},
 			"project":    []string{"central-info-systems", "local-info-systems"},
 		},
-		cipherer,
+		wrapper,
 		ticketer,
 	)
 	require.NoError(t, err)

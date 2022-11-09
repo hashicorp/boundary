@@ -10,8 +10,7 @@ from
 	kms_data_key_version_destruction_job_run jr
 inner join
 	kms_data_key_version_destruction_job     j
-on
-	jr.key_id=j.key_id
+	on jr.key_id=j.key_id
 where
 	jr.table_name=? and jr.completed_count!=jr.total_count
 order by
@@ -42,12 +41,10 @@ from
 	kms_root_key         rk
 inner join
 	kms_data_key         dk
-on
-	dk.root_key_id=rk.private_id
+	on dk.root_key_id=rk.private_id
 inner join
 	kms_data_key_version dkv
-on
-	dkv.data_key_id=dk.private_id
+	on dkv.data_key_id=dk.private_id
 where
 	dkv.private_id=?
 `
@@ -60,8 +57,7 @@ from
 	kms_data_key_version_destruction_job     j
 inner join
 	kms_data_key_version_destruction_job_run jr
-on
-	j.key_id=jr.key_id
+	on j.key_id=jr.key_id
 group by
 	(j.key_id)
 having

@@ -54,9 +54,9 @@ func setup(ctx context.Context, t testing.TB) (*dbw.DB, wrapping.Wrapper) {
 	require.NoError(err)
 	err = kmsCache.CreateKeys(ctx, "global", []kms.KeyPurpose{"oplog"})
 	require.NoError(err)
-	cipherer, err := kmsCache.GetWrapper(ctx, "global", "oplog")
+	wrapper, err := kmsCache.GetWrapper(ctx, "global", "oplog")
 	require.NoError(err)
-	return db, cipherer
+	return db, wrapper
 }
 
 func testOpen(t testing.TB, dbType string, connectionUrl string) *dbw.DB {
