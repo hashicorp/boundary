@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
+	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -128,6 +129,11 @@ type Worker struct {
 	downstreamWorkers downstreamers
 	downstreamRoutes  downstreamRouter
 
+	// Timing variables. These are atomics for SIGHUP support, and are int64
+	// because they are casted to time.Duration.
+	successfulStatusGracePeriod *atomic.Int64
+	statusCallTimeoutDuration   *atomic.Int64
+
 	// Test-specific options (and possibly hidden dev-mode flags)
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
@@ -146,19 +152,21 @@ func New(conf *Config) (*Worker, error) {
 	initializeReverseGrpcClientCollectors(conf.PrometheusRegisterer)
 
 	w := &Worker{
-		conf:                   conf,
-		logger:                 conf.Logger.Named("worker"),
-		started:                ua.NewBool(false),
-		controllerStatusConn:   new(atomic.Value),
-		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
-		lastStatusSuccess:      new(atomic.Value),
-		controllerMultihopConn: new(atomic.Value),
-		tags:                   new(atomic.Value),
-		updateTags:             ua.NewBool(false),
-		nonceFn:                base62.Random,
-		WorkerAuthCurrentKeyId: new(ua.String),
-		operationalState:       new(atomic.Value),
-		pkiConnManager:         cluster.NewDownstreamManager(),
+		conf:                        conf,
+		logger:                      conf.Logger.Named("worker"),
+		started:                     ua.NewBool(false),
+		controllerStatusConn:        new(atomic.Value),
+		everAuthenticated:           ua.NewUint32(authenticationStatusNeverAuthenticated),
+		lastStatusSuccess:           new(atomic.Value),
+		controllerMultihopConn:      new(atomic.Value),
+		tags:                        new(atomic.Value),
+		updateTags:                  ua.NewBool(false),
+		nonceFn:                     base62.Random,
+		WorkerAuthCurrentKeyId:      new(ua.String),
+		operationalState:            new(atomic.Value),
+		pkiConnManager:              cluster.NewDownstreamManager(),
+		successfulStatusGracePeriod: new(atomic.Int64),
+		statusCallTimeoutDuration:   new(atomic.Int64),
 	}
 
 	if downstreamRouterFactory != nil {
@@ -195,6 +203,21 @@ func New(conf *Config) (*Worker, error) {
 				err)
 		}
 	}
+
+	switch conf.RawConfig.Worker.SuccessfulStatusGracePeriodDuration {
+	case 0:
+		w.successfulStatusGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		w.successfulStatusGracePeriod.Store(int64(conf.RawConfig.Worker.SuccessfulStatusGracePeriodDuration))
+	}
+	switch conf.RawConfig.Worker.StatusCallTimeoutDuration {
+	case 0:
+		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
+	default:
+		w.statusCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
+	}
+	// FIXME: This is really ugly, but works.
+	session.CloseCallTimeout = w.statusCallTimeoutDuration
 
 	var listenerCount int
 	for i := range conf.Listeners {
@@ -502,11 +525,11 @@ func (w *Worker) Shutdown() error {
 	// Shut down all connections.
 	w.cleanupConnections(w.baseContext, true, w.sessionManager)
 
-	// Wait for next status request to succeed. Don't wait too long;
-	// wrap the base context in a timeout equal to our status grace
-	// period.
+	// Wait for next status request to succeed. Don't wait too long; time it out
+	// at our default liveness value, which is also our default status grace
+	// period timeout
 	waitStatusStart := time.Now()
-	nextStatusCtx, nextStatusCancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
+	nextStatusCtx, nextStatusCancel := context.WithTimeout(w.baseContext, server.DefaultLiveness)
 	defer nextStatusCancel()
 	for {
 		if err := nextStatusCtx.Err(); err != nil {

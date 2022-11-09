@@ -1,6 +1,10 @@
 package common
 
-import "time"
+import (
+	"time"
+
+	"github.com/hashicorp/boundary/internal/server"
+)
 
 // In the future we could make this configurable
 const (
@@ -8,7 +12,7 @@ const (
 	// during the worker status report
 	StatusInterval = 2 * time.Second
 
-	// StatusTimeout is the timeout duration on status calls to the controller from
+	// DefaultStatusTimeout is the timeout duration on status calls to the controller from
 	// the worker
-	StatusTimeout = 5 * time.Second
+	DefaultStatusTimeout = server.DefaultLiveness / 3
 )

@@ -31,11 +31,11 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	pl, err := net.Listen("tcp", "localhost:0")
 	require.NoError(err)
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config:                    conf,
-		InitialResourcesSuffix:    "1234567890",
-		Logger:                    logger.Named("c1"),
-		PublicClusterAddr:         pl.Addr().String(),
-		StatusGracePeriodDuration: helper.DefaultGracePeriod,
+		Config:                          conf,
+		InitialResourcesSuffix:          "1234567890",
+		Logger:                          logger.Named("c1"),
+		PublicClusterAddr:               pl.Addr().String(),
+		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
 	t.Cleanup(c1.Shutdown)
 
@@ -53,10 +53,10 @@ func TestWorkerBytesUpDown(t *testing.T) {
 	t.Cleanup(func() { _ = proxy.Close() })
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:             c1.Config().WorkerAuthKms,
-		InitialUpstreams:          []string{proxy.ListenerAddr()},
-		Logger:                    logger.Named("w1"),
-		StatusGracePeriodDuration: helper.DefaultGracePeriod,
+		WorkerAuthKms:                       c1.Config().WorkerAuthKms,
+		InitialUpstreams:                    []string{proxy.ListenerAddr()},
+		Logger:                              logger.Named("w1"),
+		SuccessfulStatusGracePeriodDuration: helper.DefaultSuccessfulStatusGracePeriod,
 	})
 	t.Cleanup(w1.Shutdown)
 

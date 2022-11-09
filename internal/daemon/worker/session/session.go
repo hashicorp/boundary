@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/session"
@@ -503,13 +502,14 @@ func closeConnections(ctx context.Context, sessClient pbs.SessionServiceClient, 
 	// bit of formalization in terms of how we handle timeouts. For now, this
 	// just ensures consistency with the same status call in that it times out
 	// within an adequate period of time.
-	closeConnCtx, closeConnCancel := context.WithTimeout(ctx, common.StatusTimeout)
+	closeConnCtx, closeConnCancel := context.WithTimeout(ctx, time.Duration(CloseCallTimeout.Load()))
 	defer closeConnCancel()
 	response, err := closeConnection(closeConnCtx, sessClient, makeCloseConnectionRequest(closeInfo))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error marking connections closed",
 			"warning", "error contacting controller, connections will be closed only on worker",
 			"session_and_connection_ids", fmt.Sprintf("%#v", closeInfo),
+			"timeout", time.Duration(CloseCallTimeout.Load()).String(),
 		))
 
 		// Since we could not reach the controller, we have to make a "fake" response set.

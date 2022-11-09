@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -78,6 +79,8 @@ var testAuthorizedActions = []string{
 func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
+	statusGracePeriod := new(atomic.Int64)
+	statusGracePeriod.Store(int64(server.DefaultLiveness))
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, rw, rw, kms, o...)
 	}
@@ -102,7 +105,7 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
-	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn)
+	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
 }
 
 func TestGet(t *testing.T) {
@@ -2406,7 +2409,9 @@ func TestAuthorizeSession(t *testing.T) {
 		},
 	}
 
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn)
+	statusGracePeriod := new(atomic.Int64)
+	statusGracePeriod.Store(int64(server.DefaultLiveness))
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
 	require.NoError(t, err)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2571,7 +2576,9 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn)
+	statusGracePeriod := new(atomic.Int64)
+	statusGracePeriod.Store(int64(server.DefaultLiveness))
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
 	require.NoError(t, err)
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -3134,7 +3141,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 	org, proj := iam.TestScopes(t, iamRepo)
 
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn)
+	statusGracePeriod := new(atomic.Int64)
+	statusGracePeriod.Store(int64(server.DefaultLiveness))
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
 	require.NoError(t, err)
 
 	// Authorized user gets full permissions
