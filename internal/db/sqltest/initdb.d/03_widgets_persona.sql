@@ -115,6 +115,16 @@ begin;
     values
       ('kdkv___widget', 'kdk____widget', 'krkv___widget',     'kdk____widget'::bytea);
 
+    insert into kms_data_key_version_destruction_job
+      (key_id)
+    values
+      ('kdkv___widget');
+
+    insert into kms_data_key_version_destruction_job_run
+      (key_id, table_name, total_count)
+    values
+      ('kdkv___widget', 'auth_token', 100);
+  
   end;
   $$ language plpgsql;
 
@@ -156,11 +166,11 @@ begin;
     insert into auth_token
       (key_id, auth_account_id, public_id, token)
     values
-      ('key', 'apa___walter', 'tok___walter', 'tok___walter'::bytea),
-      ('key', 'apa1__walter', 'tok1__walter', 'tok1__walter'::bytea),
-      ('key', 'apa___warren', 'tok___warren', 'tok___warren'::bytea),
-      ('key', 'apa___waylon', 'tok___waylon', 'tok___waylon'::bytea),
-      ('key', 'apa___wilson', 'tok___wilson', 'tok___wilson'::bytea);
+      ('kdkv___widget', 'apa___walter', 'tok___walter', 'tok___walter'::bytea),
+      ('kdkv___widget', 'apa1__walter', 'tok1__walter', 'tok1__walter'::bytea),
+      ('kdkv___widget', 'apa___warren', 'tok___warren', 'tok___warren'::bytea),
+      ('kdkv___widget', 'apa___waylon', 'tok___waylon', 'tok___waylon'::bytea),
+      ('kdkv___widget', 'apa___wilson', 'tok___wilson', 'tok___wilson'::bytea);
 
     insert into auth_oidc_method
       (scope_id,       public_id,      client_id,      name,          state,            key_id,          issuer)
@@ -179,8 +189,8 @@ begin;
     insert into auth_token
       (key_id, auth_account_id, public_id, token)
     values
-      ('key', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea),
-      ('key', 'aoa___warren', 'oidc__warren', 'oidc__warren'::bytea);
+      ('kdkv___widget', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea),
+      ('kdkv___widget', 'aoa___warren', 'oidc__warren', 'oidc__warren'::bytea);
 
   end;
   $$ language plpgsql;

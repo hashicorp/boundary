@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/hashicorp/go-dbw"
+	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
@@ -109,7 +110,7 @@ func TestSetupWithMock(t *testing.T) (*DB, sqlmock.Sqlmock) {
 	return ret, mock
 }
 
-// TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
+// TestWrapper initializes an AEAD wrapping.Wrapper for testing
 func TestWrapper(t testing.TB) wrapping.Wrapper {
 	t.Helper()
 	rootKey := make([]byte, 32)
@@ -129,6 +130,25 @@ func TestWrapper(t testing.TB) wrapping.Wrapper {
 		t.Fatal(err)
 	}
 	return root
+}
+
+// TestDBWrapper initializes a DB wrapper for testing
+func TestDBWrapper(t testing.TB, conn *DB, purpose kms.KeyPurpose) wrapping.Wrapper {
+	t.Helper()
+	purposes := []kms.KeyPurpose{purpose}
+	if purpose != "oplog" {
+		// Always add the oplog purpose, most tests need it
+		purposes = append(purposes, "oplog")
+	}
+	kmsCache, err := kms.New(dbw.New(conn.wrapped.Load()), dbw.New(conn.wrapped.Load()), purposes)
+	require.NoError(t, err)
+	err = kmsCache.AddExternalWrapper(context.Background(), kms.KeyPurposeRootKey, TestWrapper(t))
+	require.NoError(t, err)
+	err = kmsCache.CreateKeys(context.Background(), "global", purposes)
+	require.NoError(t, err)
+	wrapper, err := kmsCache.GetWrapper(context.Background(), "global", purpose)
+	require.NoError(t, err)
+	return wrapper
 }
 
 // AssertPublicId is a test helper that asserts that the provided id is in

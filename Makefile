@@ -151,6 +151,10 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job_run.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job_progress.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job_run_allowed_table_name.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/controller.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/worker.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/root_certificate.pb.go
@@ -169,6 +173,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authmethods/auth_method.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/scopes/scope.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/scope_service.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/session_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/targets/target.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/target_service.pb.go

@@ -58,6 +58,7 @@ func TestDb_Update(t *testing.T) {
 	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
 	id := testId(t)
+	wrapper := TestDBWrapper(t, conn, "oplog")
 
 	badVersion := uint32(22)
 	versionOne := uint32(1)
@@ -395,10 +396,10 @@ func TestDb_Update(t *testing.T) {
 		user := testUser(t, conn, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
-		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
+		rowsUpdated, err := w.Update(testCtx, user, []string{"Name"}, nil,
 			// write oplogs for this update
 			WithOplog(
-				TestWrapper(t),
+				wrapper,
 				oplog.Metadata{
 					"key-only":           nil,
 					"deployment":         []string{"amex"},
@@ -445,7 +446,7 @@ func TestDb_Update(t *testing.T) {
 			user,
 			[]string{"Name"}, nil,
 			NewOplogMsg(&updateMsg),
-			WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}),
+			WithOplog(wrapper, oplog.Metadata{"alice": []string{"bob"}}),
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
@@ -488,7 +489,7 @@ func TestDb_Update(t *testing.T) {
 			"resource-public-id": []string{user.PublicId},
 			// "op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
 		}
-		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
+		err = w.WriteOplogEntryWith(context.Background(), wrapper, ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
 		require.NoError(err)
 
 		err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
@@ -568,7 +569,7 @@ func TestDb_Update(t *testing.T) {
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
 			WithOplog(
-				TestWrapper(t),
+				wrapper,
 				nil,
 			),
 		)
@@ -632,6 +633,7 @@ func TestDb_Create(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
+	wrapper := TestDBWrapper(t, conn, "oplog")
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := New(conn)
@@ -669,7 +671,7 @@ func TestDb_Create(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				TestWrapper(t),
+				wrapper,
 				oplog.Metadata{
 					"key-only":   nil,
 					"deployment": []string{"amex"},
@@ -700,7 +702,7 @@ func TestDb_Create(t *testing.T) {
 			context.Background(),
 			user,
 			NewOplogMsg(&createMsg),
-			WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}),
+			WithOplog(wrapper, oplog.Metadata{"alice": []string{"bob"}}),
 		)
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.InvalidParameter), err))
@@ -743,7 +745,7 @@ func TestDb_Create(t *testing.T) {
 			"resource-public-id": []string{user.PublicId},
 		}
 
-		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
+		err = w.WriteOplogEntryWith(context.Background(), wrapper, ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
 		require.NoError(err)
 
 		err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
@@ -784,7 +786,7 @@ func TestDb_Create(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				TestWrapper(t),
+				wrapper,
 				nil,
 			),
 		)
@@ -1326,6 +1328,7 @@ func TestDb_DoTx(t *testing.T) {
 func TestDb_Delete(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
+	wrapper := TestDBWrapper(t, conn, "oplog")
 	newUser := func() *db_test.TestUser {
 		w := New(conn)
 		u, err := db_test.NewTestUser()
@@ -1373,7 +1376,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "simple-no-oplog",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i: newUser(),
 			},
@@ -1383,7 +1386,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "with-where-no-delete",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i:   newUser(),
 				opt: []Option{WithWhere("1 = ?", 2)},
@@ -1395,7 +1398,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "with-where-and-delete",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i:   newUser(),
 				opt: []Option{WithWhere("1 = ?", 1)},
@@ -1406,7 +1409,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "valid-with-oplog",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i:        newUser(),
 				metadata: newMetadata,
@@ -1444,7 +1447,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "nil-underlying",
 			underlying: nil,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i: newUser(),
 			},
@@ -1455,7 +1458,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "not-found",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i: notFoundUser(),
 			},
@@ -1521,7 +1524,7 @@ func TestDb_Delete(t *testing.T) {
 			require.NoError(err)
 
 			deleteMsg := oplog.Message{}
-			rowsDeleted, err := w.Delete(context.Background(), user, NewOplogMsg(&deleteMsg), WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}))
+			rowsDeleted, err := w.Delete(context.Background(), user, NewOplogMsg(&deleteMsg), WithOplog(wrapper, oplog.Metadata{"alice": []string{"bob"}}))
 			require.Error(err)
 			assert.Equal(0, rowsDeleted)
 			assert.True(errors.Match(errors.T(errors.InvalidParameter), err))
@@ -1562,7 +1565,7 @@ func TestDb_Delete(t *testing.T) {
 			metadata := oplog.Metadata{
 				"resource-public-id": []string{user.PublicId},
 			}
-			err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &deleteMsg})
+			err = w.WriteOplogEntryWith(context.Background(), wrapper, ticket, metadata, []*oplog.Message{&createMsg, &deleteMsg})
 			require.NoError(err)
 
 			err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
@@ -1642,6 +1645,7 @@ func TestDb_Query(t *testing.T) {
 func TestDb_CreateItems(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, db)
+	wrapper := TestDBWrapper(t, db, "oplog")
 	testOplogResourceId := testId(t)
 
 	createFn := func() []any {
@@ -1694,7 +1698,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: createFn(),
 				opt: []Option{
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						oplog.Metadata{
 							"resource-public-id": []string{testOplogResourceId},
 							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
@@ -1725,7 +1729,7 @@ func TestDb_CreateItems(t *testing.T) {
 				opt: []Option{
 					NewOplogMsgs(&[]*oplog.Message{}),
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						oplog.Metadata{
 							"resource-public-id": []string{testOplogResourceId},
 							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
@@ -1752,7 +1756,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: createFn(),
 				opt: []Option{
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						nil,
 					),
 				},
@@ -1853,6 +1857,7 @@ func TestDb_CreateItems(t *testing.T) {
 func TestDb_DeleteItems(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, db)
+	wrapper := TestDBWrapper(t, db, "oplog")
 	testOplogResourceId := testId(t)
 
 	createFn := func() []any {
@@ -1909,7 +1914,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				opt: []Option{
 					NewOplogMsgs(&[]*oplog.Message{}),
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						oplog.Metadata{
 							"resource-public-id": []string{testOplogResourceId},
 							"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
@@ -1927,7 +1932,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				deleteItems: createFn(),
 				opt: []Option{
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						oplog.Metadata{
 							"resource-public-id": []string{testOplogResourceId},
 							"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
@@ -1946,7 +1951,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				deleteItems: createFn(),
 				opt: []Option{
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						nil,
 					),
 				},
@@ -2341,6 +2346,7 @@ func TestDb_GetTicket(t *testing.T) {
 func TestDb_WriteOplogEntryWith(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
+	wrapper := TestDBWrapper(t, conn, "oplog")
 	w := New(conn)
 	testCtx := context.Background()
 
@@ -2382,7 +2388,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "valid",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: metadata,
 				msgs:     []*oplog.Message{&createMsg},
@@ -2393,7 +2399,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "valid-multiple",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: metadata,
 				msgs:     []*oplog.Message{&createMsg, &createMsg},
@@ -2404,7 +2410,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "missing-ticket",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   nil,
 				metadata: metadata,
 				msgs:     []*oplog.Message{&createMsg},
@@ -2416,7 +2422,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "missing-db",
 			underlying: nil,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: metadata,
 				msgs:     []*oplog.Message{&createMsg},
@@ -2440,7 +2446,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "nil-metadata",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: nil,
 				msgs:     []*oplog.Message{&createMsg},
@@ -2452,7 +2458,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "empty-metadata",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: oplog.Metadata{},
 				msgs:     []*oplog.Message{&createMsg},

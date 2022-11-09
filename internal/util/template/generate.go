@@ -28,7 +28,7 @@ func New(ctx context.Context, raw string) (*Parsed, error) {
 
 	ret := &Parsed{
 		raw: raw,
-		funcMap: map[string]interface{}{
+		funcMap: map[string]any{
 			"truncateFrom": truncateFrom,
 		},
 	}
@@ -45,7 +45,7 @@ func New(ctx context.Context, raw string) (*Parsed, error) {
 }
 
 // Generate based on the provided template
-func (p *Parsed) Generate(ctx context.Context, data interface{}) (string, error) {
+func (p *Parsed) Generate(ctx context.Context, data any) (string, error) {
 	const op = "util.template.(Parsed).Generate"
 
 	switch {

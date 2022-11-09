@@ -2640,6 +2640,110 @@
         ]
       }
     },
+    "/v1/scopes/{id}:list-keys": {
+      "get": {
+        "summary": "List all keys in a Scope.",
+        "operationId": "ScopeService_ListKeys",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListKeysResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
+    "/v1/scopes/{scope_id}:list-key-version-destruction-jobs": {
+      "get": {
+        "summary": "Lists all pending key version destruction jobs in a Scope.",
+        "operationId": "ScopeService_ListKeyVersionDestructionJobs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListKeyVersionDestructionJobsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
+    "/v1/scopes:destroy-key-version": {
+      "post": {
+        "summary": "Destroy the specified key version in a Scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs.",
+        "operationId": "ScopeService_DestroyKeyVersion",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DestroyKeyVersionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DestroyKeyVersionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
+    "/v1/scopes:rotate-keys": {
+      "post": {
+        "summary": "Rotate all keys in a Scope.",
+        "operationId": "ScopeService_RotateKeys",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RotateKeysResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.RotateKeysRequest"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.ScopeService"
+        ]
+      }
+    },
     "/v1/sessions": {
       "get": {
         "summary": "Lists all Sessions.",
@@ -4945,6 +5049,93 @@
       },
       "title": "Role contains all fields related to a Role resource"
     },
+    "controller.api.resources.scopes.v1.Key": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Key."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource."
+        },
+        "purpose": {
+          "type": "string",
+          "description": "The purpose of the Key."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this Key was created."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the Key."
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyVersion"
+          },
+          "description": "The versions of the key."
+        }
+      },
+      "description": "Key contains all fields related to a Key in a Scope."
+    },
+    "controller.api.resources.scopes.v1.KeyVersion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the key version."
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The iteration of the Key that this version represents."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this version was created."
+        }
+      },
+      "title": "KeyVersion describes a specific version of a key and holds the actual key material"
+    },
+    "controller.api.resources.scopes.v1.KeyVersionDestructionJob": {
+      "type": "object",
+      "properties": {
+        "key_version_id": {
+          "type": "string",
+          "description": "The ID of the Key version this job relates to."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Scope information for this resource."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the key version destruction job. One of \"pending\", \"running\" or \"completed\"."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time this key version destruction job was created."
+        },
+        "completed_count": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of rows that have been successfully re-encrypted with a new key version.\nAll rows must be re-encrypted before the key version can be destroyed."
+        },
+        "total_count": {
+          "type": "string",
+          "format": "int64",
+          "description": "The total number of rows that need re-encrypting."
+        }
+      },
+      "description": "KeyVersionDestructionJob holds information about a pending key version destruction job."
+    },
     "controller.api.resources.scopes.v1.Scope": {
       "type": "object",
       "properties": {
@@ -6116,6 +6307,26 @@
     "controller.api.services.v1.DeleteWorkerResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.DestroyKeyVersionRequest": {
+      "type": "object",
+      "properties": {
+        "scope_id": {
+          "type": "string"
+        },
+        "key_version_id": {
+          "type": "string"
+        }
+      }
+    },
+    "controller.api.services.v1.DestroyKeyVersionResponse": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "description": "Destruction state. One of \"pending\" or \"completed\".\nUse GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs\nto monitor pending destruction jobs."
+        }
+      }
+    },
     "controller.api.services.v1.GetAccountResponse": {
       "type": "object",
       "properties": {
@@ -6362,6 +6573,28 @@
         }
       }
     },
+    "controller.api.services.v1.ListKeyVersionDestructionJobsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyVersionDestructionJob"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListKeysResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.scopes.v1.Key"
+          }
+        }
+      }
+    },
     "controller.api.services.v1.ListManagedGroupsResponse": {
       "type": "object",
       "properties": {
@@ -6518,6 +6751,20 @@
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
+    },
+    "controller.api.services.v1.RotateKeysRequest": {
+      "type": "object",
+      "properties": {
+        "scope_id": {
+          "type": "string"
+        },
+        "rewrap": {
+          "type": "boolean"
+        }
+      }
+    },
+    "controller.api.services.v1.RotateKeysResponse": {
+      "type": "object"
     },
     "controller.api.services.v1.SetGroupMembersResponse": {
       "type": "object",

@@ -59,6 +59,7 @@ begin;
   $$ language plpgsql;
 
   -- Replaces view from 34/04_views.up.sql
+  -- Replaced in 58/06_add_session_private_key_column
   drop view session_list;
   create view session_list as
   select

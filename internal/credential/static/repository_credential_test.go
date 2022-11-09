@@ -1342,6 +1342,47 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 	}
 }
 
+func TestRepository_UpdatePasswordCredentialKeyUpdate(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	kkms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kkms)
+	require.NoError(err)
+
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	credStore := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	orig, err := repo.CreateUsernamePasswordCredential(ctx, prj.GetPublicId(), &UsernamePasswordCredential{
+		UsernamePasswordCredential: &store.UsernamePasswordCredential{
+			Username: "user",
+			Password: []byte("pass"),
+			StoreId:  credStore.PublicId,
+		},
+	})
+	require.NoError(err)
+
+	err = kkms.RotateKeys(ctx, prj.GetPublicId())
+	require.NoError(err)
+
+	orig.Password = []byte("pass1") // Company policy to change password every 3 months
+
+	got, _, err := repo.UpdateUsernamePasswordCredential(ctx, prj.GetPublicId(), orig, orig.GetVersion(), []string{"Password"})
+	require.NoError(err)
+
+	// Validate that the KeyId has changed
+	assert.NotEqual(orig.KeyId, got.KeyId)
+
+	// Validate hmac
+	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase, kms.WithKeyId(got.KeyId))
+	require.NoError(err)
+	hm, err := crypto.HmacSha256(ctx, orig.Password, databaseWrapper, []byte(credStore.GetPublicId()), nil, crypto.WithEd25519())
+	require.NoError(err)
+	assert.Equal([]byte(hm), got.PasswordHmac)
+}
+
 func TestRepository_UpdateSshPrivateKeyCredential(t *testing.T) {
 	const testSecondarySshPrivateKeyPem = `
 -----BEGIN OPENSSH PRIVATE KEY-----

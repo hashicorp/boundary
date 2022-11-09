@@ -38,4 +38,27 @@ const (
 		where
 			w.worker_key_identifier in (?)
 	`
+
+	workerAuthRewrapQuery = `
+		select distinct
+			auth.worker_key_identifier,
+			auth.controller_encryption_priv_key,
+			auth.key_id
+		from server_worker worker
+			inner join worker_auth_authorized auth
+				on auth.worker_id = worker.public_id
+		where worker.scope_id = ?
+			and auth.key_id = ?
+	`
+	workerAuthServerLedActivationTokenRewrapQuery = `
+		select distinct
+			auth_token.worker_id,
+			auth_token.creation_time_encrypted,
+			auth_token.key_id
+		from server_worker worker
+			inner join worker_auth_server_led_activation_token auth_token
+				on auth_token.worker_id = worker.public_id
+		where worker.scope_id = ?
+			and auth_token.key_id = ?
+	`
 )

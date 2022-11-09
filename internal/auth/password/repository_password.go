@@ -81,7 +81,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 			return acct.Account, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("update credential"))
 		}
 
-		fields := []string{"CtSalt", "DerivedKey", "PasswordConfId"}
+		fields := []string{"CtSalt", "DerivedKey", "PasswordConfId", "KeyId"}
 		metadata := cred.oplog(oplog.OpType_OP_TYPE_UPDATE)
 
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},

@@ -410,7 +410,7 @@ func (r *Repository) UpdateUsernamePasswordCredential(ctx context.Context,
 			}
 
 			// Set PasswordHmac and CtPassword masks for update.
-			dbMask = append(dbMask, "PasswordHmac", "CtPassword")
+			dbMask = append(dbMask, "PasswordHmac", "CtPassword", "KeyId")
 		}
 	}
 
@@ -531,6 +531,7 @@ func (r *Repository) UpdateSshPrivateKeyCredential(ctx context.Context,
 				}
 			}
 
+			dbMask = append(dbMask, "KeyId")
 			if strings.EqualFold(privateKeyField, f) {
 				// Set PrivateKeyHmac and PrivateKeyEncrypted masks for update.
 				dbMask = append(dbMask, "PrivateKeyHmac", "PrivateKeyEncrypted")
@@ -672,7 +673,7 @@ func (r *Repository) UpdateJsonCredential(ctx context.Context,
 		}
 
 		// Set ObjectHmac and ObjectEncrypted masks for update.
-		dbMask = append(dbMask, "ObjectHmac", "ObjectEncrypted")
+		dbMask = append(dbMask, "ObjectHmac", "ObjectEncrypted", "KeyId")
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
