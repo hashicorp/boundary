@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/util"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -377,19 +378,19 @@ func contains(ss []string, t string) bool {
 }
 
 // newCert creates a new session certificate. If addresses are supplied, they will be parsed and added to IP or DNS SANs as appropriate.
-func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string, addresses []string, exp time.Time, rand io.Reader) (ed25519.PrivateKey, []byte, error) {
+func newCert(ctx context.Context, jobId string, addresses []string, exp time.Time, rand io.Reader) (ed25519.PrivateKey, []byte, error) {
 	const op = "session.newCert"
-	if wrapper == nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
-	}
-	if userId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
-	}
 	if jobId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing job id")
 	}
 	if len(addresses) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
+	}
+	if exp.IsZero() {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiry")
+	}
+	if util.IsNil(rand) {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing random data source")
 	}
 	pubKey, privKey, err := ed25519.GenerateKey(rand)
 	if err != nil {
@@ -439,6 +440,9 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 
 func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).encrypt"
+	if util.IsNil(cipher) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
+	}
 	// Split encryption per field since they can be independently nil.
 	if len(s.TofuToken) > 0 {
 		type tofuToken struct {
@@ -476,6 +480,9 @@ func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 
 func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).decrypt"
+	if util.IsNil(cipher) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
+	}
 	// Split decryption per field since they can be independently nil.
 	if len(s.CtTofuToken) > 0 {
 		type tofuToken struct {

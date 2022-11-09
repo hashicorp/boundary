@@ -138,6 +138,8 @@ func WithPermissions(p *perms.UserPermissions) Option {
 
 // WithIgnoreDecryptionFailures is used to ignore decryption
 // failures when doing lookups. This should be used sparingly.
+// It is currently only used to allow a user to cancel a session
+// in the presence of a undecryptable TOFU token.
 func WithIgnoreDecryptionFailures(ignoreFailures bool) Option {
 	return func(o *options) {
 		o.withIgnoreDecryptionFailures = ignoreFailures

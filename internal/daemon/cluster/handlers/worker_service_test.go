@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
@@ -22,10 +21,12 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh/testdata"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestLookupSession(t *testing.T) {
@@ -145,6 +146,11 @@ func TestLookupSession(t *testing.T) {
 			name:      "Valid",
 			sessionId: sess.PublicId,
 			want: &pbs.LookupSessionResponse{
+				Authorization: &targets.SessionAuthorizationData{
+					SessionId:   sess.PublicId,
+					Certificate: sess.Certificate,
+					PrivateKey:  sess.CertificatePrivateKey,
+				},
 				ConnectionLimit: 1,
 				ConnectionsLeft: 1,
 				Version:         1,
@@ -160,6 +166,11 @@ func TestLookupSession(t *testing.T) {
 			name:      "Valid-with-worker-creds",
 			sessionId: sessWithCreds.PublicId,
 			want: &pbs.LookupSessionResponse{
+				Authorization: &targets.SessionAuthorizationData{
+					SessionId:   sessWithCreds.PublicId,
+					Certificate: sessWithCreds.Certificate,
+					PrivateKey:  sessWithCreds.CertificatePrivateKey,
+				},
 				ConnectionLimit: 1,
 				ConnectionsLeft: 1,
 				Version:         1,
@@ -192,9 +203,8 @@ func TestLookupSession(t *testing.T) {
 				cmp.Diff(
 					tc.want,
 					got,
-					cmpopts.IgnoreUnexported(pbs.LookupSessionResponse{},
-						pbs.Credential{}, pbs.UsernamePassword{}, pbs.SshPrivateKey{}),
-					cmpopts.IgnoreFields(pbs.LookupSessionResponse{}, "Expiration", "Authorization"),
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.LookupSessionResponse{}, "expiration"),
 				),
 			)
 		})

@@ -80,12 +80,9 @@ func Test_TestWorker(t *testing.T) {
 
 func Test_TestCert(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	wrapper := db.TestWrapper(t)
-	userId, err := db.NewPublicId(iam.UserPrefix)
-	require.NoError(err)
 	sessionId, err := newId()
 	require.NoError(err)
-	key, cert, err := TestCert(wrapper, userId, sessionId)
+	key, cert, err := TestCert(sessionId)
 	require.NoError(err)
 	assert.NotNil(key)
 	assert.NotNil(cert)

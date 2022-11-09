@@ -87,7 +87,7 @@ func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c Comp
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 	wrapper, err := kmsCache.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeSessions)
 	require.NoError(err)
-	privateKey, certBytes, err := newCert(ctx, wrapper, c.UserId, id, []string{"127.0.0.1", "localhost"}, c.ExpirationTime.Timestamp.AsTime(), rand.Reader)
+	privateKey, certBytes, err := newCert(ctx, id, []string{"127.0.0.1", "localhost"}, c.ExpirationTime.Timestamp.AsTime(), rand.Reader)
 	require.NoError(err)
 	s.Certificate = certBytes
 	s.CertificatePrivateKey = privateKey
@@ -188,6 +188,6 @@ func TestTofu(t testing.TB) []byte {
 // TestCert is a temporary test func that intentionally doesn't take testing.T
 // as a parameter.  It's currently used in controller.jobTestingHandler() and
 // should be deprecated once that function is refactored to use sessions properly.
-func TestCert(wrapper wrapping.Wrapper, userId, jobId string) (ed25519.PrivateKey, []byte, error) {
-	return newCert(context.Background(), wrapper, userId, jobId, []string{"127.0.0.1", "localhost"}, time.Now().Add(5*time.Minute), rand.Reader)
+func TestCert(jobId string) (ed25519.PrivateKey, []byte, error) {
+	return newCert(context.Background(), jobId, []string{"127.0.0.1", "localhost"}, time.Now().Add(5*time.Minute), rand.Reader)
 }

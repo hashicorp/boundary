@@ -2,8 +2,11 @@ package session
 
 import (
 	"context"
+	"crypto"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
+	"net"
 	"testing"
 	"time"
 
@@ -11,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -22,7 +24,6 @@ func TestSession_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	composedOf := testSessionCredentialParams(t, conn, wrapper, iamRepo)
 	exp := &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))}
@@ -184,9 +185,7 @@ func TestSession_Create(t *testing.T) {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
-				wrapper, err := kmsCache.GetWrapper(ctx, tt.args.composedOf.ProjectId, kms.KeyPurposeSessions)
-				require.NoError(err)
-				privKey, certBytes, err := newCert(ctx, wrapper, got.UserId, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime(), rand.Reader)
+				privKey, certBytes, err := newCert(ctx, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime(), rand.Reader)
 				if tt.wantAddrErr {
 					require.Error(err)
 					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -322,4 +321,40 @@ func TestSession_SetTableName(t *testing.T) {
 			assert.Equal(tt.want, s.TableName())
 		})
 	}
+}
+
+func Test_newCert(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	jobId := "job-id"
+	addresses := []string{"127.0.0.1", "localhost"}
+	expireTime := time.Now().Add(5 * time.Minute)
+	reader := rand.Reader
+
+	t.Run("fails-on-invalid-job-id", func(t *testing.T) {
+		_, _, err := newCert(ctx, "", addresses, expireTime, reader)
+		require.Error(t, err)
+	})
+	t.Run("fails-on-invalid-addresses", func(t *testing.T) {
+		_, _, err := newCert(ctx, jobId, nil, expireTime, reader)
+		require.Error(t, err)
+	})
+	t.Run("fails-on-invalid-expiry", func(t *testing.T) {
+		_, _, err := newCert(ctx, jobId, addresses, time.Time{}, reader)
+		require.Error(t, err)
+	})
+	t.Run("fails-on-invalid-random-reader", func(t *testing.T) {
+		_, _, err := newCert(ctx, jobId, addresses, expireTime, nil)
+		require.Error(t, err)
+	})
+	t.Run("succeeds-on-valid-inputs", func(t *testing.T) {
+		key, cert, err := newCert(ctx, jobId, addresses, expireTime, reader)
+		require.NoError(t, err)
+		parsedCert, err := x509.ParseCertificate(cert)
+		require.NoError(t, err)
+		assert.Equal(t, parsedCert.DNSNames, []string{jobId, "localhost"})
+		assert.Equal(t, parsedCert.IPAddresses, []net.IP{{127, 0, 0, 1}})
+		assert.True(t, parsedCert.NotAfter.Equal(expireTime.Truncate(time.Second)), "NotAfter (%q) != expireTime (%q)", parsedCert.NotAfter.Format(time.RFC3339Nano), expireTime.Format(time.RFC3339Nano))
+		assert.Equal(t, parsedCert.PublicKey.(crypto.PublicKey), ed25519.PrivateKey(key).Public())
+	})
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/util"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
@@ -66,7 +67,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	privKey, certBytes, err := newCert(ctx, sessionWrapper, newSession.UserId, id, workerAddresses, newSession.ExpirationTime.Timestamp.AsTime(), r.randomReader)
+	privKey, certBytes, err := newCert(ctx, id, workerAddresses, newSession.ExpirationTime.Timestamp.AsTime(), r.randomReader)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -681,9 +682,30 @@ func fetchConnections(ctx context.Context, r db.Reader, sessionId string, opt ..
 // and use the session key unconditionally.
 func decryptAndMaybeUpdateSession(ctx context.Context, kmsRepo *kms.Kms, session *Session, writer db.Writer) error {
 	const op = "session.decryptAndMaybeUpdateSession"
+	if kmsRepo == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing kms repo")
+	}
+	if session == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session")
+	}
+	if util.IsNil(writer) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing writer")
+	}
+	if session.ProjectId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session project ID")
+	}
+	if session.KeyId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session key ID")
+	}
+	if session.UserId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session user ID")
+	}
+	if session.PublicId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session ID")
+	}
 	sessionWrapper, err := kmsRepo.GetWrapper(ctx, session.ProjectId, kms.KeyPurposeSessions, kms.WithKeyId(session.KeyId))
 	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get session wrapper"))
 	}
 	if len(session.CtCertificatePrivateKey) > 0 {
 		// New-style session with private key stored in DB, just decrypt.
@@ -695,7 +717,7 @@ func decryptAndMaybeUpdateSession(ctx context.Context, kmsRepo *kms.Kms, session
 	// No certificate private key present, this is a legacy session with a
 	// private key derived from the key. Derive it again and store it back
 	// in the DB.
-	_, session.CertificatePrivateKey, err = DeriveED25519Key(ctx, sessionWrapper, session.UserId, session.GetPublicId())
+	_, session.CertificatePrivateKey, err = DeriveED25519Key(ctx, sessionWrapper, session.UserId, session.PublicId)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("Error deriving session key"))
 	}
