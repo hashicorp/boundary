@@ -99,7 +99,8 @@ func (r requestRecorder) Record(err error) {
 
 type connectionTrackingListener struct {
 	net.Listener
-	connCount prometheus.Gauge
+	acceptedConns prometheus.Counter
+	closedConns   prometheus.Counter
 }
 
 // NewConnectionTrackingListener registers a new Prometheus gauge with an unique
@@ -107,18 +108,18 @@ type connectionTrackingListener struct {
 // are accepted and closed.
 // Multiple calls to Close() a listener connection will only decrement the gauge
 // once. A call to Close() will decrement the gauge even if Close() errors.
-func NewConnectionTrackingListener(l net.Listener, g prometheus.Gauge) *connectionTrackingListener {
-	return &connectionTrackingListener{Listener: l, connCount: g}
+func NewConnectionTrackingListener(l net.Listener, ac prometheus.Counter, cc prometheus.Counter) *connectionTrackingListener {
+	return &connectionTrackingListener{Listener: l, acceptedConns: ac, closedConns: cc}
 }
 
 type connectionTrackingListenerConn struct {
 	net.Conn
-	dec   sync.Once
-	gauge prometheus.Gauge
+	dec         sync.Once
+	closedConns prometheus.Counter
 }
 
 func (c *connectionTrackingListenerConn) Close() error {
-	c.dec.Do(func() { c.gauge.Dec() })
+	c.dec.Do(func() { c.closedConns.Inc() })
 	return c.Conn.Close()
 }
 
@@ -127,8 +128,8 @@ func (l *connectionTrackingListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.connCount.Inc()
-	return &connectionTrackingListenerConn{Conn: conn, gauge: l.connCount}, nil
+	l.acceptedConns.Inc()
+	return &connectionTrackingListenerConn{Conn: conn, closedConns: l.closedConns}, nil
 }
 
 // StatusFromError retrieves the *status.Status from the provided error.  It'll

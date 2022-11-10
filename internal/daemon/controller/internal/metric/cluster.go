@@ -34,13 +34,24 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 	metric.ListGrpcLabels,
 )
 
-// activeConnections keeps a count of the current active connections to a controller.
-var activeConnections = prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
+// acceptedConnsTotal keeps a count of the total accepted connections to a controller.
+var acceptedConnsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
 		Namespace: globals.MetricNamespace,
 		Subsystem: clusterSubSystem,
-		Name:      "active_connections",
-		Help:      "Count of active network connections to this controller.",
+		Name:      "accepted_connections_total",
+		Help:      "Count of total accepted network connections to this controller.",
+	},
+	[]string{metric.LabelConnectionPurpose},
+)
+
+// closedConnsTotal keeps a count of the total closed connections to a controller.
+var closedConnsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: clusterSubSystem,
+		Name:      "closed_connections_total",
+		Help:      "Count of total closed network connections to this controller.",
 	},
 	[]string{metric.LabelConnectionPurpose},
 )
@@ -59,7 +70,7 @@ var expectedGrpcCodes = []codes.Code{
 
 func InstrumentClusterTrackingListener(l net.Listener, purpose string) net.Listener {
 	p := prometheus.Labels{metric.LabelConnectionPurpose: purpose}
-	return metric.NewConnectionTrackingListener(l, activeConnections.With(p))
+	return metric.NewConnectionTrackingListener(l, acceptedConnsTotal.With(p), closedConnsTotal.With(p))
 }
 
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
@@ -72,5 +83,9 @@ func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterCollectors(r prometheus.Registerer, server *grpc.Server) {
-	metric.InitializeGrpcCollectorsFromServer(r, grpcRequestLatency, *activeConnections, server, expectedGrpcCodes)
+	metric.InitializeGrpcCollectorsFromServer(r, grpcRequestLatency, server, expectedGrpcCodes)
+}
+
+func InitializeConnectionCounters(r prometheus.Registerer) {
+	metric.InitializeConnectionCounters(r, []prometheus.CounterVec{*acceptedConnsTotal, *closedConnsTotal})
 }

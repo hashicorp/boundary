@@ -237,6 +237,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		}
 	}
 
+	metric.InitializeConnectionCounters(c.conf.PrometheusRegisterer)
 	metric.InitializeClusterCollectors(c.conf.PrometheusRegisterer, workerServer)
 
 	ln.GrpcServer = workerServer
@@ -249,7 +250,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 			}
 		}()
 		go func() {
-			err := handleSecondaryConnection(c.baseContext, metric.InstrumentClusterTrackingListener(reverseGrpcListener, "reverse-grpc"), c.downstreamRoutes, -1)
+			err := handleSecondaryConnection(c.baseContext, metric.InstrumentClusterTrackingListener(revPkiWorkerTrackingListener, "reverse-grpc"), c.downstreamRoutes, -1)
 			if err != nil {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
 			}

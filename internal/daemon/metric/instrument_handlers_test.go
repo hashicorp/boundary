@@ -30,32 +30,41 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 	ListGrpcLabels,
 )
 
-var testActiveConns prometheus.GaugeVec = *prometheus.NewGaugeVec(
-	prometheus.GaugeOpts{
+var testAcceptedConns prometheus.CounterVec = *prometheus.NewCounterVec(
+	prometheus.CounterOpts{
 		Namespace: globals.MetricNamespace,
 		Subsystem: testSubsystem,
-		Name:      "test_active_connections",
-		Help:      "Test GaugeVec.",
+		Name:      "test_accepted_connections_total",
+		Help:      "Test CounterVec.",
 	},
 	[]string{LabelConnectionPurpose},
 )
 
-type testPrometheusGauge struct {
+var testClosedConns prometheus.CounterVec = *prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: testSubsystem,
+		Name:      "test_closed_connections_total",
+		Help:      "Test CounterVec.",
+	},
+	[]string{LabelConnectionPurpose},
+)
+
+type testPrometheusCounter struct {
 	prometheus.Metric
 	prometheus.Collector
 
 	incCalledN int
-	decCalledN int
 	t          *testing.T
 }
 
-func (tpg *testPrometheusGauge) Set(float64) { tpg.t.Fatal("testPrometheusGauge Set() called") }
-func (tpg *testPrometheusGauge) Inc()        { tpg.incCalledN++ }
-func (tpg *testPrometheusGauge) Dec()        { tpg.decCalledN++ }
-func (tpg *testPrometheusGauge) Add(float64) { tpg.t.Fatal("testPrometheusGauge Add() called") }
-func (tpg *testPrometheusGauge) Sub(float64) { tpg.t.Fatal("testPrometheusGauge Sub() called") }
-func (tpg *testPrometheusGauge) SetToCurrentTime() {
-	tpg.t.Fatal("testPrometheusGauge SetToCurrentTime() called")
+func (tpg *testPrometheusCounter) Set(float64) { tpg.t.Fatal("testPrometheusCounter Set() called") }
+func (tpg *testPrometheusCounter) Inc()        { tpg.incCalledN++ }
+func (tpg *testPrometheusCounter) Dec()        { tpg.t.Fatal("testPrometheusCounter Dec() called") }
+func (tpg *testPrometheusCounter) Add(float64) { tpg.t.Fatal("testPrometheusCounter Add() called") }
+func (tpg *testPrometheusCounter) Sub(float64) { tpg.t.Fatal("testPrometheusCounter Sub() called") }
+func (tpg *testPrometheusCounter) SetToCurrentTime() {
+	tpg.t.Fatal("testPrometheusCounter SetToCurrentTime() called")
 }
 
 type testListener struct {
@@ -105,8 +114,9 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 	t.Run("set-label",
 		func(t *testing.T) {
 			l := &testListener{}
-			labeledGauge := testActiveConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label"})
-			ctl := NewConnectionTrackingListener(l, labeledGauge)
+			acceptedConns := testAcceptedConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label"})
+			closedConns := testClosedConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label"})
+			ctl := NewConnectionTrackingListener(l, acceptedConns, closedConns)
 			require.NotNil(t, ctl)
 
 			assert.Equal(t, ctl.Listener, l)
@@ -115,122 +125,132 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			require.NotNil(t, cc)
 
 			// check purpose label was populated correctly by attempting to delete it
-			assert.Equal(t, testActiveConns.DeleteLabelValues("test_label"), true)
+			assert.Equal(t, testAcceptedConns.DeleteLabelValues("test_label"), true)
+			assert.Equal(t, testClosedConns.DeleteLabelValues("test_label"), true)
 			require.NoError(t, cc.Close())
 		})
 	t.Run("accept-err",
 		func(t *testing.T) {
-			tpg := &testPrometheusGauge{t: t}
+			tpcAcc := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			el := &erroringAcceptListener{}
-			ctl := NewConnectionTrackingListener(el, tpg)
+			ctl := NewConnectionTrackingListener(el, tpcAcc, tpcClo)
 			require.NotNil(t, ctl)
 
 			cc, err := ctl.Accept()
 			assert.Nil(t, cc)
 			assert.Contains(t, "error for testcase", err.Error())
-			assert.Equal(t, 0, tpg.incCalledN)
-			assert.Equal(t, 0, tpg.decCalledN)
+			assert.Equal(t, 0, tpcAcc.incCalledN)
+			assert.Equal(t, 0, tpcClo.incCalledN)
 		})
 	t.Run("accept-multiple",
 		func(t *testing.T) {
-			tpg := &testPrometheusGauge{t: t}
+			tpcAcc := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			n := 10
 			for i := 0; i < n; i++ {
 				l := &testListener{}
-				ctl := NewConnectionTrackingListener(l, tpg)
+				ctl := NewConnectionTrackingListener(l, tpcAcc, tpcClo)
 				require.NotNil(t, ctl)
 				cc, err := ctl.Accept()
-				assert.NotNil(t, cc)
-				assert.NoError(t, err)
+				require.NotNil(t, cc)
+				require.NoError(t, err)
+				assert.Equal(t, i+1, tpcAcc.incCalledN)
+
+				require.NoError(t, cc.Close())
+				assert.Equal(t, i+1, tpcClo.incCalledN)
 			}
-			assert.Equal(t, n, tpg.incCalledN)
 		})
 	t.Run("close-err",
 		func(t *testing.T) {
-			tpg := &testPrometheusGauge{t: t}
+			tpcAcc := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			el := &erroringCloseListener{}
-			ctl := NewConnectionTrackingListener(el, tpg)
+			ctl := NewConnectionTrackingListener(el, tpcAcc, tpcClo)
 			require.NotNil(t, ctl)
 
 			cc, err := ctl.Accept()
 			require.NotNil(t, cc)
 			require.NoError(t, err)
-			assert.Equal(t, 1, tpg.incCalledN)
+			assert.Equal(t, 1, tpcAcc.incCalledN)
 
 			assert.Error(t, cc.Close())
-			assert.Equal(t, 1, tpg.decCalledN)
+			assert.Equal(t, 1, tpcClo.incCalledN)
 		})
 	t.Run("close-repeat-calls",
 		func(t *testing.T) {
-			tpg := &testPrometheusGauge{t: t}
+			tpcAcc := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			l := &testListener{}
-			ctl := NewConnectionTrackingListener(l, tpg)
+			ctl := NewConnectionTrackingListener(l, tpcAcc, tpcClo)
 			require.NotNil(t, ctl)
 
 			cc, err := ctl.Accept()
 			require.Nil(t, err)
 			require.NotNil(t, cc)
-			assert.Equal(t, 0, tpg.decCalledN)
+			assert.Equal(t, 0, tpcClo.incCalledN)
 
 			for i := 0; i <= 5; i++ {
 				assert.NoError(t, cc.Close())
 			}
-			assert.Equal(t, 1, tpg.decCalledN)
+			assert.Equal(t, 1, tpcClo.incCalledN)
 		})
 	t.Run("inc-dec",
 		func(t *testing.T) {
-			tpg := &testPrometheusGauge{t: t}
+			tpcAcc := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			l := &testListener{}
 
-			ctl := NewConnectionTrackingListener(l, tpg)
+			ctl := NewConnectionTrackingListener(l, tpcAcc, tpcClo)
 			require.NotNil(t, ctl)
-			assert.Equal(t, 0, tpg.incCalledN)
+			assert.Equal(t, 0, tpcAcc.incCalledN)
 
 			cc, err := ctl.Accept()
 			require.Nil(t, err)
 			require.NotNil(t, cc)
-			assert.Equal(t, 1, tpg.incCalledN)
+			assert.Equal(t, 1, tpcAcc.incCalledN)
 
 			require.NoError(t, cc.Close())
-			assert.Equal(t, 1, tpg.decCalledN)
+			assert.Equal(t, 1, tpcClo.incCalledN)
 		},
 	)
 	t.Run("more-inc-dec",
 		func(t *testing.T) {
-			tpg := &testPrometheusGauge{t: t}
+			tpcAcc := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			l1 := &testListener{}
 			l2 := &testListener{}
 			l3 := &testListener{}
 
-			ctl1 := NewConnectionTrackingListener(l1, tpg)
+			ctl1 := NewConnectionTrackingListener(l1, tpcAcc, tpcClo)
 			require.NotNil(t, ctl1)
-			assert.Equal(t, 0, tpg.incCalledN)
+			assert.Equal(t, 0, tpcAcc.incCalledN)
 
 			cc1, err := ctl1.Accept()
 			require.NoError(t, err)
 			require.NotNil(t, cc1)
-			assert.Equal(t, 1, tpg.incCalledN)
+			assert.Equal(t, 1, tpcAcc.incCalledN)
 
-			ctl2 := NewConnectionTrackingListener(l2, tpg)
+			ctl2 := NewConnectionTrackingListener(l2, tpcAcc, tpcClo)
 			require.NotNil(t, ctl2)
 			cc2, err := ctl2.Accept()
 			require.NoError(t, err)
 			require.NotNil(t, cc2)
-			assert.Equal(t, 2, tpg.incCalledN)
+			assert.Equal(t, 2, tpcAcc.incCalledN)
 
 			require.NoError(t, cc1.Close())
 			require.NoError(t, cc2.Close())
-			assert.Equal(t, 2, tpg.decCalledN)
+			assert.Equal(t, 2, tpcClo.incCalledN)
 
-			ctl3 := NewConnectionTrackingListener(l3, tpg)
+			ctl3 := NewConnectionTrackingListener(l3, tpcAcc, tpcClo)
 			require.NotNil(t, ctl3)
 			cc3, err := ctl3.Accept()
 			require.NoError(t, err)
 			require.NotNil(t, cc3)
-			assert.Equal(t, 3, tpg.incCalledN)
+			assert.Equal(t, 3, tpcAcc.incCalledN)
 
 			require.NoError(t, cc3.Close())
-			assert.Equal(t, 3, tpg.decCalledN)
+			assert.Equal(t, 3, tpcClo.incCalledN)
 		},
 	)
 }

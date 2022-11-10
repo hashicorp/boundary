@@ -196,6 +196,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		}
 	}
 
+	metric.InitializeConnectionCounters(w.conf.PrometheusRegisterer)
 	metric.InitializeClusterServerCollectors(w.conf.PrometheusRegisterer, downstreamServer)
 
 	ln.GrpcServer = downstreamServer
@@ -214,7 +215,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	return func() {
 		go w.workerAuthSplitListener.Start()
-		go httpServer.Serve(proxyListener)
+		go httpServer.Serve(metric.InstrumentWorkerClusterTrackingListener(proxyListener, "proxy"))
 		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(pkiWorkerTrackingListener, "grpc"))
 		go handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revPkiWorkerTrackingListener, "reverse-grpc"), w.downstreamRoutes, -1)
 	}, nil

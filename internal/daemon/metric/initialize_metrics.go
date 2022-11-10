@@ -87,14 +87,23 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 	}
 }
 
-// InitializeGrpcCollectorsFromServer registers and zeroes a Prometheus
-// histogram, finding all service and method labels from the provided gRPC
-// server.
-func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, g prometheus.GaugeVec, server *grpc.Server, codes []codes.Code) {
+func InitializeConnectionCounters(r prometheus.Registerer, counters []prometheus.CounterVec) {
 	if r == nil {
 		return
 	}
-	r.MustRegister(v, g)
+	for _, c := range counters {
+		r.MustRegister(c)
+	}
+}
+
+// InitializeGrpcCollectorsFromServer registers and zeroes a Prometheus
+// histogram, finding all service and method labels from the provided gRPC
+// server.
+func InitializeGrpcCollectorsFromServer(r prometheus.Registerer, v prometheus.ObserverVec, server *grpc.Server, codes []codes.Code) {
+	if r == nil {
+		return
+	}
+	r.MustRegister(v)
 
 	for serviceName, info := range server.GetServiceInfo() {
 		for _, mInfo := range info.Methods {
