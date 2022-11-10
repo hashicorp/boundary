@@ -26,7 +26,6 @@ import (
 	berrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -48,21 +47,6 @@ import (
 )
 
 const (
-	// defaultStatusGracePeriod is the default status grace period, or the period
-	// of time that we will go without a status report before we start
-	// disconnecting and marking connections as closed. This is tied to the
-	// server default liveness setting, a related value. See the server package
-	// for more details.
-	defaultStatusGracePeriod = server.DefaultLiveness
-
-	// statusGracePeriodEnvVar is the environment variable that can be used to
-	// configure the status grace period. This setting is provided in seconds,
-	// and can never be lower than the default status grace period defined above.
-	//
-	// TODO: This value is temporary, it will be removed once we have a better
-	// story/direction on attributes and system defaults.
-	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
-
 	// File name to use for storing workerAuth requests
 	WorkerAuthReqFile = "auth_request_token"
 )
@@ -144,11 +128,6 @@ type Server struct {
 	DevDatabaseCleanupFunc func() error
 
 	Database *db.DB
-
-	// StatusGracePeriodDuration represents the period of time (as a
-	// duration) that the controller will wait before marking
-	// connections from a disconnected worker as invalid.
-	StatusGracePeriodDuration time.Duration
 }
 
 // NewServer creates a new Server.
@@ -806,49 +785,4 @@ func MakeSighupCh() chan struct{} {
 		}
 	}()
 	return resultCh
-}
-
-// SetStatusGracePeriodDuration sets the value for
-// StatusGracePeriodDuration.
-//
-// The grace period is the length of time we allow connections to run
-// on a worker in the event of an error sending status updates. The
-// period is defined the length of time since the last successful
-// update.
-//
-// The setting is derived from one of the following, in order:
-//
-//   - Via the supplied value if non-zero.
-//   - BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
-//     integer value to define the setting.
-//   - If either of these is missing, the default is used. See the
-//     defaultStatusGracePeriod value for the default value.
-//
-// The minimum setting for this value is the default setting. Values
-// below this will be reset to the default.
-func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
-	const op = "base.(Server).SetStatusGracePeriodDuration"
-	ctx := context.TODO()
-	var result time.Duration
-	switch {
-	case value > 0:
-		result = value
-	case os.Getenv(statusGracePeriodEnvVar) != "":
-		// TODO: See the description of the constant for more details on
-		// this env var
-		v := os.Getenv(statusGracePeriodEnvVar)
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("could not read status grace period setting", "envvar", statusGracePeriodEnvVar, "value", v))
-			break
-		}
-
-		result = time.Second * time.Duration(n)
-	}
-
-	if result < defaultStatusGracePeriod {
-		result = defaultStatusGracePeriod
-	}
-
-	s.StatusGracePeriodDuration = result
 }

@@ -10,14 +10,8 @@ import (
 )
 
 const (
-	// DefaultLiveness is the setting that controls the server "liveness" time,
-	// or the maximum allowable time that a worker can't send a status update to
-	// the controller for. After this, the server is considered dead, and it will
-	// be taken out of the rotation for allowable workers for connections, and
-	// connections will possibly start to be terminated and marked as closed
-	// depending on the grace period setting (see
-	// base.Server.StatusGracePeriodDuration). This value serves as the default
-	// and minimum allowable setting for the grace period.
+	// DefaultLiveness is a default used for various timing parameters, such as
+	// grace period for status updates, server liveness, etc.
 	DefaultLiveness = 15 * time.Second
 )
 

@@ -27,18 +27,18 @@ func TestWorkerWaitForNextSuccessfulStatusUpdate(t *testing.T) {
 
 			// As-needed initialization of a mock worker
 			w := &Worker{
-				logger:            hclog.New(nil),
-				lastStatusSuccess: new(atomic.Value),
-				baseContext:       context.Background(),
+				logger:                      hclog.New(nil),
+				lastStatusSuccess:           new(atomic.Value),
+				baseContext:                 context.Background(),
+				successfulStatusGracePeriod: new(atomic.Int64),
 				conf: &Config{
-					Server: &base.Server{
-						StatusGracePeriodDuration: time.Second * 2,
-					},
+					Server: &base.Server{},
 				},
 			}
 
 			// This is present in New()
 			w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
+			w.successfulStatusGracePeriod.Store(int64(time.Second * 2))
 
 			var wg sync.WaitGroup
 			var err error
