@@ -46,7 +46,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * workers: Fixed a panic that can happen in certain situations
   ([PR](https://github.com/hashicorp/boundary/pull/2553))
 * sessions: Fixed a panic in a controller when a worker is deleted while
-  sessions are ongoing ([PR](https://github.com/hashicorp/boundary/pull/))
+  sessions are ongoing ([PR](https://github.com/hashicorp/boundary/pull/2612))
 
 ### Deprecations/Changes
 
