@@ -5,12 +5,12 @@ description: |-
   How to use worker tags to control which workers can handle a given resource.
 ---
 
+# Worker Tags
+
 This page describes how to use worker tags and filters to control which workers
 are allowed to handle a given resource. This can be used to control traffic
 locality. As an example, this can be used to ensure that traffic going into a
 public cloud is only handled by workers running within that same cloud.
-
-# Worker Tags
 
 Starting in Boundary 0.1.5, a worker can be configured with a set of key/value
 tags in its configuration file. The keys and values can be any lower-cased
