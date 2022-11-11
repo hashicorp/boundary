@@ -230,9 +230,9 @@ func Callback(
 		return "", errors.Wrap(ctx, err, op)
 	}
 
-	scope, err := iamRepo.LookupScope(ctx, am.ScopeId)
+	_, err = iamRepo.LookupScope(ctx, am.ScopeId)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup account scope: "+scope.PublicId))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup account scope: "+am.ScopeId))
 	}
 
 	user, err := iamRepo.LookupUserWithLogin(ctx, acct.PublicId)

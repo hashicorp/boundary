@@ -306,7 +306,10 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
 			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up worker: %v", err)
-
+		}
+		if w == nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
+			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Worker not found")
 		}
 		// Build the map for filtering.
 		tagMap := w.CanonicalTags()
@@ -386,6 +389,9 @@ func (ws *workerServiceServer) CancelSession(ctx context.Context, req *pbs.Cance
 	ses, _, err := sessRepo.LookupSession(ctx, req.GetSessionId())
 	if err != nil {
 		return nil, err
+	}
+	if ses == nil {
+		return nil, status.Error(codes.NotFound, "cant find a session with that id")
 	}
 
 	ses, err = sessRepo.CancelSession(ctx, req.GetSessionId(), ses.Version)
