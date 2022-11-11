@@ -10,7 +10,8 @@ begin;
     (parent_id, type, public_id, name)
   values
     ('o_____colors', 'project', 'p____bcolors', 'Blue Color Mill'),
-    ('o_____colors', 'project', 'p____rcolors', 'Red Color Mill');
+    ('o_____colors', 'project', 'p____rcolors', 'Red Color Mill'),
+    ('o_____colors', 'project', 'p____gcolors', 'Green Color Mill');
 
   -- Add global users
   insert into iam_user
@@ -27,7 +28,8 @@ begin;
     ('o_____colors', 'u______clare', 'Clare'),
     ('o_____colors', 'u______cindy', 'Cindy'),
     ('o_____colors', 'u______carly', 'Carly'),
-    ('o_____colors', 'u______ciara', 'Ciara');
+    ('o_____colors', 'u______ciara', 'Ciara'),
+    ('o_____colors', 'u_______cora', 'Cora');
 
   -- Add keys
   insert into kms_root_key
@@ -56,7 +58,8 @@ begin;
     ('global',       'g___gg-group', 'Global Group'),
     ('o_____colors', 'g___oc-group', 'Colors R Us Group'),
     ('p____bcolors', 'g___cb-group', 'Blue Color Group'),
-    ('p____rcolors', 'g___cr-group', 'Red Color Group');
+    ('p____rcolors', 'g___cr-group', 'Red Color Group'),
+    ('p____gcolors', 'g___cg-group', 'Green Color Group');
 
   insert into iam_group_member_user
     (group_id, member_id)
@@ -64,15 +67,18 @@ begin;
     ('g___gg-group', 'u_______gary'),
     ('g___oc-group', 'u______clare'),
     ('g___cb-group', 'u______cindy'),
-    ('g___cr-group', 'u______carly');
+    ('g___cr-group', 'u______carly'),
+    ('g___cg-group', 'u_______cora');
 
   insert into iam_role
     (scope_id, grant_scope_id, public_id, name)
   values
     ('p____bcolors', 'p____bcolors', 'r_pp_bc__mix', 'Color Mixer'),
     ('p____rcolors', 'p____rcolors', 'r_pp_rc__mix', 'Color Mixer'),
+    ('p____gcolors', 'p____gcolors', 'r_pp_gc__mix', 'Color Mixer'),
     ('o_____colors', 'p____bcolors', 'r_op_bc__art', 'Blue Color Artist'),
     ('o_____colors', 'p____rcolors', 'r_op_rc__art', 'Red Color Artist'),
+    ('o_____colors', 'p____gcolors', 'r_op_gc__art', 'Green Color Artist'),
     ('o_____colors', 'o_____colors', 'r_oo_____art', 'Color Artist'),
           ('global', 'o_____colors', 'r_go____name', 'Color Namer'),
           ('global', 'p____bcolors', 'r_gp____spec', 'Blue Color Inspector'),
@@ -89,15 +95,18 @@ begin;
     ('r_oo_____art', 'type=color;action=create',  'create color'),
     ('r_op_bc__art', 'type=color;action=create',  'create color'),
     ('r_op_rc__art', 'type=color;action=create',  'create color'),
+    ('r_op_gc__art', 'type=color;action=create',  'create color'),
     ('r_pp_bc__mix', 'type=color;action=mix',     'mix color'),
-    ('r_pp_rc__mix', 'type=color;action=mix',     'mix color');
+    ('r_pp_rc__mix', 'type=color;action=mix',     'mix color'),
+    ('r_pp_gc__mix', 'type=color;action=mix',     'mix color');
 
   insert into iam_group_role
     (role_id, principal_id)
   values
     ('r_op_rc__art', 'g___oc-group'), -- color
     ('r_pp_bc__mix', 'g___cb-group'), -- color
-    ('r_pp_rc__mix', 'g___cr-group'); -- color
+    ('r_pp_rc__mix', 'g___cr-group'), -- color
+    ('r_pp_gc__mix', 'g___cg-group'); -- color
 
   insert into iam_user_role
     (role_id, principal_id)
@@ -125,18 +134,21 @@ begin;
     ('apm___colors', 'apa____clare', 'clare'),
     ('apm___colors', 'apa____cindy', 'cindy'),
     ('apm___colors', 'apa____carly', 'carly'),
+    ('apm___colors', 'apa_____cora', 'cora'),
     ('apm___colors', 'apa____ciara', 'ciara');
 
   update auth_account set iam_user_id = 'u______clare' where public_id = 'apa____clare';
   update auth_account set iam_user_id = 'u______cindy' where public_id = 'apa____cindy';
   update auth_account set iam_user_id = 'u______carly' where public_id = 'apa____carly';
+  update auth_account set iam_user_id = 'u_______cora' where public_id = 'apa_____cora';
   update auth_account set iam_user_id = 'u______ciara' where public_id = 'apa____ciara';
 
   insert into static_host_catalog
     (project_id, public_id, name)
   values
     ('p____bcolors', 'c___cb-sthcl', 'Blue Color Static Catalog'),
-    ('p____rcolors', 'c___cr-sthcl', 'Red Color Static Catalog');
+    ('p____rcolors', 'c___cr-sthcl', 'Red Color Static Catalog'),
+    ('p____gcolors', 'c___cg-sthcl', 'Green Color Static Catalog');
 
   insert into auth_token
     (key_id, auth_account_id, public_id, token)
@@ -144,7 +156,8 @@ begin;
     ('kdkv_______colors', 'apa____clare', 'tok____clare', 'tok____clare'::bytea),
     ('kdkv_______colors', 'apa____cindy', 'tok____cindy', 'tok____cindy'::bytea),
     ('kdkv_______colors', 'apa____ciara', 'tok____ciara', 'tok____ciara'::bytea),
-    ('kdkv_______colors', 'apa____carly', 'tok____carly', 'tok____carly'::bytea);
+    ('kdkv_______colors', 'apa____carly', 'tok____carly', 'tok____carly'::bytea),
+    ('kdkv_______colors', 'apa_____cora', 'tok_____cora', 'tok_____cora'::bytea);
 
   insert into static_host
     (catalog_id, public_id, address)
@@ -167,7 +180,17 @@ begin;
     ('c___cr-sthcl', 'h_____cr__06', '6.red.color'),
     ('c___cr-sthcl', 'h_____cr__07', '7.red.color'),
     ('c___cr-sthcl', 'h_____cr__08', '8.red.color'),
-    ('c___cr-sthcl', 'h_____cr__09', '9.red.color');
+    ('c___cr-sthcl', 'h_____cr__09', '9.red.color'),
+    
+    ('c___cg-sthcl', 'h_____cg__01', '1.green.color'),
+    ('c___cg-sthcl', 'h_____cg__02', '2.green.color'),
+    ('c___cg-sthcl', 'h_____cg__03', '3.green.color'),
+    ('c___cg-sthcl', 'h_____cg__04', '4.green.color'),
+    ('c___cg-sthcl', 'h_____cg__05', '5.green.color'),
+    ('c___cg-sthcl', 'h_____cg__06', '6.green.color'),
+    ('c___cg-sthcl', 'h_____cg__07', '7.green.color'),
+    ('c___cg-sthcl', 'h_____cg__08', '8.green.color'),
+    ('c___cg-sthcl', 'h_____cg__09', '9.green.color');
 
   insert into host_dns_name
     (host_id, name)
@@ -190,7 +213,17 @@ begin;
     ('h_____cr__06', '6.red.color'),
     ('h_____cr__07', '7.red.color'),
     ('h_____cr__08', '8.red.color'),
-    ('h_____cr__09', '9.red.color');
+    ('h_____cr__09', '9.red.color'),
+    
+    ('h_____cg__01', '1.green.color'),
+    ('h_____cg__02', '2.green.color'),
+    ('h_____cg__03', '3.green.color'),
+    ('h_____cg__04', '4.green.color'),
+    ('h_____cg__05', '5.green.color'),
+    ('h_____cg__06', '6.green.color'),
+    ('h_____cg__07', '7.green.color'),
+    ('h_____cg__08', '8.green.color'),
+    ('h_____cg__09', '9.green.color');
 
   insert into host_ip_address
     (host_id, address)
@@ -213,7 +246,17 @@ begin;
     ('h_____cr__06', '2001:4860:4860::6666'),
     ('h_____cr__07', '77.77.77.77'),
     ('h_____cr__08', '2001:4860:4860::8888'),
-    ('h_____cr__09', '99.99.99.99');
+    ('h_____cr__09', '99.99.99.99'),
+    
+    ('h_____cg__01', '111.111.111.111'),
+    ('h_____cg__02', '3001:5860:5860::3333'),
+    ('h_____cg__03', '112.112.112.112'),
+    ('h_____cg__04', '3001:5860:5860::5555'),
+    ('h_____cg__05', '113.113.113.113'),
+    ('h_____cg__06', '3001:5860:5860::7777'),
+    ('h_____cg__07', '114.114.114.114'),
+    ('h_____cg__08', '3001:5860:5860::9999'),
+    ('h_____cg__09', '115.115.115.115');
 
   insert into static_host_set
     (catalog_id, public_id, name)
@@ -221,7 +264,9 @@ begin;
     ('c___cb-sthcl', 's___1cb-sths', 'Blue Color Static Set 1'),
     ('c___cb-sthcl', 's___2cb-sths', 'Blue Color Static Set 2'),
     ('c___cr-sthcl', 's___1cr-sths', 'Red Color Static Set 1'),
-    ('c___cr-sthcl', 's___2cr-sths', 'Red Color Static Set 2');
+    ('c___cr-sthcl', 's___2cr-sths', 'Red Color Static Set 2'),
+    ('c___cg-sthcl', 's___1cg-sths', 'Green Color Static Set 1'),
+    ('c___cg-sthcl', 's___2cg-sths', 'Green Color Static Set 2');
 
   insert
     into static_host_set_member
@@ -235,7 +280,8 @@ begin;
     (project_id, public_id, name)
   values
     ('p____bcolors', 't_________cb', 'Blue Color Target'),
-    ('p____rcolors', 't_________cr', 'Red Color Target');
+    ('p____rcolors', 't_________cr', 'Red Color Target'),
+    ('p____gcolors', 't_________cg', 'Green Color Target');
 
   insert into target_host_set
     (project_id, target_id, host_set_id)
@@ -244,6 +290,11 @@ begin;
     ('p____bcolors', 't_________cb', 's___2cb-sths'),
     ('p____rcolors', 't_________cr', 's___1cr-sths'),
     ('p____rcolors', 't_________cr', 's___2cr-sths');
+
+  insert into target_address
+    (target_id, address)
+  values
+    ('t_________cg', '8.8.8.8');
 
   insert into credential_vault_store
     (project_id,     public_id,       name,                  description, vault_address,         namespace)
@@ -263,12 +314,26 @@ begin;
     ('p____bcolors', 't_________cb', 'vl______cvl',         'brokered');
 
   insert into session
-    ( project_id,     target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,     target_id,     user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
-    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's1_____clare'),
-    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____cindy'),
-    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____ciara'),
-    ('p____bcolors', 't_________cb', 's___1cb-sths', 'h_____cb__01', 'u______carly', 'tok____carly', 'abc'::bytea, 'ep1',    's1_____carly');
+    ('p____bcolors', 't_________cb', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's1_____clare'),
+    ('p____bcolors', 't_________cb', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____cindy'),
+    ('p____bcolors', 't_________cb', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____ciara'),
+    ('p____bcolors', 't_________cb', 'u______carly', 'tok____carly', 'abc'::bytea, 'ep1',    's1_____carly'),
+    ('p____gcolors', 't_________cg', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1',    's1______cora');
+
+  insert into session_host_set_host
+    (session_id, host_set_id, host_id)
+  values
+    ('s1_____clare', 's___1cb-sths', 'h_____cb__01'),
+    ('s1_____cindy', 's___1cb-sths', 'h_____cb__01'),
+    ('s1_____ciara', 's___1cb-sths', 'h_____cb__01'),
+    ('s1_____carly', 's___1cb-sths', 'h_____cb__01');
+
+  insert into session_target_address
+    (session_id, target_id)
+  values
+    ('s1______cora', 't_________cg');
 
   insert into session_connection
     (session_id, public_id)

@@ -86,6 +86,7 @@ select public_id,
 from target_tcp;
 
 -- Replaces view from 56/06_add_session_private_key_column.up.sql
+-- Replaced in 70/02_sessions.up.sql
 drop view session_list;
 create view session_list as
 select
