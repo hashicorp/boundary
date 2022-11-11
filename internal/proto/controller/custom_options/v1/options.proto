@@ -14,7 +14,8 @@ extend google.protobuf.FieldOptions {
   MaskMapping mask_mapping = 85464;
 
   // generate_sdk_option is a directive used when generating the SDK to
-  // indicate that an option should be created for the field
+  // indicate that an option should be created for the field. This also controls
+  // API options (DefaultX, WithX functions).
   bool generate_sdk_option = 85412;
 
   // subtype is used for oneOf attribute subtypes, to identify that we only need to parse attributes

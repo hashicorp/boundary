@@ -37,8 +37,9 @@ The first step in the process is to add it to the API/SDK protobufs.
 * Define a `custom_options.v1.mask_mapping` tag for the field
   which maps the API `this` field to the storage `that` field
   (yes, it's the opposite of how it's defined for a storage protobuf)
-* Define a `custom_options.v1.generate_sdk_option` tag for the SDK
-* Define a data classification/filter tag for the field via `@gotags` 
+* Define a `custom_options.v1.generate_sdk_option` tag to change the SDK and add
+  API options (DefaultX, WithX functions).
+* Define a data classification/filter tag for the field via `@gotags`
   which specifies how sensitive/secret/public data
   will be handled for the API's audit events.
   See the [classification rubric](./classification-rubric.md)

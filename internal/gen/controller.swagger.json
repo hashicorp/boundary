@@ -5702,6 +5702,10 @@
           },
           "description": "Output only. The available actions on this resource for this user.",
           "readOnly": true
+        },
+        "address": {
+          "type": "string",
+          "description": "Optionally, a valid network address to connect to for this target. Can not be used alongside host sources."
         }
       },
       "title": "Target contains all fields related to a Target resource"

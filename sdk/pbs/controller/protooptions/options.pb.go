@@ -129,7 +129,8 @@ var (
 	// optional controller.custom_options.v1.MaskMapping mask_mapping = 85464;
 	E_MaskMapping = &file_controller_custom_options_v1_options_proto_extTypes[0]
 	// generate_sdk_option is a directive used when generating the SDK to
-	// indicate that an option should be created for the field
+	// indicate that an option should be created for the field. This also controls
+	// API options (DefaultX, WithX functions).
 	//
 	// optional bool generate_sdk_option = 85412;
 	E_GenerateSdkOption = &file_controller_custom_options_v1_options_proto_extTypes[1]
