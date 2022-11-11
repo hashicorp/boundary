@@ -10,6 +10,7 @@ begin;
     alter column credential_group_key drop default;
 
   -- replaces function from 15/01_wh_rename_key_columns.up.sql
+  -- replaced function in 70/03_wh_sessions.up.sql
   drop trigger wh_insert_session on session;
   drop function wh_insert_session;
 
