@@ -482,6 +482,11 @@ func (c *Command) printListTable(items []*targets.Target) string {
 				fmt.Sprintf("    Description:         %s", item.Description),
 			)
 		}
+		if item.Address != "" {
+			output = append(output,
+				fmt.Sprintf("    Address:             %s", item.Address),
+			)
+		}
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
 				"    Authorized Actions:",
@@ -515,6 +520,9 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 	}
 	if item.Description != "" {
 		nonAttributeMap["Description"] = item.Description
+	}
+	if item.Address != "" {
+		nonAttributeMap["Address"] = item.Address
 	}
 	if item.WorkerFilter != "" {
 		nonAttributeMap["Worker Filter"] = item.WorkerFilter

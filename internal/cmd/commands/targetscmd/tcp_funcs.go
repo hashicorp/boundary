@@ -18,7 +18,7 @@ func init() {
 
 func extraTcpActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
+		"create": {"address", "default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
 		"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
 	}
 }
@@ -28,6 +28,7 @@ type extraTcpCmdVars struct {
 	flagSessionMaxSeconds      string
 	flagSessionConnectionLimit string
 	flagWorkerFilter           string
+	flagAddress                string
 }
 
 func (c *TcpCommand) extraTcpHelpFunc(helpMap map[string]func() string) string {
@@ -63,6 +64,12 @@ func extraTcpFlagsFuncImpl(c *TcpCommand, set *base.FlagSets, f *base.FlagSet) {
 
 	for _, name := range flagsTcpMap[c.Func] {
 		switch name {
+		case "address":
+			fs.StringVar(&base.StringVar{
+				Name:   "address",
+				Target: &c.flagAddress,
+				Usage:  "Optionally, a valid network address to connect to for this target. Can not be used alongside host sources.",
+			})
 		case "default-port":
 			fs.StringVar(&base.StringVar{
 				Name:   "default-port",
@@ -148,6 +155,14 @@ func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, _ *base.FlagSets, opts *[]targ
 			return false
 		}
 		*opts = append(*opts, targets.WithWorkerFilter(c.flagWorkerFilter))
+	}
+
+	switch c.flagAddress {
+	case "":
+	case "null":
+		*opts = append(*opts, targets.DefaultAddress())
+	default:
+		*opts = append(*opts, targets.WithAddress(c.flagAddress))
 	}
 
 	return true

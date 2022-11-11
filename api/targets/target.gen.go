@@ -35,6 +35,7 @@ type Target struct {
 	InjectedApplicationCredentialSources   []*CredentialSource    `json:"injected_application_credential_sources,omitempty"`
 	Attributes                             map[string]interface{} `json:"attributes,omitempty"`
 	AuthorizedActions                      []string               `json:"authorized_actions,omitempty"`
+	Address                                string                 `json:"address,omitempty"`
 
 	response *api.Response
 }

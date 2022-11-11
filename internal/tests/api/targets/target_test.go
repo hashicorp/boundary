@@ -1,6 +1,7 @@
 package targets_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -377,6 +378,29 @@ func TestList(t *testing.T) {
 	require.NoError(err)
 	assert.Len(ul.Items, 1)
 	assert.Equal(filterItem.Id, ul.Items[0].Id)
+}
+
+func TestCreateTarget_DirectlyAttachedAddress(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	client := tc.Client()
+	at := tc.Token()
+	client.SetToken(at.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(at.UserId))
+
+	addr := "127.0.0.1"
+	rsp, err := targets.NewClient(client).Create(context.Background(), "tcp", proj.PublicId,
+		targets.WithName("test_target"),
+		targets.WithTcpTargetDefaultPort(22),
+		targets.WithAddress(addr),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, rsp)
+	require.NotNil(t, rsp.Item)
+	// TODO: Assert that the address has been persisted, when the actual
+	// functionality is implemented - See below.
+	// require.Equal(t, addr, rsp.Item.Address)
 }
 
 func comparableSlice(in []*targets.Target) []targets.Target {
