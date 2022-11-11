@@ -87,6 +87,18 @@ func WithRecursive(recurse bool) Option {
 	}
 }
 
+func WithAddress(inAddress string) Option {
+	return func(o *options) {
+		o.postMap["address"] = inAddress
+	}
+}
+
+func DefaultAddress() Option {
+	return func(o *options) {
+		o.postMap["address"] = nil
+	}
+}
+
 func WithApplicationCredentialSourceIds(inApplicationCredentialSourceIds []string) Option {
 	return func(o *options) {
 		o.postMap["application_credential_source_ids"] = inApplicationCredentialSourceIds
