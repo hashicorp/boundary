@@ -10,9 +10,13 @@ begin;
 
   -- insert first session, should result in a new user dimension
   insert into session
-    ( project_id,     target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    ( project_id,     target_id,      user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
-    ('p____bwidget', 't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's1____walter');
+    ('p____bwidget', 't_________wb', 'u_____walter', 'tok___walter', 'abc'::bytea, 'ep1',    's1____walter');
+  insert into session_host_set_host
+    (session_id, host_set_id, host_id)
+  values
+    ('s1____walter', 's___1wb-sths', 'h_____wb__01');
   insert into session_credential_dynamic
     ( session_id,    library_id,     credential_id,  credential_purpose)
   values
