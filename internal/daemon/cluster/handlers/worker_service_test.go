@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh/testdata"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestLookupSession(t *testing.T) {
@@ -66,6 +67,18 @@ func TestLookupSession(t *testing.T) {
 		AuthTokenId: at.GetPublicId(),
 		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
+	})
+
+	worker1 := server.TestKmsWorker(t, conn, wrapper, server.WithName("testworker"))
+	sessWithWorkerFilter := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:       uId,
+		HostId:       h.GetPublicId(),
+		TargetId:     tar.GetPublicId(),
+		HostSetId:    hs.GetPublicId(),
+		AuthTokenId:  at.GetPublicId(),
+		ProjectId:    prj.GetPublicId(),
+		Endpoint:     "tcp://127.0.0.1:22",
+		WorkerFilter: fmt.Sprintf("%q matches %q", "/name", worker1.GetName()),
 	})
 
 	sessWithCreds := session.TestSession(t, conn, wrapper, session.ComposedOf{
@@ -134,17 +147,38 @@ func TestLookupSession(t *testing.T) {
 		wantErr    bool
 		wantErrMsg string
 		want       *pbs.LookupSessionResponse
-		sessionId  string
+		req        *pbs.LookupSessionRequest
 	}{
 		{
-			name:       "Invalid session id",
-			sessionId:  "s_fakesession",
+			name: "Invalid session id",
+			req: &pbs.LookupSessionRequest{
+				SessionId: "s_fakesession",
+			},
 			wantErr:    true,
 			wantErrMsg: "rpc error: code = PermissionDenied desc = Unknown session ID.",
 		},
 		{
-			name:      "Valid",
-			sessionId: sess.PublicId,
+			name: "no worker id",
+			req: &pbs.LookupSessionRequest{
+				SessionId: sessWithWorkerFilter.PublicId,
+			},
+			wantErr:    true,
+			wantErrMsg: "rpc error: code = Internal desc = Did not receive worker id when looking up session but filtering is enabled",
+		},
+		{
+			name: "nonexistant worker id",
+			req: &pbs.LookupSessionRequest{
+				SessionId: sessWithWorkerFilter.PublicId,
+				WorkerId:  "w_nonexistingworker",
+			},
+			wantErr:    true,
+			wantErrMsg: "rpc error: code = Internal desc = Worker not found",
+		},
+		{
+			name: "Valid",
+			req: &pbs.LookupSessionRequest{
+				SessionId: sess.PublicId,
+			},
 			want: &pbs.LookupSessionResponse{
 				ConnectionLimit: 1,
 				ConnectionsLeft: 1,
@@ -158,8 +192,28 @@ func TestLookupSession(t *testing.T) {
 			},
 		},
 		{
-			name:      "Valid-with-worker-creds",
-			sessionId: sessWithCreds.PublicId,
+			name: "Valid with worker filter",
+			req: &pbs.LookupSessionRequest{
+				SessionId: sess.PublicId,
+				WorkerId:  worker1.GetPublicId(),
+			},
+			want: &pbs.LookupSessionResponse{
+				ConnectionLimit: 1,
+				ConnectionsLeft: 1,
+				Version:         1,
+				Endpoint:        sess.Endpoint,
+				HostId:          sess.HostId,
+				HostSetId:       sess.HostSetId,
+				TargetId:        sess.TargetId,
+				UserId:          sess.UserId,
+				Status:          pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
+			},
+		},
+		{
+			name: "Valid-with-worker-creds",
+			req: &pbs.LookupSessionRequest{
+				SessionId: sessWithCreds.PublicId,
+			},
 			want: &pbs.LookupSessionResponse{
 				ConnectionLimit: 1,
 				ConnectionsLeft: 1,
@@ -178,11 +232,8 @@ func TestLookupSession(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			req := &pbs.LookupSessionRequest{
-				SessionId: tc.sessionId,
-			}
 
-			got, err := s.LookupSession(ctx, req)
+			got, err := s.LookupSession(ctx, tc.req)
 			if tc.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -196,6 +247,97 @@ func TestLookupSession(t *testing.T) {
 					cmpopts.IgnoreUnexported(pbs.LookupSessionResponse{},
 						pbs.Credential{}, pbs.UsernamePassword{}, pbs.SshPrivateKey{}),
 					cmpopts.IgnoreFields(pbs.LookupSessionResponse{}, "Expiration", "Authorization"),
+				),
+			)
+		})
+	}
+}
+
+func TestCancelSession(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kms)
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opts...)
+	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
+
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	uId := at.GetIamUserId()
+	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+
+	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ProjectId:   prj.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms, new(atomic.Int64))
+	require.NotNil(t, s)
+	_ = sess
+	cases := []struct {
+		name       string
+		wantErr    bool
+		wantErrMsg string
+		want       *pbs.CancelSessionResponse
+		req        *pbs.CancelSessionRequest
+	}{
+		{
+			name: "Invalid session id",
+			req: &pbs.CancelSessionRequest{
+				SessionId: "s_fakesession",
+			},
+			wantErr:    true,
+			wantErrMsg: "rpc error: code = PermissionDenied desc = Unknown session ID.",
+		},
+		{
+			name: "Valid",
+			req: &pbs.CancelSessionRequest{
+				SessionId: sess.PublicId,
+			},
+			want: &pbs.CancelSessionResponse{
+				Status: pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			got, err := s.CancelSession(ctx, tc.req)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Nil(got)
+				assert.Equal(tc.wantErrMsg, err.Error())
+				return
+			}
+			require.NoError(err)
+			require.NotNil(got)
+			assert.Empty(
+				cmp.Diff(
+					tc.want,
+					got,
+					protocmp.Transform(),
 				),
 			)
 		})

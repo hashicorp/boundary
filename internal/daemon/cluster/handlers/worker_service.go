@@ -295,18 +295,21 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 	if sessionInfo.WorkerFilter != "" {
 		if req.WorkerId == "" {
 			event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no id information from worker"))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled")
+			return nil, status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled")
 		}
 		serversRepo, err := ws.serversRepoFn()
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
+			return nil, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 		}
 		w, err := serversRepo.LookupWorker(ctx, req.WorkerId)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up worker: %v", err)
-
+			return nil, status.Errorf(codes.Internal, "Error looking up worker: %v", err)
+		}
+		if w == nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
+			return nil, status.Errorf(codes.Internal, "Worker not found")
 		}
 		// Build the map for filtering.
 		tagMap := w.CanonicalTags()
@@ -315,7 +318,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		eval, err := bexpr.CreateEvaluator(sessionInfo.WorkerFilter)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "worker_id", req.WorkerId))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
+			return nil, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 		}
 		filterInput := map[string]any{
 			"name": w.GetName(),
@@ -323,7 +326,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		}
 		ok, err := eval.Evaluate(filterInput)
 		if err != nil {
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
+			return nil, status.Errorf(codes.Internal,
 				fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
 		}
 		if !ok {
@@ -335,7 +338,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 
 	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ProjectId, sessionInfo.PublicId)
 	if err != nil {
-		return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
+		return nil, status.Errorf(codes.Internal,
 			fmt.Sprintf("Error retrieving session credentials: %s", err))
 	}
 	var workerCreds []*pbs.Credential
@@ -343,7 +346,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		m := &pbs.Credential{}
 		err = proto.Unmarshal(c, m)
 		if err != nil {
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
+			return nil, status.Errorf(codes.Internal,
 				fmt.Sprintf("Error unmarshaling credentials: %s", err))
 		}
 		workerCreds = append(workerCreds, m)
@@ -397,6 +400,9 @@ func (ws *workerServiceServer) CancelSession(ctx context.Context, req *pbs.Cance
 	ses, _, err := sessRepo.LookupSession(ctx, req.GetSessionId())
 	if err != nil {
 		return nil, err
+	}
+	if ses == nil {
+		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
 	}
 
 	ses, err = sessRepo.CancelSession(ctx, req.GetSessionId(), ses.Version)
