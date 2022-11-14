@@ -44,7 +44,7 @@ type templateInput struct {
 	CollectionPath        string
 	ResourcePath          string
 	ParentTypeName        string
-	SliceSubtypes         map[string]sliceSubtypeInfo
+	Subactions            map[string]subactionInfo
 	ExtraFields           []fieldInfo
 	VersionEnabled        bool
 	CreateResponseTypes   []string
@@ -98,9 +98,9 @@ func fillTemplates() {
 			os.Exit(1)
 		}
 
-		if len(in.sliceSubtypes) > 0 {
-			input.SliceSubtypes = in.sliceSubtypes
-			in.templates = append(in.templates, sliceSubtypeTemplate)
+		if len(in.subactions) > 0 {
+			input.Subactions = in.subactions
+			in.templates = append(in.templates, subactionTemplate)
 		}
 
 		for _, t := range in.templates {
@@ -483,7 +483,7 @@ func (c *Client) Update(ctx context.Context, id string, version uint32, opt... O
 }
 `))
 
-var sliceSubtypeTemplate = template.Must(template.New("").Funcs(
+var subactionTemplate = template.Must(template.New("").Funcs(
 	template.FuncMap{
 		"makeSlice":         makeSlice,
 		"snakeCase":         snakeCase,
@@ -493,11 +493,11 @@ var sliceSubtypeTemplate = template.Must(template.New("").Funcs(
 ).Parse(`
 {{ $input := . }}
 {{ range $index, $op := makeSlice "Add" "Set" "Remove" }}
-{{ range $key, $value := $input.SliceSubtypes }}
+{{ range $key, $value := $input.Subactions }}
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PluralResourceName $input.ParentTypeName $actionName }}
-func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32, {{ if ( not ( eq $value.VarName "" ) ) }}{{ $value.VarName }} {{ $value.SliceType }},{{ end }} opt... Option) (*{{ $input.Name }}UpdateResult, error) {
+func (c *Client) {{ $fullName }}(ctx context.Context, id string, version uint32, {{ if ( not ( eq $value.VarName "" ) ) }}{{ $value.VarName }} {{ $value.Type }},{{ end }} opt... Option) (*{{ $input.Name }}UpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into {{ $fullName }} request")
 	}

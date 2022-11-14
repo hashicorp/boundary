@@ -33,9 +33,9 @@ const (
 	DeleteResponseType = "delete"
 )
 
-type sliceSubtypeInfo struct {
-	SliceType string
-	VarName   string
+type subactionInfo struct {
+	Type    string
+	VarName string
 }
 
 type structureInfo struct {
@@ -79,10 +79,17 @@ type structInfo struct {
 	// the argument that should be used
 	parentTypeName string
 
-	// mappings of names of resources and param names for sub slice types, e.g.
-	// role principals and group members. If sliceSubtypeInfo is blank for a
-	// key, the function is created but no required parameter is produced.
-	sliceSubtypes map[string]sliceSubtypeInfo
+	// subactions are designed to enable autogen api client code for some custom
+	// action for a Boundary resource.
+	// Example: Target's [Add,Set,Remove]CredentialSources.
+	//
+	// It's a map of the names of resources and/or parameter names to some
+	// metadata about them. This is used by the templating code to create
+	// additional operation functions (Add, Set and/or Remove) with specific
+	// arguments. If subactionInfo is blank for a given key, all operation
+	// functions are created but no extra required argument is added to the
+	// functions' signatures. See subactionTemplate for more info.
+	subactions map[string]subactionInfo
 
 	// skipOptions indicates that we shouldn't create options for setting
 	// members for mapping src field struct
@@ -226,10 +233,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubtypes: map[string]sliceSubtypeInfo{
+		subactions: map[string]subactionInfo{
 			"Accounts": {
-				SliceType: "[]string",
-				VarName:   "accountIds",
+				Type:    "[]string",
+				VarName: "accountIds",
 			},
 		},
 		pluralResourceName:  "users",
@@ -254,10 +261,10 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubtypes: map[string]sliceSubtypeInfo{
+		subactions: map[string]subactionInfo{
 			"Members": {
-				SliceType: "[]string",
-				VarName:   "memberIds",
+				Type:    "[]string",
+				VarName: "memberIds",
 			},
 		},
 		pluralResourceName:  "groups",
@@ -292,14 +299,14 @@ var inputStructs = []*structInfo{
 			deleteTemplate,
 			listTemplate,
 		},
-		sliceSubtypes: map[string]sliceSubtypeInfo{
+		subactions: map[string]subactionInfo{
 			"Principals": {
-				SliceType: "[]string",
-				VarName:   "principalIds",
+				Type:    "[]string",
+				VarName: "principalIds",
 			},
 			"Grants": {
-				SliceType: "[]string",
-				VarName:   "grantStrings",
+				Type:    "[]string",
+				VarName: "grantStrings",
 			},
 		},
 		pluralResourceName:  "roles",
@@ -712,10 +719,10 @@ var inputStructs = []*structInfo{
 		},
 		pluralResourceName: "host-sets",
 		parentTypeName:     "host-catalog",
-		sliceSubtypes: map[string]sliceSubtypeInfo{
+		subactions: map[string]subactionInfo{
 			"Hosts": {
-				SliceType: "[]string",
-				VarName:   "hostIds",
+				Type:    "[]string",
+				VarName: "hostIds",
 			},
 		},
 		versionEnabled:      true,
@@ -802,10 +809,10 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pluralResourceName: "targets",
-		sliceSubtypes: map[string]sliceSubtypeInfo{
+		subactions: map[string]subactionInfo{
 			"HostSources": {
-				SliceType: "[]string",
-				VarName:   "hostSourceIds",
+				Type:    "[]string",
+				VarName: "hostSourceIds",
 			},
 			"CredentialSources": {},
 		},
@@ -938,10 +945,10 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pluralResourceName: "workers",
-		sliceSubtypes: map[string]sliceSubtypeInfo{
+		subactions: map[string]subactionInfo{
 			"WorkerTags": {
-				SliceType: "map[string][]string",
-				VarName:   "apiTags",
+				Type:    "map[string][]string",
+				VarName: "apiTags",
 			},
 		},
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
