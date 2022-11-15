@@ -35,7 +35,7 @@ begin
 end;
 $$ language plpgsql;
 comment on function insert_auth_method_subtype() is
-'insert_auth_method_subtype() inserts sub type name into the base type auth method table';
+  'insert_auth_method_subtype() inserts sub type name into the base type auth method table';
 
 -- update_auth_method_subtype() is a new function intended to be used in "before
 -- update" triggers for all auth method sub types.  It's purpose is to ensure
@@ -50,7 +50,7 @@ begin
 end;
 $$ language plpgsql;
 comment on function update_auth_method_subtype() is
-'update_auth_method_subtype() will update base auth method type name column with new values from sub type';
+  'update_auth_method_subtype() will update base auth method type name column with new values from sub type';
 
 create trigger update_auth_method_subtype before update on auth_oidc_method
   for each row execute procedure update_auth_method_subtype();
@@ -69,7 +69,7 @@ begin
 end;
 $$ language plpgsql;
 comment on function delete_auth_method_subtype is
-'delete_auth_method_subtype() is an after trigger function for subytypes of auth_method';
+  'delete_auth_method_subtype() is an after trigger function for subytypes of auth_method';
 
 create trigger delete_auth_method_subtype after delete on auth_oidc_method
   for each row execute procedure delete_auth_method_subtype();

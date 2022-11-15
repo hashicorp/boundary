@@ -22,7 +22,7 @@ begin
 end;
 $$ language plpgsql;
 comment on function delete_auth_account_subtype is
-    'delete_auth_account_subtype() is an after trigger function for subytypes of auth_account';
+  'delete_auth_account_subtype() is an after trigger function for subytypes of auth_account';
 
 create trigger delete_auth_account_subtype after delete on auth_oidc_account
     for each row execute procedure delete_auth_account_subtype();

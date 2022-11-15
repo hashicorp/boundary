@@ -9,7 +9,7 @@ create domain wt_controller_id as text
     length(trim(value)) > 0
   );
 comment on domain wt_controller_id is
-'A text column that can only be null or not empty representing the id of the controller.';
+  'A text column that can only be null or not empty representing the id of the controller.';
 
 -- Drop constraint that requires controller_id to be at least 10 chars
 -- Alters controller_id column defined in 34/02_worker_controller_tables.up.sql

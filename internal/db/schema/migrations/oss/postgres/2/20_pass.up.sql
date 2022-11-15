@@ -22,7 +22,7 @@ from
   auth_password_method am
   left outer join iam_scope s on am.public_id = s.primary_auth_method_id;
 comment on view auth_password_method_with_is_primary is
-'password auth method with an is_primary_auth_method bool';
+  'password auth method with an is_primary_auth_method bool';
 
 
 commit;

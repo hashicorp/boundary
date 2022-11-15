@@ -17,7 +17,7 @@ check(
   length(trim(value)) > 0
 );
 comment on domain kms_scope_id is
-'standard column for scope id';
+  'standard column for scope id';
 
 create domain kms_timestamp as timestamp with time zone default current_timestamp;
 comment on domain kms_timestamp is
@@ -28,7 +28,7 @@ create domain kms_version as bigint default 1 not null
    value > 0
   );
 comment on domain kms_version is
-'standard column for row version';
+  'standard column for row version';
 
 -- kms_immutable_columns() will make the column names immutable which are passed as
 -- parameters when the trigger is created. It raises error code 23601 which is a
