@@ -489,11 +489,13 @@ var subactionTemplate = template.Must(template.New("").Funcs(
 		"snakeCase":         snakeCase,
 		"kebabCase":         kebabCase,
 		"getPathWithAction": getPathWithAction,
+		"getOperations":     getOperations,
 	},
 ).Parse(`
 {{ $input := . }}
-{{ range $index, $op := makeSlice "Add" "Set" "Remove" }}
 {{ range $key, $value := $input.Subactions }}
+{{ $ops := getOperations $value }}
+{{ range $index, $op := $ops }}
 {{ $fullName := print $op $key }}
 {{ $actionName := kebabCase $fullName }}
 {{ $resPath := getPathWithAction $input.PluralResourceName $input.ParentTypeName $actionName }}
@@ -880,4 +882,16 @@ func removeDups(in []string) []string {
 
 func typeFromSubtype(in, parent, extraSuffix string) string {
 	return strings.ToLower(strings.TrimSuffix(strings.TrimSuffix(in, extraSuffix), parent))
+}
+
+func getOperations(subtype subactionInfo) []string {
+	if len(subtype.Operations) == 0 {
+		return []string{AddOperation.String(), SetOperation.String(), RemoveOperation.String()}
+	}
+
+	opStrings := make([]string, len(subtype.Operations))
+	for i, so := range subtype.Operations {
+		opStrings[i] = so.String()
+	}
+	return opStrings
 }

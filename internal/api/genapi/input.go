@@ -31,11 +31,24 @@ const (
 	CreateResponseType = "create"
 	ListResponseType   = "list"
 	DeleteResponseType = "delete"
+
+	AddOperation    subactionOperation = "Add"
+	SetOperation    subactionOperation = "Set"
+	RemoveOperation subactionOperation = "Remove"
 )
+
+type subactionOperation string
+
+func (so subactionOperation) String() string {
+	return string(so)
+}
 
 type subactionInfo struct {
 	Type    string
 	VarName string
+	// If no operations are present, all available will be created.
+	// See subactionOperation consts and getOperations template func.
+	Operations []subactionOperation
 }
 
 type structureInfo struct {

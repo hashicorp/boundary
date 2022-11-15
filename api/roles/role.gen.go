@@ -392,76 +392,6 @@ func (c *Client) AddGrants(ctx context.Context, id string, version uint32, grant
 	return target, nil
 }
 
-func (c *Client) AddPrincipals(ctx context.Context, id string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
-	if id == "" {
-		return nil, fmt.Errorf("empty id value passed into AddPrincipals request")
-	}
-
-	if len(principalIds) == 0 {
-		return nil, errors.New("empty principalIds passed into AddPrincipals request")
-	}
-
-	if c.client == nil {
-		return nil, errors.New("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, errors.New("zero version number passed into AddPrincipals request")
-		}
-		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
-		if existingErr != nil {
-			if api.AsServerError(existingErr) != nil {
-				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
-			}
-			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingTarget == nil {
-			return nil, errors.New("nil resource response found when performing initial check-and-set read")
-		}
-		if existingTarget.Item == nil {
-			return nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Item.Version
-	}
-
-	opts.postMap["version"] = version
-
-	opts.postMap["principal_ids"] = principalIds
-
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", url.PathEscape(id)), opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating AddPrincipals request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error performing client request during AddPrincipals call: %w", err)
-	}
-
-	target := new(RoleUpdateResult)
-	target.Item = new(Role)
-	apiErr, err := resp.Decode(target.Item)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding AddPrincipals response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr
-	}
-	target.response = resp
-	return target, nil
-}
-
 func (c *Client) SetGrants(ctx context.Context, id string, version uint32, grantStrings []string, opt ...Option) (*RoleUpdateResult, error) {
 	if id == "" {
 		return nil, fmt.Errorf("empty id value passed into SetGrants request")
@@ -520,72 +450,6 @@ func (c *Client) SetGrants(ctx context.Context, id string, version uint32, grant
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding SetGrants response: %w", err)
-	}
-	if apiErr != nil {
-		return nil, apiErr
-	}
-	target.response = resp
-	return target, nil
-}
-
-func (c *Client) SetPrincipals(ctx context.Context, id string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
-	if id == "" {
-		return nil, fmt.Errorf("empty id value passed into SetPrincipals request")
-	}
-
-	if c.client == nil {
-		return nil, errors.New("nil client")
-	}
-
-	opts, apiOpts := getOpts(opt...)
-
-	if version == 0 {
-		if !opts.withAutomaticVersioning {
-			return nil, errors.New("zero version number passed into SetPrincipals request")
-		}
-		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
-		if existingErr != nil {
-			if api.AsServerError(existingErr) != nil {
-				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
-			}
-			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
-		}
-		if existingTarget == nil {
-			return nil, errors.New("nil resource response found when performing initial check-and-set read")
-		}
-		if existingTarget.Item == nil {
-			return nil, errors.New("nil resource found when performing initial check-and-set read")
-		}
-		version = existingTarget.Item.Version
-	}
-
-	opts.postMap["version"] = version
-
-	opts.postMap["principal_ids"] = principalIds
-
-	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", url.PathEscape(id)), opts.postMap, apiOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating SetPrincipals request: %w", err)
-	}
-
-	if len(opts.queryMap) > 0 {
-		q := url.Values{}
-		for k, v := range opts.queryMap {
-			q.Add(k, v)
-		}
-		req.URL.RawQuery = q.Encode()
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("error performing client request during SetPrincipals call: %w", err)
-	}
-
-	target := new(RoleUpdateResult)
-	target.Item = new(Role)
-	apiErr, err := resp.Decode(target.Item)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding SetPrincipals response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr
@@ -656,6 +520,142 @@ func (c *Client) RemoveGrants(ctx context.Context, id string, version uint32, gr
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding RemoveGrants response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) AddPrincipals(ctx context.Context, id string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into AddPrincipals request")
+	}
+
+	if len(principalIds) == 0 {
+		return nil, errors.New("empty principalIds passed into AddPrincipals request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into AddPrincipals request")
+		}
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+
+	opts.postMap["principal_ids"] = principalIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:add-principals", url.PathEscape(id)), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating AddPrincipals request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during AddPrincipals call: %w", err)
+	}
+
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding AddPrincipals response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) SetPrincipals(ctx context.Context, id string, version uint32, principalIds []string, opt ...Option) (*RoleUpdateResult, error) {
+	if id == "" {
+		return nil, fmt.Errorf("empty id value passed into SetPrincipals request")
+	}
+
+	if c.client == nil {
+		return nil, errors.New("nil client")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if version == 0 {
+		if !opts.withAutomaticVersioning {
+			return nil, errors.New("zero version number passed into SetPrincipals request")
+		}
+		existingTarget, existingErr := c.Read(ctx, id, append([]Option{WithSkipCurlOutput(true)}, opt...)...)
+		if existingErr != nil {
+			if api.AsServerError(existingErr) != nil {
+				return nil, fmt.Errorf("error from controller when performing initial check-and-set read: %w", existingErr)
+			}
+			return nil, fmt.Errorf("error performing initial check-and-set read: %w", existingErr)
+		}
+		if existingTarget == nil {
+			return nil, errors.New("nil resource response found when performing initial check-and-set read")
+		}
+		if existingTarget.Item == nil {
+			return nil, errors.New("nil resource found when performing initial check-and-set read")
+		}
+		version = existingTarget.Item.Version
+	}
+
+	opts.postMap["version"] = version
+
+	opts.postMap["principal_ids"] = principalIds
+
+	req, err := c.client.NewRequest(ctx, "POST", fmt.Sprintf("roles/%s:set-principals", url.PathEscape(id)), opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating SetPrincipals request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during SetPrincipals call: %w", err)
+	}
+
+	target := new(RoleUpdateResult)
+	target.Item = new(Role)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding SetPrincipals response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr
