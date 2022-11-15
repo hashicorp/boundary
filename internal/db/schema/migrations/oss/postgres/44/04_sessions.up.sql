@@ -12,6 +12,7 @@ begin;
   ;
 
   -- Replaces trigger from 01/50_session.up.sql
+  -- Replaced in 56/02_add_data_key_foreign_key_references
   create or replace function cancel_session_with_null_fk() returns trigger
   as $$
   begin
