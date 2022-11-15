@@ -23,6 +23,8 @@ create table worker_auth_ca(
  create_time wt_timestamp,
  update_time wt_timestamp
 );
+comment on table worker_auth_ca is
+  'worker_auth_ca is a one-row versioned table used for locking for certificate rotation on the worker_auth_ca_certificate table.';
 
 create trigger immutable_columns before update on worker_auth_ca
   for each row execute procedure immutable_columns('private_id','create_time');
@@ -37,9 +39,6 @@ insert into worker_auth_ca(private_id) values('roots');
 
 create trigger update_version_column after update on worker_auth_ca
   for each row execute procedure update_version_column(private_id);
-
-comment on table worker_auth_ca is
-  'worker_auth_ca is a one-row versioned table used for locking for certificate rotation on the worker_auth_ca_certificate table.';
 
 create table worker_auth_ca_certificate(
  serial_number numeric,
@@ -70,12 +69,11 @@ create table worker_auth_ca_certificate(
     constraint worker_auth_ca_fkey
       references worker_auth_ca(private_id)
 );
+comment on table worker_auth_ca_certificate is
+  'worker_auth_ca_certificate is a table where each row represents a root certificate for used for worker authentication.';
 
 create trigger immutable_columns before update on worker_auth_ca_certificate
   for each row execute procedure immutable_columns('serial_number', 'certificate', 'not_valid_before', 'not_valid_after', 'public_key', 'private_key', 'key_id', 'state', 'issuing_ca');
-
-comment on table worker_auth_ca_certificate is
-  'worker_auth_ca_certificate is a table where each row represents a root certificate for used for worker authentication.';
 
 create table worker_auth_authorized(
   worker_key_identifier text primary key, -- The public key id for this WorkerAuth entry, generated from the signing pub key

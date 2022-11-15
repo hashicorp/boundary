@@ -104,7 +104,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 			entry text not null
 		 );
 		 comment on table log_migration is
-		 'log_migration entries are logging output from databaes migrations';
+		   'log_migration entries are logging output from databaes migrations';
 
 		 create trigger
 			default_create_time_column
@@ -130,7 +130,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 			end;
 		 $$ language plpgsql;
 		 comment on function log_migration_version() is
-		 'log_migration_version will set the log_migration entries to the current migration version';
+		   'log_migration_version will set the log_migration entries to the current migration version';
 
 		 create trigger
 			migration_version_column

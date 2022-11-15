@@ -98,8 +98,8 @@ begin;
                   on store.public_id = cert.store_id;
   comment on view credential_vault_store_private is
     'credential_vault_store_private is a view where each row contains a credential store and the credential store''s data needed to connect to Vault. '
-      'The view returns a separate row for each current, maintaining and revoke token; maintaining tokens should only be used for token/credential renewal and revocation. '
-      'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
+    'The view returns a separate row for each current, maintaining and revoke token; maintaining tokens should only be used for token/credential renewal and revocation. '
+    'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
   -- Replaced in 49/01_vault_credentials.up.sql
   create view credential_vault_store_public as
@@ -128,7 +128,7 @@ begin;
     and delete_time is null;
   comment on view credential_vault_store_public is
     'credential_vault_store_public is a view where each row contains a credential store. '
-      'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
+    'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
   -- Replaced in 49/01_vault_credentials.up.sql
   create view credential_vault_library_private as
@@ -186,7 +186,7 @@ begin;
                     and store.token_status = 'current';
   comment on view credential_vault_library_private is
     'credential_vault_library_private is a view where each row contains a credential library and the credential library''s data needed to connect to Vault. '
-      'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
+    'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
   -- Replaced in 49/01_vault_credentials.up.sql
   create view credential_vault_library_public as
@@ -209,7 +209,7 @@ begin;
   from credential_vault_library_private;
   comment on view credential_vault_library_public is
     'credential_vault_library_public is a view where each row contains a credential library and any of library''s credential mapping overrides. '
-      'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
+    'No encrypted data is returned. This view can be used to retrieve data which will be returned external to boundary.';
 
   -- Replaces view from 41/01_worker_filter_vault_cred_store.up.sql
   create view credential_vault_credential_private as
@@ -254,7 +254,7 @@ begin;
   where credential.expiration_time != 'infinity'::date;
   comment on view credential_vault_credential_private is
     'credential_vault_credential_private is a view where each row contains a credential, '
-      'the vault token used to issue the credential, and the credential store data needed to connect to Vault. '
-      'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
+    'the vault token used to issue the credential, and the credential store data needed to connect to Vault. '
+    'Each row may contain encrypted data. This view should not be used to retrieve data which will be returned external to boundary.';
 
 commit;

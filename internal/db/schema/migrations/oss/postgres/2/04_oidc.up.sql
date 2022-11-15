@@ -50,7 +50,7 @@ create table auth_oidc_method (
     unique(scope_id, issuer, client_id) -- a client_id must be unique for a provider within a scope.
 );
 comment on table auth_oidc_method is
-'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
+  'auth_oidc_method entries are the current oidc auth methods configured for existing scopes.';
 
 -- auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc
 -- auth method.  There must be at least one allowed alg for each oidc auth method.
@@ -69,7 +69,7 @@ create table auth_oidc_signing_alg (
   primary key(oidc_method_id, signing_alg_name)
 );
 comment on table auth_oidc_signing_alg is
-'auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc auth method. There must be at least one allowed alg for each oidc auth method';
+  'auth_oidc_signing_alg entries are the signing algorithms allowed for an oidc auth method. There must be at least one allowed alg for each oidc auth method';
 
 -- auth_oidc_aud_claim entries are the audience claims for a specific oidc auth
 -- method.  There can be 0 or more for each parent oidc auth method.  If an auth
@@ -89,7 +89,7 @@ create table auth_oidc_aud_claim (
   primary key(oidc_method_id, aud_claim)
 );
 comment on table auth_oidc_aud_claim is
-'auth_oidc_aud_claim entries are the audience claims for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any aud claims, an ID token must contain one of them to be valid.';
+  'auth_oidc_aud_claim entries are the audience claims for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any aud claims, an ID token must contain one of them to be valid.';
 
 
 -- auth_oidc_certificate entries are optional PEM encoded x509 certificates.
@@ -108,7 +108,7 @@ create table auth_oidc_certificate (
   primary key(oidc_method_id, certificate)
 );
 comment on table auth_oidc_certificate is
-'auth_oidc_certificate entries are optional PEM encoded x509 certificates. Each entry is a single certificate.  An oidc auth method may have 0 or more of these optional x509s.  If an auth method has any cert entries, they are used as trust anchors when connecting to the auth methods oidc provider (instead of the host system cert chain)';
+  'auth_oidc_certificate entries are optional PEM encoded x509 certificates. Each entry is a single certificate.  An oidc auth method may have 0 or more of these optional x509s.  If an auth method has any cert entries, they are used as trust anchors when connecting to the auth methods oidc provider (instead of the host system cert chain)';
 
 
 -- auth_oidc_account entries are subtypes of auth_account and represent an
@@ -160,7 +160,7 @@ create table auth_oidc_account (
 );
 -- Comment fixed in 57/01_fix_comments.up.sql
 comment on table auth_oidc_method is
-'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
+  'auth_oidc_account entries are subtypes of auth_account and represent an oidc account.';
 
 -- auth_oidc_method column triggers
 create trigger insert_auth_method_subtype before insert on auth_oidc_method
@@ -238,7 +238,7 @@ as $$
   end;
 $$ language plpgsql;
 comment on function active_auth_oidc_method_must_be_complete() is
-'active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete';
+  'active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete';
 
 create trigger update_active_auth_oidc_method_must_be_complete before update on auth_oidc_method
   for each row execute procedure active_auth_oidc_method_must_be_complete();
@@ -258,7 +258,7 @@ as $$
   end;
 $$ language plpgsql;
 comment on function new_auth_oidc_method_must_be_inactive() is
-'new_auth_oidc_method_must_be_inactive ensures that new incomplete oidc auth methods must remain inactive';
+  'new_auth_oidc_method_must_be_inactive ensures that new incomplete oidc auth methods must remain inactive';
 
 create trigger new_auth_oidc_method_must_be_inactive before insert on auth_oidc_method
   for each row execute procedure active_auth_oidc_method_must_be_complete();
@@ -345,7 +345,7 @@ declare alg_cnt int;
   end;
 $$ language plpgsql;
 comment on function on_delete_active_auth_oidc_method_must_be_complete() is
-'on_delete_active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete after a delete on algs';
+  'on_delete_active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete after a delete on algs';
 
 create trigger
   default_create_time_column

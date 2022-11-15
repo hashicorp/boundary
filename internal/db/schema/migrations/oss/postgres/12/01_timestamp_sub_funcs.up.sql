@@ -11,7 +11,7 @@ begin;
         stable
         returns null on null input;
     comment on function wt_add_seconds is
-        'wt_sub_seconds returns ts - sec.';
+      'wt_sub_seconds returns ts - sec.';
 
     create function wt_sub_seconds_from_now(sec integer) returns timestamp with time zone
     as $$
@@ -20,6 +20,6 @@ begin;
         stable
         returns null on null input;
     comment on function wt_add_seconds_to_now is
-        'wt_sub_seconds_from_now returns current_timestamp - sec.';
+      'wt_sub_seconds_from_now returns current_timestamp - sec.';
 
 commit;

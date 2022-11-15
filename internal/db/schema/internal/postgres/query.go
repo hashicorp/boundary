@@ -134,6 +134,6 @@ as $$
   end;
 $$ language plpgsql;
 comment on function log_migration_version() is
-'log_migration_version will set the log_migration entries to the current migration version';
+  'log_migration_version will set the log_migration entries to the current migration version';
 `
 )

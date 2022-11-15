@@ -34,7 +34,6 @@ begin;
           'injected_application'
         )
       );
-
   -- update comment on table   
   comment on table credential_purpose_enm is
     'credential_purpose_enm is an enumeration table for credential purposes. '
