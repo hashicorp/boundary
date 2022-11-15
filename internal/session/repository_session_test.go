@@ -1200,6 +1200,22 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 			}(),
 		},
 		{
+			name: "Scope",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &iam.Scope{
+					Scope: &iamStore.Scope{
+						PublicId: s.ProjectId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
 			name: "HostSet",
 			cancelFk: func() cancelFk {
 				s := setupFn()
