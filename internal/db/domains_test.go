@@ -293,10 +293,7 @@ create table if not exists test_update_time_column (
 );
 `
 		addTriggers = `
-create trigger
-  test_update_time_column
-before
-update on test_update_time_column
+create trigger test_update_time_column before update on test_update_time_column
   for each row execute procedure update_time_column();
 `
 		countQuery = `
@@ -383,9 +380,7 @@ create table if not exists test_table_wt_version(
 );
 `
 		addTrigger = `
-create trigger 
-  update_version_column
-after update on test_table_wt_version
+create trigger update_version_column after update on test_table_wt_version
   for each row execute procedure update_version_column();
 `
 		insert = `
@@ -444,9 +439,7 @@ create table if not exists test_table_wt_version(
 );
 `
 		addTrigger = `
-create trigger 
-  update_version_column
-after update on test_table_wt_version
+create trigger update_version_column after update on test_table_wt_version
   for each row execute procedure update_version_column('private_id');
 `
 		insert = `
@@ -522,19 +515,13 @@ create table if not exists test_immutable_columns (
 );
 `
 		addTriggers = `
-create trigger
-  test_update_immutable_columns
-before
-update on test_immutable_columns
+create trigger test_update_immutable_columns before update on test_immutable_columns
   for each row execute procedure immutable_columns('id', 'name', 'create_time');
 `
 		dropTriggers = `drop trigger test_update_immutable_columns on test_immutable_columns`
 
 		addBadTriggers = `
-create trigger
-  test_update_bad_immutable_columns
-before
-update on test_immutable_columns
+create trigger test_update_bad_immutable_columns before update on test_immutable_columns
   for each row execute procedure immutable_columns('id', 'bad_column_name', 'create_time');
 `
 		dropBadTriggers = `drop trigger test_update_bad_immutable_columns on test_immutable_columns`
@@ -1041,10 +1028,7 @@ create table if not exists test_not_null_columns (
 );
 `
 		addTriggers = `
-create trigger
-  test_insert_not_null_columns
-before
-insert on test_not_null_columns
+create trigger test_insert_not_null_columns before insert on test_not_null_columns
   for each row execute procedure not_null_columns('one', 'two');
 `
 		dropTriggers = `drop trigger test_insert_not_null_columns on test_not_null_columns`

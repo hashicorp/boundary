@@ -51,10 +51,8 @@ func Init(t testing.TB, db *dbw.DB) {
 	end;
 	$$ language plpgsql;
 
-	create trigger 
-  	update_version_column
-	after update on oplog_test_user
-  		for each row execute procedure oplog_test_version_column();
+	create trigger update_version_column after update on oplog_test_user
+  	  for each row execute procedure oplog_test_version_column();
 
 	create table if not exists oplog_test_car (
 	  id bigserial primary key,

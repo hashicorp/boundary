@@ -464,7 +464,7 @@ begin;
     'function used in before insert triggers to make columns not null on insert, but are allowed be updated to null';
 
   create trigger not_null_columns before insert on credential_vault_credential
-      for each row execute procedure not_null_columns('library_id', 'session_id');
+    for each row execute procedure not_null_columns('library_id', 'session_id');
 
   create trigger default_create_time_column before insert on credential_vault_credential
     for each row execute procedure default_create_time();

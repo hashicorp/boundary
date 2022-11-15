@@ -25,10 +25,7 @@ $$ language plpgsql;
 comment on function log_migration_version() is
   'log_migration_version will set the log_migration entries to the current migration version';
 
-create trigger
-  version_column
-before
-  insert on log_migration
+create trigger version_column before insert on log_migration
   for each row execute procedure log_migration_version();
 
 commit;

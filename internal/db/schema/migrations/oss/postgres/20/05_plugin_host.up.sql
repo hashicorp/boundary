@@ -104,13 +104,13 @@ begin;
   );
 
   create trigger update_time_column before update on host_plugin_catalog_secret
-      for each row execute procedure update_time_column();
+    for each row execute procedure update_time_column();
 
   create trigger default_create_time_column before insert on host_plugin_catalog_secret
-      for each row execute procedure default_create_time();
+    for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on host_plugin_catalog_secret
-      for each row execute procedure immutable_columns('catalog_id', 'create_time');
+    for each row execute procedure immutable_columns('catalog_id', 'create_time');
 
   create table host_plugin_set (
     public_id wt_public_id primary key,

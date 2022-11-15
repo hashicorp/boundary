@@ -15,7 +15,7 @@ create table auth_managed_group (
     unique(auth_method_id, public_id)
 );
 comment on table auth_managed_group is
-'auth_managed_group is the abstract base table for managed groups.';
+  'auth_managed_group is the abstract base table for managed groups.';
 
 -- Define the immutable fields of auth_managed_group
 create trigger immutable_columns before update on auth_managed_group

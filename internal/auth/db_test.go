@@ -27,10 +27,7 @@ values
   (@public_id, @scoped_id);
 `
 		addTriggers = `
-create trigger
-  insert_auth_method_subtype
-before
-insert on test_auth_method
+create trigger insert_auth_method_subtype before insert on test_auth_method
   for each row execute procedure insert_auth_method_subtype();
 `
 		baseTableQuery = `
@@ -100,10 +97,7 @@ values
   (?, ?);
 `
 		addTriggers = `
-create trigger
-  insert_auth_account_subtype
-before
-insert on test_auth_account
+create trigger insert_auth_account_subtype before insert on test_auth_account
   for each row execute procedure insert_auth_account_subtype();
 `
 		baseTableQuery = `

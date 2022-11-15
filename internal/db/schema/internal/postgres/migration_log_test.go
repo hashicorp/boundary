@@ -106,16 +106,10 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 		 comment on table log_migration is
 		   'log_migration entries are logging output from databaes migrations';
 
-		 create trigger
-			default_create_time_column
-		 before
-		 insert on log_migration
+		 create trigger default_create_time_column before insert on log_migration
 			for each row execute procedure default_create_time();
 
-		 create trigger
-			immutable_columns
-		 before
-		 update on log_migration
+		 create trigger immutable_columns before update on log_migration
 			for each row execute procedure immutable_columns('id', 'migration_version', 'create_time', 'entry');
 
 		 create or replace function
@@ -132,10 +126,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 		 comment on function log_migration_version() is
 		   'log_migration_version will set the log_migration entries to the current migration version';
 
-		 create trigger
-			migration_version_column
-		 before
-		 insert on log_migration
+		 create trigger migration_version_column before insert on log_migration
 			for each row execute procedure log_migration_version();
 		`,
 		// insert some logs

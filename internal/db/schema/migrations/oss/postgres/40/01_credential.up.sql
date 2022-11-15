@@ -48,6 +48,6 @@ begin;
   create trigger immutable_columns before update on target_static_credential
     for each row execute procedure immutable_columns('target_id', 'credential_static_id', 'credential_purpose', 'create_time');
   create trigger immutable_columns before update on session_credential_static
-      for each row execute procedure immutable_columns('session_id', 'credential_static_id', 'credential_purpose', 'create_time');
+    for each row execute procedure immutable_columns('session_id', 'credential_static_id', 'credential_purpose', 'create_time');
 
 commit;

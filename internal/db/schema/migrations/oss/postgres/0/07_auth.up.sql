@@ -146,7 +146,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger update_iam_user_auth_account before update of iam_user_id on auth_account for each row
-    execute procedure update_iam_user_auth_account();
+  create trigger update_iam_user_auth_account before update of iam_user_id on auth_account
+    for each row execute procedure update_iam_user_auth_account();
 
 commit;

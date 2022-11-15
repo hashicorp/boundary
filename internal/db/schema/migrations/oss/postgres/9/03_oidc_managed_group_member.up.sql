@@ -15,7 +15,7 @@ create table auth_oidc_managed_group_member_account (
   primary key (managed_group_id, member_id)
 );
 comment on table auth_oidc_managed_group_member_account is
-'auth_oidc_managed_group_member_account is the join table for managed oidc groups and accounts.';
+  'auth_oidc_managed_group_member_account is the join table for managed oidc groups and accounts.';
 
 -- auth_immutable_managed_oidc_group_member_account() ensures that group members are immutable. 
 create or replace function auth_immutable_managed_oidc_group_member_account() returns trigger

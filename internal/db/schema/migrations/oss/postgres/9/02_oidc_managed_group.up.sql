@@ -26,7 +26,7 @@ create table auth_oidc_managed_group (
     unique(auth_method_id, name)
 );
 comment on table auth_oidc_managed_group is
-'auth_oidc_managed_group entries are subtypes of auth_managed_group and represent an oidc managed group.';
+  'auth_oidc_managed_group entries are subtypes of auth_managed_group and represent an oidc managed group.';
 
 -- Define the immutable fields of auth_oidc_managed_group
 create trigger immutable_columns before update on auth_oidc_managed_group

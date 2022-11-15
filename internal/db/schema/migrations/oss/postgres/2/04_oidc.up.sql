@@ -347,22 +347,13 @@ $$ language plpgsql;
 comment on function on_delete_active_auth_oidc_method_must_be_complete() is
   'on_delete_active_auth_oidc_method_must_be_complete() will raise an error if the oidc auth method is not complete after a delete on algs';
 
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_aud_claim
+create trigger default_create_time_column before insert on auth_oidc_aud_claim
   for each row execute procedure default_create_time();
 
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_certificate
+create trigger default_create_time_column before insert on auth_oidc_certificate
   for each row execute procedure default_create_time();
 
-create trigger
-  default_create_time_column
-before
-insert on auth_oidc_signing_alg
+create trigger default_create_time_column before insert on auth_oidc_signing_alg
   for each row execute procedure default_create_time();
 
 create trigger on_delete_active_auth_oidc_method_must_be_complete after delete on auth_oidc_signing_alg
