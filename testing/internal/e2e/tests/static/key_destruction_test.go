@@ -55,7 +55,8 @@ func TestKeyDestructionCli(t *testing.T) {
 	var keys scopes.KeyListResult
 	err := json.Unmarshal(output.Stdout, &keys)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
+	// We expect to see all DEKs and the root key, so DEKs+1 in total.
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1, "Expected %d keys to be listed, but found %d. Keys: %v", len(kms.ValidDekPurposes())+1, len(keys.Items), keys.Items)
 	for _, key := range keys.Items {
 		assert.Len(t, key.Versions, 1)
 	}
@@ -103,7 +104,8 @@ func TestKeyDestructionCli(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 	err = json.Unmarshal(output.Stdout, &keys)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
+	// We expect to see all DEKs and the root key, so DEKs+1 in total.
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1, "Expected %d keys to be listed, but found %d. Keys: %v", len(kms.ValidDekPurposes())+1, len(keys.Items), keys.Items)
 	var rootKeyVersionToDestroy *scopes.KeyVersion
 	var databaseKeyVersionToDestroy *scopes.KeyVersion
 	for _, key := range keys.Items {
@@ -213,7 +215,8 @@ func TestKeyDestructionCli(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 	err = json.Unmarshal(output.Stdout, &keys)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
+	// We expect to see all DEKs and the root key, so DEKs+1 in total.
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1, "Expected %d keys to be listed, but found %d. Keys: %v", len(kms.ValidDekPurposes())+1, len(keys.Items), keys.Items)
 	for _, key := range keys.Items {
 		switch key.Purpose {
 		case "rootKey", "database":
@@ -245,7 +248,8 @@ func TestKeyDestructionApi(t *testing.T) {
 
 	keys, err := sc.ListKeys(ctx, scope.Item.Id)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
+	// We expect to see all DEKs and the root key, so DEKs+1 in total.
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1, "Expected %d keys to be listed, but found %d. Keys: %v", len(kms.ValidDekPurposes())+1, len(keys.Items), keys.Items)
 	// Assert that all keys have the same number of versions
 	for _, key := range keys.Items {
 		assert.Len(t, key.Versions, 1)
@@ -269,7 +273,8 @@ func TestKeyDestructionApi(t *testing.T) {
 
 	keys, err = sc.ListKeys(ctx, scope.Item.Id)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
+	// We expect to see all DEKs and the root key, so DEKs+1 in total.
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1, "Expected %d keys to be listed, but found %d. Keys: %v", len(kms.ValidDekPurposes())+1, len(keys.Items), keys.Items)
 	// Assert that all keys have the same number of versions,
 	// one higher than before
 	var rootKeyVersionToDestroy *scopes.KeyVersion
@@ -330,7 +335,8 @@ func TestKeyDestructionApi(t *testing.T) {
 
 	keys, err = sc.ListKeys(ctx, scope.Item.Id)
 	require.NoError(t, err)
-	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1)
+	// We expect to see all DEKs and the root key, so DEKs+1 in total.
+	assert.Len(t, keys.Items, len(kms.ValidDekPurposes())+1, "Expected %d keys to be listed, but found %d. Keys: %v", len(kms.ValidDekPurposes())+1, len(keys.Items), keys.Items)
 	for _, key := range keys.Items {
 		switch key.Purpose {
 		case "rootKey", "database":
