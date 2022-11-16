@@ -851,7 +851,7 @@ func Test_AnonRestrictions(t *testing.T) {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
-				for j := action.Type(1); j <= action.ReadCertificateAuthority; j++ {
+				for j := action.Type(1); j <= action.RemoveStaticAddress; j++ {
 					res := Resource{
 						ScopeId: scope.Global.String(),
 						Id:      "foobar",

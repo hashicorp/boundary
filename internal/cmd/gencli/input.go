@@ -498,7 +498,16 @@ var inputStructs = map[string][]*cmdInfo{
 			HasName:             true,
 			HasDescription:      true,
 			Container:           "Scope",
-			VersionedActions:    []string{"add-host-sources", "remove-host-sources", "set-host-sources", "add-credential-sources", "remove-credential-sources", "set-credential-sources"},
+			VersionedActions: []string{
+				"add-host-sources",
+				"remove-host-sources",
+				"set-host-sources",
+				"add-credential-sources",
+				"remove-credential-sources",
+				"set-credential-sources",
+				"set-static-address",
+				"remove-static-address",
+			},
 		},
 		{
 			ResourceType:         resource.Target.String(),

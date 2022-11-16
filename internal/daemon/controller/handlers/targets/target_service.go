@@ -970,6 +970,18 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }
 
+// TODO: Implement
+func (s Service) SetTargetStaticAddress(ctx context.Context, req *pbs.SetTargetStaticAddressRequest) (*pbs.SetTargetStaticAddressResponse, error) {
+	const op = "targets.(Service).SetTargetStaticAddress"
+	return nil, errors.New(ctx, errors.Internal, op, "unimplemented. please implement me")
+}
+
+// TODO: Implement
+func (s Service) RemoveTargetStaticAddress(ctx context.Context, req *pbs.RemoveTargetStaticAddressRequest) (*pbs.RemoveTargetStaticAddressResponse, error) {
+	const op = "targets.(Service).RemoveTargetStaticAddress"
+	return nil, errors.New(ctx, errors.Internal, op, "unimplemented. please implement me")
+}
+
 func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []target.HostSource, []target.CredentialSource, error) {
 	repo, err := s.repoFn()
 	if err != nil {

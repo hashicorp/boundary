@@ -95,6 +95,14 @@ type TargetServiceClient interface {
 	// Credential Source is attempted to be removed from the Target when the
 	// Target does not have the Credential Source.
 	RemoveTargetCredentialSources(ctx context.Context, in *RemoveTargetCredentialSourcesRequest, opts ...grpc.CallOption) (*RemoveTargetCredentialSourcesResponse, error)
+	// SetTargetStaticAddress sets a Target's address field. The request must
+	// include the Target's id as well as the address to be set. It is an error to
+	// provide an id for a Target that is already using Host Sources as those
+	// use-cases are mutually exclusive.
+	SetTargetStaticAddress(ctx context.Context, in *SetTargetStaticAddressRequest, opts ...grpc.CallOption) (*SetTargetStaticAddressResponse, error)
+	// RemoveTargetStaticAddress clears a Target's address field. The request must
+	// include the Target's id.
+	RemoveTargetStaticAddress(ctx context.Context, in *RemoveTargetStaticAddressRequest, opts ...grpc.CallOption) (*RemoveTargetStaticAddressResponse, error)
 }
 
 type targetServiceClient struct {
@@ -213,6 +221,24 @@ func (c *targetServiceClient) RemoveTargetCredentialSources(ctx context.Context,
 	return out, nil
 }
 
+func (c *targetServiceClient) SetTargetStaticAddress(ctx context.Context, in *SetTargetStaticAddressRequest, opts ...grpc.CallOption) (*SetTargetStaticAddressResponse, error) {
+	out := new(SetTargetStaticAddressResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/SetTargetStaticAddress", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *targetServiceClient) RemoveTargetStaticAddress(ctx context.Context, in *RemoveTargetStaticAddressRequest, opts ...grpc.CallOption) (*RemoveTargetStaticAddressResponse, error) {
+	out := new(RemoveTargetStaticAddressResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/RemoveTargetStaticAddress", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TargetServiceServer is the server API for TargetService service.
 // All implementations must embed UnimplementedTargetServiceServer
 // for forward compatibility
@@ -294,6 +320,14 @@ type TargetServiceServer interface {
 	// Credential Source is attempted to be removed from the Target when the
 	// Target does not have the Credential Source.
 	RemoveTargetCredentialSources(context.Context, *RemoveTargetCredentialSourcesRequest) (*RemoveTargetCredentialSourcesResponse, error)
+	// SetTargetStaticAddress sets a Target's address field. The request must
+	// include the Target's id as well as the address to be set. It is an error to
+	// provide an id for a Target that is already using Host Sources as those
+	// use-cases are mutually exclusive.
+	SetTargetStaticAddress(context.Context, *SetTargetStaticAddressRequest) (*SetTargetStaticAddressResponse, error)
+	// RemoveTargetStaticAddress clears a Target's address field. The request must
+	// include the Target's id.
+	RemoveTargetStaticAddress(context.Context, *RemoveTargetStaticAddressRequest) (*RemoveTargetStaticAddressResponse, error)
 	mustEmbedUnimplementedTargetServiceServer()
 }
 
@@ -336,6 +370,12 @@ func (UnimplementedTargetServiceServer) SetTargetCredentialSources(context.Conte
 }
 func (UnimplementedTargetServiceServer) RemoveTargetCredentialSources(context.Context, *RemoveTargetCredentialSourcesRequest) (*RemoveTargetCredentialSourcesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetCredentialSources not implemented")
+}
+func (UnimplementedTargetServiceServer) SetTargetStaticAddress(context.Context, *SetTargetStaticAddressRequest) (*SetTargetStaticAddressResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetTargetStaticAddress not implemented")
+}
+func (UnimplementedTargetServiceServer) RemoveTargetStaticAddress(context.Context, *RemoveTargetStaticAddressRequest) (*RemoveTargetStaticAddressResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetStaticAddress not implemented")
 }
 func (UnimplementedTargetServiceServer) mustEmbedUnimplementedTargetServiceServer() {}
 
@@ -566,6 +606,42 @@ func _TargetService_RemoveTargetCredentialSources_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TargetService_SetTargetStaticAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetTargetStaticAddressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TargetServiceServer).SetTargetStaticAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.TargetService/SetTargetStaticAddress",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TargetServiceServer).SetTargetStaticAddress(ctx, req.(*SetTargetStaticAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TargetService_RemoveTargetStaticAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveTargetStaticAddressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TargetServiceServer).RemoveTargetStaticAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.TargetService/RemoveTargetStaticAddress",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TargetServiceServer).RemoveTargetStaticAddress(ctx, req.(*RemoveTargetStaticAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TargetService_ServiceDesc is the grpc.ServiceDesc for TargetService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -620,6 +696,14 @@ var TargetService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveTargetCredentialSources",
 			Handler:    _TargetService_RemoveTargetCredentialSources_Handler,
+		},
+		{
+			MethodName: "SetTargetStaticAddress",
+			Handler:    _TargetService_SetTargetStaticAddress_Handler,
+		},
+		{
+			MethodName: "RemoveTargetStaticAddress",
+			Handler:    _TargetService_RemoveTargetStaticAddress_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

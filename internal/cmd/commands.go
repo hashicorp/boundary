@@ -1056,6 +1056,18 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "set-credential-sources",
 			}, nil
 		},
+		"targets set-static-address": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-static-address",
+			}, nil
+		},
+		"targets remove-static-address": func() (cli.Command, error) {
+			return &targetscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-static-address",
+			}, nil
+		},
 
 		"users": func() (cli.Command, error) {
 			return &userscmd.Command{

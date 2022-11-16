@@ -3265,6 +3265,47 @@
         ]
       }
     },
+    "/v1/targets/{id}:remove-static-address": {
+      "post": {
+        "summary": "Removes a Target's existing address.",
+        "operationId": "TargetService_RemoveTargetStaticAddress",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The Target's id. Required.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
     "/v1/targets/{id}:set-credential-sources": {
       "post": {
         "summary": "Sets the Credential Sources on the Target.",
@@ -3363,6 +3404,51 @@
                   "items": {
                     "type": "string"
                   }
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.TargetService"
+        ]
+      }
+    },
+    "/v1/targets/{id}:set-static-address": {
+      "post": {
+        "summary": "Sets a Target's address. Cannot be used alongside host sources.",
+        "operationId": "TargetService_SetTargetStaticAddress",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The Target's id. Required.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "address": {
+                  "type": "string",
+                  "description": "The address to be set to the given Target. Required."
                 }
               }
             }
@@ -6740,6 +6826,14 @@
         }
       }
     },
+    "controller.api.services.v1.RemoveTargetStaticAddressResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
     "controller.api.services.v1.RemoveUserAccountsResponse": {
       "type": "object",
       "properties": {
@@ -6819,6 +6913,14 @@
       }
     },
     "controller.api.services.v1.SetTargetHostSourcesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
+        }
+      }
+    },
+    "controller.api.services.v1.SetTargetStaticAddressResponse": {
       "type": "object",
       "properties": {
         "item": {

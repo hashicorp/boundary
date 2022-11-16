@@ -828,6 +828,9 @@ var inputStructs = []*structInfo{
 				VarName: "hostSourceIds",
 			},
 			"CredentialSources": {},
+			"StaticAddress": {
+				Operations: []subactionOperation{SetOperation, RemoveOperation},
+			},
 		},
 		extraFields: []fieldInfo{
 			{

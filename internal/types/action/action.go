@@ -64,6 +64,8 @@ const (
 	RotateScopeKeys                    Type = 53
 	ListScopeKeyVersionDestructionJobs Type = 54
 	DestroyScopeKeyVersion             Type = 55
+	SetStaticAddress                   Type = 56
+	RemoveStaticAddress                Type = 57
 
 	// When adding new actions, be sure to update:
 	//
@@ -127,6 +129,8 @@ var Map = map[string]Type{
 	RotateScopeKeys.String():                    RotateScopeKeys,
 	ListScopeKeyVersionDestructionJobs.String(): ListScopeKeyVersionDestructionJobs,
 	DestroyScopeKeyVersion.String():             DestroyScopeKeyVersion,
+	SetStaticAddress.String():                   SetStaticAddress,
+	RemoveStaticAddress.String():                RemoveStaticAddress,
 }
 
 var DeprecatedMap = map[string]Type{
@@ -196,6 +200,8 @@ func (a Type) String() string {
 		"rotate-keys",
 		"list-key-version-destruction-jobs",
 		"destroy-key-version",
+		"set-static-address",
+		"remove-static-address",
 	}[a]
 }
 

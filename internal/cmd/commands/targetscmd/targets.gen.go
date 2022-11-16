@@ -249,6 +249,22 @@ func (c *Command) Run(args []string) int {
 			version = uint32(c.FlagVersion)
 		}
 
+	case "set-static-address":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
+	case "remove-static-address":
+		switch c.FlagVersion {
+		case 0:
+			opts = append(opts, targets.WithAutomaticVersioning(true))
+		default:
+			version = uint32(c.FlagVersion)
+		}
+
 	}
 
 	if ok := extraFlagsHandlingFunc(c, f, &opts); !ok {

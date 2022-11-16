@@ -203,6 +203,34 @@ service TargetService {
       summary: "Removes Credential Sources from the Target."
     };
   }
+
+  // SetTargetStaticAddress sets a Target's address field. The request must
+  // include the Target's id as well as the address to be set. It is an error to
+  // provide an id for a Target that is already using Host Sources as those
+  // use-cases are mutually exclusive.
+  rpc SetTargetStaticAddress(SetTargetStaticAddressRequest) returns (SetTargetStaticAddressResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:set-static-address"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Sets a Target's address. Cannot be used alongside host sources."
+    };
+  }
+
+  // RemoveTargetStaticAddress clears a Target's address field. The request must
+  // include the Target's id.
+  rpc RemoveTargetStaticAddress(RemoveTargetStaticAddressRequest) returns (RemoveTargetStaticAddressResponse) {
+    option (google.api.http) = {
+      post: "/v1/targets/{id}:remove-static-address"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Removes a Target's existing address."
+    };
+  }
 }
 
 message GetTargetRequest {
@@ -392,4 +420,33 @@ message AuthorizeSessionRequest {
 
 message AuthorizeSessionResponse {
   api.resources.targets.v1.SessionAuthorization item = 1;
+}
+
+message SetTargetStaticAddressRequest {
+  // The Target's id. Required.
+  string id = 1; // @gotags: `class:"public"`
+
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+
+  // The address to be set to the given Target. Required.
+  string address = 3; // @gotags: `class:"public"`
+}
+
+message SetTargetStaticAddressResponse {
+  api.resources.targets.v1.Target item = 1;
+}
+
+message RemoveTargetStaticAddressRequest {
+  // The Target's id. Required.
+  string id = 1; // @gotags: `class:"public"
+
+  // Version is used to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 2; // @gotags: `class:"public"`
+}
+
+message RemoveTargetStaticAddressResponse {
+  api.resources.targets.v1.Target item = 1;
 }

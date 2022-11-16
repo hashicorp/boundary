@@ -35,6 +35,7 @@ type extraCmdVars struct {
 	flagBrokeredCredentialSources            []string
 	flagInjectedApplicationCredentialSources []string
 	flagHostId                               string
+	flagAddress                              string
 	sar                                      *targets.SessionAuthorizationResult
 }
 
@@ -47,6 +48,8 @@ func extraActionsFlagsMapFuncImpl() map[string][]string {
 		"add-credential-sources":    {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
 		"remove-credential-sources": {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
 		"set-credential-sources":    {"id", "application-credential-source", "brokered-credential-source", "injected-application-credential-source", "version"},
+		"set-static-address":        {"id", "address", "version"},
+		"remove-static-address":     {"id", "version"},
 	}
 }
 
@@ -75,6 +78,16 @@ func extraSynopsisFuncImpl(c *Command) string {
 			in = "Remove credential sources from"
 		}
 		return wordwrap.WrapString(fmt.Sprintf("%s a target", in), base.TermWidth)
+
+	case "set-static-address", "remove-static-address":
+		var in string
+		switch {
+		case strings.HasPrefix(c.Func, "set"):
+			in = "Set the static address for"
+		case strings.HasPrefix(c.Func, "remove"):
+			in = "Remove the static address from"
+		}
+		return wordwrap.WrapString(fmt.Sprintf("%s a target.", in), base.TermWidth)
 
 	case "authorize-session":
 		return "Request session authorization against the target"
@@ -211,6 +224,31 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"",
 		})
+	case "set-static-address":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target set-static-address [options] [args]",
+			"",
+			"  This command allows setting a Target's static address, used to connect directly without using host sources.",
+			"  It is an error to provide an id for a Target that is already associated to host sources.",
+			"",
+			"  Example:",
+			"",
+			`    $ boundary targets set-static-address -id ttcp_1234567890 -address 127.0.0.1`,
+			"",
+			"",
+		})
+	case "remove-static-address":
+		helpStr = base.WrapForHelpText([]string{
+			"Usage: boundary target remove-static-address [options] [args]",
+			"",
+			"  This command allows removing a Target's static address.",
+			"",
+			"Example:",
+			"",
+			`    $ boundary targets remove-static-address -id ttcp_1234567890`,
+			"",
+			"",
+		})
 	}
 	return helpStr + c.Flags().Help()
 }
@@ -283,6 +321,15 @@ func extraFlagsFuncImpl(c *Command, _ *base.FlagSets, f *base.FlagSet) {
 			EnvVar:     "BOUNDARY_SCOPE_NAME",
 			Completion: complete.PredictAnything,
 			Usage:      "Target scope name, if authorizing the session via scope parameters and target name. Mutually exclusive with -scope-id.",
+		})
+	}
+
+	if c.Func == "set-static-address" {
+		flagsMap[c.Func] = append(flagsMap[c.Func], "address")
+		f.StringVar(&base.StringVar{
+			Name:   "address",
+			Target: &c.flagAddress,
+			Usage:  "Optionally, a valid network address to connect to for this target. Can not be used alongside host sources.",
 		})
 	}
 }
@@ -383,6 +430,17 @@ func extraFlagsHandlingFuncImpl(c *Command, _ *base.FlagSets, opts *[]targets.Op
 		if len(c.flagHostId) != 0 {
 			*opts = append(*opts, targets.WithHostId(c.flagHostId))
 		}
+
+	case "set-static-address":
+		if len(c.flagAddress) == 0 {
+			c.UI.Error("No Target static address supplied. Please supply it using -address.")
+			return false
+		}
+		if c.flagAddress == "null" {
+			*opts = append(*opts, targets.DefaultAddress())
+		} else {
+			*opts = append(*opts, targets.WithAddress(c.flagAddress))
+		}
 	}
 
 	return true
@@ -431,6 +489,18 @@ func executeExtraActionsImpl(c *Command, origResp *api.Response, origItem *targe
 		c.plural = "a session against target"
 		c.sar, err = targetClient.AuthorizeSession(c.Context, c.FlagId, opts...)
 		return nil, nil, nil, err
+	case "set-static-address":
+		result, err := targetClient.SetStaticAddress(c.Context, c.FlagId, version, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
+	case "remove-static-address":
+		result, err := targetClient.RemoveStaticAddress(c.Context, c.FlagId, version, opts...)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return result.GetResponse(), result.GetItem(), nil, err
 	}
 	return origResp, origItem, origItems, origError
 }
