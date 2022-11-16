@@ -113,7 +113,7 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 		address = opts.withAddress
 	}
 	versionInfo := version.Get()
-	relVer := versionInfo.VersionNumber()
+	relVer := versionInfo.FullVersionNumber(false)
 	wrk := NewWorker(scope.Global.String(),
 		WithName(name),
 		WithAddress(address),
