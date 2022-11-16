@@ -226,7 +226,7 @@ func TestKeyDestruction(t *testing.T) {
 	// second after the last successful run. We need to re-encrypt data in 4 different tables,
 	// and then we need to destroy the key. This job will take between 4 and 5 seconds to run,
 	// depending on the timing of the first started run.
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	t.Cleanup(cancel)
 	for {
 		jobs, err = sc.ListKeyVersionDestructionJobs(ctx, "global")
