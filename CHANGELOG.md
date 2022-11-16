@@ -32,13 +32,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     * `{{ truncateFrom .Account.Email "@" }}`: this would turn `foo@example.com` into `foo`
 * Per-Scope Key lifecycle management: Both Key Encryption Keys (KEKs) and Data Encryption
   Keys (DEKs) can now have their lifecycle managed by the user through the new
-  key rotation and key destruction functionality. To learn more about this new feature,
+  key rotation and key version destruction functionality. To learn more about this new feature,
   please visit the [docs
   site](https://developer.hashicorp.com/boundary/docs/concepts/security/data-encryption).
 
   Upgrade notice: If the Database purpose DEK for a scope is destroyed, sessions that
   predate the upgrade need to be canceled via the API.
-
+  ([PR](https://github.com/hashicorp/boundary/pull/2477))
+  
 * workers: PKI Worker daemons now get disconnected from upstreams when their
   corresponding resource is deleted ([PR](https://github.com/hashicorp/boundary/pull/2573))
 
@@ -57,6 +58,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   sessions are ongoing ([PR](https://github.com/hashicorp/boundary/pull/2612))
 * sessions: Fixed a panic in a worker when a user with an active
   session is deleted ([PR](https://github.com/hashicorp/boundary/pull/2629))
+* sessions: Fixed a bug where reading a session after its associated project
+  had been deleted would result in an error
+  ([PR](https://github.com/hashicorp/boundary/pull/2615))
 
 ### Deprecations/Changes
 
