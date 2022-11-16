@@ -61,137 +61,20 @@ func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
+	newHostCatalogId := boundary.CreateNewAwsHostCatalogCli(t, ctx, newProjectId, c.AwsAccessKeyId, c.AwsSecretAccessKey)
 
-	// Create a dynamic host catalog
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"host-catalogs", "create", "plugin",
-			"-scope-id", newProjectId,
-			"-plugin-name", "aws",
-			"-attr", "disable_credential_rotation=true",
-			"-attr", "region=us-east-1",
-			"-secret", "access_key_id=env://E2E_AWS_ACCESS_KEY_ID",
-			"-secret", "secret_access_key=env://E2E_AWS_SECRET_ACCESS_KEY",
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostCatalogResult hostcatalogs.HostCatalogCreateResult
-	err = json.Unmarshal(output.Stdout, &newHostCatalogResult)
-	require.NoError(t, err)
-	newHostCatalogId := newHostCatalogResult.Item.Id
-	t.Logf("Created Host Catalog: %s", newHostCatalogId)
-
-	// Create a host set
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"host-sets", "create", "plugin",
-			"-host-catalog-id", newHostCatalogId,
-			"-attr", "filters="+c.AwsHostSetFilter1,
-			"-name", "e2e Automated Test Host Set",
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostSetResult hostsets.HostSetCreateResult
-	err = json.Unmarshal(output.Stdout, &newHostSetResult)
-	require.NoError(t, err)
-	newHostSetId1 := newHostSetResult.Item.Id
-	t.Logf("Created Host Set: %s", newHostSetId1)
-
-	// Get list of hosts in host set
-	// Retry is needed here since it can take a few tries before hosts start appearing
-	t.Logf("Looking for items in the host set...")
-	var actualHostSetCount1 int
-	err = backoff.RetryNotify(
-		func() error {
-			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs(
-					"host-sets", "read",
-					"-id", newHostSetId1,
-					"-format", "json",
-				),
-			)
-			if output.Err != nil {
-				return backoff.Permanent(errors.New(string(output.Stderr)))
-			}
-
-			var hostSetsReadResult hostsets.HostSetReadResult
-			err := json.Unmarshal(output.Stdout, &hostSetsReadResult)
-			if err != nil {
-				return backoff.Permanent(err)
-			}
-
-			actualHostSetCount1 = len(hostSetsReadResult.Item.HostIds)
-			if actualHostSetCount1 == 0 {
-				return errors.New("No items are appearing in the host set")
-			}
-
-			t.Logf("Found %d hosts", actualHostSetCount1)
-			return nil
-		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
-		func(err error, td time.Duration) {
-			t.Logf("%s. Retrying...", err.Error())
-		},
-	)
-	require.NoError(t, err)
-
+	// Set up a host set
+	newHostSetId1 := boundary.CreateNewAwsHostSetCli(t, ctx, newHostCatalogId, c.AwsHostSetFilter1)
+	actualHostSetCount1 := boundary.WaitForHostsInHostSetCli(t, ctx, newHostSetId1)
 	var targetIps1 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps1)
 	expectedHostSetCount1 := len(targetIps1)
 	require.NoError(t, err)
 	assert.Equal(t, expectedHostSetCount1, actualHostSetCount1, "Numbers of hosts in host set did not match expected amount")
 
-	// Create another host set
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"host-sets", "create", "plugin",
-			"-host-catalog-id", newHostCatalogId,
-			"-attr", "filters="+c.AwsHostSetFilter2,
-			"-name", "e2e Automated Test Host Set2",
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newHostSetResult2 hostsets.HostSetCreateResult
-	err = json.Unmarshal(output.Stdout, &newHostSetResult2)
-	require.NoError(t, err)
-	newHostSetId2 := newHostSetResult2.Item.Id
-	t.Logf("Created Host Set: %s", newHostSetId2)
-
-	// Get list of hosts in the second host set
-	t.Logf("Looking for items in the second host set...")
-	var actualHostSetCount2 int
-	err = backoff.RetryNotify(
-		func() error {
-			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("host-sets", "read", "-id", newHostSetId2, "-format", "json"),
-			)
-			if output.Err != nil {
-				return backoff.Permanent(errors.New(string(output.Stderr)))
-			}
-
-			var hostSetsReadResult hostsets.HostSetReadResult
-			err := json.Unmarshal(output.Stdout, &hostSetsReadResult)
-			if err != nil {
-				return backoff.Permanent(err)
-			}
-
-			actualHostSetCount2 = len(hostSetsReadResult.Item.HostIds)
-			if actualHostSetCount2 == 0 {
-				return errors.New("No items are appearing in the host set")
-			}
-
-			t.Logf("Found %d hosts", actualHostSetCount2)
-			return nil
-		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
-		func(err error, td time.Duration) {
-			t.Logf("%s. Retrying...", err.Error())
-		},
-	)
-	require.NoError(t, err)
+	// Set up another host set
+	newHostSetId2 := boundary.CreateNewAwsHostSetCli(t, ctx, newHostCatalogId, c.AwsHostSetFilter2)
+	actualHostSetCount2 := boundary.WaitForHostsInHostSetCli(t, ctx, newHostSetId2)
 	var targetIps2 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps2), &targetIps2)
 	expectedHostSetCount2 := len(targetIps2)
@@ -239,7 +122,7 @@ func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId1)
 
 	// Connect to target
-	output = e2e.RunCommand(ctx, "boundary",
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
 			"-target-id", newTargetId,

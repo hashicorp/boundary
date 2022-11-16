@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
@@ -40,36 +39,11 @@ func TestCliConnectTargetWithSsh(t *testing.T) {
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
-
-	// Create credentials
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"credentials", "create", "ssh-private-key",
-			"-credential-store-id", newCredentialStoreId,
-			"-username", c.TargetSshUser,
-			"-private-key", "file://"+c.TargetSshKeyPath,
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newCredentialsResult credentials.CredentialCreateResult
-	err = json.Unmarshal(output.Stdout, &newCredentialsResult)
-	require.NoError(t, err)
-	newCredentialsId := newCredentialsResult.Item.Id
-	t.Logf("Created Credentials: %s", newCredentialsId)
-
-	// Add credentials to target
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"targets", "add-credential-sources",
-			"-id", newTargetId,
-			"-brokered-credential-source", newCredentialsId,
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
 
 	// Get credentials for target
-	output = e2e.RunCommand(ctx, "boundary",
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))

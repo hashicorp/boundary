@@ -88,28 +88,14 @@ func TestCliVaultCredentialStore(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	var tokenCreateResult createTokenResponse
+	var tokenCreateResult vault.CreateTokenResponse
 	err = json.Unmarshal(output.Stdout, &tokenCreateResult)
 	require.NoError(t, err)
 	credStoreToken := tokenCreateResult.Auth.Client_Token
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"credential-stores", "create", "vault",
-			"-scope-id", newProjectId,
-			"-vault-address", vaultAddr,
-			"-vault-token", credStoreToken,
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newCredentialStoreResult credentialstores.CredentialStoreCreateResult
-	err = json.Unmarshal(output.Stdout, &newCredentialStoreResult)
-	require.NoError(t, err)
-	newCredentialStoreId := newCredentialStoreResult.Item.Id
-	t.Logf("Created Credential Store: %s", newCredentialStoreId)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, vaultAddr, credStoreToken)
 
 	// Create a credential library for the private key
 	output = e2e.RunCommand(ctx, "boundary",
@@ -156,25 +142,9 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
-	// Add private key brokered credentials to target
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"targets", "add-credential-sources",
-			"-id", newTargetId,
-			"-brokered-credential-source", newPrivateKeyCredentialLibraryId,
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-
-	// Add password brokered credentials to target
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"targets", "add-credential-sources",
-			"-id", newTargetId,
-			"-brokered-credential-source", newPasswordCredentialLibraryId,
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	// Add credentials to target
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newPrivateKeyCredentialLibraryId)
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newPasswordCredentialLibraryId)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
@@ -265,7 +235,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	var tokenCreateResult createTokenResponse
+	var tokenCreateResult vault.CreateTokenResponse
 	err = json.Unmarshal(output.Stdout, &tokenCreateResult)
 	require.NoError(t, err)
 	credStoreToken := tokenCreateResult.Auth.Client_Token

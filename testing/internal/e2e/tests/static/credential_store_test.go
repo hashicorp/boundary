@@ -41,44 +41,11 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
-
-	// Create ssh key credentials
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"credentials", "create", "ssh-private-key",
-			"-credential-store-id", newCredentialStoreId,
-			"-username", c.TargetSshUser,
-			"-private-key", "file://"+c.TargetSshKeyPath,
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var keyCredentialsResult credentials.CredentialCreateResult
-	err = json.Unmarshal(output.Stdout, &keyCredentialsResult)
-	require.NoError(t, err)
-	keyCredentialsId := keyCredentialsResult.Item.Id
-	t.Logf("Created SSH Private Key Credentials: %s", keyCredentialsId)
-
-	// Create username/password credentials
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"credentials", "create", "username-password",
-			"-credential-store-id", newCredentialStoreId,
-			"-username", c.TargetSshUser,
-			"-password", "env://E2E_CREDENTIALS_PASSWORD",
-			"-format", "json",
-		),
-		e2e.WithEnv("E2E_CREDENTIALS_PASSWORD", "password"),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var pwCredentialsResult credentials.CredentialCreateResult
-	err = json.Unmarshal(output.Stdout, &pwCredentialsResult)
-	require.NoError(t, err)
-	pwCredentialsId := pwCredentialsResult.Item.Id
-	t.Logf("Created Username/Password Credentials: %s", pwCredentialsId)
+	boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
+	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, "password")
 
 	// Get credentials for target (expect empty)
-	output = e2e.RunCommand(ctx, "boundary",
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "authorize-session", "-id", newTargetId, "-format", "json"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -87,15 +54,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
-	// Add credentials to target
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"targets", "add-credential-sources",
-			"-id", newTargetId,
-			"-brokered-credential-source", pwCredentialsId,
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, pwCredentialsId)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",

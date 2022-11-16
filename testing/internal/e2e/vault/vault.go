@@ -22,6 +22,12 @@ type config struct {
 	VaultToken string `envconfig:"VAULT_TOKEN" required:"true"`
 }
 
+type CreateTokenResponse struct {
+	Auth struct {
+		Client_Token string
+	}
+}
+
 func loadConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)
