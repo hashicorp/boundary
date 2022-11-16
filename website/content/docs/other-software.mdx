@@ -1,0 +1,131 @@
+---
+layout: docs
+page_title: Boundary vs. Other Software
+description: Compares Boundary to other security technologies
+---
+
+# Boundary vs. Other Software
+
+Boundary is a software solution that provides secure remote access to infrastructure services.
+It can be difficult to understand how to compare the different remote access security solutions that are available on the market.
+Is one a replacement for another?
+Are they complementary?
+In this topic, we compare Boundary to other available security solutions.
+
+## Introduction
+
+The following comparisons are philosophical in nature, and are not intended to be opinionated.
+There are many possible remote access use cases, and the following solutions could have some part in your overall security strategy.
+This topic's goal is to provide readers with a better understanding of how Access Management solutions overlap with Boundary, and where Boundary does things differently.
+
+HashiCorp also recommends referring to [What is Boundary](/docs/what-is-boundary) for a better understanding of Boundary and the problems that it solves.
+
+## Boundary and Zero Trust
+
+Malware lands on the machine of an engineer working for an HVAC vendor.
+Credentials are harvested, and many of them belong to external clients.
+The attackers use the vendor's system as an entry point into the large corporations they service.
+They move laterally throughout the client's network, eventually using the vendor's admin credentials to access a point-of-sale system that contains PII (personally identifiable information), and the credit card information of millions of customers.
+
+Zero trust was born out of the concept that people should have only the necessary levels of access to do their jobs, and all access transactions should be authenticated and authorized based on a trusted identity.
+Zero trust is not a specific solution or class of solutions, it's a design philosophy for how access to digital systems should be secured.
+Embracing a zero trust mindset assists an organization in reducing their attack surface.
+
+You can use Boundary and other HashiCorp tools such as Vault and Consul to create a zero trust access model for infrastructure endpoints in which all transactions are authenticated, authorized, and audited.
+Boundary focuses on giving developers a consistent workflow for zero trust access to their infrastructure, wherever it resides.
+
+## Boundary vs. Bastion Hosts
+
+If you want to set up your cloud environment securely, you may choose to run all of your important workloads behind a NAT Gateway, and provision a DMZ with a set of hardened bastion servers.
+
+Bastion host security groups are often not locked down at the network layer.
+Additionally, users who log into a bastion host using SSH are typically dropped into a privileged account.
+Maintaining the security groups, network ACLs, and IAM control on the bastion host at a per-user level is nearly impossible, unless you create and maintain multiple bastion hosts per user or group.
+IT departments now have to manage updates for another server, and the sprawl of infrastructure continues, increasing your attack surface, and requiring your IT department to be perfect.
+
+Boundary is not a traditional bastion host.
+Boundary streamlines just-in-time access to privileged sessions for users, and tightly controls access to infrastructure with role-based access controls (RBAC).
+Boundary validates a user's identity using your identity provider of choice, and then dynamically grants them access to the resources they need using their associated permissions.
+Boundary's worker nodes, the resources that proxy connections to private endpoints, are fundamentally stateless and can be easily scaled elastically using modern development tools.
+
+You can use SSH to inject the credentials of any target resources that you want to connect to using Boundary, so that the credentials are never exposed to the user while establishing the connection.
+Alternatively, Boundary can return brokered credentials back to users (if permitted), which could take the form of API tokens, usernames and passwords, public keys, etc.
+
+_Can Boundary replace a Bastion/Jumphost access model?_
+
+**Yes**, in many cases you can use Boundary as a replacement for an existing bastion host-based access model to infrastructure.
+The advantages to Boundary's access model are outlined above.
+
+_Can Boundary extend a Bastion/Jumphost access model?_
+
+**Yes**, some users may see value in Boundary providing access to an existing bastion host deployment.
+
+## Boundary vs. VPNs
+
+Virtually every company today uses network firewalls to enforce perimeter security.
+To establish a remote connection within the perimeter, organizations often use some form of virtual private network (VPN) to authenticate users, establish a secure tunnel to the private network (such as a corporate or data center network), and allow users to enter the gated walls.
+
+VPNs enable the remote access architecture that is most often used to allow identities on unsecured networks to gain access to key internal organizational services in a secure fashion.
+Data is encrypted in transit, a network connection is established, and the user's access on the network is now predicated on the granularity of 802.1x authentication to the appropriate VLANs and network and application layer firewall rules.
+In practice, this often means that once users log in to a network using a VPN, they have access to far more than they should.
+
+While Boundary can establish remote connections to services within an organization's perimeter, Boundary is **not** a VPN.
+Instead, Boundary proposes an alternative to the current remote access model, where remote access is granularly granted and established to specific permitted services, but **not** the entire network.
+Boundary uses a non-repudiable user identity that is established by your integrated Identity Provider (IdP) of choice, as opposed to relying on network layer concepts such as IP address for access management.
+
+_Can Boundary replace a VPN?_
+
+For many organizations, Boundary's granular network access will be a security improvement from traditional data center VPN solutions that lack granular controls.
+
+_Can Boundary work with a VPN?_
+
+Boundary can work with an existing corporate VPN to provide heightened security when accessing privileged networks such as data centers and cloud VPCs.
+
+## Boundary vs. Privileged Access Management
+
+Privileged access management (PAM) tools secure access to critical systems by managing and monitoring access to privileged accounts.
+PAM assists an organization in reducing their attack surface in an attempt to mitigate damage caused from internal or external incidents.
+Traditionally, a focus is put on the management of privileged credentials, and the monitoring of sessions and commands that enable detection and response teams to respond to incidents.
+
+Boundary enables many of the security controls traditionally filled by PAM tools.
+Boundary can manage network access to privileged systems and audit access.
+It can be used with credential management providers, like Vault, to manage access to privileged accounts and credentials.
+
+Where Boundary differs from traditional PAM solutions, is in its automation-friendly workflows.
+Boundary can be instrumented programmatically  via REST, CLI, and [Terraform](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs).
+It provides automation-friendly workflows for managing users and credentials, as well as the discovery and configuration of new services:
+
+- **Automated Credential Management**: Boundary and Vault can create workflows with automated credential management in which user sessions are secured with [single-use dynamic credentials that are injected into sessions](https://developer.hashicorp.com/boundary/tutorials/access-management/hcp-private-vault-cred-injection) such that secrets are never returned to users.
+- **Context-Based Access**: When users' business context changes, you want to ensure their permissions reflect the new business context.
+As an example, on-call engineers might require different permissions than when they end their on-call shifts.
+[Boundary's managed groups](https://developer.hashicorp.com/boundary/tutorials/access-management/oidc-idp-groups) enable user permission workflows to be assigned dynamically based on identity provider MFA checks, group memberships, and other IDP-level context.
+- **[Service Discovery](docs/concepts/service-discovery)**: Boundary's [dynamic host catalogs](https://developer.hashicorp.com/boundary/tutorials/access-management/aws-host-catalogs) are advanced workflows for automating the process of onboarding new or changed infrastructure resources and their connection information, and applying pre-configured security policies.
+
+_Can Boundary replace a PAM solution?_
+
+**Yes**, Boundary provides many of the security controls traditionally delivered by PAM tools.
+Boundary can also be used with an existing PAM tool, particularly the ones that emphasize agent-based security where Boundary's proxy-based security can be a natural complement.
+
+## Boundary vs. Software Defined Perimeter
+
+Software Defined Perimeter(SDP) solutions secure access to applications and infrastructure based on user identity.
+Boundary is fundamentally an SDP solution that takes a zero trust approach to security design for system access; access to services is granted based on the scoped identity and intent of a user.
+Boundary is a scalable proxy that enables identity-based access with multiple layers of security controls including [dynamic credentials](https://developer.hashicorp.com/boundary/tutorials/hcp-administration/hcp-ssh-cred-injection?in=boundary%2Fhcp-administration), [context-based access](https://developer.hashicorp.com/boundary/tutorials/access-management/oidc-idp-groups), [automated service discovery](docs/concepts/service-discovery), and [access auditing](https://developer.hashicorp.com/hcp/docs/boundary/audit-logging) to name a few.
+
+## Boundary vs. Secrets Management Tools (HashiCorp Vault, AWS Secrets Manager, Azure Key Vault, etc.)
+
+Secrets management is the use of tools and methods to manage digital authentication credentials.
+This includes passwords, API keys, PKI, TOTP codes, etc.
+Popular tools in this space includes HashiCorp Vault, Azure Key Vault, AWS Secrets Manager, Cloud KMS, CyberArk Conjur, etc.
+
+Boundary itself is **not** a secrets manager for your infrastructure.
+A core step in Boundary's access workflow is integrating with your existing secrets management providers, such as HashiCorp Vault, to retrieve dynamic credentials, and return them to end users when they attempt to establish connections.
+For customers who may not yet have a credential management solution, or are looking to easily onboard, Boundary can function as a rudimentary static credential store.
+Boundary provides a comprehensive access workflow that integrates with secrets management providers, enforces secure and granular network and credential access based on identity, audits all access, and automates the discovery and configuration of new target endpoints.
+
+_Does Boundary replace a secrets management solution?_
+
+Boundary is **not** intended to replace an existing secrets management solution.
+Boundary is designed to work with your secrets management solution to comprehensively secure infrastructure access.
+For many users, Boundary's native static credential management capabilities may be sufficient.
+For those that require more advanced credential workflows, such as dynamic credentials, [HashiCorp Vault](https://www.vaultproject.io/) is a natural complement to Boundary.
