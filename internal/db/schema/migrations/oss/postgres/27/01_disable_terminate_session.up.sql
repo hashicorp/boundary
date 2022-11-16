@@ -6,22 +6,22 @@ drop function update_connection_state_on_closed_reason();
 
 create function update_connection_state_on_closed_reason() returns trigger
 as $$
-  begin
-    if new.closed_reason is not null then
-      -- check to see if there's a closed state already, before inserting a new one.
-      perform from
-        session_connection_state cs
-      where
-          cs.connection_id = new.public_id and
-          cs.state = 'closed';
-      if not found then
-        insert into session_connection_state (connection_id, state)
-        values
-          (new.public_id, 'closed');
-      end if;
-    end if;
-  return new;
-  end;
+    begin
+        if new.closed_reason is not null then
+            -- check to see if there's a closed state already, before inserting a new one.
+            perform from
+                session_connection_state cs
+            where
+                    cs.connection_id = new.public_id and
+                    cs.state = 'closed';
+            if not found then
+                insert into session_connection_state (connection_id, state)
+                values
+                    (new.public_id, 'closed');
+            end if;
+        end if;
+    return new;
+    end;
 $$ language plpgsql;
 
 create trigger update_connection_state_on_closed_reason after update of closed_reason on session_connection
