@@ -171,14 +171,14 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	// Connections coming in here are authed by nodeenrollment and are for the
 	// reverse grpc purpose
-	reverseGrpcListener, err := w.workerAuthSplitListener.GetListener(common.ReverseGrpcConnectionAlpnValue)
+	reverseGrpcListener, err := w.workerAuthSplitListener.GetListener(common.ReverseGrpcConnectionAlpnValue, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating reverse grpc split listener: %w", err)
 	}
 
 	// Connections coming in here are authed by nodeenrollment and are for the
 	// multi-hop session-proxying
-	websocketProxyingListener, err := w.workerAuthSplitListener.GetListener(common.WebsocketProxyingAlpnValue)
+	websocketProxyingListener, err := w.workerAuthSplitListener.GetListener(common.WebsocketProxyingAlpnValue, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating websocket proxying split listener: %w", err)
 	}
