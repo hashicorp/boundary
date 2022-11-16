@@ -203,6 +203,11 @@ func TestLookupSession(t *testing.T) {
 				WorkerId:  worker1.GetPublicId(),
 			},
 			want: &pbs.LookupSessionResponse{
+				Authorization: &targets.SessionAuthorizationData{
+					SessionId:   sess.PublicId,
+					Certificate: sess.Certificate,
+					PrivateKey:  sess.CertificatePrivateKey,
+				},
 				ConnectionLimit: 1,
 				ConnectionsLeft: 1,
 				Version:         1,
