@@ -261,10 +261,10 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	}
 
 	// regardless of whether or not it's a new address, we need to set
-	// them for dialingListeners
+	// them for secondaryConnections
 	for _, as := range *addressReceivers {
 		switch {
-		case as.Type() == dialingListenerReceiverType:
+		case as.Type() == secondaryConnectionReceiverType:
 			tmpAddrs := make([]string, len(addrs))
 			copy(tmpAddrs, addrs)
 			if len(tmpAddrs) == 0 {
