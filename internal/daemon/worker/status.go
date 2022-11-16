@@ -20,7 +20,7 @@ import (
 
 var firstStatusCheckPostHooks []func(context.Context, *Worker) error
 
-var downstreamWorkersFactory func(ctx context.Context, workerId string) (downstreamers, error)
+var downstreamWorkersFactory func(ctx context.Context, workerId string, ver string) (downstreamers, error)
 
 type LastStatusInformation struct {
 	*pbs.StatusResponse
@@ -261,10 +261,10 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	}
 
 	// regardless of whether or not it's a new address, we need to set
-	// them for dialingListeners
+	// them for secondaryConnections
 	for _, as := range *addressReceivers {
 		switch {
-		case as.Type() == dialingListenerReceiverType:
+		case as.Type() == secondaryConnectionReceiverType:
 			tmpAddrs := make([]string, len(addrs))
 			copy(tmpAddrs, addrs)
 			if len(tmpAddrs) == 0 {
@@ -308,7 +308,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	// If we have post hooks for after the first status check, run them now
 	if w.everAuthenticated.CAS(authenticationStatusFirstAuthentication, authenticationStatusFirstStatusRpcSuccessful) {
 		if downstreamWorkersFactory != nil {
-			w.downstreamWorkers, err = downstreamWorkersFactory(cancelCtx, w.LastStatusSuccess().WorkerId)
+			w.downstreamWorkers, err = downstreamWorkersFactory(cancelCtx, w.LastStatusSuccess().WorkerId, versionInfo.VersionNumber())
 			if err != nil {
 				event.WriteError(cancelCtx, op, err)
 				w.conf.ServerSideShutdownCh <- struct{}{}
