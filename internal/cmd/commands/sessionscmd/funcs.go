@@ -232,9 +232,9 @@ func printItemTable(item *sessions.Session, resp *api.Response) string {
 		}
 	}
 
-	var connectionsMaps []map[string]interface{}
+	var connectionsMaps []map[string]any
 	for _, sc := range item.Connections {
-		cm := map[string]interface{}{
+		cm := map[string]any{
 			"Client Address":   net.JoinHostPort(sc.ClientTcpAddress, strconv.FormatUint(uint64(sc.ClientTcpPort), 10)),
 			"Endpoint Address": net.JoinHostPort(sc.EndpointTcpAddress, strconv.FormatUint(uint64(sc.EndpointTcpPort), 10)),
 			"Bytes Up":         sc.BytesUp,

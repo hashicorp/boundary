@@ -16,8 +16,8 @@ import (
 
 func TestDb_Create_OnConflict(t *testing.T) {
 	ctx := context.Background()
-	wrapper := db.TestWrapper(t)
 	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestDBWrapper(t, conn, "oplog")
 	rw := db.New(conn)
 	db.TestCreateTables(t, conn)
 

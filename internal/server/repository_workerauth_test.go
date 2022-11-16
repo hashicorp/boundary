@@ -389,8 +389,8 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			databaseWrapper: &mockTestWrapper{err: errors.New(testCtx, errors.Internal, "testing", "key-id-error")},
 			node:            testNodeInfoFn(),
 			wantErr:         true,
-			wantErrIs:       errors.Internal,
-			wantErrContains: "key-id-error",
+			wantErrIs:       errors.Encrypt,
+			wantErrContains: "reading cipher key id",
 		},
 		{
 			name:   "encrypt-error",
@@ -512,7 +512,7 @@ func (m *mockTestWrapper) Encrypt(ctx context.Context, plaintext []byte, options
 	if m.err != nil && m.encryptError {
 		return nil, m.err
 	}
-	panic("todo")
+	return &wrapping.BlobInfo{}, nil
 }
 
 func (m *mockTestWrapper) Decrypt(ctx context.Context, ciphertext *wrapping.BlobInfo, options ...wrapping.Option) ([]byte, error) {

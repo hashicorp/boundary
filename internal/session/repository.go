@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // Clonable provides a cloning interface
@@ -29,21 +31,23 @@ type Repository struct {
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
-
-	permissions *perms.UserPermissions
+	permissions  *perms.UserPermissions
+	randomReader io.Reader
 }
 
 // RepositoryFactory is a function that creates a Repository.
 type RepositoryFactory func(opt ...Option) (*Repository, error)
 
-// NewRepository creates a new session Repository. Supports the options: WithLimit
-// which sets a default limit on results returned by repo operations.
+// NewRepository creates a new session Repository. Supports the options:
+//   - WithLimit, which sets a default limit on results returned by repo operations.
+//   - WithPermissions
+//   - WithRandomReader
 func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "session.NewRepository"
-	if r == nil {
+	if util.IsNil(r) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
-	if w == nil {
+	if util.IsNil(w) {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
@@ -69,6 +73,7 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		kms:          kms,
 		defaultLimit: opts.withLimit,
 		permissions:  opts.withPermissions,
+		randomReader: opts.withRandomReader,
 	}, nil
 }
 
@@ -108,9 +113,8 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 	return where, args
 }
 
-func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessionListView, opt ...Option) ([]*Session, error) {
+func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessionListView) ([]*Session, error) {
 	const op = "session.(Repository).convertToSessions"
-	opts := getOpts(opt...)
 
 	if len(sessionList) == 0 {
 		return nil, nil
@@ -134,41 +138,26 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 			}
 			prevSessionId = sv.PublicId
 			workingSession = &Session{
-				PublicId:          sv.PublicId,
-				UserId:            sv.UserId,
-				HostId:            sv.HostId,
-				TargetId:          sv.TargetId,
-				HostSetId:         sv.HostSetId,
-				AuthTokenId:       sv.AuthTokenId,
-				ProjectId:         sv.ProjectId,
-				Certificate:       sv.Certificate,
-				ExpirationTime:    sv.ExpirationTime,
-				CtTofuToken:       sv.CtTofuToken,
-				TofuToken:         sv.TofuToken, // will always be nil since it's not stored in the database.
-				TerminationReason: sv.TerminationReason,
-				CreateTime:        sv.CreateTime,
-				UpdateTime:        sv.UpdateTime,
-				Version:           sv.Version,
-				Endpoint:          sv.Endpoint,
-				ConnectionLimit:   sv.ConnectionLimit,
-				KeyId:             sv.KeyId,
-			}
-			if opts.withListingConvert {
-				workingSession.CtTofuToken = nil // CtTofuToken should not returned in lists
-				workingSession.TofuToken = nil   // TofuToken should not returned in lists
-				workingSession.KeyId = ""        // KeyId should not be returned in lists
-			} else {
-				if len(workingSession.CtTofuToken) > 0 {
-					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ProjectId, kms.KeyPurposeDatabase)
-					if err != nil {
-						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-					}
-					if err := workingSession.decrypt(ctx, databaseWrapper); err != nil {
-						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("cannot decrypt session value"))
-					}
-				} else {
-					workingSession.CtTofuToken = nil
-				}
+				PublicId:                sv.PublicId,
+				UserId:                  sv.UserId,
+				HostId:                  sv.HostId,
+				TargetId:                sv.TargetId,
+				HostSetId:               sv.HostSetId,
+				AuthTokenId:             sv.AuthTokenId,
+				ProjectId:               sv.ProjectId,
+				Certificate:             sv.Certificate,
+				CtCertificatePrivateKey: nil, // CtCertificatePrivateKey should not be returned in lists
+				CertificatePrivateKey:   nil, // CertificatePrivateKey should not be returned in lists
+				ExpirationTime:          sv.ExpirationTime,
+				CtTofuToken:             nil, // CtTofuToken should not be returned in lists
+				TofuToken:               nil, // TofuToken should not be returned in lists
+				TerminationReason:       sv.TerminationReason,
+				CreateTime:              sv.CreateTime,
+				UpdateTime:              sv.UpdateTime,
+				Version:                 sv.Version,
+				Endpoint:                sv.Endpoint,
+				ConnectionLimit:         sv.ConnectionLimit,
+				KeyId:                   "", // KeyId should not be returned in lists
 			}
 		}
 

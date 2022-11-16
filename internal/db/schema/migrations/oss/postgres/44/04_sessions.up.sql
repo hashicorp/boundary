@@ -12,6 +12,7 @@ begin;
   ;
 
   -- Replaces trigger from 01/50_session.up.sql
+  -- Replaced in 58/02_add_data_key_foreign_key_references
   create or replace function cancel_session_with_null_fk() returns trigger
   as $$
   begin
@@ -59,6 +60,7 @@ begin;
   $$ language plpgsql;
 
   -- Replaces view from 34/04_views.up.sql
+  -- Replaced in 58/06_add_session_private_key_column
   drop view session_list;
   create view session_list as
   select

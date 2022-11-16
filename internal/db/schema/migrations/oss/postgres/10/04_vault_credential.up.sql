@@ -190,6 +190,7 @@ begin;
   create trigger default_create_time_column before insert on credential_vault_token
     for each row execute procedure default_create_time();
 
+  -- this trigger is updated in 58/05_mutable_ciphertext_columns.up.sql
   create trigger immutable_columns before update on credential_vault_token
     for each row execute procedure immutable_columns('token_hmac', 'token', 'store_id','create_time');
 

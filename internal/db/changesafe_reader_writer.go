@@ -46,6 +46,10 @@ func (r *changeSafeDbwReader) SearchWhere(ctx context.Context, resources any, wh
 	return dbw.New(r.db.underlying.wrapped.Load()).SearchWhere(ctx, resources, where, args, opt...)
 }
 
+func (r *changeSafeDbwReader) Dialect() (_ dbw.DbType, rawName string, _ error) {
+	return r.db.underlying.wrapped.Load().DbType()
+}
+
 // changeSafeDbwWriter is a type that wraps a *db.Db as a dbw.Writer and ensures
 // that uses of the underlying database follows changes to the connection.
 type changeSafeDbwWriter struct {
@@ -102,4 +106,8 @@ func (w *changeSafeDbwWriter) ScanRows(rows *sql.Rows, result any) error {
 
 func (w *changeSafeDbwWriter) Update(ctx context.Context, i any, fieldMaskPaths []string, setToNullPaths []string, opt ...dbw.Option) (int, error) {
 	return dbw.New(w.db.underlying.wrapped.Load()).Update(ctx, i, fieldMaskPaths, setToNullPaths, opt...)
+}
+
+func (w *changeSafeDbwWriter) Dialect() (_ dbw.DbType, rawName string, _ error) {
+	return w.db.underlying.wrapped.Load().DbType()
 }

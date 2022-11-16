@@ -93,7 +93,7 @@ alter table worker_auth_authorized
 ;
 
 drop trigger immutable_columns on worker_auth_authorized;
--- Trigger updated from 34/03_worker_authentication.up.sql
+-- this trigger is updated in 58/05_mutable_ciphertext_columns.up.sql
 create trigger immutable_columns before update on worker_auth_authorized
   for each row execute function immutable_columns('worker_key_identifier', 'worker_id', 'worker_signing_pub_key',
                                                   'worker_encryption_pub_key', 'controller_encryption_priv_key', 'key_id', 'nonce', 'create_time');
