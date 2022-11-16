@@ -96,6 +96,16 @@ func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId strin
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
 	}
 	for _, session := range sessions {
+		if session.ProjectId == "" || session.UserId == "" {
+			// Skip decryption if Project ID or UserId is missing,
+			// since it will just lead to errors, and the session
+			// is already canceled. Unset KeyId to allow the key to
+			// be destroyed.
+			if _, err := writer.Update(ctx, session, nil, []string{"KeyId"}); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("failed to unset key ID in canceled session"))
+			}
+			continue
+		}
 		if err := decryptAndMaybeUpdateSession(ctx, kmsRepo, session, writer); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to decrypt session"))
 		}

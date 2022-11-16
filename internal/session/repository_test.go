@@ -145,24 +145,14 @@ func TestRepository_convertToSessions(t *testing.T) {
 		sessionsList = append(sessionsList, &s)
 	}
 
-	t.Run("without-options", func(t *testing.T) {
-		sessions, err := repo.convertToSessions(ctx, sessionsList)
-		require.NoError(t, err)
-		assert.Len(t, sessions, 1)
-		assert.Equal(t, sessions[0], sess)
-	})
-
-	t.Run("converting-for-list", func(t *testing.T) {
-		sessions, err := repo.convertToSessions(ctx, sessionsList, withListingConvert(true))
-		require.NoError(t, err)
-		assert.Len(t, sessions, 1)
-		sess := sess.Clone().(*Session)
-		// Check that encrypted values are redacted
-		sess.CtCertificatePrivateKey = nil
-		sess.CertificatePrivateKey = nil
-		sess.CtTofuToken = nil
-		sess.TofuToken = nil
-		sess.KeyId = ""
-		assert.Equal(t, sessions[0], sess)
-	})
+	sessions, err := repo.convertToSessions(ctx, sessionsList)
+	require.NoError(t, err)
+	assert.Len(t, sessions, 1)
+	// Check that encrypted values are redacted
+	sess.CtCertificatePrivateKey = nil
+	sess.CertificatePrivateKey = nil
+	sess.CtTofuToken = nil
+	sess.TofuToken = nil
+	sess.KeyId = ""
+	assert.Equal(t, sessions[0], sess)
 }

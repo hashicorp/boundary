@@ -113,9 +113,8 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []interface{}) {
 	return where, args
 }
 
-func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessionListView, opt ...Option) ([]*Session, error) {
+func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessionListView) ([]*Session, error) {
 	const op = "session.(Repository).convertToSessions"
-	opts := getOpts(opt...)
 
 	if len(sessionList) == 0 {
 		return nil, nil
@@ -147,29 +146,18 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 				AuthTokenId:             sv.AuthTokenId,
 				ProjectId:               sv.ProjectId,
 				Certificate:             sv.Certificate,
-				CtCertificatePrivateKey: sv.CtCertificatePrivateKey,
-				CertificatePrivateKey:   sv.CertificatePrivateKey, // will always be nil since it's not stored in the database.
+				CtCertificatePrivateKey: nil, // CtCertificatePrivateKey should not be returned in lists
+				CertificatePrivateKey:   nil, // CertificatePrivateKey should not be returned in lists
 				ExpirationTime:          sv.ExpirationTime,
-				CtTofuToken:             sv.CtTofuToken,
-				TofuToken:               sv.TofuToken, // will always be nil since it's not stored in the database.
+				CtTofuToken:             nil, // CtTofuToken should not be returned in lists
+				TofuToken:               nil, // TofuToken should not be returned in lists
 				TerminationReason:       sv.TerminationReason,
 				CreateTime:              sv.CreateTime,
 				UpdateTime:              sv.UpdateTime,
 				Version:                 sv.Version,
 				Endpoint:                sv.Endpoint,
 				ConnectionLimit:         sv.ConnectionLimit,
-				KeyId:                   sv.KeyId,
-			}
-			if opts.withListingConvert {
-				workingSession.CtCertificatePrivateKey = nil // CtCertificatePrivateKey should not returned in lists
-				workingSession.CertificatePrivateKey = nil   // CertificatePrivateKey should not returned in lists
-				workingSession.CtTofuToken = nil             // CtTofuToken should not returned in lists
-				workingSession.TofuToken = nil               // TofuToken should not returned in lists
-				workingSession.KeyId = ""                    // KeyId should not be returned in lists
-			} else {
-				if err := decryptAndMaybeUpdateSession(ctx, r.kms, workingSession, r.writer); err != nil {
-					return nil, errors.Wrap(ctx, err, op)
-				}
+				KeyId:                   "", // KeyId should not be returned in lists
 			}
 		}
 

@@ -178,4 +178,50 @@ func TestRewrap_sessionRewrapFn(t *testing.T) {
 		assert.NotEqual(t, session.CtTofuToken, got.CtTofuToken)
 		// there is no hmac, so we're done
 	})
+	t.Run("unsets-key-id-when-user-id-unset", func(t *testing.T) {
+		conn, _ := db.TestSetup(t, "postgres")
+		rootWrapper := db.TestWrapper(t)
+		kmsCache := kms.TestKms(t, conn, rootWrapper)
+		rw := db.New(conn)
+
+		iamRepo := iam.TestRepo(t, conn, rootWrapper)
+		org, prj := iam.TestScopes(t, iamRepo)
+		at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+		uId := at.GetIamUserId()
+		hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+		hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+		h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+		static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+		tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+		session := TestSession(t, conn, rootWrapper, ComposedOf{
+			UserId:      uId,
+			HostId:      h.GetPublicId(),
+			TargetId:    tar.GetPublicId(),
+			HostSetId:   hs.GetPublicId(),
+			AuthTokenId: at.GetPublicId(),
+			ProjectId:   prj.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
+		})
+		// you cannot create a session with a pre-populated token, so do it in an update
+		session.TofuToken = []byte("token")
+		sessionWrapper, err := kmsCache.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeSessions)
+		require.NoError(t, err)
+		require.NoError(t, session.encrypt(ctx, sessionWrapper))
+		_, err = rw.Update(ctx, session, []string{"CtTofuToken", "CertificatePrivateKey", "KeyId"}, nil)
+		require.NoError(t, err)
+
+		// Deleting the user unsets the user ID in the session
+		_, err = iamRepo.DeleteUser(ctx, uId)
+		require.NoError(t, err)
+
+		// now things are stored in the db, we can rotate and rewrap
+		require.NoError(t, kmsCache.RotateKeys(ctx, prj.PublicId))
+		require.NoError(t, sessionRewrapFn(ctx, session.KeyId, prj.PublicId, rw, rw, kmsCache))
+
+		// now we pull the session back from the db and check that the key ID is unset
+		got := &Session{}
+		got.PublicId = session.PublicId
+		require.NoError(t, rw.LookupById(ctx, got))
+		assert.Empty(t, got.KeyId)
+	})
 }
