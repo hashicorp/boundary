@@ -93,7 +93,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220711120347-32232bae6803
-	github.com/hashicorp/nodeenrollment v0.1.17
+	github.com/hashicorp/nodeenrollment v0.1.18
 	github.com/kelseyhightower/envconfig v1.4.0
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e
 )
