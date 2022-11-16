@@ -155,8 +155,8 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 
 // LookupSession will look up a session in the repository and return the session
 // with its states.  Returned States are ordered by start time descending.  If the
-// session is not found, it will return nil, nil, nil. No options are currently
-// supported.
+// session is not found, it will return nil, nil, nil. If the session has no user
+// or project associated with it, decryption of fields will not be performed.
 // Supported Options:
 //   - WithIgnoreDecryptionFailures
 func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ...Option) (*Session, *AuthzSummary, error) {
@@ -202,6 +202,12 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 				return errors.Wrap(ctx, err, op)
 			}
 			session.Connections = connections
+			if session.ProjectId == "" || session.UserId == "" {
+				// Skip decryption if Project ID or UserId is missing,
+				// since it will just lead to errors, and the session
+				// is already canceled if either of those are empty.
+				return nil
+			}
 			if err := decryptAndMaybeUpdateSession(ctx, r.kms, &session, w); err != nil && !opts.withIgnoreDecryptionFailures {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -283,7 +289,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		}
 		sessionsList = append(sessionsList, &s)
 	}
-	sessions, err := r.convertToSessions(ctx, sessionsList, withListingConvert(true))
+	sessions, err := r.convertToSessions(ctx, sessionsList)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

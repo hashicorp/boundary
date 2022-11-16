@@ -30,7 +30,6 @@ type options struct {
 	withUserId                   string
 	withExpirationTime           *timestamp.Timestamp
 	withTestTofu                 []byte
-	withListingConvert           bool
 	withSessionIds               []string
 	withDbOpts                   []db.Option
 	withWorkerStateDelay         time.Duration
@@ -97,12 +96,6 @@ func WithTestTofu(tofu []byte) Option {
 func WithSessionIds(ids ...string) Option {
 	return func(o *options) {
 		o.withSessionIds = ids
-	}
-}
-
-func withListingConvert(withListingConvert bool) Option {
-	return func(o *options) {
-		o.withListingConvert = withListingConvert
 	}
 }
 
