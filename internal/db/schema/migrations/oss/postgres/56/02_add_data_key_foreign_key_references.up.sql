@@ -31,6 +31,35 @@ begin;
         on delete restrict
         on update cascade;
 
+  -- Replaces trigger from 44/04_session.up.sql
+  -- Adding a foreign key reference to the kms key means we have
+  -- to set the key_id to null when the scope_id is set to null,
+  -- otherwise we can't delete scopes with sessions, since deleting
+  -- the scope cascade deletes the key referenced by key_id.
+  create or replace function cancel_session_with_null_fk() returns trigger
+  as $$
+  begin
+   case 
+      when new.user_id is null then
+        perform cancel_session(new.public_id);
+      when new.host_id is null then
+        perform cancel_session(new.public_id);
+      when new.target_id is null then
+        perform cancel_session(new.public_id);
+      when new.host_set_id is null then
+        perform cancel_session(new.public_id);
+      when new.auth_token_id is null then
+        perform cancel_session(new.public_id);
+      when new.project_id is null then
+        -- Setting the key_id to null will allow the scope
+        -- to cascade delete its keys.
+        new.key_id = null;
+        perform cancel_session(new.public_id);
+    end case;
+    return new;
+  end;
+  $$ language plpgsql;
+
   
   -- we drop some views, so we can recreate them after changing the type of the referencing columns.
   drop view
