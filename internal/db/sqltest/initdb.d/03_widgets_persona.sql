@@ -2,8 +2,7 @@ begin;
   -- _wtt_load_widgets_iam populates all iam_ tables for the widgets persona.
   -- iam does not depend on any other aggregates, but others depend on it,
   -- as such is it should be first in the list.
-  create function _wtt_load_widgets_iam()
-    returns void
+  create function _wtt_load_widgets_iam() returns void
   as $$
   begin
     -- Add organizations
@@ -91,8 +90,7 @@ begin;
 
   -- _wtt_load_kms populates all kms_ tables for the widgets persona.
   -- kms depends on iam.
-  create function _wtt_load_widgets_kms()
-    returns void
+  create function _wtt_load_widgets_kms() returns void
   as $$
   begin
     insert into kms_root_key
@@ -120,8 +118,7 @@ begin;
 
   -- _wtt_load_widgets_auth populates all auth_ tables for the widgets persona.
   -- auth depends on iam, and kms.
-  create function _wtt_load_widgets_auth()
-    returns void
+  create function _wtt_load_widgets_auth() returns void
   as $$
   begin
     insert into auth_password_conf
@@ -187,8 +184,7 @@ begin;
 
   -- _wtt_load_widgets_hosts populates all host_ tables for the widgets persona.
   -- hosts depend on iam.
-  create function _wtt_load_widgets_hosts()
-    returns void
+  create function _wtt_load_widgets_hosts() returns void
   as $$
   begin
     insert into static_host_catalog
@@ -302,8 +298,7 @@ begin;
 
   -- _wtt_load_widgets_targets populates all target_ tables for the widgets persona.
   -- targets depend on iam, auth, hosts.
-  create function _wtt_load_widgets_targets()
-    returns void
+  create function _wtt_load_widgets_targets() returns void
   as $$
   begin
     insert into target_tcp
@@ -327,8 +322,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  create function _wtt_load_widgets_credentials()
-    returns void
+  create function _wtt_load_widgets_credentials() returns void
   as $$
   begin
     insert into credential_vault_store
@@ -424,8 +418,7 @@ begin;
   end;
   $$ language plpgsql;
 
-create function _wtt_load_widgets_sessions()
-    returns void
+create function _wtt_load_widgets_sessions() returns void
 as $$
 begin
     insert into session

@@ -9,9 +9,7 @@ create table log_migration(
 comment on table log_migration is
   'log_migration entries are logging output from database migrations';
 
-create or replace function
-  log_migration_version()
-  returns trigger
+create or replace function log_migration_version() returns trigger
 as $$
   declare current_version bigint;
   begin

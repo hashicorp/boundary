@@ -20,8 +20,7 @@ begin;
   
   -- session_credentials_sha256_credential sets the credential_sha256
   -- to digest(credential, 'sha256')
-  create function session_credentials_sha256_credential()
-    returns trigger
+  create function session_credentials_sha256_credential() returns trigger
   as $$
   begin
     new.credential_sha256 = digest(new.credential, 'sha256');
