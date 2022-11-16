@@ -20,7 +20,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.5.2
-	github.com/google/go-cmp v0.5.8
+	github.com/google/go-cmp v0.5.9
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.2
 	github.com/hashicorp/boundary/api v0.0.30
@@ -77,7 +77,7 @@ require (
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
-	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10
+	golang.org/x/sys v0.2.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	golang.org/x/tools v0.1.12
 	google.golang.org/genproto v0.0.0-20220805133916-01dd62135a58

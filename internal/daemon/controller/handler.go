@@ -99,11 +99,7 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	metricsHandler := metric.InstrumentApiHandler(eventsHandler)
 
 	// This wrap MUST be performed last. If you add a new wrapper, do so above.
-	handler, err := listenerutil.WrapCustomHeadersHandler(metricsHandler, props.ListenerConfig, isUiRequest)
-	if err != nil {
-		return nil, err
-	}
-	return handler, nil
+	return listenerutil.WrapCustomHeadersHandler(metricsHandler, props.ListenerConfig, isUiRequest), nil
 }
 
 // GetHealthHandler returns a gRPC Gateway mux that is registered against the

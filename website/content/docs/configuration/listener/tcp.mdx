@@ -21,6 +21,22 @@ The `listener` stanza may be specified more than once to make Boundary listen on
 multiple interfaces; however, only one listener marked for `cluster` purpose is
 allowed.
 
+## Listener's custom response headers
+
+Boundary supports defining custom HTTP response headers for all requests on any Boundary controller.
+Headers are defined based on the returned status code. For example, you can define a list of
+custom response headers for the `200` status code, and another list of custom response headers for
+the `307` status code, and so on. You can also define headers based on the hundred-level status
+code. For example, a list of headers applied to the `4xx` code will be applied to 400, 401, 404, and
+all other 400-level status codes. The more specific the status, the higher priority it has.
+Default headers are overwritten by hundred-level headers, which are overwritten by status-specific
+headers.
+
+There are two different config parameters that define headers: `custom_api_response_headers` and
+`custom_ui_response_headers`. API headers apply to API endpoints, currently all paths starting
+with `/v1/`. UI headers apply to all other paths. This allows for configuring headers specifically
+for serving content to a web browser, such as CSP headers.
+
 ## `tcp` Listener Parameters
 
 ### General
@@ -83,6 +99,48 @@ allowed.
   parameter will be appended to the list of headers that Boundary allows by
   default, such as `"Content-Type"`, `"X-Requested-With"`, and
   `"Authorization"`.
+
+### `custom_api_response_headers` Parameters
+
+- `default` `(key-value-map: {})` - A map of string header names to an array of
+  string values. The default headers are set on all endpoints regardless of
+  the status code value. For an example, refer to the
+  [Configuring custom http response headers](#configuring-custom-http-response-headers)
+  section.
+
+- `<collective status code>` `(key-value-map: {})` - A map of string header names
+  to an array of string values. These headers are set only when the response status
+  code falls under the collective status code.
+  For example, `"2xx" = {"Header-A": ["Value1", "Value2"]}`, `"Header-A"`
+  is set when the http response status code is `"200"`, `"204"`, etc. This overrides
+  headers defined at the `default` level.
+
+- `<specific status code>` `(key-value-map: {})` - A map of string header names
+  to an array of string values. These headers are set only when the specific status
+  code is returned. For example, `"200" = {"Header-A": ["Value1", "Value2"]}`, `"Header-A"`
+  is set when the http response status code is `"200"`. This overrides headers defined at
+  the `default` and `collective status code` level.
+
+### `custom_ui_response_headers` Parameters
+
+- `default` `(key-value-map: {})` - A map of string header names to an array of
+  string values. The default headers are set on all endpoints regardless of
+  the status code value. For an example, refer to the
+  [Configuring custom http response headers](#configuring-custom-http-response-headers)
+  section.
+
+- `<collective status code>` `(key-value-map: {})` - A map of string header names
+  to an array of string values. These headers are set only when the response status
+  code falls under the collective status code.
+  For example, `"2xx" = {"Header-A": ["Value1", "Value2"]}`, `"Header-A"`
+  is set when the http response status code is `"200"`, `"204"`, etc. This overrides
+  headers defined at the `default` level.
+
+- `<specific status code>` `(key-value-map: {})` - A map of string header names
+  to an array of string values. These headers are set only when the specific status
+  code is returned. For example, `"200" = {"Header-A": ["Value1", "Value2"]}`, `"Header-A"`
+  is set when the http response status code is `"200"`. This overrides headers defined at
+  the `default` and `collective status code` level.
 
 ### TLS
 
@@ -174,6 +232,90 @@ listener "tcp" {
   purpose = "api"
   tls_cert_file = "/etc/certs/Boundary.crt"
   tls_key_file  = "/etc/certs/Boundary.key"
+}
+```
+
+### Configuring custom http response headers
+
+This example shows configuring custom http response headers. Operators can configure
+`"custom_api_response_headers"` and `"custom_ui_response_headers"` sub-stanzas in the listener stanza to
+set custom http headers that are appropriate to their applications. Examples of such headers are
+`"Strict-Transport-Security"` and `"Content-Security-Policy"` which are known HTTP headers, and could be
+configured to harden the security of an application communicating with the Boundary endpoints. Note that
+vulnerability scans often examine such security related HTTP headers. In addition, you can configure
+application-specific custom headers. For example, `"X-Custom-Header"` has been configured in the example
+below.
+
+```hcl
+listener "tcp" {
+  custom_api_response_headers {
+    "default" = {
+      "Strict-Transport-Security" = ["max-age=31536000; includeSubDomains"],
+      "X-Custom-Header" = ["Custom Header Default Value"],
+    },
+    "2xx" = {
+      "X-Custom-Header" = ["Custom Header Value 1", "Custom Header Value 2"],
+    },
+    "301" = {
+      "Strict-Transport-Security" = ["max-age=31536000"],
+    },
+  }
+  custom_ui_response_headers {
+    "default" = {
+      "Strict-Transport-Security" = ["max-age=31536000; includeSubDomains"],
+      "Content-Security-Policy" = ["default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:*; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"],
+      "X-Custom-Header" = ["Custom Header Default Value"],
+    },
+    "2xx" = {
+      "X-Custom-Header" = ["Custom Header Value 1", "Custom Header Value 2"],
+    },
+    "301" = {
+      "Strict-Transport-Security" = ["max-age=31536000"],
+      "Content-Security-Policy" = ["default-src 'none'; script-src 'none'; connect-src 'none'"],
+    },
+  }
+}
+```
+
+In situations where a header is defined under several status code subsections,
+Boundary returns the header matching the most specific response code. For example,
+with the config example below, a `307` response would return `307 Custom header value`,
+while a `306` would return `3xx Custom header value`.
+
+```hcl
+listener "tcp" {
+  custom_api_response_headers {
+    "default" = {
+       "X-Custom-Header" = ["default Custom header value"]
+    },
+    "3xx" = {
+       "X-Custom-Header" = ["3xx Custom header value"]
+    },
+    "307" = {
+       "X-Custom-Header" = ["307 Custom header value"]
+    }
+  }
+}
+```
+
+There may also be situations where default or collective status headers have been defined,
+but you do not want them returned for a specific status code. You can unset headers at any
+level by defining the headers as an empty list.
+
+```hcl
+listener "tcp" {
+  custom_api_response_headers {
+    "default" = {
+       "X-Custom-Header" = ["default Custom header value"]
+    },
+    "3xx" = {
+       "X-Custom-Header" = ["3xx Custom header value"]
+    },
+    "307" = {
+		// Do not return this header for 307 responses
+       "X-Custom-Header" = []
+    }
+  }
 }
 ```
 
