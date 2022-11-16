@@ -53,7 +53,7 @@ type downstreamRouter interface {
 	// ProcessPendingConnections starts a function that continually processes
 	// incoming client connections. This only returns when the provided context
 	// is done.
-	StartProcessingPendingConnections(context.Context, func() string)
+	StartProcessingPendingConnections(context.Context, func() string) error
 }
 
 // downstreamers provides at least a minimum interface that must be met by a
@@ -447,7 +447,9 @@ func (w *Worker) Start() error {
 		}
 		go func() {
 			defer w.tickerWg.Done()
-			w.downstreamRoutes.StartProcessingPendingConnections(w.baseContext, servNameFn)
+			if err := w.downstreamRoutes.StartProcessingPendingConnections(w.baseContext, servNameFn); err != nil {
+				errors.Wrap(w.baseContext, err, op)
+			}
 		}()
 		go func() {
 			defer w.tickerWg.Done()

@@ -32,9 +32,12 @@ import (
 // the function that handles a secondary connection over a provided listener
 var handleSecondaryConnection = closeListener
 
-func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
+func closeListener(_ context.Context, l, l2 net.Listener, _ any) error {
 	if l != nil {
-		return l.Close()
+		l.Close()
+	}
+	if l2 != nil {
+		l2.Close()
 	}
 	return nil
 }
@@ -170,7 +173,14 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	// reverse grpc purpose
 	reverseGrpcListener, err := w.workerAuthSplitListener.GetListener(common.ReverseGrpcConnectionAlpnValue)
 	if err != nil {
-		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
+		return nil, fmt.Errorf("error instantiating reverse grpc split listener: %w", err)
+	}
+
+	// Connections coming in here are authed by nodeenrollment and are for the
+	// multi-hop session-proxying
+	websocketProxyingListener, err := w.workerAuthSplitListener.GetListener(common.WebsocketProxyingAlpnValue)
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating websocket proxying split listener: %w", err)
 	}
 
 	// This wraps the reverse grpc pki worker connections with a listener which
@@ -213,10 +223,10 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	}
 
 	return func() {
+		handleSecondaryConnection(cancelCtx, revPkiWorkerTrackingListener, websocketProxyingListener, w.downstreamRoutes)
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(proxyListener)
 		go ln.GrpcServer.Serve(pkiWorkerTrackingListener)
-		go handleSecondaryConnection(cancelCtx, revPkiWorkerTrackingListener, w.downstreamRoutes, -1)
 	}, nil
 }
 

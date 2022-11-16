@@ -26,7 +26,7 @@ import (
 // the function that handles a secondary connection over a provided listener
 var handleSecondaryConnection = closeListener
 
-func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
+func closeListener(_ context.Context, l, _ net.Listener, _ any) error {
 	if l != nil {
 		return l.Close()
 	}
@@ -242,16 +242,14 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	ln.GrpcServer = workerServer
 
 	return func() {
+		err := handleSecondaryConnection(c.baseContext, multiplexingReverseGrpcListener, nil, c.downstreamRoutes)
+		if err != nil {
+			event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
+		}
 		go func() {
 			err := splitListener.Start()
 			if err != nil {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("splitListener.Start() error"))
-			}
-		}()
-		go func() {
-			err := handleSecondaryConnection(c.baseContext, multiplexingReverseGrpcListener, c.downstreamRoutes, -1)
-			if err != nil {
-				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
 			}
 		}()
 		go func() {

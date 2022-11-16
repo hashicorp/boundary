@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,6 +31,7 @@ func NewHostSet(ctx context.Context, catalogId string, opt ...Option) (*HostSet,
 	const op = "plugin.NewHostSet"
 	opts := getOpts(opt...)
 	attrs, err := proto.Marshal(opts.withAttributes)
+	event.WriteSysEvent(ctx, op, fmt.Sprintf("attributes are: %v", attrs))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
