@@ -8,6 +8,10 @@
     "path": "use-cases"
   },
   {
+    "title": "Boundary vs. Other Software",
+    "path": "other-software"
+  },
+  {
     "title": "Getting Started",
     "routes": [
       {
