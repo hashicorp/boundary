@@ -15,13 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestKeyDestructionCli uses the boundary CLI to test key destruction.
-func TestKeyDestructionCli(t *testing.T) {
+// TestCliKeyDestruction uses the boundary CLI to test key destruction.
+func TestCliKeyDestruction(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
 
+	t.Log("Creating scope...")
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "create",
@@ -62,6 +63,7 @@ func TestKeyDestructionCli(t *testing.T) {
 	}
 
 	// Create OIDC auth method to create some encrypted data in the scope
+	t.Log("Creating auth method...")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-methods", "create", "oidc",
@@ -85,6 +87,7 @@ func TestKeyDestructionCli(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 
+	t.Log("Rotating keys...")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "rotate-keys",
@@ -132,6 +135,7 @@ func TestKeyDestructionCli(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, jobs.Items, 0)
 
+	t.Log("Destroying root key...")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "destroy-key-version",
@@ -161,6 +165,7 @@ func TestKeyDestructionCli(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, jobs.Items, 0)
 
+	t.Log("Destroying database key...")
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"scopes", "destroy-key-version",
@@ -229,8 +234,8 @@ func TestKeyDestructionCli(t *testing.T) {
 	t.Logf("Successfully destroyed a root key and data key")
 }
 
-// TestKeyDestructionApi uses the boundary CLI to test key destruction.
-func TestKeyDestructionApi(t *testing.T) {
+// TestApiKeyDestruction uses the boundary Go api to test key destruction.
+func TestApiKeyDestruction(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 
 	client, err := boundary.NewApiClient()
@@ -239,6 +244,7 @@ func TestKeyDestructionApi(t *testing.T) {
 	ctx := context.Background()
 	sc := scopes.NewClient(client)
 
+	t.Log("Creating scope...")
 	scope, err := sc.Create(ctx, "global", scopes.WithName("testscope"))
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -256,6 +262,7 @@ func TestKeyDestructionApi(t *testing.T) {
 	}
 
 	// Create OIDC auth method to create some encrypted data in the scope
+	t.Log("Creating auth method...")
 	amc := authmethods.NewClient(client)
 	am, err := amc.Create(ctx, "oidc", scope.Item.Id,
 		authmethods.WithOidcAuthMethodApiUrlPrefix("http://example.com"),
@@ -268,6 +275,7 @@ func TestKeyDestructionApi(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Log("Rotating keys...")
 	_, err = sc.RotateKeys(ctx, scope.Item.Id, false)
 	require.NoError(t, err)
 
@@ -296,6 +304,7 @@ func TestKeyDestructionApi(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, jobs.Items, 0)
 
+	t.Log("Destroying root key...")
 	result, err := sc.DestroyKeyVersion(ctx, scope.Item.Id, rootKeyVersionToDestroy.Id)
 	require.NoError(t, err)
 	assert.Equal(t, "completed", result.State)
@@ -304,6 +313,7 @@ func TestKeyDestructionApi(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, jobs.Items, 0)
 
+	t.Log("Destroying database key...")
 	result, err = sc.DestroyKeyVersion(ctx, scope.Item.Id, databaseKeyVersionToDestroy.Id)
 	require.NoError(t, err)
 	assert.Equal(t, "pending", result.State)
