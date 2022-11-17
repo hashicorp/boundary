@@ -16,9 +16,9 @@ func noopAddressReceivers(context.Context, *Worker) ([]addressReceiver, error) {
 type receiverType uint
 
 const (
-	UnknownReceiverType receiverType = iota
-	grpcResolverReceiverType
-	secondaryConnectionReceiverType
+	UnknownReceiverType         receiverType = 0
+	grpcResolverReceiverType    receiverType = 1
+	dialingListenerReceiverType receiverType = 2
 )
 
 // String returns a string representation of the receiverType
@@ -26,7 +26,7 @@ func (s receiverType) String() string {
 	return [...]string{
 		"unknown",
 		"grpcResolver",
-		"secondaryConnections",
+		"dialingListener",
 	}[s]
 }
 

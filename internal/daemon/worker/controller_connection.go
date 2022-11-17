@@ -33,7 +33,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const hcpbUrlSuffix = ".proxy.boundary.hashicorp.cloud:9202"
@@ -78,14 +77,8 @@ func (w *Worker) StartControllerConnections() error {
 	return nil
 }
 
-// upstreamDialerFunc dials an upstream server. extraAlpnProtos can be provided
-// to kms and pki connections and are used for identifying, on the server side,
-// the intended purpose of the connection.  upstreamDialerFunc takes an optional
-// state struct which, if the connection is made using the node enrolment
-// library, sends the state to the server and can be retrieved from the
-// resulting protocol.Conn.
-func (w *Worker) upstreamDialerFunc(state *structpb.Struct, extraAlpnProtos ...string) func(context.Context, string) (net.Conn, error) {
-	const op = "worker.(Worker).upstreamDialerFunc"
+func (w *Worker) controllerDialerFunc(extraAlpnProtos ...string) func(context.Context, string) (net.Conn, error) {
+	const op = "worker.(Worker).controllerDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		var conn net.Conn
 		var err error
@@ -97,7 +90,6 @@ func (w *Worker) upstreamDialerFunc(state *structpb.Struct, extraAlpnProtos ...s
 				ctx,
 				w.WorkerAuthStorage,
 				addr,
-				nodeenrollment.WithState(state),
 				nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
 				nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos),
 				// If the activation token hasn't been populated, this won't do
@@ -210,7 +202,7 @@ func (w *Worker) createClientConn(addr string) error {
 		grpc.WithUnaryInterceptor(metric.InstrumentClusterClient()),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
-		grpc.WithContextDialer(w.upstreamDialerFunc(nil)),
+		grpc.WithContextDialer(w.controllerDialerFunc()),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(defServiceConfig),
 		// Don't have the resolver reach out for a service config from the

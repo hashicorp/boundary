@@ -39,7 +39,6 @@ import (
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
-	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
@@ -57,7 +56,7 @@ type downstreamRouter interface {
 	// ProcessPendingConnections starts a function that continually processes
 	// incoming client connections. This only returns when the provided context
 	// is done.
-	StartProcessingPendingConnections(context.Context, func() string) error
+	StartProcessingPendingConnections(context.Context, func() string)
 }
 
 // downstreamWorkersTicker defines an interface for a ticker that maintains the
@@ -79,8 +78,8 @@ type downstreamers interface {
 var (
 	downstreamRouterFactory func() downstreamRouter
 
-	downstreamersFactory           func(context.Context, string, string) (downstreamers, error)
-	downstreamWorkersTickerFactory func(context.Context, string, string, downstreamers, downstreamRouter) (downstreamWorkersTicker, error)
+	downstreamersFactory           func(context.Context, string) (downstreamers, error)
+	downstreamWorkersTickerFactory func(context.Context, string, downstreamers, downstreamRouter) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
 )
 
@@ -398,8 +397,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 
 	if downstreamersFactory != nil {
-		boundVer := version.Get().VersionNumber()
-		c.downstreamWorkers, err = downstreamersFactory(ctx, "root", boundVer)
+		c.downstreamWorkers, err = downstreamersFactory(ctx, "root")
 		if err != nil {
 			return nil, fmt.Errorf("unable to initialize downstream workers graph: %w", err)
 		}
@@ -489,8 +487,7 @@ func (c *Controller) Start() error {
 	if downstreamWorkersTickerFactory != nil {
 		// we'll use "root" to designate that this is the root of the graph (aka
 		// a controller)
-		boundVer := version.Get().VersionNumber()
-		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", boundVer, c.downstreamWorkers, c.downstreamRoutes)
+		dswTicker, err := downstreamWorkersTickerFactory(c.baseContext, "root", c.downstreamWorkers, c.downstreamRoutes)
 		if err != nil {
 			return fmt.Errorf("error creating downstream workers ticker: %w", err)
 		}
