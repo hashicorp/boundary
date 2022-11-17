@@ -597,6 +597,16 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 			return nil, fmt.Errorf("error refreshing session: %w", err)
 		}
 
+		if sess.GetCertificate() == nil {
+			return nil, fmt.Errorf("requested session has no certifificate")
+		}
+		if len(sess.GetCertificate().Raw) == 0 {
+			return nil, fmt.Errorf("requested session has no certificate DER")
+		}
+		if len(sess.GetPrivateKey()) == 0 {
+			return nil, fmt.Errorf("requested session has no private key")
+		}
+
 		certPool := x509.NewCertPool()
 		certPool.AddCert(sess.GetCertificate())
 
