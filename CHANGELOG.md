@@ -47,6 +47,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2553))
 * sessions: Fixed a panic in a controller when a worker is deleted while
   sessions are ongoing ([PR](https://github.com/hashicorp/boundary/pull/2612))
+* sessions: Fixed a panic in a worker when a user with an active
+  session is deleted ([PR](https://github.com/hashicorp/boundary/pull/2629))
 
 ### Deprecations/Changes
 
