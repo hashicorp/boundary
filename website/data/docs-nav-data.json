@@ -4,12 +4,17 @@
     "path": "what-is-boundary"
   },
   {
-    "title": "Use Cases",
-    "path": "use-cases"
-  },
-  {
-    "title": "Boundary vs. Other Software",
-    "path": "other-software"
+    "title": "Overview",
+    "routes": [
+      {
+        "title": "Use Cases",
+        "path": "overview/use-cases"
+      },
+      {
+        "title": "Boundary vs. Other Software",
+        "path": "overview/other-software"
+      }
+    ]
   },
   {
     "title": "Getting Started",
