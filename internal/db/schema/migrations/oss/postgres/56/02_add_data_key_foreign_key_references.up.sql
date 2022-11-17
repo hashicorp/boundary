@@ -39,23 +39,29 @@ begin;
   create or replace function cancel_session_with_null_fk() returns trigger
   as $$
   begin
-   case 
-      when new.user_id is null then
-        perform cancel_session(new.public_id);
-      when new.host_id is null then
-        perform cancel_session(new.public_id);
-      when new.target_id is null then
-        perform cancel_session(new.public_id);
-      when new.host_set_id is null then
-        perform cancel_session(new.public_id);
-      when new.auth_token_id is null then
-        perform cancel_session(new.public_id);
-      when new.project_id is null then
-        -- Setting the key_id to null will allow the scope
-        -- to cascade delete its keys.
-        new.key_id = null;
-        perform cancel_session(new.public_id);
-    end case;
+    -- Note that we need each of these to run in case
+    -- more than one of them is null.
+    if new.user_id is null then
+      perform cancel_session(new.public_id);
+    end if;
+    if new.host_id is null then
+      perform cancel_session(new.public_id);
+    end if;
+    if new.target_id is null then
+      perform cancel_session(new.public_id);
+    end if;
+    if new.host_set_id is null then
+      perform cancel_session(new.public_id);
+    end if;
+    if new.auth_token_id is null then
+      perform cancel_session(new.public_id);
+    end if;
+    if new.project_id is null then
+      -- Setting the key_id to null will allow the scope
+      -- to cascade delete its keys.
+      new.key_id = null;
+      perform cancel_session(new.public_id);
+    end if;
     return new;
   end;
   $$ language plpgsql;
