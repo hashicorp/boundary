@@ -1,11 +1,11 @@
 [
   {
     "title": "What is Boundary?",
-    "path": "what-is-boundary"
-  },
-  {
-    "title": "Introduction",
     "routes": [
+      {
+        "title": "Overview",
+        "path": "overview/what-is-boundary"
+      },
       {
         "title": "Use Cases",
         "path": "overview/use-cases"
