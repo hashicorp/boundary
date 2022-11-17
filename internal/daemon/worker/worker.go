@@ -600,10 +600,10 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 		if sess.GetCertificate() == nil {
 			return nil, fmt.Errorf("requested session has no certifificate")
 		}
-		if sess.GetCertificate().Raw == nil {
+		if len(sess.GetCertificate().Raw) == 0 {
 			return nil, fmt.Errorf("requested session has no certificate DER")
 		}
-		if sess.GetPrivateKey() == nil {
+		if len(sess.GetPrivateKey()) == 0 {
 			return nil, fmt.Errorf("requested session has no private key")
 		}
 
