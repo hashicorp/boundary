@@ -13,11 +13,6 @@ Systems](/docs/configuration/kms) that protect the base encryption keys used
 for various functions. This page describes the various KMS key purposes that
 Boundary supports and how they are used within the system.
 
-~> **Note:** Boundary does not currently support rotation of its internal keys, but this
-will be supported in a future version. External keys can be rotated so long as
-the original keys remain available for decryption; full support for rotating
-these will come in a future version as well.
-
 ## The `worker-auth-storage` KMS Key
 
 The `worker-auth-storage` KMS key is used by a [PKI
@@ -25,26 +20,34 @@ Worker](/docs/configuration/worker/pki-worker) for storage of authentication
 keys. It is optional for PKI workers; if not specified the authentication keys
 will not be encrypted on disk. This is not used by KMS workers.
 
-## The `root` KMS Key and Per-Scope KEK/DEKs <sup>OSS Only</sup>
+## The `rootKey` KMS Key and Per-Scope KEK/DEKs <sup>OSS Only</sup>
 
 Following best practices of using different encryption keys for different
 purposes, Boundary has a number of encryption keys generated within each scope.
+Each key further contains versions, which hold the key material used to encrypt
+data. You can create new key versions by _rotating_ the keys. A key version
+can be destroyed, which will re-encrypt any existing data before destroying the
+key material permanently.
 
-The `root` KMS key acts as a KEK (Key Encrypting Key) for the scope-specific
-KEKs (also referred to as the scope's `root` key). The scope's `root` KEK and
-the various DEKs (Data Encryption Keys) are created when a scope is created. The
-DEKs are encrypted with the scope's `root` KEK, and this is in turn encrypted
-with the KMS key marked for `root` purpose.
+The `rootKey` KMS key acts as a KEK (Key Encrypting Key) for the scope-specific
+KEKs (also referred to as the scope's `rootKey` key). The scope's `rootKey` KEK
+and the various DEKs (Data Encryption Keys) are created when a scope is created.
+The DEKs are encrypted with the scope's `rootKey` KEK, and this is in turn
+encrypted with the KMS key marked for the `rootKey` purpose.
 
 The current scoped DEKs and their purposes are detailed below:
 
-~> **Note:** Management of these keys is handled entirely internally; the information
-provided in this section is purely for informational purposes.
+- `audit`: This is used to encrypt secret values in the event log. For more
+  information about the event log, refer to
+  [the events config](/docs/configuration/events).
 
 - `database`: This is the general-purpose DEK used to encrypt values within the
   database. Values that are encrypted are those generally considered to be
   secret, such as API keys, third-party tokens, certificate private keys, and so
   on.
+
+- `oidc`: This is used to encrypt OIDC information in cookies and authentication
+  requests.
 
 - `oplog`: This is used for encrypting oplog (operation log) values for the
   given scope.
@@ -54,6 +57,53 @@ provided in this section is purely for informational purposes.
 
 - `sessions`: This is used as a base key against which to derive
   session-specific encryption keys.
+
+### Key version lifecycle Management
+
+You can control the lifecycles of the per-scope KEK and DEKs via the CLI or
+API using the key endpoints under the scopes section. To rotate all the keys
+in a scope, use the `rotate-keys` endpoint:
+
+```shell-session
+$ boundary scopes rotate-keys -scope-id p_A4jfDjZ9jf
+```
+
+This endpoint creates new key versions for all keys in the scope
+`p_A4jfDjZ9jf`, and makes these key versions the active key versions for
+encrypting new data. The previous key version(s) will continue to be used for
+decrypting existing data. You can use the `-rewrap` flag to immediately rewrap
+all DEK versions with the new KEK version. Otherwise, the DEK versions remain
+encrypted by the prior KEK version from when they were created.
+
+To list all keys in a scope and their versions, use the `list-keys` endpoint:
+
+```shell-session
+$ boundary scopes list-keys -scope-id p_A4jfDjZ9jf
+```
+
+To destroy a key version, use the `destroy-key-version` endpoint:
+
+```shell-session
+$ boundary scopes destroy-key-version -scope-id p_A4jfDjZ9jf -key-version-id kdkv_tr6ZN8opYr
+```
+
+The latest key version cannot be destroyed, so if you want to destroy the
+latest key version, you will need to call the `rotate-keys` endpoint first,
+to create a new set of key versions. The `oplog` purpose key versions also
+cannot be destroyed at this time.
+
+Destroying a key version sometimes requires background work before it can be
+completed. This is because DEK versions that currently encrypt data
+necessitate re-encrypting that data with the latest DEK version for each
+purpose before they can be deleted. You can monitor the progress of this
+re-encryption job via the `list-key-destruction-jobs` endpoint:
+
+```shell-session
+$ boundary scopes list-key-version-destruction-jobs -scope-id p_A4jfDjZ9jf
+```
+
+Once the job disappears from this list, the associated key version will have
+been destroyed and any existing data will have been re-encrypted.
 
 ## The `worker-auth` KMS Key <sup>OSS Only</sup>
 
