@@ -25,7 +25,7 @@ will not be encrypted on disk. This is not used by KMS workers.
 Following best practices of using different encryption keys for different
 purposes, Boundary has a number of encryption keys generated within each scope.
 Each key further contains versions, which hold the key material used to encrypt
-data. New key versions can be created by _rotating_ the keys. A key version
+data. You can create new key versions by _rotating_ the keys. A key version
 can be destroyed, which will re-encrypt any existing data before destroying the
 key material permanently.
 
@@ -33,12 +33,12 @@ The `rootKey` KMS key acts as a KEK (Key Encrypting Key) for the scope-specific
 KEKs (also referred to as the scope's `rootKey` key). The scope's `rootKey` KEK
 and the various DEKs (Data Encryption Keys) are created when a scope is created.
 The DEKs are encrypted with the scope's `rootKey` KEK, and this is in turn
-encrypted with the KMS key marked for `rootKey` purpose.
+encrypted with the KMS key marked for the `rootKey` purpose.
 
 The current scoped DEKs and their purposes are detailed below:
 
-- `audit`: The is used to encrypt secret values in the event log. For more
-  information about the event log, see
+- `audit`: This is used to encrypt secret values in the event log. For more
+  information about the event log, refer to
   [the events config](/docs/configuration/events).
 
 - `database`: This is the general-purpose DEK used to encrypt values within the
@@ -60,7 +60,7 @@ The current scoped DEKs and their purposes are detailed below:
 
 ### Key version lifecycle Management
 
-The lifecycle of the per-scope KEK and DEKs can be controlled via the CLI or
+You can control the lifecycles of the per-scope KEK and DEKs via the CLI or
 API using the key endpoints under the scopes section. To rotate all the keys
 in a scope, use the `rotate-keys` endpoint:
 
@@ -68,12 +68,12 @@ in a scope, use the `rotate-keys` endpoint:
 $ boundary scopes rotate-keys -scope-id p_A4jfDjZ9jf
 ```
 
-This creates new key versions for all keys in the scope `p_A4jfDjZ9jf`, and
-makes these key versions the active key versions for encrypting new data. The
-previous key version(s) will continue to be used for decrypting existing data.
-The `-rewrap` flag can be used to immediately rewrap all DEK versions with the
-new KEK version. Otherwise the DEK versions will remain encrypted by the KEK
-version created when they were.
+This endpoint creates new key versions for all keys in the scope
+`p_A4jfDjZ9jf`, and makes these key versions the active key versions for
+encrypting new data. The previous key version(s) will continue to be used for
+decrypting existing data. You can use the `-rewrap` flag to immediately rewrap
+all DEK versions with the new KEK version. Otherwise, the DEK versions remain
+encrypted by the prior KEK version from when they were created.
 
 To list all keys in a scope and their versions, use the `list-keys` endpoint:
 
@@ -92,8 +92,8 @@ latest key version, you will need to call the `rotate-keys` endpoint first,
 to create a new set of key versions. The `oplog` purpose key versions also
 cannot be destroyed at this time.
 
-Destroying a key version will sometimes require some background work before it
-can be completed. This is because DEK versions that currently encrypt data
+Destroying a key version sometimes requires background work before it can be
+completed. This is because DEK versions that currently encrypt data
 necessitate re-encrypting that data with the latest DEK version for each
 purpose before they can be deleted. You can monitor the progress of this
 re-encryption job via the `list-key-destruction-jobs` endpoint:
