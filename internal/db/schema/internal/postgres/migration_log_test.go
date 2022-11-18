@@ -59,9 +59,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 			 timestamp with time zone
 			 default current_timestamp;
 
-			create or replace function
-				default_create_time()
-				returns trigger
+			create or replace function default_create_time() returns trigger
 			as $$
 			begin
 				if new.create_time is distinct from now() then
@@ -72,9 +70,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 			end;
 			$$ language plpgsql;
 
-			create or replace function
-				immutable_columns()
-				returns trigger
+			create or replace function immutable_columns() returns trigger
 			as $$
 			declare
 				col_name text;
@@ -118,9 +114,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 		 update on log_migration
 			for each row execute procedure immutable_columns('id', 'migration_version', 'create_time', 'entry');
 
-		 create or replace function
-			log_migration_version()
-			returns trigger
+		 create or replace function log_migration_version() returns trigger
 		 as $$
 			declare current_version bigint;
 			begin
