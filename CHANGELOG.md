@@ -32,6 +32,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
     string after a specified substring; this is useful for pulling an user/account name from an email address. In the following example it uses the account email can be any other parameter:
 
     * `{{ truncateFrom .Account.Email "@" }}`: this would turn `foo@example.com` into `foo`
+* Per-scope key lifecycle management: You can now manage the lifecycles of both Key
+  Encryption Keys (KEKs) and Data Encryption Keys (DEKs) using the new key rotation
+  and key version destruction functionality. To learn more about this new feature,
+  refer to the
+  [documentation](https://developer.hashicorp.com/boundary/docs/concepts/security/data-encryption).
+
+  Upgrade notice: If the Database purpose DEK for a scope is destroyed, you must use
+  the API to cancel any sessions that predate the upgrade.
+  ([PR](https://github.com/hashicorp/boundary/pull/2477))
 
 * Custom Response Headers: Adds ability to set api and ui response headers based
   on status code. Includes default secure CSP and other headers.
