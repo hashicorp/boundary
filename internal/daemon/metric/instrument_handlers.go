@@ -99,8 +99,9 @@ func (r requestRecorder) Record(err error) {
 
 type connectionTrackingListener struct {
 	net.Listener
-	acceptedConns prometheus.Counter
-	closedConns   prometheus.Counter
+	acceptedConns      prometheus.Counter
+	closedConnsSuccess prometheus.Counter
+	closedConnsError   prometheus.Counter
 }
 
 // NewConnectionTrackingListener registers a new Prometheus gauge with an unique
@@ -108,19 +109,32 @@ type connectionTrackingListener struct {
 // are accepted and closed.
 // Multiple calls to Close() a listener connection will only decrement the gauge
 // once. A call to Close() will decrement the gauge even if Close() errors.
-func NewConnectionTrackingListener(l net.Listener, ac prometheus.Counter, cc prometheus.Counter) *connectionTrackingListener {
-	return &connectionTrackingListener{Listener: l, acceptedConns: ac, closedConns: cc}
+func NewConnectionTrackingListener(l net.Listener, purpose string, ac prometheus.CounterVec, cc prometheus.CounterVec) *connectionTrackingListener {
+	p := prometheus.Labels{LabelConnectionPurpose: purpose}
+	pSuccess := prometheus.Labels{LabelConnectionPurpose: purpose, LabelDisconnectionStatus: "success"}
+	pError := prometheus.Labels{LabelConnectionPurpose: purpose, LabelDisconnectionStatus: "error"}
+	return newConnectionTrackingListener(l, ac.With(p), cc.With(pSuccess), cc.With(pError))
+}
+
+func newConnectionTrackingListener(l net.Listener, ac prometheus.Counter, ccS prometheus.Counter, ccE prometheus.Counter) *connectionTrackingListener {
+	return &connectionTrackingListener{Listener: l, acceptedConns: ac, closedConnsSuccess: ccS, closedConnsError: ccE}
 }
 
 type connectionTrackingListenerConn struct {
 	net.Conn
-	dec         sync.Once
-	closedConns prometheus.Counter
+	dec                sync.Once
+	closedConnsSuccess prometheus.Counter
+	closedConnsError   prometheus.Counter
 }
 
 func (c *connectionTrackingListenerConn) Close() error {
-	c.dec.Do(func() { c.closedConns.Inc() })
-	return c.Conn.Close()
+	err := c.Conn.Close()
+	if err != nil {
+		c.dec.Do(func() { c.closedConnsError.Inc() })
+	} else {
+		c.dec.Do(func() { c.closedConnsSuccess.Inc() })
+	}
+	return err
 }
 
 func (l *connectionTrackingListener) Accept() (net.Conn, error) {
@@ -129,7 +143,11 @@ func (l *connectionTrackingListener) Accept() (net.Conn, error) {
 		return nil, err
 	}
 	l.acceptedConns.Inc()
-	return &connectionTrackingListenerConn{Conn: conn, closedConns: l.closedConns}, nil
+	return &connectionTrackingListenerConn{
+		Conn:               conn,
+		closedConnsSuccess: l.closedConnsSuccess,
+		closedConnsError:   l.closedConnsError,
+	}, nil
 }
 
 // StatusFromError retrieves the *status.Status from the provided error.  It'll

@@ -50,7 +50,7 @@ var closedConnsTotal = prometheus.NewCounterVec(
 		Name:      "closed_connections_total",
 		Help:      "Count of total closed network connections to this worker.",
 	},
-	[]string{metric.LabelConnectionPurpose},
+	[]string{metric.LabelConnectionPurpose, metric.LabelDisconnectionStatus},
 )
 
 // All the codes expected to be returned by boundary or the grpc framework to
@@ -66,8 +66,7 @@ var expectedGrpcCodes = []codes.Code{
 }
 
 func InstrumentWorkerClusterTrackingListener(l net.Listener, purpose string) net.Listener {
-	p := prometheus.Labels{metric.LabelConnectionPurpose: purpose}
-	return metric.NewConnectionTrackingListener(l, acceptedConnsTotal.With(p), closedConnsTotal.With(p))
+	return metric.NewConnectionTrackingListener(l, purpose, *acceptedConnsTotal, *closedConnsTotal)
 }
 
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
