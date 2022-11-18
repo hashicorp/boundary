@@ -456,6 +456,17 @@ func TestFilterToAuthorizedWorkerKeyIds(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
+	t.Run("query returns error", func(t *testing.T) {
+		conn, mock := db.TestSetupWithMock(t)
+		rw := db.New(conn)
+		mock.ExpectQuery(`select`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
+		brokenRepo, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		_, err = brokenRepo.FilterToAuthorizedWorkerKeyIds(ctx, []string{"something"})
+		assert.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
 	// Ensures the global scope contains a valid root key
 	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
