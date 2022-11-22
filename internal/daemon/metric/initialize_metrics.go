@@ -15,14 +15,13 @@ import (
 )
 
 const (
-	LabelConnectionPurpose   = "purpose"
-	LabelDisconnectionStatus = "status"
-	LabelGrpcService         = "grpc_service"
-	LabelGrpcMethod          = "grpc_method"
-	LabelGrpcCode            = "grpc_code"
-	LabelHttpPath            = "path"
-	LabelHttpMethod          = "method"
-	LabelHttpCode            = "code"
+	LabelConnectionPurpose = "purpose"
+	LabelGrpcService       = "grpc_service"
+	LabelGrpcMethod        = "grpc_method"
+	LabelGrpcCode          = "grpc_code"
+	LabelHttpPath          = "path"
+	LabelHttpMethod        = "method"
+	LabelHttpCode          = "code"
 
 	invalidPathValue = "invalid"
 )

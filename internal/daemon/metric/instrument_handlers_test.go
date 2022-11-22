@@ -47,7 +47,7 @@ var testClosedConns prometheus.CounterVec = *prometheus.NewCounterVec(
 		Name:      "test_closed_connections_total",
 		Help:      "Test CounterVec.",
 	},
-	[]string{LabelConnectionPurpose, LabelDisconnectionStatus},
+	[]string{LabelConnectionPurpose},
 )
 
 type testPrometheusCounter struct {
@@ -115,9 +115,8 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 		func(t *testing.T) {
 			l := &testListener{}
 			acceptedConns := testAcceptedConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label"})
-			closedConnsS := testClosedConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label", LabelDisconnectionStatus: "success"})
-			closedConnsE := testClosedConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label", LabelDisconnectionStatus: "error"})
-			ctl := newConnectionTrackingListener(l, acceptedConns, closedConnsS, closedConnsE)
+			closedConns := testClosedConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label"})
+			ctl := NewConnectionTrackingListener(l, acceptedConns, closedConns)
 			require.NotNil(t, ctl)
 
 			assert.Equal(t, ctl.Listener, l)
@@ -127,35 +126,31 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 
 			// check purpose label was populated correctly by attempting to delete it
 			assert.Equal(t, testAcceptedConns.DeleteLabelValues("test_label"), true)
-			assert.Equal(t, testClosedConns.Delete(prometheus.Labels{LabelConnectionPurpose: "test_label", LabelDisconnectionStatus: "success"}), true)
-			assert.Equal(t, testClosedConns.Delete(prometheus.Labels{LabelConnectionPurpose: "test_label", LabelDisconnectionStatus: "error"}), true)
+			assert.Equal(t, testClosedConns.DeleteLabelValues("test_label"), true)
 			require.NoError(t, cc.Close())
 		})
 	t.Run("accept-err",
 		func(t *testing.T) {
 			tpcAcc := &testPrometheusCounter{t: t}
-			tpcCloS := &testPrometheusCounter{t: t}
-			tpcCloE := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			el := &erroringAcceptListener{}
-			ctl := newConnectionTrackingListener(el, tpcAcc, tpcCloS, tpcCloE)
+			ctl := NewConnectionTrackingListener(el, tpcAcc, tpcClo)
 			require.NotNil(t, ctl)
 
 			cc, err := ctl.Accept()
 			assert.Nil(t, cc)
 			assert.Contains(t, "error for testcase", err.Error())
 			assert.Equal(t, 0, tpcAcc.incCalledN)
-			assert.Equal(t, 0, tpcCloS.incCalledN)
-			assert.Equal(t, 0, tpcCloE.incCalledN)
+			assert.Equal(t, 0, tpcClo.incCalledN)
 		})
 	t.Run("accept-multiple",
 		func(t *testing.T) {
 			tpcAcc := &testPrometheusCounter{t: t}
-			tpcCloS := &testPrometheusCounter{t: t}
-			tpcCloE := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			n := 10
 			for i := 0; i < n; i++ {
 				l := &testListener{}
-				ctl := newConnectionTrackingListener(l, tpcAcc, tpcCloS, tpcCloE)
+				ctl := NewConnectionTrackingListener(l, tpcAcc, tpcClo)
 				require.NotNil(t, ctl)
 				cc, err := ctl.Accept()
 				require.NotNil(t, cc)
@@ -163,17 +158,15 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 				assert.Equal(t, i+1, tpcAcc.incCalledN)
 
 				require.NoError(t, cc.Close())
-				assert.Equal(t, i+1, tpcCloS.incCalledN)
-				assert.Equal(t, 0, tpcCloE.incCalledN)
+				assert.Equal(t, i+1, tpcClo.incCalledN)
 			}
 		})
 	t.Run("close-err",
 		func(t *testing.T) {
 			tpcAcc := &testPrometheusCounter{t: t}
-			tpcCloS := &testPrometheusCounter{t: t}
-			tpcCloE := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			el := &erroringCloseListener{}
-			ctl := newConnectionTrackingListener(el, tpcAcc, tpcCloS, tpcCloE)
+			ctl := NewConnectionTrackingListener(el, tpcAcc, tpcClo)
 			require.NotNil(t, ctl)
 
 			cc, err := ctl.Accept()
@@ -182,38 +175,33 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			assert.Equal(t, 1, tpcAcc.incCalledN)
 
 			assert.Error(t, cc.Close())
-			assert.Equal(t, 1, tpcCloE.incCalledN)
-			assert.Equal(t, 0, tpcCloS.incCalledN)
+			assert.Equal(t, 1, tpcClo.incCalledN)
 		})
 	t.Run("close-repeat-calls",
 		func(t *testing.T) {
 			tpcAcc := &testPrometheusCounter{t: t}
-			tpcCloS := &testPrometheusCounter{t: t}
-			tpcCloE := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			l := &testListener{}
-			ctl := newConnectionTrackingListener(l, tpcAcc, tpcCloS, tpcCloE)
+			ctl := NewConnectionTrackingListener(l, tpcAcc, tpcClo)
 			require.NotNil(t, ctl)
 
 			cc, err := ctl.Accept()
 			require.Nil(t, err)
 			require.NotNil(t, cc)
-			assert.Equal(t, 0, tpcCloS.incCalledN)
-			assert.Equal(t, 0, tpcCloE.incCalledN)
+			assert.Equal(t, 0, tpcClo.incCalledN)
 
 			for i := 0; i <= 5; i++ {
 				assert.NoError(t, cc.Close())
 			}
-			assert.Equal(t, 1, tpcCloS.incCalledN)
-			assert.Equal(t, 0, tpcCloE.incCalledN)
+			assert.Equal(t, 1, tpcClo.incCalledN)
 		})
 	t.Run("inc-dec",
 		func(t *testing.T) {
 			tpcAcc := &testPrometheusCounter{t: t}
-			tpcCloS := &testPrometheusCounter{t: t}
-			tpcCloE := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			l := &testListener{}
 
-			ctl := newConnectionTrackingListener(l, tpcAcc, tpcCloS, tpcCloE)
+			ctl := NewConnectionTrackingListener(l, tpcAcc, tpcClo)
 			require.NotNil(t, ctl)
 			assert.Equal(t, 0, tpcAcc.incCalledN)
 
@@ -223,20 +211,18 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			assert.Equal(t, 1, tpcAcc.incCalledN)
 
 			require.NoError(t, cc.Close())
-			assert.Equal(t, 1, tpcCloS.incCalledN)
-			assert.Equal(t, 0, tpcCloE.incCalledN)
+			assert.Equal(t, 1, tpcClo.incCalledN)
 		},
 	)
 	t.Run("more-inc-dec",
 		func(t *testing.T) {
 			tpcAcc := &testPrometheusCounter{t: t}
-			tpcCloS := &testPrometheusCounter{t: t}
-			tpcCloE := &testPrometheusCounter{t: t}
+			tpcClo := &testPrometheusCounter{t: t}
 			l1 := &testListener{}
 			l2 := &testListener{}
-			l3 := &erroringCloseListener{}
+			l3 := &testListener{}
 
-			ctl1 := newConnectionTrackingListener(l1, tpcAcc, tpcCloS, tpcCloE)
+			ctl1 := NewConnectionTrackingListener(l1, tpcAcc, tpcClo)
 			require.NotNil(t, ctl1)
 			assert.Equal(t, 0, tpcAcc.incCalledN)
 
@@ -245,7 +231,7 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 			require.NotNil(t, cc1)
 			assert.Equal(t, 1, tpcAcc.incCalledN)
 
-			ctl2 := newConnectionTrackingListener(l2, tpcAcc, tpcCloS, tpcCloE)
+			ctl2 := NewConnectionTrackingListener(l2, tpcAcc, tpcClo)
 			require.NotNil(t, ctl2)
 			cc2, err := ctl2.Accept()
 			require.NoError(t, err)
@@ -254,18 +240,17 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 
 			require.NoError(t, cc1.Close())
 			require.NoError(t, cc2.Close())
-			assert.Equal(t, 2, tpcCloS.incCalledN)
+			assert.Equal(t, 2, tpcClo.incCalledN)
 
-			ctl3 := newConnectionTrackingListener(l3, tpcAcc, tpcCloS, tpcCloE)
+			ctl3 := NewConnectionTrackingListener(l3, tpcAcc, tpcClo)
 			require.NotNil(t, ctl3)
 			cc3, err := ctl3.Accept()
 			require.NoError(t, err)
 			require.NotNil(t, cc3)
 			assert.Equal(t, 3, tpcAcc.incCalledN)
 
-			require.Error(t, cc3.Close())
-			assert.Equal(t, 2, tpcCloS.incCalledN)
-			assert.Equal(t, 1, tpcCloE.incCalledN)
+			require.NoError(t, cc3.Close())
+			assert.Equal(t, 3, tpcClo.incCalledN)
 		},
 	)
 }
