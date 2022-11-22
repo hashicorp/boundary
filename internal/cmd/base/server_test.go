@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"crypto/rand"
 	"sync"
 	"testing"
 
@@ -10,6 +11,9 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/aead"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/mitchellh/cli"
@@ -31,7 +35,7 @@ func Test_NewServer(t *testing.T) {
 	})
 }
 
-func TestServer_SetupKMSes(t *testing.T) {
+func TestServer_SetupKMSes_Purposes(t *testing.T) {
 	tests := []struct {
 		name            string
 		purposes        []string
@@ -100,6 +104,109 @@ func TestServer_SetupKMSes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServer_SetupKMSes_MultiWrappers(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	logger := hclog.Default()
+	serLock := new(sync.Mutex)
+	conf := &configutil.SharedConfig{
+		Seals: []*configutil.KMS{
+			{
+				Type: "aead",
+				Purpose: []string{
+					globals.KmsPurposeRoot, globals.KmsPurposeRoot,
+					globals.KmsPurposeRecovery, globals.KmsPurposeRecovery,
+					globals.KmsPurposeWorkerAuth, globals.KmsPurposeWorkerAuth,
+					globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeWorkerAuthStorage,
+				},
+			},
+		},
+	}
+	s := NewServer(&Command{Context: context.Background()})
+	require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
+	err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+	require.NoError(err)
+
+	require.NotNil(s.RootKms)
+	typ, err := s.RootKms.Type(s.Context)
+	require.NoError(err)
+	assert.Equal(wrapping.WrapperTypePooled, typ)
+
+	require.NotNil(s.RecoveryKms)
+	typ, err = s.RecoveryKms.Type(s.Context)
+	require.NoError(err)
+	assert.Equal(wrapping.WrapperTypePooled, typ)
+
+	require.NotNil(s.WorkerAuthKms)
+	typ, err = s.WorkerAuthKms.Type(s.Context)
+	require.NoError(err)
+	assert.Equal(wrapping.WrapperTypePooled, typ)
+
+	require.NotNil(s.WorkerAuthStorageKms)
+	typ, err = s.WorkerAuthStorageKms.Type(s.Context)
+	require.NoError(err)
+	assert.Equal(wrapping.WrapperTypePooled, typ)
+}
+
+func Test_mergeWrappers(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	w1 := aead.NewWrapper()
+	key := make([]byte, 16)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	_, err = w1.SetConfig(context.Background(), wrapping.WithKeyId("key-id-1"), aead.WithKey(key))
+	require.NoError(t, err)
+
+	t.Run("fails-when-new-wrapper-is-nil", func(t *testing.T) {
+		merged, err := mergeWrappers(ctx, nil, nil)
+		require.Error(t, err)
+		require.Nil(t, merged)
+	})
+	t.Run("returns-new-wrapper-when-old-wrapper-is-nil", func(t *testing.T) {
+		merged, err := mergeWrappers(ctx, nil, w1)
+		require.NoError(t, err)
+		assert.Equal(t, merged, w1)
+	})
+	t.Run("returns-multi-wrapper-when-both-are-set", func(t *testing.T) {
+		w2 := aead.NewWrapper()
+		key := make([]byte, 16)
+		_, err := rand.Read(key)
+		require.NoError(t, err)
+		_, err = w2.SetConfig(context.Background(), wrapping.WithKeyId("key-id-2"), aead.WithKey(key))
+		merged, err := mergeWrappers(ctx, w1, w2)
+		require.NoError(t, err)
+		typ, err := merged.Type(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, wrapping.WrapperTypePooled, typ)
+	})
+	t.Run("doesnt-nest-multi-wrappers", func(t *testing.T) {
+		w2 := aead.NewWrapper()
+		key := make([]byte, 16)
+		_, err := rand.Read(key)
+		require.NoError(t, err)
+		_, err = w2.SetConfig(context.Background(), wrapping.WithKeyId("key-id-2"), aead.WithKey(key))
+		merged, err := mergeWrappers(ctx, w1, w2)
+		require.NoError(t, err)
+		typ, err := merged.Type(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, wrapping.WrapperTypePooled, typ)
+		w3 := aead.NewWrapper()
+		key = make([]byte, 16)
+		_, err = rand.Read(key)
+		require.NoError(t, err)
+		_, err = w3.SetConfig(context.Background(), wrapping.WithKeyId("key-id-3"), aead.WithKey(key))
+		merged, err = mergeWrappers(ctx, merged, w3)
+		require.NoError(t, err)
+		typ, err = merged.Type(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, wrapping.WrapperTypePooled, typ)
+		mw, ok := merged.(*multi.PooledWrapper)
+		require.True(t, ok)
+		assert.Equal(t, []string{"key-id-1", "key-id-2", "key-id-3"}, mw.AllKeyIds())
+	})
 }
 
 func TestServer_SetupEventing(t *testing.T) {

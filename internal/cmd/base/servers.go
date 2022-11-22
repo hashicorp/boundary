@@ -27,11 +27,13 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-multierror"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -616,17 +618,21 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			kms.Purpose = origPurpose
 			switch purpose {
 			case globals.KmsPurposeRoot:
-				b.RootKms = wrapper
+				b.RootKms, err = mergeWrappers(ctx, b.RootKms, wrapper)
 			case globals.KmsPurposeWorkerAuth:
-				b.WorkerAuthKms = wrapper
+				b.WorkerAuthKms, err = mergeWrappers(ctx, b.WorkerAuthKms, wrapper)
 			case globals.KmsPurposeWorkerAuthStorage:
-				b.WorkerAuthStorageKms = wrapper
+				b.WorkerAuthStorageKms, err = mergeWrappers(ctx, b.WorkerAuthStorageKms, wrapper)
 			case globals.KmsPurposeRecovery:
-				b.RecoveryKms = wrapper
+				b.RecoveryKms, err = mergeWrappers(ctx, b.RecoveryKms, wrapper)
 			case globals.KmsPurposeConfig:
 				// Do nothing, can be set in same file but not needed at runtime
+				continue
 			default:
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
+			}
+			if err != nil {
+				return fmt.Errorf("Error creating multi wrapper for kms of type %s and purpose %s: %v", kms.Type, purpose, err)
 			}
 		}
 	}
@@ -785,4 +791,29 @@ func MakeSighupCh() chan struct{} {
 		}
 	}()
 	return resultCh
+}
+
+func mergeWrappers(ctx context.Context, oldWrapper wrapping.Wrapper, newWrapper wrapping.Wrapper) (wrapping.Wrapper, error) {
+	if util.IsNil(newWrapper) {
+		return nil, errors.New("new wrapper must be specified")
+	}
+	if util.IsNil(oldWrapper) {
+		return newWrapper, nil
+	}
+	mw, ok := oldWrapper.(*multi.PooledWrapper)
+	if !ok {
+		var err error
+		mw, err = multi.NewPooledWrapper(ctx, oldWrapper)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create multi wrapper: %w", err)
+		}
+	}
+	ok, err := mw.SetEncryptingWrapper(ctx, newWrapper)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set new wrapper as active: %w", err)
+	}
+	if !ok {
+		return nil, fmt.Errorf("duplicate KMS wrapper detected")
+	}
+	return mw, nil
 }
