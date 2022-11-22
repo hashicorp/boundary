@@ -58,14 +58,8 @@ type testPrometheusCounter struct {
 	t          *testing.T
 }
 
-func (tpg *testPrometheusCounter) Set(float64) { tpg.t.Fatal("testPrometheusCounter Set() called") }
 func (tpg *testPrometheusCounter) Inc()        { tpg.incCalledN++ }
-func (tpg *testPrometheusCounter) Dec()        { tpg.t.Fatal("testPrometheusCounter Dec() called") }
 func (tpg *testPrometheusCounter) Add(float64) { tpg.t.Fatal("testPrometheusCounter Add() called") }
-func (tpg *testPrometheusCounter) Sub(float64) { tpg.t.Fatal("testPrometheusCounter Sub() called") }
-func (tpg *testPrometheusCounter) SetToCurrentTime() {
-	tpg.t.Fatal("testPrometheusCounter SetToCurrentTime() called")
-}
 
 type testListener struct {
 	net.Listener

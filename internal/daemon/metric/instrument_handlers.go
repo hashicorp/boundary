@@ -103,6 +103,15 @@ type connectionTrackingListener struct {
 	closedConns   prometheus.Counter
 }
 
+func (l *connectionTrackingListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	l.acceptedConns.Inc()
+	return &connectionTrackingListenerConn{Conn: conn, closedConns: l.closedConns}, nil
+}
+
 // NewConnectionTrackingListener registers a new Prometheus gauge with an unique
 // connection type label and wraps an existing listener to track when connections
 // are accepted and closed.
@@ -121,15 +130,6 @@ type connectionTrackingListenerConn struct {
 func (c *connectionTrackingListenerConn) Close() error {
 	c.dec.Do(func() { c.closedConns.Inc() })
 	return c.Conn.Close()
-}
-
-func (l *connectionTrackingListener) Accept() (net.Conn, error) {
-	conn, err := l.Listener.Accept()
-	if err != nil {
-		return nil, err
-	}
-	l.acceptedConns.Inc()
-	return &connectionTrackingListenerConn{Conn: conn, closedConns: l.closedConns}, nil
 }
 
 // StatusFromError retrieves the *status.Status from the provided error.  It'll
