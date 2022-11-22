@@ -40,8 +40,8 @@ If you want to set up your cloud environment securely, you may choose to run all
 
 Bastion host security groups are often not locked down at the network layer.
 Additionally, users who log into a bastion host using SSH are typically dropped into a privileged account.
-Maintaining the security groups, network ACLs, and IAM control on the bastion host at a per-user level is nearly impossible, unless you create and maintain multiple bastion hosts per user or group.
-IT departments now have to manage updates for another server, and the sprawl of infrastructure continues, increasing your attack surface, and requiring your IT department to be perfect.
+Maintaining security groups, network ACLs, and IAM controls on a bastion host at a per-user level is nearly impossible, unless you create and maintain multiple bastion hosts per user or group.
+IT departments now have to manage updates for another server and the sprawl of infrastructure continues, increasing your attack surface, and requiring your IT department to be perfect.
 
 Boundary is not a traditional bastion host.
 Boundary streamlines just-in-time access to privileged sessions for users, and tightly controls access to infrastructure with role-based access controls (RBAC).
@@ -82,7 +82,7 @@ For many organizations, Boundary's granular network access will be a security im
 
 _Can Boundary work with a VPN?_
 
-Boundary can work with an existing corporate VPN to provide heightened security when accessing privileged networks such as data centers and cloud VPCs.
+Boundary can work with existing corporate VPNs to provide heightened security when accessing privileged networks such as data centers and cloud VPCs.
 
 ## Boundary vs. Privileged Access Management
 
