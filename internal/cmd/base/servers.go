@@ -546,6 +546,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 	sharedConfig := config.SharedConfig
 	var pluginLogger hclog.Logger
 	var err error
+	var previousRootKms wrapping.Wrapper
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
@@ -556,7 +557,10 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				if opts.withSkipWorkerAuthKmsInstantiation {
 					continue
 				}
-			case globals.KmsPurposeRoot, globals.KmsPurposeConfig, globals.KmsPurposeWorkerAuthStorage:
+			case globals.KmsPurposeRoot,
+				globals.KmsPurposePreviousRoot,
+				globals.KmsPurposeConfig,
+				globals.KmsPurposeWorkerAuthStorage:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
@@ -617,24 +621,57 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 
 			kms.Purpose = origPurpose
 			switch purpose {
+			case globals.KmsPurposePreviousRoot:
+				if previousRootKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+				}
+				previousRootKms = wrapper
 			case globals.KmsPurposeRoot:
-				b.RootKms, err = mergeWrappers(ctx, b.RootKms, wrapper)
+				if b.RootKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+				}
+				b.RootKms = wrapper
 			case globals.KmsPurposeWorkerAuth:
-				b.WorkerAuthKms, err = mergeWrappers(ctx, b.WorkerAuthKms, wrapper)
+				if b.WorkerAuthKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+				}
+				b.WorkerAuthKms = wrapper
 			case globals.KmsPurposeWorkerAuthStorage:
-				b.WorkerAuthStorageKms, err = mergeWrappers(ctx, b.WorkerAuthStorageKms, wrapper)
+				if b.WorkerAuthStorageKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+				}
+				b.WorkerAuthStorageKms = wrapper
 			case globals.KmsPurposeRecovery:
-				b.RecoveryKms, err = mergeWrappers(ctx, b.RecoveryKms, wrapper)
+				if b.RecoveryKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+				}
+				b.RecoveryKms = wrapper
 			case globals.KmsPurposeConfig:
 				// Do nothing, can be set in same file but not needed at runtime
 				continue
 			default:
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
-			if err != nil {
-				return fmt.Errorf("Error creating multi wrapper for kms of type %s and purpose %s: %v", kms.Type, purpose, err)
-			}
 		}
+	}
+
+	// Handle previous root KMS
+	if previousRootKms != nil {
+		if util.IsNil(b.RootKms) {
+			return fmt.Errorf("KMS block contains '%s' without '%s'", globals.KmsPurposePreviousRoot, globals.KmsPurposeRoot)
+		}
+		mw, err := multi.NewPooledWrapper(ctx, previousRootKms)
+		if err != nil {
+			return fmt.Errorf("failed to create multi wrapper: %w", err)
+		}
+		ok, err := mw.SetEncryptingWrapper(ctx, b.RootKms)
+		if err != nil {
+			return fmt.Errorf("failed to set root wrapper as active in multi wrapper: %w", err)
+		}
+		if !ok {
+			return fmt.Errorf("KMS blocks with purposes '%s' and '%s' must have different key IDs", globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot)
+		}
+		b.RootKms = mw
 	}
 
 	// prepare a secure random reader
@@ -791,29 +828,4 @@ func MakeSighupCh() chan struct{} {
 		}
 	}()
 	return resultCh
-}
-
-func mergeWrappers(ctx context.Context, oldWrapper wrapping.Wrapper, newWrapper wrapping.Wrapper) (wrapping.Wrapper, error) {
-	if util.IsNil(newWrapper) {
-		return nil, errors.New("new wrapper must be specified")
-	}
-	if util.IsNil(oldWrapper) {
-		return newWrapper, nil
-	}
-	mw, ok := oldWrapper.(*multi.PooledWrapper)
-	if !ok {
-		var err error
-		mw, err = multi.NewPooledWrapper(ctx, oldWrapper)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create multi wrapper: %w", err)
-		}
-	}
-	ok, err := mw.SetEncryptingWrapper(ctx, newWrapper)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set new wrapper as active: %w", err)
-	}
-	if !ok {
-		return nil, fmt.Errorf("duplicate KMS wrapper detected")
-	}
-	return mw, nil
 }

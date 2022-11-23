@@ -20,7 +20,7 @@ Worker](/docs/configuration/worker/pki-worker) for storage of authentication
 keys. It is optional for PKI workers; if not specified the authentication keys
 will not be encrypted on disk. This is not used by KMS workers.
 
-## The `rootKey` KMS Key and Per-Scope KEK/DEKs <sup>OSS Only</sup>
+## The `root` KMS Key and Per-Scope KEK/DEKs <sup>OSS Only</sup>
 
 Following best practices of using different encryption keys for different
 purposes, Boundary has a number of encryption keys generated within each scope.
@@ -29,11 +29,11 @@ data. You can create new key versions by _rotating_ the keys. A key version
 can be destroyed, which will re-encrypt any existing data before destroying the
 key material permanently.
 
-The `rootKey` KMS key acts as a KEK (Key Encrypting Key) for the scope-specific
-KEKs (also referred to as the scope's `rootKey` key). The scope's `rootKey` KEK
+The `root` KMS key acts as a KEK (Key Encrypting Key) for the scope-specific
+KEKs (also referred to as the scope's `root` key). The scope's `root` KEK
 and the various DEKs (Data Encryption Keys) are created when a scope is created.
-The DEKs are encrypted with the scope's `rootKey` KEK, and this is in turn
-encrypted with the KMS key marked for the `rootKey` purpose.
+The DEKs are encrypted with the scope's `root` KEK, and this is in turn
+encrypted with the KMS key marked for the `root` purpose.
 
 The current scoped DEKs and their purposes are detailed below:
 
@@ -104,6 +104,13 @@ $ boundary scopes list-key-version-destruction-jobs -scope-id p_A4jfDjZ9jf
 
 Once the job disappears from this list, the associated key version will have
 been destroyed and any existing data will have been re-encrypted.
+
+## The `previous-root` KMS key <sup>OSS Only</sup>
+
+The `previous-root` KMS key is used when migrating to a new `root` key. Adding
+it to your configuration will inform the Controller to use it for decrypting
+the existing information in the database, allowing you to rotate and rewrap
+the KEKs to complete the migration to the new root key.
 
 ## The `worker-auth` KMS Key <sup>OSS Only</sup>
 
