@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -14,6 +15,23 @@ import (
 )
 
 func TestLoad(t *testing.T) {
+	apiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+	uiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:*; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+
 	cases := []struct {
 		name        string
 		expected    *config.Config
@@ -91,6 +109,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       []string{"*"},
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -158,6 +178,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -225,6 +247,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -292,6 +316,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 					},
 					Seals: []*configutil.KMS{
@@ -497,6 +523,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       []string{"*"},
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -564,6 +592,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -631,6 +661,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -698,6 +730,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 					},
 					Seals: []*configutil.KMS{
@@ -903,6 +937,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       []string{"*"},
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -970,6 +1006,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -1037,6 +1075,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -1104,6 +1144,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 					},
 					Seals: []*configutil.KMS{
@@ -1309,6 +1351,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       []string{"*"},
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -1376,6 +1420,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -1443,6 +1489,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 						{
 							RawConfig: map[string]any{
@@ -1510,6 +1558,8 @@ func TestLoad(t *testing.T) {
 							CorsAllowedOrigins:                       nil,
 							CorsAllowedHeaders:                       nil,
 							CorsAllowedHeadersRaw:                    nil,
+							CustomApiResponseHeaders:                 apiHeaders,
+							CustomUiResponseHeaders:                  uiHeaders,
 						},
 					},
 					Seals: []*configutil.KMS{

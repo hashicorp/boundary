@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -22,26 +23,50 @@ func TestDevController(t *testing.T) {
 
 	truePointer := new(bool)
 	*truePointer = true
+
+	apiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+	uiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:*; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+
 	exp := &Config{
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*listenerutil.ListenerConfig{
 				{
-					Type:               "tcp",
-					Purpose:            []string{"api"},
-					TLSDisable:         true,
-					CorsEnabled:        truePointer,
-					CorsAllowedOrigins: []string{"*"},
+					Type:                     "tcp",
+					Purpose:                  []string{"api"},
+					TLSDisable:               true,
+					CorsEnabled:              truePointer,
+					CorsAllowedOrigins:       []string{"*"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:    "tcp",
-					Purpose: []string{"cluster"},
+					Type:                     "tcp",
+					Purpose:                  []string{"cluster"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:       "tcp",
-					Purpose:    []string{"ops"},
-					TLSDisable: true,
+					Type:                     "tcp",
+					Purpose:                  []string{"ops"},
+					TLSDisable:               true,
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 			},
 			Seals: []*configutil.KMS{
@@ -176,6 +201,22 @@ func TestDevWorker(t *testing.T) {
 				{
 					Type:    "tcp",
 					Purpose: []string{"proxy"},
+					CustomApiResponseHeaders: map[int]http.Header{
+						0: {
+							"Content-Security-Policy":   {"default-src 'none'"},
+							"X-Content-Type-Options":    {"nosniff"},
+							"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+							"Cache-Control":             {"no-store"},
+						},
+					},
+					CustomUiResponseHeaders: map[int]http.Header{
+						0: {
+							"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:*; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+							"X-Content-Type-Options":    {"nosniff"},
+							"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+							"Cache-Control":             {"no-store"},
+						},
+					},
 				},
 			},
 			Seals: []*configutil.KMS{
@@ -329,30 +370,56 @@ func TestDevCombined(t *testing.T) {
 
 	truePointer := new(bool)
 	*truePointer = true
+
+	apiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+	uiHeaders := map[int]http.Header{
+		0: {
+			"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:*; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+			"X-Content-Type-Options":    {"nosniff"},
+			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
+			"Cache-Control":             {"no-store"},
+		},
+	}
+
 	exp := &Config{
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{
 			DisableMlock: true,
 			Listeners: []*listenerutil.ListenerConfig{
 				{
-					Type:               "tcp",
-					Purpose:            []string{"api"},
-					TLSDisable:         true,
-					CorsEnabled:        truePointer,
-					CorsAllowedOrigins: []string{"*"},
+					Type:                     "tcp",
+					Purpose:                  []string{"api"},
+					TLSDisable:               true,
+					CorsEnabled:              truePointer,
+					CorsAllowedOrigins:       []string{"*"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:    "tcp",
-					Purpose: []string{"cluster"},
+					Type:                     "tcp",
+					Purpose:                  []string{"cluster"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:       "tcp",
-					Purpose:    []string{"ops"},
-					TLSDisable: true,
+					Type:                     "tcp",
+					Purpose:                  []string{"ops"},
+					TLSDisable:               true,
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 				{
-					Type:    "tcp",
-					Purpose: []string{"proxy"},
+					Type:                     "tcp",
+					Purpose:                  []string{"proxy"},
+					CustomApiResponseHeaders: apiHeaders,
+					CustomUiResponseHeaders:  uiHeaders,
 				},
 			},
 			Seals: []*configutil.KMS{
