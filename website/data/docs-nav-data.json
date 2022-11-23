@@ -1,6 +1,6 @@
 [
   {
-    "title": "What is Boundary?",
+    "title": "Introduction",
     "routes": [
       {
         "title": "Overview",
@@ -12,7 +12,36 @@
       },
       {
         "title": "Boundary vs. Other Software",
-        "path": "overview/other-software"
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "overview/vs/other-software"
+          },
+          {
+            "title": "Zero Trust",
+            "path": "overview/vs/zero-trust"
+          },
+          {
+            "title": "Bastion Hosts",
+            "path": "overview/vs/bastion-hosts"
+          },
+          {
+            "title": "VPNs",
+            "path": "overview/vs/vpn"
+          },
+          {
+            "title": "Privileged Access Management",
+            "path": "overview/vs/pam"
+          },
+          {
+            "title": "Software Defined Perimeter",
+            "path": "overview/vs/sdp"
+          },
+          {
+            "title": "Secrets Management Tools",
+            "path": "overview/vs/secrets-management"
+          }
+        ]
       }
     ]
   },
