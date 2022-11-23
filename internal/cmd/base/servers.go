@@ -623,27 +623,27 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 			switch purpose {
 			case globals.KmsPurposePreviousRoot:
 				if previousRootKms != nil {
-					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
 				}
 				previousRootKms = wrapper
 			case globals.KmsPurposeRoot:
 				if b.RootKms != nil {
-					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
 				}
 				b.RootKms = wrapper
 			case globals.KmsPurposeWorkerAuth:
 				if b.WorkerAuthKms != nil {
-					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
 				}
 				b.WorkerAuthKms = wrapper
 			case globals.KmsPurposeWorkerAuthStorage:
 				if b.WorkerAuthStorageKms != nil {
-					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
 				}
 				b.WorkerAuthStorageKms = wrapper
 			case globals.KmsPurposeRecovery:
 				if b.RecoveryKms != nil {
-					return fmt.Errorf("Duplicate KMS block for purpose '%s'", purpose)
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
 				}
 				b.RecoveryKms = wrapper
 			case globals.KmsPurposeConfig:

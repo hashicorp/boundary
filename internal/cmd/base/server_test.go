@@ -70,6 +70,11 @@ func TestServer_SetupKMSes_Purposes(t *testing.T) {
 			wantErrContains: fmt.Sprintf("KMS block contains '%s' without '%s'", globals.KmsPurposePreviousRoot, globals.KmsPurposeRoot),
 		},
 		{
+			name:            "root and previous in the same stanza",
+			purposes:        []string{globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("KMS blocks with purposes '%s' and '%s' must have different key IDs", globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot),
+		},
+		{
 			name:            "duplicate root purposes",
 			purposes:        []string{globals.KmsPurposeRoot, globals.KmsPurposeRoot},
 			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeRoot),
