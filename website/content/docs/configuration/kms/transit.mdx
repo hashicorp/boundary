@@ -41,8 +41,8 @@ kms "transit" {
 
 These parameters apply to the `kms` stanza in the Vault configuration file:
 
-- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`,
-  `recovery`, or `config`.
+- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `worker-auth-storage`,
+   `root`, `previous-root`, `recovery`, or `config`.
 
 - `address` `(string: <required>)`: The full address to the Vault cluster.
   This may also be specified by the `VAULT_ADDR` environment variable.

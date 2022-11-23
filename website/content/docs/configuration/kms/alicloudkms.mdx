@@ -31,7 +31,8 @@ kms "alicloudkms" {
 
 These parameters apply to the `kms` stanza in the Boundary configuration file:
 
-- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`, `recovery`, or `config`.
+- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `worker-auth-storage`,
+   `root`, `previous-root`, `recovery`, or `config`.
 
 - `region` `(string: <required> "us-east-1")`: The AliCloud region where the encryption key
   lives. May also be specified by the `ALICLOUD_REGION`

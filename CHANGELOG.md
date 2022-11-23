@@ -49,6 +49,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   sessions are ongoing ([PR](https://github.com/hashicorp/boundary/pull/2612))
 * sessions: Fixed a panic in a worker when a user with an active
   session is deleted ([PR](https://github.com/hashicorp/boundary/pull/2629))
+* sessions: Fixed a bug where reading a session after its associated project
+  had been deleted would result in an error
+  ([PR](https://github.com/hashicorp/boundary/pull/2615))
+* config: Fixed a bug where supplying multiple KMS blocks with the same purpose
+  would silently ignore all but the last block
+  ([PR](https://github.com/hashicorp/boundary/pull/2639))
 
 ### Deprecations/Changes
 
