@@ -61,6 +61,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * sessions: Fixed a bug where reading a session after its associated project
   had been deleted would result in an error
   ([PR](https://github.com/hashicorp/boundary/pull/2615))
+* config: Fixed a bug where supplying multiple KMS blocks with the same purpose
+  would silently ignore all but the last block
+  ([PR](https://github.com/hashicorp/boundary/pull/2639))
 
 ### Deprecations/Changes
 

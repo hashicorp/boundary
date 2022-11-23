@@ -108,9 +108,9 @@ been destroyed and any existing data will have been re-encrypted.
 ## The `previous-root` KMS key <sup>OSS Only</sup>
 
 The `previous-root` KMS key is used when migrating to a new `root` key. Adding
-it to your configuration will inform the Controller to use it for decrypting
-the existing information in the database, allowing you to rotate and rewrap
-the KEKs to complete the migration to the new root key.
+the `previous-root` KMS key to your configuration informs the Controller to use
+it for decrypting the existing information in the database, allowing you to
+rotate and rewrap the KEKs to complete the migration to the new root key.
 
 ## The `worker-auth` KMS Key <sup>OSS Only</sup>
 
