@@ -8,9 +8,6 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 
 //replace github.com/hashicorp/nodeenrollment => ../nodeenrollment
 
-// TODO: remove
-replace github.com/hashicorp/go-secure-stdlib/listenerutil => ../go-secure-stdlib/listenerutil
-
 require (
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/fatih/color v1.13.0
@@ -41,7 +38,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.5
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
-	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.4
+	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.5-0.20221122211730-f52ba9532e2c
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.1
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7
 	github.com/hashicorp/go-secure-stdlib/password v0.1.1
