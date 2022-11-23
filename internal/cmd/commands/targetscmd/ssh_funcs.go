@@ -20,7 +20,7 @@ func init() {
 func extraSshActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
 		"create": {"address", "default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
-		"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
+		"update": {"address", "default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
 	}
 }
 
