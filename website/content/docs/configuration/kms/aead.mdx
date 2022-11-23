@@ -21,7 +21,8 @@ kms "aead" {
 }
 ```
 
-- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `root`, `recovery`, or `config`.
+- `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `worker-auth-storage`,
+   `root`, `previous-root`, `recovery`, or `config`.
 
 - `aead_type` - The type of encryption this KMS uses. Currently only `aes-gcm` is implemented.
 

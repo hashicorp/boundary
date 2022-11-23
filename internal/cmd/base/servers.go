@@ -27,11 +27,13 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-multierror"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -544,6 +546,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 	sharedConfig := config.SharedConfig
 	var pluginLogger hclog.Logger
 	var err error
+	var previousRootKms wrapping.Wrapper
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
@@ -554,7 +557,10 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				if opts.withSkipWorkerAuthKmsInstantiation {
 					continue
 				}
-			case globals.KmsPurposeRoot, globals.KmsPurposeConfig, globals.KmsPurposeWorkerAuthStorage:
+			case globals.KmsPurposeRoot,
+				globals.KmsPurposePreviousRoot,
+				globals.KmsPurposeConfig,
+				globals.KmsPurposeWorkerAuthStorage:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
@@ -615,20 +621,57 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 
 			kms.Purpose = origPurpose
 			switch purpose {
+			case globals.KmsPurposePreviousRoot:
+				if previousRootKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
+				previousRootKms = wrapper
 			case globals.KmsPurposeRoot:
+				if b.RootKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.RootKms = wrapper
 			case globals.KmsPurposeWorkerAuth:
+				if b.WorkerAuthKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.WorkerAuthKms = wrapper
 			case globals.KmsPurposeWorkerAuthStorage:
+				if b.WorkerAuthStorageKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.WorkerAuthStorageKms = wrapper
 			case globals.KmsPurposeRecovery:
+				if b.RecoveryKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.RecoveryKms = wrapper
 			case globals.KmsPurposeConfig:
 				// Do nothing, can be set in same file but not needed at runtime
+				continue
 			default:
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
 		}
+	}
+
+	// Handle previous root KMS
+	if previousRootKms != nil {
+		if util.IsNil(b.RootKms) {
+			return fmt.Errorf("KMS block contains '%s' without '%s'", globals.KmsPurposePreviousRoot, globals.KmsPurposeRoot)
+		}
+		mw, err := multi.NewPooledWrapper(ctx, previousRootKms)
+		if err != nil {
+			return fmt.Errorf("failed to create multi wrapper: %w", err)
+		}
+		ok, err := mw.SetEncryptingWrapper(ctx, b.RootKms)
+		if err != nil {
+			return fmt.Errorf("failed to set root wrapper as active in multi wrapper: %w", err)
+		}
+		if !ok {
+			return fmt.Errorf("KMS blocks with purposes '%s' and '%s' must have different key IDs", globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot)
+		}
+		b.RootKms = mw
 	}
 
 	// prepare a secure random reader
