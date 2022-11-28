@@ -49,8 +49,12 @@ func metadataStringToMetadata(m string) Metadata {
 	return OSS
 }
 
-// Check returns a bool indicating if a version meets the metadata constraint for a feature
+// Check returns a bool indicating if a version meets the metadata constraint
+// for a feature. Check returns false if version is nil.
 func (m MetadataConstraint) Check(version *gvers.Version) bool {
+	if version == nil {
+		return false
+	}
 	binaryMeta := metadataStringToMetadata(version.Metadata())
 
 	for _, v := range m.MetaInfo {
@@ -83,5 +87,5 @@ func SupportsFeature(version *gvers.Version, feature Feature) bool {
 // GetReleaseVersion returns a go-version of this binary's Boundary version
 func GetReleaseVersion() (*gvers.Version, error) {
 	ver := Get()
-	return gvers.NewVersion(ver.Version)
+	return gvers.NewVersion(ver.VersionNumber())
 }
