@@ -5641,7 +5641,7 @@
         },
         "worker_filter": {
           "type": "string",
-          "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request."
+          "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request.\nDeprecated; use egress or ingress worker filters instead."
         },
         "egress_worker_filter": {
           "type": "string",
