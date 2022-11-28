@@ -25,10 +25,10 @@ jobs:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
-          - filter: 'integration test:cli_ui'
+#          - filter: 'integration test:cli_ui'
           - filter: 'e2e_aws'
-          - filter: 'e2e_static'
-          - filter: 'e2e_static_with_vault'
+#          - filter: 'e2e_static'
+#          - filter: 'e2e_static_with_vault'
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
@@ -169,7 +169,7 @@ jobs:
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }} builder:crt
+          enos scenario run --log-level trace --timeout 60m0s --chdir ./enos ${{ matrix.filter }} builder:crt
       - name: Retry Enos scenario
         id: run_retry
         if: steps.run.outcome == 'failure'

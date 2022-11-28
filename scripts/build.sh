@@ -64,8 +64,15 @@ echo "==> Building into bin/ for ${GOOS}_${GOARCH}..."
 BINARY_NAME="boundary${BINARY_SUFFIX}"
 ${GO_CMD} build \
     -tags="${BUILD_TAGS}" \
-    -ldflags "-X github.com/hashicorp/boundary/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY}" \
-    -o "bin/${BINARY_NAME}" \
+    -trimpath \
+    -buildvcs=false \
+    -ldflags "
+      -X github.com/hashicorp/boundary/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY}
+      -X 'github.com/hashicorp/boundary/version.Version=$PRODUCT_VERSION'
+      -X 'github.com/hashicorp/boundary/version.Revision=$PRODUCT_REVISION'
+      -X 'github.com/hashicorp/boundary/version.RevisionTime=$PRODUCT_REVISION_TIME'
+      " \
+    -o "$BIN_PATH" \
     ./cmd/boundary
 
 # Copy binary into gopath if desired
