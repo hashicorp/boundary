@@ -93,6 +93,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13
+	github.com/hashicorp/go-version v1.3.0
 	github.com/hashicorp/nodeenrollment v0.1.17
 	github.com/kelseyhightower/envconfig v1.4.0
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870
@@ -136,7 +137,6 @@ require (
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.2 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.1 // indirect
-	github.com/hashicorp/go-version v1.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/vault/sdk v0.3.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
