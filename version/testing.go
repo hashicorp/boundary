@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// EnableFeatureForTest enables a feature for the current binary version
 func EnableFeatureForTest(t *testing.T, feature Feature) {
 	require := require.New(t)
 	version, err := GetReleaseVersion()
