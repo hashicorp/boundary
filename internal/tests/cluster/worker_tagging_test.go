@@ -36,12 +36,6 @@ func TestWorkerTagging(t *testing.T) {
 	// No workers yet
 	expectWorkers(t, c1)
 
-	// Ensure we are using the OSS filter, which uses egress only for worker selection
-	oldAuthFun := ct.AuthorizeSessionWorkerFilterFn
-	ct.AuthorizeSessionWorkerFilterFn = ct.AuthorizeSessionWithWorkerFilter
-	validateIngressFn := ct.ValidateIngressWorkerFilterFn
-	ct.ValidateIngressWorkerFilterFn = ct.IngressWorkerFilterUnsupported
-
 	// Ensure target is valid
 	client := c1.Client()
 	client.SetToken(c1.Token().Token)
@@ -106,6 +100,12 @@ func TestWorkerTagging(t *testing.T) {
 	w3.Worker().WaitForNextSuccessfulStatusUpdate()
 
 	expectWorkers(t, c1, w1, w2, w3)
+
+	// Ensure we are using the OSS filter, which uses egress only for worker selection
+	oldAuthFun := ct.AuthorizeSessionWorkerFilterFn
+	ct.AuthorizeSessionWorkerFilterFn = ct.AuthorizeSessionWithWorkerFilter
+	validateIngressFn := ct.ValidateIngressWorkerFilterFn
+	ct.ValidateIngressWorkerFilterFn = ct.IngressWorkerFilterUnsupported
 
 	cases := []struct {
 		name          string

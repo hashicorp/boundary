@@ -135,8 +135,10 @@ message Target {
   ]; // @gotags: `class:"public"`
 
   // Optional boolean expression to filter the workers that are allowed to satisfy this request.
+  // Deprecated; use egress or ingress worker filters instead.
   google.protobuf.StringValue worker_filter = 140 [
     json_name = "worker_filter",
+    deprecated = true,
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
       this: "worker_filter"

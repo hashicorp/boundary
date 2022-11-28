@@ -779,6 +779,12 @@ func TestUpdate(t *testing.T) {
 	tested, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
+	// Ensure we are using the OSS worker filter functions
+	workerFilterFn := targets.AuthorizeSessionWorkerFilterFn
+	targets.AuthorizeSessionWorkerFilterFn = targets.AuthorizeSessionWithWorkerFilter
+	validateIngressFn := targets.ValidateIngressWorkerFilterFn
+	targets.ValidateIngressWorkerFilterFn = targets.IngressWorkerFilterUnsupported
+
 	cases := []struct {
 		name string
 		req  *pbs.UpdateTargetRequest
@@ -1076,6 +1082,33 @@ func TestUpdate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Ingress filter unsupported",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"ingress_worker_filter"},
+				},
+				Item: &pb.Target{
+					IngressWorkerFilter: wrapperspb.String(`type == "bar"`),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't update worker filter and egress filter",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"worker_filter", "egress_worker_filter"},
+				},
+				Item: &pb.Target{
+					WorkerFilter:       wrapperspb.String(`type == "bar"`),
+					EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1117,6 +1150,9 @@ func TestUpdate(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateTarget(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
+	// Reset worker filter funcs
+	targets.AuthorizeSessionWorkerFilterFn = workerFilterFn
+	targets.ValidateIngressWorkerFilterFn = validateIngressFn
 }
 
 func TestUpdate_BadVersion(t *testing.T) {

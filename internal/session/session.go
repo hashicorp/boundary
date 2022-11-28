@@ -105,6 +105,7 @@ type Session struct {
 	Endpoint string `json:"-" gorm:"default:null"`
 	// Maximum number of connections in a session
 	ConnectionLimit int32 `json:"connection_limit,omitempty" gorm:"default:null"`
+
 	// Worker filters
 	WorkerFilter        string `json:"-" gorm:"default:null"`
 	EgressWorkerFilter  string `json:"-" gorm:"default:null"`
