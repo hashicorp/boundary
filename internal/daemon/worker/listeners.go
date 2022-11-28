@@ -196,6 +196,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 		}
 	}
 
+	metric.InitializeConnectionCounters(w.conf.PrometheusRegisterer)
 	metric.InitializeClusterServerCollectors(w.conf.PrometheusRegisterer, downstreamServer)
 
 	ln.GrpcServer = downstreamServer

@@ -2,6 +2,7 @@ package metric
 
 import (
 	"context"
+	"net"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/metric"
@@ -67,6 +68,11 @@ var expectedGrpcCodes = []codes.Code{
 	codes.Unavailable, codes.Unauthenticated,
 }
 
+func InstrumentClusterTrackingListener(l net.Listener, purpose string) net.Listener {
+	p := prometheus.Labels{metric.LabelConnectionPurpose: purpose}
+	return metric.NewConnectionTrackingListener(l, acceptedConnsTotal.With(p), closedConnsTotal.With(p))
+}
+
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
 // cluster specific metrics. Use with the cluster gRPC server.
 func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
@@ -78,4 +84,8 @@ func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
 // combinations.
 func InitializeClusterCollectors(r prometheus.Registerer, server *grpc.Server) {
 	metric.InitializeGrpcCollectorsFromServer(r, grpcRequestLatency, server, expectedGrpcCodes)
+}
+
+func InitializeConnectionCounters(r prometheus.Registerer) {
+	metric.InitializeConnectionCounters(r, []prometheus.CounterVec{*acceptedConnsTotal, *closedConnsTotal})
 }
