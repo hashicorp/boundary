@@ -4,7 +4,10 @@ package metric
 
 import (
 	"context"
+	"net"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
@@ -64,6 +67,69 @@ func (sh *statsHandler) HandleRPC(ctx context.Context, s stats.RPCStats) {
 		}
 		sh.reqLatency.With(labels).Observe(v.EndTime.Sub(v.BeginTime).Seconds())
 	}
+}
+
+type requestRecorder struct {
+	reqLatency prometheus.ObserverVec
+	labels     prometheus.Labels
+
+	// measurements
+	start time.Time
+}
+
+// NewGrpcRequestRecorder creates a requestRecorder struct which is used to measure gRPC client request latencies.
+func NewGrpcRequestRecorder(fullMethodName string, reqLatency prometheus.ObserverVec) requestRecorder {
+	service, method := SplitMethodName(fullMethodName)
+	r := requestRecorder{
+		reqLatency: reqLatency,
+		labels: prometheus.Labels{
+			LabelGrpcMethod:  method,
+			LabelGrpcService: service,
+		},
+		start: time.Now(),
+	}
+
+	return r
+}
+
+func (r requestRecorder) Record(err error) {
+	r.labels[LabelGrpcCode] = StatusFromError(err).Code().String()
+	r.reqLatency.With(r.labels).Observe(time.Since(r.start).Seconds())
+}
+
+type connectionTrackingListener struct {
+	net.Listener
+	acceptedConns prometheus.Counter
+	closedConns   prometheus.Counter
+}
+
+func (l *connectionTrackingListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	l.acceptedConns.Inc()
+	return &connectionTrackingListenerConn{Conn: conn, closedConns: l.closedConns}, nil
+}
+
+// NewConnectionTrackingListener registers a new Prometheus gauge with an unique
+// connection type label and wraps an existing listener to track when connections
+// are accepted and closed.
+// Multiple calls to Close() a listener connection will only decrement the gauge
+// once. A call to Close() will decrement the gauge even if Close() errors.
+func NewConnectionTrackingListener(l net.Listener, ac prometheus.Counter, cc prometheus.Counter) *connectionTrackingListener {
+	return &connectionTrackingListener{Listener: l, acceptedConns: ac, closedConns: cc}
+}
+
+type connectionTrackingListenerConn struct {
+	net.Conn
+	dec         sync.Once
+	closedConns prometheus.Counter
+}
+
+func (c *connectionTrackingListenerConn) Close() error {
+	c.dec.Do(func() { c.closedConns.Inc() })
+	return c.Conn.Close()
 }
 
 // StatusFromError retrieves the *status.Status from the provided error.  It'll

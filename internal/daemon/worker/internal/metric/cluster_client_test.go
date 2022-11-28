@@ -6,85 +6,17 @@ import (
 	"testing"
 	"time"
 
-	metric "github.com/hashicorp/boundary/internal/daemon/internal/metric"
+	"github.com/hashicorp/boundary/internal/daemon/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestInitializeClusterClientCollectors(t *testing.T) {
 	require.NotPanics(t, func() { InitializeClusterClientCollectors(nil) })
 	require.NotPanics(t, func() { InitializeClusterClientCollectors(prometheus.NewRegistry()) })
-}
-
-func TestRecorder(t *testing.T) {
-	cases := []struct {
-		name         string
-		methodName   string
-		err          error
-		wantedLabels prometheus.Labels
-	}{
-		{
-			name:       "basic",
-			methodName: "/some.service.path/method",
-			err:        nil,
-			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
-			},
-		},
-		{
-			name:       "unrecognized method path format",
-			methodName: "unrecognized",
-			err:        nil,
-			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "OK",
-				metric.LabelGrpcMethod:  "unknown",
-				metric.LabelGrpcService: "unknown",
-			},
-		},
-		{
-			name:       "cancel error",
-			methodName: "/some.service.path/method",
-			err:        status.Error(codes.Canceled, ""),
-			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "Canceled",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
-			},
-		},
-		{
-			name:       "permission error",
-			methodName: "/some.service.path/method",
-			err:        status.Error(codes.PermissionDenied, ""),
-			wantedLabels: map[string]string{
-				metric.LabelGrpcCode:    "PermissionDenied",
-				metric.LabelGrpcMethod:  "method",
-				metric.LabelGrpcService: "some.service.path",
-			},
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			ogReqLatency := grpcRequestLatency
-			defer func() { grpcRequestLatency = ogReqLatency }()
-			testableLatency := &metric.TestableObserverVec{}
-			start := time.Now()
-			tested := newRequestRecorder(tc.methodName, testableLatency)
-			tested.Record(tc.err)
-
-			require.Len(t, testableLatency.Observations, 1)
-			assert.Greater(t, testableLatency.Observations[0].Observation, float64(0))
-			assert.LessOrEqual(t, testableLatency.Observations[0].Observation, time.Since(start).Seconds())
-			assert.Equal(t, testableLatency.Observations[0].Labels, tc.wantedLabels)
-		})
-	}
 }
 
 func TestInstrumentClusterClient(t *testing.T) {

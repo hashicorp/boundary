@@ -2,9 +2,10 @@ package metric
 
 import (
 	"context"
+	"net"
 
 	"github.com/hashicorp/boundary/globals"
-	metric "github.com/hashicorp/boundary/internal/daemon/internal/metric"
+	"github.com/hashicorp/boundary/internal/daemon/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -24,10 +25,32 @@ var grpcServerRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec
 		Namespace: globals.MetricNamespace,
 		Subsystem: workerClusterSubsystem,
 		Name:      "grpc_request_duration_seconds",
-		Help:      "Histogram of latencies for gRPC requests between the a worker server and a worker client.",
+		Help:      "Histogram of latencies for gRPC requests between a worker server and a worker client.",
 		Buckets:   prometheus.DefBuckets,
 	},
 	metric.ListGrpcLabels,
+)
+
+// acceptedConnsTotal keeps a count of the total accepted connections to a worker.
+var acceptedConnsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: workerClusterSubsystem,
+		Name:      "accepted_connections_total",
+		Help:      "Count of total accepted network connections to this worker.",
+	},
+	[]string{metric.LabelConnectionPurpose},
+)
+
+// closedConnsTotal keeps a count of the total closed connections to a worker.
+var closedConnsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: globals.MetricNamespace,
+		Subsystem: workerClusterSubsystem,
+		Name:      "closed_connections_total",
+		Help:      "Count of total closed network connections to this worker.",
+	},
+	[]string{metric.LabelConnectionPurpose},
 )
 
 // All the codes expected to be returned by boundary or the grpc framework to
@@ -42,6 +65,11 @@ var expectedGrpcCodes = []codes.Code{
 	codes.Unavailable, codes.Unauthenticated,
 }
 
+func InstrumentWorkerClusterTrackingListener(l net.Listener, purpose string) net.Listener {
+	p := prometheus.Labels{metric.LabelConnectionPurpose: purpose}
+	return metric.NewConnectionTrackingListener(l, acceptedConnsTotal.With(p), closedConnsTotal.With(p))
+}
+
 // InstrumentClusterStatsHandler returns a gRPC stats.Handler which observes
 // cluster-specific metrics for a gRPC server.
 func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
@@ -53,4 +81,8 @@ func InstrumentClusterStatsHandler(ctx context.Context) (stats.Handler, error) {
 // combinations.
 func InitializeClusterServerCollectors(r prometheus.Registerer, server *grpc.Server) {
 	metric.InitializeGrpcCollectorsFromServer(r, grpcServerRequestLatency, server, expectedGrpcCodes)
+}
+
+func InitializeConnectionCounters(r prometheus.Registerer) {
+	metric.InitializeConnectionCounters(r, []prometheus.CounterVec{*acceptedConnsTotal, *closedConnsTotal})
 }

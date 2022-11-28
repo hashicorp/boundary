@@ -27,7 +27,7 @@ var buildInfoVec = prometheus.NewGaugeVec(
 	[]string{labelGoVersion, labelGitRevision, labelBoundaryVersion},
 )
 
-func retrieveBuildInfoLabels() map[string]string {
+func getBuildInfoLabels() map[string]string {
 	verInfo := version.Get()
 
 	return map[string]string{
@@ -45,6 +45,6 @@ func InitializeBuildInfo(r prometheus.Registerer) {
 	}
 
 	r.MustRegister(buildInfoVec)
-	l := prometheus.Labels(retrieveBuildInfoLabels())
+	l := prometheus.Labels(getBuildInfoLabels())
 	buildInfoVec.With(l).Set(float64(1))
 }

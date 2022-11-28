@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/daemon/internal/metric"
+	"github.com/hashicorp/boundary/internal/daemon/metric"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
