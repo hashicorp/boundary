@@ -5,6 +5,7 @@ begin;
   alter table session add column certificate_private_key bytea null;
 
   -- Replaces the view created in 44/05_session_list_no_connections
+  -- Replaced in 99/01_target_ingress_egress_worker_filters.up.sql
   drop view session_list;
   create view session_list as
   select

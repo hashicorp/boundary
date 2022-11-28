@@ -5643,6 +5643,14 @@
           "type": "string",
           "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request."
         },
+        "egress_worker_filter": {
+          "type": "string",
+          "description": "Optional boolean expressions to filter the egress workers that are allowed to satisfy this request."
+        },
+        "ingress_worker_filter": {
+          "type": "string",
+          "description": "Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.\nUnsupported on OSS."
+        },
         "application_credential_source_ids": {
           "type": "array",
           "items": {

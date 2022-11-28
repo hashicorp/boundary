@@ -38,6 +38,8 @@ type options struct {
 	WithPermissions            []perms.Permission
 	WithPublicId               string
 	WithWorkerFilter           string
+	WithEgressWorkerFilter     string
+	WithIngressWorkerFilter    string
 	WithTargetIds              []string
 }
 
@@ -60,6 +62,8 @@ func getDefaultOptions() options {
 		WithPermissions:            nil,
 		WithPublicId:               "",
 		WithWorkerFilter:           "",
+		WithEgressWorkerFilter:     "",
+		WithIngressWorkerFilter:    "",
 	}
 }
 
@@ -172,6 +176,20 @@ func WithPublicId(id string) Option {
 func WithWorkerFilter(filter string) Option {
 	return func(o *options) {
 		o.WithWorkerFilter = filter
+	}
+}
+
+// WithEgressWorkerFilter provides an optional egress worker filter
+func WithEgressWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.WithEgressWorkerFilter = filter
+	}
+}
+
+// WithIngressWorkerFilter provides an optional ingress worker filter
+func WithIngressWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.WithIngressWorkerFilter = filter
 	}
 }
 

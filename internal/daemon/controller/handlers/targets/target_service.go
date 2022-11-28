@@ -91,7 +91,15 @@ var (
 		action.Create,
 		action.List,
 	}
+
+	ValidateIngressWorkerFilterFn  = IngressWorkerFilterUnsupported
+	AuthorizeSessionWorkerFilterFn = AuthorizeSessionWithWorkerFilter
+	WorkerFilterDeprecationMessage = "This field is deprecated. Use egress_filter instead."
 )
+
+func IngressWorkerFilterUnsupported(string) error {
+	return fmt.Errorf("Ingress Worker Filter field is not supported in OSS")
+}
 
 // Service handles request as described by the pbs.TargetServiceServer interface.
 type Service struct {
@@ -612,6 +620,39 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	return &pbs.RemoveTargetCredentialSourcesResponse{Item: item}, nil
 }
 
+// If set, use the worker_filter or egress_worker_filter to filtere the selected workers
+// and ensure we have workers available to service this request.
+func AuthorizeSessionWithWorkerFilter(t target.Target, selectedWorkers []*server.Worker) ([]*server.Worker, error) {
+	if len(selectedWorkers) > 0 {
+		var eval *bexpr.Evaluator
+		var err error
+		switch {
+		case len(t.GetEgressWorkerFilter()) > 0:
+			eval, err = bexpr.CreateEvaluator(t.GetEgressWorkerFilter())
+		case len(t.GetWorkerFilter()) > 0:
+			eval, err = bexpr.CreateEvaluator(t.GetWorkerFilter())
+		default: // No filter
+			return selectedWorkers, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		selectedWorkers, err = workerList(selectedWorkers).filtered(eval)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(selectedWorkers) == 0 {
+		return nil, handlers.ApiErrorWithCodeAndMessage(
+			codes.FailedPrecondition,
+			"No workers are available to handle this session, or all have been filtered.")
+	}
+
+	return selectedWorkers, nil
+}
+
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
 	const op = "targets.(Service).AuthorizeSession"
 	if err := validateAuthorizeSessionRequest(req); err != nil {
@@ -691,21 +732,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
-	if len(t.GetWorkerFilter()) > 0 && len(selectedWorkers) > 0 {
-		eval, err := bexpr.CreateEvaluator(t.GetWorkerFilter())
-		if err != nil {
-			return nil, err
-		}
-		selectedWorkers, err = workerList(selectedWorkers).filtered(eval)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(selectedWorkers) == 0 {
-		return nil, handlers.ApiErrorWithCodeAndMessage(
-			codes.FailedPrecondition,
-			"No workers are available to handle this session, or all have been filtered.")
+	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(t, selectedWorkers)
+	if err != nil {
+		return nil, err
 	}
 
 	// Randomize the workers
@@ -824,18 +853,20 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	expTime := timestamppb.Now()
 	expTime.Seconds += int64(t.GetSessionMaxSeconds())
 	sessionComposition := session.ComposedOf{
-		UserId:             authResults.UserId,
-		HostId:             chosenEndpoint.HostId,
-		TargetId:           t.GetPublicId(),
-		HostSetId:          chosenEndpoint.SetId,
-		AuthTokenId:        authResults.AuthTokenId,
-		ProjectId:          authResults.Scope.Id,
-		Endpoint:           endpointUrl.String(),
-		ExpirationTime:     &timestamp.Timestamp{Timestamp: expTime},
-		ConnectionLimit:    t.GetSessionConnectionLimit(),
-		WorkerFilter:       t.GetWorkerFilter(),
-		DynamicCredentials: dynCreds,
-		StaticCredentials:  staticCreds,
+		UserId:              authResults.UserId,
+		HostId:              chosenEndpoint.HostId,
+		TargetId:            t.GetPublicId(),
+		HostSetId:           chosenEndpoint.SetId,
+		AuthTokenId:         authResults.AuthTokenId,
+		ProjectId:           authResults.Scope.Id,
+		Endpoint:            endpointUrl.String(),
+		ExpirationTime:      &timestamp.Timestamp{Timestamp: expTime},
+		ConnectionLimit:     t.GetSessionConnectionLimit(),
+		WorkerFilter:        t.GetWorkerFilter(),
+		EgressWorkerFilter:  t.GetEgressWorkerFilter(),
+		IngressWorkerFilter: t.GetIngressWorkerFilter(),
+		DynamicCredentials:  dynCreds,
+		StaticCredentials:   staticCreds,
 	}
 
 	sess, err := session.New(sessionComposition)
@@ -1000,8 +1031,11 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 	if item.GetSessionConnectionLimit() != nil {
 		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
 	}
-	if item.GetWorkerFilter() != nil {
-		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
+	if item.GetEgressWorkerFilter() != nil {
+		opts = append(opts, target.WithEgressWorkerFilter(item.GetEgressWorkerFilter().GetValue()))
+	}
+	if item.GetIngressWorkerFilter() != nil {
+		opts = append(opts, target.WithIngressWorkerFilter(item.GetIngressWorkerFilter().GetValue()))
 	}
 
 	attr, err := subtypeRegistry.newAttribute(target.SubtypeFromType(item.GetType()), item.GetAttrs())
@@ -1043,8 +1077,15 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if item.GetSessionConnectionLimit() != nil {
 		opts = append(opts, target.WithSessionConnectionLimit(item.GetSessionConnectionLimit().GetValue()))
 	}
-	if filter := item.GetWorkerFilter(); filter != nil {
+	// worker_filter is deprecated, but we allow users who have migrated with a worker_filter value to update it.
+	if workerFilter := item.GetWorkerFilter(); workerFilter != nil {
 		opts = append(opts, target.WithWorkerFilter(item.GetWorkerFilter().GetValue()))
+	}
+	if egressFilter := item.GetEgressWorkerFilter(); egressFilter != nil {
+		opts = append(opts, target.WithEgressWorkerFilter(item.GetEgressWorkerFilter().GetValue()))
+	}
+	if ingressFilter := item.GetIngressWorkerFilter(); ingressFilter != nil {
+		opts = append(opts, target.WithIngressWorkerFilter(item.GetIngressWorkerFilter().GetValue()))
 	}
 	subtype := target.SubtypeFromId(id)
 
@@ -1355,6 +1396,12 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 	if outputFields.Has(globals.WorkerFilterField) && in.GetWorkerFilter() != "" {
 		out.WorkerFilter = wrapperspb.String(in.GetWorkerFilter())
 	}
+	if outputFields.Has(globals.EgressWorkerFilterField) && in.GetEgressWorkerFilter() != "" {
+		out.EgressWorkerFilter = wrapperspb.String(in.GetEgressWorkerFilter())
+	}
+	if outputFields.Has(globals.IngressWorkerFilterField) && in.GetIngressWorkerFilter() != "" {
+		out.IngressWorkerFilter = wrapperspb.String(in.GetIngressWorkerFilter())
+	}
 	if outputFields.Has(globals.ScopeField) {
 		out.Scope = opts.WithScope
 	}
@@ -1461,9 +1508,18 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 		} else if target.SubtypeFromType(req.GetItem().GetType()) == "" {
 			badFields[globals.TypeField] = "Unknown type provided."
 		}
-		if filter := req.GetItem().GetWorkerFilter(); filter != nil {
-			if _, err := bexpr.CreateEvaluator(filter.GetValue()); err != nil {
-				badFields[globals.WorkerFilterField] = "Unable to successfully parse filter expression."
+		if workerFilter := req.GetItem().GetWorkerFilter(); workerFilter != nil {
+			badFields[globals.WorkerFilterField] = WorkerFilterDeprecationMessage
+		}
+		if egressFilter := req.GetItem().GetEgressWorkerFilter(); egressFilter != nil {
+			if _, err := bexpr.CreateEvaluator(egressFilter.GetValue()); err != nil {
+				badFields[globals.EgressWorkerFilterField] = "Unable to successfully parse egress filter expression."
+			}
+		}
+		if ingressFilter := req.GetItem().GetIngressWorkerFilter(); ingressFilter != nil {
+			err := ValidateIngressWorkerFilterFn(ingressFilter.GetValue())
+			if err != nil {
+				badFields[globals.IngressWorkerFilterField] = err.Error()
 			}
 		}
 
@@ -1504,9 +1560,29 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		if req.GetItem().GetSessionMaxSeconds() != nil && req.GetItem().GetSessionMaxSeconds().GetValue() == 0 {
 			badFields[globals.SessionMaxSecondsField] = "This must be greater than zero."
 		}
-		if filter := req.GetItem().GetWorkerFilter(); filter != nil {
-			if _, err := bexpr.CreateEvaluator(filter.GetValue()); err != nil {
+		// worker_filter is mutually exclusive from ingress and egress filter
+		workerFilterFound := false
+		if workerFilter := req.GetItem().GetWorkerFilter(); workerFilter != nil {
+			if _, err := bexpr.CreateEvaluator(workerFilter.GetValue()); err != nil {
 				badFields[globals.WorkerFilterField] = "Unable to successfully parse filter expression."
+			}
+			workerFilterFound = true
+		}
+		if egressFilter := req.GetItem().GetEgressWorkerFilter(); egressFilter != nil {
+			if workerFilterFound {
+				badFields[globals.EgressWorkerFilterField] = "Cannot set worker_filter and egress_filter; they are mutually exclusive fields."
+			}
+			if _, err := bexpr.CreateEvaluator(egressFilter.GetValue()); err != nil {
+				badFields[globals.EgressWorkerFilterField] = "Unable to successfully parse egress filter expression."
+			}
+		}
+		if ingressFilter := req.GetItem().GetIngressWorkerFilter(); ingressFilter != nil {
+			if workerFilterFound {
+				badFields[globals.IngressWorkerFilterField] = "Cannot set worker_filter and ingress_filter; they are mutually exclusive fields."
+			}
+			err := ValidateIngressWorkerFilterFn(ingressFilter.GetValue())
+			if err != nil {
+				badFields[globals.IngressWorkerFilterField] = err.Error()
 			}
 		}
 		subtype := target.SubtypeFromId(req.GetId())

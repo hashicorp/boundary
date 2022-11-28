@@ -117,6 +117,14 @@ func (t *Target) GetWorkerFilter() string {
 	return t.WorkerFilter
 }
 
+func (t *Target) GetEgressWorkerFilter() string {
+	return t.EgressWorkerFilter
+}
+
+func (t *Target) GetIngressWorkerFilter() string {
+	return t.IngressWorkerFilter
+}
+
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
@@ -165,8 +173,16 @@ func (t *Target) SetSessionConnectionLimit(l int32) {
 	t.SessionConnectionLimit = l
 }
 
-func (t *Target) SetWorkerFilter(f string) {
-	t.WorkerFilter = f
+func (t *Target) SetWorkerFilter(filter string) {
+	t.WorkerFilter = filter
+}
+
+func (t *Target) SetEgressWorkerFilter(filter string) {
+	t.EgressWorkerFilter = filter
+}
+
+func (t *Target) SetIngressWorkerFilter(filter string) {
+	t.IngressWorkerFilter = filter
 }
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
@@ -251,6 +267,8 @@ func New(projectId string, opt ...target.Option) (target.Target, error) {
 			SessionConnectionLimit: opts.WithSessionConnectionLimit,
 			SessionMaxSeconds:      opts.WithSessionMaxSeconds,
 			WorkerFilter:           opts.WithWorkerFilter,
+			EgressWorkerFilter:     opts.WithEgressWorkerFilter,
+			IngressWorkerFilter:    opts.WithIngressWorkerFilter,
 		},
 	}
 	return t, nil
