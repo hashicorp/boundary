@@ -9,8 +9,6 @@ import (
 )
 
 func TestHasFeature(t *testing.T) {
-	t.Parallel()
-
 	DeprecatedFeature := Feature(999)
 	HCPOnlyFeature := Feature(998)
 
@@ -94,8 +92,6 @@ func TestHasFeature(t *testing.T) {
 }
 
 func TestEnableFeatureForTest(t *testing.T) {
-	t.Parallel()
-
 	FutureFeature := Feature(997)
 
 	futureVersionFeature, _ := gvers.NewConstraint(">= 99.99.99+hcp")
