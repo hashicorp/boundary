@@ -116,3 +116,33 @@ you could test that version against the cluster by setting `local_boundary_dir` 
 
 Scenarios with `e2e_` invoke an end-to-end test suite written in Go. Different tests
 are invoked depending on the scenario.
+
+
+## Bootstrap Process
+These steps should be followed to bootstrap this repo for enos scenario execution:
+
+1. **Setup the root Workspace** - In Terraform Cloud manually create a workspace in the `hashicorp-qti`
+   organization named `boundary-ci-enos-bootstrap`. This workspace will be used as the backend for the
+   `bootstrap_workspaces` scenario. When creating the workspace choose the execution mode `local`.
+
+
+2. Get the enos ci ssh public key from a member of the QT team.
+
+
+3. **Create the CI Bootstrap Workspaces** - Each region will have its own workspace and state, to
+   setup these workspaces the scenario `bootstrap_workspaces` should be executed:
+
+```bash
+> export ENOS_VAR_tfc_api_token=<tfc token>
+> export ENOS_VAR_product_line=<product line [boundary|boundary_enterprise]> 
+> enos scenaio launch --no-reconfigure bootstrap_workspaces
+```
+
+4.**Bootstrap CI** - Execute the following to boostrap the CI account for all regions:
+
+```bash
+> export ENOS_VAR_aws_ssh_public_key_path=<path to the enos-ci-ssh-key file from 2>
+> export ENOS_VAR_tfc_api_token=<tfc token>
+> export ENOS_VAR_product_line=<product line [boundary|boundary_enterprise]> 
+> enos scneario launch --no-configure bootstrap_ci
+```
