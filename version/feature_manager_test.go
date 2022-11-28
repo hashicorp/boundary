@@ -91,7 +91,7 @@ func TestHasFeature(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestEnableFeatureForTest(t *testing.T) {
+func TestEnableFeatureOnVersionForTest(t *testing.T) {
 	FutureFeature := Feature(997)
 
 	futureVersionFeature, _ := gvers.NewConstraint(">= 99.99.99+hcp")
@@ -130,6 +130,36 @@ func TestEnableFeatureForTest(t *testing.T) {
 			require.Equal(tt.wantResult, got)
 		})
 	}
+	delete(featureMap, FutureFeature)
+	_, ok := featureMap[FutureFeature]
+	require.False(t, ok)
+}
+
+func TestEnableFeatureForTest(t *testing.T) {
+	FutureFeature := Feature(997)
+
+	futureVersionFeature, _ := gvers.NewConstraint(">= 99.99.99+hcp")
+	featureMap[FutureFeature] = MetadataConstraint{
+		MetaInfo:    []Metadata{HCP},
+		Constraints: futureVersionFeature,
+	}
+
+	// modify the globals that set which version the current binary is
+	prevVer := Version
+	prevMd := VersionMetadata
+	defer func() {
+		Version = prevVer
+		VersionMetadata = prevMd
+	}()
+	Version = "0.11.0"
+	VersionMetadata = "hcp"
+
+	EnableFeatureForTest(t, FutureFeature)
+
+	semVer, err := gvers.NewVersion("0.11.0+hcp")
+	require.NoError(t, err)
+	assert.True(t, SupportsFeature(semVer, FutureFeature))
+
 	delete(featureMap, FutureFeature)
 	_, ok := featureMap[FutureFeature]
 	require.False(t, ok)
