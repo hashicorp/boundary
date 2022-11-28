@@ -1,0 +1,56 @@
+name: bootstrap-ci-plan
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - mbaum/QT-396 # TODO: delete this after testing
+    paths:
+      - enos/ci/**
+      - .github/workflows/enos-bootstrap-ci.yml
+
+jobs:
+  bootstrap-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          # the Terraform wrapper will break Terraform execution in Enos because
+          # it changes the output to text when we expect it to be JSON.
+          terraform_wrapper: false
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::271311691044:user/github_actions-boundary_ci
+          role-skip-session-tagging: true
+          role-duration-seconds: 3600
+      - name: Init Terraform
+        id: tf_init
+        run: |
+          export TF_WORKSPACE="boundary-ci-enos-bootstrap"
+          export TF_VAR_aws_ssh_public_key="${{ secrets.ENOS_CI_SSH_KEY }}"
+          export TF_TOKEN_app_terraform_io="${{ secrets.TF_API_TOKEN }}"
+          terraform -chdir=enos/ci/bootstrap init
+      - name: Plan Terraform
+        id: tf_plan
+        run: |
+          export TF_WORKSPACE="boundary-ci-enos-bootstrap"
+          export TF_VAR_aws_ssh_public_key="${{ secrets.ENOS_CI_SSH_KEY }}"
+          export TF_TOKEN_app_terraform_io="${{ secrets.TF_API_TOKEN }}"
+          terraform -chdir=enos/ci/bootstrap plan
+      - name: Apply Terraform
+        if: ${{ github.ref == 'refs/heads/main' }}
+        id: tf_apply
+        run: |
+          export TF_WORKSPACE="boundary-ci-enos-bootstrap"
+          export TF_VAR_aws_ssh_public_key="${{ secrets.ENOS_CI_SSH_KEY }}"
+          export TF_TOKEN_app_terraform_io="${{ secrets.TF_API_TOKEN }}"
+          terraform -chdir=enos/ci/bootstrap apply -auto-approve

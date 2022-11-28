@@ -130,6 +130,11 @@ test*.hcl
 /enos/terraform-plugin-cache
 /enos/*.zip
 /enos/support
+# Enos local Terraform files
+enos/.terraform/*
+enos/.terraform.lock.hcl
+enos/*.tfstate
+enos/*.tfstate.*
 
 # vim: set filetype=conf :
 
