@@ -133,7 +133,8 @@ func TestWorkerTagging(t *testing.T) {
 			egressFilter: `"bar" in "/tags/foo"`,
 			expWorkers:   []string{w1Addr},
 		},
-		{name: "ingress filter invalid",
+		{
+			name:          "ingress filter invalid",
 			ingressFilter: `"/name" matches "test_worker_[13]" and "west" in "/tags/region"`,
 			expWorkers:    []string{w3Addr},
 			wantErr:       true,
