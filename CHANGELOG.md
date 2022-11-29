@@ -4,6 +4,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.11.1 (2022/11/30)
+
 ### New and Improved
 
 * Vault Parameter Templating: In `vault` credential libraries, the paths and any
