@@ -216,7 +216,7 @@ begin;
         and o.type = 'org';
 
   -- Replaces target_all_subtypes defined in 1/01_server_tags_migrations.up.sql
-  -- Replaced in 99/01_target_ingress_egress_worker_filters.up.sql
+  -- Replaced in 59/01_target_ingress_egress_worker_filters.up.sql
   drop view target_all_subtypes;
   create view target_all_subtypes as
   select public_id,

@@ -24,7 +24,7 @@ const (
 func TestMigrations_AddEgressAndIngressFilters(t *testing.T) {
 	const (
 		priorMigration   = 58001
-		currentMigration = 99001
+		currentMigration = 59001
 	)
 
 	t.Parallel()
