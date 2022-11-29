@@ -151,7 +151,7 @@ jobs:
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
-          CGO_ENABLED: CGO_ENABLED=0
+          CGO_ENABLED: "0"
         uses: hashicorp/actions-go-build@v0.1.7
         with:
           product_name: ${{ env.PKG_NAME }}
@@ -161,7 +161,7 @@ jobs:
           arch: ${{ matrix.goarch }}
           reproducible: report
           instructions: |-
-            CGO_ENABLED=0 make build
+            make build
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
