@@ -67,7 +67,7 @@ jobs:
           echo "::set-output name=product-minor-version::$MINOR_VERSION"
 
   verify-product-metadata:
-    needs: 
+    needs:
     - set-product-version
     - product-metadata
     runs-on: ubuntu-latest
@@ -97,80 +97,6 @@ jobs:
         with:
           name: metadata.json
           path: ${{ steps.generate-metadata-file.outputs.filepath }}
-
-#  build-other:
-#    needs:
-#      - product-metadata
-#      - set-product-version
-#    runs-on: ubuntu-latest
-#    strategy:
-#      matrix:
-#        goos: [ freebsd, windows, netbsd, openbsd, solaris ]
-#        goarch: [ "386", "amd64", "arm" ]
-#        go: [ "${{ needs.product-metadata.outputs.go-version }}" ]
-#        exclude:
-#          - goos: solaris
-#            goarch: 386
-#          - goos: solaris
-#            goarch: arm
-#          - goos: windows
-#            goarch: arm
-#      fail-fast: true
-#
-#    name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
-#    env:
-#      GOPRIVATE: "github.com/hashicorp"
-#      GO111MODULE: on
-#    steps:
-#      - uses: actions/checkout@v3
-#      - name: Set up go
-#        uses: actions/setup-go@v3
-#        with:
-#          go-version: ${{ matrix.go }}
-#      - name: Determine Go cache paths
-#        id: go-cache-paths
-#        run: |
-#          echo "::set-output name=go-build::$(go env GOCACHE)"
-#          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
-#      - name: Set up Go modules cache
-#        uses: actions/cache@v3
-#        with:
-#          path: |
-#            ${{ steps.go-cache-paths.outputs.go-build }}
-#            ${{ steps.go-cache-paths.outputs.go-mod }}
-#          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-${{ matrix.goarch }}
-#          restore-keys: |
-#            ${{ runner.os }}-go-
-#      - name: Set up Git
-#        run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
-#      - name: Determine SHA
-#        id: set-sha
-#        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-#      - name: Download UI artifact
-#        uses: dawidd6/action-download-artifact@v2
-#        with:
-#          workflow: build-admin-ui.yaml
-#          commit: ${{ steps.set-sha.outputs.sha }}
-#          repo: "hashicorp/boundary-ui"
-#          name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
-#          path: internal/ui/.tmp/boundary-ui/ui/admin/dist
-#      - name: Go Build
-#        env:
-#          CGO_ENABLED: CGO_ENABLED=0
-#        uses: hashicorp/actions-go-build@v0.1.7
-#        with:
-#          product_name: ${{ env.PKG_NAME }}
-#          product_version: ${{ needs.set-product-version. outputs.product-version }}
-#          go_version: ${{ matrix.go }}
-#          os: ${{ matrix.goos }}
-#          arch: ${{ matrix.goarch }}
-#          reproducible: report
-#          instructions: |-
-#            make build
-#      - uses: actions/upload-artifact@v3
-#        with:
-#          name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-#          path: out/${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-linux:
     needs:
@@ -270,72 +196,6 @@ jobs:
         with:
           name: ${{ env.DEB_PACKAGE }}
           path: out/${{ env.DEB_PACKAGE }}
-
-#  build-darwin:
-#    needs:
-#      - product-metadata
-#      - set-product-version
-#    runs-on: macos-latest
-#    strategy:
-#      matrix:
-#        goos: [ darwin ]
-#        goarch: [ "amd64", "arm64" ]
-#        go: [ "${{ needs.product-metadata.outputs.go-version }}" ]
-#      fail-fast: true
-#    name: Go ${{ matrix.go }} ${{ matrix.goos }} ${{ matrix.goarch }} build
-#
-#    env:
-#      GOPRIVATE: "github.com/hashicorp"
-#      GO111MODULE: on
-#
-#    steps:
-#      - uses: actions/checkout@v3
-#      - name: Set up go
-#        uses: actions/setup-go@v3
-#        with:
-#          go-version: ${{ matrix.go }}
-#      - name: Determine Go cache paths
-#        id: go-cache-paths
-#        run: |
-#          echo "::set-output name=go-build::$(go env GOCACHE)"
-#          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
-#      - name: Set up Go modules cache
-#        uses: actions/cache@v3
-#        with:
-#          path: |
-#            ${{ steps.go-cache-paths.outputs.go-build }}
-#            ${{ steps.go-cache-paths.outputs.go-mod }}
-#          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-#          restore-keys: |
-#            ${{ runner.os }}-go-
-#      - name: Determine SHA
-#        id: set-sha
-#        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
-#      - name: Download UI artifact
-#        uses: dawidd6/action-download-artifact@v2
-#        with:
-#          workflow: build-admin-ui.yaml
-#          commit: ${{ steps.set-sha.outputs.sha }}
-#          repo: "hashicorp/boundary-ui"
-#          name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
-#          path: internal/ui/.tmp/boundary-ui/ui/admin/dist
-#      - name: Go Build
-#        env:
-#          CGO_ENABLED: CGO_ENABLED=0
-#        uses: hashicorp/actions-go-build@v0.1.7
-#        with:
-#          product_name: ${{ env.PKG_NAME }}
-#          product_version: ${{ needs.set-product-version. outputs.product-version }}
-#          go_version: ${{ matrix.go }}
-#          os: ${{ matrix.goos }}
-#          arch: ${{ matrix.goarch }}
-#          reproducible: report
-#          instructions: |-
-#            make build
-#      - uses: actions/upload-artifact@v3
-#        with:
-#          name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-#          path: out/${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-docker:
     name: Docker ${{ matrix.arch }} build
