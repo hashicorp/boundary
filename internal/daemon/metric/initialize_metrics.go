@@ -15,13 +15,12 @@ import (
 )
 
 const (
-	LabelConnectionPurpose = "purpose"
-	LabelGrpcService       = "grpc_service"
-	LabelGrpcMethod        = "grpc_method"
-	LabelGrpcCode          = "grpc_code"
-	LabelHttpPath          = "path"
-	LabelHttpMethod        = "method"
-	LabelHttpCode          = "code"
+	LabelGrpcService = "grpc_service"
+	LabelGrpcMethod  = "grpc_method"
+	LabelGrpcCode    = "grpc_code"
+	LabelHttpPath    = "path"
+	LabelHttpMethod  = "method"
+	LabelHttpCode    = "code"
 
 	invalidPathValue = "invalid"
 )
@@ -84,15 +83,6 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 				v.With(prometheus.Labels{LabelGrpcService: serviceName, LabelGrpcMethod: sm, LabelGrpcCode: c.String()})
 			}
 		}
-	}
-}
-
-func InitializeConnectionCounters(r prometheus.Registerer, counters []prometheus.CounterVec) {
-	if r == nil {
-		return
-	}
-	for _, c := range counters {
-		r.MustRegister(c)
 	}
 }
 
