@@ -161,7 +161,7 @@ jobs:
           arch: ${{ matrix.goarch }}
           reproducible: report
           instructions: |-
-            make build
+            CGO_ENABLED=0 make build
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
