@@ -7,13 +7,26 @@ on:
 
 env:
   PKG_NAME: "boundary"
+  PRODUCT_EDITION: "oss"
 
 jobs:
-  product-metadata:
+  set-product-version:
     runs-on: ubuntu-latest
     outputs:
-      product-version: ${{ steps.get-product-version.outputs.product-version }}
-      product-minor-version: ${{ steps.get-product-version.outputs.product-minor-version }}
+      product-version: ${{ steps.set-product-version.outputs.product-version }}
+      base-product-version: $${{ steps.set-product-version.outputs.base-product-version }}
+      prerelease-product-version: ${{ steps.set-product-version.outputs.prerelease-product-version }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set Product version
+        id: set-product-version
+        uses: hashicorp/actions-set-product-version@v1
+
+  product-metadata:
+    needs: set-product-version
+    runs-on: ubuntu-latest
+    outputs:
+      product-minor-version: ${{ steps.get-product-minor-version.outputs.product-minor-version }}
       product-edition: ${{ steps.get-product-edition.outputs.product-edition }}
       go-version: ${{ steps.get-go-version.outputs.go-version }}
     steps:
@@ -47,29 +60,31 @@ jobs:
         id: get-product-edition
         # Run make edition twice to ensure that extra go output isn't included
         run: |
-          make edition
-          echo "::set-output name=product-edition::$(make edition)"
-      - name: Determine product version
-        id: get-product-version
+          EDITION=${{ env.PRODUCT_EDITION }}
+          echo "::set-output name=product-edition::$EDITION"
+      - name: Determine minor product version
+        id: get-product-minor-version
         run: |
-          VERSION=$(make version)
+          VERSION=${{ needs.set-product-version.outputs.product-version }}
           MINOR_VERSION=$(echo $VERSION | cut -d. -f-2)
-          echo "::set-output name=product-version::$VERSION"
           echo "::set-output name=product-minor-version::$MINOR_VERSION"
 
   verify-product-metadata:
-    needs: product-metadata
+    needs: 
+    - set-product-version
+    - product-metadata
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout directory'
         uses: actions/checkout@v3
       - run: |
-          echo "Product Version - ${{ needs.product-metadata.outputs.product-version }}"
+          echo "Product Version - ${{ needs.set-product-version.outputs.product-version }}"
+          echo "Product Prerelease - ${{ needs.set-product-version.outputs.prerelease-product-version }}"
+          echo "Product Metadata - ${{ needs.product-metadata.outputs.product-edition }}"
           echo "Product Minor Version - ${{ needs.product-metadata.outputs.product-minor-version }}"
-          echo "Product Edition - ${{ needs.product-metadata.outputs.product-edition }}"
 
   generate-metadata-file:
-    needs: product-metadata
+    needs: set-product-version
     runs-on: ubuntu-latest
     outputs:
       filepath: ${{ steps.generate-metadata-file.outputs.filepath }}
@@ -78,9 +93,9 @@ jobs:
         uses: actions/checkout@v3
       - name: Generate metadata file
         id: generate-metadata-file
-        uses: hashicorp/actions-generate-metadata@main
+        uses: hashicorp/actions-generate-metadata@v1
         with:
-          version: ${{ needs.product-metadata.outputs.product-version }}
+          version: ${{ needs.set-product-version.outputs.product-version }}
           product: ${{ env.PKG_NAME }}
 
       - uses: actions/upload-artifact@v3
@@ -91,6 +106,7 @@ jobs:
   build-other:
     needs:
       - product-metadata
+      - set-product-version
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -143,23 +159,30 @@ jobs:
           repo: "hashicorp/boundary-ui"
           name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
-      - name: Go build
+      - name: Go Build
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        run: |
-          mkdir out
-          make build
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip bin/
+          CGO_ENABLED: "0"
+          PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
+          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
+        uses: hashicorp/actions-go-build@v0.1.7
+        with:
+          product_name: ${{ env.PKG_NAME }}
+          product_version: ${{ needs.set-product-version. outputs.product-version }}
+          go_version: ${{ matrix.go }}
+          os: ${{ matrix.goos }}
+          arch: ${{ matrix.goarch }}
+          reproducible: report
+          instructions: |-
+            make build
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          path: out/${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-linux:
     needs:
       - product-metadata
+      - set-product-version
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -207,31 +230,36 @@ jobs:
           repo: "hashicorp/boundary-ui"
           name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
-      - name: Go build
+      - name: Go Build
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        run: |
-          mkdir out
-          make build
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip bin/
+          CGO_ENABLED: "0"
+          PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
+          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
+        uses: hashicorp/actions-go-build@v0.1.7
+        with:
+          product_name: ${{ env.PKG_NAME }}
+          product_version: ${{ needs.set-product-version. outputs.product-version }}
+          go_version: ${{ matrix.go }}
+          os: ${{ matrix.goos }}
+          arch: ${{ matrix.goarch }}
+          reproducible: report
+          instructions: |-
+            make build
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-
+          name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          path: out/${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
       - name: Package
         uses: hashicorp/actions-packaging-linux@v1
         with:
           name: ${{ github.event.repository.name }}
           description: "HashiCorp Boundary - Identity-based access management for dynamic infrastructure"
           arch: ${{ matrix.goarch }}
-          version: ${{ needs.product-metadata.outputs.product-version }}
+          version: ${{ needs.set-product-version.outputs.product-version }}
           maintainer: "HashiCorp"
           homepage: "https://github.com/hashicorp/boundary"
           license: "MPL-2.0"
-          binary: "bin/${{ env.PKG_NAME }}"
+          binary: "dist/${{ env.PKG_NAME }}"
           deb_depends: "openssl"
           rpm_depends: "openssl"
           config_dir: ".release/linux/package/"
@@ -255,6 +283,7 @@ jobs:
   build-darwin:
     needs:
       - product-metadata
+      - set-product-version
     runs-on: macos-latest
     strategy:
       matrix:
@@ -299,24 +328,31 @@ jobs:
           repo: "hashicorp/boundary-ui"
           name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
-      - name: Go build
+      - name: Go Build
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        run: |
-          mkdir out
-          make build
-          zip -r -j out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip bin/
+          CGO_ENABLED: "0"
+          PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
+          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
+        uses: hashicorp/actions-go-build@v0.1.7
+        with:
+          product_name: ${{ env.PKG_NAME }}
+          product_version: ${{ needs.set-product-version. outputs.product-version }}
+          go_version: ${{ matrix.go }}
+          os: ${{ matrix.goos }}
+          arch: ${{ matrix.goarch }}
+          reproducible: report
+          instructions: |-
+            make build
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
-          path: out/${{ env.PKG_NAME }}_${{ needs.product-metadata.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          name: ${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
+          path: out/${{ env.PKG_NAME }}_${{ needs.set-product-version.outputs.product-version }}_${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   build-docker:
     name: Docker ${{ matrix.arch }} build
     needs:
       - product-metadata
+      - set-product-version
       - build-linux
     runs-on: ubuntu-latest
     strategy:
@@ -324,7 +360,7 @@ jobs:
         arch: ["arm", "arm64", "386", "amd64"]
     env:
       repo: ${{ github.event.repository.name }}
-      version: ${{ needs.product-metadata.outputs.product-version }}
+      version: ${{ needs.set-product-version.outputs.product-version }}
       minor-version: ${{ needs.product-metadata.outputs.product-minor-version }}
     steps:
       - uses: actions/checkout@v3
@@ -352,11 +388,12 @@ jobs:
     # workflow.
     if: "! github.event.pull_request.head.repo.fork"
     needs:
+      - set-product-version
       - product-metadata
       - build-linux
     uses: ./.github/workflows/enos-run.yml
     with:
-      artifact-name: "boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip"
+      artifact-name: "boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip"
       go-version: ${{ needs.product-metadata.outputs.go-version }}
     secrets: inherit
 
@@ -365,7 +402,7 @@ jobs:
     name: CLI tests
     if: "! github.event.pull_request.head.repo.fork"
     needs:
-      - product-metadata
+      - set-product-version
       - build-linux
     steps:
       - uses: actions/checkout@v3
@@ -421,12 +458,12 @@ jobs:
         id: download
         uses: actions/download-artifact@v3
         with:
-          name: boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip
+          name: boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip
           path: /tmp
       - name: Unpack boundary bundle
         run: |
-          unzip ${{steps.download.outputs.download-path}}/boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip -d /usr/local/bin
-          rm ${{steps.download.outputs.download-path}}/boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip
+          unzip ${{steps.download.outputs.download-path}}/boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip -d /usr/local/bin
+          rm ${{steps.download.outputs.download-path}}/boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip
       - name: Versions
         run: |
           echo "go version:"
