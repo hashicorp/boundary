@@ -34,7 +34,6 @@ import (
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
-	"github.com/prometheus/client_golang/prometheus"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver/manual"
@@ -62,10 +61,6 @@ type downstreamers interface {
 // downstreamRouterFactory provides a simple factory which a Worker can use to
 // create its downstreamRouter
 var downstreamRouterFactory func() downstreamRouter
-
-var initializeReverseGrpcClientCollectors = noopInitializePromCollectors
-
-func noopInitializePromCollectors(r prometheus.Registerer) {}
 
 const (
 	authenticationStatusNeverAuthenticated uint32 = iota
@@ -144,7 +139,6 @@ func New(conf *Config) (*Worker, error) {
 	metric.InitializeHttpCollectors(conf.PrometheusRegisterer)
 	metric.InitializeWebsocketCollectors(conf.PrometheusRegisterer)
 	metric.InitializeClusterClientCollectors(conf.PrometheusRegisterer)
-	initializeReverseGrpcClientCollectors(conf.PrometheusRegisterer)
 
 	w := &Worker{
 		conf:                        conf,

@@ -15,13 +15,12 @@ import (
 )
 
 const (
-	LabelConnectionPurpose = "purpose"
-	LabelGrpcService       = "grpc_service"
-	LabelGrpcMethod        = "grpc_method"
-	LabelGrpcCode          = "grpc_code"
-	LabelHttpPath          = "path"
-	LabelHttpMethod        = "method"
-	LabelHttpCode          = "code"
+	LabelGrpcService = "grpc_service"
+	LabelGrpcMethod  = "grpc_method"
+	LabelGrpcCode    = "grpc_code"
+	LabelHttpPath    = "path"
+	LabelHttpMethod  = "method"
+	LabelHttpCode    = "code"
 
 	invalidPathValue = "invalid"
 )
@@ -54,21 +53,9 @@ func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor) bool
 	return true
 }
 
-// appendServicesAndMethods ranges through all registered files in a specified proto package
-// and appends service and method names to the provided map m.
-// This method is exported for testing purposes.
-func appendServicesAndMethods(m map[string][]string, pkg protoreflect.FileDescriptor) {
-	protoregistry.GlobalFiles.RangeFilesByPackage(
-		pkg.Package(),
-		func(fd protoreflect.FileDescriptor) bool { return rangeProtoFiles(m, fd) },
-	)
-}
-
 // InitializeGrpcCollectorsFromPackage registers and zeroes a Prometheus
-// histogram, populating all service and method labels by ranging through
-// the package containing the provided FileDescriptor.
-// Note: inputting a protoreflect.FileDescriptor will populate all services and methods
-// found in its package, not just methods associated with that specific FileDescriptor.
+// histogram, populating all service and method labels by ranging through a
+// given protobuf package.
 func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec, pkg protoreflect.FileDescriptor, codes []codes.Code) {
 	if r == nil {
 		return
@@ -76,7 +63,10 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 	r.MustRegister(v)
 
 	serviceNamesToMethodNames := make(map[string][]string, 0)
-	appendServicesAndMethods(serviceNamesToMethodNames, pkg)
+	protoregistry.GlobalFiles.RangeFilesByPackage(
+		pkg.Package(),
+		func(fd protoreflect.FileDescriptor) bool { return rangeProtoFiles(serviceNamesToMethodNames, fd) },
+	)
 
 	for serviceName, serviceMethods := range serviceNamesToMethodNames {
 		for _, sm := range serviceMethods {
@@ -84,15 +74,6 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 				v.With(prometheus.Labels{LabelGrpcService: serviceName, LabelGrpcMethod: sm, LabelGrpcCode: c.String()})
 			}
 		}
-	}
-}
-
-func InitializeConnectionCounters(r prometheus.Registerer, counters []prometheus.CounterVec) {
-	if r == nil {
-		return
-	}
-	for _, c := range counters {
-		r.MustRegister(c)
 	}
 }
 
