@@ -57,6 +57,8 @@ type HandlerProperties struct {
 	CancelCtx      context.Context
 }
 
+const uiPath = "/"
+
 // createMuxWithEndpoints performs all response logic for boundary, using isUiRequest
 // for unified logic between responses and headers.
 func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handler, func(req *http.Request) bool, error) {
@@ -67,12 +69,12 @@ func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handle
 
 	mux := http.NewServeMux()
 	mux.Handle("/v1/", grpcGwMux)
-	mux.Handle("/", handleUi(c))
+	mux.Handle(uiPath, handleUi(c))
 
 	isUiRequest := func(req *http.Request) bool {
 		_, p := mux.Handler(req)
 		// check to see if the matched pattern is for the ui
-		return p == "/"
+		return p == uiPath
 	}
 
 	return http.HandlerFunc(mux.ServeHTTP), isUiRequest, nil
