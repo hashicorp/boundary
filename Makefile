@@ -7,6 +7,7 @@ TMP_DIR := $(shell mktemp -d)
 REPO_PATH := github.com/hashicorp/boundary
 
 CGO_ENABLED?=0
+GO_PATH = $(shell go env GOPATH)
 
 export GEN_BASEPATH := $(shell pwd)
 
@@ -19,10 +20,20 @@ cli:
 	$(MAKE) --environment-overrides -C internal/cmd/gencli cli
 
 .PHONY: tools
-tools:
+tools: golangci-lint
 	go generate -tags tools tools/tools.go
 	go install github.com/bufbuild/buf/cmd/buf@v1.3.1
 	go install github.com/mfridman/tparse@v0.10.3
+
+# golangci-lint recommends installing the binary directly, instead of using go get
+# See the note: https://golangci-lint.run/usage/install/#install-from-source
+.PHONY: golangci-lint
+golangci-lint:
+	$(eval GOLINT_INSTALLED := $(shell which golangci-lint))
+
+	if [ "$(GOLINT_INSTALLED)" = "" ]; then \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GO_PATH)/bin v1.50.1; \
+	fi;
 
 .PHONY: cleangen
 cleangen:
@@ -62,6 +73,17 @@ build-memprof:
 fmt:
 	grep -L -R "^\/\/ Code generated .* DO NOT EDIT\.$$" --exclude-dir=.git --include="*.go" . | xargs gofumpt -w
 	buf format -w
+
+lint:
+	golangci-lint run --timeout 10m
+
+ifndef LINT_DIFF_BRANCH
+override LINT_DIFF_BRANCH = main
+endif
+
+lint-diff:
+	@echo "Checking for lint compared to $(LINT_DIFF_BRANCH)"
+	golangci-lint run --timeout 10m --new-from-rev=$(LINT_DIFF_BRANCH)
 
 # Set env for all UI targets.
 UI_TARGETS := update-ui-version build-ui build-ui-ifne
