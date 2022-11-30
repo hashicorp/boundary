@@ -57,33 +57,31 @@ type HandlerProperties struct {
 	CancelCtx      context.Context
 }
 
-func isUiRequest(req *http.Request) bool {
-	return !strings.HasPrefix(req.URL.Path, "/v1/")
-}
-
 // createMuxWithEndpoints performs all response logic for boundary, using isUiRequest
 // for unified logic between responses and headers.
-func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handler, error) {
+func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handler, func(req *http.Request) bool, error) {
 	grpcGwMux := newGrpcGatewayMux()
 	if err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	uiHandler := handleUi(c)
+	mux := http.NewServeMux()
+	mux.Handle("/v1/", grpcGwMux)
+	mux.Handle("/", handleUi(c))
 
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if isUiRequest(req) {
-			uiHandler.ServeHTTP(w, req)
-		} else {
-			grpcGwMux.ServeHTTP(w, req)
-		}
-	}), nil
+	isUiRequest := func(req *http.Request) bool {
+		_, p := mux.Handler(req)
+		// check to see if the matched pattern is for the ui
+		return p == "/"
+	}
+
+	return http.HandlerFunc(mux.ServeHTTP), isUiRequest, nil
 }
 
 // apiHandler returns an http.Handler for the services. This can be used on
 // its own to mount the Controller API within another web server.
 func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
-	mux, err := createMuxWithEndpoints(c, props)
+	mux, isUiRequest, err := createMuxWithEndpoints(c, props)
 	if err != nil {
 		return nil, err
 	}
