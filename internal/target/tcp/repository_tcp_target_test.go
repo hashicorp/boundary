@@ -123,6 +123,54 @@ func TestRepository_CreateTarget(t *testing.T) {
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
 		},
+		{
+			name: "valid-with-egress-filter",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("valid-egress-filter"),
+						target.WithDescription("valid-org"),
+						target.WithDefaultPort(uint32(22)),
+						target.WithEgressWorkerFilter("test-filter"))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "deprecated-worker-filter",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("bad-worker-filter"),
+						target.WithDescription("valid-org"),
+						target.WithDefaultPort(uint32(22)),
+						target.WithWorkerFilter("test-filter"))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: errors.Exception,
+		},
+		{
+			name: "invalid-setting-egress-and-worker-filter",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("bad-filters"),
+						target.WithDescription("valid-org"),
+						target.WithDefaultPort(uint32(22)),
+						target.WithWorkerFilter("test-filter"),
+						target.WithEgressWorkerFilter("test-filter"))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: errors.Exception,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -41,6 +41,8 @@ type workerServiceServer struct {
 var (
 	_ pbs.SessionServiceServer            = &workerServiceServer{}
 	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
+
+	workerFilterSelectionFn = workerFilterSelector
 )
 
 func NewWorkerServiceServer(
@@ -273,6 +275,69 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 	return resp, nil
 }
 
+// Single-hop filter lookup. We have either an egress filter or worker filter to use, if any
+// Used to verify that the worker serving this session to a client matches this filter
+func workerFilterSelector(sessionInfo *session.Session) string {
+	if sessionInfo.EgressWorkerFilter != "" {
+		return sessionInfo.EgressWorkerFilter
+	} else if sessionInfo.WorkerFilter != "" {
+		return sessionInfo.WorkerFilter
+	}
+	return ""
+}
+
+func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session, ws *workerServiceServer,
+	req *pbs.LookupSessionRequest,
+) error {
+	const op = "workers.lookupSessionEgressWorkerFilter"
+
+	filter := workerFilterSelectionFn(sessionInfo)
+	if filter == "" {
+		return nil
+	}
+
+	if req.WorkerId == "" {
+		event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no id information from worker"))
+		return status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled")
+	}
+	serversRepo, err := ws.serversRepoFn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
+		return status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
+	}
+	w, err := serversRepo.LookupWorker(ctx, req.WorkerId)
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
+		return status.Errorf(codes.Internal, "Error looking up worker: %v", err)
+	}
+	if w == nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
+		return status.Errorf(codes.Internal, "Worker not found")
+	}
+	// Build the map for filtering.
+	tagMap := w.CanonicalTags()
+
+	// Create the evaluator
+	eval, err := bexpr.CreateEvaluator(filter)
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "worker_id", req.WorkerId))
+		return status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
+	}
+	filterInput := map[string]interface{}{
+		"name": w.GetName(),
+		"tags": tagMap,
+	}
+	ok, err := eval.Evaluate(filterInput)
+	if err != nil {
+		return status.Errorf(codes.Internal, fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
+	}
+	if !ok {
+		return handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "Worker filter expression precludes this worker from serving this session")
+	}
+
+	return nil
+}
+
 func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 	const op = "workers.(workerServiceServer).LookupSession"
 
@@ -292,48 +357,9 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		return nil, status.Error(codes.Internal, "Empty session states during lookup.")
 	}
 
-	if sessionInfo.WorkerFilter != "" {
-		if req.WorkerId == "" {
-			event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no id information from worker"))
-			return nil, status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled")
-		}
-		serversRepo, err := ws.serversRepoFn()
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
-			return nil, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
-		}
-		w, err := serversRepo.LookupWorker(ctx, req.WorkerId)
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
-			return nil, status.Errorf(codes.Internal, "Error looking up worker: %v", err)
-		}
-		if w == nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
-			return nil, status.Errorf(codes.Internal, "Worker not found")
-		}
-		// Build the map for filtering.
-		tagMap := w.CanonicalTags()
-
-		// Create the evaluator
-		eval, err := bexpr.CreateEvaluator(sessionInfo.WorkerFilter)
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "worker_id", req.WorkerId))
-			return nil, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
-		}
-		filterInput := map[string]any{
-			"name": w.GetName(),
-			"tags": tagMap,
-		}
-		ok, err := eval.Evaluate(filterInput)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal,
-				fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
-		}
-		if !ok {
-			return nil, handlers.ApiErrorWithCodeAndMessage(
-				codes.FailedPrecondition,
-				"Worker filter expression precludes this worker from serving this session")
-		}
+	err = lookupSessionWorkerFilter(ctx, sessionInfo, ws, req)
+	if err != nil {
+		return nil, err
 	}
 
 	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ProjectId, sessionInfo.PublicId)

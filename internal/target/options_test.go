@@ -109,6 +109,20 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.WithWorkerFilter = `"/foo" == "bar"`
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithEgressWorkerFilter", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithEgressWorkerFilter(`"/foo" == "bar"`))
+		testOpts := getDefaultOptions()
+		testOpts.WithEgressWorkerFilter = `"/foo" == "bar"`
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithIngressWorkerFilter", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithIngressWorkerFilter(`"/foo" == "bar"`))
+		testOpts := getDefaultOptions()
+		testOpts.WithIngressWorkerFilter = `"/foo" == "bar"`
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithPermissions", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := GetOpts(WithPermissions([]perms.Permission{{ScopeId: "test1"}, {ScopeId: "test2"}}))

@@ -27,6 +27,8 @@ type Target struct {
 	SessionMaxSeconds                      uint32                 `json:"session_max_seconds,omitempty"`
 	SessionConnectionLimit                 int32                  `json:"session_connection_limit,omitempty"`
 	WorkerFilter                           string                 `json:"worker_filter,omitempty"`
+	EgressWorkerFilter                     string                 `json:"egress_worker_filter,omitempty"`
+	IngressWorkerFilter                    string                 `json:"ingress_worker_filter,omitempty"`
 	ApplicationCredentialSourceIds         []string               `json:"application_credential_source_ids,omitempty"`
 	ApplicationCredentialSources           []*CredentialSource    `json:"application_credential_sources,omitempty"`
 	BrokeredCredentialSourceIds            []string               `json:"brokered_credential_source_ids,omitempty"`

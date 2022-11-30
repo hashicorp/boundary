@@ -19,8 +19,8 @@ func init() {
 
 func extraSshActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
-		"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter"},
+		"create": {"default-port", "session-max-seconds", "session-connection-limit", "egress-worker-filter", "ingress-worker-filter"},
+		"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter", "egress-worker-filter", "ingress-worker-filter"},
 	}
 }
 
@@ -29,6 +29,8 @@ type extraSshCmdVars struct {
 	flagSessionMaxSeconds      string
 	flagSessionConnectionLimit string
 	flagWorkerFilter           string
+	flagEgressWorkerFilter     string
+	flagIngressWorkerFilter    string
 }
 
 func (c *SshCommand) extraSshHelpFunc(helpMap map[string]func() string) string {
@@ -86,7 +88,19 @@ func extraSshFlagsFuncImpl(c *SshCommand, set *base.FlagSets, f *base.FlagSet) {
 			fs.StringVar(&base.StringVar{
 				Name:   "worker-filter",
 				Target: &c.flagWorkerFilter,
-				Usage:  "A boolean expression to filter which workers can handle sessions for this target.",
+				Usage:  "Deprecated: use egress or ingress filters instead.",
+			})
+		case "egress-worker-filter":
+			fs.StringVar(&base.StringVar{
+				Name:   "egress-worker-filter",
+				Target: &c.flagEgressWorkerFilter,
+				Usage:  "A boolean expression to filter which egress workers can handle sessions for this target.",
+			})
+		case "ingress-worker-filter":
+			fs.StringVar(&base.StringVar{
+				Name:   "ingress-worker-filter",
+				Target: &c.flagIngressWorkerFilter,
+				Usage:  "A boolean expression to filter which ingress workers can handle sessions for this target.",
 			})
 		}
 	}
@@ -145,10 +159,33 @@ func extraSshFlagsHandlingFuncImpl(c *SshCommand, _ *base.FlagSets, opts *[]targ
 		*opts = append(*opts, targets.DefaultWorkerFilter())
 	default:
 		if _, err := bexpr.CreateEvaluator(c.flagWorkerFilter); err != nil {
-			c.UI.Error(fmt.Sprintf("Unable to successfully parse filter expression: %s", err))
+			c.UI.Error(fmt.Sprintf("Unable to successfully parse worker filter expression: %s", err))
 			return false
 		}
 		*opts = append(*opts, targets.WithWorkerFilter(c.flagWorkerFilter))
+	}
+
+	switch c.flagEgressWorkerFilter {
+	case "":
+	case "null":
+		*opts = append(*opts, targets.DefaultEgressWorkerFilter())
+	default:
+		if _, err := bexpr.CreateEvaluator(c.flagEgressWorkerFilter); err != nil {
+			c.UI.Error(fmt.Sprintf("Unable to successfully parse egress filter expression: %s", err))
+			return false
+		}
+		*opts = append(*opts, targets.WithEgressWorkerFilter(c.flagEgressWorkerFilter))
+	}
+	switch c.flagIngressWorkerFilter {
+	case "":
+	case "null":
+		*opts = append(*opts, targets.DefaultIngressWorkerFilter())
+	default:
+		if _, err := bexpr.CreateEvaluator(c.flagIngressWorkerFilter); err != nil {
+			c.UI.Error(fmt.Sprintf("Unable to successfully parse ingress filter expression: %s", err))
+			return false
+		}
+		*opts = append(*opts, targets.WithIngressWorkerFilter(c.flagIngressWorkerFilter))
 	}
 
 	return true
