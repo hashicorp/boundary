@@ -57,18 +57,36 @@ type HandlerProperties struct {
 	CancelCtx      context.Context
 }
 
+const uiPath = "/"
+
+// createMuxWithEndpoints performs all response logic for boundary, using isUiRequest
+// for unified logic between responses and headers.
+func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handler, func(req *http.Request) bool, error) {
+	grpcGwMux := newGrpcGatewayMux()
+	if err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...); err != nil {
+		return nil, nil, err
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/v1/", grpcGwMux)
+	mux.Handle(uiPath, handleUi(c))
+
+	isUiRequest := func(req *http.Request) bool {
+		_, p := mux.Handler(req)
+		// check to see if the matched pattern is for the ui
+		return p == uiPath
+	}
+
+	return http.HandlerFunc(mux.ServeHTTP), isUiRequest, nil
+}
+
 // apiHandler returns an http.Handler for the services. This can be used on
 // its own to mount the Controller API within another web server.
 func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
-	mux := http.NewServeMux()
-
-	grpcGwMux := newGrpcGatewayMux()
-	err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...)
+	mux, isUiRequest, err := createMuxWithEndpoints(c, props)
 	if err != nil {
 		return nil, err
 	}
-	mux.Handle("/v1/", grpcGwMux)
-	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
@@ -80,7 +98,8 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	}
 	metricsHandler := metric.InstrumentApiHandler(eventsHandler)
 
-	return metricsHandler, nil
+	// This wrap MUST be performed last. If you add a new wrapper, do so above.
+	return listenerutil.WrapCustomHeadersHandler(metricsHandler, props.ListenerConfig, isUiRequest), nil
 }
 
 // GetHealthHandler returns a gRPC Gateway mux that is registered against the
