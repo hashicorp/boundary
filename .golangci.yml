@@ -1,0 +1,11 @@
+linters:
+  disable-all: true
+  enable:
+    - staticcheck
+    - stylecheck
+
+issues:
+  exclude-rules:
+    - linters:
+        - stylecheck
+      text: "ST1005:"
