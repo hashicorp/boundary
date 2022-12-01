@@ -1,5 +1,5 @@
 variable "repository" {
-  description = "The GitHub repository, either boundary, boundary-enterprise or boundary-hcp"
+  description = "The GitHub repository, either boundary, boundary-enterprise, or boundary-hcp"
   type        = string
   validation {
     condition     = contains(["boundary", "boundary-enterprise", "boundary-hcp"], var.repository)

@@ -1,0 +1,24 @@
+---
+name: enos-aws-configure-creds-doormat
+
+# These permissions are necessary for the doormat-action to get the OIDC token
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_call:
+
+jobs:
+  configure-aws-credentials:
+    name: Configure AWS Credentials
+    steps:
+      - name: Assume service user role via Doormat
+        uses: hashicorp/doormat-action@main
+        with:
+          # This role, its associated IAM policy, the allowed Github workflow
+          # event types and their associated qualifiers are managed via
+          # Terraform in the hashicorp/enos-ci repository. If you wish to allow
+          # AWS credentials for different Github event types, workflows or
+          # branches you'll need to update the role there.
+          aws-role-arn: "${{ secrets.DOORMAT_SERVICE_USER_ROLE_ARN }}"
