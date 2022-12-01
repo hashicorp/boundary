@@ -4,6 +4,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* Custom Response Headers: Adds ability to set api and ui response headers based
+  on status code. Includes default secure CSP and other headers.
+  ([PR](https://github.com/hashicorp/boundary/pull/2587))
+
 ## 0.11.1 (2022/11/30)
 
 ### New and Improved
@@ -41,10 +47,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   Upgrade notice: If the Database purpose DEK for a scope is destroyed, you must use
   the API to cancel any sessions that predate the upgrade.
   ([PR](https://github.com/hashicorp/boundary/pull/2477))
-
-* Custom Response Headers: Adds ability to set api and ui response headers based
-  on status code. Includes default secure CSP and other headers.
-  ([PR](https://github.com/hashicorp/boundary/pull/2587))
 
 ### Bug Fixes
 
