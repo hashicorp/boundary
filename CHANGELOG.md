@@ -31,6 +31,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
     * `{{ truncateFrom .Account.Email "@" }}`: this would turn `foo@example.com` into `foo`
 
+* Custom Response Headers: Adds ability to set api and ui response headers based
+  on status code. Includes default secure CSP and other headers.
+  ([PR](https://github.com/hashicorp/boundary/pull/2587))
+
 ### Bug Fixes
 
 * accounts: Deleted auth accounts would still show up as being associated with a
