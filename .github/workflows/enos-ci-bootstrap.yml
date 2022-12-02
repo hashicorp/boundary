@@ -6,44 +6,21 @@ on:
       - main
     paths:
       - enos/ci/**
-      - .github/workflows/enos-ci-bootstrap.yml
+      - .github/workflows/enos-ci-bootstrap*
   push:
     branches:
       - main
     paths:
       - enos/ci/**
-      - .github/workflows/enos-ci-bootstrap.yml
+      - .github/workflows/enos-ci-bootstrap*
 
 jobs:
-  bootstrap-ci:
-    env:
-      TF_WORKSPACE: "${{ github.event.repository.name }}-ci-enos-bootstrap"
-      TF_VAR_repository: ${{ github.event.repository.name }}
-      TF_VAR_aws_ssh_public_key: ${{ secrets.SSH_KEY_PUBLIC_CI }}
-      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-      - name: Configure Static AWS Credentials
-        uses: ./.github/workflows/enos-aws-configure-creds-static.yml
-        if: ${{ github.event.repository.name == 'boundary' }}
-      - name: Configure Doormat AWS Credentials
-        uses: ./.github/workflows/enos-aws-configure-creds-doormat.yml
-        if: ${{ github.event.repository.name != 'boundary' }}
-      - name: Configure Doormat AWS Crednetials
-        uses: ./.github/workflows/enos-aws-configure-creds-static.yml
-      - name: Init Terraform
-        id: tf_init
-        run: |
-          terraform -chdir=enos/ci/bootstrap init
-      - name: Plan Terraform
-        id: tf_plan
-        run: |
-          terraform -chdir=enos/ci/bootstrap plan
-      - name: Apply Terraform
-        if: ${{ github.ref == 'refs/heads/main' }}
-        id: tf_apply
-        run: |
-          terraform -chdir=enos/ci/bootstrap apply -auto-approve
+  bootstrap-ci-oss:
+    if: ${{ github.event.repository.name == 'boundary' }}
+    uses: ./.github/workflows/enos-ci-bootstrap-oss.yml
+    secrets: inherit
+
+  bootstrap-ci-ent:
+    if: ${{ github.event.repository.name != 'boundary' }}
+    uses: ./.github/workflows/enos-ci-bootstrap-ent.yml
+    secrets: inherit
