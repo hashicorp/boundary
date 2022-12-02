@@ -900,6 +900,9 @@ func (c *Command) Run(args []string) int {
 			shutdownTriggerCount++
 			runShutdownLogic()
 
+		case <-c.SighupCh:
+			c.UI.Output("==> Boundary dev environment does not support configuration reloading, taking no action")
+
 		case <-c.SigUSR2Ch:
 			buf := make([]byte, 32*1024*1024)
 			n := runtime.Stack(buf[:], true)
