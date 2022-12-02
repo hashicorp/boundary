@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/hashicorp/boundary/version"
 	"time"
 
 	"github.com/hashicorp/nodeenrollment/types"
@@ -39,12 +40,13 @@ type options struct {
 	withTestPkiWorkerAuthorized            bool
 	withTestPkiWorkerKeyId                 *string
 	withWorkerType                         WorkerType
-	withRoot                               string
+	withRoot                               RootInfo
 	withStopAfter                          uint
 	WithCreateControllerLedActivationToken bool
 	withReleaseVersion                     string
 	withOperationalState                   string
 	withActiveWorkers                      bool
+	withFeature                            version.Feature
 }
 
 func getDefaultOptions() options {
@@ -180,10 +182,10 @@ func WithWorkerType(with WorkerType) Option {
 	}
 }
 
-// WithRoot provides an optional root worker id.
-func WithRoot(workerId string) Option {
+// WithRoot provides an optional root node
+func WithRoot(root RootInfo) Option {
 	return func(o *options) {
-		o.withRoot = workerId
+		o.withRoot = root
 	}
 }
 
@@ -219,5 +221,12 @@ func WithOperationalState(state string) Option {
 func WithActiveWorkers(withActive bool) Option {
 	return func(o *options) {
 		o.withActiveWorkers = withActive
+	}
+}
+
+// WithFeature provides an option to specify a filter
+func WithFeature(feature version.Feature) Option {
+	return func(o *options) {
+		o.withFeature = feature
 	}
 }
