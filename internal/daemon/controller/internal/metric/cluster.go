@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	clusterSubSystem = "controller_cluster"
+	clusterSubsystem = "controller_cluster"
 )
 
 // Because we use grpc's stats.Handler to track close-to-the-wire server-side communication over grpc,
@@ -26,7 +26,7 @@ const (
 var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Namespace: globals.MetricNamespace,
-		Subsystem: clusterSubSystem,
+		Subsystem: clusterSubsystem,
 		Name:      "grpc_request_duration_seconds",
 		Help:      "Histogram of latencies for gRPC requests.",
 		Buckets:   prometheus.DefBuckets,
@@ -38,7 +38,7 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 var acceptedConnsTotal = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Namespace: globals.MetricNamespace,
-		Subsystem: clusterSubSystem,
+		Subsystem: clusterSubsystem,
 		Name:      "accepted_connections_total",
 		Help:      "Count of total accepted network connections to this controller.",
 	},
@@ -49,7 +49,7 @@ var acceptedConnsTotal = prometheus.NewCounterVec(
 var closedConnsTotal = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Namespace: globals.MetricNamespace,
-		Subsystem: clusterSubSystem,
+		Subsystem: clusterSubsystem,
 		Name:      "closed_connections_total",
 		Help:      "Count of total closed network connections to this controller.",
 	},
