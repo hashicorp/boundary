@@ -2,9 +2,9 @@ package server
 
 import (
 	"context"
-	"github.com/hashicorp/boundary/version"
 	"time"
 
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/nodeenrollment/types"
 )
 

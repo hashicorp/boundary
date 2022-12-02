@@ -2,12 +2,12 @@ package server
 
 import (
 	"context"
-	"github.com/hashicorp/boundary/version"
 	"reflect"
 	"runtime"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/version"
 	"github.com/stretchr/testify/assert"
 )
 
