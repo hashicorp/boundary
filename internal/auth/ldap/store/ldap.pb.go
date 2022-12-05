@@ -33,65 +33,65 @@ type AuthMethod struct {
 	// public_id is the PK and is the external public identifier of the auth
 	// method.
 	// @inject_tag: `gorm:"primary_key"`
-	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty"`
+	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,20,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,20,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// update_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	UpdateTime *timestamp.Timestamp `protobuf:"bytes,30,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamp.Timestamp `protobuf:"bytes,30,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty" gorm:"default:current_timestamp"`
 	// name is optional. If set, it must be unique within scope_id.
 	// @inject_tag: `gorm:"default:null"`
-	Name string `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// description is optional.
 	// @inject_tag: `gorm:"default:null"`
-	Description string `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// The scope_id of the owning scope. Must be set.
 	// @inject_tag: `gorm:"not_null"`
-	ScopeId string `protobuf:"bytes,60,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,60,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"not_null"`
 	// @inject_tag: `gorm:"default:null"`
-	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 	// operational_state is the current state of the auth_ldap_method (inactive,
 	// active-private, or active-public).
 	// @inject_tag: `gorm:"column:state;not_null"`
-	OperationalState string `protobuf:"bytes,80,opt,name=operational_state,json=operationalState,proto3" json:"operational_state,omitempty"`
+	OperationalState string `protobuf:"bytes,80,opt,name=operational_state,json=operationalState,proto3" json:"operational_state,omitempty" gorm:"column:state;not_null"`
 	// start_tls if true, issues a StartTLS command after establishing an
 	// unencrypted connection. Defaults to false.
 	// @inject_tag: `gorm:"not_null"`
-	StartTls bool `protobuf:"varint,90,opt,name=start_tls,json=startTls,proto3" json:"start_tls,omitempty"`
+	StartTls bool `protobuf:"varint,90,opt,name=start_tls,json=startTls,proto3" json:"start_tls,omitempty" gorm:"not_null"`
 	// insecure_tls if true, skips LDAP server SSL certificate validation -
 	// insecure and use with caution. Defaults to false.
-	// @inject_tag: `gorm:"not_null"`
-	InsecureTls bool `protobuf:"varint,100,opt,name=insecure_tls,json=insecureTls,proto3" json:"insecure_tls,omitempty"`
+	// @inject_tag: `gorm:"not_null;default:false"`
+	InsecureTls bool `protobuf:"varint,100,opt,name=insecure_tls,json=insecureTls,proto3" json:"insecure_tls,omitempty" gorm:"not_null;default:false"`
 	// discover_dn if true, use anon bind to discover the bind DN of a user.
 	// Defaults to false.
-	// @inject_tag: `gorm:"not_null"`
-	DiscoverDn bool `protobuf:"varint,110,opt,name=discover_dn,json=discoverDn,proto3" json:"discover_dn,omitempty"`
+	// @inject_tag: `gorm:"not_null;default:false"`
+	DiscoverDn bool `protobuf:"varint,110,opt,name=discover_dn,json=discoverDn,proto3" json:"discover_dn,omitempty" gorm:"not_null;default:false"`
 	// anon_group_search if true, use anon bind when performing LDAP group
 	// searches. Defaults to false.
-	// @inject_tag: `gorm:"not_null"`
-	AnonGroupSearch bool `protobuf:"varint,120,opt,name=anon_group_search,json=anonGroupSearch,proto3" json:"anon_group_search,omitempty"`
+	// @inject_tag: `gorm:"not_null;default:false"`
+	AnonGroupSearch bool `protobuf:"varint,120,opt,name=anon_group_search,json=anonGroupSearch,proto3" json:"anon_group_search,omitempty" gorm:"not_null;default:false"`
 	// upn_domain is the userPrincipalDomain used to construct the UPN string for
 	// the authenticating user. The constructed UPN will appear as
 	// [username]@UPNDomain  Example: example.com, which will cause Boundary to
 	// bind as username@example.com when authenticating the user.
-	// @inject_tag: `gorm:"null"`
-	UpnDomain string `protobuf:"bytes,130,opt,name=upn_domain,json=upnDomain,proto3" json:"upn_domain,omitempty"`
+	// @inject_tag: `gorm:"default:null"`
+	UpnDomain string `protobuf:"bytes,130,opt,name=upn_domain,json=upnDomain,proto3" json:"upn_domain,omitempty" gorm:"default:null"`
 	// urls are the LDAP URLS that specify LDAP servers to connection to.  There
 	// must be at lease on URL for each LDAP auth method. When attempting to
 	// connect, the URLs are tried in the order specified. These are Value Objects
 	// that will be stored as Url messages, and are operated on as a complete set
 	// (not individually).
 	// @inject_tag: `gorm:"-"`
-	Urls []string `protobuf:"bytes,140,rep,name=urls,proto3" json:"urls,omitempty"`
+	Urls []string `protobuf:"bytes,140,rep,name=urls,proto3" json:"urls,omitempty" gorm:"-"`
 	// user_dn (optional) is the base DN under which to perform user search.
 	// Example: ou=Users,dc=example,dc=com
 	// @inject_tag: `gorm:"-"`
-	UserDn string `protobuf:"bytes,150,opt,name=user_dn,json=userDn,proto3" json:"user_dn,omitempty"`
+	UserDn string `protobuf:"bytes,150,opt,name=user_dn,json=userDn,proto3" json:"user_dn,omitempty" gorm:"-"`
 	// user_attr (optional) is the attribute on user attribute entry matching the
 	// username passed when authenticating.  Examples: cn, uid
 	// @inject_tag: `gorm:"-"`
-	UserAttr string `protobuf:"bytes,160,opt,name=user_attr,json=userAttr,proto3" json:"user_attr,omitempty"`
+	UserAttr string `protobuf:"bytes,160,opt,name=user_attr,json=userAttr,proto3" json:"user_attr,omitempty" gorm:"-"`
 	// user_filter (optional) is a go template used to construct a LDAP user
 	// search filter. The template can access the following context variables:
 	// [UserAttr, Username]. The default userfilter is
@@ -99,59 +99,59 @@ type AuthMethod struct {
 	// (userPrincipalName={{.Username}}@UPNDomain) if the upndomain parameter is
 	// set.
 	// @inject_tag: `gorm:"-"`
-	UserFilter string `protobuf:"bytes,170,opt,name=user_filter,json=userFilter,proto3" json:"user_filter,omitempty"`
+	UserFilter string `protobuf:"bytes,170,opt,name=user_filter,json=userFilter,proto3" json:"user_filter,omitempty" gorm:"-"`
 	// group_dn (optional) is the base DN under which to perform user search.
 	// Example: ou=Groups,dc=example,dc=com
 	// @inject_tag: `gorm:"-"`
-	GroupDn string `protobuf:"bytes,180,opt,name=group_dn,json=groupDn,proto3" json:"group_dn,omitempty"`
+	GroupDn string `protobuf:"bytes,180,opt,name=group_dn,json=groupDn,proto3" json:"group_dn,omitempty" gorm:"-"`
 	// group_attr (optional) is the LDAP attribute to follow on objects returned
 	// by GroupFilter in order to enumerate user group membership. Examples: for
 	// GroupFilter queries returning group objects, use: cn. For queries returning
 	// user objects, use: memberOf. The default is cn.
 	// @inject_tag: `gorm:"-"`
-	GroupAttr string `protobuf:"bytes,190,opt,name=group_attr,json=groupAttr,proto3" json:"group_attr,omitempty"`
+	GroupAttr string `protobuf:"bytes,190,opt,name=group_attr,json=groupAttr,proto3" json:"group_attr,omitempty" gorm:"-"`
 	// group_filter (optional) is a Go template used when constructing the group
 	// membership query. The template can access the following context variables:
 	// [UserDN, Username]. The default is
 	// (|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}})),
 	// which is compatible with several common directory schemas.
 	// @inject_tag: `gorm:"-"`
-	GroupFilter string `protobuf:"bytes,200,opt,name=group_filter,json=groupFilter,proto3" json:"group_filter,omitempty"`
+	GroupFilter string `protobuf:"bytes,200,opt,name=group_filter,json=groupFilter,proto3" json:"group_filter,omitempty" gorm:"-"`
 	// certificates are optional PEM encoded x509 certificates in ASN.1 DER form
 	// that can be used as trust anchors when connecting to an LDAP provider.
 	// These are Value Objects that will be stored as Certificate messages, and
 	// are operatated on as a complete set (not individually).
 	// @inject_tag: `gorm:"-"`
-	Certificates []string `protobuf:"bytes,210,rep,name=certificates,proto3" json:"certificates,omitempty"`
+	Certificates []string `protobuf:"bytes,210,rep,name=certificates,proto3" json:"certificates,omitempty" gorm:"-"`
 	// client_certificate is the certificate in ASN.1 DER form encoded as PEM. It
 	// must be set.
 	// @inject_tag: `gorm:"-"`
-	ClientCertificate string `protobuf:"bytes,220,opt,name=client_certificate,json=clientCertificate,proto3" json:"client_certificate,omitempty"`
+	ClientCertificate string `protobuf:"bytes,220,opt,name=client_certificate,json=clientCertificate,proto3" json:"client_certificate,omitempty" gorm:"-"`
 	// client_certificate_key (optional) is the plain-text of the certificate key
 	// data in PKCS #8, ASN.1 DER form. We are not storing this plain-text key in
 	// the database.
 	// @inject_tag: `gorm:"-"`
-	ClientCertificateKey []byte `protobuf:"bytes,230,opt,name=client_certificate_key,json=clientCertificateKey,proto3" json:"client_certificate_key,omitempty"`
+	ClientCertificateKey []byte `protobuf:"bytes,230,opt,name=client_certificate_key,json=clientCertificateKey,proto3" json:"client_certificate_key,omitempty" gorm:"-"`
 	// client_certificate_key_hmac is a sha256-hmac of the unencrypted
 	// client_certificate_key_hmac that is returned from the API for read.  It is
 	// recalculated everytime the raw client_certificate_key_hmac is updated in
 	// the database.
 	// @inject_tag: `gorm:"-"`
-	ClientCertificateKeyHmac []byte `protobuf:"bytes,240,opt,name=client_certificate_key_hmac,json=clientCertificateKeyHmac,proto3" json:"client_certificate_key_hmac,omitempty"`
+	ClientCertificateKeyHmac []byte `protobuf:"bytes,240,opt,name=client_certificate_key_hmac,json=clientCertificateKeyHmac,proto3" json:"client_certificate_key_hmac,omitempty" gorm:"-"`
 	// bind_dn (optional) is the distinguished name of entry to bind when
 	// performing user and group search. Example:
 	// cn=vault,ou=Users,dc=example,dc=com
 	// @inject_tag: `gorm:"-"`
-	BindDn string `protobuf:"bytes,250,opt,name=bind_dn,json=bindDn,proto3" json:"bind_dn,omitempty"`
+	BindDn string `protobuf:"bytes,250,opt,name=bind_dn,json=bindDn,proto3" json:"bind_dn,omitempty" gorm:"-"`
 	// bind_password (optional) is the password to use along with binddn when
 	// performing user search. (This plaintext is not stored in the database)
 	// @inject_tag: `gorm:"-"`
-	BindPassword string `protobuf:"bytes,260,opt,name=bind_password,json=bindPassword,proto3" json:"bind_password,omitempty"`
+	BindPassword string `protobuf:"bytes,260,opt,name=bind_password,json=bindPassword,proto3" json:"bind_password,omitempty" gorm:"-"`
 	// bind_password_hmac is a sha256-hmac of the unencrypted bind_password that
 	// is returned from the API for read.  It is recalculated everytime the raw
 	// password is updated in the database.
 	// @inject_tag: `gorm:"-"`
-	BindPasswordHmac []byte `protobuf:"bytes,270,opt,name=bind_password_hmac,json=bindPasswordHmac,proto3" json:"bind_password_hmac,omitempty"`
+	BindPasswordHmac []byte `protobuf:"bytes,270,opt,name=bind_password_hmac,json=bindPasswordHmac,proto3" json:"bind_password_hmac,omitempty" gorm:"-"`
 }
 
 func (x *AuthMethod) Reset() {
@@ -384,20 +384,20 @@ type Url struct {
 
 	// create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// ldap_method_id is the FK to the URL's LDAP auth method.
 	// @inject_tag: `gorm:"primary_key"`
-	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty"`
+	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty" gorm:"primary_key"`
 	// connection_priority represents the priority (aka order) of the url in the
 	// list of ldap urls for the auth method.
 	// @inject_tag: `gorm:"primary_key"`
-	ConnectionPriority uint32 `protobuf:"varint,30,opt,name=connection_priority,json=connectionPriority,proto3" json:"connection_priority,omitempty"`
+	ConnectionPriority uint32 `protobuf:"varint,30,opt,name=connection_priority,json=connectionPriority,proto3" json:"connection_priority,omitempty" gorm:"primary_key"`
 	// server_url is the LDAP server URL. The URL scheme must be either ldap or ldaps.
 	// The port is optional.If no port is specified, then a default of 389 is used
 	// for ldap and a default of 689 is used for ldaps. (see rfc4516 for more
 	// information about LDAP URLs)
 	// @inject_tag: `gorm:"column:url;not_null"`
-	ServerUrl string `protobuf:"bytes,40,opt,name=server_url,json=serverUrl,proto3" json:"server_url,omitempty"`
+	ServerUrl string `protobuf:"bytes,40,opt,name=server_url,json=serverUrl,proto3" json:"server_url,omitempty" gorm:"column:url;not_null"`
 }
 
 func (x *Url) Reset() {
@@ -469,25 +469,25 @@ type UserEntrySearchConf struct {
 
 	// create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// ldap_method_id is the FK to the UserEntrySearchConf's LDAP auth method.
 	// @inject_tag: `gorm:"primary_key"`
-	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty"`
+	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty" gorm:"primary_key"`
 	// user_dn is the base DN under which to perform user search. Example:
 	// ou=Users,dc=example,dc=com
 	// @inject_tag: `gorm:"default:null"`
-	UserDn string `protobuf:"bytes,30,opt,name=user_dn,json=userDn,proto3" json:"user_dn,omitempty"`
+	UserDn string `protobuf:"bytes,30,opt,name=user_dn,json=userDn,proto3" json:"user_dn,omitempty" gorm:"default:null"`
 	// user_attr is the attribute on user attribute entry matching the username
 	// passed when authenticating.  Examples: cn, uid
 	// @inject_tag: `gorm:"default:null"`
-	UserAttr string `protobuf:"bytes,40,opt,name=user_attr,json=userAttr,proto3" json:"user_attr,omitempty"`
+	UserAttr string `protobuf:"bytes,40,opt,name=user_attr,json=userAttr,proto3" json:"user_attr,omitempty" gorm:"default:null"`
 	// user_filter is a go template used to construct a LDAP user search filter.
 	// The template can access the following context variables: [UserAttr,
 	// Username]. The default userfilter is ({{.UserAttr}}={{.Username}}) or
 	// (userPrincipalName={{.Username}}@UPNDomain) if the upndomain parameter is
 	// set.
 	// @inject_tag: `gorm:"default:null"`
-	UserFilter string `protobuf:"bytes,50,opt,name=user_filter,json=userFilter,proto3" json:"user_filter,omitempty"`
+	UserFilter string `protobuf:"bytes,50,opt,name=user_filter,json=userFilter,proto3" json:"user_filter,omitempty" gorm:"default:null"`
 }
 
 func (x *UserEntrySearchConf) Reset() {
@@ -566,27 +566,27 @@ type GroupEntrySearchConf struct {
 
 	// create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// ldap_method_id is the FK to the GroupEntrySearchConf's LDAP auth method.
 	// @inject_tag: `gorm:"primary_key"`
-	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty"`
+	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty" gorm:"primary_key"`
 	// group_dn is the base DN under which to perform user search. Example:
 	// ou=Groups,dc=example,dc=com
 	// @inject_tag: `gorm:"default:null"`
-	GroupDn string `protobuf:"bytes,30,opt,name=group_dn,json=groupDn,proto3" json:"group_dn,omitempty"`
+	GroupDn string `protobuf:"bytes,30,opt,name=group_dn,json=groupDn,proto3" json:"group_dn,omitempty" gorm:"default:null"`
 	// group_attr is the LDAP attribute to follow on objects returned by
 	// GroupFilter in order to enumerate user group membership. Examples: for
 	// GroupFilter queries returning group objects, use: cn. For queries returning
 	// user objects, use: memberOf. The default is cn.
 	// @inject_tag: `gorm:"default:null"`
-	GroupAttr string `protobuf:"bytes,40,opt,name=group_attr,json=groupAttr,proto3" json:"group_attr,omitempty"`
+	GroupAttr string `protobuf:"bytes,40,opt,name=group_attr,json=groupAttr,proto3" json:"group_attr,omitempty" gorm:"default:null"`
 	// user_filter is a Go template used when constructing the group membership
 	// query. The template can access the following context variables: [UserDN,
 	// Username]. The default is
 	// (|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}})),
 	// which is compatible with several common directory schemas.
 	// @inject_tag: `gorm:"default:null"`
-	GroupFilter string `protobuf:"bytes,50,opt,name=group_filter,json=groupFilter,proto3" json:"group_filter,omitempty"`
+	GroupFilter string `protobuf:"bytes,50,opt,name=group_filter,json=groupFilter,proto3" json:"group_filter,omitempty" gorm:"default:null"`
 }
 
 func (x *GroupEntrySearchConf) Reset() {
@@ -668,13 +668,13 @@ type Certificate struct {
 
 	// create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// ldap_method_id is the FK to the Certificate's LDAP auth method.
 	// @inject_tag: `gorm:"primary_key"`
-	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty"`
+	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty" gorm:"primary_key"`
 	// certificate is a PEM encoded x509 in ASN.1 DER form.
 	// @inject_tag: `gorm:"column:certificate;primary_key"`
-	Cert string `protobuf:"bytes,30,opt,name=cert,proto3" json:"cert,omitempty"`
+	Cert string `protobuf:"bytes,30,opt,name=cert,proto3" json:"cert,omitempty" gorm:"column:certificate;primary_key"`
 }
 
 func (x *Certificate) Reset() {
@@ -739,31 +739,31 @@ type ClientCertificate struct {
 
 	// create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// ldap_method_id is the FK to the ClientCertificate's LDAP auth method.
 	// @inject_tag: `gorm:"primary_key"`
-	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty"`
+	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty" gorm:"primary_key"`
 	// certificate is the PEM encoded certificate in ASN.1 DER.
 	// It must be set.
 	// @inject_tag: `gorm:"not_null"`
-	Certificate []byte `protobuf:"bytes,30,opt,name=certificate,proto3" json:"certificate,omitempty"`
+	Certificate []byte `protobuf:"bytes,30,opt,name=certificate,proto3" json:"certificate,omitempty" gorm:"not_null"`
 	// certificate_key is the plain-text of the certificate key data in PKCS #8,
 	// ASN.1 DER form. We are not storing this plain-text key in the database.
 	// @inject_tag: `gorm:"-" wrapping:"pt,certificate_key_data"`
-	CertificateKey []byte `protobuf:"bytes,40,opt,name=certificate_key,json=certificateKey,proto3" json:"certificate_key,omitempty"`
+	CertificateKey []byte `protobuf:"bytes,40,opt,name=certificate_key,json=certificateKey,proto3" json:"certificate_key,omitempty" gorm:"-" wrapping:"pt,certificate_key_data"`
 	// ct_certificate_key is the ciphertext of the certificate key data. It
 	// is stored in the database.
 	// @inject_tag: `gorm:"column:certificate_key;not_null" wrapping:"ct,certificate_key_data"`
-	CtCertificateKey []byte `protobuf:"bytes,50,opt,name=ct_certificate_key,json=ctCertificateKey,proto3" json:"ct_certificate_key,omitempty"`
+	CtCertificateKey []byte `protobuf:"bytes,50,opt,name=ct_certificate_key,json=ctCertificateKey,proto3" json:"ct_certificate_key,omitempty" gorm:"column:certificate_key;not_null" wrapping:"ct,certificate_key_data"`
 	// certificate_key_hmac is a sha256-hmac of the unencrypted certificate_key that
 	// is returned from the API for read.  It is recalculated everytime the raw
 	// certificate_key is updated.
 	// @inject_tag: `gorm:"not_null"`
-	CertificateKeyHmac []byte `protobuf:"bytes,60,opt,name=certificate_key_hmac,json=certificateKeyHmac,proto3" json:"certificate_key_hmac,omitempty"`
+	CertificateKeyHmac []byte `protobuf:"bytes,60,opt,name=certificate_key_hmac,json=certificateKeyHmac,proto3" json:"certificate_key_hmac,omitempty" gorm:"not_null"`
 	// The key_id of the kms database key used for encrypting this entry.
 	// It must be set.
 	// @inject_tag: `gorm:"not_null"`
-	KeyId string `protobuf:"bytes,70,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	KeyId string `protobuf:"bytes,70,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" gorm:"not_null"`
 }
 
 func (x *ClientCertificate) Reset() {
@@ -857,30 +857,30 @@ type BindCredential struct {
 
 	// create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// ldap_method_id is the FK to the BindCredential's LDAP auth method.
 	// @inject_tag: `gorm:"primary_key"`
-	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty"`
+	LdapMethodId string `protobuf:"bytes,20,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty" gorm:"primary_key"`
 	// dn is the distinguished name of the entry to bind when performing
 	// user and group search. Example: cn=vault,ou=Users,dc=example,dc=com
 	// @inject_tag: `gorm:"not_null"`
-	Dn string `protobuf:"bytes,30,opt,name=dn,proto3" json:"dn,omitempty"`
+	Dn string `protobuf:"bytes,30,opt,name=dn,proto3" json:"dn,omitempty" gorm:"not_null"`
 	// password is the plain-text password to use along with dn. We are not
 	// storing this plain-text key in the database.
 	// @inject_tag: `gorm:"-" wrapping:"pt,password_data"`
-	Password []byte `protobuf:"bytes,40,opt,name=password,proto3" json:"password,omitempty"`
+	Password []byte `protobuf:"bytes,40,opt,name=password,proto3" json:"password,omitempty" gorm:"-" wrapping:"pt,password_data"`
 	// ct_password_key is the ciphertext of the password. It is stored in the database.
 	// @inject_tag: `gorm:"column:password;not_null" wrapping:"ct,password_data"`
-	CtPassword []byte `protobuf:"bytes,50,opt,name=ct_password,json=ctPassword,proto3" json:"ct_password,omitempty"`
+	CtPassword []byte `protobuf:"bytes,50,opt,name=ct_password,json=ctPassword,proto3" json:"ct_password,omitempty" gorm:"column:password;not_null" wrapping:"ct,password_data"`
 	// password_hmac is a sha256-hmac of the unencrypted password that is returned
 	// from the API for read.  It is recalculated everytime the raw password is
 	// updated.
 	// @inject_tag: `gorm:"not_null"`
-	PasswordHmac []byte `protobuf:"bytes,60,opt,name=password_hmac,json=passwordHmac,proto3" json:"password_hmac,omitempty"`
+	PasswordHmac []byte `protobuf:"bytes,60,opt,name=password_hmac,json=passwordHmac,proto3" json:"password_hmac,omitempty" gorm:"not_null"`
 	// The key_id of the kms database key used for encrypting this entry.
 	// It must be set.
 	// @inject_tag: `gorm:"not_null"`
-	KeyId string `protobuf:"bytes,70,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	KeyId string `protobuf:"bytes,70,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" gorm:"not_null"`
 }
 
 func (x *BindCredential) Reset() {
@@ -970,30 +970,33 @@ type Account struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// public_id is the PK and is the external public identifier of the account
+	// @inject_tag: `gorm:"primary_key"`
+	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" gorm:"primary_key"`
 	// create_time is set by the database.
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,20,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,20,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// ldap_method_id is the FK to the Account's LDAP auth method.
 	// @inject_tag: `gorm:"not_null"`
-	LdapMethodId string `protobuf:"bytes,30,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty"`
+	LdapMethodId string `protobuf:"bytes,30,opt,name=ldap_method_id,json=ldapMethodId,proto3" json:"ldap_method_id,omitempty" gorm:"not_null"`
 	// name is optional. If set, it must be unique within scope_id.
 	// @inject_tag: `gorm:"default:null"`
-	Name string `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,40,opt,name=name,proto3" json:"name,omitempty" gorm:"default:null"`
 	// description is optional.
 	// @inject_tag: `gorm:"default:null"`
-	Description string `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" gorm:"default:null"`
 	// The scope_id of the owning scope. Must be set. The scope_id column is not
 	// included here as it is used only to ensure data integrity in the database
 	// between iam users and auth methods.
 	// @inject_tag: `gorm:"not_null"`
-	ScopeId string `protobuf:"bytes,60,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+	ScopeId string `protobuf:"bytes,60,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"not_null"`
 	// @inject_tag: `gorm:"default:null"`
-	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 	// login_name of the authenticated user.  This is the RDN (not the DN) of the
 	// user.  It's the username entered by the user when authenticating (typically
 	// the uid or cn attribute)
 	// @inject_tag: `gorm:"not_null"`
-	LoginName string `protobuf:"bytes,80,opt,name=login_name,json=loginName,proto3" json:"login_name,omitempty"`
+	LoginName string `protobuf:"bytes,80,opt,name=login_name,json=loginName,proto3" json:"login_name,omitempty" gorm:"not_null"`
 }
 
 func (x *Account) Reset() {
@@ -1026,6 +1029,13 @@ func (x *Account) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Account.ProtoReflect.Descriptor instead.
 func (*Account) Descriptor() ([]byte, []int) {
 	return file_controller_storage_auth_ldap_store_v1_ldap_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *Account) GetPublicId() string {
+	if x != nil {
+		return x.PublicId
+	}
+	return ""
 }
 
 func (x *Account) GetCreateTime() *timestamp.Timestamp {
@@ -1254,31 +1264,33 @@ var file_controller_storage_auth_ldap_store_v1_ldap_proto_rawDesc = []byte{
 	0x23, 0x0a, 0x0d, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x5f, 0x68, 0x6d, 0x61, 0x63,
 	0x18, 0x3c, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0c, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64,
 	0x48, 0x6d, 0x61, 0x63, 0x12, 0x15, 0x0a, 0x06, 0x6b, 0x65, 0x79, 0x5f, 0x69, 0x64, 0x18, 0x46,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6b, 0x65, 0x79, 0x49, 0x64, 0x22, 0xb8, 0x02, 0x0a, 0x07,
-	0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x4b, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x61, 0x74,
-	0x65, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x18, 0x14, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x63,
-	0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67,
-	0x65, 0x2e, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x76, 0x31, 0x2e, 0x54,
-	0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65,
-	0x54, 0x69, 0x6d, 0x65, 0x12, 0x24, 0x0a, 0x0e, 0x6c, 0x64, 0x61, 0x70, 0x5f, 0x6d, 0x65, 0x74,
-	0x68, 0x6f, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x6c, 0x64,
-	0x61, 0x70, 0x4d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x49, 0x64, 0x12, 0x24, 0x0a, 0x04, 0x6e, 0x61,
-	0x6d, 0x65, 0x18, 0x28, 0x20, 0x01, 0x28, 0x09, 0x42, 0x10, 0xc2, 0xdd, 0x29, 0x0c, 0x0a, 0x04,
-	0x4e, 0x61, 0x6d, 0x65, 0x12, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65,
-	0x12, 0x40, 0x0a, 0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x18,
-	0x32, 0x20, 0x01, 0x28, 0x09, 0x42, 0x1e, 0xc2, 0xdd, 0x29, 0x1a, 0x0a, 0x0b, 0x44, 0x65, 0x73,
-	0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69,
-	0x70, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69,
-	0x6f, 0x6e, 0x12, 0x19, 0x0a, 0x08, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x3c,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49, 0x64, 0x12, 0x18, 0x0a,
-	0x07, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x46, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x07,
-	0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x1d, 0x0a, 0x0a, 0x6c, 0x6f, 0x67, 0x69, 0x6e,
-	0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x50, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x6c, 0x6f, 0x67,
-	0x69, 0x6e, 0x4e, 0x61, 0x6d, 0x65, 0x42, 0x3e, 0x5a, 0x3c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
-	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62,
-	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c,
-	0x2f, 0x61, 0x75, 0x74, 0x68, 0x2f, 0x6c, 0x64, 0x61, 0x70, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65,
-	0x3b, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6b, 0x65, 0x79, 0x49, 0x64, 0x22, 0xd5, 0x02, 0x0a, 0x07,
+	0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x70, 0x75, 0x62, 0x6c, 0x69,
+	0x63, 0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x75, 0x62, 0x6c,
+	0x69, 0x63, 0x49, 0x64, 0x12, 0x4b, 0x0a, 0x0b, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x5f, 0x74,
+	0x69, 0x6d, 0x65, 0x18, 0x14, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x63, 0x6f, 0x6e, 0x74,
+	0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2e, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x2e, 0x74,
+	0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x76, 0x31, 0x2e, 0x54, 0x69, 0x6d, 0x65,
+	0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x69, 0x6d,
+	0x65, 0x12, 0x24, 0x0a, 0x0e, 0x6c, 0x64, 0x61, 0x70, 0x5f, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64,
+	0x5f, 0x69, 0x64, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x6c, 0x64, 0x61, 0x70, 0x4d,
+	0x65, 0x74, 0x68, 0x6f, 0x64, 0x49, 0x64, 0x12, 0x24, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18,
+	0x28, 0x20, 0x01, 0x28, 0x09, 0x42, 0x10, 0xc2, 0xdd, 0x29, 0x0c, 0x0a, 0x04, 0x4e, 0x61, 0x6d,
+	0x65, 0x12, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x40, 0x0a,
+	0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x32, 0x20, 0x01,
+	0x28, 0x09, 0x42, 0x1e, 0xc2, 0xdd, 0x29, 0x1a, 0x0a, 0x0b, 0x44, 0x65, 0x73, 0x63, 0x72, 0x69,
+	0x70, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69,
+	0x6f, 0x6e, 0x52, 0x0b, 0x64, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x12,
+	0x19, 0x0a, 0x08, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x3c, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x07, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x49, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x76, 0x65,
+	0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x46, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x07, 0x76, 0x65, 0x72,
+	0x73, 0x69, 0x6f, 0x6e, 0x12, 0x1d, 0x0a, 0x0a, 0x6c, 0x6f, 0x67, 0x69, 0x6e, 0x5f, 0x6e, 0x61,
+	0x6d, 0x65, 0x18, 0x50, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x6c, 0x6f, 0x67, 0x69, 0x6e, 0x4e,
+	0x61, 0x6d, 0x65, 0x42, 0x3e, 0x5a, 0x3c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e,
+	0x64, 0x61, 0x72, 0x79, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x2f, 0x61, 0x75,
+	0x74, 0x68, 0x2f, 0x6c, 0x64, 0x61, 0x70, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x3b, 0x73, 0x74,
+	0x6f, 0x72, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (

@@ -56,24 +56,24 @@ message AuthMethod {
 
   // insecure_tls if true, skips LDAP server SSL certificate validation -
   // insecure and use with caution. Defaults to false.
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"not_null;default:false"`
   bool insecure_tls = 100;
 
   // discover_dn if true, use anon bind to discover the bind DN of a user.
   // Defaults to false.
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"not_null;default:false"`
   bool discover_dn = 110;
 
   // anon_group_search if true, use anon bind when performing LDAP group
   // searches. Defaults to false.
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"not_null;default:false"`
   bool anon_group_search = 120;
 
   // upn_domain is the userPrincipalDomain used to construct the UPN string for
   // the authenticating user. The constructed UPN will appear as
   // [username]@UPNDomain  Example: example.com, which will cause Boundary to
   // bind as username@example.com when authenticating the user.
-  // @inject_tag: `gorm:"null"`
+  // @inject_tag: `gorm:"default:null"`
   string upn_domain = 130;
 
   // urls are the LDAP URLS that specify LDAP servers to connection to.  There
@@ -355,6 +355,10 @@ message BindCredential {
 
 // Account respresent Accounts associated with an LDAP auth method.
 message Account {
+  // public_id is the PK and is the external public identifier of the account
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
   // create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 20;
