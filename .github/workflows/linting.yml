@@ -27,4 +27,4 @@ jobs:
           make golangci-lint
       - name: Running Linters
         run: |
-          LINT_DIFF_BRANCH="origin/${GITHUB_BASE_REF}" make lint-diff
+          LINT_DIFF_BRANCH=origin/${GITHUB_BASE_REF} make lint-diff
