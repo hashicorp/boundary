@@ -37,7 +37,7 @@ var testAcceptedConns prometheus.CounterVec = *prometheus.NewCounterVec(
 		Name:      "test_accepted_connections_total",
 		Help:      "Test CounterVec.",
 	},
-	[]string{LabelConnectionPurpose},
+	[]string{LabelConnectionType},
 )
 
 var testClosedConns prometheus.CounterVec = *prometheus.NewCounterVec(
@@ -47,7 +47,7 @@ var testClosedConns prometheus.CounterVec = *prometheus.NewCounterVec(
 		Name:      "test_closed_connections_total",
 		Help:      "Test CounterVec.",
 	},
-	[]string{LabelConnectionPurpose},
+	[]string{LabelConnectionType},
 )
 
 type testPrometheusCounter struct {
@@ -108,8 +108,8 @@ func TestNewConnectionTrackingListener(t *testing.T) {
 	t.Run("set-label",
 		func(t *testing.T) {
 			l := &testListener{}
-			acceptedConns := testAcceptedConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label"})
-			closedConns := testClosedConns.With(prometheus.Labels{LabelConnectionPurpose: "test_label"})
+			acceptedConns := testAcceptedConns.With(prometheus.Labels{LabelConnectionType: "test_label"})
+			closedConns := testClosedConns.With(prometheus.Labels{LabelConnectionType: "test_label"})
 			ctl := NewConnectionTrackingListener(l, acceptedConns, closedConns)
 			require.NotNil(t, ctl)
 
