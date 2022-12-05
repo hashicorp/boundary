@@ -347,7 +347,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		vc.SetToken(token)
 
 		certPath := path.Join("pki", "issue", "boundary")
-		certOptions := map[string]interface{}{
+		certOptions := map[string]any{
 			"common_name": "boundary.com",
 		}
 		certSecret, err := vc.Logical().Write(certPath, certOptions)
@@ -378,7 +378,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		vc.SetToken(token)
 
 		certPath := path.Join("gary", "issue", "boundary")
-		certOptions := map[string]interface{}{
+		certOptions := map[string]any{
 			"common_name": "boundary.com",
 		}
 		certSecret, err := vc.Logical().Write(certPath, certOptions)
@@ -409,7 +409,7 @@ func TestTestVaultServer_MountPKI(t *testing.T) {
 		vc.SetToken(token)
 
 		certPath := path.Join("pki", "issue", "gary")
-		certOptions := map[string]interface{}{
+		certOptions := map[string]any{
 			"common_name": "boundary.com",
 		}
 		certSecret, err := vc.Logical().Write(certPath, certOptions)
@@ -502,18 +502,27 @@ func TestTestVaultServer_LookupLease(t *testing.T) {
 
 func TestTestVaultServer_VerifyTokenInvalid(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	require := require.New(t)
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
 
 	_, token := v.CreateToken(t)
-	client := v.ClientUsingToken(t, token)
-	err := client.revokeToken(ctx)
-	require.NoError(err)
+	v.RevokeToken(t, token)
 	v.VerifyTokenInvalid(t, token)
 
 	// Verify fake token is not valid
 	v.VerifyTokenInvalid(t, "fake-token")
+}
+
+func TestTestVaultServer_RevokeToken(t *testing.T) {
+	t.Parallel()
+	v := NewTestVaultServer(t, WithDockerNetwork(true))
+
+	_, token := v.CreateToken(t)
+
+	// Validate we can lookup the token
+	v.LookupToken(t, token)
+
+	v.RevokeToken(t, token)
+	v.VerifyTokenInvalid(t, token)
 }
 
 func Test_testClientCert(t *testing.T) {
@@ -603,7 +612,7 @@ func TestTestVaultServer_CreateKVSecret(t *testing.T) {
 		require.NotNil(got.Data)
 		require.NotNil(got.Data["data"])
 
-		gotData, ok := got.Data["data"].(map[string]interface{})
+		gotData, ok := got.Data["data"].(map[string]any)
 		require.True(ok)
 		require.NotNil(gotData["foo"])
 

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package ops.services.v1;
+
+import "google/api/annotations.proto";
+import "worker/health/v1/health_service.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/ops/services;services";
+
+service HealthService {
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse) {
+    option (google.api.http) = {
+      get: "/health"
+    };
+  }
+}
+
+message GetHealthRequest {
+  // Experimental: This field may change or be removed without notice.
+  bool worker_info = 1 [json_name = "worker_info"];
+}
+
+message GetHealthResponse {
+  // Experimental: This field may change or be removed without notice.
+  worker.health.v1.HealthInfo worker_process_info = 1 [json_name = "worker_process_info"];
+}

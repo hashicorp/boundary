@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/util/template"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	vault "github.com/hashicorp/vault/api"
@@ -24,8 +25,8 @@ var _ credential.Dynamic = (*baseCred)(nil)
 type baseCred struct {
 	*Credential
 
-	lib        *privateLibrary
-	secretData map[string]interface{}
+	lib        *issueCredentialLibrary
+	secretData map[string]any
 }
 
 func (bc *baseCred) Secret() credential.SecretData { return bc.secretData }
@@ -131,48 +132,48 @@ func baseToSshPriKey(ctx context.Context, bc *baseCred) (*sshPrivateKeyCred, err
 	}, nil
 }
 
-var _ credential.Library = (*privateLibrary)(nil)
+var _ credential.Library = (*issueCredentialLibrary)(nil)
 
-// A privateLibrary contains all the values needed to connect to Vault and
+// A issueCredentialLibrary contains all the values needed to connect to Vault and
 // retrieve credentials.
-type privateLibrary struct {
+type issueCredentialLibrary struct {
 	PublicId                      string `gorm:"primary_key"`
 	StoreId                       string
-	CredType                      string `gorm:"column:credential_type"`
-	UsernameAttribute             string
-	PasswordAttribute             string
-	PrivateKeyAttribute           string
-	PrivateKeyPassphraseAttribute string
 	Name                          string
 	Description                   string
 	CreateTime                    *timestamp.Timestamp
 	UpdateTime                    *timestamp.Timestamp
 	Version                       uint32
-	ProjectId                     string
 	VaultPath                     string
 	HttpMethod                    string
 	HttpRequestBody               []byte
+	CredType                      string `gorm:"column:credential_type"`
+	ProjectId                     string
 	VaultAddress                  string
 	Namespace                     string
 	CaCert                        []byte
 	TlsServerName                 string
 	TlsSkipVerify                 bool
 	WorkerFilter                  string
-	TokenHmac                     []byte
 	Token                         TokenSecret
 	CtToken                       []byte
+	TokenHmac                     []byte
 	TokenKeyId                    string
 	ClientCert                    []byte
 	ClientKey                     KeySecret
 	CtClientKey                   []byte
 	ClientKeyId                   string
+	UsernameAttribute             string
+	PasswordAttribute             string
+	PrivateKeyAttribute           string
+	PrivateKeyPassphraseAttribute string
 	Purpose                       credential.Purpose `gorm:"-"`
 }
 
-func (pl *privateLibrary) clone() *privateLibrary {
+func (pl *issueCredentialLibrary) clone() *issueCredentialLibrary {
 	// The 'append(a[:0:0], a...)' comes from
 	// https://github.com/go101/go101/wiki/How-to-perfectly-clone-a-slice%3F
-	return &privateLibrary{
+	return &issueCredentialLibrary{
 		PublicId:                      pl.PublicId,
 		StoreId:                       pl.StoreId,
 		CredType:                      pl.CredType,
@@ -207,15 +208,15 @@ func (pl *privateLibrary) clone() *privateLibrary {
 	}
 }
 
-func (pl *privateLibrary) GetPublicId() string                 { return pl.PublicId }
-func (pl *privateLibrary) GetStoreId() string                  { return pl.StoreId }
-func (pl *privateLibrary) GetName() string                     { return pl.Name }
-func (pl *privateLibrary) GetDescription() string              { return pl.Description }
-func (pl *privateLibrary) GetVersion() uint32                  { return pl.Version }
-func (pl *privateLibrary) GetCreateTime() *timestamp.Timestamp { return pl.CreateTime }
-func (pl *privateLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
+func (pl *issueCredentialLibrary) GetPublicId() string                 { return pl.PublicId }
+func (pl *issueCredentialLibrary) GetStoreId() string                  { return pl.StoreId }
+func (pl *issueCredentialLibrary) GetName() string                     { return pl.Name }
+func (pl *issueCredentialLibrary) GetDescription() string              { return pl.Description }
+func (pl *issueCredentialLibrary) GetVersion() uint32                  { return pl.Version }
+func (pl *issueCredentialLibrary) GetCreateTime() *timestamp.Timestamp { return pl.CreateTime }
+func (pl *issueCredentialLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
 
-func (pl *privateLibrary) CredentialType() credential.Type {
+func (pl *issueCredentialLibrary) CredentialType() credential.Type {
 	switch ct := pl.CredType; ct {
 	case "":
 		return credential.UnspecifiedType
@@ -224,8 +225,8 @@ func (pl *privateLibrary) CredentialType() credential.Type {
 	}
 }
 
-func (pl *privateLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "vault.(privateLibrary).decrypt"
+func (pl *issueCredentialLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "vault.(issueCredentialLibrary).decrypt"
 
 	if pl.CtToken != nil {
 		type ptk struct {
@@ -257,8 +258,8 @@ func (pl *privateLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) 
 	return nil
 }
 
-func (pl *privateLibrary) client(ctx context.Context) (vaultClient, error) {
-	const op = "vault.(privateLibrary).client"
+func (pl *issueCredentialLibrary) client(ctx context.Context) (vaultClient, error) {
+	const op = "vault.(issueCredentialLibrary).client"
 	clientConfig := &clientConfig{
 		Addr:          pl.VaultAddress,
 		Token:         pl.Token,
@@ -283,13 +284,20 @@ func (pl *privateLibrary) client(ctx context.Context) (vaultClient, error) {
 type dynamicCred interface {
 	credential.Dynamic
 	getExpiration() time.Duration
-	insertQuery() (query string, queryValues []interface{})
-	updateSessionQuery(purpose credential.Purpose) (query string, queryValues []interface{})
+	insertQuery() (query string, queryValues []any)
+	updateSessionQuery(purpose credential.Purpose) (query string, queryValues []any)
 }
 
 // retrieveCredential retrieves a dynamic credential from Vault for the
 // given sessionId.
-func (pl *privateLibrary) retrieveCredential(ctx context.Context, op errors.Op, sessionId string) (dynamicCred, error) {
+//
+// Supported options: credential.WithTemplateData
+func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, sessionId string, opt ...credential.Option) (dynamicCred, error) {
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
 	// Get the credential ID early. No need to get a secret from Vault
 	// if there is no way to save it in the database.
 	credId, err := newCredentialId()
@@ -303,19 +311,47 @@ func (pl *privateLibrary) retrieveCredential(ctx context.Context, op errors.Op, 
 	}
 
 	var secret *vault.Secret
+	var reqErr error
+
+	// Template the path
+	path := pl.VaultPath
+	if path != "" {
+		parsedTmpl, err := template.New(ctx, path)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		path, err = parsedTmpl.Generate(ctx, opts.WithTemplateData)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	// Template the body
+	body := string(pl.HttpRequestBody)
+	if body != "" {
+		parsedTmpl, err := template.New(ctx, body)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		body, err = parsedTmpl.Generate(ctx, opts.WithTemplateData)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	switch Method(pl.HttpMethod) {
 	case MethodGet:
-		secret, err = client.get(ctx, pl.VaultPath)
+		secret, reqErr = client.get(ctx, path)
 	case MethodPost:
-		secret, err = client.post(ctx, pl.VaultPath, pl.HttpRequestBody)
+		secret, reqErr = client.post(ctx, path, []byte(body))
 	default:
 		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", pl.PublicId))
 	}
 
-	if err != nil {
+	if reqErr != nil {
 		// TODO(mgaffney) 05/2021: detect if the error is because of an
 		// expired or invalid token
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, reqErr, op)
 	}
 	if secret == nil {
 		return nil, errors.E(ctx, errors.WithCode(errors.VaultEmptySecret), errors.WithOp(op))
@@ -338,12 +374,12 @@ func (pl *privateLibrary) retrieveCredential(ctx context.Context, op errors.Op, 
 }
 
 // TableName returns the table name for gorm.
-func (pl *privateLibrary) TableName() string {
-	return "credential_vault_library_private"
+func (pl *issueCredentialLibrary) TableName() string {
+	return "credential_vault_library_issue_credentials"
 }
 
-func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credential.Request) ([]*privateLibrary, error) {
-	const op = "vault.(Repository).getPrivateLibraries"
+func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []credential.Request) ([]*issueCredentialLibrary, error) {
+	const op = "vault.(Repository).getIssueCredLibraries"
 
 	mapper, err := newMapper(requests)
 	if err != nil {
@@ -357,9 +393,9 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	}
 	inClause := strings.Join(inClauseSpots, ",")
 
-	query := fmt.Sprintf(selectPrivateLibrariesQuery, inClause)
+	query := fmt.Sprintf(selectLibrariesQuery, inClause)
 
-	var params []interface{}
+	var params []any
 	for idx, v := range libIds {
 		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), v))
 	}
@@ -369,9 +405,9 @@ func (r *Repository) getPrivateLibraries(ctx context.Context, requests []credent
 	}
 	defer rows.Close()
 
-	var libs []*privateLibrary
+	var libs []*issueCredentialLibrary
 	for rows.Next() {
-		var lib privateLibrary
+		var lib issueCredentialLibrary
 		if err := r.reader.ScanRows(ctx, rows, &lib); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}

@@ -8,8 +8,8 @@ import (
 // worker closes a connection between the client and the endpoint.
 type CloseWith struct {
 	ConnectionId string
-	BytesUp      uint64
-	BytesDown    uint64
+	BytesUp      int64
+	BytesDown    int64
 	ClosedReason ClosedReason
 }
 

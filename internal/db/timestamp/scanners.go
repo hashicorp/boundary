@@ -15,7 +15,7 @@ var (
 )
 
 // Scan implements sql.Scanner for protobuf Timestamp.
-func (ts *Timestamp) Scan(value interface{}) error {
+func (ts *Timestamp) Scan(value any) error {
 	switch t := value.(type) {
 	case time.Time:
 		ts.Timestamp = timestamppb.New(t) // google proto version

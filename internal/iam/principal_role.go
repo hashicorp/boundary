@@ -100,7 +100,7 @@ func allocUserRole() UserRole {
 }
 
 // Clone creates a clone of the UserRole.
-func (r *UserRole) Clone() interface{} {
+func (r *UserRole) Clone() any {
 	cp := proto.Clone(r.UserRole)
 	return &UserRole{
 		UserRole: cp.(*store.UserRole),
@@ -177,7 +177,7 @@ func allocGroupRole() GroupRole {
 }
 
 // Clone creates a clone of the GroupRole.
-func (r *GroupRole) Clone() interface{} {
+func (r *GroupRole) Clone() any {
 	cp := proto.Clone(r.GroupRole)
 	return &GroupRole{
 		GroupRole: cp.(*store.GroupRole),
@@ -256,7 +256,7 @@ func AllocManagedGroupRole() ManagedGroupRole {
 }
 
 // Clone creates a clone of the ManagedGroupRole.
-func (r *ManagedGroupRole) Clone() interface{} {
+func (r *ManagedGroupRole) Clone() any {
 	cp := proto.Clone(r.ManagedGroupRole)
 	return &ManagedGroupRole{
 		ManagedGroupRole: cp.(*store.ManagedGroupRole),

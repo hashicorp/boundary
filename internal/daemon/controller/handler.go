@@ -39,7 +39,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
-	opsservices "github.com/hashicorp/boundary/internal/gen/controller/ops/services"
+	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -57,18 +57,36 @@ type HandlerProperties struct {
 	CancelCtx      context.Context
 }
 
+const uiPath = "/"
+
+// createMuxWithEndpoints performs all response logic for boundary, using isUiRequest
+// for unified logic between responses and headers.
+func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handler, func(req *http.Request) bool, error) {
+	grpcGwMux := newGrpcGatewayMux()
+	if err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...); err != nil {
+		return nil, nil, err
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/v1/", grpcGwMux)
+	mux.Handle(uiPath, handleUi(c))
+
+	isUiRequest := func(req *http.Request) bool {
+		_, p := mux.Handler(req)
+		// check to see if the matched pattern is for the ui
+		return p == uiPath
+	}
+
+	return http.HandlerFunc(mux.ServeHTTP), isUiRequest, nil
+}
+
 // apiHandler returns an http.Handler for the services. This can be used on
 // its own to mount the Controller API within another web server.
 func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
-	mux := http.NewServeMux()
-
-	grpcGwMux := newGrpcGatewayMux()
-	err := registerGrpcGatewayEndpoints(props.CancelCtx, grpcGwMux, gatewayDialOptions(c.apiGrpcServerListener)...)
+	mux, isUiRequest, err := createMuxWithEndpoints(c, props)
 	if err != nil {
 		return nil, err
 	}
-	mux.Handle("/v1/", grpcGwMux)
-	mux.Handle("/", handleUi(c))
 
 	corsWrappedHandler := wrapHandlerWithCors(mux, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
@@ -80,7 +98,8 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	}
 	metricsHandler := metric.InstrumentApiHandler(eventsHandler)
 
-	return metricsHandler, nil
+	// This wrap MUST be performed last. If you add a new wrapper, do so above.
+	return listenerutil.WrapCustomHeadersHandler(metricsHandler, props.ListenerConfig, isUiRequest), nil
 }
 
 // GetHealthHandler returns a gRPC Gateway mux that is registered against the
@@ -153,7 +172,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterAuthTokenServiceServer(s, authtoks)
 	}
 	if _, ok := currentServices[services.ScopeService_ServiceDesc.ServiceName]; !ok {
-		os, err := scopes.NewService(c.IamRepoFn)
+		os, err := scopes.NewService(c.baseContext, c.IamRepoFn, c.kms)
 		if err != nil {
 			return fmt.Errorf("failed to create scope handler service: %w", err)
 		}
@@ -177,7 +196,8 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.PluginHostRepoFn,
 			c.StaticHostRepoFn,
 			c.VaultCredentialRepoFn,
-			c.StaticCredentialRepoFn)
+			c.StaticCredentialRepoFn,
+			c.workerStatusGracePeriod)
 		if err != nil {
 			return fmt.Errorf("failed to create target handler service: %w", err)
 		}
@@ -226,7 +246,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterCredentialLibraryServiceServer(s, cl)
 	}
 	if _, ok := currentServices[services.WorkerService_ServiceDesc.ServiceName]; !ok {
-		ws, err := workers.NewService(c.baseContext, c.ServersRepoFn, c.IamRepoFn)
+		ws, err := workers.NewService(c.baseContext, c.ServersRepoFn, c.IamRepoFn, c.WorkerAuthRepoStorageFn)
 		if err != nil {
 			return fmt.Errorf("failed to create worker handler service: %w", err)
 		}
@@ -461,8 +481,8 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 }
 
 type cmdAttrs struct {
-	Command    string      `json:"command,omitempty"`
-	Attributes interface{} `json:"attributes,omitempty"`
+	Command    string `json:"command,omitempty"`
+	Attributes any    `json:"attributes,omitempty"`
 }
 
 func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Handler {
@@ -526,7 +546,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		switch {
 		case useForm:
 			if len(req.Form) > 0 {
-				values := make(map[string]interface{}, len(req.Form))
+				values := make(map[string]any, len(req.Form))
 				// This won't handle repeated values. That's fine, at least for now.
 				// We can address that if needed, which seems unlikely.
 				for k := range req.Form {

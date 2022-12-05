@@ -65,7 +65,7 @@ func TestAuthMethod(
 	require.NoError(err)
 
 	if len(opts.withAudClaims) > 0 {
-		newAudClaims := make([]interface{}, 0, len(opts.withAudClaims))
+		newAudClaims := make([]any, 0, len(opts.withAudClaims))
 		for _, a := range opts.withAudClaims {
 			aud, err := NewAudClaim(ctx, authMethod.PublicId, a)
 			require.NoError(err)
@@ -76,7 +76,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withAudClaims), len(authMethod.AudClaims))
 	}
 	if len(opts.withCertificates) > 0 {
-		newCerts := make([]interface{}, 0, len(opts.withCertificates))
+		newCerts := make([]any, 0, len(opts.withCertificates))
 		for _, c := range opts.withCertificates {
 			pem, err := EncodeCertificates(ctx, c)
 			require.NoError(err)
@@ -89,7 +89,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withCertificates), len(authMethod.Certificates))
 	}
 	if len(opts.withSigningAlgs) > 0 {
-		newAlgs := make([]interface{}, 0, len(opts.withSigningAlgs))
+		newAlgs := make([]any, 0, len(opts.withSigningAlgs))
 		for _, a := range opts.withSigningAlgs {
 			alg, err := NewSigningAlg(ctx, authMethod.PublicId, a)
 			require.NoError(err)
@@ -100,7 +100,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withSigningAlgs), len(authMethod.SigningAlgs))
 	}
 	if len(opts.withClaimsScopes) > 0 {
-		newClaimsScopes := make([]interface{}, 0, len(opts.withClaimsScopes))
+		newClaimsScopes := make([]any, 0, len(opts.withClaimsScopes))
 		for _, cs := range opts.withClaimsScopes {
 			s, err := NewClaimsScope(ctx, authMethod.PublicId, cs)
 			require.NoError(err)
@@ -111,7 +111,7 @@ func TestAuthMethod(
 		require.Equal(len(opts.withClaimsScopes), len(authMethod.ClaimsScopes))
 	}
 	if len(opts.withAccountClaimMap) > 0 {
-		newAccountClaimMaps := make([]interface{}, 0, len(opts.withAccountClaimMap))
+		newAccountClaimMaps := make([]any, 0, len(opts.withAccountClaimMap))
 		for k, v := range opts.withAccountClaimMap {
 			acm, err := NewAccountClaimMap(ctx, authMethod.PublicId, k, v)
 			require.NoError(err)

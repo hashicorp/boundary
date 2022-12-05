@@ -1,11 +1,49 @@
 [
   {
-    "title": "What is Boundary?",
-    "path": "what-is-boundary"
-  },
-  {
-    "title": "Use Cases",
-    "path": "use-cases"
+    "title": "Introduction",
+    "routes": [
+      {
+        "title": "What is Boundary?",
+        "path": "overview/what-is-boundary"
+      },
+      {
+        "title": "Use Cases",
+        "path": "overview/use-cases"
+      },
+      {
+        "title": "Boundary vs. Other Software",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "overview/vs/other-software"
+          },
+          {
+            "title": "Zero Trust",
+            "path": "overview/vs/zero-trust"
+          },
+          {
+            "title": "Bastion Hosts",
+            "path": "overview/vs/bastion-hosts"
+          },
+          {
+            "title": "VPNs",
+            "path": "overview/vs/vpn"
+          },
+          {
+            "title": "Privileged Access Management",
+            "path": "overview/vs/pam"
+          },
+          {
+            "title": "Software Defined Perimeter",
+            "path": "overview/vs/sdp"
+          },
+          {
+            "title": "Secrets Management Tools",
+            "path": "overview/vs/secrets-management"
+          }
+        ]
+      }
+    ]
   },
   {
     "title": "Getting Started",
@@ -57,8 +95,13 @@
             "path": "configuration/worker/pki-worker"
           },
           {
-            "title": "KMS Workers <sup>OSS Only</sup>",
-            "path": "configuration/worker/kms-worker"
+            "title": "KMS Workers",
+            "path": "configuration/worker/kms-worker",
+            "badge": {
+              "text": "OSS Only",
+              "type": "outlined",
+              "color": "neutral"
+            }
           }
         ]
       },
@@ -138,12 +181,22 @@
         ]
       },
       {
-        "title": "controller <sup>OSS Only</sup>",
-        "path": "configuration/controller"
+        "title": "controller",
+        "path": "configuration/controller",
+        "badge": {
+          "text": "OSS Only",
+          "type": "outlined",
+          "color": "neutral"
+        }
       },
       {
-        "title": "plugins <sup>OSS Only</sup>",
-        "path": "configuration/plugins"
+        "title": "plugins",
+        "path": "configuration/plugins",
+        "badge": {
+          "text": "OSS Only",
+          "type": "outlined",
+          "color": "neutral"
+        }
       }
     ]
   },
@@ -293,6 +346,19 @@
             "path": "concepts/filtering/events"
           }
         ]
+      }
+    ]
+  },
+  {
+    "title": "Troubleshoot",
+    "routes": [
+      {
+        "title": "Common Error Messages",
+        "path": "troubleshoot/common-errors"
+      },
+      {
+        "title": "FAQ",
+        "path": "troubleshoot/faq"
       }
     ]
   },
@@ -465,6 +531,10 @@
       {
         "title": "Overview",
         "path": "release-notes"
+      },
+      {
+        "title": "v0.11.0",
+        "path": "release-notes/v0_11_0"
       },
       {
         "title": "v0.10.0",

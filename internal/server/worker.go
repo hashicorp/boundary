@@ -12,12 +12,18 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type WorkerType string
+type (
+	WorkerType       string
+	OperationalState string
+)
 
 const (
-	UnknownWorkerType WorkerType = "unknown"
-	KmsWorkerType     WorkerType = "kms"
-	PkiWorkerType     WorkerType = "pki"
+	UnknownWorkerType        WorkerType       = "unknown"
+	KmsWorkerType            WorkerType       = "kms"
+	PkiWorkerType            WorkerType       = "pki"
+	ActiveOperationalState   OperationalState = "active"
+	ShutdownOperationalState OperationalState = "shutdown"
+	UnknownOperationalState  OperationalState = "unknown"
 )
 
 func (t WorkerType) Valid() bool {
@@ -29,11 +35,31 @@ func (t WorkerType) Valid() bool {
 }
 
 func (t WorkerType) String() string {
-	return string(t)
+	switch t {
+	case KmsWorkerType, PkiWorkerType:
+		return string(t)
+	}
+	return string(UnknownWorkerType)
 }
 
 type workerAuthWorkerId struct {
 	WorkerId string `mapstructure:"worker_id"`
+}
+
+func ValidOperationalState(s string) bool {
+	switch s {
+	case ActiveOperationalState.String(), ShutdownOperationalState.String():
+		return true
+	}
+	return false
+}
+
+func (t OperationalState) String() string {
+	switch t {
+	case ActiveOperationalState, ShutdownOperationalState:
+		return string(t)
+	}
+	return string(UnknownOperationalState)
 }
 
 // AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib
@@ -67,19 +93,24 @@ type Worker struct {
 	// other based on the context in which the worker is passed.  As such
 	// inputTags should only be read when performing mutations on the database.
 	inputTags []*Tag `gorm:"-"`
+
+	// This is used to pass the token back to the calling function
+	ControllerGeneratedActivationToken string `gorm:"-"`
 }
 
 // NewWorker returns a new Worker. Valid options are WithName, WithDescription
 // WithAddress, and WithWorkerTags. All other options are ignored.  This does
 // not set any of the worker reported values.
 func NewWorker(scopeId string, opt ...Option) *Worker {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	return &Worker{
 		Worker: &store.Worker{
-			ScopeId:     scopeId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
-			Address:     opts.withAddress,
+			ScopeId:          scopeId,
+			Name:             opts.withName,
+			Description:      opts.withDescription,
+			Address:          opts.withAddress,
+			ReleaseVersion:   opts.withReleaseVersion,
+			OperationalState: opts.withOperationalState,
 		},
 		inputTags: opts.withWorkerTags,
 	}
@@ -189,8 +220,10 @@ type workerAggregate struct {
 	Address               string
 	Version               uint32
 	Type                  string
+	ReleaseVersion        string
 	ApiTags               string
 	ActiveConnectionCount uint32
+	OperationalState      string
 	// Config Fields
 	LastStatusTime   *timestamp.Timestamp
 	WorkerConfigTags string
@@ -200,16 +233,18 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	const op = "server.(workerAggregate).toWorker"
 	worker := &Worker{
 		Worker: &store.Worker{
-			PublicId:       a.PublicId,
-			Name:           a.Name,
-			Description:    a.Description,
-			Address:        a.Address,
-			CreateTime:     a.CreateTime,
-			UpdateTime:     a.UpdateTime,
-			ScopeId:        a.ScopeId,
-			Version:        a.Version,
-			LastStatusTime: a.LastStatusTime,
-			Type:           a.Type,
+			PublicId:         a.PublicId,
+			Name:             a.Name,
+			Description:      a.Description,
+			Address:          a.Address,
+			CreateTime:       a.CreateTime,
+			UpdateTime:       a.UpdateTime,
+			ScopeId:          a.ScopeId,
+			Version:          a.Version,
+			LastStatusTime:   a.LastStatusTime,
+			Type:             a.Type,
+			ReleaseVersion:   a.ReleaseVersion,
+			OperationalState: a.OperationalState,
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 	}

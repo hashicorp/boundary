@@ -86,7 +86,16 @@ func (w *Worker) controllerDialerFunc(extraAlpnProtos ...string) func(context.Co
 		case w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream:
 			conn, err = w.v1KmsAuthDialFn(ctx, addr, extraAlpnProtos...)
 		default:
-			conn, err = protocol.Dial(ctx, w.WorkerAuthStorage, addr, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms), nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos))
+			conn, err = protocol.Dial(
+				ctx,
+				w.WorkerAuthStorage,
+				addr,
+				nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
+				nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos),
+				// If the activation token hasn't been populated, this won't do
+				// anything, and it won't do anything if it's already been used
+				nodeenrollment.WithActivationToken(w.conf.RawConfig.Worker.ControllerGeneratedActivationToken),
+			)
 			// No error and a valid connection means the WorkerAuthRegistrationRequest was populated
 			// We can remove the stored workerAuthRequest file
 			if err == nil && conn != nil {
@@ -97,13 +106,23 @@ func (w *Worker) controllerDialerFunc(extraAlpnProtos ...string) func(context.Co
 				}
 			}
 		}
-		switch err {
-		case nil:
-		case nodeenrollment.ErrNotAuthorized:
-			// We don't event in this case, because the function retries often
-			// and will spam the logs. The status function will event indicating
-			// that it can't send status because it's not authorized, so that
-			// will be a fine hint to the user as to the issue.
+		switch {
+		case err == nil:
+			// Nothing
+
+		case errors.Is(err, nodeenrollment.ErrNotAuthorized):
+			switch w.conf.RawConfig.Worker.ControllerGeneratedActivationToken {
+			case "":
+				// We don't event in this case, because the function retries
+				// often and will spam the logs while waiting on the user to
+				// transfer the worker-generated request over
+
+			default:
+				// In this case, event, so that the operator can understand that
+				// it was rejected
+				event.WriteError(ctx, op, fmt.Errorf("controller rejected activation token as invalid"))
+			}
+
 		default:
 			event.WriteError(ctx, op, err)
 		}

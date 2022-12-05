@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -28,31 +29,39 @@ type workerServiceServer struct {
 	pbs.UnsafeServerCoordinationServiceServer
 	pbs.UnsafeSessionServiceServer
 
-	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    common.SessionRepoFactory
-	connectionRepoFn common.ConnectionRepoFactory
-	updateTimes      *sync.Map
-	kms              *kms.Kms
+	serversRepoFn       common.ServersRepoFactory
+	workerAuthRepoFn    common.WorkerAuthRepoStorageFactory
+	sessionRepoFn       session.RepositoryFactory
+	connectionRepoFn    common.ConnectionRepoFactory
+	updateTimes         *sync.Map
+	kms                 *kms.Kms
+	livenessTimeToStale *atomic.Int64
 }
 
 var (
 	_ pbs.SessionServiceServer            = &workerServiceServer{}
 	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
+
+	workerFilterSelectionFn = workerFilterSelector
 )
 
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
-	sessionRepoFn common.SessionRepoFactory,
+	workerAuthRepoFn common.WorkerAuthRepoStorageFactory,
+	sessionRepoFn session.RepositoryFactory,
 	connectionRepoFn common.ConnectionRepoFactory,
 	updateTimes *sync.Map,
 	kms *kms.Kms,
+	livenessTimeToStale *atomic.Int64,
 ) *workerServiceServer {
 	return &workerServiceServer{
-		serversRepoFn:    serversRepoFn,
-		sessionRepoFn:    sessionRepoFn,
-		connectionRepoFn: connectionRepoFn,
-		updateTimes:      updateTimes,
-		kms:              kms,
+		serversRepoFn:       serversRepoFn,
+		workerAuthRepoFn:    workerAuthRepoFn,
+		sessionRepoFn:       sessionRepoFn,
+		connectionRepoFn:    connectionRepoFn,
+		updateTimes:         updateTimes,
+		kms:                 kms,
+		livenessTimeToStale: livenessTimeToStale,
 	}
 }
 
@@ -92,11 +101,23 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		})
 	}
 
+	if wStat.OperationalState == "" {
+		// If this is an older worker (pre 0.11), it will not have ReleaseVersion and we'll default to active.
+		// Otherwise, default to Uknown.
+		if wStat.ReleaseVersion == "" {
+			wStat.OperationalState = server.ActiveOperationalState.String()
+		} else {
+			wStat.OperationalState = server.UnknownOperationalState.String()
+		}
+	}
+
 	wConf := server.NewWorker(scope.Global.String(),
 		server.WithName(wStat.GetName()),
 		server.WithDescription(wStat.GetDescription()),
 		server.WithAddress(wStat.GetAddress()),
-		server.WithWorkerTags(workerTags...))
+		server.WithWorkerTags(workerTags...),
+		server.WithReleaseVersion(wStat.ReleaseVersion),
+		server.WithOperationalState(wStat.OperationalState))
 	opts := []server.Option{server.WithUpdateTags(req.GetUpdateTags())}
 	if wStat.GetPublicId() != "" {
 		opts = append(opts, server.WithPublicId(wStat.GetPublicId()))
@@ -109,7 +130,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error storing worker status"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error storing worker status: %v", err)
 	}
-	controllers, err := serverRepo.ListControllers(ctx)
+	controllers, err := serverRepo.ListControllers(ctx, server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting current controllers"))
 		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting current controllers: %v", err)
@@ -123,12 +144,25 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		}
 		responseControllers = append(responseControllers, thisController)
 	}
+
+	workerAuthRepo, err := ws.workerAuthRepoFn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting worker auth repo"))
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to lookup worker auth info: %v", err)
+	}
+	authorizedWorkers, err := workerAuthRepo.FilterToAuthorizedWorkerKeyIds(ctx, req.GetConnectedWorkerKeyIdentifiers())
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting authorizable worker key ids"))
+		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting authorized worker key ids: %v", err)
+	}
+
 	ret := &pbs.StatusResponse{
 		CalculatedUpstreams: responseControllers,
 		WorkerId:            wrk.GetPublicId(),
+		AuthorizedWorkers:   &pbs.AuthorizedWorkerList{WorkerKeyIdentifiers: authorizedWorkers},
 	}
 
-	stateReport := make([]session.StateReport, 0, len(req.GetJobs()))
+	stateReport := make([]*session.StateReport, 0, len(req.GetJobs()))
 
 	for _, jobStatus := range req.GetJobs() {
 		switch jobStatus.Job.GetType() {
@@ -145,15 +179,19 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 				continue
 			}
 
-			sr := session.StateReport{
-				SessionId:     si.GetSessionId(),
-				ConnectionIds: make([]string, 0, len(si.GetConnections())),
+			sr := &session.StateReport{
+				SessionId:   si.GetSessionId(),
+				Connections: make([]*session.Connection, 0, len(si.GetConnections())),
 			}
 			for _, conn := range si.GetConnections() {
 				switch conn.Status {
 				case pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
 					pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED:
-					sr.ConnectionIds = append(sr.ConnectionIds, conn.GetConnectionId())
+					sr.Connections = append(sr.Connections, &session.Connection{
+						PublicId:  conn.GetConnectionId(),
+						BytesUp:   conn.GetBytesUp(),
+						BytesDown: conn.GetBytesDown(),
+					})
 				}
 			}
 			stateReport = append(stateReport, sr)
@@ -179,9 +217,9 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 	for _, na := range notActive {
 		var connChanges []*pbs.Connection
-		for _, connId := range na.ConnectionIds {
+		for _, conn := range na.Connections {
 			connChanges = append(connChanges, &pbs.Connection{
-				ConnectionId: connId,
+				ConnectionId: conn.GetPublicId(),
 				Status:       session.StatusClosed.ProtoVal(),
 			})
 		}
@@ -237,6 +275,69 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 	return resp, nil
 }
 
+// Single-hop filter lookup. We have either an egress filter or worker filter to use, if any
+// Used to verify that the worker serving this session to a client matches this filter
+func workerFilterSelector(sessionInfo *session.Session) string {
+	if sessionInfo.EgressWorkerFilter != "" {
+		return sessionInfo.EgressWorkerFilter
+	} else if sessionInfo.WorkerFilter != "" {
+		return sessionInfo.WorkerFilter
+	}
+	return ""
+}
+
+func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session, ws *workerServiceServer,
+	req *pbs.LookupSessionRequest,
+) error {
+	const op = "workers.lookupSessionEgressWorkerFilter"
+
+	filter := workerFilterSelectionFn(sessionInfo)
+	if filter == "" {
+		return nil
+	}
+
+	if req.WorkerId == "" {
+		event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no id information from worker"))
+		return status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled")
+	}
+	serversRepo, err := ws.serversRepoFn()
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
+		return status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
+	}
+	w, err := serversRepo.LookupWorker(ctx, req.WorkerId)
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
+		return status.Errorf(codes.Internal, "Error looking up worker: %v", err)
+	}
+	if w == nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
+		return status.Errorf(codes.Internal, "Worker not found")
+	}
+	// Build the map for filtering.
+	tagMap := w.CanonicalTags()
+
+	// Create the evaluator
+	eval, err := bexpr.CreateEvaluator(filter)
+	if err != nil {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "worker_id", req.WorkerId))
+		return status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
+	}
+	filterInput := map[string]interface{}{
+		"name": w.GetName(),
+		"tags": tagMap,
+	}
+	ok, err := eval.Evaluate(filterInput)
+	if err != nil {
+		return status.Errorf(codes.Internal, fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
+	}
+	if !ok {
+		return handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "Worker filter expression precludes this worker from serving this session")
+	}
+
+	return nil
+}
+
 func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 	const op = "workers.(workerServiceServer).LookupSession"
 
@@ -256,50 +357,14 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		return nil, status.Error(codes.Internal, "Empty session states during lookup.")
 	}
 
-	if sessionInfo.WorkerFilter != "" {
-		if req.WorkerId == "" {
-			event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no id information from worker"))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled: %v", err)
-		}
-		serversRepo, err := ws.serversRepoFn()
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
-		}
-		w, err := serversRepo.LookupWorker(ctx, req.WorkerId)
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error looking up worker: %v", err)
-
-		}
-		// Build the map for filtering.
-		tagMap := w.CanonicalTags()
-
-		// Create the evaluator
-		eval, err := bexpr.CreateEvaluator(sessionInfo.WorkerFilter)
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "worker_id", req.WorkerId))
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
-		}
-		filterInput := map[string]interface{}{
-			"name": w.GetName(),
-			"tags": tagMap,
-		}
-		ok, err := eval.Evaluate(filterInput)
-		if err != nil {
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
-				fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
-		}
-		if !ok {
-			return nil, handlers.ApiErrorWithCodeAndMessage(
-				codes.FailedPrecondition,
-				"Worker filter expression precludes this worker from serving this session")
-		}
+	err = lookupSessionWorkerFilter(ctx, sessionInfo, ws, req)
+	if err != nil {
+		return nil, err
 	}
 
 	creds, err := sessRepo.ListSessionCredentials(ctx, sessionInfo.ProjectId, sessionInfo.PublicId)
 	if err != nil {
-		return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
+		return nil, status.Errorf(codes.Internal,
 			fmt.Sprintf("Error retrieving session credentials: %s", err))
 	}
 	var workerCreds []*pbs.Credential
@@ -307,7 +372,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		m := &pbs.Credential{}
 		err = proto.Unmarshal(c, m)
 		if err != nil {
-			return &pbs.LookupSessionResponse{}, status.Errorf(codes.Internal,
+			return nil, status.Errorf(codes.Internal,
 				fmt.Sprintf("Error unmarshaling credentials: %s", err))
 		}
 		workerCreds = append(workerCreds, m)
@@ -317,6 +382,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		Authorization: &targets.SessionAuthorizationData{
 			SessionId:   sessionInfo.GetPublicId(),
 			Certificate: sessionInfo.Certificate,
+			PrivateKey:  sessionInfo.CertificatePrivateKey,
 		},
 		Status:          sessionInfo.States[0].Status.ProtoVal(),
 		Version:         sessionInfo.Version,
@@ -335,18 +401,6 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		resp.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)
 	}
 
-	wrapper, err := ws.kms.GetWrapper(ctx, sessionInfo.ProjectId, kms.KeyPurposeSessions, kms.WithKeyId(sessionInfo.KeyId))
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error getting sessions wrapper: %v", err)
-	}
-
-	// Derive the private key, which should match. Deriving on both ends allows
-	// us to not store it in the DB.
-	_, resp.Authorization.PrivateKey, err = session.DeriveED25519Key(ctx, wrapper, sessionInfo.UserId, sessionInfo.GetPublicId())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error deriving session key: %v", err)
-	}
-
 	return resp, nil
 }
 
@@ -361,6 +415,9 @@ func (ws *workerServiceServer) CancelSession(ctx context.Context, req *pbs.Cance
 	ses, _, err := sessRepo.LookupSession(ctx, req.GetSessionId())
 	if err != nil {
 		return nil, err
+	}
+	if ses == nil {
+		return nil, status.Error(codes.PermissionDenied, "Unknown session ID.")
 	}
 
 	ses, err = sessRepo.CancelSession(ctx, req.GetSessionId(), ses.Version)

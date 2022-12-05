@@ -2,8 +2,7 @@ begin;
   -- _wtt_load_widgets_iam populates all iam_ tables for the widgets persona.
   -- iam does not depend on any other aggregates, but others depend on it,
   -- as such is it should be first in the list.
-  create function _wtt_load_widgets_iam()
-    returns void
+  create function _wtt_load_widgets_iam() returns void
   as $$
   begin
     -- Add organizations
@@ -91,8 +90,7 @@ begin;
 
   -- _wtt_load_kms populates all kms_ tables for the widgets persona.
   -- kms depends on iam.
-  create function _wtt_load_widgets_kms()
-    returns void
+  create function _wtt_load_widgets_kms() returns void
   as $$
   begin
     insert into kms_root_key
@@ -115,13 +113,22 @@ begin;
     values
       ('kdkv___widget', 'kdk____widget', 'krkv___widget',     'kdk____widget'::bytea);
 
+    insert into kms_data_key_version_destruction_job
+      (key_id)
+    values
+      ('kdkv___widget');
+
+    insert into kms_data_key_version_destruction_job_run
+      (key_id, table_name, total_count)
+    values
+      ('kdkv___widget', 'auth_token', 100);
+  
   end;
   $$ language plpgsql;
 
   -- _wtt_load_widgets_auth populates all auth_ tables for the widgets persona.
   -- auth depends on iam, and kms.
-  create function _wtt_load_widgets_auth()
-    returns void
+  create function _wtt_load_widgets_auth() returns void
   as $$
   begin
     insert into auth_password_conf
@@ -156,11 +163,11 @@ begin;
     insert into auth_token
       (key_id, auth_account_id, public_id, token)
     values
-      ('key', 'apa___walter', 'tok___walter', 'tok___walter'::bytea),
-      ('key', 'apa1__walter', 'tok1__walter', 'tok1__walter'::bytea),
-      ('key', 'apa___warren', 'tok___warren', 'tok___warren'::bytea),
-      ('key', 'apa___waylon', 'tok___waylon', 'tok___waylon'::bytea),
-      ('key', 'apa___wilson', 'tok___wilson', 'tok___wilson'::bytea);
+      ('kdkv___widget', 'apa___walter', 'tok___walter', 'tok___walter'::bytea),
+      ('kdkv___widget', 'apa1__walter', 'tok1__walter', 'tok1__walter'::bytea),
+      ('kdkv___widget', 'apa___warren', 'tok___warren', 'tok___warren'::bytea),
+      ('kdkv___widget', 'apa___waylon', 'tok___waylon', 'tok___waylon'::bytea),
+      ('kdkv___widget', 'apa___wilson', 'tok___wilson', 'tok___wilson'::bytea);
 
     insert into auth_oidc_method
       (scope_id,       public_id,      client_id,      name,          state,            key_id,          issuer)
@@ -179,16 +186,15 @@ begin;
     insert into auth_token
       (key_id, auth_account_id, public_id, token)
     values
-      ('key', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea),
-      ('key', 'aoa___warren', 'oidc__warren', 'oidc__warren'::bytea);
+      ('kdkv___widget', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea),
+      ('kdkv___widget', 'aoa___warren', 'oidc__warren', 'oidc__warren'::bytea);
 
   end;
   $$ language plpgsql;
 
   -- _wtt_load_widgets_hosts populates all host_ tables for the widgets persona.
   -- hosts depend on iam.
-  create function _wtt_load_widgets_hosts()
-    returns void
+  create function _wtt_load_widgets_hosts() returns void
   as $$
   begin
     insert into static_host_catalog
@@ -302,8 +308,7 @@ begin;
 
   -- _wtt_load_widgets_targets populates all target_ tables for the widgets persona.
   -- targets depend on iam, auth, hosts.
-  create function _wtt_load_widgets_targets()
-    returns void
+  create function _wtt_load_widgets_targets() returns void
   as $$
   begin
     insert into target_tcp
@@ -327,8 +332,7 @@ begin;
   end;
   $$ language plpgsql;
 
-  create function _wtt_load_widgets_credentials()
-    returns void
+  create function _wtt_load_widgets_credentials() returns void
   as $$
   begin
     insert into credential_vault_store
@@ -416,11 +420,15 @@ begin;
     values
       ('cs______wup1', 'cred____wup1', 'widget static username password credential', 'None',      'b_user', 'encrypted_password', 'hmac-value', 'kdkv___widget'),
       ('cs______wup2', 'cred____wup2', 'widget static username password credential', 'None',      's_user', 'encrypted_password', 'hmac-value', 'kdkv___widget');
+
+    insert into credential_static_json_credential
+      (store_id,       public_id,      name,                          description, object_encrypted,   object_hmac,  key_id)
+    values
+      ('cs______wup1', 'cred____wjson1', 'widget static json credential', 'None',      'json_value'::bytea, 'hmac-value', 'kdkv___widget');
   end;
   $$ language plpgsql;
 
-create function _wtt_load_widgets_sessions()
-    returns void
+create function _wtt_load_widgets_sessions() returns void
 as $$
 begin
     insert into session

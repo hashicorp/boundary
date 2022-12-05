@@ -112,6 +112,12 @@ func (a *Account) SetTableName(n string) {
 	a.tableName = n
 }
 
+// GetLoginName returns the login name, which will always be empty as this type
+// doesn't currently support login name
+func (a *Account) GetLoginName() string {
+	return ""
+}
+
 // oplog will create oplog metadata for the Account.
 func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadata {
 	metadata := oplog.Metadata{

@@ -54,7 +54,7 @@ func (ticketer *DbwTicketer) GetTicket(ctx context.Context, aggregateName string
 		name = aggregateName
 	}
 	ticket := store.Ticket{}
-	if err := dbw.New(ticketer.tx).LookupWhere(ctx, &ticket, "name = ?", []interface{}{name}); err != nil {
+	if err := dbw.New(ticketer.tx).LookupWhere(ctx, &ticket, "name = ?", []any{name}); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			return nil, errors.New(ctx, errors.TicketNotFound, op, "ticket not found")
 		}

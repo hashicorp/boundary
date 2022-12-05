@@ -141,7 +141,7 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 					assert.NoError(err)
 				}
 				found := host.AllocPreferredEndpoint()
-				require.NoError(rw.LookupWhere(ctx, found, "host_set_id = ? and priority = ?", []interface{}{tt.args.hostSetId, tt.args.priority}))
+				require.NoError(rw.LookupWhere(ctx, found, "host_set_id = ? and priority = ?", []any{tt.args.hostSetId, tt.args.priority}))
 				assert.Equal(got, found)
 			}
 		})
@@ -220,7 +220,7 @@ func TestPreferredEndpoint_Delete(t *testing.T) {
 			}
 			require.Equal(tt.wantRowsDeleted, deletedRows)
 			found := host.AllocPreferredEndpoint()
-			err = rw.LookupWhere(ctx, &found, "host_set_id = ?", []interface{}{set.PublicId})
+			err = rw.LookupWhere(ctx, &found, "host_set_id = ?", []any{set.PublicId})
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}

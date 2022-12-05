@@ -59,7 +59,7 @@ func Test_newError(t *testing.T) {
 				Op:          Op("valid-all-opts"),
 				Id:          "valid-all-opts",
 				RequestInfo: TestRequestInfo(t),
-				Info:        map[string]interface{}{"msg": "hello"},
+				Info:        map[string]any{"msg": "hello"},
 			},
 		},
 	}

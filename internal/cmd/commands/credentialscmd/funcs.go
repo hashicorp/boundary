@@ -14,6 +14,7 @@ const (
 	passwordFlagName             = "password"
 	privateKeyFlagName           = "private-key"
 	privateKeyPassphraseFlagName = "private-key-passphrase"
+	secretFlagName               = "secret"
 )
 
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
@@ -116,7 +117,7 @@ func (c *Command) printListTable(items []*credentials.Credential) string {
 }
 
 func printItemTable(item *credentials.Credential, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

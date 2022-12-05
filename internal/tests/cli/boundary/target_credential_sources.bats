@@ -12,6 +12,7 @@ export NEW_STORE='test-for-add-credential-sources'
 export NEW_CREDENTIAL='first-credential'
 export NEW_CREDENTIAL1='second-credential'
 export NEW_CREDENTIAL2='third-credential'
+export NEW_JSON_CREDENTIAL='json-credential'
 
 @test "boundary/login: can login as admin user" {
   run login $DEFAULT_LOGIN
@@ -31,6 +32,13 @@ export NEW_CREDENTIAL2='third-credential'
   [ "$status" -eq 0 ]
 }
 
+@test "boundary/credentials: can create $NEW_JSON_CREDENTIAL credential in $NEW_STORE store" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  run create_json_credential $NEW_JSON_CREDENTIAL $csid '-string-kv username=admin -string-kv password=pass'
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
 @test "boundary/target: can add $NEW_CREDENTIAL credential source" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
@@ -43,6 +51,26 @@ export NEW_CREDENTIAL2='third-credential'
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
   run validate_credential_sources $DEFAULT_TARGET $cid
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: can add $NEW_JSON_CREDENTIAL credential source" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local cid=$(credential_id $NEW_JSON_CREDENTIAL $csid)
+  run add_target_brokered_credential_sources $DEFAULT_TARGET $cid
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: validate $NEW_CREDENTIAL & $NEW_JSON_CREDENTIAL credential source present" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local credup_id=$(credential_id $NEW_CREDENTIAL $csid)
+  local credjson_id=$(credential_id $NEW_JSON_CREDENTIAL $csid)
+  run validate_credential_sources $DEFAULT_TARGET $credup_id
+  echo "$output"
+  [ "$status" -eq 0 ]
+  run validate_credential_sources $DEFAULT_TARGET $credjson_id
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -66,6 +94,22 @@ export NEW_CREDENTIAL2='third-credential'
 @test "boundary/target: validate $NEW_CREDENTIAL credential source removed" {
   local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
   local cid=$(credential_id $NEW_CREDENTIAL $csid)
+  run validate_credential_sources_not_present $DEFAULT_TARGET $cid
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: can delete $NEW_JSON_CREDENTIAL credential source" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local cid=$(credential_id $NEW_JSON_CREDENTIAL $csid)
+  run remove_target_brokered_credential_sources $DEFAULT_TARGET $cid
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: validate $NEW_JSON_CREDENTIAL credential source removed" {
+  local csid=$(credential_store_id $NEW_STORE $DEFAULT_P_ID)
+  local cid=$(credential_id $NEW_JSON_CREDENTIAL $csid)
   run validate_credential_sources_not_present $DEFAULT_TARGET $cid
   echo "$output"
   [ "$status" -eq 0 ]

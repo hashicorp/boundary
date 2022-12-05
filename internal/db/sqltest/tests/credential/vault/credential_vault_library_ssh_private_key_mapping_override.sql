@@ -2,6 +2,8 @@
 --   the following triggers
 --    insert_credential_vault_library_mapping_override_subtype
 --    delete_credential_vault_library_mapping_override_subtype
+--   and the following view
+--    credential_vault_library_list_lookup
 
 begin;
   select plan(11);
@@ -16,14 +18,14 @@ begin;
     from credential_vault_library_mapping_override
    where library_id in ('vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12');
 
-  prepare select_private_libraries as
+  prepare select_libraries as
    select public_id::text, credential_type::text, username_attribute::text, private_key_attribute::text, private_key_passphrase_attribute::text
-     from credential_vault_library_private
+     from credential_vault_library_list_lookup
     where public_id in ('vl______wvl2', 'vl______wvl8', 'vl______wvl9', 'vl______wvl10', 'vl______wvl11', 'vl______wvl12')
  order by public_id;
 
   select results_eq(
-      'select_private_libraries',
+      'select_libraries',
       $$VALUES
       ('vl______wvl10', 'ssh_private_key', 'my_username', null, null),
       ('vl______wvl11', 'ssh_private_key', null,          'my_private_key', null),

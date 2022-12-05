@@ -5,39 +5,42 @@ check(
   length(trim(value)) > 10
 );
 comment on domain wt_public_id is
-'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
+  'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_private_id as text not null
 check(
   length(trim(value)) > 10
 );
 comment on domain wt_private_id is
-'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
+  'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_scope_id as text
 check(
   length(trim(value)) > 10 or value = 'global'
 );
+-- Comment fixed in 57/01_fix_comments.up.sql
 comment on domain wt_scope_id is
-'"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
+  '"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_user_id as text not null
 check(
   length(trim(value)) > 10 or value = 'u_anon' or value = 'u_auth' or value = 'u_recovery'
 );
+-- Comment fixed in 57/01_fix_comments.up.sql
 comment on domain wt_scope_id is
-'"u_anon", "u_auth", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
+  '"u_anon", "u_auth", or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_role_id as text not null
 check(
   length(trim(value)) > 10
 );
+-- Comment fixed in 57/01_fix_comments.up.sql
 comment on domain wt_scope_id is
-'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
+  'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 create domain wt_timestamp as timestamp with time zone default current_timestamp;
 comment on domain wt_timestamp is
-'Standard timestamp for all create_time and update_time columns';
+  'Standard timestamp for all create_time and update_time columns';
 
 create or replace function update_time_column() returns trigger
 as $$
@@ -72,7 +75,7 @@ create domain wt_version as bigint default 1 not null
    value > 0
   );
 comment on domain wt_version is
-'standard column for row version';
+  'standard column for row version';
 
 -- update_version_column() will increment the version column whenever row data
 -- is updated and should only be used in an update after trigger.  This function

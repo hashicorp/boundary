@@ -10,7 +10,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"nhooyr.io/websocket"
 )
 
 func init() {
@@ -59,22 +58,19 @@ func handleProxy(ctx context.Context, conf proxy.Config, _ ...proxy.Option) erro
 		return fmt.Errorf("error marking connection as connected: %w", err)
 	}
 
-	// Get a wrapped net.Conn so we can use io.Copy
-	netConn := websocket.NetConn(ctx, conn, websocket.MessageBinary)
-
 	connWg := new(sync.WaitGroup)
 	connWg.Add(2)
 	go func() {
 		defer connWg.Done()
-		_, _ = io.Copy(netConn, tcpRemoteConn)
-		_ = netConn.Close()
+		_, _ = io.Copy(conn, tcpRemoteConn)
+		_ = conn.Close()
 		_ = tcpRemoteConn.Close()
 	}()
 	go func() {
 		defer connWg.Done()
-		_, _ = io.Copy(tcpRemoteConn, netConn)
+		_, _ = io.Copy(tcpRemoteConn, conn)
 		_ = tcpRemoteConn.Close()
-		_ = netConn.Close()
+		_ = conn.Close()
 	}()
 	connWg.Wait()
 	return nil

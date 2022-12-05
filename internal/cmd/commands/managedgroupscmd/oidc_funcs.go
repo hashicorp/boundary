@@ -88,7 +88,7 @@ func extraOidcFlagsHandlingFuncImpl(c *OidcCommand, _ *base.FlagSets, opts *[]ma
 			c.UI.Error(fmt.Sprintf("Error when parsing filter to check validity: %v", err))
 			return false
 		}
-		*opts = append(*opts, managedgroups.WithAttributes(map[string]interface{}{filterFlagName: c.flagFilter}))
+		*opts = append(*opts, managedgroups.WithAttributes(map[string]any{filterFlagName: c.flagFilter}))
 	}
 
 	return true

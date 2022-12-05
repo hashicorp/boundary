@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/health"
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
@@ -23,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/plugin/host"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
@@ -49,6 +52,11 @@ type downstreamRouter interface {
 	// StartRouteMgmtTicking starts a ticker which manages the router's
 	// connections.
 	StartRouteMgmtTicking(context.Context, func() string, int) error
+
+	// ProcessPendingConnections starts a function that continually processes
+	// incoming client connections. This only returns when the provided context
+	// is done.
+	StartProcessingPendingConnections(context.Context, func() string)
 }
 
 // downstreamWorkersTicker defines an interface for a ticker that maintains the
@@ -63,8 +71,8 @@ type downstreamWorkersTicker interface {
 // Controller.downstreamWorkers field which is far better than allowing any (empty
 // interface)
 type downstreamers interface {
-	// Root returns the root of the downstreamers' graph
-	Root() string
+	// RootId returns the root ID of the downstreamers' graph
+	RootId() string
 }
 
 var (
@@ -98,6 +106,11 @@ type Controller struct {
 	// Used for testing and tracking worker health
 	workerStatusUpdateTimes *sync.Map
 
+	// Timing variables. These are atomics for SIGHUP support, and are int64
+	// because they are casted to time.Duration.
+	workerStatusGracePeriod *atomic.Int64
+	livenessTimeToStale     *atomic.Int64
+
 	apiGrpcServer         *grpc.Server
 	apiGrpcServerListener grpcServerListener
 	apiGrpcGatewayTicket  string
@@ -110,12 +123,12 @@ type Controller struct {
 	OidcRepoFn              common.OidcAuthRepoFactory
 	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
 	ServersRepoFn           common.ServersRepoFactory
-	SessionRepoFn           common.SessionRepoFactory
+	SessionRepoFn           session.RepositoryFactory
 	ConnectionRepoFn        common.ConnectionRepoFactory
 	StaticHostRepoFn        common.StaticRepoFactory
 	PluginHostRepoFn        common.PluginHostRepoFactory
 	HostPluginRepoFn        common.HostPluginRepoFactory
-	TargetRepoFn            common.TargetRepoFactory
+	TargetRepoFn            target.RepositoryFactory
 	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
@@ -127,6 +140,8 @@ type Controller struct {
 	// Used to signal the Health Service to start
 	// replying to queries with "503 Service Unavailable".
 	HealthService *health.Service
+
+	pkiConnManager *cluster.DownstreamManager
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
@@ -141,6 +156,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		workerStatusUpdateTimes: new(sync.Map),
 		enabledPlugins:          conf.Server.EnabledPlugins,
 		apiListeners:            make([]*base.ServerListener, 0),
+		pkiConnManager:          cluster.NewDownstreamManager(),
+		workerStatusGracePeriod: new(atomic.Int64),
+		livenessTimeToStale:     new(atomic.Int64),
 	}
 
 	if downstreamRouterFactory != nil {
@@ -176,6 +194,19 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 					"file.",
 				err)
 		}
+	}
+
+	switch conf.RawConfig.Controller.WorkerStatusGracePeriodDuration {
+	case 0:
+		c.workerStatusGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		c.workerStatusGracePeriod.Store(int64(conf.RawConfig.Controller.WorkerStatusGracePeriodDuration))
+	}
+	switch conf.RawConfig.Controller.LivenessTimeToStaleDuration {
+	case 0:
+		c.livenessTimeToStale.Store(int64(server.DefaultLiveness))
+	default:
+		c.livenessTimeToStale.Store(int64(conf.RawConfig.Controller.LivenessTimeToStaleDuration))
 	}
 
 	clusterListeners := make([]*base.ServerListener, 0)
@@ -294,8 +325,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	// TODO: Allow setting run jobs limit from config
 	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
-	if c.conf.RawConfig.Controller.SchedulerRunJobInterval > 0 {
-		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.SchedulerRunJobInterval))
+	if sche := c.conf.RawConfig.Controller.Scheduler; sche != nil {
+		if sche.JobRunIntervalDuration > 0 {
+			schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(sche.JobRunIntervalDuration))
+		}
+		if sche.MonitorIntervalDuration > 0 {
+			schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(sche.MonitorIntervalDuration))
+		}
 	}
 	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
@@ -333,11 +369,14 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(dbase, dbase, c.kms)
 	}
-	c.TargetRepoFn = func() (*target.Repository, error) {
-		return target.NewRepository(dbase, dbase, c.kms)
+	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
+		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
 	}
-	c.SessionRepoFn = func() (*session.Repository, error) {
-		return session.NewRepository(dbase, dbase, c.kms)
+	c.SessionRepoFn = func(opt ...session.Option) (*session.Repository, error) {
+		// Always add a secure random reader to the new session repository.
+		// Add it as the first option so that it can be overridden by users.
+		opt = append([]session.Option{session.WithRandomReader(c.conf.SecureRandomReader)}, opt...)
+		return session.NewRepository(ctx, dbase, dbase, c.kms, opt...)
 	}
 	c.ConnectionRepoFn = func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, dbase, dbase, c.kms)
@@ -352,7 +391,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
 	}
-	err = server.RotateRoots(ctx, serversRepo)
+	_, err = server.RotateRoots(ctx, serversRepo)
 	if err != nil {
 		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
 	}
@@ -375,7 +414,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 
 func (c *Controller) Start() error {
 	const op = "controller.(Controller).Start"
-	if c.started.Load() {
+	if c.started.Swap(true) {
 		event.WriteSysEvent(context.TODO(), op, "already started, skipping")
 		return nil
 	}
@@ -414,25 +453,30 @@ func (c *Controller) Start() error {
 		defer c.tickerWg.Done()
 		c.startCloseExpiredPendingTokens(c.baseContext)
 	}()
-	go func() {
-		defer c.tickerWg.Done()
-		c.started.Store(true)
-	}()
+	if err := c.startWorkerConnectionMaintenanceTicking(c.baseContext, c.tickerWg, c.pkiConnManager); err != nil {
+		return errors.Wrap(c.baseContext, err, op)
+	}
 
 	if c.downstreamRoutes != nil {
-		c.tickerWg.Add(1)
+		c.tickerWg.Add(2)
+
+		servNameFn := func() string {
+			switch {
+			case c.conf.RawConfig.Controller.Name != "":
+				return c.conf.RawConfig.Controller.Name
+			default:
+				return "unknown controller name"
+			}
+		}
+		go func() {
+			defer c.tickerWg.Done()
+			c.downstreamRoutes.StartProcessingPendingConnections(c.baseContext, servNameFn)
+		}()
 		go func() {
 			defer c.tickerWg.Done()
 			err := c.downstreamRoutes.StartRouteMgmtTicking(
 				c.baseContext,
-				func() string {
-					switch {
-					case c.conf.RawConfig.Controller.Name != "":
-						return c.conf.RawConfig.Controller.Name
-					default:
-						return "unknown controller name"
-					}
-				},
+				servNameFn,
 				-1,
 			)
 			if err != nil {
@@ -468,10 +512,13 @@ func (c *Controller) registerJobs() error {
 	if err := pluginhost.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.HostPlugins); err != nil {
 		return err
 	}
-	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.conf.StatusGracePeriodDuration); err != nil {
+	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.workerStatusGracePeriod); err != nil {
 		return err
 	}
 	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
+		return err
+	}
+	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {
 		return err
 	}
 

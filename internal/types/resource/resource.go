@@ -31,7 +31,8 @@ const (
 	// * The Grant.validateType function and test
 	// * The perms.topLevelType function
 	// * The scopes service collection actions for appropriate scopes
-	// * The Test_AnonRestrictions test
+	// * The Test_AnonRestrictions test: update the following line to include the last resource:
+	//      for i := resource.Type(1); i <= resource.<Resource>; i++ {
 )
 
 func (r Type) MarshalJSON() ([]byte, error) {

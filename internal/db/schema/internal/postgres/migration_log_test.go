@@ -59,9 +59,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 			 timestamp with time zone
 			 default current_timestamp;
 
-			create or replace function
-				default_create_time()
-				returns trigger
+			create or replace function default_create_time() returns trigger
 			as $$
 			begin
 				if new.create_time is distinct from now() then
@@ -72,9 +70,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 			end;
 			$$ language plpgsql;
 
-			create or replace function
-				immutable_columns()
-				returns trigger
+			create or replace function immutable_columns() returns trigger
 			as $$
 			declare
 				col_name text;
@@ -104,7 +100,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 			entry text not null
 		 );
 		 comment on table log_migration is
-		 'log_migration entries are logging output from databaes migrations';
+		   'log_migration entries are logging output from databaes migrations';
 
 		 create trigger
 			default_create_time_column
@@ -118,9 +114,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 		 update on log_migration
 			for each row execute procedure immutable_columns('id', 'migration_version', 'create_time', 'entry');
 
-		 create or replace function
-			log_migration_version()
-			returns trigger
+		 create or replace function log_migration_version() returns trigger
 		 as $$
 			declare current_version bigint;
 			begin
@@ -130,7 +124,7 @@ func TestEnsureMigrationLog_UpdateForEditionSupport(t *testing.T) {
 			end;
 		 $$ language plpgsql;
 		 comment on function log_migration_version() is
-		 'log_migration_version will set the log_migration entries to the current migration version';
+		   'log_migration_version will set the log_migration entries to the current migration version';
 
 		 create trigger
 			migration_version_column

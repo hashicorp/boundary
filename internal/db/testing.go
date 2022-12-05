@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/hashicorp/go-dbw"
+	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
@@ -64,7 +66,7 @@ func TestSetup(t testing.TB, dialect string, opt ...TestOption) (*DB, string) {
 	}
 	switch {
 	case opts.withLogLevel != DefaultTestLogLevel:
-		db.wrapped.LogLevel(dbw.LogLevel(opts.withLogLevel))
+		db.wrapped.Load().LogLevel(dbw.LogLevel(opts.withLogLevel))
 	default:
 		var defaultLevel dbw.LogLevel
 		switch strings.ToLower(os.Getenv("DEFAULT_TEST_LOG_LEVEL")) {
@@ -79,7 +81,7 @@ func TestSetup(t testing.TB, dialect string, opt ...TestOption) (*DB, string) {
 		default:
 			defaultLevel = dbw.Silent
 		}
-		db.wrapped.LogLevel(defaultLevel)
+		db.wrapped.Load().LogLevel(defaultLevel)
 	}
 	t.Cleanup(func() {
 		sqlDB, err := db.SqlDB(ctx)
@@ -97,16 +99,18 @@ func TestSetupWithMock(t *testing.T) (*DB, sqlmock.Sqlmock) {
 	db, mock, err := sqlmock.New()
 	require.NoError(err)
 	require.NoError(err)
-	dbw, err := dbw.OpenWith(pgDriver.New(pgDriver.Config{
+	dbWith, err := dbw.OpenWith(pgDriver.New(pgDriver.Config{
 		Conn: db,
 	}))
 	require.NoError(err)
-	return &DB{
-		wrapped: dbw,
-	}, mock
+	ret := &DB{
+		wrapped: new(atomic.Pointer[dbw.DB]),
+	}
+	ret.wrapped.Store(dbWith)
+	return ret, mock
 }
 
-// TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
+// TestWrapper initializes an AEAD wrapping.Wrapper for testing
 func TestWrapper(t testing.TB) wrapping.Wrapper {
 	t.Helper()
 	rootKey := make([]byte, 32)
@@ -128,6 +132,25 @@ func TestWrapper(t testing.TB) wrapping.Wrapper {
 	return root
 }
 
+// TestDBWrapper initializes a DB wrapper for testing
+func TestDBWrapper(t testing.TB, conn *DB, purpose kms.KeyPurpose) wrapping.Wrapper {
+	t.Helper()
+	purposes := []kms.KeyPurpose{purpose}
+	if purpose != "oplog" {
+		// Always add the oplog purpose, most tests need it
+		purposes = append(purposes, "oplog")
+	}
+	kmsCache, err := kms.New(dbw.New(conn.wrapped.Load()), dbw.New(conn.wrapped.Load()), purposes)
+	require.NoError(t, err)
+	err = kmsCache.AddExternalWrapper(context.Background(), kms.KeyPurposeRootKey, TestWrapper(t))
+	require.NoError(t, err)
+	err = kmsCache.CreateKeys(context.Background(), "global", purposes)
+	require.NoError(t, err)
+	wrapper, err := kmsCache.GetWrapper(context.Background(), "global", purpose)
+	require.NoError(t, err)
+	return wrapper
+}
+
 // AssertPublicId is a test helper that asserts that the provided id is in
 // the format of a public id.
 func AssertPublicId(t testing.TB, prefix, actual string) {
@@ -140,7 +163,7 @@ func AssertPublicId(t testing.TB, prefix, actual string) {
 
 // TestDeleteWhere allows you to easily delete resources for testing purposes
 // including all the current resources.
-func TestDeleteWhere(t testing.TB, conn *DB, i interface{}, whereClause string, args ...interface{}) {
+func TestDeleteWhere(t testing.TB, conn *DB, i any, whereClause string, args ...any) {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -148,7 +171,7 @@ func TestDeleteWhere(t testing.TB, conn *DB, i interface{}, whereClause string, 
 		TableName() string
 	})
 	require.True(ok)
-	_, err := dbw.New(conn.wrapped).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), args)
+	_, err := dbw.New(conn.wrapped.Load()).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), args)
 	require.NoError(err)
 }
 
@@ -190,7 +213,7 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	}
 
 	where := whereBase
-	whereArgs := []interface{}{
+	whereArgs := []any{
 		whereKey,
 		resourceId,
 	}
@@ -211,7 +234,7 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	}
 
 	var foundEntry oplog.Entry
-	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", []interface{}{metadata.EntryId}); err != nil {
+	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", []any{metadata.EntryId}); err != nil {
 		return err
 	}
 	return nil

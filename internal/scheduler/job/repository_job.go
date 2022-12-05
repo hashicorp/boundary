@@ -35,7 +35,7 @@ func (r *Repository) UpsertJob(ctx context.Context, name, description string, op
 	j := allocJob()
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := r.Query(ctx, upsertJobQuery, []interface{}{
+			rows, err := r.Query(ctx, upsertJobQuery, []any{
 				sql.Named("plugin_id", defaultId),
 				sql.Named("name", name),
 				sql.Named("description", description),
@@ -88,7 +88,7 @@ func (r *Repository) UpdateJobNextRunInAtLeast(ctx context.Context, name string,
 	j := allocJob()
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(r db.Reader, w db.Writer) error {
-			rows, err := w.Query(ctx, setNextScheduledRunIfSoonerQuery, []interface{}{int(nextRunInAtLeast.Round(time.Second).Seconds()), defaultPluginId, name})
+			rows, err := w.Query(ctx, setNextScheduledRunIfSoonerQuery, []any{int(nextRunInAtLeast.Round(time.Second).Seconds()), defaultPluginId, name})
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(
 					fmt.Sprintf("failed to set next scheduled run time for job %v", name)))
@@ -131,7 +131,7 @@ func (r *Repository) LookupJob(ctx context.Context, name string, _ ...Option) (*
 	}
 
 	j := allocJob()
-	if err := r.reader.LookupWhere(ctx, j, "name = ?", []interface{}{name}); err != nil {
+	if err := r.reader.LookupWhere(ctx, j, "name = ?", []any{name}); err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
 		}
@@ -151,7 +151,7 @@ func (r *Repository) ListJobs(ctx context.Context, opt ...Option) ([]*Job, error
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	var args []interface{}
+	var args []any
 	var where []string
 	if opts.withName != "" {
 		where, args = append(where, "name = ?"), append(args, opts.withName)
@@ -179,7 +179,7 @@ func (r *Repository) deleteJob(ctx context.Context, name string, _ ...Option) (i
 	_, err := r.writer.DoTx(
 		ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-			rowsDeleted, err = w.Exec(ctx, deleteJobByName, []interface{}{name})
+			rowsDeleted, err = w.Exec(ctx, deleteJobByName, []any{name})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

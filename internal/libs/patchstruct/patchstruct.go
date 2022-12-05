@@ -72,16 +72,16 @@ func PatchBytes(dst, src []byte) ([]byte, error) {
 	return result, nil
 }
 
-func patchM(dst, src map[string]interface{}) map[string]interface{} {
+func patchM(dst, src map[string]any) map[string]any {
 	for k, v := range src {
 		switch x := v.(type) {
-		case map[string]interface{}:
-			if y, ok := dst[k].(map[string]interface{}); ok {
+		case map[string]any:
+			if y, ok := dst[k].(map[string]any); ok {
 				// If the value in dst a map, continue to patch
 				dst[k] = patchM(y, x)
 			} else {
 				// Overwrite after stripping out keys to nil values
-				newX := patchM(make(map[string]interface{}), x)
+				newX := patchM(make(map[string]any), x)
 				dst[k] = newX
 			}
 

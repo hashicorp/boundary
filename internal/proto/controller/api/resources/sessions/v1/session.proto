@@ -33,10 +33,10 @@ message Connection {
   uint32 endpoint_tcp_port = 6; // @gotags: `class:"public"`
 
   // bytes_up of the connection
-  uint64 bytes_up = 7; // @gotags: `class:"public"`
+  int64 bytes_up = 7; // @gotags: `class:"public"`
 
   // bytes_down of the connection
-  uint64 bytes_down = 8; // @gotags: `class:"public"`
+  int64 bytes_down = 8; // @gotags: `class:"public"`
 
   // closed_reason of the connection
   string closed_reason = 9; // @gotags: `class:"public"`

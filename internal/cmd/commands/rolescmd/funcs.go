@@ -323,7 +323,7 @@ func (c *Command) printListTable(items []*roles.Role) string {
 }
 
 func printItemTable(item *roles.Role, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

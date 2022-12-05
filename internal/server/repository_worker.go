@@ -11,10 +11,12 @@ import (
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
+	"github.com/hashicorp/nodeenrollment/types"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // DeleteWorker will delete a worker from the repository.
@@ -82,7 +84,7 @@ func lookupWorkerByName(ctx context.Context, reader db.Reader, name string) (*Wo
 	}
 
 	wAgg := &workerAggregate{}
-	err := reader.LookupWhere(ctx, &wAgg, "name = ?", []interface{}{name})
+	err := reader.LookupWhere(ctx, &wAgg, "name = ?", []any{name})
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil
@@ -162,7 +164,7 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 // then the last status update time is ignored.
 // If WithLimit < 0, then unlimited results are returned. If WithLimit == 0, then
 // default limits are used for results.
-// Also supports: WithWorkerType
+// Also supports: WithWorkerType, WithActiveWorkers
 func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
 	const op = "server.(Repository).ListWorkers"
 	switch {
@@ -170,14 +172,14 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope ids set")
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
 		liveness = DefaultLiveness
 	}
 
 	var where []string
-	var whereArgs []interface{}
+	var whereArgs []any
 	if liveness > 0 {
 		where = append(where, fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds())))
 	}
@@ -193,6 +195,11 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 		whereArgs = append(whereArgs, opts.withWorkerType.String())
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown worker type %v", opts.withWorkerType))
+	}
+
+	if opts.withActiveWorkers {
+		where = append(where, "operational_state = ?")
+		whereArgs = append(whereArgs, ActiveOperationalState.String())
 	}
 
 	limit := r.defaultLimit
@@ -233,7 +240,7 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "server.UpsertWorkerStatus"
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	switch {
 	case worker == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker is nil")
@@ -247,6 +254,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
 	case worker.GetName() != "" && opts.withKeyId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both set; no more than one is allowed")
+	case worker.OperationalState == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker operational state is empty")
 	}
 
 	var workerId string
@@ -292,7 +301,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				// "description" since we want description changes for PKI-based
 				// workers to come via API only. We can't really guard on this
 				// in the DB so we need to be sure to not include it here.
-				n, err := w.Update(ctx, workerClone, []string{"address"}, nil)
+				n, err := w.Update(ctx, workerClone, []string{"address", "ReleaseVersion", "OperationalState"}, nil)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update status of pki worker"))
 				}
@@ -309,8 +318,8 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 				workerClone.Type = KmsWorkerType.String()
 				workerCreateConflict := &db.OnConflict{
 					Target: db.Columns{"public_id"},
-					Action: append(db.SetColumns([]string{"address"}),
-						db.SetColumnValues(map[string]interface{}{"last_status_time": "now()"})...),
+					Action: append(db.SetColumns([]string{"address", "release_version", "operational_state"}),
+						db.SetColumnValues(map[string]any{"last_status_time": "now()"})...),
 				}
 				var withRowsAffected int64
 				err := w.Create(ctx, workerClone, db.WithOnConflict(workerCreateConflict), db.WithReturnRowsAffected(&withRowsAffected),
@@ -372,7 +381,7 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 	case isNil(w):
 		return errors.New(ctx, errors.InvalidParameter, op, "db.Writer is nil")
 	}
-	_, err := w.Exec(ctx, deleteTagsByWorkerIdSql, []interface{}{ts.String(), id})
+	_, err := w.Exec(ctx, deleteTagsByWorkerIdSql, []any{ts.String(), id})
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("couldn't delete existing tags for worker %q", id)))
 	}
@@ -382,7 +391,7 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 	// Otherwise, go through and stage each tuple for insertion
 	// below.
 	if len(tags) > 0 {
-		uTags := make([]interface{}, 0, len(tags))
+		uTags := make([]any, 0, len(tags))
 		for _, v := range tags {
 			if v == nil {
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("found nil tag value for worker %s", id))
@@ -435,7 +444,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			nameField: worker.Name,
 			descField: worker.Description,
 		},
@@ -492,10 +501,15 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 // ReportedStatus and Tags are intentionally ignored when creating a worker (not
 // included).  Currently, a worker can only be created in the global scope
 //
-// Options supported: WithFetchNodeCredentialsRequest and WithNewIdFunc (this
-// option is likely only useful for tests)
+// Options supported: WithNewIdFunc (this option is likely only useful for
+// tests), WithFetchNodeCredentialsRequest,
+// WithCreateControllerLedActivationToken. The latter two are mutually
+// exclusive.
 func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Option) (*Worker, error) {
 	const op = "server.CreateWorker"
+
+	opts := GetOpts(opt...)
+
 	switch {
 	case worker == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing worker")
@@ -509,9 +523,12 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "address is not empty")
 	case worker.LastStatusTime != nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "last status time is not nil")
+	case opts.WithFetchNodeCredentialsRequest != nil && opts.WithCreateControllerLedActivationToken:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "fetch node credentials request and controller led activation token option cannot both be set")
 	}
 
-	opts := getOpts(opt...)
+	worker.OperationalState = UnknownOperationalState.String()
+
 	var err error
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate worker id"))
@@ -523,14 +540,11 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating state struct", err))
 	}
 
-	var databaseWrapper wrapping.Wrapper
 	var workerAuthRepo *WorkerAuthRepositoryStorage
-	if opts.withFetchNodeCredentialsRequest != nil {
-		// used to encrypt the privKey within the NodeInformation
-		databaseWrapper, err = r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
+
+	databaseWrapper, err := r.kms.GetWrapper(context.Background(), worker.ScopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
 	}
 
 	var returnedWorker *Worker
@@ -547,12 +561,14 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 			); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker"))
 			}
-			if opts.withFetchNodeCredentialsRequest != nil {
+
+			switch {
+			case opts.WithFetchNodeCredentialsRequest != nil:
 				workerAuthRepo, err = NewRepositoryStorage(ctx, read, w, r.kms)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker auth repository"))
 				}
-				nodeInfo, err := registration.AuthorizeNode(ctx, workerAuthRepo, opts.withFetchNodeCredentialsRequest, nodeenrollment.WithSkipStorage(true))
+				nodeInfo, err := registration.AuthorizeNode(ctx, workerAuthRepo, opts.WithFetchNodeCredentialsRequest, nodeenrollment.WithSkipStorage(true))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to authorize node"))
 				}
@@ -560,7 +576,35 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 				if err := StoreNodeInformationTx(ctx, w, databaseWrapper, nodeInfo); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to store node information"))
 				}
+
+			case opts.WithCreateControllerLedActivationToken:
+				tokenId, activationToken, err := registration.CreateServerLedActivationToken(ctx, nil, &types.ServerLedRegistrationRequest{},
+					nodeenrollment.WithSkipStorage(true),
+					nodeenrollment.WithState(state))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create controller-led activation token"))
+				}
+				creationTime := timestamppb.Now()
+				creationTimeBytes, err := proto.Marshal(creationTime)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshal timestamp for activation token"))
+				}
+				activationTokenEntry, err := newWorkerAuthServerLedActivationToken(ctx, worker.PublicId, tokenId, creationTimeBytes)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in-memory activation token"))
+				}
+				if err := activationTokenEntry.encrypt(ctx, databaseWrapper); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err := w.Create(
+					ctx,
+					activationTokenEntry,
+				); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create worker activation token in storage"))
+				}
+				returnedWorker.ControllerGeneratedActivationToken = activationToken
 			}
+
 			return nil
 		},
 	); err != nil {
@@ -590,10 +634,7 @@ func (r *Repository) AddWorkerTags(ctx context.Context, workerId string, workerV
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("no worker found with public id %s", workerId))
 	}
 
-	newTags := worker.apiTags
-	for _, t := range tags {
-		newTags = append(newTags, t)
-	}
+	newTags := append(worker.apiTags, tags...)
 	_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, w db.Writer) error {
 		worker := worker.clone()
 		worker.PublicId = workerId
@@ -681,7 +722,7 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 	}
 
 	rowsDeleted := 0
-	deleteTags := make([]interface{}, 0, len(tags))
+	deleteTags := make([]any, 0, len(tags))
 	for _, t := range tags {
 		if t == nil {
 			return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "found nil tag value in input")

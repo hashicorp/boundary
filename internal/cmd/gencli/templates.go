@@ -171,21 +171,23 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Help() string {
 var flags{{ camelCase .SubActionPrefix }}Map = map[string][]string{
 	{{ with $attrFlags := ", \"attributes\", \"attr\", \"string-attr\", \"bool-attr\", \"num-attr\"" }}
 	{{ with $secretFlags := ", \"secrets\", \"secret\", \"string-secret\", \"bool-secret\", \"num-secret\"" }}
+	{{ with $objectFlags := ", \"object\", \"kv\", \"string-kv\", \"bool-kv\", \"num-kv\"" }}
 	{{ range $i, $action := $input.StdActions }}
 	{{ if eq $action "create" }}
-	"create": { "{{ kebabCase $input.Container }}-id", "name", "description" {{ if $input.IsPluginType }} , "plugin-id", "plugin-name" {{ end }} {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} {{ if $input.HasGenericSecrets }} {{ $secretFlags }} {{ end }} },
+	"create": { "{{ kebabCase $input.Container }}-id", "name", "description" {{ if $input.IsPluginType }} , "plugin-id", "plugin-name" {{ end }} {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} {{ if $input.HasGenericSecrets }} {{ $secretFlags }} {{ end }} {{ if $input.HasJsonObject }} {{ $objectFlags }} {{ end }} },
 	{{ end }}
 	{{ if eq $action "read" }}
 	"read": {"id"},
 	{{ end }}
 	{{ if eq $action "update" }}
-	"update": {"id", "name", "description" {{ if hasAction $input.VersionedActions "update" }}, "version" {{ end }} {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} {{ if $input.HasGenericSecrets }} {{ $secretFlags }} {{ end }} },
+	"update": {"id", "name", "description" {{ if hasAction $input.VersionedActions "update" }}, "version" {{ end }} {{ if $input.HasGenericAttributes }} {{ $attrFlags }} {{ end }} {{ if $input.HasGenericSecrets }} {{ $secretFlags }} {{ end }} {{ if $input.HasJsonObject }} {{ $objectFlags }} {{ end }} },
 	{{ end }}
 	{{ if eq $action "delete" }}
 	"delete": {"id"},
 	{{ end }}
 	{{ if eq $action "list" }}
 	"list": { "{{ kebabCase $input.Container }}-id", "filter" {{ if (eq $input.Container "Scope") }}, "recursive"{{ end }} },
+	{{ end }}
 	{{ end }}
 	{{ end }}
 	{{ end }}
@@ -209,6 +211,11 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 	{{ if .HasGenericSecrets }}
 	f = set.NewFlagSet("Secrets Options")
 	common.PopulateSecretFlags(c.Command, f, flags{{ camelCase .SubActionPrefix }}Map, c.Func)
+	{{ end }}
+
+	{{ if .HasJsonObject }}
+	f = set.NewFlagSet("Object Options")
+	common.PopulateObjectFlags(c.Command, f, flags{{ camelCase .SubActionPrefix }}Map, c.Func)
 	{{ end }}
 
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc(c, set, f)
@@ -256,6 +263,27 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 	if strutil.StrListContains(flags{{ camelCase .SubActionPrefix }}Map[c.Func], "id") && c.FlagId == "" {
 			c.PrintCliError(errors.New("ID is required but not passed in via -id"))
 			return base.CommandUserError
+	}
+	{{ end }}
+
+	{{ if .HasGenericAttributes }}
+	if c.FlagAttributes != "" && len(c.FlagAttrs) > 0 {
+		c.PrintCliError(errors.New("-attributes flag cannot be used along with the following flags: attr, bool-attr, num-attr, string-attr"))
+		return base.CommandUserError
+	}
+	{{ end }}
+
+	{{ if .HasGenericSecrets }}
+	if c.FlagSecrets != "" && len(c.FlagScrts) > 0 {
+		c.PrintCliError(errors.New("-secrets flag cannot be used along with the following flags: secret, bool-secret, num-secret, string-secret"))
+		return base.CommandUserError
+	}
+	{{ end }}
+
+	{{ if .HasJsonObject }}
+	if c.FlagObject != "" && len(c.FlagKv) > 0 {
+		c.PrintCliError(errors.New("-object flag cannot be used along with the following flags: kv, bool-kv, num-kv, string-kv"))
+		return base.CommandUserError
 	}
 	{{ end }}
 
@@ -391,6 +419,21 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Run(args []string) int {
 			opts = append(opts, {{ .Pkg }}.WithSecrets(in))
 		}); err != nil {
 		c.PrintCliError(fmt.Errorf("Error evaluating secret flags to: %s", err.Error()))
+		return base.CommandCliError
+	}
+	{{ end }}
+
+	{{ if .HasJsonObject }}
+	if err := common.HandleAttributeFlags(
+		c.Command,
+		"kv",
+		c.FlagObject,
+		c.FlagKv,
+		func() {},
+		func(in map[string]interface{}) {
+			opts = append(opts, {{ .Pkg }}.WithJsonCredentialObject(in))
+		}); err != nil {
+		c.PrintCliError(fmt.Errorf("Error evaluating kv flags to: %s", err.Error()))
 		return base.CommandCliError
 	}
 	{{ end }}

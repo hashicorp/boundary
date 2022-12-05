@@ -88,9 +88,7 @@ func TestServer_ReloadListener(t *testing.T) {
 	wd += "/test-fixtures/reload/"
 
 	td, err := os.MkdirTemp("", "boundary-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
 	defer os.RemoveAll(td)
 
 	controllerKey := config.DevKeyGeneration()
@@ -103,13 +101,16 @@ func TestServer_ReloadListener(t *testing.T) {
 		UseDevAuthMethod:  true,
 		UseDevTarget:      true,
 	})
+	// Unset auto-created KMSes that are overwritten by config on startup
+	cmd.RootKms = nil
+	cmd.WorkerAuthKms = nil
+	cmd.RecoveryKms = nil
 
 	defer func() {
 		if cmd.DevDatabaseCleanupFunc != nil {
 			require.NoError(cmd.DevDatabaseCleanupFunc())
 		}
 	}()
-	require.NoError(err)
 
 	// Setup initial certs
 	inBytes, err := os.ReadFile(wd + "bundle1.pem")
@@ -167,7 +168,6 @@ func TestServer_ReloadListener(t *testing.T) {
 
 	testCertificateSerial("193080739105342897219784862820114567438786419504")
 
-	close(cmd.ShutdownCh)
-
+	cmd.ShutdownCh <- struct{}{}
 	wg.Wait()
 }

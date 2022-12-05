@@ -229,7 +229,7 @@ func TestKms_GetWrapper(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rootWrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
-	kmsCache.CreateKeys(testCtx, "global")
+	require.NoError(t, kmsCache.CreateKeys(testCtx, "global"))
 	tests := []struct {
 		name            string
 		kms             *kms.Kms
@@ -289,7 +289,7 @@ func TestKms_CreateKeys(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rootWrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
-	kmsCache.CreateKeys(testCtx, "global")
+	require.NoError(t, kmsCache.CreateKeys(testCtx, "global"))
 	rw := db.New(conn)
 
 	tests := []struct {

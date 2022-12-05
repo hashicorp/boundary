@@ -17,7 +17,7 @@ func (r *Repository) ListControllers(ctx context.Context, opt ...Option) ([]*sto
 // WithLimit option or the repo defaultLimit. It accepts a reader, allowing it
 // to be used within a transaction or without.
 func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Reader, opt ...Option) ([]*store.Controller, error) {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	liveness := opts.withLiveness
 	if liveness == 0 {
 		liveness = DefaultLiveness
@@ -33,7 +33,7 @@ func (r *Repository) listControllersWithReader(ctx context.Context, reader db.Re
 		ctx,
 		&controllers,
 		where,
-		[]interface{}{},
+		[]any{},
 		db.WithLimit(-1),
 	); err != nil {
 		return nil, errors.Wrap(ctx, err, "workers.listControllersWithReader")
@@ -58,7 +58,7 @@ func (r *Repository) UpsertController(ctx context.Context, controller *store.Con
 			var err error
 			onConflict := &db.OnConflict{
 				Target: db.Columns{"private_id"},
-				Action: append(db.SetColumns([]string{"description", "address"}), db.SetColumnValues(map[string]interface{}{"update_time": "now()"})...),
+				Action: append(db.SetColumns([]string{"description", "address"}), db.SetColumnValues(map[string]any{"update_time": "now()"})...),
 			}
 			err = w.Create(ctx, controller, db.WithOnConflict(onConflict), db.WithReturnRowsAffected(&rowsUpdated))
 			if err != nil {

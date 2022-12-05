@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/kms"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -59,7 +59,7 @@ func NewConnectionRepository(ctx context.Context, r db.Reader, w db.Writer, kms 
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit.  Supports WithOrder option.
-func (r *ConnectionRepository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+func (r *ConnectionRepository) list(ctx context.Context, resources any, where string, args []any, opt ...Option) error {
 	const op = "session.(ConnectionRepository).list"
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -79,6 +79,49 @@ func (r *ConnectionRepository) list(ctx context.Context, resources interface{}, 
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
+}
+
+func (r *ConnectionRepository) updateBytesUpBytesDown(ctx context.Context, conns ...*Connection) error {
+	const op = "session.(ConnectionRepository).updateBytesUpBytesDown"
+	if len(conns) == 0 {
+		return nil
+	}
+
+	updateMask := []string{"BytesUp", "BytesDown"}
+	_, err := r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(_ db.Reader, w db.Writer) error {
+			for _, c := range conns {
+				_, err := w.Update(
+					ctx,
+					&Connection{PublicId: c.PublicId, BytesUp: c.BytesUp, BytesDown: c.BytesDown},
+					updateMask,
+					nil,
+					// The last update to these two fields should come from our
+					// connection closure logic, which does not use this
+					// function (see the closeConnections func). Therefore, here
+					// we shouldn't update bytes up and down if the connection
+					// has already been closed. This also guards against
+					// potential data races where a connection closure request
+					// and a worker status update happen close to each other in
+					// terms of timing.
+					db.WithWhere("closed_reason is null"),
+				)
+				if err != nil {
+					// Returning an error will rollback the entire transaction.
+					// We don't want to bail out of an update batch if just one
+					// of the connections fails to update, but we still log it.
+					event.WriteError(ctx, op, fmt.Errorf("failed to update bytes up and down for connection id %q: %w", c.GetPublicId(), err))
+					continue
+				}
+			}
+
+			return nil
+		})
+
+	return err
 }
 
 // AuthorizeConnection will check to see if a connection is allowed.  Currently,
@@ -106,7 +149,7 @@ func (r *ConnectionRepository) AuthorizeConnection(ctx context.Context, sessionI
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []interface{}{
+			rowsAffected, err := w.Exec(ctx, authorizeConnectionCte, []any{
 				sql.Named("session_id", sessionId),
 				sql.Named("public_id", connectionId),
 				sql.Named("worker_id", workerId),
@@ -177,7 +220,7 @@ func (r *ConnectionRepository) ListConnectionsBySessionId(ctx context.Context, s
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no session ID supplied")
 	}
 	var connections []*Connection
-	err := r.list(ctx, &connections, "session_id = ?", []interface{}{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
+	err := r.list(ctx, &connections, "session_id = ?", []any{sessionId}, opt...) // pass options, so WithLimit and WithOrder are supported
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -351,7 +394,7 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 
 	var orphanedConns []string
 
-	args := make([]interface{}, 0, len(reportedConnections)+2)
+	args := make([]any, 0, len(reportedConnections)+2)
 	args = append(args, sql.Named("worker_id", workerId))
 	args = append(args, sql.Named("worker_state_delay_seconds", r.workerStateDelay.Seconds()))
 
@@ -396,7 +439,7 @@ func (r *ConnectionRepository) closeOrphanedConnections(ctx context.Context, wor
 func fetchConnectionStates(ctx context.Context, r db.Reader, connectionId string, opt ...db.Option) ([]*ConnectionState, error) {
 	const op = "session.fetchConnectionStates"
 	var states []*ConnectionState
-	if err := r.SearchWhere(ctx, &states, "connection_id = ?", []interface{}{connectionId}, opt...); err != nil {
+	if err := r.SearchWhere(ctx, &states, "connection_id = ?", []any{connectionId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if len(states) == 0 {

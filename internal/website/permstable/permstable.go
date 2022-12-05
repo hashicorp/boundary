@@ -758,24 +758,45 @@ var target = &Resource{
 			Actions: append(
 				rudActions("a target", false),
 				&Action{
-					Name:        "add-host-sets",
-					Description: "Add host sets to a target",
+					Name:        "add-host-sources",
+					Description: "Add host sources to a target",
 					Examples: []string{
-						"id=<id>;actions=add-host-sets",
+						"id=<id>;actions=add-host-sources",
 					},
 				},
 				&Action{
-					Name:        "set-host-sets",
-					Description: "Set the full set of host sets on a target",
+					Name:        "set-host-sources",
+					Description: "Set the full set of host sources on a target",
 					Examples: []string{
-						"id=<id>;actions=set-host-sets",
+						"id=<id>;actions=set-host-sources",
 					},
 				},
 				&Action{
-					Name:        "remove-host-sets",
-					Description: "Remove host sets from a target",
+					Name:        "remove-host-sources",
+					Description: "Remove host sources from a target",
 					Examples: []string{
-						"id=<id>;actions=remove-host-sets",
+						"id=<id>;actions=remove-host-sources",
+					},
+				},
+				&Action{
+					Name:        "add-credential-sources",
+					Description: "Add credential sources to a target",
+					Examples: []string{
+						"id=<id>;actions=add-credential-sources",
+					},
+				},
+				&Action{
+					Name:        "set-credential-sources",
+					Description: "Set the full set of credential sources on a target",
+					Examples: []string{
+						"id=<id>;actions=set-credential-sources",
+					},
+				},
+				&Action{
+					Name:        "remove-credential-sources",
+					Description: "Remove credential sources from a target",
+					Examples: []string{
+						"id=<id>;actions=remove-credential-sources",
 					},
 				},
 				&Action{
@@ -846,6 +867,14 @@ var worker = &Resource{
 			},
 			Actions: append(
 				lActions("a worker"),
+				&Action{
+					Name:        "create:controller-led",
+					Description: "Create a worker using the controller-led workflow",
+					Examples: []string{
+						"type=<type>;actions=create",
+						"type=<type>;actions=create:controller-led",
+					},
+				},
 				&Action{
 					Name:        "create:worker-led",
 					Description: "Create a worker using the worker-led workflow",

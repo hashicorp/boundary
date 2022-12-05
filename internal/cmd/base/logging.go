@@ -61,34 +61,34 @@ type GRPCLogFaker struct {
 	Log    bool
 }
 
-func (g *GRPCLogFaker) Fatal(args ...interface{}) {
+func (g *GRPCLogFaker) Fatal(args ...any) {
 	g.Logger.Error(fmt.Sprint(args...))
 	os.Exit(1)
 }
 
-func (g *GRPCLogFaker) Fatalf(format string, args ...interface{}) {
+func (g *GRPCLogFaker) Fatalf(format string, args ...any) {
 	g.Logger.Error(fmt.Sprintf(format, args...))
 	os.Exit(1)
 }
 
-func (g *GRPCLogFaker) Fatalln(args ...interface{}) {
+func (g *GRPCLogFaker) Fatalln(args ...any) {
 	g.Logger.Error(fmt.Sprintln(args...))
 	os.Exit(1)
 }
 
-func (g *GRPCLogFaker) Print(args ...interface{}) {
+func (g *GRPCLogFaker) Print(args ...any) {
 	if g.Log && g.Logger.IsDebug() {
 		g.Logger.Debug(fmt.Sprint(args...))
 	}
 }
 
-func (g *GRPCLogFaker) Printf(format string, args ...interface{}) {
+func (g *GRPCLogFaker) Printf(format string, args ...any) {
 	if g.Log && g.Logger.IsDebug() {
 		g.Logger.Debug(fmt.Sprintf(format, args...))
 	}
 }
 
-func (g *GRPCLogFaker) Println(args ...interface{}) {
+func (g *GRPCLogFaker) Println(args ...any) {
 	if g.Log && g.Logger.IsDebug() {
 		g.Logger.Debug(fmt.Sprintln(args...))
 	}

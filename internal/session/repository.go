@@ -2,17 +2,25 @@ package session
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
+	"io"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // Clonable provides a cloning interface
 type Cloneable interface {
-	Clone() interface{}
+	Clone() any
 }
 
 // Repository is the session database repository
@@ -23,61 +31,90 @@ type Repository struct {
 
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
+	permissions  *perms.UserPermissions
+	randomReader io.Reader
 }
 
-// NewRepository creates a new session Repository. Supports the options: WithLimit
-// which sets a default limit on results returned by repo operations.
-func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+// RepositoryFactory is a function that creates a Repository.
+type RepositoryFactory func(opt ...Option) (*Repository, error)
+
+// NewRepository creates a new session Repository. Supports the options:
+//   - WithLimit, which sets a default limit on results returned by repo operations.
+//   - WithPermissions
+//   - WithRandomReader
+func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "session.NewRepository"
-	if r == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
+	if util.IsNil(r) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
 	}
-	if w == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
+	if util.IsNil(w) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
 		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
 	}
+
+	if opts.withPermissions != nil {
+		for _, p := range opts.withPermissions.Permissions {
+			if p.Resource != resource.Session {
+				return nil, errors.New(ctx, errors.InvalidParameter, op, "permission for incorrect resource")
+			}
+		}
+	}
+
 	return &Repository{
 		reader:       r,
 		writer:       w,
 		kms:          kms,
 		defaultLimit: opts.withLimit,
+		permissions:  opts.withPermissions,
+		randomReader: opts.withRandomReader,
 	}, nil
 }
 
-// list will return a listing of resources and honor the WithLimit option or the
-// repo defaultLimit.  Supports WithOrder option.
-func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
-	const op = "session.(Repository).list"
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	var dbOpts []db.Option
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
+func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
+	var where []string
+	var args []any
+
+	if r.permissions == nil {
+		return where, args
 	}
-	dbOpts = append(dbOpts, db.WithLimit(limit))
-	switch opts.withOrderByCreateTime {
-	case db.AscendingOrderBy:
-		dbOpts = append(dbOpts, db.WithOrder("create_time asc"))
-	case db.DescendingOrderBy:
-		dbOpts = append(dbOpts, db.WithOrder("create_time"))
+
+	inClauseCnt := 0
+	for _, p := range r.permissions.Permissions {
+		if p.Action != action.List {
+			continue
+		}
+
+		inClauseCnt++
+
+		var clauses []string
+		clauses = append(clauses, fmt.Sprintf("project_id = @project_id_%d", inClauseCnt))
+		args = append(args, sql.Named(fmt.Sprintf("project_id_%d", inClauseCnt), p.ScopeId))
+
+		if len(p.ResourceIds) > 0 {
+			clauses = append(clauses, fmt.Sprintf("public_id = any(@public_id_%d)", inClauseCnt))
+			args = append(args, sql.Named(fmt.Sprintf("public_id_%d", inClauseCnt), "{"+strings.Join(p.ResourceIds, ",")+"}"))
+		}
+
+		if p.OnlySelf {
+			inClauseCnt++
+			clauses = append(clauses, fmt.Sprintf("user_id = @user_id_%d", inClauseCnt))
+			args = append(args, sql.Named(fmt.Sprintf("user_id_%d", inClauseCnt), r.permissions.UserId))
+		}
+
+		where = append(where, fmt.Sprintf("(%s)", strings.Join(clauses, " and ")))
 	}
-	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	return nil
+	return where, args
 }
 
-func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessionListView, opt ...Option) ([]*Session, error) {
+func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessionListView) ([]*Session, error) {
 	const op = "session.(Repository).convertToSessions"
-	opts := getOpts(opt...)
 
 	if len(sessionList) == 0 {
 		return nil, nil
@@ -101,41 +138,26 @@ func (r *Repository) convertToSessions(ctx context.Context, sessionList []*sessi
 			}
 			prevSessionId = sv.PublicId
 			workingSession = &Session{
-				PublicId:          sv.PublicId,
-				UserId:            sv.UserId,
-				HostId:            sv.HostId,
-				TargetId:          sv.TargetId,
-				HostSetId:         sv.HostSetId,
-				AuthTokenId:       sv.AuthTokenId,
-				ProjectId:         sv.ProjectId,
-				Certificate:       sv.Certificate,
-				ExpirationTime:    sv.ExpirationTime,
-				CtTofuToken:       sv.CtTofuToken,
-				TofuToken:         sv.TofuToken, // will always be nil since it's not stored in the database.
-				TerminationReason: sv.TerminationReason,
-				CreateTime:        sv.CreateTime,
-				UpdateTime:        sv.UpdateTime,
-				Version:           sv.Version,
-				Endpoint:          sv.Endpoint,
-				ConnectionLimit:   sv.ConnectionLimit,
-				KeyId:             sv.KeyId,
-			}
-			if opts.withListingConvert {
-				workingSession.CtTofuToken = nil // CtTofuToken should not returned in lists
-				workingSession.TofuToken = nil   // TofuToken should not returned in lists
-				workingSession.KeyId = ""        // KeyId should not be returned in lists
-			} else {
-				if len(workingSession.CtTofuToken) > 0 {
-					databaseWrapper, err := r.kms.GetWrapper(ctx, workingSession.ProjectId, kms.KeyPurposeDatabase)
-					if err != nil {
-						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get database wrapper"))
-					}
-					if err := workingSession.decrypt(ctx, databaseWrapper); err != nil {
-						return nil, errors.Wrap(ctx, err, op, errors.WithMsg("cannot decrypt session value"))
-					}
-				} else {
-					workingSession.CtTofuToken = nil
-				}
+				PublicId:                sv.PublicId,
+				UserId:                  sv.UserId,
+				HostId:                  sv.HostId,
+				TargetId:                sv.TargetId,
+				HostSetId:               sv.HostSetId,
+				AuthTokenId:             sv.AuthTokenId,
+				ProjectId:               sv.ProjectId,
+				Certificate:             sv.Certificate,
+				CtCertificatePrivateKey: nil, // CtCertificatePrivateKey should not be returned in lists
+				CertificatePrivateKey:   nil, // CertificatePrivateKey should not be returned in lists
+				ExpirationTime:          sv.ExpirationTime,
+				CtTofuToken:             nil, // CtTofuToken should not be returned in lists
+				TofuToken:               nil, // TofuToken should not be returned in lists
+				TerminationReason:       sv.TerminationReason,
+				CreateTime:              sv.CreateTime,
+				UpdateTime:              sv.UpdateTime,
+				Version:                 sv.Version,
+				Endpoint:                sv.Endpoint,
+				ConnectionLimit:         sv.ConnectionLimit,
+				KeyId:                   "", // KeyId should not be returned in lists
 			}
 		}
 

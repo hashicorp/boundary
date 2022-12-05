@@ -12,9 +12,8 @@ Installing Boundary in a production setting requires prerequisits for infrastruc
 ## Network Requirements
 
 - Client -> Controller port is :9200
-- Controller -> Worker port is :9201
-- Client must have access to Controller on :9200
-- :9201 must be open between Worker and Controller
+- Worker -> Controller port is :9201
+- Client -> Worker port is :9202
 - Workers must have a route and port access to the targets which they service
 
 ## Architecture

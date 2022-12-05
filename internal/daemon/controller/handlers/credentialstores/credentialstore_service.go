@@ -675,6 +675,7 @@ func toProto(ctx context.Context, in credential.Store, opt ...handlers.Option) (
 			}
 			if vaultIn.Token() != nil {
 				attrs.TokenHmac = base64.RawURLEncoding.EncodeToString(vaultIn.Token().GetTokenHmac())
+				attrs.TokenStatus = vaultIn.Token().GetStatus()
 			}
 			if vaultIn.GetWorkerFilter() != "" {
 				if vaultWorkerFilterToProto {

@@ -28,7 +28,9 @@ func TestRepository_CreateTarget(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	repo, err := target.NewRepository(rw, rw, testKms)
+
+	ctx := context.Background()
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
@@ -37,8 +39,6 @@ func TestRepository_CreateTarget(t *testing.T) {
 
 	cs := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 2)
-
-	ctx := context.Background()
 
 	type args struct {
 		target target.Target
@@ -123,6 +123,54 @@ func TestRepository_CreateTarget(t *testing.T) {
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
 		},
+		{
+			name: "valid-with-egress-filter",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("valid-egress-filter"),
+						target.WithDescription("valid-org"),
+						target.WithDefaultPort(uint32(22)),
+						target.WithEgressWorkerFilter("test-filter"))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr: false,
+		},
+		{
+			name: "deprecated-worker-filter",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("bad-worker-filter"),
+						target.WithDescription("valid-org"),
+						target.WithDefaultPort(uint32(22)),
+						target.WithWorkerFilter("test-filter"))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: errors.Exception,
+		},
+		{
+			name: "invalid-setting-egress-and-worker-filter",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("bad-filters"),
+						target.WithDescription("valid-org"),
+						target.WithDefaultPort(uint32(22)),
+						target.WithWorkerFilter("test-filter"),
+						target.WithEgressWorkerFilter("test-filter"))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr:     true,
+			wantIsError: errors.Exception,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,7 +213,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(context.Background(), rw, rw, testKms)
 	require.NoError(t, err)
 	id := tcp.TestId(t)
 

@@ -85,9 +85,10 @@ func TestHandleTcpProxyV1(t *testing.T) {
 	_, _, err = s.RequestAuthorizeConnection(ctx, "workerid", connCancelFn)
 	require.NoError(err)
 
+	conn := websocket.NetConn(ctx, proxyConn, websocket.MessageBinary)
 	conf := proxy.Config{
 		ClientAddress:  clientAddr,
-		ClientConn:     proxyConn,
+		ClientConn:     conn,
 		RemoteEndpoint: fmt.Sprintf("tcp://localhost:%d", port),
 		Session:        s,
 		ConnectionId:   "mock-connection",

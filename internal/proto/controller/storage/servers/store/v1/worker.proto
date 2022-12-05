@@ -54,6 +54,14 @@ message Worker {
   // The type of the worker, denoted by how it authenticates: pki or kms.
   // @inject_tag: `gorm:"not_null"`
   string type = 130;
+
+  // The version of Boundary the worker binary is running
+  // @inject_tag: `gorm:"default:null"`
+  string release_version = 140;
+
+  // The state of the worker, to indicate if the worker is active or in shutdown.
+  // @inject_tag: `gorm:"not_null"`
+  string operational_state = 150;
 }
 
 // WorkerTag is a tag for a worker.  The primary key is comprised of the

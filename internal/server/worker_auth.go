@@ -5,7 +5,14 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/server/store"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
+)
+
+const (
+	previousWorkerAuthState = "previous"
+	currentWorkerAuthState  = "current"
 )
 
 // WorkerAuth contains all fields related to an authorized Worker resource
@@ -16,15 +23,51 @@ type WorkerAuth struct {
 	tableName string `gorm:"-"`
 }
 
+func (w *WorkerAuth) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "server.(WorkerAuth).encrypt"
+	if len(w.ControllerEncryptionPrivKey) == 0 {
+		return errors.New(ctx, errors.InvalidParameter, op, "no private key provided")
+	}
+	if err := structwrapping.WrapStruct(ctx, cipher, w.WorkerAuth, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+	}
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
+	}
+	w.KeyId = keyId
+	return nil
+}
+
+func (w *WorkerAuth) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "server.(WorkerAuth).decrypt"
+	if err := structwrapping.UnwrapStruct(ctx, cipher, w.WorkerAuth, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+	}
+	return nil
+}
+
+// WorkerAuthSet is intended to store a set of WorkerAuth records
+// This set represents the current and previous WorkerAuth records for a worker
+type WorkerAuthSet struct {
+	Previous *WorkerAuth
+	Current  *WorkerAuth
+}
+
 // WorkerKeys contain the signing and encryption keys for a WorkerAuth resource
 type WorkerKeys struct {
 	workerSigningPubKey    []byte
 	workerEncryptionPubKey []byte
 }
 
+// newWorkerAuth initializes a new in-memory WorkerAuth struct.
+// supported options:
+// - withWorkerKeys
+// - withControllerEncryptionPrivateKey (assigns the value to the plain-text field)
+// - withNonce
 func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, opt ...Option) (*WorkerAuth, error) {
 	const op = "server.newWorkerAuth"
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	if workerKeyIdentifier == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no workerKeyIdentifier")
@@ -46,9 +89,6 @@ func newWorkerAuth(ctx context.Context, workerKeyIdentifier, workerId string, op
 	}
 	if &opts.withControllerEncryptionPrivateKey != nil {
 		l.ControllerEncryptionPrivKey = opts.withControllerEncryptionPrivateKey
-	}
-	if opts.withKeyId != "" {
-		l.KeyId = opts.withKeyId
 	}
 	if opts.withNonce != nil {
 		l.Nonce = opts.withNonce
@@ -84,8 +124,8 @@ func (w *WorkerAuth) ValidateNewWorkerAuth(ctx context.Context) error {
 	if w.WorkerEncryptionPubKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing WorkerEncryptionPubKey")
 	}
-	if w.ControllerEncryptionPrivKey == nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing ControllerEncryptionPrivKey")
+	if w.CtControllerEncryptionPrivKey == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing encrypted ControllerEncryptionPrivKey")
 	}
 	if w.KeyId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing KeyId")

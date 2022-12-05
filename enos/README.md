@@ -111,3 +111,8 @@ you could test that version against the cluster by setting `local_boundary_dir` 
     in the Boundary cluster and then executes the Bats CLI UI tests against it. This
     scenario requires the machine executing `enos` to be configured for the Bats
     tests as described in the Requirements section.
+
+## End-to-end tests
+
+Scenarios with `e2e_` invoke an end-to-end test suite written in Go. Different tests
+are invoked depending on the scenario.

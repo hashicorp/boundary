@@ -120,7 +120,7 @@ func (c *Command) printListTable(items []*hostcatalogs.HostCatalog) string {
 }
 
 func printItemTable(item *hostcatalogs.HostCatalog, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

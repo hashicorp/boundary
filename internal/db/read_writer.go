@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -43,28 +44,28 @@ type Reader interface {
 	// ResourcePrivateIder interface, then they are used as the resource's
 	// primary key for lookup.  Otherwise, the resource tags are used to
 	// determine it's primary key(s) for lookup.
-	LookupById(ctx context.Context, resource interface{}, opt ...Option) error
+	LookupById(ctx context.Context, resource any, opt ...Option) error
 
 	// LookupByPublicId will lookup resource by its public_id which must be unique.
 	LookupByPublicId(ctx context.Context, resource ResourcePublicIder, opt ...Option) error
 
 	// LookupWhere will lookup and return the first resource using a where clause with parameters
-	LookupWhere(ctx context.Context, resource interface{}, where string, args []interface{}, opt ...Option) error
+	LookupWhere(ctx context.Context, resource any, where string, args []any, opt ...Option) error
 
 	// SearchWhere will search for all the resources it can find using a where
 	// clause with parameters. Supports the WithLimit option.  If
 	// WithLimit < 0, then unlimited results are returned.  If WithLimit == 0, then
 	// default limits are used for results.
-	SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error
+	SearchWhere(ctx context.Context, resources any, where string, args []any, opt ...Option) error
 
 	// Query will run the raw query and return the *sql.Rows results. Query will
 	// operate within the context of any ongoing transaction for the db.Reader.  The
 	// caller must close the returned *sql.Rows. Query can/should be used in
 	// combination with ScanRows.
-	Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error)
+	Query(ctx context.Context, sql string, values []any, opt ...Option) (*sql.Rows, error)
 
 	// ScanRows will scan sql rows into the interface provided
-	ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) error
+	ScanRows(ctx context.Context, rows *sql.Rows, result any) error
 }
 
 // Writer interface defines create, update and retryable transaction handlers
@@ -82,14 +83,14 @@ type Writer interface {
 	// error is returned the caller must decide what to do with the transaction,
 	// which almost always should be to rollback.  Update returns the number of
 	// rows updated or an error. Supported options: WithOplog.
-	Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error)
+	Update(ctx context.Context, i any, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error)
 
 	// Create an object in the db with options: WithDebug, WithOplog, NewOplogMsg,
 	// WithLookup, WithReturnRowsAffected, OnConflict, WithVersion, and
 	// WithWhere. The caller is responsible for the transaction life cycle of
 	// the writer and if an error is returned the caller must decide what to do
 	// with the transaction, which almost always should be to rollback.
-	Create(ctx context.Context, i interface{}, opt ...Option) error
+	Create(ctx context.Context, i any, opt ...Option) error
 
 	// CreateItems will create multiple items of the same type.
 	// Supported options: WithDebug, WithOplog, WithOplogMsgs,
@@ -99,14 +100,14 @@ type Writer interface {
 	// cycle of the writer and if an error is returned the caller must decide
 	// what to do with the transaction, which almost always should be to
 	// rollback.
-	CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error
+	CreateItems(ctx context.Context, createItems []any, opt ...Option) error
 
 	// Delete an object in the db with options: WithOplog, WithDebug.
 	// The caller is responsible for the transaction life cycle of the writer
 	// and if an error is returned the caller must decide what to do with
 	// the transaction, which almost always should be to rollback. Delete
 	// returns the number of rows deleted or an error.
-	Delete(ctx context.Context, i interface{}, opt ...Option) (int, error)
+	Delete(ctx context.Context, i any, opt ...Option) (int, error)
 
 	// DeleteItems will delete multiple items of the same type.
 	// Supported options: WithOplog and WithOplogMsgs. WithOplog and
@@ -114,23 +115,23 @@ type Writer interface {
 	// transaction life cycle of the writer and if an error is returned the
 	// caller must decide what to do with the transaction, which almost always
 	// should be to rollback. Delete returns the number of rows deleted or an error.
-	DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error)
+	DeleteItems(ctx context.Context, deleteItems []any, opt ...Option) (int, error)
 
 	// Exec will execute the sql with the values as parameters. The int returned
 	// is the number of rows affected by the sql. No options are currently
 	// supported.
-	Exec(ctx context.Context, sql string, values []interface{}, opt ...Option) (int, error)
+	Exec(ctx context.Context, sql string, values []any, opt ...Option) (int, error)
 
 	// Query will run the raw query and return the *sql.Rows results. Query will
 	// operate within the context of any ongoing transaction for the db.Writer.  The
 	// caller must close the returned *sql.Rows. Query can/should be used in
 	// combination with ScanRows.  Query is included in the Writer interface
 	// so callers can execute updates and inserts with returning values.
-	Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error)
+	Query(ctx context.Context, sql string, values []any, opt ...Option) (*sql.Rows, error)
 
 	// GetTicket returns an oplog ticket for the aggregate root of "i" which can
 	// be used to WriteOplogEntryWith for that aggregate root.
-	GetTicket(ctx context.Context, i interface{}) (*store.Ticket, error)
+	GetTicket(ctx context.Context, i any) (*store.Ticket, error)
 
 	// WriteOplogEntryWith will write an oplog entry with the msgs provided for
 	// the ticket's aggregateName. No options are currently supported.
@@ -144,7 +145,7 @@ type Writer interface {
 	) error
 
 	// ScanRows will scan sql rows into the interface provided
-	ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) error
+	ScanRows(ctx context.Context, rows *sql.Rows, result any) error
 }
 
 const (
@@ -208,20 +209,24 @@ func New(underlying *DB) *Db {
 	return &Db{underlying: underlying}
 }
 
-// UnderlyingDB returns the underlying *dbw.DB
-func (rw *Db) UnderlyingDB() *dbw.DB {
-	return rw.underlying.wrapped
+// UnderlyingDB returns a function to get the underlying *dbw.DB. The function
+// should be called every time rather than caching the value, as the value may
+// change from call to call.
+func (rw *Db) UnderlyingDB() func() *dbw.DB {
+	return func() *dbw.DB {
+		return rw.underlying.wrapped.Load()
+	}
 }
 
 // Exec will execute the sql with the values as parameters. The int returned
 // is the number of rows affected by the sql. WithDebug is supported.
-func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, opt ...Option) (int, error) {
+func (rw *Db) Exec(ctx context.Context, sql string, values []any, opt ...Option) (int, error) {
 	const op = "db.Exec"
 	if sql == "" {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
 	opts := GetOpts(opt...)
-	rowsAffected, err := dbw.New(rw.underlying.wrapped).Exec(ctx, sql, values, dbw.WithDebug(opts.withDebug))
+	rowsAffected, err := dbw.New(rw.underlying.wrapped.Load()).Exec(ctx, sql, values, dbw.WithDebug(opts.withDebug))
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
@@ -232,13 +237,13 @@ func (rw *Db) Exec(ctx context.Context, sql string, values []interface{}, opt ..
 // operate within the context of any ongoing transaction for the db.Reader.  The
 // caller must close the returned *sql.Rows. Query can/should be used in
 // combination with ScanRows.
-func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, opt ...Option) (*sql.Rows, error) {
+func (rw *Db) Query(ctx context.Context, sql string, values []any, opt ...Option) (*sql.Rows, error) {
 	const op = "db.Query"
 	if sql == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing sql")
 	}
 	opts := GetOpts(opt...)
-	rows, err := dbw.New(rw.underlying.wrapped).Query(ctx, sql, values, dbw.WithDebug(opts.withDebug))
+	rows, err := dbw.New(rw.underlying.wrapped.Load()).Query(ctx, sql, values, dbw.WithDebug(opts.withDebug))
 	if err != nil {
 		return nil, wrapError(ctx, err, op)
 	}
@@ -246,7 +251,7 @@ func (rw *Db) Query(ctx context.Context, sql string, values []interface{}, opt .
 }
 
 // Scan rows will scan the rows into the interface
-func (rw *Db) ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) error {
+func (rw *Db) ScanRows(ctx context.Context, rows *sql.Rows, result any) error {
 	const op = "db.ScanRows"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -254,7 +259,7 @@ func (rw *Db) ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) 
 	if isNil(result) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing result")
 	}
-	if err := dbw.New(rw.underlying.wrapped).ScanRows(rows, result); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).ScanRows(rows, result); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil
@@ -275,7 +280,7 @@ func (rw *Db) ScanRows(ctx context.Context, rows *sql.Rows, result interface{}) 
 // valid value for the WithVersion option and will return an error. WithWhere
 // allows specifying an additional constraint on the on conflict operation in
 // addition to the on conflict target policy (columns or constraint).
-func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
+func (rw *Db) Create(ctx context.Context, i any, opt ...Option) error {
 	const op = "db.Create"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -284,7 +289,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := dbw.New(rw.underlying.wrapped).Create(ctx, i, dbwOpts...); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).Create(ctx, i, dbwOpts...); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil
@@ -294,7 +299,7 @@ func (rw *Db) Create(ctx context.Context, i interface{}, opt ...Option) error {
 // WithDebug, WithOplog, WithOplogMsgs, WithReturnRowsAffected, OnConflict,
 // WithVersion, and WithWhere  WithOplog and WithOplogMsgs may not be used
 // together.  WithLookup is not a supported option.
-func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ...Option) error {
+func (rw *Db) CreateItems(ctx context.Context, createItems []any, opt ...Option) error {
 	const op = "db.CreateItems"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -303,7 +308,7 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := dbw.New(rw.underlying.wrapped).CreateItems(ctx, createItems, dbwOpts...); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).CreateItems(ctx, createItems, dbwOpts...); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil
@@ -329,7 +334,7 @@ func (rw *Db) CreateItems(ctx context.Context, createItems []interface{}, opt ..
 // WithVersion option and will return an error. WithWhere allows specifying an
 // additional constraint on the operation in addition to the PKs. WithDebug will
 // turn on debugging for the update call.
-func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
+func (rw *Db) Update(ctx context.Context, i any, fieldMaskPaths []string, setToNullPaths []string, opt ...Option) (int, error) {
 	const op = "db.Update"
 	if rw.underlying == nil {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -341,7 +346,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 	if err != nil {
 		return NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	rowsUpdated, err := dbw.New(rw.underlying.wrapped).Update(ctx, i, fieldMaskPaths, setToNullPaths, dbwOpts...)
+	rowsUpdated, err := dbw.New(rw.underlying.wrapped.Load()).Update(ctx, i, fieldMaskPaths, setToNullPaths, dbwOpts...)
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
@@ -353,7 +358,7 @@ func (rw *Db) Update(ctx context.Context, i interface{}, fieldMaskPaths []string
 // in-memory oplog message. WithOplog and NewOplogMsg cannot be used together.
 // WithWhere allows specifying an additional constraint on the operation in
 // addition to the PKs. Delete returns the number of rows deleted and any errors.
-func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, error) {
+func (rw *Db) Delete(ctx context.Context, i any, opt ...Option) (int, error) {
 	const op = "db.Delete"
 	if rw.underlying == nil {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -362,7 +367,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
-	rowsUpdated, err := dbw.New(rw.underlying.wrapped).Delete(ctx, i, dbwOpts...)
+	rowsUpdated, err := dbw.New(rw.underlying.wrapped.Load()).Delete(ctx, i, dbwOpts...)
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
@@ -372,7 +377,7 @@ func (rw *Db) Delete(ctx context.Context, i interface{}, opt ...Option) (int, er
 // DeleteItems will delete multiple items of the same type. Supported options:
 // WithOplog and WithOplogMsgs.  WithOplog and WithOplogMsgs may not be used
 // together.
-func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ...Option) (int, error) {
+func (rw *Db) DeleteItems(ctx context.Context, deleteItems []any, opt ...Option) (int, error) {
 	const op = "db.DeleteItems"
 	if rw.underlying == nil {
 		return NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -381,7 +386,7 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 	if err != nil {
 		return NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	rowsDeleted, err := dbw.New(rw.underlying.wrapped).DeleteItems(ctx, deleteItems, dbwOpts...)
+	rowsDeleted, err := dbw.New(rw.underlying.wrapped.Load()).DeleteItems(ctx, deleteItems, dbwOpts...)
 	if err != nil {
 		return NoRowsAffected, wrapError(ctx, err, op)
 	}
@@ -410,11 +415,14 @@ func (rw *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler T
 		}
 
 		// step one of this, start a transaction...
-		beginTx, err := dbw.New(rw.underlying.wrapped).Begin(ctx)
+		beginTx, err := dbw.New(rw.underlying.wrapped.Load()).Begin(ctx)
 		if err != nil {
 			return info, wrapError(ctx, err, op)
 		}
-		newRW := New(&DB{wrapped: beginTx.DB()})
+
+		newTxDb := &DB{wrapped: new(atomic.Pointer[dbw.DB])}
+		newTxDb.wrapped.Store(beginTx.DB())
+		newRW := New(newTxDb)
 
 		if err := handler(newRW, newRW); err != nil {
 			if err := beginTx.Rollback(ctx); err != nil {
@@ -442,13 +450,13 @@ func (rw *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler T
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which
 // must be unique. WithDebug is the only valid option, all other options are ignored.
-func (rw *Db) LookupById(ctx context.Context, resourceWithIder interface{}, opt ...Option) error {
+func (rw *Db) LookupById(ctx context.Context, resourceWithIder any, opt ...Option) error {
 	const op = "db.LookupById"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	opts := GetOpts(opt...)
-	if err := dbw.New(rw.underlying.wrapped).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug)); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).LookupBy(ctx, resourceWithIder, dbw.WithDebug(opts.withDebug)); err != nil {
 		var errOpts []errors.Option
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			// Not found is a common workflow in the application layer during lookup, suppress
@@ -468,13 +476,13 @@ func (rw *Db) LookupByPublicId(ctx context.Context, resource ResourcePublicIder,
 
 // LookupWhere will lookup the first resource using a where clause with
 // parameters (it only returns the first one). WithDebug is supported.
-func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where string, args []interface{}, opt ...Option) error {
+func (rw *Db) LookupWhere(ctx context.Context, resource any, where string, args []any, opt ...Option) error {
 	const op = "db.LookupWhere"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	opts := GetOpts(opt...)
-	if err := dbw.New(rw.underlying.wrapped).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug)); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).LookupWhere(ctx, resource, where, args, dbw.WithDebug(opts.withDebug)); err != nil {
 		var errOpts []errors.Option
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			// Not found is a common workflow in the application layer during lookup, suppress
@@ -493,7 +501,7 @@ func (rw *Db) LookupWhere(ctx context.Context, resource interface{}, where strin
 // Supports the WithLimit option.  If WithLimit < 0, then unlimited results are returned.
 // If WithLimit == 0, then default limits are used for results.
 // Supports the WithOrder and WithDebug options.
-func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+func (rw *Db) SearchWhere(ctx context.Context, resources any, where string, args []any, opt ...Option) error {
 	const op = "db.SearchWhere"
 	if rw.underlying == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
@@ -502,13 +510,13 @@ func (rw *Db) SearchWhere(ctx context.Context, resources interface{}, where stri
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := dbw.New(rw.underlying.wrapped).SearchWhere(ctx, resources, where, args, dbwOpts...); err != nil {
+	if err := dbw.New(rw.underlying.wrapped.Load()).SearchWhere(ctx, resources, where, args, dbwOpts...); err != nil {
 		return wrapError(ctx, err, op)
 	}
 	return nil
 }
 
-func isNil(i interface{}) bool {
+func isNil(i any) bool {
 	if i == nil {
 		return true
 	}
@@ -535,5 +543,5 @@ func wrapError(ctx context.Context, err error, op string, errOpts ...errors.Opti
 		errOpts = append(errOpts, errors.WithCode(errors.InvalidFieldMask))
 	}
 
-	return errors.Wrap(ctx, err, errors.Op(op), errOpts...)
+	return errors.Wrap(ctx, err, errors.Op(op), append(errOpts, errors.WithoutEvent())...)
 }

@@ -114,7 +114,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			}
 
 			// Figure out which ones to delete and which ones we already have
-			toDelete := make([]interface{}, 0, len(mgs))
+			toDelete := make([]any, 0, len(mgs))
 			for _, currMg := range currentMemberships {
 				currMgId := currMg.ManagedGroupId
 				if newMgPublicIds[currMgId] {
@@ -158,7 +158,7 @@ func (r *Repository) SetManagedGroupMemberships(ctx context.Context, am *AuthMet
 			if len(newMgPublicIds) > 0 {
 				metadata["op-type"] = append(metadata["op-type"], oplog.OpType_OP_TYPE_CREATE.String())
 				addOplogMsgs := make([]*oplog.Message, 0, len(newMgPublicIds))
-				toAdd := make([]interface{}, 0, len(newMgPublicIds))
+				toAdd := make([]any, 0, len(newMgPublicIds))
 				for mgId := range newMgPublicIds {
 					newMg := AllocManagedGroupMemberAccount()
 					newMg.ManagedGroupId = mgId
@@ -208,7 +208,7 @@ func (r *Repository) ListManagedGroupMembershipsByMember(ctx context.Context, wi
 		reader = opts.withReader
 	}
 	var mgs []*ManagedGroupMemberAccount
-	err := reader.SearchWhere(ctx, &mgs, "member_id = ?", []interface{}{withAcctId}, db.WithLimit(limit))
+	err := reader.SearchWhere(ctx, &mgs, "member_id = ?", []any{withAcctId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -233,7 +233,7 @@ func (r *Repository) ListManagedGroupMembershipsByGroup(ctx context.Context, wit
 		reader = opts.withReader
 	}
 	var mgs []*ManagedGroupMemberAccount
-	err := reader.SearchWhere(ctx, &mgs, "managed_group_id = ?", []interface{}{withGroupId}, db.WithLimit(limit))
+	err := reader.SearchWhere(ctx, &mgs, "managed_group_id = ?", []any{withGroupId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

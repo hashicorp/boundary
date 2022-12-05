@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/groups"
@@ -330,7 +331,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListGroups(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Test the anon case
-			got, gErr = s.ListGroups(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListGroups(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -1030,7 +1031,7 @@ func TestAddMember(t *testing.T) {
 		{
 			name:     "Add invalid u_recovery to group",
 			setup:    func(g *iam.Group) {},
-			addUsers: []string{"u_recovery"},
+			addUsers: []string{globals.RecoveryUserId},
 			wantErr:  true,
 		},
 	}
@@ -1089,7 +1090,7 @@ func TestAddMember(t *testing.T) {
 			req: &pbs.AddGroupMembersRequest{
 				Id:        grp.GetPublicId(),
 				Version:   grp.GetVersion(),
-				MemberIds: []string{"u_recovery"},
+				MemberIds: []string{globals.RecoveryUserId},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1219,7 +1220,7 @@ func TestSetMember(t *testing.T) {
 			req: &pbs.SetGroupMembersRequest{
 				Id:        grp.GetPublicId(),
 				Version:   grp.GetVersion(),
-				MemberIds: []string{"u_recovery"},
+				MemberIds: []string{globals.RecoveryUserId},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

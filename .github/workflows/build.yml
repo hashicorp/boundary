@@ -359,3 +359,90 @@ jobs:
       artifact-name: "boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip"
       go-version: ${{ needs.product-metadata.outputs.go-version }}
     secrets: inherit
+
+  bats:
+    runs-on: ubuntu-latest
+    name: CLI tests
+    if: "! github.event.pull_request.head.repo.fork"
+    needs:
+      - product-metadata
+      - build-linux
+    steps:
+      - uses: actions/checkout@v3
+      - name: Import GPG key for Boundary pass keystore
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
+      - name: Trust the pass keystore GPG key
+        id: trust_gpg
+        run: |
+          gpg -a --encrypt -r ${{ secrets.ENOS_GPG_UID }} --trust-model always
+          echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
+          cat ~/.gnupg/gpg.conf
+      - name: Set up Bats CLI UI tests dependency cache
+        id: dep-cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/bats-cli-ui-deps
+          key: enos-bats-cli-ui-deps-jq-1.6-password-store-1.7.4
+      - name: Set up Node for Bats install
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Install Bats via NPM
+        # Use npm so this workflow is portable on multiple runner distros
+        run: npm install --location=global bats
+      - name: Download jq for Bats CLI UI tests
+        if: steps.dep-cache.outputs.cache-hit != 'true'
+        # NOTE: if you update the jq version make sure to update the dep cache key
+        run: |
+          mkdir -p /tmp/bats-cli-ui-deps
+          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/bats-cli-ui-deps/jq-bin
+      - name: Install jq for Bats CLI UI tests
+        run: |
+          chmod +x /tmp/bats-cli-ui-deps/jq-bin
+          sudo cp /tmp/bats-cli-ui-deps/jq-bin /usr/local/bin/jq
+      - name: Download and unzip pass for Boundary keyring
+        if: steps.dep-cache.outputs.cache-hit != 'true'
+        # NOTE: if you update the password store version make sure to update the dep cache key
+        run: |
+          mkdir -p /tmp/bats-cli-ui-deps/pass
+          wget https://git.zx2c4.com/password-store/snapshot/password-store-1.7.4.tar.xz -O /tmp/bats-cli-ui-deps/pass/pass.tar.xz
+          cd /tmp/bats-cli-ui-deps/pass
+          tar -xvf pass.tar.xz
+      - name: Install pass for Boundary keyring
+        run: |
+          cd /tmp/bats-cli-ui-deps/pass/password-store-1.7.4
+          sudo make install
+          pass init ${{ secrets.ENOS_GPG_UID }}
+      - name: Download Linux AMD64 Boundary bundle
+        id: download
+        uses: actions/download-artifact@v3
+        with:
+          name: boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip
+          path: /tmp
+      - name: Unpack boundary bundle
+        run: |
+          unzip ${{steps.download.outputs.download-path}}/boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip -d /usr/local/bin
+          rm ${{steps.download.outputs.download-path}}/boundary_${{ needs.product-metadata.outputs.product-version }}_linux_amd64.zip
+      - name: Versions
+        run: |
+          echo "go version:"
+          go version
+          echo "bats version:"
+          bats --version
+          echo "jq version:"
+          jq --version
+          echo "gpg version:"
+          gpg --version
+          echo "pass version:"
+          pass --version
+          echo "bash version:"
+          bash --version
+          echo "boundary version:"
+          boundary version
+      - name: Run cli bats tests
+        run: |
+          make test-cli

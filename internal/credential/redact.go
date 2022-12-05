@@ -5,6 +5,7 @@ import "encoding/json"
 const (
 	redactedPassword   = "[REDACTED: password]"
 	redactedPrivateKey = "[REDACTED: private key]"
+	redactedJson       = "[REDACTED: json]"
 )
 
 // String returns a string with the password redacted.
@@ -36,4 +37,19 @@ func (s PrivateKey) GoString() string {
 // redacted.
 func (s PrivateKey) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]byte(redactedPrivateKey))
+}
+
+// String returns a string with the json secret redacted.
+func (s *JsonObject) String() string {
+	return redactedJson
+}
+
+// GoString returns a string with the json secret redacted.
+func (s *JsonObject) GoString() string {
+	return redactedJson
+}
+
+// MarshalJSON returns a JSON-encoded byte slice with the json redacted.
+func (s *JsonObject) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]byte(redactedJson))
 }

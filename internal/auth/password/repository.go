@@ -33,7 +33,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	if opts.withLimit == 0 {
 		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit

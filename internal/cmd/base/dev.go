@@ -93,7 +93,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		b.Info["dev database container"] = strings.TrimPrefix(container, "/")
 	}
 
-	if err := b.ConnectToDatabase(ctx, dialect); err != nil {
+	if err := b.OpenAndSetServerDatabase(ctx, dialect); err != nil {
 		if c != nil {
 			err = multierror.Append(err, c())
 		}
@@ -270,7 +270,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 		subInfo := map[string]*capoidc.TestSubject{
 			b.DevLoginName: {
 				Password: b.DevPassword,
-				UserInfo: map[string]interface{}{
+				UserInfo: map[string]any{
 					"email": "admin@localhost",
 					"name":  "Admin User",
 				},
@@ -279,7 +279,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 		if b.DevOidcSetup.createUnpriv {
 			subInfo[b.DevUnprivilegedLoginName] = &capoidc.TestSubject{
 				Password: b.DevUnprivilegedPassword,
-				UserInfo: map[string]interface{}{
+				UserInfo: map[string]any{
 					"email": "user@localhost",
 					"name":  "Unprivileged User",
 				},
@@ -294,7 +294,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 			capoidc.WithTestHost(b.DevOidcSetup.hostAddr),
 			capoidc.WithTestPort(b.DevOidcSetup.oidcPort),
 			capoidc.WithTestDefaults(&capoidc.TestProviderDefaults{
-				CustomClaims: map[string]interface{}{
+				CustomClaims: map[string]any{
 					"mode": "dev",
 				},
 				SubjectInfo: subInfo,
@@ -371,18 +371,8 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 		}
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		select {
-		case <-b.ShutdownCh:
-			cancel()
-		case <-cancelCtx.Done():
-		}
-	}()
-
 	b.DevOidcSetup.authMethod, err = oidcRepo.CreateAuthMethod(
-		cancelCtx,
+		ctx,
 		authMethod,
 		oidc.WithPublicId(b.DevOidcAuthMethodId))
 	if err != nil {
@@ -402,7 +392,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 				return fmt.Errorf("error generating %s oidc account: %w", typ, err)
 			}
 			acct, err = oidcRepo.CreateAccount(
-				cancelCtx,
+				ctx,
 				b.DevOidcSetup.authMethod.GetScopeId(),
 				acct,
 				oidc.WithPublicId(accountId),
@@ -417,11 +407,11 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 				return fmt.Errorf("unable to create iam repo: %w", err)
 			}
 
-			u, _, err := iamRepo.LookupUser(cancelCtx, userId)
+			u, _, err := iamRepo.LookupUser(ctx, userId)
 			if err != nil {
 				return fmt.Errorf("error looking up %s user: %w", typ, err)
 			}
-			if _, err = iamRepo.AddUserAccounts(cancelCtx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
+			if _, err = iamRepo.AddUserAccounts(ctx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
 				return fmt.Errorf("error associating initial %s user with account: %w", typ, err)
 			}
 
@@ -447,12 +437,12 @@ type oidcLogger struct {
 }
 
 // Errorf will use the sys eventer to emit an error event
-func (l *oidcLogger) Errorf(format string, args ...interface{}) {
+func (l *oidcLogger) Errorf(format string, args ...any) {
 	event.WriteError(l.Ctx, l.caller(), fmt.Errorf(format, args...))
 }
 
 // Infof will use the sys eventer to emit an system event
-func (l *oidcLogger) Infof(format string, args ...interface{}) {
+func (l *oidcLogger) Infof(format string, args ...any) {
 	event.WriteSysEvent(l.Ctx, l.caller(), fmt.Sprintf(format, args...))
 }
 

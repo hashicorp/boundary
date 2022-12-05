@@ -886,7 +886,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 			},
 		}
 		if s := i.GetTokenClaims(); s != "" {
-			m := make(map[string]interface{})
+			m := make(map[string]any)
 			var err error
 			if err = json.Unmarshal([]byte(s), &m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error unmarshaling stored token claims"))
@@ -896,7 +896,7 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 			}
 		}
 		if s := i.GetUserinfoClaims(); s != "" {
-			m := make(map[string]interface{})
+			m := make(map[string]any)
 			var err error
 			if err = json.Unmarshal([]byte(s), &m); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error unmarshaling stored userinfo claims"))

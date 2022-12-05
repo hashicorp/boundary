@@ -236,7 +236,7 @@ func TestRepository_CreateSet(t *testing.T) {
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
 					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]interface{}{
+						st, err := structpb.NewStruct(map[string]any{
 							"k1":                "foo",
 							"removed":           nil,
 							normalizeToSliceKey: "normalizeme",
@@ -462,7 +462,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 	// Set up a test catalog and the secrets for it
 	testCatalog := TestCatalog(t, dbConn, projectScope.PublicId, testPlugin.GetPublicId())
-	testCatalogSecret, err := newHostCatalogSecret(ctx, testCatalog.GetPublicId(), mustStruct(map[string]interface{}{
+	testCatalogSecret, err := newHostCatalogSecret(ctx, testCatalog.GetPublicId(), mustStruct(map[string]any{
 		"one": "two",
 	}))
 	require.NoError(t, err)
@@ -535,7 +535,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
-	changeAttributes := func(m map[string]interface{}) changeHostSetFunc {
+	changeAttributes := func(m map[string]any) changeHostSetFunc {
 		return func(c *HostSet) *HostSet {
 			c.Attributes = mustMarshal(m)
 			return c
@@ -589,7 +589,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
-	checkAttributes := func(want map[string]interface{}) checkHostSetFunc {
+	checkAttributes := func(want map[string]any) checkHostSetFunc {
 		return func(t *testing.T, got *HostSet) {
 			t.Helper()
 			st := &structpb.Struct{}
@@ -692,21 +692,21 @@ func TestRepository_UpdateSet(t *testing.T) {
 		}
 	}
 
-	checkUpdateSetRequestCurrentAttributes := func(want map[string]interface{}) checkPluginReqFunc {
+	checkUpdateSetRequestCurrentAttributes := func(want map[string]any) checkPluginReqFunc {
 		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
 			t.Helper()
 			assert.Empty(t, cmp.Diff(mustStruct(want), got.CurrentSet.GetAttributes(), protocmp.Transform()), "checkUpdateSetRequestCurrentAttributes")
 		}
 	}
 
-	checkUpdateSetRequestNewAttributes := func(want map[string]interface{}) checkPluginReqFunc {
+	checkUpdateSetRequestNewAttributes := func(want map[string]any) checkPluginReqFunc {
 		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
 			t.Helper()
 			assert.Empty(t, cmp.Diff(mustStruct(want), got.NewSet.GetAttributes(), protocmp.Transform()), "checkUpdateSetRequestNewAttributes")
 		}
 	}
 
-	checkUpdateSetRequestPersistedSecrets := func(want map[string]interface{}) checkPluginReqFunc {
+	checkUpdateSetRequestPersistedSecrets := func(want map[string]any) checkPluginReqFunc {
 		return func(t *testing.T, got *plgpb.OnUpdateSetRequest) {
 			t.Helper()
 			assert.Empty(t, cmp.Diff(mustStruct(want), got.Persisted.Secrets, protocmp.Transform()), "checkUpdateSetRequestPersistedSecrets")
@@ -760,7 +760,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			WithPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 		)
 		// Set some (default) attributes on our test set
-		set.Attributes = mustMarshal(map[string]interface{}{
+		set.Attributes = mustMarshal(map[string]any{
 			"foo": "bar",
 		})
 
@@ -880,7 +880,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentNameNil(),
 				checkUpdateSetRequestNewName("foo"),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -899,7 +899,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentNameNil(),
 				checkUpdateSetRequestNewNameNil(),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -918,7 +918,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentDescriptionNil(),
 				checkUpdateSetRequestNewDescription("foo"),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -937,7 +937,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentDescriptionNil(),
 				checkUpdateSetRequestNewDescriptionNil(),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -954,7 +954,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changeSyncInterval(42)},
 			fieldMask:   []string{"SyncIntervalSeconds"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -973,7 +973,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentPreferredEndpoints(nil),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -992,7 +992,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -1011,7 +1011,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
 				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpointsNil(),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -1024,25 +1024,25 @@ func TestRepository_UpdateSet(t *testing.T) {
 		{
 			name:        "update attributes (add)",
 			startingSet: setupHostSet,
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]any{
 				"baz": "qux",
 			})},
 			fieldMask: []string{"attributes"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{
 					"foo": "bar",
 					"baz": "qux",
 				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{
+				checkAttributes(map[string]any{
 					"foo": "bar",
 					"baz": "qux",
 				}),
@@ -1053,26 +1053,26 @@ func TestRepository_UpdateSet(t *testing.T) {
 		{
 			name:        "update attributes (overwrite)",
 			startingSet: setupHostSet,
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]any{
 				"foo":               "baz",
 				normalizeToSliceKey: "normalizeme",
 			})},
 			fieldMask: []string{"attributes"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{
 					"foo":               "baz",
 					normalizeToSliceKey: []any{"normalizeme"},
 				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{
+				checkAttributes(map[string]any{
 					"foo":               "baz",
 					normalizeToSliceKey: []any{"normalizeme"},
 				}),
@@ -1083,22 +1083,22 @@ func TestRepository_UpdateSet(t *testing.T) {
 		{
 			name:        "update attributes (null)",
 			startingSet: setupHostSet,
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]any{
 				"foo": nil,
 			})},
 			fieldMask: []string{"attributes"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{}),
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{}),
+				checkAttributes(map[string]any{}),
 				checkNeedSync(true),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -1109,17 +1109,17 @@ func TestRepository_UpdateSet(t *testing.T) {
 			changeFuncs: []changeHostSetFunc{changeAttributesNil()},
 			fieldMask:   []string{"attributes"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{}),
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{}),
+				checkAttributes(map[string]any{}),
 				checkNeedSync(true),
 				checkVerifySetOplog(oplog.OpType_OP_TYPE_UPDATE),
 			},
@@ -1127,26 +1127,26 @@ func TestRepository_UpdateSet(t *testing.T) {
 		{
 			name:        "update attributes (combined)",
 			startingSet: setupHostSet,
-			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]interface{}{
+			changeFuncs: []changeHostSetFunc{changeAttributes(map[string]any{
 				"a":   "b",
 				"foo": "baz",
 			})},
 			fieldMask: []string{"attributes.a", "attributes.foo"},
 			wantCheckPluginReqFuncs: []checkPluginReqFunc{
-				checkUpdateSetRequestCurrentAttributes(map[string]interface{}{
+				checkUpdateSetRequestCurrentAttributes(map[string]any{
 					"foo": "bar",
 				}),
-				checkUpdateSetRequestNewAttributes(map[string]interface{}{
+				checkUpdateSetRequestNewAttributes(map[string]any{
 					"a":   "b",
 					"foo": "baz",
 				}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
 			wantCheckSetFuncs: []checkHostSetFunc{
 				checkVersion(3),
-				checkAttributes(map[string]interface{}{
+				checkAttributes(map[string]any{
 					"a":   "b",
 					"foo": "baz",
 				}),
@@ -1167,7 +1167,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 				checkUpdateSetRequestNewName("foo"),
 				checkUpdateSetRequestCurrentPreferredEndpoints([]string{"cidr:192.168.0.0/24", "cidr:192.168.1.0/24", "cidr:172.16.0.0/12"}),
 				checkUpdateSetRequestNewPreferredEndpoints([]string{"cidr:10.0.0.0/24"}),
-				checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+				checkUpdateSetRequestPersistedSecrets(map[string]any{
 					"one": "two",
 				}),
 			},
@@ -1301,7 +1301,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 						for _, check := range []checkPluginReqFunc{
 							checkUpdateSetRequestCurrentPreferredEndpoints(nil),
 							checkUpdateSetRequestNewPreferredEndpointsNil(),
-							checkUpdateSetRequestPersistedSecrets(map[string]interface{}{
+							checkUpdateSetRequestPersistedSecrets(map[string]any{
 								"one": "two",
 							}),
 						} {

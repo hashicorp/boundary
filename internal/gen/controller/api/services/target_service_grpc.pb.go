@@ -48,29 +48,6 @@ type TargetServiceClient interface {
 	DeleteTarget(ctx context.Context, in *DeleteTargetRequest, opts ...grpc.CallOption) (*DeleteTargetResponse, error)
 	// AuthorizeSession creates authorization information from a given Target.
 	AuthorizeSession(ctx context.Context, in *AuthorizeSessionRequest, opts ...grpc.CallOption) (*AuthorizeSessionResponse, error)
-	// AddTargetHostSets adds Host Sets to this Target. The provided request must
-	// include the Target ID to which the Host Sets will be added.
-	// All Host Sets added to the provided Target must be a child of a Catalog that
-	// is a child of the same scope as this Target. If the scope or Target IDs are
-	// missing, malformed, or reference non-existing resources, an error is
-	// returned. An error is returned if a Host Set is attempted to be added
-	// to a target that is already present on the Target.
-	AddTargetHostSets(ctx context.Context, in *AddTargetHostSetsRequest, opts ...grpc.CallOption) (*AddTargetHostSetsResponse, error)
-	// SetTargetHostSets sets the Target's Host Sets. Any existing Host Sets on the
-	// Target are deleted if they are not included in this request. The
-	// provided request must include the scope, and the Target ID on which the
-	// Host Sets will be set.  All Host Sets in the request must be a child of
-	// a Catalog that is in the same scope as the provided Target. If any
-	// IDs are missing, malformed, or references a non-existing resource, an
-	// error is returned.
-	SetTargetHostSets(ctx context.Context, in *SetTargetHostSetsRequest, opts ...grpc.CallOption) (*SetTargetHostSetsResponse, error)
-	// RemoveTargetHostSets removes the Host Sets from the specified Target. The
-	// provided request must include the Target ID for the Target
-	// from which the Host Sets will be removed. If the ID is missing,
-	// malformed, or references a non-existing scope or Catalog, an error is
-	// returned.  An error is returned if a Host Set is attempted to be
-	// removed from the Target when the Target does not have the Host Set.
-	RemoveTargetHostSets(ctx context.Context, in *RemoveTargetHostSetsRequest, opts ...grpc.CallOption) (*RemoveTargetHostSetsResponse, error)
 	// AddTargetHostSources adds Host Sources to this Target. The provided request
 	// must include the Target ID to which the Host Sources will be added. All
 	// Host Sources added to the provided Target must be a child of a Catalog that
@@ -182,33 +159,6 @@ func (c *targetServiceClient) AuthorizeSession(ctx context.Context, in *Authoriz
 	return out, nil
 }
 
-func (c *targetServiceClient) AddTargetHostSets(ctx context.Context, in *AddTargetHostSetsRequest, opts ...grpc.CallOption) (*AddTargetHostSetsResponse, error) {
-	out := new(AddTargetHostSetsResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/AddTargetHostSets", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *targetServiceClient) SetTargetHostSets(ctx context.Context, in *SetTargetHostSetsRequest, opts ...grpc.CallOption) (*SetTargetHostSetsResponse, error) {
-	out := new(SetTargetHostSetsResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/SetTargetHostSets", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *targetServiceClient) RemoveTargetHostSets(ctx context.Context, in *RemoveTargetHostSetsRequest, opts ...grpc.CallOption) (*RemoveTargetHostSetsResponse, error) {
-	out := new(RemoveTargetHostSetsResponse)
-	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/RemoveTargetHostSets", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *targetServiceClient) AddTargetHostSources(ctx context.Context, in *AddTargetHostSourcesRequest, opts ...grpc.CallOption) (*AddTargetHostSourcesResponse, error) {
 	out := new(AddTargetHostSourcesResponse)
 	err := c.cc.Invoke(ctx, "/controller.api.services.v1.TargetService/AddTargetHostSources", in, out, opts...)
@@ -297,29 +247,6 @@ type TargetServiceServer interface {
 	DeleteTarget(context.Context, *DeleteTargetRequest) (*DeleteTargetResponse, error)
 	// AuthorizeSession creates authorization information from a given Target.
 	AuthorizeSession(context.Context, *AuthorizeSessionRequest) (*AuthorizeSessionResponse, error)
-	// AddTargetHostSets adds Host Sets to this Target. The provided request must
-	// include the Target ID to which the Host Sets will be added.
-	// All Host Sets added to the provided Target must be a child of a Catalog that
-	// is a child of the same scope as this Target. If the scope or Target IDs are
-	// missing, malformed, or reference non-existing resources, an error is
-	// returned. An error is returned if a Host Set is attempted to be added
-	// to a target that is already present on the Target.
-	AddTargetHostSets(context.Context, *AddTargetHostSetsRequest) (*AddTargetHostSetsResponse, error)
-	// SetTargetHostSets sets the Target's Host Sets. Any existing Host Sets on the
-	// Target are deleted if they are not included in this request. The
-	// provided request must include the scope, and the Target ID on which the
-	// Host Sets will be set.  All Host Sets in the request must be a child of
-	// a Catalog that is in the same scope as the provided Target. If any
-	// IDs are missing, malformed, or references a non-existing resource, an
-	// error is returned.
-	SetTargetHostSets(context.Context, *SetTargetHostSetsRequest) (*SetTargetHostSetsResponse, error)
-	// RemoveTargetHostSets removes the Host Sets from the specified Target. The
-	// provided request must include the Target ID for the Target
-	// from which the Host Sets will be removed. If the ID is missing,
-	// malformed, or references a non-existing scope or Catalog, an error is
-	// returned.  An error is returned if a Host Set is attempted to be
-	// removed from the Target when the Target does not have the Host Set.
-	RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error)
 	// AddTargetHostSources adds Host Sources to this Target. The provided request
 	// must include the Target ID to which the Host Sources will be added. All
 	// Host Sources added to the provided Target must be a child of a Catalog that
@@ -391,15 +318,6 @@ func (UnimplementedTargetServiceServer) DeleteTarget(context.Context, *DeleteTar
 }
 func (UnimplementedTargetServiceServer) AuthorizeSession(context.Context, *AuthorizeSessionRequest) (*AuthorizeSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AuthorizeSession not implemented")
-}
-func (UnimplementedTargetServiceServer) AddTargetHostSets(context.Context, *AddTargetHostSetsRequest) (*AddTargetHostSetsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddTargetHostSets not implemented")
-}
-func (UnimplementedTargetServiceServer) SetTargetHostSets(context.Context, *SetTargetHostSetsRequest) (*SetTargetHostSetsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetTargetHostSets not implemented")
-}
-func (UnimplementedTargetServiceServer) RemoveTargetHostSets(context.Context, *RemoveTargetHostSetsRequest) (*RemoveTargetHostSetsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveTargetHostSets not implemented")
 }
 func (UnimplementedTargetServiceServer) AddTargetHostSources(context.Context, *AddTargetHostSourcesRequest) (*AddTargetHostSourcesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTargetHostSources not implemented")
@@ -536,60 +454,6 @@ func _TargetService_AuthorizeSession_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TargetServiceServer).AuthorizeSession(ctx, req.(*AuthorizeSessionRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TargetService_AddTargetHostSets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddTargetHostSetsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TargetServiceServer).AddTargetHostSets(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.TargetService/AddTargetHostSets",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TargetServiceServer).AddTargetHostSets(ctx, req.(*AddTargetHostSetsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TargetService_SetTargetHostSets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetTargetHostSetsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TargetServiceServer).SetTargetHostSets(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.TargetService/SetTargetHostSets",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TargetServiceServer).SetTargetHostSets(ctx, req.(*SetTargetHostSetsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TargetService_RemoveTargetHostSets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveTargetHostSetsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TargetServiceServer).RemoveTargetHostSets(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/controller.api.services.v1.TargetService/RemoveTargetHostSets",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TargetServiceServer).RemoveTargetHostSets(ctx, req.(*RemoveTargetHostSetsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -732,18 +596,6 @@ var TargetService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AuthorizeSession",
 			Handler:    _TargetService_AuthorizeSession_Handler,
-		},
-		{
-			MethodName: "AddTargetHostSets",
-			Handler:    _TargetService_AddTargetHostSets_Handler,
-		},
-		{
-			MethodName: "SetTargetHostSets",
-			Handler:    _TargetService_SetTargetHostSets_Handler,
-		},
-		{
-			MethodName: "RemoveTargetHostSets",
-			Handler:    _TargetService_RemoveTargetHostSets_Handler,
 		},
 		{
 			MethodName: "AddTargetHostSources",

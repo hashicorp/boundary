@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
-	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -19,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
 	"google.golang.org/grpc/codes"
 )
@@ -45,14 +45,14 @@ var (
 type Service struct {
 	pbs.UnsafeSessionServiceServer
 
-	repoFn    common.SessionRepoFactory
+	repoFn    session.RepositoryFactory
 	iamRepoFn common.IamRepoFactory
 }
 
 var _ pbs.SessionServiceServer = (*Service)(nil)
 
 // NewService returns a session service which handles session related requests to boundary.
-func NewService(repoFn common.SessionRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(repoFn session.RepositoryFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "sessions.NewService"
 	if repoFn == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing session repository")
@@ -70,7 +70,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	if err := validateGetRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf)
+	authResults := s.authResult(ctx, req.GetId(), action.ReadSelf, false)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
@@ -125,7 +125,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return nil, err
 	}
 
-	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
+	authResults := s.authResult(ctx, req.GetScopeId(), action.List, false)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
 		// successfully authenticated but just not authorized, keep going as we
@@ -139,34 +139,26 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		}
 	}
 
-	repo, err := s.repoFn()
+	var scopeIds map[string]*scopes.ScopeInfo
+	var err error
+
+	if !req.GetRecursive() {
+		scopeIds = map[string]*scopes.ScopeInfo{authResults.Scope.Id: authResults.Scope}
+	} else {
+		scopeIds, err = authResults.ScopesAuthorizedForList(ctx, req.GetScopeId(), resource.Session)
+	}
+
+	listPerms := authResults.ACL().ListPermissions(scopeIds, resource.Session, IdActions, authResults.UserId)
+
+	repo, err := s.repoFn(session.WithPermissions(&perms.UserPermissions{
+		UserId:      authResults.UserId,
+		Permissions: listPerms,
+	}))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	scopeResourceInfo, err := scopeids.GetListingResourceInformation(
-		ctx,
-		scopeids.GetListingResourceInformationInput{
-			IamRepoFn:                    s.iamRepoFn,
-			AuthResults:                  authResults,
-			RootScopeId:                  req.GetScopeId(),
-			Type:                         resource.Session,
-			Recursive:                    req.GetRecursive(),
-			AuthzProtectedEntityProvider: session.ListForAuthzCheck(repo, session.WithTerminated(req.IncludeTerminated)),
-			ActionSet:                    IdActions,
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	// If no scopes match or we match scopes but there are no resources in them
-	// that we are authorized to see, return an empty response
-	if len(scopeResourceInfo.ScopeIds) == 0 ||
-		len(scopeResourceInfo.ResourceIds) == 0 {
-		return &pbs.ListSessionsResponse{}, nil
-	}
-
-	sesList, err := s.listFromRepo(ctx, scopeResourceInfo.ResourceIds)
+	sesList, err := repo.ListSessions(ctx, session.WithTerminated(req.GetIncludeTerminated()))
 	if err != nil {
 		return nil, err
 	}
@@ -183,14 +175,21 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		Type: resource.Session,
 	}
 	for _, item := range sesList {
+		res.Id = item.GetPublicId()
+		res.ScopeId = item.GetProjectId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
+			continue
+		}
+
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
 		outputOpts := make([]handlers.Option, 0, 3)
 		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
 		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeResourceInfo.ScopeResourceMap[item.ProjectId].ScopeInfo))
+			outputOpts = append(outputOpts, handlers.WithScope(scopeIds[item.ProjectId]))
 		}
 		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(scopeResourceInfo.ScopeResourceMap[item.ProjectId].Resources[item.PublicId].AuthorizedActions.Strings()))
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
 		item, err := toProto(ctx, item, outputOpts...)
@@ -213,16 +212,28 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	if err := validateCancelRequest(req); err != nil {
 		return nil, err
 	}
-	authResults := s.authResult(ctx, req.GetId(), action.CancelSelf)
+	// Ignore decryption failures to ensure the user can always cancel a session.
+	authResults := s.authResult(ctx, req.GetId(), action.CancelSelf, true)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
 
 	// We'll verify it's not already canceled, but after checking auth so as not
 	// to leak that information.
-	ses, err := s.getFromRepo(ctx, req.GetId())
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
+	}
+	// Ignore decryption failures to ensure the user can always cancel a session.
+	ses, _, err := repo.LookupSession(ctx, req.GetId(), session.WithIgnoreDecryptionFailures(true))
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", req.GetId())
+		}
+		return nil, err
+	}
+	if ses == nil {
+		return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", req.GetId())
 	}
 
 	var outputFields perms.OutputFieldsMap
@@ -255,9 +266,10 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	}
 
 	if !skipCancel {
-		ses, err = s.cancelInRepo(ctx, req.GetId(), req.GetVersion())
+		// Ignore decryption failures to ensure the user can always cancel a session.
+		ses, err = repo.CancelSession(ctx, req.GetId(), req.GetVersion(), session.WithIgnoreDecryptionFailures(true))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update session"))
 		}
 	}
 
@@ -295,32 +307,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*session.Session, 
 	return sess, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, sessionIds []string) ([]*session.Session, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	sesList, err := repo.ListSessions(ctx, session.WithSessionIds(sessionIds...))
-	if err != nil {
-		return nil, err
-	}
-	return sesList, nil
-}
-
-func (s Service) cancelInRepo(ctx context.Context, id string, version uint32) (*session.Session, error) {
-	const op = "sessions.(Service).cancelInRepo"
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
-	}
-	out, err := repo.CancelSession(ctx, id, version)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update session"))
-	}
-	return out, nil
-}
-
-func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
+func (s Service) authResult(ctx context.Context, id string, a action.Type, ignoreSessionDecryptionFailure bool) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
 	var parentId string
@@ -348,7 +335,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			res.Error = err
 			return res
 		}
-		t, _, err := repo.LookupSession(ctx, id)
+		t, _, err := repo.LookupSession(ctx, id, session.WithIgnoreDecryptionFailures(ignoreSessionDecryptionFailure))
 		if err != nil {
 			res.Error = err
 			return res

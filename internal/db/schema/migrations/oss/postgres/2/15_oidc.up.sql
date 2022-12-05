@@ -42,6 +42,6 @@ from
   left outer join auth_oidc_certificate   cert  on am.public_id = cert.oidc_method_id
 group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
 comment on view oidc_auth_method_with_value_obj is
-'oidc auth method with its associated value objects (algs, auds, certs) as columns with | delimited values';
+  'oidc auth method with its associated value objects (algs, auds, certs) as columns with | delimited values';
 
 commit;

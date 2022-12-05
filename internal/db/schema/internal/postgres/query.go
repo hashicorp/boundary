@@ -120,9 +120,7 @@ alter table log_migration
 	alter column edition drop default;
 `
 	migrationLogReplaceVersionTrigger = `
-create or replace function
-  log_migration_version()
-  returns trigger
+create or replace function log_migration_version() returns trigger
 as $$
   declare current_version bigint;
   begin
@@ -134,6 +132,6 @@ as $$
   end;
 $$ language plpgsql;
 comment on function log_migration_version() is
-'log_migration_version will set the log_migration entries to the current migration version';
+  'log_migration_version will set the log_migration entries to the current migration version';
 `
 )

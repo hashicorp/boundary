@@ -26,8 +26,8 @@ func TestAuthenticationHandler(t *testing.T) {
 	})
 	defer c.Shutdown()
 
-	request := map[string]interface{}{
-		"attributes": map[string]interface{}{
+	request := map[string]any{
+		"attributes": map[string]any{
 			"login_name": "admin",
 			"password":   "password123",
 		},
@@ -43,11 +43,11 @@ func TestAuthenticationHandler(t *testing.T) {
 
 	b, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	body := make(map[string]interface{})
+	body := make(map[string]any)
 	require.NoError(t, json.Unmarshal(b, &body))
 
 	require.Contains(t, body, "attributes")
-	attrs := body["attributes"].(map[string]interface{})
+	attrs := body["attributes"].(map[string]any)
 	pubId, tok := attrs["id"].(string), attrs["token"].(string)
 	assert.NotEmpty(t, pubId)
 	assert.NotEmpty(t, tok)
@@ -64,10 +64,10 @@ func TestAuthenticationHandler(t *testing.T) {
 
 	b, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	body = make(map[string]interface{})
+	body = make(map[string]any)
 	require.NoError(t, json.Unmarshal(b, &body))
 
-	attrs = body["attributes"].(map[string]interface{})
+	attrs = body["attributes"].(map[string]any)
 
 	require.Contains(t, attrs, "id")
 	require.Contains(t, attrs, "auth_method_id")
@@ -160,9 +160,6 @@ func TestHandleImplementedPaths(t *testing.T) {
 			"v1/roles/someid:remove-principals",
 			"v1/sessions/someid:cancel",
 			"v1/targets/someid:authorize-session",
-			"v1/targets/someid:add-host-sets",
-			"v1/targets/someid:set-host-sets",
-			"v1/targets/someid:remove-host-sets",
 			"v1/targets/someid:add-host-sources",
 			"v1/targets/someid:set-host-sources",
 			"v1/targets/someid:remove-host-sources",
@@ -305,7 +302,7 @@ func TestCallbackInterceptor(t *testing.T) {
 			},
 			wantJson: &cmdAttrs{
 				Command: "callback",
-				Attributes: map[string]interface{}{
+				Attributes: map[string]any{
 					"state": "fooBar",
 					"token": "barFoo",
 				},

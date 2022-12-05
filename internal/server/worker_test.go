@@ -72,6 +72,7 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, "address", got.GetAddress())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
+		assert.NotNil(t, got.GetReleaseVersion())
 		assert.Empty(t, got.CanonicalTags())
 	})
 
@@ -90,6 +91,7 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
+		assert.NotNil(t, got.GetReleaseVersion())
 		assert.Equal(t, strings.ToLower(id), got.GetName())
 		assert.Equal(t, "address", got.GetAddress())
 	})
@@ -115,6 +117,7 @@ func TestWorkerAggregate(t *testing.T) {
 		assert.Equal(t, id, got.GetPublicId())
 		assert.Equal(t, uint32(1), got.GetVersion())
 		assert.NotNil(t, got.GetLastStatusTime())
+		assert.NotNil(t, got.GetReleaseVersion())
 		assert.Empty(t, got.apiTags)
 		assert.Equal(t, got.configTags, []*Tag{{Key: "key", Value: "val"}})
 	})
@@ -248,11 +251,12 @@ func TestWorker_Update(t *testing.T) {
 			name: "kms update address",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:     KmsWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "kms update address",
-					Address:  "kms update address",
+					Type:             KmsWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "kms update address",
+					Address:          "kms update address",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -273,11 +277,12 @@ func TestWorker_Update(t *testing.T) {
 			name: "kms update name",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:     KmsWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "kms update name",
-					Address:  "kms update name",
+					Type:             KmsWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "kms update name",
+					Address:          "kms update name",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -292,11 +297,12 @@ func TestWorker_Update(t *testing.T) {
 			name: "kms clear name",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:     KmsWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "kms clear name",
-					Address:  "kms clear name",
+					Type:             KmsWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "kms clear name",
+					Address:          "kms clear name",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -309,10 +315,11 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update address",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "pki update address",
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "pki update address",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -333,10 +340,11 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update name",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "pki update name",
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "pki update name",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -356,10 +364,11 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update description",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "pki update description",
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "pki update description",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -380,12 +389,13 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki clear address",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:           PkiWorkerType.String(),
-					ScopeId:        scope.Global.String(),
-					PublicId:       newId(),
-					Name:           "pki clear address",
-					Address:        "pki clear address",
-					LastStatusTime: &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "pki clear address",
+					Address:          "pki clear address",
+					LastStatusTime:   &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -398,12 +408,13 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki clear name",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:           PkiWorkerType.String(),
-					ScopeId:        scope.Global.String(),
-					PublicId:       newId(),
-					Name:           "pki clear name",
-					Address:        "pki clear name",
-					LastStatusTime: &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "pki clear name",
+					Address:          "pki clear name",
+					LastStatusTime:   &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -422,10 +433,11 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update name to capital",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "pki update name to capital",
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "pki update name to capital",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -440,10 +452,11 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki update name to unprintable",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "worker reported update name to unprintable",
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "worker reported update name to unprintable",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			update: Worker{
@@ -500,12 +513,13 @@ func TestWorker_Create(t *testing.T) {
 			name: "kms base",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:        KmsWorkerType.String(),
-					ScopeId:     scope.Global.String(),
-					PublicId:    newId(),
-					Address:     "address",
-					Name:        "kms base",
-					Description: "kms base",
+					Type:             KmsWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Address:          "address",
+					Name:             "kms base",
+					Description:      "kms base",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{lastStatusUpdated: true},
@@ -514,10 +528,11 @@ func TestWorker_Create(t *testing.T) {
 			name: "kms with no name field",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:     KmsWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Address:  "address",
+					Type:             KmsWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Address:          "address",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -526,10 +541,11 @@ func TestWorker_Create(t *testing.T) {
 			name: "kms with no address field",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:     KmsWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "kms with no address field",
+					Type:             KmsWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "kms with no address field",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -538,11 +554,12 @@ func TestWorker_Create(t *testing.T) {
 			name: "kms with upper case name",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:     KmsWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "With Upper Case Worker Reported Name",
-					Address:  "address",
+					Type:             KmsWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "With Upper Case Worker Reported Name",
+					Address:          "address",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -551,11 +568,12 @@ func TestWorker_Create(t *testing.T) {
 			name: "kms with unprintable worker reported name",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:     KmsWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "unprintable \u0008 worker reported name",
-					Address:  "address",
+					Type:             KmsWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "unprintable \u0008 worker reported name",
+					Address:          "address",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -566,10 +584,11 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki base",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "pki base",
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "pki base",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{},
@@ -578,9 +597,10 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki with no name field",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{},
@@ -589,10 +609,11 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki with address field",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Address:  "address",
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Address:          "address",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -601,11 +622,12 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki with upper case name",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "PKI With Upper Case Worker Reported Name",
-					Address:  "address",
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "PKI With Upper Case Worker Reported Name",
+					Address:          "address",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -614,11 +636,12 @@ func TestWorker_Create(t *testing.T) {
 			name: "pki with unprintable worker reported name",
 			in: Worker{
 				Worker: &store.Worker{
-					Type:     PkiWorkerType.String(),
-					ScopeId:  scope.Global.String(),
-					PublicId: newId(),
-					Name:     "unprintable \u0008 worker reported name",
-					Address:  "address",
+					Type:             PkiWorkerType.String(),
+					ScopeId:          scope.Global.String(),
+					PublicId:         newId(),
+					Name:             "unprintable \u0008 worker reported name",
+					Address:          "address",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 			want: wanted{createError: true},
@@ -668,7 +691,9 @@ func TestWorker_New(t *testing.T) {
 			name: "missing-scope-id",
 			args: args{},
 			want: &Worker{
-				Worker: &store.Worker{},
+				Worker: &store.Worker{
+					OperationalState: ActiveOperationalState.String(),
+				},
 			},
 		},
 		{
@@ -678,7 +703,8 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId: scope.Global.String(),
+					ScopeId:          scope.Global.String(),
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 		},
@@ -689,7 +715,8 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId: org.GetPublicId(),
+					ScopeId:          org.GetPublicId(),
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 		},
@@ -700,7 +727,8 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId: prj.GetPublicId(),
+					ScopeId:          prj.GetPublicId(),
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 		},
@@ -714,8 +742,9 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId: scope.Global.String(),
-					Name:    "foo",
+					ScopeId:          scope.Global.String(),
+					Name:             "foo",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 		},
@@ -729,8 +758,9 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId:     scope.Global.String(),
-					Description: "foo",
+					ScopeId:          scope.Global.String(),
+					Description:      "foo",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 		},
@@ -744,8 +774,9 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId: scope.Global.String(),
-					Address: "foo",
+					ScopeId:          scope.Global.String(),
+					Address:          "foo",
+					OperationalState: ActiveOperationalState.String(),
 				},
 			},
 		},
@@ -762,7 +793,8 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId: scope.Global.String(),
+					ScopeId:          scope.Global.String(),
+					OperationalState: ActiveOperationalState.String(),
 				},
 				inputTags: []*Tag{
 					{

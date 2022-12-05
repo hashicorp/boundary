@@ -33,9 +33,7 @@ func Init(t testing.TB, db *dbw.DB) {
 	  version wt_version 
 	);
 	
-	create or replace function
-	oplog_test_version_column()
-	returns trigger
+	create or replace function oplog_test_version_column() returns trigger
 	as $$
 	begin
 	if pg_trigger_depth() = 1 then

@@ -164,7 +164,7 @@ func (tc *TestController) Token() *authtokens.AuthToken {
 		tc.Context(),
 		tc.b.DevPasswordAuthMethodId,
 		"login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": tc.b.DevLoginName,
 			"password":   tc.b.DevPassword,
 		},
@@ -190,7 +190,7 @@ func (tc *TestController) UnprivilegedToken() *authtokens.AuthToken {
 		tc.Context(),
 		tc.b.DevPasswordAuthMethodId,
 		"login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": tc.b.DevUnprivilegedLoginName,
 			"password":   tc.b.DevUnprivilegedPassword,
 		},
@@ -287,7 +287,7 @@ func (tc *TestController) buildClient() {
 func (tc *TestController) Shutdown() {
 	tc.shutdownOnce.Do(func() {
 		if tc.b != nil {
-			close(tc.b.ShutdownCh)
+			tc.b.ContextCancel()
 		}
 
 		tc.cancel()
@@ -423,9 +423,14 @@ type TestControllerOpts struct {
 	// (overrides address provided in config, if any)
 	PublicClusterAddr string
 
-	// The amount of time to wait before marking connections as closed when a
+	// The amount of time to wait before marking connections as canceling when a
 	// worker has not reported in
-	StatusGracePeriodDuration time.Duration
+	WorkerStatusGracePeriodDuration time.Duration
+
+	// The period of time after which it will consider other controllers to be
+	// no longer accessible, based on time since their last status update in the
+	// database
+	LivenessTimeToStaleDuration time.Duration
 
 	// The amount of time between the scheduler waking up to run it's registered
 	// jobs.
@@ -492,10 +497,13 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts = new(TestControllerOpts)
 	}
 
+	ctxTest, cancel := context.WithCancel(context.Background())
+
 	// Base server
 	tc.b = base.NewServer(&base.Command{
-		Context:    ctx,
-		ShutdownCh: make(chan struct{}),
+		Context:       ctxTest,
+		ContextCancel: cancel,
+		ShutdownCh:    make(chan struct{}),
 	})
 
 	// Get dev config, or use a provided one
@@ -569,7 +577,11 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	if opts.Config.Controller.Name == "" {
 		require.NoError(t, opts.Config.Controller.InitNameIfEmpty())
 	}
-	opts.Config.Controller.SchedulerRunJobInterval = opts.SchedulerRunJobInterval
+
+	if opts.Config.Controller.Scheduler == nil {
+		opts.Config.Controller.Scheduler = new(config.Scheduler)
+	}
+	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
 
 	switch {
 	case opts.DisableEventing:
@@ -605,8 +617,12 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		}
 	}
 
-	// Initialize status grace period
-	tc.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
+	if opts.WorkerStatusGracePeriodDuration != 0 {
+		opts.Config.Controller.WorkerStatusGracePeriodDuration = opts.WorkerStatusGracePeriodDuration
+	}
+	if opts.LivenessTimeToStaleDuration != 0 {
+		opts.Config.Controller.LivenessTimeToStaleDuration = opts.LivenessTimeToStaleDuration
+	}
 
 	tc.name = opts.Config.Controller.Name
 
@@ -650,7 +666,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	if err := tc.b.SetupListeners(nil, opts.Config.SharedConfig, []string{"api", "cluster", "ops"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := tc.b.SetupControllerPublicClusterAddress(opts.Config, ""); err != nil {
+	if err := opts.Config.SetupControllerPublicClusterAddress(""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -664,7 +680,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		if _, err := schema.MigrateStore(ctx, "postgres", tc.b.DatabaseUrl); err != nil {
 			t.Fatal(err)
 		}
-		if err := tc.b.ConnectToDatabase(tc.ctx, "postgres"); err != nil {
+		if err := tc.b.OpenAndSetServerDatabase(tc.ctx, "postgres"); err != nil {
 			t.Fatal(err)
 		}
 		if !opts.DisableKmsKeyCreation {
@@ -731,20 +747,21 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		opts = new(TestControllerOpts)
 	}
 	nextOpts := &TestControllerOpts{
-		DatabaseUrl:                 tc.c.conf.DatabaseUrl,
-		DefaultPasswordAuthMethodId: tc.c.conf.DevPasswordAuthMethodId,
-		DefaultOidcAuthMethodId:     tc.c.conf.DevOidcAuthMethodId,
-		RootKms:                     tc.c.conf.RootKms,
-		WorkerAuthKms:               tc.c.conf.WorkerAuthKms,
-		RecoveryKms:                 tc.c.conf.RecoveryKms,
-		Name:                        opts.Name,
-		Logger:                      tc.c.conf.Logger,
-		DefaultLoginName:            tc.b.DevLoginName,
-		DefaultPassword:             tc.b.DevPassword,
-		DisableKmsKeyCreation:       true,
-		DisableAuthMethodCreation:   true,
-		PublicClusterAddr:           opts.PublicClusterAddr,
-		StatusGracePeriodDuration:   opts.StatusGracePeriodDuration,
+		DatabaseUrl:                     tc.c.conf.DatabaseUrl,
+		DefaultPasswordAuthMethodId:     tc.c.conf.DevPasswordAuthMethodId,
+		DefaultOidcAuthMethodId:         tc.c.conf.DevOidcAuthMethodId,
+		RootKms:                         tc.c.conf.RootKms,
+		WorkerAuthKms:                   tc.c.conf.WorkerAuthKms,
+		RecoveryKms:                     tc.c.conf.RecoveryKms,
+		Name:                            opts.Name,
+		Logger:                          tc.c.conf.Logger,
+		DefaultLoginName:                tc.b.DevLoginName,
+		DefaultPassword:                 tc.b.DevPassword,
+		DisableKmsKeyCreation:           true,
+		DisableAuthMethodCreation:       true,
+		PublicClusterAddr:               opts.PublicClusterAddr,
+		WorkerStatusGracePeriodDuration: opts.WorkerStatusGracePeriodDuration,
+		LivenessTimeToStaleDuration:     opts.LivenessTimeToStaleDuration,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger
@@ -768,7 +785,7 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string)
 	ctx := context.TODO()
 	event.WriteSysEvent(ctx, op, "waiting for next status report from worker", "worker", workerStatusName)
 	waitStatusStart := time.Now()
-	ctx, cancel := context.WithTimeout(tc.ctx, tc.b.StatusGracePeriodDuration)
+	ctx, cancel := context.WithTimeout(tc.ctx, time.Duration(tc.c.workerStatusGracePeriod.Load()))
 	defer cancel()
 	var err error
 	for {
@@ -787,7 +804,7 @@ func (tc *TestController) WaitForNextWorkerStatusUpdate(workerStatusName string)
 		}
 
 		var waitStatusCurrent time.Time
-		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v interface{}) bool {
+		tc.Controller().WorkerStatusUpdateTimes().Range(func(k, v any) bool {
 			if k == nil || v == nil {
 				err = fmt.Errorf("nil key or value on entry: key=%#v value=%#v", k, v)
 				return false

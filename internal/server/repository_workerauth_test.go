@@ -2,24 +2,32 @@ package server
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/fatih/structs"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
+	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/curve25519"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -42,7 +50,7 @@ func TestStoreRootCertificates(t *testing.T) {
 	require.NoError(err)
 
 	// Fail to find root certificates prior to rotation/ creation
-	noCertAuth := &types.RootCertificates{Id: ca_id}
+	noCertAuth := &types.RootCertificates{Id: CaId}
 	err = workerAuthRepo.Load(ctx, noCertAuth)
 	require.Error(err)
 	rootIds, err := workerAuthRepo.List(ctx, (*types.RootCertificate)(nil))
@@ -57,7 +65,7 @@ func TestStoreRootCertificates(t *testing.T) {
 	assert.Len(rootIds, 2)
 
 	// Load stored roots
-	certAuthority := &types.RootCertificates{Id: ca_id}
+	certAuthority := &types.RootCertificates{Id: CaId}
 	err = workerAuthRepo.Load(ctx, certAuthority)
 	require.NoError(err)
 	require.NotNil(certAuthority.GetNext())
@@ -96,7 +104,7 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 	roots, err := rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(err)
 
-	cAuth2 := &types.RootCertificates{Id: ca_id}
+	cAuth2 := &types.RootCertificates{Id: CaId}
 	err = workerAuthRepo.Load(ctx, cAuth2)
 	require.NoError(err)
 	var result2 rootCertificatesVersion
@@ -111,7 +119,7 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 	badState, err := structpb.NewStruct(s.Map())
 	require.NoError(err)
 	newRoots2 := &types.RootCertificates{
-		Id:      ca_id,
+		Id:      CaId,
 		Next:    roots.Next,
 		Current: roots.Current,
 	}
@@ -120,7 +128,7 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 	require.Error(err)
 
 	// Remove CA, expect updated version
-	cAuthRemove := &types.RootCertificates{Id: ca_id}
+	cAuthRemove := &types.RootCertificates{Id: CaId}
 	removeVersion := &rootCertificatesVersion{Version: uint32(2)}
 	s = structs.New(removeVersion)
 	s.TagName = "mapstructure"
@@ -135,18 +143,14 @@ func TestStoreCertAuthorityVersioning(t *testing.T) {
 func TestStoreWorkerAuth(t *testing.T) {
 	require, assert := require.New(t), assert.New(t)
 	ctx := context.Background()
-	wrapper := db.TestWrapper(t)
+	rootWrapper := db.TestWrapper(t)
 	conn, _ := db.TestSetup(t, "postgres")
-	kmsCache := kms.TestKms(t, conn, wrapper)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
 	// Ensures the global scope contains a valid root key
-	err := kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
-	require.NoError(err)
-	wrapper, err = kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase)
-	require.NoError(err)
-	require.NotNil(wrapper)
+	require.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
-	worker := TestPkiWorker(t, conn, wrapper)
+	worker := TestPkiWorker(t, conn, rootWrapper)
 
 	rw := db.New(conn)
 	rootStorage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
@@ -187,6 +191,13 @@ func TestStoreWorkerAuth(t *testing.T) {
 	storage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
+	// Look for node info and expect to find nothing
+	nodeLookup := &types.NodeInformation{
+		Id: keyId,
+	}
+	err = storage.Load(ctx, nodeLookup)
+	assert.Equal(err, nodee.ErrNotFound)
+
 	// The AuthorizeNode request will result in a WorkerAuth record being stored
 	_, err = registration.AuthorizeNode(ctx, storage, fetchReq, nodeenrollment.WithState(state))
 	require.NoError(err)
@@ -198,9 +209,6 @@ func TestStoreWorkerAuth(t *testing.T) {
 	assert.Len(nodeInfos, 1)
 
 	// Validate the stored fields match those from the worker
-	nodeLookup := &types.NodeInformation{
-		Id: keyId,
-	}
 	err = storage.Load(ctx, nodeLookup)
 	require.NoError(err)
 	assert.NotEmpty(nodeLookup)
@@ -208,12 +216,61 @@ func TestStoreWorkerAuth(t *testing.T) {
 	assert.Equal(nodeInfo.RegistrationNonce, nodeLookup.RegistrationNonce)
 	assert.Equal(nodeInfo.CertificatePublicKeyPkix, nodeLookup.CertificatePublicKeyPkix)
 	assert.Equal(nodeInfo.State.AsMap(), nodeLookup.State.AsMap())
+	assert.Empty(nodeInfo.PreviousEncryptionKey)
+
+	// Validate that we can find the workerAuth set and key identifier
+	workerAuthSet, err := storage.FindWorkerAuthByWorkerId(ctx, worker.PublicId)
+	assert.NoError(err)
+	assert.Equal(workerAuthSet.Current.WorkerKeyIdentifier, keyId)
 
 	// Remove node
 	err = storage.Remove(ctx, nodeLookup)
 	require.NoError(err)
 	err = storage.Load(ctx, nodeLookup)
 	require.Error(err)
+}
+
+func TestStoreServerLedActivationToken(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	ctx := context.Background()
+	rootWrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	// Ensure the global scope contains a valid root key
+	require.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	rw := db.New(conn)
+	rootStorage, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(err)
+
+	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
+	require.NoError(err)
+
+	repo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
+	worker, err := repo.CreateWorker(ctx, &Worker{Worker: &store.Worker{ScopeId: scope.Global.String()}}, WithCreateControllerLedActivationToken(true))
+	require.NoError(err)
+	require.NotEmpty(worker.ControllerGeneratedActivationToken)
+
+	// We should now look for an activation token value in storage using the
+	// lookup function and validate that it's populated
+	tokenNonce := new(types.ServerLedActivationTokenNonce)
+	marshaledNonce, err := base58.FastBase58Decoding(strings.TrimPrefix(worker.ControllerGeneratedActivationToken, nodeenrollment.ServerLedActivationTokenPrefix))
+	require.NoError(err)
+	require.NoError(proto.Unmarshal(marshaledNonce, tokenNonce))
+	hm := hmac.New(sha256.New, tokenNonce.HmacKeyBytes)
+	idBytes := hm.Sum(tokenNonce.Nonce)
+	actToken := &types.ServerLedActivationToken{
+		Id: base58.FastBase58Encoding(idBytes),
+	}
+	require.NoError(rootStorage.Load(ctx, actToken))
+	require.NotNil(actToken.CreationTime)
+	assert.False(actToken.CreationTime.AsTime().IsZero())
+	assert.Less(time.Until(actToken.CreationTime.AsTime()), time.Duration(0))
+
+	require.NoError(rootStorage.Remove(ctx, actToken))
+	require.Error(rootStorage.Load(ctx, actToken))
 }
 
 func TestUnsupportedMessages(t *testing.T) {
@@ -253,8 +310,7 @@ func TestStoreNodeInformationTx(t *testing.T) {
 
 	kmsCache := kms.TestKms(t, conn, testWrapper)
 	// Ensures the global scope contains a valid root key
-	err = kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
-	require.NoError(t, err)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
@@ -333,8 +389,8 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			databaseWrapper: &mockTestWrapper{err: errors.New(testCtx, errors.Internal, "testing", "key-id-error")},
 			node:            testNodeInfoFn(),
 			wantErr:         true,
-			wantErrIs:       errors.Internal,
-			wantErrContains: "key-id-error",
+			wantErrIs:       errors.Encrypt,
+			wantErrContains: "reading cipher key id",
 		},
 		{
 			name:   "encrypt-error",
@@ -394,6 +450,60 @@ func TestStoreNodeInformationTx(t *testing.T) {
 	}
 }
 
+func TestFilterToAuthorizedWorkerKeyIds(t *testing.T) {
+	ctx := context.Background()
+	rootWrapper := db.TestWrapper(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+
+	t.Run("query returns error", func(t *testing.T) {
+		conn, mock := db.TestSetupWithMock(t)
+		rw := db.New(conn)
+		mock.ExpectQuery(`select`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
+		brokenRepo, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+		require.NoError(t, err)
+		_, err = brokenRepo.FilterToAuthorizedWorkerKeyIds(ctx, []string{"something"})
+		assert.Error(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	// Ensures the global scope contains a valid root key
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	rw := db.New(conn)
+	repo, err := NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	got, err := repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{})
+	require.NoError(t, err)
+	assert.Empty(t, got)
+
+	var keyId1 string
+	w1 := TestPkiWorker(t, conn, rootWrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId1))
+	var keyId2 string
+	_ = TestPkiWorker(t, conn, rootWrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId2))
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{"not-found-key-id", keyId1})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId1}, got)
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId2, "not-found-key-id"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId2}, got)
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{keyId1, keyId2}, got)
+
+	workerRepo, err := NewRepository(rw, rw, kmsCache)
+	require.NoError(t, err)
+	_, err = workerRepo.DeleteWorker(ctx, w1.GetPublicId())
+	require.NoError(t, err)
+
+	got, err = repo.FilterToAuthorizedWorkerKeyIds(ctx, []string{keyId1, keyId2, "unfound-key"})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{keyId2}, got)
+}
+
 type mockTestWrapper struct {
 	wrapping.Wrapper
 	decryptError bool
@@ -413,7 +523,7 @@ func (m *mockTestWrapper) Encrypt(ctx context.Context, plaintext []byte, options
 	if m.err != nil && m.encryptError {
 		return nil, m.err
 	}
-	panic("todo")
+	return &wrapping.BlobInfo{}, nil
 }
 
 func (m *mockTestWrapper) Decrypt(ctx context.Context, ciphertext *wrapping.BlobInfo, options ...wrapping.Option) ([]byte, error) {

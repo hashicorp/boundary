@@ -1,0 +1,14 @@
+{
+    "disable_mlock": true,
+    "controller": [
+        {
+            "database": [
+                {
+                    "url": "env://LOAD_TEST_BOUNDARY_POSTGRES_URL"
+                }
+            ],
+            "description": "A controller",
+            "name": "controller0"
+        }
+    ]
+}

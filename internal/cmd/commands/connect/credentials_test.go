@@ -14,7 +14,7 @@ var (
 		CredentialSource: &targets.CredentialSource{
 			CredentialType: string(credential.UsernamePasswordType),
 		},
-		Credential: map[string]interface{}{
+		Credential: map[string]any{
 			"username": "user",
 			"password": "pass",
 		},
@@ -24,7 +24,7 @@ var (
 		CredentialSource: &targets.CredentialSource{
 			CredentialType: string(credential.SshPrivateKeyType),
 		},
-		Credential: map[string]interface{}{
+		Credential: map[string]any{
 			"username":    "user",
 			"private_key": "my-pk",
 		},
@@ -35,7 +35,7 @@ var (
 			Type: "vault",
 		},
 		Secret: &targets.SessionSecret{
-			Decoded: map[string]interface{}{
+			Decoded: map[string]any{
 				"username": "vault-decoded-user",
 				"password": "vault-decoded-pass",
 			},
@@ -47,7 +47,7 @@ var (
 			Type: "vault",
 		},
 		Secret: &targets.SessionSecret{
-			Decoded: map[string]interface{}{
+			Decoded: map[string]any{
 				"username":    "vault-decoded-user",
 				"private_key": "vault-decoded-pk",
 			},
@@ -59,7 +59,7 @@ var (
 			Type: "static",
 		},
 		Secret: &targets.SessionSecret{
-			Decoded: map[string]interface{}{
+			Decoded: map[string]any{
 				"username": "static-decoded-user",
 				"password": "static-decoded-pass",
 			},
@@ -71,9 +71,27 @@ var (
 			Type: "static",
 		},
 		Secret: &targets.SessionSecret{
-			Decoded: map[string]interface{}{
+			Decoded: map[string]any{
 				"username":    "static-decoded-user",
 				"private_key": "static-decoded-pk",
+			},
+		},
+	}
+
+	staticKv = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type:              "static",
+			CredentialType:    "json",
+			CredentialStoreId: "csst_id",
+			Description:       "test",
+			Name:              "test unspecified json cred",
+			Id:                "credjson_id",
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]any{
+				"secret": map[string]any{
+					"username": "password",
+				},
 			},
 		},
 	}
@@ -83,7 +101,7 @@ var (
 			Type: "static",
 		},
 		Secret: &targets.SessionSecret{
-			Decoded: map[string]interface{}{
+			Decoded: map[string]any{
 				"username":   "decoded-user",
 				"some-value": "decoded-some-value",
 			},
@@ -95,7 +113,7 @@ var (
 			Type: "static",
 		},
 		Secret: &targets.SessionSecret{
-			Decoded: map[string]interface{}{
+			Decoded: map[string]any{
 				"username":    "decoded-user",
 				"some-value1": "decoded-some-value1",
 			},
@@ -119,7 +137,7 @@ func Test_parseCredentials(t *testing.T) {
 			creds: []*targets.SessionCredential{
 				{
 					Secret: &targets.SessionSecret{
-						Decoded: map[string]interface{}{
+						Decoded: map[string]any{
 							"username":    "decoded-user",
 							"private_key": "decoded-pk",
 						},
@@ -237,10 +255,23 @@ func Test_parseCredentials(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "unspecified-static-json",
+			creds: []*targets.SessionCredential{
+				staticKv,
+			},
+			wantCreds: credentials{
+				unspecified: []*targets.SessionCredential{
+					staticKv,
+				},
+			},
+			wantErr: false,
+		},
+		{
 			name: "mixed",
 			creds: []*targets.SessionCredential{
 				staticSshPrivateKey, unspecifiedCred1, vaultSshPrivateKey, typedUsernamePassword,
 				unspecifiedCred, vaultUsernamePassword, typedSshPrivateKey, staticUsernamePassword,
+				staticKv,
 			},
 			wantCreds: credentials{
 				sshPrivateKey: []sshPrivateKey{
@@ -278,7 +309,7 @@ func Test_parseCredentials(t *testing.T) {
 					},
 				},
 				unspecified: []*targets.SessionCredential{
-					unspecifiedCred, unspecifiedCred1,
+					unspecifiedCred, unspecifiedCred1, staticKv,
 				},
 			},
 			wantErr: false,

@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +27,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 	t.Run("default-configuration", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		var confs []*Argon2Configuration
-		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
+		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
 		require.NoError(err)
 		require.Equal(1, len(confs))
 		got := confs[0]
@@ -59,7 +60,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		var confs []*Argon2Configuration
-		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
+		err := rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
 		require.NoError(err)
 		assert.Equal(1, len(confs))
 
@@ -85,7 +86,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		assert.NoError(err)
 
 		confs = nil
-		err = rw.SearchWhere(ctx, &confs, "password_method_id = ?", []interface{}{authMethodId})
+		err = rw.SearchWhere(ctx, &confs, "password_method_id = ?", []any{authMethodId})
 		require.NoError(err)
 		assert.Equal(3, len(confs))
 	})
@@ -143,7 +144,7 @@ func TestArgon2Configuration_Readonly(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			var confs []*Argon2Configuration
-			err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []interface{}{authMethodId})
+			err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []any{authMethodId})
 			require.NoError(err)
 			assert.Greater(len(confs), 0)
 			orig := confs[0]
@@ -293,7 +294,7 @@ func testArgon2Confs(t *testing.T, conn *db.DB, authMethodId string, count int) 
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
 	var confs []*Argon2Configuration
-	err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []interface{}{authMethodId})
+	err := rw.SearchWhere(context.Background(), &confs, "password_method_id = ?", []any{authMethodId})
 	require.NoError(err)
 	assert.Equal(1, len(confs))
 	base := confs[0]
@@ -317,13 +318,17 @@ func TestArgon2Credential_New(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 
 	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
+	rootWrapper := db.TestWrapper(t)
 
-	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, rootWrapper))
 	auts := TestAuthMethods(t, conn, o.GetPublicId(), 1)
 	aut := auts[0]
 	accts := TestMultipleAccounts(t, conn, aut.PublicId, 5)
 	confs := testArgon2Confs(t, conn, accts[0].AuthMethodId, 1)
+
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	wrapper, err := kmsCache.GetWrapper(context.Background(), o.GetPublicId(), 1)
+	require.NoError(t, err)
 
 	type args struct {
 		accountId string

@@ -13,27 +13,31 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/errors"
-	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
-	"github.com/hashicorp/nodeenrollment"
-	nodeenet "github.com/hashicorp/nodeenrollment/net"
-	"github.com/mr-tron/base58"
-	"google.golang.org/grpc/resolver/manual"
-
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
+	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	"github.com/hashicorp/boundary/internal/errors"
+	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment"
+	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
 	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/mr-tron/base58"
+	"github.com/prometheus/client_golang/prometheus"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -45,19 +49,28 @@ type downstreamRouter interface {
 	// StartRouteMgmtTicking starts a ticker which manages the router's
 	// connections.
 	StartRouteMgmtTicking(context.Context, func() string, int) error
+
+	// ProcessPendingConnections starts a function that continually processes
+	// incoming client connections. This only returns when the provided context
+	// is done.
+	StartProcessingPendingConnections(context.Context, func() string)
 }
 
 // downstreamers provides at least a minimum interface that must be met by a
 // Worker.downstreamWorkers field which is far better than allowing any (empty
 // interface)
 type downstreamers interface {
-	// Root returns the root of the downstreamers' graph
-	Root() string
+	// RootId returns the root ID of the downstreamers' graph
+	RootId() string
 }
 
 // downstreamRouterFactory provides a simple factory which a Worker can use to
 // create its downstreamRouter
 var downstreamRouterFactory func() downstreamRouter
+
+var initializeReverseGrpcClientCollectors = noopInitializePromCollectors
+
+func noopInitializePromCollectors(r prometheus.Registerer) {}
 
 const (
 	authenticationStatusNeverAuthenticated uint32 = iota
@@ -89,6 +102,7 @@ type Worker struct {
 	everAuthenticated    *ua.Uint32
 	lastStatusSuccess    *atomic.Value
 	workerStartTime      time.Time
+	operationalState     *atomic.Value
 
 	controllerMultihopConn *atomic.Value
 
@@ -115,10 +129,19 @@ type Worker struct {
 	downstreamWorkers downstreamers
 	downstreamRoutes  downstreamRouter
 
+	// Timing variables. These are atomics for SIGHUP support, and are int64
+	// because they are casted to time.Duration.
+	successfulStatusGracePeriod *atomic.Int64
+	statusCallTimeoutDuration   *atomic.Int64
+
 	// Test-specific options (and possibly hidden dev-mode flags)
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
 	TestOverrideAuthRotationPeriod time.Duration
+
+	statusLock sync.Mutex
+
+	pkiConnManager *cluster.DownstreamManager
 }
 
 func New(conf *Config) (*Worker, error) {
@@ -126,19 +149,24 @@ func New(conf *Config) (*Worker, error) {
 	metric.InitializeHttpCollectors(conf.PrometheusRegisterer)
 	metric.InitializeWebsocketCollectors(conf.PrometheusRegisterer)
 	metric.InitializeClusterClientCollectors(conf.PrometheusRegisterer)
+	initializeReverseGrpcClientCollectors(conf.PrometheusRegisterer)
 
 	w := &Worker{
-		conf:                   conf,
-		logger:                 conf.Logger.Named("worker"),
-		started:                ua.NewBool(false),
-		controllerStatusConn:   new(atomic.Value),
-		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
-		lastStatusSuccess:      new(atomic.Value),
-		controllerMultihopConn: new(atomic.Value),
-		tags:                   new(atomic.Value),
-		updateTags:             ua.NewBool(false),
-		nonceFn:                base62.Random,
-		WorkerAuthCurrentKeyId: new(ua.String),
+		conf:                        conf,
+		logger:                      conf.Logger.Named("worker"),
+		started:                     ua.NewBool(false),
+		controllerStatusConn:        new(atomic.Value),
+		everAuthenticated:           ua.NewUint32(authenticationStatusNeverAuthenticated),
+		lastStatusSuccess:           new(atomic.Value),
+		controllerMultihopConn:      new(atomic.Value),
+		tags:                        new(atomic.Value),
+		updateTags:                  ua.NewBool(false),
+		nonceFn:                     base62.Random,
+		WorkerAuthCurrentKeyId:      new(ua.String),
+		operationalState:            new(atomic.Value),
+		pkiConnManager:              cluster.NewDownstreamManager(),
+		successfulStatusGracePeriod: new(atomic.Int64),
+		statusCallTimeoutDuration:   new(atomic.Int64),
 	}
 
 	if downstreamRouterFactory != nil {
@@ -154,7 +182,7 @@ func New(conf *Config) (*Worker, error) {
 		conf.RawConfig.Worker = new(config.Worker)
 	}
 
-	w.ParseAndStoreTags(conf.RawConfig.Worker.Tags)
+	w.parseAndStoreTags(conf.RawConfig.Worker.Tags)
 
 	if conf.SecureRandomReader == nil {
 		conf.SecureRandomReader = rand.Reader
@@ -175,6 +203,21 @@ func New(conf *Config) (*Worker, error) {
 				err)
 		}
 	}
+
+	switch conf.RawConfig.Worker.SuccessfulStatusGracePeriodDuration {
+	case 0:
+		w.successfulStatusGracePeriod.Store(int64(server.DefaultLiveness))
+	default:
+		w.successfulStatusGracePeriod.Store(int64(conf.RawConfig.Worker.SuccessfulStatusGracePeriodDuration))
+	}
+	switch conf.RawConfig.Worker.StatusCallTimeoutDuration {
+	case 0:
+		w.statusCallTimeoutDuration.Store(int64(common.DefaultStatusTimeout))
+	default:
+		w.statusCallTimeoutDuration.Store(int64(conf.RawConfig.Worker.StatusCallTimeoutDuration))
+	}
+	// FIXME: This is really ugly, but works.
+	session.CloseCallTimeout = w.statusCallTimeoutDuration
 
 	var listenerCount int
 	for i := range conf.Listeners {
@@ -200,6 +243,35 @@ func New(conf *Config) (*Worker, error) {
 	return w, nil
 }
 
+// Reload will update a worker with a new Config. The worker will only use
+// relevant parts of the new config, specifically:
+// - Worker Tags
+// - Initial Upstream addresses
+func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
+	const op = "worker.(Worker).Reload"
+
+	w.parseAndStoreTags(newConf.Worker.Tags)
+
+	if !strutil.EquivalentSlices(newConf.Worker.InitialUpstreams, w.conf.RawConfig.Worker.InitialUpstreams) {
+		w.statusLock.Lock()
+		defer w.statusLock.Unlock()
+
+		upstreamsMessage := fmt.Sprintf(
+			"Initial Upstreams has changed; old upstreams were: %s, new upstreams are: %s",
+			w.conf.RawConfig.Worker.InitialUpstreams,
+			newConf.Worker.InitialUpstreams,
+		)
+		event.WriteSysEvent(ctx, op, upstreamsMessage)
+		w.conf.RawConfig.Worker.InitialUpstreams = newConf.Worker.InitialUpstreams
+
+		for _, ar := range w.addressReceivers {
+			ar.SetAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
+			// set InitialAddresses in case the worker has not successfully dialed yet
+			ar.InitialAddresses(w.conf.RawConfig.Worker.InitialUpstreams)
+		}
+	}
+}
+
 func (w *Worker) Start() error {
 	const op = "worker.(Worker).Start"
 
@@ -219,6 +291,10 @@ func (w *Worker) Start() error {
 		// the controller, we don't want to invalidate that request on restart
 		// by generating a new set of credentials. However it's safe to output a
 		// new fetch request so we do in fact do that.
+		//
+		// Note that if a controller-generated activation token has been
+		// supplied, we do not output a fetch request; we attempt to use that
+		// directly later.
 		var err error
 		w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
 			nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
@@ -279,6 +355,15 @@ func (w *Worker) Start() error {
 			return fmt.Errorf("error loading worker auth creds: %w", err)
 		}
 
+		// Don't output a fetch request if an activation token has been
+		// provided. Technically we _could_ still output a fetch request, and it
+		// would be valid to do so, but if a token was provided it may well be
+		// confusing to a user if it seems like it was ignored because a fetch
+		// request was still output.
+		if actToken := w.conf.RawConfig.Worker.ControllerGeneratedActivationToken; actToken != "" {
+			createFetchRequest = false
+		}
+
 		// NOTE: this block _must_ be before the `if createFetchRequest` block
 		// or the fetch request may have no credentials to work with
 		if createNodeAuthCreds {
@@ -337,10 +422,12 @@ func (w *Worker) Start() error {
 		return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error starting worker listeners"))
 	}
 
+	w.operationalState.Store(server.ActiveOperationalState)
+
 	// Rather than deal with some of the potential error conditions for Add on
 	// the waitgroup vs. Done (in case a function exits immediately), we will
 	// always start rotation and simply exit early if we're using KMS
-	w.tickerWg.Add(3)
+	w.tickerWg.Add(2)
 	go func() {
 		defer w.tickerWg.Done()
 		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers)
@@ -349,27 +436,66 @@ func (w *Worker) Start() error {
 		defer w.tickerWg.Done()
 		w.startAuthRotationTicking(w.baseContext)
 	}()
-	go func() {
-		defer w.tickerWg.Done()
-		if w.downstreamRoutes != nil {
+
+	if w.downstreamRoutes != nil {
+		w.tickerWg.Add(2)
+		servNameFn := func() string {
+			if s := w.LastStatusSuccess(); s != nil {
+				return s.WorkerId
+			}
+			return "unknown worker id"
+		}
+		go func() {
+			defer w.tickerWg.Done()
+			w.downstreamRoutes.StartProcessingPendingConnections(w.baseContext, servNameFn)
+		}()
+		go func() {
+			defer w.tickerWg.Done()
 			err := w.downstreamRoutes.StartRouteMgmtTicking(
 				w.baseContext,
-				func() string {
-					if s := w.LastStatusSuccess(); s != nil {
-						return s.WorkerId
-					}
-					return "unknown worker id"
-				},
+				servNameFn,
 				-1, // indicates the ticker should run until cancelled.
 			)
 			if err != nil {
 				errors.Wrap(w.baseContext, err, op)
 			}
-		}
-	}()
+		}()
+	}
 
 	w.workerStartTime = time.Now()
 	w.started.Store(true)
+
+	return nil
+}
+
+func (w *Worker) hasActiveConnection() bool {
+	activeConnection := false
+	w.sessionManager.ForEachLocalSession(
+		func(s session.Session) bool {
+			conns := s.GetLocalConnections()
+			for _, v := range conns {
+				if v.Status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED {
+					activeConnection = true
+					return false
+				}
+			}
+			return true
+		})
+	return activeConnection
+}
+
+// Graceful shutdown sets the worker state to "shutdown" and will wait to return until there
+// are no longer any active connections.
+func (w *Worker) GracefulShutdown() error {
+	const op = "worker.(Worker).GracefulShutdown"
+	event.WriteSysEvent(w.baseContext, op, "worker entering graceful shutdown")
+	w.operationalState.Store(server.ShutdownOperationalState)
+
+	// Wait for connections to drain
+	for w.hasActiveConnection() {
+		time.Sleep(time.Millisecond * 250)
+	}
+	event.WriteSysEvent(w.baseContext, op, "worker connections have drained")
 
 	return nil
 }
@@ -384,6 +510,10 @@ func (w *Worker) Shutdown() error {
 		event.WriteSysEvent(w.baseContext, op, "already shut down, skipping")
 		return nil
 	}
+	event.WriteSysEvent(w.baseContext, op, "worker shutting down")
+
+	// Set state to shutdown
+	w.operationalState.Store(server.ShutdownOperationalState)
 
 	// Stop listeners first to prevent new connections to the
 	// controller.
@@ -395,11 +525,11 @@ func (w *Worker) Shutdown() error {
 	// Shut down all connections.
 	w.cleanupConnections(w.baseContext, true, w.sessionManager)
 
-	// Wait for next status request to succeed. Don't wait too long;
-	// wrap the base context in a timeout equal to our status grace
-	// period.
+	// Wait for next status request to succeed. Don't wait too long; time it out
+	// at our default liveness value, which is also our default status grace
+	// period timeout
 	waitStatusStart := time.Now()
-	nextStatusCtx, nextStatusCancel := context.WithTimeout(w.baseContext, w.conf.StatusGracePeriodDuration)
+	nextStatusCtx, nextStatusCancel := context.WithTimeout(w.baseContext, server.DefaultLiveness)
 	defer nextStatusCancel()
 	for {
 		if err := nextStatusCtx.Err(); err != nil {
@@ -428,10 +558,11 @@ func (w *Worker) Shutdown() error {
 		}
 	}
 
+	event.WriteSysEvent(w.baseContext, op, "worker finished shutting down")
 	return nil
 }
 
-func (w *Worker) ParseAndStoreTags(incoming map[string][]string) {
+func (w *Worker) parseAndStoreTags(incoming map[string][]string) {
 	if len(incoming) == 0 {
 		w.tags.Store([]*pb.TagPair{})
 		return
@@ -482,6 +613,16 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 		sess, err := sessionManager.LoadLocalSession(timeoutContext, sessionId, lastSuccess.GetWorkerId())
 		if err != nil {
 			return nil, fmt.Errorf("error refreshing session: %w", err)
+		}
+
+		if sess.GetCertificate() == nil {
+			return nil, fmt.Errorf("requested session has no certifificate")
+		}
+		if len(sess.GetCertificate().Raw) == 0 {
+			return nil, fmt.Errorf("requested session has no certificate DER")
+		}
+		if len(sess.GetPrivateKey()) == 0 {
+			return nil, fmt.Errorf("requested session has no private key")
 		}
 
 		certPool := x509.NewCertPool()

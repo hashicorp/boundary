@@ -24,7 +24,7 @@ const (
 	vaultTokenFlagName           = "vault-token"
 	clientCertificateFlagName    = "vault-client-certificate"
 	clientCertificateKeyFlagName = "vault-client-certificate-key"
-	workerFilterFlagName         = "vault-worker-filter"
+	workerFilterFlagName         = "worker-filter"
 )
 
 type extraVaultCmdVars struct {

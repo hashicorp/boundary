@@ -263,7 +263,7 @@ func TestUtilFunctions(t *testing.T) {
 						hi.ipsToAdd,
 						got.ipsToAdd,
 						cmpopts.IgnoreUnexported(host.IpAddress{}, hoststore.IpAddress{}),
-						cmpopts.SortSlices(func(x, y interface{}) bool {
+						cmpopts.SortSlices(func(x, y any) bool {
 							return x.(*host.IpAddress).Address < y.(*host.IpAddress).Address
 						}),
 					),
@@ -273,7 +273,7 @@ func TestUtilFunctions(t *testing.T) {
 						hi.ipsToRemove,
 						got.ipsToRemove,
 						cmpopts.IgnoreUnexported(host.IpAddress{}, hoststore.IpAddress{}),
-						cmpopts.SortSlices(func(x, y interface{}) bool {
+						cmpopts.SortSlices(func(x, y any) bool {
 							return x.(*host.IpAddress).Address < y.(*host.IpAddress).Address
 						}),
 					),
@@ -283,7 +283,7 @@ func TestUtilFunctions(t *testing.T) {
 						hi.dnsNamesToAdd,
 						got.dnsNamesToAdd,
 						cmpopts.IgnoreUnexported(host.DnsName{}, hoststore.DnsName{}),
-						cmpopts.SortSlices(func(x, y interface{}) bool {
+						cmpopts.SortSlices(func(x, y any) bool {
 							return x.(*host.DnsName).Name < y.(*host.DnsName).Name
 						}),
 					),
@@ -293,7 +293,7 @@ func TestUtilFunctions(t *testing.T) {
 						hi.dnsNamesToRemove,
 						got.dnsNamesToRemove,
 						cmpopts.IgnoreUnexported(host.DnsName{}, hoststore.DnsName{}),
-						cmpopts.SortSlices(func(x, y interface{}) bool {
+						cmpopts.SortSlices(func(x, y any) bool {
 							return x.(*host.DnsName).Name < y.(*host.DnsName).Name
 						}),
 					),

@@ -7,7 +7,7 @@ import (
 )
 
 type (
-	data map[string]interface{}
+	data map[string]any
 
 	// extractFunc attempts to extract the username and password
 	// from sd using the provided attribute names, using a known
@@ -96,18 +96,18 @@ func kv2Extract(sd data, usernameAttr, passwordAttr string) (username string, pa
 		return "", ""
 	}
 
-	var data, metadata map[string]interface{}
+	var data, metadata map[string]any
 	for k, v := range sd {
 		switch k {
 		case "data":
 			var ok bool
-			if data, ok = v.(map[string]interface{}); !ok {
+			if data, ok = v.(map[string]any); !ok {
 				// data field should be of type map[string]interface{} in KV-v2
 				return "", ""
 			}
 		case "metadata":
 			var ok bool
-			if metadata, ok = v.(map[string]interface{}); !ok {
+			if metadata, ok = v.(map[string]any); !ok {
 				// metadata field should be of type map[string]interface{} in KV-v2
 				return "", ""
 			}

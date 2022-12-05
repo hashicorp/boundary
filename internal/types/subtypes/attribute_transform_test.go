@@ -28,9 +28,9 @@ func TestFilterable(t *testing.T) {
 				},
 			},
 			func() *structpb.Struct {
-				w, _ := structpb.NewStruct(map[string]interface{}{
+				w, _ := structpb.NewStruct(map[string]any{
 					"type": "sub_resource",
-					"attributes": map[string]interface{}{
+					"attributes": map[string]any{
 						"name": "test",
 					},
 				})
@@ -43,7 +43,7 @@ func TestFilterable(t *testing.T) {
 				Type: "default",
 				Attrs: &attribute.TestResource_Attributes{
 					Attributes: func() *structpb.Struct {
-						attrs, _ := structpb.NewStruct(map[string]interface{}{
+						attrs, _ := structpb.NewStruct(map[string]any{
 							"name": "test",
 						})
 						return attrs
@@ -51,9 +51,9 @@ func TestFilterable(t *testing.T) {
 				},
 			},
 			func() *structpb.Struct {
-				w, _ := structpb.NewStruct(map[string]interface{}{
+				w, _ := structpb.NewStruct(map[string]any{
 					"type": "default",
-					"attributes": map[string]interface{}{
+					"attributes": map[string]any{
 						"name": "test",
 					},
 				})
@@ -65,7 +65,7 @@ func TestFilterable(t *testing.T) {
 			&attribute.TestNoOneOf{
 				Type: "sub_resource",
 				Attributes: func() *structpb.Struct {
-					attrs, _ := structpb.NewStruct(map[string]interface{}{
+					attrs, _ := structpb.NewStruct(map[string]any{
 						"name": "test",
 					})
 					return attrs
@@ -74,7 +74,7 @@ func TestFilterable(t *testing.T) {
 			&attribute.TestNoOneOf{
 				Type: "sub_resource",
 				Attributes: func() *structpb.Struct {
-					attrs, _ := structpb.NewStruct(map[string]interface{}{
+					attrs, _ := structpb.NewStruct(map[string]any{
 						"name": "test",
 					})
 					return attrs

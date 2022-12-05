@@ -53,7 +53,7 @@ type flushable interface {
 // to substitute our testing broker when needed to write tests for things
 // like event send retrying.
 type broker interface {
-	Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error)
+	Send(ctx context.Context, t eventlogger.EventType, payload any) (eventlogger.Status, error)
 	Reopen(ctx context.Context) error
 	StopTimeAt(now time.Time)
 	RegisterNode(id eventlogger.NodeID, node eventlogger.Node) error
@@ -65,7 +65,7 @@ type broker interface {
 // gating
 type queuedEvent struct {
 	ctx   context.Context
-	event interface{}
+	event any
 }
 
 // Eventer provides a method to send events to pipelines of sinks
@@ -77,7 +77,7 @@ type Eventer struct {
 	auditPipelines       []pipeline
 	observationPipelines []pipeline
 	errPipelines         []pipeline
-	auditWrapperNodes    []interface{}
+	auditWrapperNodes    []any
 
 	// Gating is used to delay output of events until after we have a chance to
 	// render startup info, similar to what was done for hclog before eventing
@@ -246,7 +246,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		logger:            log,
 		conf:              c,
 		broker:            b,
-		auditWrapperNodes: []interface{}{},
+		auditWrapperNodes: []any{},
 	}
 
 	if !opts.withNow.IsZero() {
@@ -920,7 +920,7 @@ func (s *logAdapter) pickType(str string) (Type, string) {
 	}
 }
 
-func isNil(i interface{}) bool {
+func isNil(i any) bool {
 	if i == nil {
 		return true
 	}

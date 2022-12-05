@@ -67,14 +67,14 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 	}
 	var sSecret *structpb.Struct
 	switch secret.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		// In this case we actually have to re-decode it. The proto wrappers
 		// choke on json.Number and at the time I'm writing this I don't
 		// have time to write a walk function to dig through with reflect
 		// and find all json.Numbers and replace them. So we eat the
 		// inefficiency. So note that we are specifically _not_ using a
 		// decoder with UseNumber here.
-		var dSecret map[string]interface{}
+		var dSecret map[string]any
 		if err := json.Unmarshal(jSecret, &dSecret); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("decoding json for proto marshaling"))
 		}
@@ -168,7 +168,7 @@ func staticToWorkerCredential(ctx context.Context, cred credential.Static) (sess
 
 	data, err := proto.Marshal(workerCred)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling dynamic secret to proto"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("marshalling static secret to proto"))
 	}
 	return data, nil
 }
@@ -178,7 +178,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	var credType string
 	var credData *structpb.Struct
-	var secret map[string]interface{}
+	var secret map[string]any
 	switch c := cred.(type) {
 	case *credstatic.UsernamePasswordCredential:
 		var err error
@@ -189,7 +189,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 				Password: string(c.GetPassword()),
 			},
 		)
-		secret = map[string]interface{}{
+		secret = map[string]any{
 			"username": c.GetUsername(),
 			"password": string(c.GetPassword()),
 		}
@@ -207,7 +207,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 				PrivateKeyPassphrase: string(c.GetPrivateKeyPassphrase()),
 			},
 		)
-		secret = map[string]interface{}{
+		secret = map[string]any{
 			"username":    c.GetUsername(),
 			"private_key": string(c.GetPrivateKey()),
 		}
@@ -217,6 +217,21 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for ssh private key credential"))
 		}
+
+	case *credstatic.JsonCredential:
+		var err error
+		credType = string(credential.JsonType)
+		object := map[string]any{}
+		err = json.Unmarshal(c.GetObject(), &object)
+		if err != nil {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "unmarshalling json")
+		}
+
+		credData, err = structpb.NewStruct(object)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("creating proto struct for json credential"))
+		}
+		secret = object
 
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported credential %T", c))

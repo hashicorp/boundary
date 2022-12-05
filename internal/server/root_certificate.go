@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/boundary/internal/errors"
-
 	timestamp "github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/server/store"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
 )
 
 // The CertificateAuthority id will always be set to "roots".
-// The const ca_id contains this value
-const ca_id = "roots"
+// The const CaId contains this value
+const CaId = "roots"
 
 // CertificateAuthority is a versioned entity used to lock the database when rotation RootCertificates
 type CertificateAuthority struct {
@@ -24,7 +25,7 @@ type CertificateAuthority struct {
 func newCertificateAuthority() *CertificateAuthority {
 	ca := &CertificateAuthority{
 		CertificateAuthority: &store.CertificateAuthority{
-			PrivateId: ca_id,
+			PrivateId: CaId,
 		},
 	}
 	return ca
@@ -48,6 +49,30 @@ func (r *CertificateAuthority) SetTableName(n string) {
 type RootCertificate struct {
 	*store.RootCertificate
 	tableName string `gorm:"-"`
+}
+
+func (r *RootCertificate) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "server.(RootCertificate).encrypt"
+	if len(r.PrivateKey) == 0 {
+		return errors.New(ctx, errors.InvalidParameter, op, "no private key provided")
+	}
+	if err := structwrapping.WrapStruct(ctx, cipher, r.RootCertificate, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+	}
+	keyId, err := cipher.KeyId(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("error reading cipher key id"))
+	}
+	r.KeyId = keyId
+	return nil
+}
+
+func (r *RootCertificate) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "server.(RootCertificate).decrypt"
+	if err := structwrapping.UnwrapStruct(ctx, cipher, r.RootCertificate, nil); err != nil {
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+	}
+	return nil
 }
 
 // RootCertificateKeys contains the public and private keys for use in constructing a RootCertificate
@@ -93,10 +118,10 @@ func newRootCertificate(ctx context.Context, serialNumber uint64, certificate []
 			NotValidAfter:  notValidAfter,
 			NotValidBefore: notValidBefore,
 			PublicKey:      rootCertificateKeys.publicKey,
-			PrivateKey:     rootCertificateKeys.privateKey,
+			CtPrivateKey:   rootCertificateKeys.privateKey,
 			KeyId:          keyId,
 			State:          string(state),
-			IssuingCa:      ca_id,
+			IssuingCa:      CaId,
 		},
 	}
 	return l, nil
@@ -133,8 +158,8 @@ func (r *RootCertificate) ValidateNewRootCertificate(ctx context.Context) error 
 	if r.PublicKey == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing public key")
 	}
-	if r.PrivateKey == nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing private key")
+	if r.CtPrivateKey == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing encrypted private key")
 	}
 	if r.KeyId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing key id")

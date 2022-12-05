@@ -201,30 +201,6 @@ func (c *Command) Run(args []string) int {
 
 	switch c.Func {
 
-	case "add-host-sets":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "remove-host-sets":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
-	case "set-host-sets":
-		switch c.FlagVersion {
-		case 0:
-			opts = append(opts, targets.WithAutomaticVersioning(true))
-		default:
-			version = uint32(c.FlagVersion)
-		}
-
 	case "add-host-sources":
 		switch c.FlagVersion {
 		case 0:

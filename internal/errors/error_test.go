@@ -476,9 +476,9 @@ func TestConvertError(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		_, err := rw.Exec(ctx, truncateTable, nil)
 		require.NoError(err)
-		_, err = rw.Exec(ctx, insert, []interface{}{"alice", "coworker", nil})
+		_, err = rw.Exec(ctx, insert, []any{"alice", "coworker", nil})
 		require.NoError(err)
-		_, err = rw.Exec(ctx, insert, []interface{}{"alice", "dup coworker", nil})
+		_, err = rw.Exec(ctx, insert, []any{"alice", "dup coworker", nil})
 		require.Error(err)
 
 		e := errors.Convert(err)
@@ -490,7 +490,7 @@ func TestConvertError(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		_, err := rw.Exec(ctx, truncateTable, nil)
 		require.NoError(err)
-		_, err = rw.Exec(ctx, insert, []interface{}{"alice", nil, nil})
+		_, err = rw.Exec(ctx, insert, []any{"alice", nil, nil})
 		require.Error(err)
 
 		e := errors.Convert(err)
@@ -502,7 +502,7 @@ func TestConvertError(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		_, err := rw.Exec(ctx, truncateTable, nil)
 		require.NoError(err)
-		_, err = rw.Exec(ctx, insert, []interface{}{"alice", "coworker", "one"})
+		_, err = rw.Exec(ctx, insert, []any{"alice", "coworker", "one"})
 		require.Error(err)
 
 		e := errors.Convert(err)

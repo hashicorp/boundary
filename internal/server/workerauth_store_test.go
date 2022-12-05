@@ -69,13 +69,13 @@ func TestRootCertStore(t *testing.T) {
 			expectedRootCert: &store.RootCertificate{
 				SerialNumber:   1234567890,
 				PublicKey:      publicKey,
-				PrivateKey:     privateKey,
+				CtPrivateKey:   privateKey,
 				Certificate:    certificate,
 				NotValidBefore: beforeTimestamp,
 				NotValidAfter:  afterTimestamp,
 				KeyId:          testKey,
 				State:          "next",
-				IssuingCa:      ca_id,
+				IssuingCa:      CaId,
 			},
 			wantErr: false,
 		},
@@ -93,13 +93,13 @@ func TestRootCertStore(t *testing.T) {
 			expectedRootCert: &store.RootCertificate{
 				SerialNumber:   9876543210,
 				PublicKey:      publicKey,
-				PrivateKey:     privateKey,
+				CtPrivateKey:   privateKey,
 				Certificate:    certificate,
 				NotValidBefore: beforeTimestamp,
 				NotValidAfter:  afterTimestamp,
 				KeyId:          testKey,
 				State:          "current",
-				IssuingCa:      ca_id,
+				IssuingCa:      CaId,
 			},
 			wantErr: false,
 		},
@@ -218,8 +218,7 @@ func TestRootCertStore(t *testing.T) {
 				assert.Empty(cmp.Diff(tt.expectedRootCert, cert, protocmp.Transform()))
 			}
 
-			deleteWhere := `state = ?`
-			deleted, err := rw.Delete(ctx, &RootCertificate{}, db.WithWhere(deleteWhere, cert.State))
+			deleted, err := rw.Exec(ctx, `delete from worker_auth_ca_certificate where state = ?`, []any{cert.State})
 			assert.NoError(err)
 			assert.Equal(1, deleted)
 		})
@@ -335,20 +334,6 @@ func TestWorkerAuthStore(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "workerauth-store-invalid-key-id",
-			args: args{
-				workerKeyIdentifier: "worker-auth-id-456",
-				workerId:            worker.PublicId,
-			},
-			opt: []Option{
-				WithWorkerKeys(workerKeys),
-				WithControllerEncryptionPrivateKey(controllerKey),
-				WithNonce(nonce),
-				WithKeyId("fakeyityfake"),
-			},
-			wantCreateErr: true,
-		},
-		{
 			name: "workerauth-no-pkey",
 			args: args{
 				workerId: worker.PublicId,
@@ -410,11 +395,19 @@ func TestWorkerAuthStore(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(wAuth)
 
+			require.NoError(wAuth.encrypt(ctx, databaseWrapper))
+
 			err = rw.Create(ctx, wAuth)
 			if tt.wantCreateErr {
 				assert.Error(err)
 			} else {
 				assert.NoError(err)
+				// Update and create time are automatically set
+				tt.expectedWorkerAuth.CreateTime = wAuth.WorkerAuth.CreateTime
+				tt.expectedWorkerAuth.UpdateTime = wAuth.WorkerAuth.UpdateTime
+				require.NoError(wAuth.decrypt(ctx, databaseWrapper))
+				// Remove ciphertext since that's not included in the expected
+				wAuth.CtControllerEncryptionPrivKey = nil
 				assert.Equal(tt.expectedWorkerAuth, wAuth.WorkerAuth)
 				assert.Empty(cmp.Diff(tt.expectedWorkerAuth, wAuth, protocmp.Transform()))
 			}
@@ -428,10 +421,10 @@ func TestWorkerCertBundle(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	testKey := TestKmsKey(ctx, t, conn, wrapper)
+	testKey, kmsWrapper := TestKmsKey(ctx, t, conn, wrapper)
 
 	worker := TestPkiWorker(t, conn, wrapper)
-	workerAuth := TestWorkerAuth(t, conn, worker, testKey)
+	workerAuth := TestWorkerAuth(t, conn, worker, kmsWrapper)
 	rootCA := TestRootCertificate(ctx, t, conn, testKey)
 	certBundle := populateBytes(defaultLength)
 

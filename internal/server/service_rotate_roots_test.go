@@ -34,40 +34,37 @@ func TestRotateRoots(t *testing.T) {
 	assert.Len(rootIds, 0)
 
 	// Generate roots
-	err = RotateRoots(ctx, workerAuthRepo, nodeenrollment.WithCertificateLifetime(time.Second*5))
+	roots, err := RotateRoots(ctx, workerAuthRepo, nodeenrollment.WithCertificateLifetime(time.Second*5))
 	require.NoError(err)
 
 	// Check that we have roots now
 	rootIds, err = workerAuthRepo.List(ctx, (*types.RootCertificate)(nil))
 	require.NoError(err)
 	assert.Len(rootIds, 2)
-	certAuthority := &types.RootCertificates{Id: ca_id}
+	certAuthority := &types.RootCertificates{Id: CaId}
 	err = workerAuthRepo.Load(ctx, certAuthority)
 	require.NoError(err)
 	require.NotNil(certAuthority.GetNext())
 	require.NotNil(certAuthority.GetCurrent())
 
-	initialNext := certAuthority.GetNext()
-	initialCurrent := certAuthority.GetCurrent()
+	initialNext := roots.GetNext()
+	initialCurrent := roots.GetCurrent()
 
 	// Rotate roots and assert that they've rotated
-	err = RotateRoots(ctx, workerAuthRepo, nodeenrollment.WithCertificateLifetime(time.Second*5))
+	newRoots, err := RotateRoots(ctx, workerAuthRepo, nodeenrollment.WithCertificateLifetime(time.Second*5))
 	require.NoError(err)
 
-	certAuthority2 := &types.RootCertificates{Id: ca_id}
-	err = workerAuthRepo.Load(ctx, certAuthority2)
-	require.NoError(err)
-	require.NotNil(certAuthority2.GetNext())
-	require.NotNil(certAuthority2.GetCurrent())
-	rotatedNext := certAuthority2.GetNext()
-	rotatedCurrent := certAuthority2.GetCurrent()
+	require.NotNil(newRoots.GetNext())
+	require.NotNil(newRoots.GetCurrent())
+	rotatedNext := newRoots.GetNext()
+	rotatedCurrent := newRoots.GetCurrent()
 
 	// Next and current should have changed
-	assert.NotEqual(initialNext, rotatedNext)
-	assert.NotEqual(initialCurrent, rotatedCurrent)
+	assert.NotEqual(initialNext.PublicKeyPkix, rotatedNext.PublicKeyPkix)
+	assert.NotEqual(initialCurrent.PublicKeyPkix, rotatedCurrent.PublicKeyPkix)
 
 	// And the old next root should now be current
-	assert.Equal(initialNext, rotatedCurrent)
+	assert.Equal(initialNext.PublicKeyPkix, rotatedCurrent.PublicKeyPkix)
 }
 
 func TestRotateRootsFailure(t *testing.T) {
@@ -83,6 +80,6 @@ func TestRotateRootsFailure(t *testing.T) {
 	workerAuthRepo, err := NewRepositoryStorage(ctx, &db.Db{}, &db.Db{}, kmsCache)
 	require.NoError(err)
 
-	err = RotateRoots(ctx, workerAuthRepo)
+	_, err = RotateRoots(ctx, workerAuthRepo)
 	require.Error(err)
 }

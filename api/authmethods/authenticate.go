@@ -9,8 +9,8 @@ import (
 )
 
 type AuthenticateResult struct {
-	Command       string                 `json:"-"`
-	Attributes    map[string]interface{} `json:"-"`
+	Command       string         `json:"-"`
+	Attributes    map[string]any `json:"-"`
 	attributesRaw json.RawMessage
 
 	response *api.Response
@@ -20,7 +20,7 @@ func (a *AuthenticateResult) MarshalJSON() ([]byte, error) {
 	// Note that a will not be nil per contract of the interface. Using a map
 	// here causes Go to sort the resulting JSON, which makes tests easier and
 	// output more predictable.
-	out := make(map[string]interface{})
+	out := make(map[string]any)
 	if a.Command != "" {
 		out["command"] = a.Command
 	}
@@ -41,7 +41,7 @@ func (a *AuthenticateResult) UnmarshalJSON(inBytes []byte) error {
 	}
 	a.Command = i.Command
 	a.attributesRaw = i.Attributes
-	a.Attributes = make(map[string]interface{})
+	a.Attributes = make(map[string]any)
 	if err := json.Unmarshal(i.Attributes, &a.Attributes); err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (n AuthenticateResult) GetResponse() *api.Response {
 }
 
 // Authenticate is a generic authenticate API call that returns a generic result.
-func (c *Client) Authenticate(ctx context.Context, authMethodId, command string, attributes map[string]interface{}, opt ...Option) (*AuthenticateResult, error) {
+func (c *Client) Authenticate(ctx context.Context, authMethodId, command string, attributes map[string]any, opt ...Option) (*AuthenticateResult, error) {
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client in Authenticate request")
 	}
@@ -70,7 +70,7 @@ func (c *Client) Authenticate(ctx context.Context, authMethodId, command string,
 
 	_, apiOpts := getOpts(opt...)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"command": command,
 	}
 	if attributes != nil {

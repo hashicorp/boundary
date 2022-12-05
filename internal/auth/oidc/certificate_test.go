@@ -112,7 +112,7 @@ func TestCertificate_Create(t *testing.T) {
 					assert.NoError(err)
 				}
 				found := AllocCertificate()
-				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and certificate = ?", []interface{}{tt.args.authMethodId, tt.args.certificate}))
+				require.NoError(rw.LookupWhere(ctx, &found, "oidc_method_id = ? and certificate = ?", []any{tt.args.authMethodId, tt.args.certificate}))
 				assert.Equal(got, &found)
 			}
 		})
@@ -196,7 +196,7 @@ func TestCertificate_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := AllocCertificate()
-			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and certificate = ?", []interface{}{tt.Certificate.OidcMethodId, tt.Certificate.Cert})
+			err = rw.LookupWhere(ctx, &found, "oidc_method_id = ? and certificate = ?", []any{tt.Certificate.OidcMethodId, tt.Certificate.Cert})
 			assert.True(errors.IsNotFoundError(err))
 		})
 	}

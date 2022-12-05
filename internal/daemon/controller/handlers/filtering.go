@@ -9,7 +9,7 @@ import (
 // filterItem captures all the different namespaces that can be used when
 // filtering an item.
 type filterItem struct {
-	Item interface{} `json:"item"`
+	Item any `json:"item"`
 }
 
 type Filter struct {
@@ -34,7 +34,7 @@ func NewFilter(f string) (*Filter, error) {
 // If the filter does not match the structure of the object being Matched, false is returned.
 // TODO: Support more than just matching against the item being filtered.  Also allow matching against
 // values in the request or the request context itself.
-func (f *Filter) Match(item interface{}) bool {
+func (f *Filter) Match(item any) bool {
 	if f.eval == nil {
 		return true
 	}

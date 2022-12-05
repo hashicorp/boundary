@@ -2,7 +2,11 @@ package session
 
 import (
 	"context"
+	"crypto"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/x509"
+	"net"
 	"testing"
 	"time"
 
@@ -181,7 +185,7 @@ func TestSession_Create(t *testing.T) {
 				id, err := db.NewPublicId(SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
-				_, certBytes, err := newCert(ctx, wrapper, got.UserId, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime())
+				privKey, certBytes, err := newCert(ctx, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime(), rand.Reader)
 				if tt.wantAddrErr {
 					require.Error(err)
 					assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -189,6 +193,7 @@ func TestSession_Create(t *testing.T) {
 				}
 				require.NoError(err)
 				got.Certificate = certBytes
+				got.CertificatePrivateKey = privKey
 				err = db.New(conn).Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
@@ -316,4 +321,40 @@ func TestSession_SetTableName(t *testing.T) {
 			assert.Equal(tt.want, s.TableName())
 		})
 	}
+}
+
+func Test_newCert(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	jobId := "job-id"
+	addresses := []string{"127.0.0.1", "localhost"}
+	expireTime := time.Now().Add(5 * time.Minute)
+	reader := rand.Reader
+
+	t.Run("fails-on-invalid-job-id", func(t *testing.T) {
+		_, _, err := newCert(ctx, "", addresses, expireTime, reader)
+		require.Error(t, err)
+	})
+	t.Run("fails-on-invalid-addresses", func(t *testing.T) {
+		_, _, err := newCert(ctx, jobId, nil, expireTime, reader)
+		require.Error(t, err)
+	})
+	t.Run("fails-on-invalid-expiry", func(t *testing.T) {
+		_, _, err := newCert(ctx, jobId, addresses, time.Time{}, reader)
+		require.Error(t, err)
+	})
+	t.Run("fails-on-invalid-random-reader", func(t *testing.T) {
+		_, _, err := newCert(ctx, jobId, addresses, expireTime, nil)
+		require.Error(t, err)
+	})
+	t.Run("succeeds-on-valid-inputs", func(t *testing.T) {
+		key, cert, err := newCert(ctx, jobId, addresses, expireTime, reader)
+		require.NoError(t, err)
+		parsedCert, err := x509.ParseCertificate(cert)
+		require.NoError(t, err)
+		assert.Equal(t, parsedCert.DNSNames, []string{jobId, "localhost"})
+		assert.Equal(t, parsedCert.IPAddresses, []net.IP{{127, 0, 0, 1}})
+		assert.True(t, parsedCert.NotAfter.Equal(expireTime.Truncate(time.Second)), "NotAfter (%q) != expireTime (%q)", parsedCert.NotAfter.Format(time.RFC3339Nano), expireTime.Format(time.RFC3339Nano))
+		assert.Equal(t, parsedCert.PublicKey.(crypto.PublicKey), ed25519.PrivateKey(key).Public())
+	})
 }

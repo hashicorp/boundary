@@ -136,11 +136,11 @@ func (t *Token) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	return nil
 }
 
-func (t *Token) insertQuery() (query string, queryValues []interface{}) {
+func (t *Token) insertQuery() (query string, queryValues []any) {
 	query = insertTokenQuery
 
 	exp := int(t.expiration.Round(time.Second).Seconds())
-	queryValues = []interface{}{
+	queryValues = []any{
 		sql.Named("1", t.TokenHmac),
 		sql.Named("2", t.CtToken),
 		sql.Named("3", t.StoreId),
@@ -152,21 +152,21 @@ func (t *Token) insertQuery() (query string, queryValues []interface{}) {
 	return
 }
 
-func (t *Token) updateStatusQuery(status TokenStatus) (query string, queryValues []interface{}) {
+func (t *Token) updateStatusQuery(status TokenStatus) (query string, queryValues []any) {
 	query = updateTokenStatusQuery
 
-	queryValues = []interface{}{
+	queryValues = []any{
 		status,
 		t.TokenHmac,
 	}
 	return
 }
 
-func (t *Token) updateExpirationQuery() (query string, queryValues []interface{}) {
+func (t *Token) updateExpirationQuery() (query string, queryValues []any) {
 	query = updateTokenExpirationQuery
 
 	exp := int(t.expiration.Round(time.Second).Seconds())
-	queryValues = []interface{}{
+	queryValues = []any{
 		exp,
 		t.TokenHmac,
 	}

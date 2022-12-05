@@ -16,9 +16,9 @@ These parameters are shared across all sink types:
 - `event_types` - Specifies a list of event types that will be sent to the sink.
   Can be `*`, `error`, `system`, `observation` or `audit`.
 
-- `event_source_url` - Specifies an optional event source URL for the sink.  If
-  not specified a default source will be composed of the
-  https://hashicorp.com/boundary.io/ServerName/Path/FileName.
+- `event_source_url` - Specifies an optional event source URL for the sink. If
+  not specified, the default source will be composed of the
+  `https://hashicorp.com/boundary.io/ServerName/Path/FileName`.
 
 - `allow_filters` - Specifies a set of predicates for including an event in the
   sink. If any filter matches, the event will be included. For more information,

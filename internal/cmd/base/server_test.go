@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/mitchellh/cli"
@@ -31,7 +34,7 @@ func Test_NewServer(t *testing.T) {
 	})
 }
 
-func TestServer_SetupKMSes(t *testing.T) {
+func TestServer_SetupKMSes_Purposes(t *testing.T) {
 	tests := []struct {
 		name            string
 		purposes        []string
@@ -60,6 +63,41 @@ func TestServer_SetupKMSes(t *testing.T) {
 				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth,
 				globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeConfig,
 			},
+		},
+		{
+			name:            "previous root without root",
+			purposes:        []string{globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("KMS block contains '%s' without '%s'", globals.KmsPurposePreviousRoot, globals.KmsPurposeRoot),
+		},
+		{
+			name:            "root and previous in the same stanza",
+			purposes:        []string{globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("KMS blocks with purposes '%s' and '%s' must have different key IDs", globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot),
+		},
+		{
+			name:            "duplicate root purposes",
+			purposes:        []string{globals.KmsPurposeRoot, globals.KmsPurposeRoot},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeRoot),
+		},
+		{
+			name:            "duplicate previous root purposes",
+			purposes:        []string{globals.KmsPurposePreviousRoot, globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposePreviousRoot),
+		},
+		{
+			name:            "duplicate worker auth purposes",
+			purposes:        []string{globals.KmsPurposeWorkerAuth, globals.KmsPurposeWorkerAuth},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeWorkerAuth),
+		},
+		{
+			name:            "duplicate worker auth storage purposes",
+			purposes:        []string{globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeWorkerAuthStorage},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeWorkerAuthStorage),
+		},
+		{
+			name:            "duplicate recovery purposes",
+			purposes:        []string{globals.KmsPurposeRecovery, globals.KmsPurposeRecovery},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeRecovery),
 		},
 	}
 	logger := hclog.Default()
@@ -100,6 +138,104 @@ func TestServer_SetupKMSes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServer_SetupKMSes_RootMigration(t *testing.T) {
+	t.Parallel()
+	t.Run("correctly-pools-root-and-previous", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		logger := hclog.Default()
+		serLock := new(sync.Mutex)
+		conf := &configutil.SharedConfig{
+			Seals: []*configutil.KMS{
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposeRoot,
+					},
+					Config: map[string]string{
+						"key_id": "root",
+					},
+				},
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposePreviousRoot,
+					},
+					Config: map[string]string{
+						"key_id": "previous_root",
+					},
+				},
+			},
+		}
+		s := NewServer(&Command{Context: context.Background()})
+		require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
+		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+		require.NoError(err)
+		require.NotNil(s.RootKms)
+		typ, err := s.RootKms.Type(s.Context)
+		require.NoError(err)
+		assert.Equal(wrapping.WrapperTypePooled, typ)
+		// Ensure that the root is the encryptor
+		keyId, err := s.RootKms.KeyId(s.Context)
+		require.NoError(err)
+		assert.Equal("root", keyId)
+		// Ensure that the previous root is in the wrapper too
+		assert.Equal([]string{"previous_root", "root"}, s.RootKms.(*multi.PooledWrapper).AllKeyIds())
+	})
+	t.Run("errors-on-previous-without-root", func(t *testing.T) {
+		t.Parallel()
+		require := require.New(t)
+		logger := hclog.Default()
+		serLock := new(sync.Mutex)
+		conf := &configutil.SharedConfig{
+			Seals: []*configutil.KMS{
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposePreviousRoot,
+					},
+				},
+			},
+		}
+		s := NewServer(&Command{Context: context.Background()})
+		require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
+		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+		require.Error(err)
+	})
+	t.Run("errors-on-previous-and-root-with-same-key-id", func(t *testing.T) {
+		t.Parallel()
+		require := require.New(t)
+		logger := hclog.Default()
+		serLock := new(sync.Mutex)
+		conf := &configutil.SharedConfig{
+			Seals: []*configutil.KMS{
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposeRoot,
+					},
+					Config: map[string]string{
+						"key_id": "root",
+					},
+				},
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposePreviousRoot,
+					},
+					Config: map[string]string{
+						"key_id": "root",
+					},
+				},
+			},
+		}
+		s := NewServer(&Command{Context: context.Background()})
+		require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
+		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+		require.Error(err)
+	})
 }
 
 func TestServer_SetupEventing(t *testing.T) {
@@ -282,316 +418,6 @@ func TestServer_AddEventerToContext(t *testing.T) {
 			require.Truef(ok, "unable to get eventer from context")
 			assert.NotNil(e)
 			assert.Equal(tt.s.Eventer, e)
-		})
-	}
-}
-
-func TestSetupControllerPublicClusterAddress(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name                    string
-		inputConfig             *config.Config
-		inputFlagValue          string
-		stateFn                 func(t *testing.T)
-		expErr                  bool
-		expErrStr               string
-		expPublicClusterAddress string
-	}{
-		{
-			name: "nil controller",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: nil,
-			},
-			inputFlagValue:          "",
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: ":9201",
-		},
-		{
-			name: "setting public cluster address directly with ip",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{
-					PublicClusterAddr: "127.0.0.1",
-				},
-			},
-			inputFlagValue:          "",
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:9201",
-		},
-		{
-			name: "setting public cluster address directly with ip:port",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{
-					PublicClusterAddr: "127.0.0.1:8080",
-				},
-			},
-			inputFlagValue:          "",
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:8080",
-		},
-		{
-			name: "setting public cluster address to env var",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{
-					PublicClusterAddr: "env://TEST_ENV_VAR_FOR_CONTROLLER_ADDR",
-				},
-			},
-			inputFlagValue: "",
-			stateFn: func(t *testing.T) {
-				t.Setenv("TEST_ENV_VAR_FOR_CONTROLLER_ADDR", "127.0.0.1:8080")
-			},
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:8080",
-		},
-		{
-			name: "setting public cluster address to env var that points to template",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{
-					PublicClusterAddr: "env://TEST_ENV_VAR_FOR_CONTROLLER_ADDR",
-				},
-			},
-			inputFlagValue: "",
-			stateFn: func(t *testing.T) {
-				t.Setenv("TEST_ENV_VAR_FOR_CONTROLLER_ADDR", `{{ GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" | join "address" " " }}`)
-			},
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:9201",
-		},
-		{
-			name: "setting public cluster address to ip template",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{
-					PublicClusterAddr: `{{ GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" | join "address" " " }}`,
-				},
-			},
-			inputFlagValue:          "",
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:9201",
-		},
-		{
-			name: "setting public cluster address to multiline ip template",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{
-					PublicClusterAddr: `{{ with $local := GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" -}}
-					{{- $local | join "address" " " -}}
-				  {{- end }}`,
-				},
-			},
-			inputFlagValue:          "",
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:9201",
-		},
-		{
-			name: "using flag value with ip only",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{},
-			},
-			inputFlagValue:          "127.0.0.1",
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:9201",
-		},
-		{
-			name: "using flag value with ip:port",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{},
-			},
-			inputFlagValue:          "127.0.0.1:8080",
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:8080",
-		},
-		{
-			name: "using flag value with ip template",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{},
-			},
-			inputFlagValue:          `{{ GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" | join "address" " " }}`,
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:9201",
-		},
-		{
-			name: "using flag value with multiline ip template",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{},
-			},
-			inputFlagValue: `{{ with $local := GetAllInterfaces | include "flags" "loopback" | include "type" "IPV4" -}}
-			  {{- $local | join "address" " " -}}
-			{{- end }}`,
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:9201",
-		},
-		{
-			name: "using flag value to point to env var with ip only",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{},
-			},
-			inputFlagValue: "env://TEST_ENV_VAR_FOR_CONTROLLER_ADDR",
-			stateFn: func(t *testing.T) {
-				t.Setenv("TEST_ENV_VAR_FOR_CONTROLLER_ADDR", "127.0.0.1")
-			},
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:9201",
-		},
-		{
-			name: "using flag value to point to env var with ip:port",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{},
-			},
-			inputFlagValue: "env://TEST_ENV_VAR_FOR_CONTROLLER_ADDR",
-			stateFn: func(t *testing.T) {
-				t.Setenv("TEST_ENV_VAR_FOR_CONTROLLER_ADDR", "127.0.0.1:8080")
-			},
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:8080",
-		},
-		{
-			name: "read address from listeners ip only",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{
-						{Purpose: []string{"cluster"}, Address: "127.0.0.1"},
-					},
-				},
-				Controller: &config.Controller{},
-			},
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:9201",
-		},
-		{
-			name: "read address from listeners ip:port",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{
-						{Purpose: []string{"cluster"}, Address: "127.0.0.1:8080"},
-					},
-				},
-				Controller: &config.Controller{},
-			},
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: "127.0.0.1:8080",
-		},
-		{
-			name: "read address from listeners is ignored on different purpose",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{
-						{Purpose: []string{"somethingelse"}, Address: "127.0.0.1:8080"},
-					},
-				},
-				Controller: &config.Controller{},
-			},
-			expErr:                  false,
-			expErrStr:               "",
-			expPublicClusterAddress: ":9201",
-		},
-		{
-			name: "using flag value to point to nonexistent file",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{},
-			},
-			inputFlagValue:          "file://this_doesnt_exist_for_sure",
-			expErr:                  true,
-			expErrStr:               "Error parsing public cluster addr: error reading file at file://this_doesnt_exist_for_sure: open this_doesnt_exist_for_sure: no such file or directory",
-			expPublicClusterAddress: "",
-		},
-		{
-			name: "using flag value to provoke error in SplitHostPort",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{},
-			},
-			inputFlagValue:          "abc::123",
-			expErr:                  true,
-			expErrStr:               "Error splitting public cluster adddress host/port: address abc::123: too many colons in address",
-			expPublicClusterAddress: "",
-		},
-		{
-			name: "bad ip template",
-			inputConfig: &config.Config{
-				SharedConfig: &configutil.SharedConfig{
-					Listeners: []*listenerutil.ListenerConfig{},
-				},
-				Controller: &config.Controller{},
-			},
-			inputFlagValue:          "{{ somethingthatdoesntexist }}",
-			expErr:                  true,
-			expErrStr:               "Error parsing IP template on controller public cluster addr: unable to parse address template \"{{ somethingthatdoesntexist }}\": unable to parse template \"{{ somethingthatdoesntexist }}\": template: sockaddr.Parse:1: function \"somethingthatdoesntexist\" not defined",
-			expPublicClusterAddress: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.stateFn != nil {
-				tt.stateFn(t)
-			}
-			s := Server{}
-			err := s.SetupControllerPublicClusterAddress(tt.inputConfig, tt.inputFlagValue)
-			if tt.expErr {
-				require.EqualError(t, err, tt.expErrStr)
-				return
-			}
-
-			require.NoError(t, err)
-			require.NotNil(t, tt.inputConfig.Controller)
-			require.Equal(t, tt.expPublicClusterAddress, tt.inputConfig.Controller.PublicClusterAddr)
 		})
 	}
 }

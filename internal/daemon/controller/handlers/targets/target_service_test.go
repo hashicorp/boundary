@@ -1,14 +1,18 @@
 package targets
 
 import (
+	"context"
+	"crypto/rand"
 	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/target/targettest"
+	"github.com/hashicorp/boundary/internal/target/targettest/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
-	"github.com/hashicorp/go-bexpr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,9 +36,13 @@ func TestWorkerList_Addresses(t *testing.T) {
 	assert.Equal(t, workerInfos, tested.workerInfos())
 }
 
-func TestWorkerList_Filter(t *testing.T) {
+func TestWorkerList_EgressFilter(t *testing.T) {
+	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
 	var workers []*server.Worker
 	for i := 0; i < 5; i++ {
 		switch {
@@ -55,25 +63,66 @@ func TestWorkerList_Filter(t *testing.T) {
 		}
 	}
 
-	{
-		ev, err := bexpr.CreateEvaluator(`"/name" matches "test_worker_[13]" and "configvalue2" in "/tags/key"`)
-		require.NoError(t, err)
-		got, err := workerList(workers).filtered(ev)
-		require.NoError(t, err)
-		assert.Len(t, got, 0)
+	cases := []struct {
+		name        string
+		in          []*server.Worker
+		out         []*server.Worker
+		filter      string
+		errContains string
+	}{
+		{
+			name:        "no-workers",
+			in:          []*server.Worker{},
+			out:         []*server.Worker{},
+			filter:      "",
+			errContains: "No workers are available to handle this session, or all have been filtered",
+		},
+		{
+			name: "no-filter",
+			in:   workers,
+			out:  workers,
+		},
+		{
+			name:        "filter-no-matches",
+			in:          workers,
+			out:         workers,
+			filter:      `"/name" matches "test_worker_[13]" and "configvalue2" in "/tags/key"`,
+			errContains: "No workers are available to handle this session, or all have been filtered",
+		},
+		{
+			name:   "filter-one-match",
+			in:     workers,
+			out:    []*server.Worker{workers[1]},
+			filter: `"/name" matches "test_worker_[12]" and "configvalue" in "/tags/key"`,
+		},
+		{
+			name:   "filter-two-matches",
+			in:     workers,
+			out:    []*server.Worker{workers[1], workers[3]},
+			filter: `"configvalue" in "/tags/key"`,
+		},
 	}
-	{
-		ev, err := bexpr.CreateEvaluator(`"/name" matches "test_worker_[12]" and "configvalue" in "/tags/key"`)
-		require.NoError(t, err)
-		got, err := workerList(workers).filtered(ev)
-		require.NoError(t, err)
-		assert.Len(t, got, 1)
-	}
-	{
-		ev, err := bexpr.CreateEvaluator(`"configvalue" in "/tags/key"`)
-		require.NoError(t, err)
-		got, err := workerList(workers).filtered(ev)
-		require.NoError(t, err)
-		assert.Len(t, got, 2)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			target := &targettest.Target{
+				Target: &store.Target{},
+			}
+			if len(tc.filter) > 0 {
+				target.EgressWorkerFilter = tc.filter
+			}
+			out, err := AuthorizeSessionWithWorkerFilter(target, tc.in)
+			if tc.errContains != "" {
+				assert.Contains(err.Error(), tc.errContains)
+				assert.Nil(out)
+				return
+			}
+
+			require.NoError(err)
+			require.Len(out, len(tc.out))
+			for i, exp := range tc.out {
+				assert.Equal(exp.Name, out[i].Name)
+			}
+		})
 	}
 }

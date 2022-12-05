@@ -123,7 +123,7 @@ func (c *Command) printListTable(items []*credentialstores.CredentialStore) stri
 }
 
 func printItemTable(item *credentialstores.CredentialStore, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -205,6 +205,7 @@ var keySubstMap = map[string]string{
 	"tls_server_name":             "TLS Server Name",
 	"tls_skip_verify":             "Skip TLS Verification",
 	"token_hmac":                  "Token HMAC",
+	"token_status":                "Token Status",
 	"client_certificate":          "Client Certificate",
 	"client_certificate_key_hmac": "Client Certificate Key HMAC",
 	"worker_filter":               "Worker Filter",

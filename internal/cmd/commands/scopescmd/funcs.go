@@ -129,7 +129,7 @@ func (c *Command) printListTable(items []*scopes.Scope) string {
 }
 
 func printItemTable(item *scopes.Scope, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

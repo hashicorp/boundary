@@ -21,9 +21,12 @@ import (
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/jackc/pgconn"
 	"github.com/stretchr/testify/assert"
@@ -39,10 +42,19 @@ func TestRepository_ListSession(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
-	require.NoError(t, err)
+	ctx := context.Background()
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 
+	listPerms := &perms.UserPermissions{
+		UserId: composedOf.UserId,
+		Permissions: []perms.Permission{
+			{
+				ScopeId:  composedOf.ProjectId,
+				Resource: resource.Session,
+				Action:   action.List,
+			},
+		},
+	}
 	type args struct {
 		opt []Option
 	}
@@ -50,58 +62,85 @@ func TestRepository_ListSession(t *testing.T) {
 		name            string
 		createCnt       int
 		args            args
+		perms           *perms.UserPermissions
 		wantCnt         int
 		wantErr         bool
 		withConnections int
 	}{
 		{
 			name:      "no-limit",
-			createCnt: repo.defaultLimit + 1,
+			createCnt: testLimit + 1,
 			args: args{
 				opt: []Option{WithLimit(-1)},
 			},
-			wantCnt: repo.defaultLimit + 1,
+			perms:   listPerms,
+			wantCnt: testLimit + 1,
 			wantErr: false,
 		},
 		{
 			name:      "default-limit",
-			createCnt: repo.defaultLimit + 1,
+			createCnt: testLimit + 1,
 			args:      args{},
-			wantCnt:   repo.defaultLimit,
+			perms:     listPerms,
+			wantCnt:   testLimit,
 			wantErr:   false,
 		},
 		{
 			name:      "custom-limit",
-			createCnt: repo.defaultLimit + 1,
+			createCnt: testLimit + 1,
 			args: args{
 				opt: []Option{WithLimit(3)},
 			},
+			perms:   listPerms,
 			wantCnt: 3,
 			wantErr: false,
 		},
 		{
-			name:      "withProjectIds",
-			createCnt: repo.defaultLimit + 1,
-			args: args{
-				opt: []Option{WithProjectIds([]string{composedOf.ProjectId})},
+			name:      "withNoPerms",
+			createCnt: testLimit + 1,
+			args:      args{},
+			perms:     &perms.UserPermissions{},
+			wantCnt:   0,
+			wantErr:   false,
+		},
+		{
+			name:      "withPermsDifferentScopeId",
+			createCnt: testLimit + 1,
+			args:      args{},
+			perms: &perms.UserPermissions{
+				Permissions: []perms.Permission{
+					{
+						ScopeId:  "o_thisIsNotValid",
+						Resource: resource.Session,
+						Action:   action.List,
+					},
+				},
 			},
-			wantCnt: repo.defaultLimit,
+			wantCnt: 0,
 			wantErr: false,
 		},
 		{
-			name:      "bad-withProjectId",
-			createCnt: repo.defaultLimit + 1,
-			args: args{
-				opt: []Option{WithProjectIds([]string{"o_thisIsNotValid"})},
+			name:      "withPermsNonListAction",
+			createCnt: testLimit + 1,
+			args:      args{},
+			perms: &perms.UserPermissions{
+				Permissions: []perms.Permission{
+					{
+						ScopeId:  composedOf.ProjectId,
+						Resource: resource.Session,
+						Action:   action.Read,
+					},
+				},
 			},
 			wantCnt: 0,
 			wantErr: false,
 		},
 		{
 			name:            "multiple-connections",
-			createCnt:       repo.defaultLimit + 1,
+			createCnt:       testLimit + 1,
 			args:            args{},
-			wantCnt:         repo.defaultLimit,
+			perms:           listPerms,
+			wantCnt:         testLimit,
 			wantErr:         false,
 			withConnections: 3,
 		},
@@ -109,7 +148,11 @@ func TestRepository_ListSession(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+
+			repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(tt.perms))
+			require.NoError(err)
+
+			db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
 			testSessions := []*Session{}
 			for i := 0; i < tt.createCnt; i++ {
 				s := TestSession(t, conn, wrapper, composedOf)
@@ -145,11 +188,15 @@ func TestRepository_ListSession(t *testing.T) {
 	}
 	t.Run("withOrder", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+		db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
 		}
+
+		repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(listPerms))
+		require.NoError(err)
+
 		got, err := repo.ListSessions(context.Background(), WithOrderByCreateTime(db.AscendingOrderBy))
 		require.NoError(err)
 		assert.Equal(wantCnt, len(got))
@@ -160,58 +207,32 @@ func TestRepository_ListSession(t *testing.T) {
 			assert.True(first.Before(second))
 		}
 	})
-	t.Run("withUserId", func(t *testing.T) {
+	t.Run("onlySelf", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+		db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestSession(t, conn, wrapper, composedOf)
 		}
 		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+
+		p := &perms.UserPermissions{
+			UserId: s.UserId,
+			Permissions: []perms.Permission{
+				{
+					ScopeId:  s.ProjectId,
+					Resource: resource.Session,
+					Action:   action.List,
+					OnlySelf: true,
+				},
+			},
+		}
+		repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(p))
+		require.NoError(err)
 		got, err := repo.ListSessions(context.Background(), WithUserId(s.UserId))
 		require.NoError(err)
 		assert.Equal(1, len(got))
 		assert.Equal(s.UserId, got[0].UserId)
-	})
-	t.Run("withUserIdAndwithScopeId", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
-		wantCnt := 5
-		for i := 0; i < wantCnt; i++ {
-			// Scope 1 User 1
-			_ = TestSession(t, conn, wrapper, composedOf)
-		}
-		// Scope 2 User 2
-		s := TestDefaultSession(t, conn, wrapper, iamRepo)
-
-		// Scope 1 User 2
-		coDiffUser := composedOf
-		coDiffUser.AuthTokenId = s.AuthTokenId
-		coDiffUser.UserId = s.UserId
-		wantS := TestSession(t, conn, wrapper, coDiffUser)
-
-		got, err := repo.ListSessions(context.Background(), WithUserId(coDiffUser.UserId), WithProjectIds([]string{coDiffUser.ProjectId}))
-		require.NoError(err)
-		assert.Equal(1, len(got))
-		assert.Equal(wantS.UserId, got[0].UserId)
-		assert.Equal(wantS.ProjectId, got[0].ProjectId)
-	})
-	t.Run("WithSessionIds", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
-		testSessions := []*Session{}
-		for i := 0; i < 10; i++ {
-			s := TestSession(t, conn, wrapper, composedOf)
-			_ = TestState(t, conn, s.PublicId, StatusActive)
-			testSessions = append(testSessions, s)
-		}
-		assert.Equal(10, len(testSessions))
-		withIds := []string{testSessions[0].PublicId, testSessions[1].PublicId}
-		got, err := repo.ListSessions(context.Background(), WithSessionIds(withIds...), WithOrderByCreateTime(db.AscendingOrderBy))
-		require.NoError(err)
-		assert.Equal(2, len(got))
-		assert.Equal(StatusActive, got[0].States[0].Status)
-		assert.Equal(StatusPending, got[0].States[1].Status)
 	})
 }
 
@@ -222,23 +243,30 @@ func TestRepository_ListSessions_Multiple_Scopes(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
+	ctx := context.Background()
 
-	db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
 
 	const numPerScope = 10
-	var projs []string
+	var p []perms.Permission
 	for i := 0; i < numPerScope; i++ {
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
-		projs = append(projs, composedOf.ProjectId)
+		p = append(p, perms.Permission{
+			ScopeId:  composedOf.ProjectId,
+			Resource: resource.Session,
+			Action:   action.List,
+		})
 		s := TestSession(t, conn, wrapper, composedOf)
 		_ = TestState(t, conn, s.PublicId, StatusActive)
 	}
 
-	got, err := repo.ListSessions(context.Background(), WithProjectIds(projs))
+	repo, err := NewRepository(ctx, rw, rw, kms, WithPermissions(&perms.UserPermissions{
+		Permissions: p,
+	}))
 	require.NoError(t, err)
-	assert.Equal(t, len(projs), len(got))
+	got, err := repo.ListSessions(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, len(p), len(got))
 }
 
 func TestRepository_CreateSession(t *testing.T) {
@@ -247,8 +275,9 @@ func TestRepository_CreateSession(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	workerAddresses := []string{"1.2.3.4"}
@@ -363,6 +392,33 @@ func TestRepository_CreateSession(t *testing.T) {
 					c := TestSessionParams(t, conn, wrapper, iamRepo)
 					return c
 				}(),
+				workerAddresses: nil,
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+		{
+			name: "empty-expiration-time",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.ExpirationTime = nil
+					return c
+				}(),
+				workerAddresses: nil,
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+		{
+			name: "zero-expiration-time",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.ExpirationTime = timestamp.New(time.Time{})
+					return c
+				}(),
+				workerAddresses: nil,
 			},
 			wantErr:     true,
 			wantIsError: errors.InvalidParameter,
@@ -370,6 +426,12 @@ func TestRepository_CreateSession(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var wrapper wrapping.Wrapper
+			if tt.args.composedOf.ProjectId != "" {
+				wrapper, err = kmsCache.GetWrapper(context.Background(), tt.args.composedOf.ProjectId, kms.KeyPurposeSessions)
+				require.NoError(t, err)
+			}
+
 			assert, require := assert.New(t), require.New(t)
 			s := &Session{
 				UserId:             tt.args.composedOf.UserId,
@@ -384,7 +446,8 @@ func TestRepository_CreateSession(t *testing.T) {
 				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 				StaticCredentials:  tt.args.composedOf.StaticCredentials,
 			}
-			ses, privKey, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
+			ses, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
+
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(ses)
@@ -393,7 +456,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.NotNil(ses)
-			assert.NotNil(privKey)
+			assert.NotNil(ses.CertificatePrivateKey)
 			assert.NotNil(ses.States)
 			assert.NotNil(ses.CreateTime)
 			assert.NotNil(ses.States[0].StartTime)
@@ -404,7 +467,7 @@ func TestRepository_CreateSession(t *testing.T) {
 			assert.Len(ses.DynamicCredentials, len(s.DynamicCredentials))
 			assert.Len(ses.StaticCredentials, len(s.StaticCredentials))
 			foundSession, _, err := repo.LookupSession(context.Background(), ses.PublicId)
-			assert.NoError(err)
+			require.NoError(err)
 			assert.Equal(keyId, foundSession.KeyId)
 
 			// Account for slight offsets in nanos
@@ -443,7 +506,8 @@ func TestRepository_updateState(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -557,7 +621,8 @@ func TestRepository_transitionState(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	tofu := TestTofu(t)
 
@@ -654,11 +719,11 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
-	setupFn := func(limit int32, expireIn time.Duration, leaveOpen bool) *Session {
+	setupFn := func(t testing.TB, limit int32, expireIn time.Duration, leaveOpen bool) *Session {
 		require.NotEqualf(t, int32(0), limit, "setupFn: limit cannot be zero")
 		exp := timestamppb.New(time.Now().Add(expireIn))
 		composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
@@ -689,23 +754,23 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		setup   func() testArgs
+		setup   func(testing.TB) testArgs
 		wantErr bool
 	}{
 		{
 			name: "sessions-with-closed-connections",
-			setup: func() testArgs {
+			setup: func(t testing.TB) testArgs {
 				cnt := 1
 				wantTermed := map[string]TerminationReason{}
 				sessions := make([]*Session, 0, 5)
 				for i := 0; i < cnt; i++ {
 					// make one with closed connections
-					s := setupFn(1, time.Hour+1, false)
+					s := setupFn(t, 1, time.Hour+1, false)
 					wantTermed[s.PublicId] = ConnectionLimit
 					sessions = append(sessions, s)
 
 					// make one with connection left open
-					s2 := setupFn(1, time.Hour+1, true)
+					s2 := setupFn(t, 1, time.Hour+1, true)
 					sessions = append(sessions, s2)
 				}
 				return testArgs{
@@ -716,13 +781,13 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 		},
 		{
 			name: "sessions-with-open-and-closed-connections",
-			setup: func() testArgs {
+			setup: func(t testing.TB) testArgs {
 				cnt := 5
 				wantTermed := map[string]TerminationReason{}
 				sessions := make([]*Session, 0, 5)
 				for i := 0; i < cnt; i++ {
 					// make one with closed connections
-					s := setupFn(2, time.Hour+1, false)
+					s := setupFn(t, 2, time.Hour+1, false)
 					_ = TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 222, "127.0.0.1")
 					sessions = append(sessions, s)
 					wantTermed[s.PublicId] = ConnectionLimit
@@ -735,7 +800,7 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 		},
 		{
 			name: "sessions-with-no-connections",
-			setup: func() testArgs {
+			setup: func(t testing.TB) testArgs {
 				cnt := 5
 				sessions := make([]*Session, 0, 5)
 				for i := 0; i < cnt; i++ {
@@ -750,11 +815,11 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 		},
 		{
 			name: "sessions-with-open-connections",
-			setup: func() testArgs {
+			setup: func(t testing.TB) testArgs {
 				cnt := 5
 				sessions := make([]*Session, 0, 5)
 				for i := 0; i < cnt; i++ {
-					s := setupFn(1, time.Hour+1, true)
+					s := setupFn(t, 1, time.Hour+1, true)
 					sessions = append(sessions, s)
 				}
 				return testArgs{
@@ -765,15 +830,15 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 		},
 		{
 			name: "expired-sessions",
-			setup: func() testArgs {
+			setup: func(t testing.TB) testArgs {
 				cnt := 5
 				wantTermed := map[string]TerminationReason{}
 				sessions := make([]*Session, 0, 5)
 				for i := 0; i < cnt; i++ {
 					// make one with closed connections
-					s := setupFn(1, time.Millisecond+1, false)
+					s := setupFn(t, 1, time.Millisecond+1, false)
 					// make one with connection left open
-					s2 := setupFn(1, time.Millisecond+1, true)
+					s2 := setupFn(t, 1, time.Millisecond+1, true)
 					sessions = append(sessions, s, s2)
 					wantTermed[s.PublicId] = TimedOut
 				}
@@ -785,18 +850,18 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 		},
 		{
 			name: "canceled-sessions-with-closed-connections",
-			setup: func() testArgs {
+			setup: func(t testing.TB) testArgs {
 				cnt := 1
 				wantTermed := map[string]TerminationReason{}
 				sessions := make([]*Session, 0, 5)
 				for i := 0; i < cnt; i++ {
 					// make one with limit of 3 and closed connections
-					s := setupFn(3, time.Hour+1, false)
+					s := setupFn(t, 3, time.Hour+1, false)
 					wantTermed[s.PublicId] = SessionCanceled
 					sessions = append(sessions, s)
 
 					// make one with connection left open
-					s2 := setupFn(1, time.Hour+1, true)
+					s2 := setupFn(t, 1, time.Hour+1, true)
 					sessions = append(sessions, s2)
 
 					// now cancel the sessions
@@ -813,15 +878,15 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 		},
 		{
 			name: "sessions-with-unlimited-connections",
-			setup: func() testArgs {
+			setup: func(t testing.TB) testArgs {
 				cnt := 5
 				wantTermed := map[string]TerminationReason{}
 				sessions := make([]*Session, 0, 5)
 				for i := 0; i < cnt; i++ {
 					// make one with unlimited connections
-					s := setupFn(-1, time.Hour+1, false)
+					s := setupFn(t, -1, time.Hour+1, false)
 					// make one with limit of one all connections closed
-					s2 := setupFn(1, time.Hour+1, false)
+					s2 := setupFn(t, 1, time.Hour+1, false)
 					sessions = append(sessions, s, s2)
 					wantTermed[s2.PublicId] = ConnectionLimit
 				}
@@ -835,8 +900,8 @@ func TestRepository_TerminateCompletedSessions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
-			args := tt.setup()
+			db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
+			args := tt.setup(t)
 
 			got, err := repo.TerminateCompletedSessions(context.Background())
 			if tt.wantErr {
@@ -893,7 +958,7 @@ func TestRepository_CancelSession(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	testKms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, testKms)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
@@ -932,7 +997,7 @@ func TestRepository_CancelSession(t *testing.T) {
 				// is terminated when the one connection is closed.
 				tcpTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "test target", target.WithSessionConnectionLimit(1))
 
-				targetRepo, err := target.NewRepository(rw, rw, testKms)
+				targetRepo, err := target.NewRepository(ctx, rw, rw, testKms)
 				require.NoError(t, err)
 				_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 				require.NoError(t, err)
@@ -1071,7 +1136,8 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	setupFn := func() *Session {
 		session := TestDefaultSession(t, conn, wrapper, iamRepo)
@@ -1080,7 +1146,7 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 	}
 	type cancelFk struct {
 		s      *Session
-		fkType interface{}
+		fkType any
 	}
 	tests := []struct {
 		name     string
@@ -1134,6 +1200,22 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 			}(),
 		},
 		{
+			name: "Scope",
+			cancelFk: func() cancelFk {
+				s := setupFn()
+
+				t := &iam.Scope{
+					Scope: &iamStore.Scope{
+						PublicId: s.ProjectId,
+					},
+				}
+				return cancelFk{
+					s:      s,
+					fkType: t,
+				}
+			}(),
+		},
+		{
 			name: "HostSet",
 			cancelFk: func() cancelFk {
 				s := setupFn()
@@ -1169,22 +1251,6 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 			}(),
 		},
 		{
-			name: "Scope",
-			cancelFk: func() cancelFk {
-				s := setupFn()
-
-				t := &iam.Scope{
-					Scope: &iamStore.Scope{
-						PublicId: s.ProjectId,
-					},
-				}
-				return cancelFk{
-					s:      s,
-					fkType: t,
-				}
-			}(),
-		},
-		{
 			name: "canceled-only-once",
 			cancelFk: func() cancelFk {
 				s := setupFn()
@@ -1208,7 +1274,7 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, _, err := repo.LookupSession(context.Background(), tt.cancelFk.s.PublicId)
+			s, _, err := repo.LookupSession(context.Background(), tt.cancelFk.s.PublicId, WithIgnoreDecryptionFailures(true))
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(s.States)
@@ -1227,7 +1293,7 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 			require.NoError(err)
 			require.Equal(1, rowsDeleted)
 
-			s, _, err = repo.LookupSession(context.Background(), tt.cancelFk.s.PublicId)
+			s, _, err = repo.LookupSession(context.Background(), tt.cancelFk.s.PublicId, WithIgnoreDecryptionFailures(true))
 			require.NoError(err)
 			require.NotNil(s)
 			require.NotNil(s.States)
@@ -1250,7 +1316,8 @@ func TestRepository_ActivateSession(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	tofu := TestTofu(t)
@@ -1373,7 +1440,8 @@ func TestRepository_DeleteSession(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	type args struct {
@@ -1457,7 +1525,7 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	ctx := context.Background()
 
 	kms := kms.TestKms(t, conn, wrapper)
-	targetRepo, err := target.NewRepository(rw, rw, kms)
+	targetRepo, err := target.NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	tar, _, _, err := targetRepo.LookupTarget(ctx, params.TargetId)
 	require.NoError(err)
@@ -1494,8 +1562,9 @@ func TestRepository_deleteTargetFKey(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, _ := NewRepository(rw, rw, kms)
-	targetRepo, err := target.NewRepository(rw, rw, kms)
+	ctx := context.Background()
+	repo, _ := NewRepository(ctx, rw, rw, kms)
+	targetRepo, err := target.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -1543,7 +1612,7 @@ func TestRepository_deleteTerminated(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
 
 	cases := []struct {
@@ -1624,231 +1693,98 @@ func TestRepository_deleteTerminated(t *testing.T) {
 	}
 }
 
-func TestFetchAuthzProtectedSessionsByScopes(t *testing.T) {
+func Test_decryptAndMaybeUpdateSession(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	ctx := context.Background()
-	wrapper := db.TestWrapper(t)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
-	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
-	require.NoError(t, err)
-	composedOf := TestSessionParams(t, conn, wrapper, iamRepo)
+	wrapper := db.TestWrapper(t)
+	kmsRepo := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	ctx := context.Background()
 
-	_, pWithOtherSessions := iam.TestScopes(t, iamRepo)
-
-	hcOther := static.TestCatalogs(t, conn, pWithOtherSessions.GetPublicId(), 1)[0]
-	hsOther := static.TestSets(t, conn, hcOther.GetPublicId(), 1)[0]
-	hOther := static.TestHosts(t, conn, hcOther.GetPublicId(), 1)[0]
-	static.TestSetMembers(t, conn, hsOther.GetPublicId(), []*static.Host{hOther})
-	tarOther := tcp.TestTarget(ctx, t, conn, pWithOtherSessions.GetPublicId(), "test", target.WithHostSources([]string{hsOther.GetPublicId()}))
-
-	composedOfOther := ComposedOf{
-		UserId:      composedOf.UserId,
-		HostId:      hOther.GetPublicId(),
-		TargetId:    tarOther.GetPublicId(),
-		HostSetId:   hsOther.GetPublicId(),
-		AuthTokenId: composedOf.AuthTokenId,
-		ProjectId:   pWithOtherSessions.GetPublicId(),
-		Endpoint:    "tcp://127.0.0.1:22",
-	}
-
-	type testCase struct {
-		name              string
-		createCnt         int
-		terminateCnt      int
-		otherCnt          int
-		otherTerminateCnt int
-		opts              []Option
-		reqScopes         []string
-		wantCnt           int
-		wantOtherCnt      int
-		wantErr           bool
-	}
-
-	cases := []testCase{
-		{
-			name:      "NonTerminated/none",
-			createCnt: 0,
-			reqScopes: []string{composedOf.ProjectId},
-			wantCnt:   0,
-			wantErr:   false,
-		},
-		{
-			name:      "NonTerminated/one",
-			createCnt: 1,
-			reqScopes: []string{composedOf.ProjectId},
-			wantCnt:   1,
-			wantErr:   false,
-		},
-		{
-			name:      "NonTerminated/many",
-			createCnt: 5,
-			reqScopes: []string{composedOf.ProjectId},
-			wantCnt:   5,
-			wantErr:   false,
-		},
-		{
-			name:         "NonTerminated/many one terminated",
-			createCnt:    5,
-			terminateCnt: 1,
-			reqScopes:    []string{composedOf.ProjectId},
-			wantCnt:      4,
-			wantErr:      false,
-		},
-		{
-			name:         "NonTerminated/many terminated",
-			createCnt:    5,
-			terminateCnt: 3,
-			reqScopes:    []string{composedOf.ProjectId},
-			wantCnt:      2,
-			wantErr:      false,
-		},
-		{
-			name:         "NonTerminated/many multiple projects",
-			createCnt:    5,
-			terminateCnt: 3,
-			reqScopes:    []string{composedOf.ProjectId, composedOfOther.ProjectId},
-			wantCnt:      2,
-			wantErr:      false,
-		},
-		{
-			name:              "NonTerminated/many multiple projects",
-			createCnt:         5,
-			terminateCnt:      3,
-			otherCnt:          3,
-			otherTerminateCnt: 1,
-			reqScopes:         []string{composedOf.ProjectId, composedOfOther.ProjectId},
-			wantCnt:           2,
-			wantOtherCnt:      2,
-			wantErr:           false,
-		},
-		{
-			name:              "NonTerminated/no projects",
-			createCnt:         2,
-			terminateCnt:      1,
-			otherCnt:          2,
-			otherTerminateCnt: 1,
-			reqScopes:         []string{},
-			wantErr:           true,
-		},
-		{
-			name:      "none",
-			opts:      []Option{WithTerminated(true)},
-			createCnt: 0,
-			reqScopes: []string{composedOf.ProjectId},
-			wantCnt:   0,
-			wantErr:   false,
-		},
-		{
-			name:      "one",
-			opts:      []Option{WithTerminated(true)},
-			createCnt: 1,
-			reqScopes: []string{composedOf.ProjectId},
-			wantCnt:   1,
-			wantErr:   false,
-		},
-		{
-			name:      "many",
-			opts:      []Option{WithTerminated(true)},
-			createCnt: 5,
-			reqScopes: []string{composedOf.ProjectId},
-			wantCnt:   5,
-			wantErr:   false,
-		},
-		{
-			name:         "many one terminated",
-			opts:         []Option{WithTerminated(true)},
-			createCnt:    5,
-			terminateCnt: 1,
-			reqScopes:    []string{composedOf.ProjectId},
-			wantCnt:      5,
-			wantErr:      false,
-		},
-		{
-			name:         "many terminated",
-			opts:         []Option{WithTerminated(true)},
-			createCnt:    5,
-			terminateCnt: 3,
-			reqScopes:    []string{composedOf.ProjectId},
-			wantCnt:      5,
-			wantErr:      false,
-		},
-		{
-			name:         "many multiple projects",
-			opts:         []Option{WithTerminated(true)},
-			createCnt:    5,
-			terminateCnt: 3,
-			reqScopes:    []string{composedOf.ProjectId, composedOfOther.ProjectId},
-			wantCnt:      5,
-			wantErr:      false,
-		},
-		{
-			name:              "many multiple projects",
-			opts:              []Option{WithTerminated(true)},
-			createCnt:         5,
-			terminateCnt:      3,
-			otherCnt:          3,
-			otherTerminateCnt: 1,
-			reqScopes:         []string{composedOf.ProjectId, composedOfOther.ProjectId},
-			wantCnt:           5,
-			wantOtherCnt:      3,
-			wantErr:           false,
-		},
-		{
-			name:              "no projects",
-			opts:              []Option{WithTerminated(true)},
-			createCnt:         2,
-			terminateCnt:      1,
-			otherCnt:          2,
-			otherTerminateCnt: 1,
-			reqScopes:         []string{},
-			wantErr:           true,
-		},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocSession(); return &i }(), "1=1")
-
-			testSessions := []*Session{}
-			for i := 0; i < tt.createCnt; i++ {
-				s := TestSession(t, conn, wrapper, composedOf)
-				_ = TestState(t, conn, s.PublicId, StatusActive)
-				testSessions = append(testSessions, s)
-			}
-			for i := 0; i < tt.terminateCnt; i++ {
-				_, err := repo.CancelSession(ctx, testSessions[i].PublicId, testSessions[i].Version)
-				require.NoError(err)
-			}
-			terminated, err := repo.TerminateCompletedSessions(ctx)
-			require.NoError(err)
-			require.Equal(tt.terminateCnt, terminated)
-
-			otherTestSessions := []*Session{}
-			for i := 0; i < tt.otherCnt; i++ {
-				s := TestSession(t, conn, wrapper, composedOfOther)
-				_ = TestState(t, conn, s.PublicId, StatusActive)
-				otherTestSessions = append(otherTestSessions, s)
-			}
-			for i := 0; i < tt.otherTerminateCnt; i++ {
-				_, err := repo.CancelSession(ctx, otherTestSessions[i].PublicId, otherTestSessions[i].Version)
-				require.NoError(err)
-			}
-			terminated, err = repo.TerminateCompletedSessions(ctx)
-			require.NoError(err)
-			require.Equal(tt.otherTerminateCnt, terminated)
-
-			assert.Equal(tt.otherCnt, len(otherTestSessions))
-
-			got, err := repo.fetchAuthzProtectedSessionsByProject(ctx, tt.reqScopes, tt.opts...)
-			if tt.wantErr {
-				require.Error(err)
-				return
-			}
-			require.NoError(err)
-			assert.Equal(tt.wantCnt, len(got[composedOf.ProjectId]))
-			assert.Equal(tt.wantOtherCnt, len(got[composedOfOther.ProjectId]))
-		})
-	}
+	t.Run("errors-with-invalid-kms", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		err := decryptAndMaybeUpdateSession(ctx, nil, s, rw)
+		require.Error(t, err)
+	})
+	t.Run("errors-with-invalid-session", func(t *testing.T) {
+		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, nil, rw)
+		require.Error(t, err)
+	})
+	t.Run("errors-with-invalid-writer", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, nil)
+		require.Error(t, err)
+	})
+	t.Run("errors-with-invalid-session-project-id", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		s.ProjectId = ""
+		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		require.Error(t, err)
+	})
+	t.Run("errors-with-invalid-session-key-id", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		s.KeyId = ""
+		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		require.Error(t, err)
+	})
+	t.Run("errors-with-invalid-session-user-id", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		s.UserId = ""
+		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		require.Error(t, err)
+	})
+	t.Run("errors-with-invalid-session-public-id", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		s.PublicId = ""
+		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		require.Error(t, err)
+	})
+	t.Run("session-with-local-session-key-succeeds", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		require.NoError(t, err)
+	})
+	t.Run("session-with-derived-session-key-succeeds", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		s.CtCertificatePrivateKey = nil
+		s.CertificatePrivateKey = nil
+		s.TofuToken = nil
+		s.CtTofuToken = nil
+		err := decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		require.NoError(t, err)
+	})
+	t.Run("session-with-derived-session-key-and-tofu-token-succeeds", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		s.CtCertificatePrivateKey = nil
+		s.CertificatePrivateKey = nil
+		s.TofuToken = []byte("A token")
+		actualKeyId := s.KeyId
+		databaseWrapper, err := kmsRepo.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		err = s.encrypt(ctx, databaseWrapper)
+		require.NoError(t, err)
+		s.KeyId = actualKeyId // Restore this as the encrypt call above will overwrite it.
+		err = decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		require.NoError(t, err)
+	})
+	t.Run("session-with-derived-session-key-and-tofu-token-cannot-be-decrypted", func(t *testing.T) {
+		s := TestDefaultSession(t, conn, wrapper, iamRepo)
+		s.CtCertificatePrivateKey = nil
+		s.CertificatePrivateKey = nil
+		s.TofuToken = []byte("A token")
+		actualKeyId := s.KeyId
+		databaseWrapper, err := kmsRepo.GetWrapper(ctx, s.ProjectId, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		err = s.encrypt(ctx, databaseWrapper)
+		require.NoError(t, err)
+		databaseKeyId := s.KeyId
+		err = kmsRepo.RotateKeys(ctx, s.ProjectId)
+		require.NoError(t, err)
+		ok, err := kmsRepo.DestroyKeyVersion(ctx, s.ProjectId, databaseKeyId)
+		require.NoError(t, err)
+		assert.True(t, ok)
+		s.KeyId = actualKeyId // Restore this as the encrypt call above will overwrite it.
+		err = decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
+		require.ErrorContains(t, err, "You may need to recreate your session")
+	})
 }

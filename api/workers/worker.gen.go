@@ -13,23 +13,25 @@ import (
 )
 
 type Worker struct {
-	Id                       string              `json:"id,omitempty"`
-	ScopeId                  string              `json:"scope_id,omitempty"`
-	Scope                    *scopes.ScopeInfo   `json:"scope,omitempty"`
-	Name                     string              `json:"name,omitempty"`
-	Description              string              `json:"description,omitempty"`
-	CreatedTime              time.Time           `json:"created_time,omitempty"`
-	UpdatedTime              time.Time           `json:"updated_time,omitempty"`
-	Version                  uint32              `json:"version,omitempty"`
-	Address                  string              `json:"address,omitempty"`
-	CanonicalTags            map[string][]string `json:"canonical_tags,omitempty"`
-	ConfigTags               map[string][]string `json:"config_tags,omitempty"`
-	LastStatusTime           time.Time           `json:"last_status_time,omitempty"`
-	WorkerGeneratedAuthToken string              `json:"worker_generated_auth_token,omitempty"`
-	ActiveConnectionCount    uint32              `json:"active_connection_count,omitempty"`
-	Type                     string              `json:"type,omitempty"`
-	ApiTags                  map[string][]string `json:"api_tags,omitempty"`
-	AuthorizedActions        []string            `json:"authorized_actions,omitempty"`
+	Id                                 string              `json:"id,omitempty"`
+	ScopeId                            string              `json:"scope_id,omitempty"`
+	Scope                              *scopes.ScopeInfo   `json:"scope,omitempty"`
+	Name                               string              `json:"name,omitempty"`
+	Description                        string              `json:"description,omitempty"`
+	CreatedTime                        time.Time           `json:"created_time,omitempty"`
+	UpdatedTime                        time.Time           `json:"updated_time,omitempty"`
+	Version                            uint32              `json:"version,omitempty"`
+	Address                            string              `json:"address,omitempty"`
+	CanonicalTags                      map[string][]string `json:"canonical_tags,omitempty"`
+	ConfigTags                         map[string][]string `json:"config_tags,omitempty"`
+	LastStatusTime                     time.Time           `json:"last_status_time,omitempty"`
+	WorkerGeneratedAuthToken           string              `json:"worker_generated_auth_token,omitempty"`
+	ControllerGeneratedActivationToken string              `json:"controller_generated_activation_token,omitempty"`
+	ActiveConnectionCount              uint32              `json:"active_connection_count,omitempty"`
+	Type                               string              `json:"type,omitempty"`
+	ApiTags                            map[string][]string `json:"api_tags,omitempty"`
+	ReleaseVersion                     string              `json:"release_version,omitempty"`
+	AuthorizedActions                  []string            `json:"authorized_actions,omitempty"`
 
 	response *api.Response
 }
@@ -135,6 +137,50 @@ func (c *Client) CreateWorkerLed(ctx context.Context, workerGeneratedAuthToken s
 	apiErr, err := resp.Decode(target.Item)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding CreateWorkerLed response: %w", err)
+	}
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	target.response = resp
+	return target, nil
+}
+
+func (c *Client) CreateControllerLed(ctx context.Context, scopeId string, opt ...Option) (*WorkerCreateResult, error) {
+	if scopeId == "" {
+		return nil, fmt.Errorf("empty scopeId value passed into CreateControllerLed request")
+	}
+
+	opts, apiOpts := getOpts(opt...)
+
+	if c.client == nil {
+		return nil, fmt.Errorf("nil client")
+	}
+
+	opts.postMap["scope_id"] = scopeId
+
+	req, err := c.client.NewRequest(ctx, "POST", "workers:create:controller-led", opts.postMap, apiOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating CreateControllerLed request: %w", err)
+	}
+
+	if len(opts.queryMap) > 0 {
+		q := url.Values{}
+		for k, v := range opts.queryMap {
+			q.Add(k, v)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error performing client request during CreateControllerLed call: %w", err)
+	}
+
+	target := new(WorkerCreateResult)
+	target.Item = new(Worker)
+	apiErr, err := resp.Decode(target.Item)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding CreateControllerLed response: %w", err)
 	}
 	if apiErr != nil {
 		return nil, apiErr

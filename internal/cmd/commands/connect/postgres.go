@@ -50,7 +50,7 @@ func (p *postgresFlags) defaultExec() string {
 	return strings.ToLower(p.flagPostgresStyle)
 }
 
-func (p *postgresFlags) buildArgs(c *Command, port, ip, addr string, creds credentials) (args, envs []string, retCreds credentials, retErr error) {
+func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) (args, envs []string, retCreds credentials, retErr error) {
 	var username, password string
 
 	retCreds = creds

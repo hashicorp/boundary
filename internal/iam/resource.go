@@ -11,6 +11,9 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
+// IamRepoFactory is a factory function that returns a repository and any error
+type IamRepoFactory func() (*Repository, error)
+
 // Resource declares the shared behavior of IAM Resources
 type Resource interface {
 	// GetPublicId is the resource ID used to access the resource via an API
@@ -36,7 +39,7 @@ type Resource interface {
 }
 
 type Cloneable interface {
-	Clone() interface{}
+	Clone() any
 }
 
 // ResourceWithScope defines an interface for Resources that have a scope
@@ -69,7 +72,7 @@ func LookupScope(ctx context.Context, reader db.Reader, resource ResourceWithSco
 		}
 	}
 	var p Scope
-	if err := reader.LookupWhere(ctx, &p, "public_id = ?", []interface{}{resource.GetScopeId()}); err != nil {
+	if err := reader.LookupWhere(ctx, &p, "public_id = ?", []any{resource.GetScopeId()}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &p, nil

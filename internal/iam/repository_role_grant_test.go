@@ -82,7 +82,7 @@ func TestRepository_AddRoleGrants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { rg := allocRoleGrant(); return &rg }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { rg := allocRoleGrant(); return &rg }(), "1=1")
 			got, err := repo.AddRoleGrants(context.Background(), tt.args.roleId, tt.args.roleVersion, tt.args.grants, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
@@ -190,7 +190,7 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { r := allocRole(); return &r }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
 			role := TestRole(t, conn, tt.createScopeId)
 			roleGrants := make([]string, 0, tt.createCnt)
 			for i := 0; i < tt.createCnt; i++ {
@@ -333,7 +333,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { rg := allocRoleGrant(); return &rg }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { rg := allocRoleGrant(); return &rg }(), "1=1")
 			grants := make([]*RoleGrant, 0, tt.args.createCnt)
 			grantStrings := make([]string, 0, tt.args.createCnt)
 			for i := 0; i < tt.args.createCnt; i++ {
@@ -385,7 +385,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 
 			roleGrants = []*RoleGrant{}
-			require.NoError(repo.reader.SearchWhere(context.Background(), &roleGrants, "role_id = ?", []interface{}{roleId}))
+			require.NoError(repo.reader.SearchWhere(context.Background(), &roleGrants, "role_id = ?", []any{roleId}))
 			found := map[string]bool{}
 			for _, rg := range roleGrants {
 				found[rg.CanonicalGrant] = true
@@ -408,7 +408,7 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 	role := TestRole(t, conn, org.PublicId)
-	db.TestDeleteWhere(t, conn, func() interface{} { i := allocRoleGrant(); return &i }(), "1=1")
+	db.TestDeleteWhere(t, conn, func() any { i := allocRoleGrant(); return &i }(), "1=1")
 
 	type roleGrantWrapper struct {
 		grantString string

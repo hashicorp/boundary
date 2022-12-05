@@ -13,7 +13,7 @@ type SessionAuthorizationResult struct {
 	response *api.Response
 }
 
-func (n SessionAuthorizationResult) GetItem() interface{} {
+func (n SessionAuthorizationResult) GetItem() any {
 	return n.Item
 }
 

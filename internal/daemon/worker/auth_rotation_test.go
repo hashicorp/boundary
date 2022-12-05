@@ -73,7 +73,7 @@ func TestRotationTicking(t *testing.T) {
 	// Decode the proto into the request and create the worker
 	req := new(types.FetchNodeCredentialsRequest)
 	require.NoError(proto.Unmarshal(reqBytes, req))
-	_, err = serversRepo.CreateWorker(c.Context(), &server.Worker{
+	worker, err := serversRepo.CreateWorker(c.Context(), &server.Worker{
 		Worker: &store.Worker{
 			ScopeId: scope.Global.String(),
 		},
@@ -89,16 +89,18 @@ func TestRotationTicking(t *testing.T) {
 	require.NoError(err)
 	currKey := currNodeCreds.CertificatePublicKeyPkix
 
+	priorKeyId, err := nodeenrollment.KeyIdFromPkix(currKey)
+	require.NoError(err)
+
 	// Now we wait and check that we see new values in the DB and different
 	// creds on the worker after each rotation period
 	for i := 2; i < 5; i++ {
 		time.Sleep(rotationPeriod)
 
-		// Verify we see the expected number, since we aren't expiring any it
-		// should be equal to the number of times we did rotations
+		// Verify we see 2- after credentials have rotated, we should see current and previous
 		auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
 		require.NoError(err)
-		assert.Len(auths, i)
+		assert.Len(auths, 2)
 
 		// Fetch creds and compare current key
 		currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.Config().WorkerAuthStorageKms))
@@ -108,6 +110,23 @@ func TestRotationTicking(t *testing.T) {
 		currKeyId, err := nodeenrollment.KeyIdFromPkix(currNodeCreds.CertificatePublicKeyPkix)
 		require.NoError(err)
 		assert.Equal(currKeyId, w.Worker().WorkerAuthCurrentKeyId.Load())
+
+		// Check that we've got the correct prior encryption key
+		previousKeyId, _, err := currNodeCreds.PreviousX25519EncryptionKey()
+		require.NoError(err)
+		assert.Equal(priorKeyId, previousKeyId)
+
+		// Get workerAuthSet for this worker id and compare keys
+		workerAuthSet, err := workerAuthRepo.FindWorkerAuthByWorkerId(c.Context(), worker.PublicId)
+		require.NoError(err)
+		assert.NotNil(workerAuthSet)
+		assert.NotNil(workerAuthSet.Previous)
+		assert.NotNil(workerAuthSet.Current)
+		assert.Equal(workerAuthSet.Current.WorkerKeyIdentifier, currKeyId)
+		assert.Equal(workerAuthSet.Previous.WorkerKeyIdentifier, previousKeyId)
+
+		// Save priorKeyId
+		priorKeyId = currKeyId
 
 		// Stop and start the client connections to ensure the new credentials
 		// are valid; if not, we won't establish a new connection and rotation

@@ -10,10 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -120,6 +124,51 @@ func TestTestWorker_WorkerAuthStorageKms(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewTestMultihopWorkers(t *testing.T) {
+	ctx := context.Background()
+	logger := hclog.New(&hclog.LoggerOptions{
+		Level: hclog.Trace,
+	})
+	conf, err := config.DevController()
+	require.NoError(t, err)
+	c := controller.NewTestController(t, &controller.TestControllerOpts{
+		Config: conf,
+		Logger: logger.Named("controller"),
+	})
+	t.Cleanup(c.Shutdown)
+	pkiTags := map[string][]string{"connected": {"directly"}}
+	childPkiTags := map[string][]string{"connected": {"multihop"}}
+
+	kmsWorker, pkiWorker, childPkiWorker := NewTestMultihopWorkers(t, logger, c.Context(), c.ClusterAddrs(),
+		c.Config().WorkerAuthKms, c.Controller().ServersRepoFn, pkiTags, childPkiTags)
+
+	srvRepo, err := c.Controller().ServersRepoFn()
+	workers, err := srvRepo.ListWorkers(ctx, []string{"global"})
+	assert.Len(t, workers, 3)
+	require.NoError(t, err)
+	var kmsW, pkiW, childPkiW *server.Worker
+	for _, w := range workers {
+		switch w.GetAddress() {
+		case kmsWorker.ProxyAddrs()[0]:
+			kmsW = w
+		case pkiWorker.ProxyAddrs()[0]:
+			pkiW = w
+		case childPkiWorker.ProxyAddrs()[0]:
+			childPkiW = w
+		}
+	}
+	assert.NotNil(t, kmsW)
+	assert.NotNil(t, pkiW)
+	assert.NotNil(t, childPkiW)
+
+	assert.NotZero(t, kmsW.GetLastStatusTime())
+	assert.NotZero(t, pkiW.GetLastStatusTime())
+	assert.NotZero(t, childPkiW.GetLastStatusTime())
+
+	assert.Equal(t, pkiTags, pkiW.GetConfigTags())
+	assert.Equal(t, childPkiTags, childPkiW.GetConfigTags())
 }
 
 func createTestCert(t *testing.T) ([]byte, ed25519.PublicKey, ed25519.PrivateKey) {

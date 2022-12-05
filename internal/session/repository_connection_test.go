@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -25,7 +26,7 @@ func TestRepository_ListConnection(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms, WithLimit(testLimit))
+	repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms, WithLimit(testLimit))
 	require.NoError(t, err)
@@ -84,7 +85,7 @@ func TestRepository_ListConnection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { i := AllocConnection(); return &i }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { i := AllocConnection(); return &i }(), "1=1")
 			testConnections := []*Connection{}
 			for i := 0; i < tt.createCnt; i++ {
 				c := TestConnection(t, conn,
@@ -109,7 +110,7 @@ func TestRepository_ListConnection(t *testing.T) {
 	}
 	t.Run("withOrder", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() interface{} { i := AllocConnection(); return &i }(), "1=1")
+		db.TestDeleteWhere(t, conn, func() any { i := AllocConnection(); return &i }(), "1=1")
 		wantCnt := 5
 		for i := 0; i < wantCnt; i++ {
 			_ = TestConnection(t, conn,
@@ -141,7 +142,7 @@ func TestRepository_ConnectConnection(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
@@ -351,7 +352,7 @@ func TestRepository_orphanedConnections(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms, WithWorkerStateDelay(0))
 	require.NoError(err)
@@ -446,7 +447,7 @@ func TestRepository_CloseConnections(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
@@ -517,5 +518,93 @@ func TestRepository_CloseConnections(t *testing.T) {
 				assert.Equal(StatusClosed, r.ConnectionStates[0].Status)
 			}
 		})
+	}
+}
+
+func TestUpdateBytesUpDown(t *testing.T) {
+	t.Parallel()
+
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	sessRepo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	// Create session.
+	s := TestDefaultSession(t, conn, wrapper, iamRepo)
+	s, _, err = sessRepo.ActivateSession(context.Background(), s.PublicId, s.Version, TestTofu(t))
+	require.NoError(t, err)
+
+	// Create some connections.
+	connCount := 5
+	conns := make([]*Connection, 0, connCount)
+	for i := 0; i < connCount; i++ {
+		c := TestConnection(t, conn, s.PublicId, "127.0.0.1", 22, "127.0.0.1", 2222, "127.0.0.1")
+		c.BytesUp = rand.Int63()
+		c.BytesDown = rand.Int63()
+		conns = append(conns, c)
+	}
+
+	// Update bytes up and down.
+	require.NoError(t, connRepo.updateBytesUpBytesDown(ctx, conns...))
+
+	// Assert that the bytes up and down values have been persisted.
+	for i := 0; i < len(conns); i++ {
+		c, _, err := connRepo.LookupConnection(ctx, conns[i].GetPublicId())
+		require.NoError(t, err)
+
+		require.Equal(t, conns[i].BytesUp, c.BytesUp)
+		require.Equal(t, conns[i].BytesDown, c.BytesDown)
+	}
+
+	// Close all connections
+	closeReasons := []ClosedReason{
+		UnknownReason,
+		ConnectionTimedOut,
+		ConnectionClosedByUser,
+		ConnectionCanceled,
+		ConnectionNetworkError,
+		ConnectionSystemError,
+	}
+	cws := make([]CloseWith, 0, len(conns))
+	for i := 0; i < len(conns); i++ {
+		conns[i].ClosedReason = closeReasons[rand.Intn(len(closeReasons))].String()
+		cr, err := convertToClosedReason(conns[i].ClosedReason)
+		require.NoError(t, err)
+
+		cws = append(cws, CloseWith{
+			ConnectionId: conns[i].GetPublicId(),
+			BytesUp:      conns[i].BytesUp,
+			BytesDown:    conns[i].BytesDown,
+			ClosedReason: cr,
+		})
+	}
+	_, err = connRepo.closeConnections(ctx, cws)
+	require.NoError(t, err)
+
+	// Attempt to update bytes up and bytes down.
+	conns2 := make([]*Connection, len(conns))
+	for i := 0; i < len(conns); i++ {
+		conns2[i] = conns[i].Clone().(*Connection)
+		conns2[i].BytesUp = rand.Int63()
+		conns2[i].BytesDown = rand.Int63()
+	}
+	require.NoError(t, connRepo.updateBytesUpBytesDown(ctx, conns2...))
+
+	// BytesUp and BytesDown values should be set to the old ones.
+	for i := 0; i < len(conns); i++ {
+		c, _, err := connRepo.LookupConnection(ctx, conns[i].GetPublicId())
+		require.NoError(t, err)
+
+		require.Equal(t, conns[i].BytesUp, c.BytesUp)
+		require.Equal(t, conns[i].BytesDown, c.BytesDown)
 	}
 }

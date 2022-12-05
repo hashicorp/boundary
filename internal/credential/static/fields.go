@@ -8,4 +8,5 @@ const (
 	passwordField             = "Password"
 	privateKeyField           = "PrivateKey"
 	PrivateKeyPassphraseField = "PrivateKeyPassphrase"
+	objectField               = "Object"
 )

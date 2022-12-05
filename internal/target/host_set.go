@@ -45,7 +45,7 @@ func NewTargetHostSet(targetId, hostSetId string, _ ...Option) (*TargetHostSet, 
 }
 
 // Clone creates a clone of the target host set
-func (t *TargetHostSet) Clone() interface{} {
+func (t *TargetHostSet) Clone() any {
 	cp := proto.Clone(t.TargetHostSet)
 	return &TargetHostSet{
 		TargetHostSet: cp.(*store.TargetHostSet),

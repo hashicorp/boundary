@@ -3,8 +3,8 @@ package session
 import (
 	"context"
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/x509"
+	"io"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/util"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -46,11 +47,13 @@ type ComposedOf struct {
 	ExpirationTime *timestamp.Timestamp
 	// Max connections for the session
 	ConnectionLimit int32
-	// Worker filter. Active filter when the session was created, used to
+	// Ingress and egress worker filters. Active filters when the session was created, used to
 	// validate the session via the same set of rules at consumption time as
 	// existed at creation time. Round tripping it through here saves a lookup
 	// in the DB. It is not stored in the warehouse.
-	WorkerFilter string
+	WorkerFilter        string
+	EgressWorkerFilter  string
+	IngressWorkerFilter string
 	// DynamicCredentials are dynamic credentials that will be retrieved
 	// for the session. DynamicCredentials optional.
 	DynamicCredentials []*DynamicCredential
@@ -76,9 +79,14 @@ type Session struct {
 	// ProjectId for the session
 	ProjectId string `json:"project_id,omitempty" gorm:"default:null"`
 	// Certificate to use when connecting (or if using custom certs, to
-	// serve as the "login"). Raw DER bytes.  Private key is not, and should not be
-	// stored in the database.
+	// serve as the "login"). Raw DER bytes.
 	Certificate []byte `json:"certificate,omitempty" gorm:"default:null"`
+	// CtCertificatePrivateKey is the ciphertext certificate private key which is stored in the database
+	CtCertificatePrivateKey []byte `json:"ct_certificate_private_key,omitempty" gorm:"column:certificate_private_key;default:null" wrapping:"ct,certificate_private_key"`
+	// CertificatePrivateKey is the certificate private key in plaintext.
+	// This may not be set for some sessions, in which case the private
+	// key should be derived from the encryption key referenced in key_id.
+	CertificatePrivateKey []byte `json:"certificate_private_key,omitempty" gorm:"-" wrapping:"pt,certificate_private_key"`
 	// ExpirationTime - after this time the connection will be expired, e.g. forcefully terminated
 	ExpirationTime *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
 	// CtTofuToken is the ciphertext Tofutoken value stored in the database
@@ -97,14 +105,14 @@ type Session struct {
 	Endpoint string `json:"-" gorm:"default:null"`
 	// Maximum number of connections in a session
 	ConnectionLimit int32 `json:"connection_limit,omitempty" gorm:"default:null"`
-	// Worker filter
-	WorkerFilter string `json:"-" gorm:"default:null"`
 
-	// key_id is the key ID that was used for the encryption operation. It can be
-	// used to identify a specific version of the key needed to decrypt the value,
-	// which is useful for caching purposes.
-	// @inject_tag: `gorm:"not_null"`
-	KeyId string `json:"key_id,omitempty" gorm:"not_null"`
+	// Worker filters
+	WorkerFilter        string `json:"-" gorm:"default:null"`
+	EgressWorkerFilter  string `json:"-" gorm:"default:null"`
+	IngressWorkerFilter string `json:"-" gorm:"default:null"`
+
+	// key_id is the ID of the key version used to encrypt any fields in this struct
+	KeyId string `json:"key_id,omitempty" gorm:"default:null"`
 
 	// States for the session which are for read only and are ignored during
 	// write operations
@@ -144,18 +152,20 @@ var (
 func New(c ComposedOf, _ ...Option) (*Session, error) {
 	const op = "session.New"
 	s := Session{
-		UserId:             c.UserId,
-		HostId:             c.HostId,
-		TargetId:           c.TargetId,
-		HostSetId:          c.HostSetId,
-		AuthTokenId:        c.AuthTokenId,
-		ProjectId:          c.ProjectId,
-		Endpoint:           c.Endpoint,
-		ExpirationTime:     c.ExpirationTime,
-		ConnectionLimit:    c.ConnectionLimit,
-		WorkerFilter:       c.WorkerFilter,
-		DynamicCredentials: c.DynamicCredentials,
-		StaticCredentials:  c.StaticCredentials,
+		UserId:              c.UserId,
+		HostId:              c.HostId,
+		TargetId:            c.TargetId,
+		HostSetId:           c.HostSetId,
+		AuthTokenId:         c.AuthTokenId,
+		ProjectId:           c.ProjectId,
+		Endpoint:            c.Endpoint,
+		ExpirationTime:      c.ExpirationTime,
+		ConnectionLimit:     c.ConnectionLimit,
+		WorkerFilter:        c.WorkerFilter,
+		EgressWorkerFilter:  c.EgressWorkerFilter,
+		IngressWorkerFilter: c.IngressWorkerFilter,
+		DynamicCredentials:  c.DynamicCredentials,
+		StaticCredentials:   c.StaticCredentials,
 	}
 	if err := s.validateNewSession(); err != nil {
 		return nil, errors.WrapDeprecated(err, op)
@@ -169,21 +179,23 @@ func AllocSession() Session {
 }
 
 // Clone creates a clone of the Session
-func (s *Session) Clone() interface{} {
+func (s *Session) Clone() any {
 	clone := &Session{
-		PublicId:          s.PublicId,
-		UserId:            s.UserId,
-		HostId:            s.HostId,
-		TargetId:          s.TargetId,
-		HostSetId:         s.HostSetId,
-		AuthTokenId:       s.AuthTokenId,
-		ProjectId:         s.ProjectId,
-		TerminationReason: s.TerminationReason,
-		Version:           s.Version,
-		Endpoint:          s.Endpoint,
-		ConnectionLimit:   s.ConnectionLimit,
-		WorkerFilter:      s.WorkerFilter,
-		KeyId:             s.KeyId,
+		PublicId:            s.PublicId,
+		UserId:              s.UserId,
+		HostId:              s.HostId,
+		TargetId:            s.TargetId,
+		HostSetId:           s.HostSetId,
+		AuthTokenId:         s.AuthTokenId,
+		ProjectId:           s.ProjectId,
+		TerminationReason:   s.TerminationReason,
+		Version:             s.Version,
+		Endpoint:            s.Endpoint,
+		ConnectionLimit:     s.ConnectionLimit,
+		WorkerFilter:        s.WorkerFilter,
+		EgressWorkerFilter:  s.EgressWorkerFilter,
+		IngressWorkerFilter: s.IngressWorkerFilter,
+		KeyId:               s.KeyId,
 	}
 	if len(s.States) > 0 {
 		clone.States = make([]*State, 0, len(s.States))
@@ -217,6 +229,14 @@ func (s *Session) Clone() interface{} {
 	if s.Certificate != nil {
 		clone.Certificate = make([]byte, len(s.Certificate))
 		copy(clone.Certificate, s.Certificate)
+	}
+	if s.CertificatePrivateKey != nil {
+		clone.CertificatePrivateKey = make([]byte, len(s.CertificatePrivateKey))
+		copy(clone.CertificatePrivateKey, s.CertificatePrivateKey)
+	}
+	if s.CtCertificatePrivateKey != nil {
+		clone.CtCertificatePrivateKey = make([]byte, len(s.CtCertificatePrivateKey))
+		copy(clone.CtCertificatePrivateKey, s.CtCertificatePrivateKey)
 	}
 	if s.ExpirationTime != nil {
 		clone.ExpirationTime = &timestamp.Timestamp{
@@ -289,6 +309,10 @@ func (s *Session) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType
 			return errors.New(ctx, errors.InvalidParameter, op, "connection limit is immutable")
 		case contains(opts.WithFieldMaskPaths, "WorkerFilter"):
 			return errors.New(ctx, errors.InvalidParameter, op, "worker filter is immutable")
+		case contains(opts.WithFieldMaskPaths, "EgressWorkerFilter"):
+			return errors.New(ctx, errors.InvalidParameter, op, "egress worker filter is immutable")
+		case contains(opts.WithFieldMaskPaths, "IngressWorkerFilter"):
+			return errors.New(ctx, errors.InvalidParameter, op, "ingress worker filter is immutable")
 		case contains(opts.WithFieldMaskPaths, "DynamicCredentials"):
 			return errors.New(ctx, errors.InvalidParameter, op, "dynamic credentials are immutable")
 		case contains(opts.WithFieldMaskPaths, "StaticCredentials"):
@@ -367,21 +391,21 @@ func contains(ss []string, t string) bool {
 }
 
 // newCert creates a new session certificate. If addresses are supplied, they will be parsed and added to IP or DNS SANs as appropriate.
-func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string, addresses []string, exp time.Time) (ed25519.PrivateKey, []byte, error) {
+func newCert(ctx context.Context, jobId string, addresses []string, exp time.Time, rand io.Reader) (ed25519.PrivateKey, []byte, error) {
 	const op = "session.newCert"
-	if wrapper == nil {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
-	}
-	if userId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
-	}
 	if jobId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing job id")
 	}
 	if len(addresses) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
 	}
-	pubKey, privKey, err := DeriveED25519Key(ctx, wrapper, userId, jobId)
+	if exp.IsZero() {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing expiry")
+	}
+	if util.IsNil(rand) {
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing random data source")
+	}
+	pubKey, privKey, err := ed25519.GenerateKey(rand)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -420,7 +444,7 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 		}
 	}
 
-	certBytes, err := x509.CreateCertificate(rand.Reader, template, template, pubKey, privKey)
+	certBytes, err := x509.CreateCertificate(rand, template, template, pubKey, privKey)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.GenCert))
 	}
@@ -429,8 +453,35 @@ func newCert(ctx context.Context, wrapper wrapping.Wrapper, userId, jobId string
 
 func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).encrypt"
-	if err := structwrapping.WrapStruct(ctx, cipher, s, nil); err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+	if util.IsNil(cipher) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
+	}
+	// Split encryption per field since they can be independently nil.
+	if len(s.TofuToken) > 0 {
+		type tofuToken struct {
+			TofuToken   []byte `wrapping:"pt,tofu_token"`
+			CtTofuToken []byte `wrapping:"ct,tofu_token"`
+		}
+		v := &tofuToken{
+			TofuToken: s.TofuToken,
+		}
+		if err := structwrapping.WrapStruct(ctx, cipher, v); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to encrypt tofu token"))
+		}
+		s.CtTofuToken = v.CtTofuToken
+	}
+	if len(s.CertificatePrivateKey) > 0 {
+		type certPk struct {
+			CertificatePrivateKey   []byte `wrapping:"pt,certificate_private_key"`
+			CtCertificatePrivateKey []byte `wrapping:"ct,certificate_private_key"`
+		}
+		v := &certPk{
+			CertificatePrivateKey: s.CertificatePrivateKey,
+		}
+		if err := structwrapping.WrapStruct(ctx, cipher, v); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to encrypt certificate private key"))
+		}
+		s.CtCertificatePrivateKey = v.CtCertificatePrivateKey
 	}
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
@@ -442,32 +493,62 @@ func (s *Session) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 
 func (s *Session) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "session.(Session).decrypt"
-	if err := structwrapping.UnwrapStruct(ctx, cipher, s, nil); err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+	if util.IsNil(cipher) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
+	// Split decryption per field since they can be independently nil.
+	if len(s.CtTofuToken) > 0 {
+		type tofuToken struct {
+			TofuToken   []byte `wrapping:"pt,tofu_token"`
+			CtTofuToken []byte `wrapping:"ct,tofu_token"`
+		}
+		v := &tofuToken{
+			CtTofuToken: s.CtTofuToken,
+		}
+		if err := structwrapping.UnwrapStruct(ctx, cipher, v); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt tofu token"))
+		}
+		s.TofuToken = v.TofuToken
+	}
+	if len(s.CtCertificatePrivateKey) > 0 {
+		type certPk struct {
+			CertificatePrivateKey   []byte `wrapping:"pt,certificate_private_key"`
+			CtCertificatePrivateKey []byte `wrapping:"ct,certificate_private_key"`
+		}
+		v := &certPk{
+			CtCertificatePrivateKey: s.CtCertificatePrivateKey,
+		}
+		if err := structwrapping.UnwrapStruct(ctx, cipher, v); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt certificate private key"))
+		}
+		s.CertificatePrivateKey = v.CertificatePrivateKey
+	}
+
 	return nil
 }
 
 type sessionListView struct {
 	// Session fields
-	PublicId          string               `json:"public_id,omitempty" gorm:"primary_key"`
-	UserId            string               `json:"user_id,omitempty" gorm:"default:null"`
-	HostId            string               `json:"host_id,omitempty" gorm:"default:null"`
-	TargetId          string               `json:"target_id,omitempty" gorm:"default:null"`
-	HostSetId         string               `json:"host_set_id,omitempty" gorm:"default:null"`
-	AuthTokenId       string               `json:"auth_token_id,omitempty" gorm:"default:null"`
-	ProjectId         string               `json:"project_id,omitempty" gorm:"default:null"`
-	Certificate       []byte               `json:"certificate,omitempty" gorm:"default:null"`
-	ExpirationTime    *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
-	CtTofuToken       []byte               `json:"ct_tofu_token,omitempty" gorm:"column:tofu_token;default:null" wrapping:"ct,tofu_token"`
-	TofuToken         []byte               `json:"tofu_token,omitempty" gorm:"-" wrapping:"pt,tofu_token"`
-	TerminationReason string               `json:"termination_reason,omitempty" gorm:"default:null"`
-	CreateTime        *timestamp.Timestamp `json:"create_time,omitempty" gorm:"default:current_timestamp"`
-	UpdateTime        *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
-	Version           uint32               `json:"version,omitempty" gorm:"default:null"`
-	Endpoint          string               `json:"-" gorm:"default:null"`
-	ConnectionLimit   int32                `json:"connection_limit,omitempty" gorm:"default:null"`
-	KeyId             string               `json:"key_id,omitempty" gorm:"not_null"`
+	PublicId                string               `json:"public_id,omitempty" gorm:"primary_key"`
+	UserId                  string               `json:"user_id,omitempty" gorm:"default:null"`
+	HostId                  string               `json:"host_id,omitempty" gorm:"default:null"`
+	TargetId                string               `json:"target_id,omitempty" gorm:"default:null"`
+	HostSetId               string               `json:"host_set_id,omitempty" gorm:"default:null"`
+	AuthTokenId             string               `json:"auth_token_id,omitempty" gorm:"default:null"`
+	ProjectId               string               `json:"project_id,omitempty" gorm:"default:null"`
+	Certificate             []byte               `json:"certificate,omitempty" gorm:"default:null"`
+	CtCertificatePrivateKey []byte               `json:"ct_certificate_private_key,omitempty" gorm:"column:certificate_private_key;default:null" wrapping:"ct,certificate_private_key"`
+	CertificatePrivateKey   []byte               `json:"certificate_private_key,omitempty" gorm:"-"  wrapping:"pt,certificate_private_key"`
+	ExpirationTime          *timestamp.Timestamp `json:"expiration_time,omitempty" gorm:"default:null"`
+	CtTofuToken             []byte               `json:"ct_tofu_token,omitempty" gorm:"column:tofu_token;default:null" wrapping:"ct,tofu_token"`
+	TofuToken               []byte               `json:"tofu_token,omitempty" gorm:"-" wrapping:"pt,tofu_token"`
+	TerminationReason       string               `json:"termination_reason,omitempty" gorm:"default:null"`
+	CreateTime              *timestamp.Timestamp `json:"create_time,omitempty" gorm:"default:current_timestamp"`
+	UpdateTime              *timestamp.Timestamp `json:"update_time,omitempty" gorm:"default:current_timestamp"`
+	Version                 uint32               `json:"version,omitempty" gorm:"default:null"`
+	Endpoint                string               `json:"-" gorm:"default:null"`
+	ConnectionLimit         int32                `json:"connection_limit,omitempty" gorm:"default:null"`
+	KeyId                   string               `json:"key_id,omitempty" gorm:"default:null"`
 
 	// State fields
 	Status          string               `json:"state,omitempty" gorm:"column:state"`

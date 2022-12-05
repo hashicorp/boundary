@@ -602,7 +602,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt 
 		limit = opts.WithLimit
 	}
 	var hostCatalogs []*HostCatalog
-	if err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []interface{}{projectIds}, db.WithLimit(limit)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []any{projectIds}, db.WithLimit(limit)); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	plgIds := make([]string, 0, len(hostCatalogs))
@@ -610,7 +610,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt 
 		plgIds = append(plgIds, c.PluginId)
 	}
 	var plgs []*hostplugin.Plugin
-	if err := r.reader.SearchWhere(ctx, &plgs, "public_id in (?)", []interface{}{plgIds}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &plgs, "public_id in (?)", []any{plgIds}); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	return hostCatalogs, plgs, nil

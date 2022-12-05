@@ -86,7 +86,7 @@ func TestRoleGrant_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { a := allocRoleGrant(); return &a }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { a := allocRoleGrant(); return &a }(), "1=1")
 			got, err := NewRoleGrant(tt.args.roleId, tt.args.grant, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)

@@ -52,7 +52,7 @@ description will be read.
   - `max_idle_connections` - Can be used to control the maximum number of
     idle connections in the idle connection pool.
     If `max_open_connections` is greater than 0 but less than
-    `max_idle_connections`, then `max_idle_connections` will be reduced to match the `max_open_connections` limit. 
+    `max_idle_connections`, then `max_idle_connections` will be reduced to match the `max_open_connections` limit.
     Setting this value to 0 will mean that no idle connections are retained.
     If not set or set to less than 0, the default
     [sql.DB](https://pkg.go.dev/database/sql#DB.SetMaxIdleConns) setting will be used.
@@ -89,8 +89,18 @@ description will be read.
   to all tokens from all auth methods). Valid time units are anything specified by Golang's
   [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method. Default is 1 day.
 
+- `scheduler` - The configuration block that specifies the job scheduler behavior on the controller.
+
+  - `job_run_interval` - The interval at which the scheduler will call the database to check if
+    there are any jobs that need to run. Default is 1 minute.
+
+  - `monitor_interval` - The interval at which the scheduler will check and interrupt any defuncted
+  jobs that were running on another scheduler. A job is considered defuncted if it has not reported
+  a status to the database for 5 minutes. Once a job is interrupted it will be run immediate on the
+  first controller available. Default is 30 seconds.
+
 - `graceful_shutdown_wait_duration` - Amount of time Boundary will wait before initiating the shutdown procedure,
-  after receiving a shutdown signal. In this state, Boundary still processes requests as normal but replies 
+  after receiving a shutdown signal. In this state, Boundary still processes requests as normal but replies
   with `503 Service Unavailable` to any health requests. This is designed to allow an operator to configure
   load-balancers to preemptively stop new traffic to a Boundary instance that is going away. Valid time units
   are anything specified by Go's [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method. Only

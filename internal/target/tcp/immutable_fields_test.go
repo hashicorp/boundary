@@ -158,14 +158,15 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
+
+	ctx := context.Background()
 	rw := db.New(conn)
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 
 	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
 
 	_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	ctx := context.Background()
 	projTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestId(t))
 	testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
 	hsets := static.TestSets(t, conn, testCats[0].GetPublicId(), 2)
@@ -218,7 +219,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupWhere(context.Background(), orig, "target_id = ? and host_set_id = ?", []interface{}{new.TargetId, new.HostSetId})
+			err := rw.LookupWhere(context.Background(), orig, "target_id = ? and host_set_id = ?", []any{new.TargetId, new.HostSetId})
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
@@ -226,7 +227,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupWhere(context.Background(), after, "target_id = ? and host_set_id = ?", []interface{}{new.TargetId, new.HostSetId})
+			err = rw.LookupWhere(context.Background(), after, "target_id = ? and host_set_id = ?", []any{new.TargetId, new.HostSetId})
 			require.NoError(err)
 			assert.True(proto.Equal(orig.(*target.TargetHostSet), after.(*target.TargetHostSet)))
 		})

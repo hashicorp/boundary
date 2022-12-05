@@ -80,8 +80,8 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "no-match-username-secret-kv2",
 			given: args{
 				s: data{
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username-wrong": "user",
 						"password":       "pass",
 					},
@@ -95,8 +95,8 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "no-match-password-secret-kv2",
 			given: args{
 				s: data{
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username":       "user",
 						"password-wrong": "pass",
 					},
@@ -110,8 +110,8 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "valid-kv2",
 			given: args{
 				s: data{
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username": "user",
 						"password": "pass",
 					},
@@ -125,7 +125,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "no-metadata-kv2",
 			given: args{
 				s: data{
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"username": "user",
 						"password": "pass",
 					},
@@ -140,7 +140,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			given: args{
 				s: data{
 					"metadata": "string",
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"username": "user",
 						"password": "pass",
 					},
@@ -154,9 +154,9 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "invalid-field-kv2",
 			given: args{
 				s: data{
-					"invalid":  map[string]interface{}{},
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"invalid":  map[string]any{},
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username": "user",
 						"password": "pass",
 					},
@@ -172,8 +172,8 @@ func TestBaseToUsrPass(t *testing.T) {
 				s: data{
 					"username": "default-user",
 					"password": "default-pass",
-					"metadata": map[string]interface{}{},
-					"data": map[string]interface{}{
+					"metadata": map[string]any{},
+					"data": map[string]any{
 						"username": "kv2-user",
 						"password": "kv2-pass",
 					},
@@ -188,7 +188,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			given: args{
 				s: data{
 					"username": "default-user",
-					"testing": map[string]interface{}{
+					"testing": map[string]any{
 						"my-password": "secret",
 					},
 				},
@@ -202,7 +202,7 @@ func TestBaseToUsrPass(t *testing.T) {
 			given: args{
 				s: data{
 					"password": "default-pass",
-					"testing": map[string]interface{}{
+					"testing": map[string]any{
 						"a-user-name": "me",
 					},
 				},
@@ -215,12 +215,12 @@ func TestBaseToUsrPass(t *testing.T) {
 			name: "both-json-pointer",
 			given: args{
 				s: data{
-					"first-path": map[string]interface{}{
-						"deeper-path": map[string]interface{}{
+					"first-path": map[string]any{
+						"deeper-path": map[string]any{
 							"my-special-user": "you-found-me",
 						},
 					},
-					"testing": map[string]interface{}{
+					"testing": map[string]any{
 						"password": "secret",
 					},
 				},

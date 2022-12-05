@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -117,7 +118,7 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 			name: "recovery-user",
 			args: args{
 				roleVersion:     1,
-				specificUserIds: []string{"u_recovery"},
+				specificUserIds: []string{globals.RecoveryUserId},
 			},
 			wantErr: true,
 		},
@@ -125,8 +126,8 @@ func TestRepository_AddPrincipalRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { r := allocUserRole(); return &r }(), "1=1")
-			db.TestDeleteWhere(t, conn, func() interface{} { g := allocGroupRole(); return &g }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { r := allocUserRole(); return &r }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { g := allocGroupRole(); return &g }(), "1=1")
 			orgs, projects := createScopesFn()
 			var userIds, groupIds []string
 
@@ -264,7 +265,7 @@ func TestRepository_ListPrincipalRoles(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() interface{} { r := allocRole(); return &r }(), "1=1")
+			db.TestDeleteWhere(t, conn, func() any { r := allocRole(); return &r }(), "1=1")
 			role := TestRole(t, conn, tt.createScopeId)
 			userRoles := make([]string, 0, tt.createCnt)
 			groupRoles := make([]string, 0, tt.createCnt)
@@ -525,8 +526,8 @@ func TestRepository_SetPrincipalRoles(t *testing.T) {
 			u := TestUser(t, repo, org.PublicId)
 			results = append(results, u.PublicId)
 		}
-		results = append(results, "u_anon")
-		results = append(results, "u_auth")
+		results = append(results, globals.AnonymousUserId)
+		results = append(results, globals.AnyAuthenticatedUserId)
 		return results
 	}
 	createGrpsFn := func() []string {

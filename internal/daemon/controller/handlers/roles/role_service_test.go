@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -308,7 +309,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListRoles(%q) got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Test the anon case
-			got, gErr = s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListRoles(auth.DisabledAuthTestContext(repoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -1126,7 +1127,7 @@ func TestAddPrincipal(t *testing.T) {
 		{
 			name:     "Add invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
-			addUsers: []string{"u_recovery"},
+			addUsers: []string{globals.RecoveryUserId},
 			wantErr:  true,
 		},
 	}
@@ -1185,7 +1186,7 @@ func TestAddPrincipal(t *testing.T) {
 			req: &pbs.AddRolePrincipalsRequest{
 				Id:           role.GetPublicId(),
 				Version:      role.GetVersion(),
-				PrincipalIds: []string{"u_recovery"},
+				PrincipalIds: []string{globals.RecoveryUserId},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1316,7 +1317,7 @@ func TestSetPrincipal(t *testing.T) {
 		{
 			name:     "Set invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
-			setUsers: []string{"u_recovery"},
+			setUsers: []string{globals.RecoveryUserId},
 			wantErr:  true,
 		},
 	}
@@ -1375,7 +1376,7 @@ func TestSetPrincipal(t *testing.T) {
 			req: &pbs.SetRolePrincipalsRequest{
 				Id:           role.GetPublicId(),
 				Version:      role.GetVersion(),
-				PrincipalIds: []string{"u_recovery"},
+				PrincipalIds: []string{globals.RecoveryUserId},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -1653,11 +1654,12 @@ func TestAddGrants(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	addCases := []struct {
-		name     string
-		existing []string
-		add      []string
-		result   []string
-		wantErr  bool
+		name            string
+		existing        []string
+		add             []string
+		result          []string
+		wantErr         bool
+		wantErrContains string
 	}{
 		{
 			name:   "Add grant on empty role",
@@ -1682,6 +1684,13 @@ func TestAddGrants(t *testing.T) {
 			add:      []string{"id=*;type=*;actions=delete"},
 			wantErr:  true,
 		},
+		{
+			name:            "Check deprecation",
+			existing:        []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			add:             []string{"id=*;type=target;actions=add-host-sets"},
+			wantErr:         true,
+			wantErrContains: "Use \\\"add-host-sources\\\" instead",
+		},
 	}
 
 	for _, tc := range addCases {
@@ -1705,6 +1714,9 @@ func TestAddGrants(t *testing.T) {
 				got, err := s.AddRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
+					if tc.wantErrContains != "" {
+						assert.Contains(err.Error(), tc.wantErrContains)
+					}
 					return
 				}
 				require.NoError(err)
@@ -1781,11 +1793,12 @@ func TestSetGrants(t *testing.T) {
 	require.NoError(t, err, "Error when getting new role service.")
 
 	setCases := []struct {
-		name     string
-		existing []string
-		set      []string
-		result   []string
-		wantErr  bool
+		name            string
+		existing        []string
+		set             []string
+		result          []string
+		wantErr         bool
+		wantErrContains string
 	}{
 		{
 			name:   "Set grant on empty role",
@@ -1816,6 +1829,13 @@ func TestSetGrants(t *testing.T) {
 			set:      nil,
 			result:   nil,
 		},
+		{
+			name:            "Check deprecation",
+			existing:        []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			set:             []string{"id=*;type=target;actions=add-host-sets"},
+			wantErr:         true,
+			wantErrContains: "Use \\\"add-host-sources\\\" instead",
+		},
 	}
 
 	for _, tc := range setCases {
@@ -1839,6 +1859,9 @@ func TestSetGrants(t *testing.T) {
 				got, err := s.SetRoleGrants(auth.DisabledAuthTestContext(repoFn, scopeId), req)
 				if tc.wantErr {
 					assert.Error(err)
+					if tc.wantErrContains != "" {
+						assert.Contains(err.Error(), tc.wantErrContains)
+					}
 					return
 				}
 				require.NoError(err, "Got error %v", err)

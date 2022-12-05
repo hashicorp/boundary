@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestPassword_String(t *testing.T) {
@@ -128,5 +129,59 @@ func TestPrivateKey_MarshalJSON(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(PrivateKey(want), sec.S)
 		assert.Equal(testB, sec.B)
+	})
+}
+
+func TestJsonObject_String(t *testing.T) {
+	t.Parallel()
+	t.Run("redacted", func(t *testing.T) {
+		assert := assert.New(t)
+		const want = redactedJson
+		json := &JsonObject{}
+		assert.Equalf(want, json.String(), "JsonObject.String() = %v, want %v", json.String(), want)
+
+		// Verify stringer is called
+		s := fmt.Sprintf("%s", json)
+		assert.Equalf(want, s, "JsonObject.String() = %v, want %v", s, want)
+	})
+}
+
+func TestJsonObject_GoString(t *testing.T) {
+	t.Parallel()
+	t.Run("redacted", func(t *testing.T) {
+		assert := assert.New(t)
+		const want = redactedJson
+		json := &JsonObject{}
+		assert.Equalf(want, json.GoString(), "JsonObject.GoString() = %v, want %v", json.GoString(), want)
+
+		// Verify gostringer is called
+		s := fmt.Sprintf("%#v", json)
+		assert.Equalf(want, s, "JsonObject.GoString() = %v, want %v", s, want)
+	})
+}
+
+func TestJsonObject_MarshalJSON(t *testing.T) {
+	t.Parallel()
+	t.Run("redacted", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		want, err := json.Marshal([]byte(redactedJson))
+		require.NoError(err)
+		json := &JsonObject{}
+		got, err := json.MarshalJSON()
+		require.NoError(err)
+		assert.Equalf(want, got, "JsonObject.MarshalJSON() = %s, want %s", got, want)
+	})
+	t.Run("within-struct", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		secret := JsonObject{
+			structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"secret": structpb.NewStringValue("password"),
+				},
+			},
+		}
+		bSecret, err := secret.MarshalJSON()
+		require.NoError(err)
+		assert.Equal("\"W1JFREFDVEVEOiBqc29uXQ==\"", string(bSecret)) // The marshaled value is in base64
 	})
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	authStore "github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -17,11 +18,10 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
-
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/cap/oidc"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -289,7 +289,7 @@ func Test_Callback(t *testing.T) {
 			_, err := rw.Exec(ctx, "delete from auth_token", nil)
 			require.NoError(err)
 			// start with no users in the db
-			excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
+			excludeUsers := []any{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, globals.RecoveryUserId}
 			_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 			require.NoError(err)
 			// start with no oplog entries
@@ -316,7 +316,7 @@ func Test_Callback(t *testing.T) {
 			}
 			tp.SetExpectedSubject(tt.wantSubject)
 
-			info := map[string]interface{}{}
+			info := map[string]any{}
 			if tt.wantSubject != "" {
 				info["sub"] = tt.wantSubject
 			}
@@ -346,13 +346,13 @@ func Test_Callback(t *testing.T) {
 
 				// make sure there are no tokens in the db..
 				var tokens []*authtoken.AuthToken
-				err := rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
+				err := rw.SearchWhere(ctx, &tokens, "1=?", []any{1})
 				require.NoError(err)
 				assert.Equal(0, len(tokens))
 
 				// make sure there weren't any oplog entries written.
 				var entries []*oplog.Entry
-				err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
+				err = rw.SearchWhere(ctx, &entries, "1=?", []any{1})
 				require.NoError(err)
 				amId := ""
 				if tt.am != nil {
@@ -366,7 +366,7 @@ func Test_Callback(t *testing.T) {
 
 			// make sure a pending token was created.
 			var tokens []*authtoken.AuthToken
-			err = rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
+			err = rw.SearchWhere(ctx, &tokens, "1=?", []any{1})
 			require.NoError(err)
 			require.Equal(1, len(tokens))
 			tk, err := atRepo.LookupAuthToken(ctx, tokens[0].PublicId)
@@ -375,7 +375,7 @@ func Test_Callback(t *testing.T) {
 
 			// make sure the account was updated properly
 			var acct Account
-			err = rw.LookupWhere(ctx, &acct, "auth_method_id = ? and subject = ?", []interface{}{tt.am.PublicId, tt.wantSubject})
+			err = rw.LookupWhere(ctx, &acct, "auth_method_id = ? and subject = ?", []any{tt.am.PublicId, tt.wantSubject})
 			require.NoError(err)
 			assert.Equal(tt.wantInfoEmail, acct.Email)
 			assert.Equal(tt.wantInfoName, acct.FullName)
@@ -391,7 +391,7 @@ func Test_Callback(t *testing.T) {
 
 			// check the oplog entries.
 			var entries []*oplog.Entry
-			err = rw.SearchWhere(ctx, &entries, "1=?", []interface{}{1})
+			err = rw.SearchWhere(ctx, &entries, "1=?", []any{1})
 			require.NoError(err)
 			oplogWrapper, err := kmsCache.GetWrapper(ctx, tt.am.ScopeId, kms.KeyPurposeOplog)
 			require.NoError(err)
@@ -406,7 +406,7 @@ func Test_Callback(t *testing.T) {
 			foundAcct, foundOidcAcct := false, false
 			for _, e := range entries {
 				cnt += 1
-				e.Cipherer = oplogWrapper
+				e.Wrapper = oplogWrapper
 				err := e.DecryptData(ctx)
 				require.NoError(err)
 				msgs, err := e.UnmarshalData(ctx, types)
@@ -438,7 +438,7 @@ func Test_Callback(t *testing.T) {
 		_, err := rw.Exec(ctx, "delete from auth_token", nil)
 		require.NoError(err)
 		// start with no users in the db
-		excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
+		excludeUsers := []any{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, globals.RecoveryUserId}
 		_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 		require.NoError(err)
 		// start with no oplog entries
@@ -456,7 +456,7 @@ func Test_Callback(t *testing.T) {
 		wantSubject := "replay-attack-with-dup-state@example.com"
 		tp.SetExpectedSubject(wantSubject)
 
-		tp.SetUserInfoReply(map[string]interface{}{"sub": wantSubject})
+		tp.SetUserInfoReply(map[string]any{"sub": wantSubject})
 		tp.SetExpectedAuthNonce(testNonce)
 
 		// the first request should succeed.
@@ -500,7 +500,7 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 		_, err := rw.Exec(ctx, "delete from auth_token", nil)
 		require.NoError(err)
 		// start with no users in the db
-		excludeUsers := []interface{}{"u_anon", "u_auth", "u_recovery"}
+		excludeUsers := []any{globals.AnonymousUserId, globals.AnyAuthenticatedUserId, globals.RecoveryUserId}
 		_, err = rw.Exec(ctx, "delete from iam_user where public_id not in(?, ?, ?)", excludeUsers)
 		require.NoError(err)
 		// start with no oplog entries
@@ -590,7 +590,7 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 
 		// check to make sure there's a pending token, after the successful callback
 		var tokens []*authtoken.AuthToken
-		err = rw.SearchWhere(ctx, &tokens, "1=?", []interface{}{1})
+		err = rw.SearchWhere(ctx, &tokens, "1=?", []any{1})
 		require.NoError(err)
 		require.Equal(1, len(tokens))
 		tk, err := atRepo.LookupAuthToken(ctx, tokens[0].PublicId)
@@ -680,7 +680,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 	tp.SetExpectedAuthCode(code)
 	tp.SetExpectedSubject(sub)
 	tp.SetCustomAudience("foo", "alice-rp")
-	info := map[string]interface{}{
+	info := map[string]any{
 		"roles":  []string{"user", "operator"},
 		"sub":    "alice@example.com",
 		"email":  "alice-alias@example.com",

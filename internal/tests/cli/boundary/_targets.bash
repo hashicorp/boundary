@@ -25,10 +25,10 @@ function list_targets() {
   boundary targets list -scope-id $1 -format json
 }
 
-function assoc_host_sets() {
+function assoc_host_sources() {
   local id=$1
   local hst=$2
-  boundary targets add-host-sets -id $id -host-set $hst
+  boundary targets add-host-sources -id $id -host-source $hst
 }
 
 function target_id_from_name() {
@@ -37,16 +37,16 @@ function target_id_from_name() {
   strip $(list_targets $sid | jq -c ".items[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
 
-function target_host_set_ids() {
+function target_host_source_ids() {
   local tid=$1
-  boundary targets read -id $tid -format json | jq '.item.host_sets[].id'  
+  boundary targets read -id $tid -format json | jq '.item.host_sources[].id'  
 }
 
-function target_has_host_set_id() {
+function target_has_host_source_id() {
   local tid=$1
   local hsid=$2
 
-  ids=$(target_host_set_ids $tid)  
+  ids=$(target_host_source_ids $tid)  
   for id in $ids; do
     if [ $(strip "$id") == "$hsid" ]; then
       return 0 
@@ -57,7 +57,7 @@ function target_has_host_set_id() {
 
 function has_default_target_actions() {
   local out=$1
-  local actions=('read' 'update' 'delete' 'add-host-sets' 'set-host-sets' 'remove-host-sets' 'authorize-session')
+  local actions=('read' 'update' 'delete' 'add-host-sources' 'set-host-sources' 'remove-host-sources' 'authorize-session')
 
   for action in ${actions[@]}; do
     $(has_authorized_action "$out" "$action") || {

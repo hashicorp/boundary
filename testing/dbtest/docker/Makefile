@@ -15,8 +15,6 @@ dockerfiles = $(wildcard Dockerfile.*)
 docker-buildxs = $(patsubst Dockerfile.%,%-buildx, $(dockerfiles))
 docker-load-buildxs = $(patsubst Dockerfile.%,%-load-buildx, $(dockerfiles))
 
-# Before running this target a builder instance needs to be setup, ie:
-#  docker buildx create --driver docker-container --use
 docker-build: ${docker-buildxs}
 
 ${docker-buildxs}: %-buildx:

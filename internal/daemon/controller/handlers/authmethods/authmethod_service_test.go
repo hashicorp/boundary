@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -385,7 +386,7 @@ func TestList(t *testing.T) {
 				"ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check with anonymous user
-			got, gErr = s.ListAuthMethods(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), requestauth.WithUserId(requestauth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListAuthMethods(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), requestauth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {

@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/boundary"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Domain defines the domain for the credential package.
@@ -29,6 +30,7 @@ const (
 	UnspecifiedType      Type = "unspecified"
 	UsernamePasswordType Type = "username_password"
 	SshPrivateKeyType    Type = "ssh_private_key"
+	JsonType             Type = "json"
 )
 
 // A Library is a resource that provides credentials that are of the same
@@ -65,7 +67,7 @@ var ValidPurposes = []Purpose{
 }
 
 // SecretData represents secret data.
-type SecretData interface{}
+type SecretData any
 
 // Credential is an entity containing secret data.
 type Credential interface {
@@ -104,7 +106,9 @@ type Issuer interface {
 	//
 	// If Issue encounters an error, it returns no credentials and revokes
 	// any credentials issued before encountering the error.
-	Issue(ctx context.Context, sessionId string, requests []Request) ([]Dynamic, error)
+	//
+	// Supported Options: WithTemplateData
+	Issue(ctx context.Context, sessionId string, requests []Request, opt ...Option) ([]Dynamic, error)
 }
 
 // Revoker revokes dynamic credentials.
@@ -118,6 +122,11 @@ type Password string
 
 // PrivateKey represents a secret private key.
 type PrivateKey []byte
+
+// JsonObject represents a JSON object that is serialized.
+type JsonObject struct {
+	structpb.Struct
+}
 
 // UsernamePassword is a credential containing a username and a password.
 type UsernamePassword interface {

@@ -29,6 +29,27 @@ begin;
     ('o_____colors', 'u______carly', 'Carly'),
     ('o_____colors', 'u______ciara', 'Ciara');
 
+  -- Add keys
+  insert into kms_root_key
+    (private_id,         scope_id)
+  values
+    ('krk_______colors', 'o_____colors');
+
+  insert into kms_root_key_version
+    (private_id,          root_key_id,        key)
+  values
+    ('krkv_______colors', 'krk_______colors', '_______color1'::bytea);
+
+  insert into kms_data_key
+    (private_id,         root_key_id,        purpose)
+  values
+    ('kdk_______colors', 'krk_______colors', 'database');
+
+  insert into kms_data_key_version
+    (private_id,           data_key_id,       root_key_version_id, key)
+  values
+	  ('kdkv_______colors', 'kdk_______colors', 'krkv_______colors', '_______color2'::bytea);
+
   insert into iam_group
     (scope_id, public_id, name)
   values
@@ -120,10 +141,10 @@ begin;
   insert into auth_token
     (key_id, auth_account_id, public_id, token)
   values
-    ('key', 'apa____clare', 'tok____clare', 'tok____clare'::bytea),
-    ('key', 'apa____cindy', 'tok____cindy', 'tok____cindy'::bytea),
-    ('key', 'apa____ciara', 'tok____ciara', 'tok____ciara'::bytea),
-    ('key', 'apa____carly', 'tok____carly', 'tok____carly'::bytea);
+    ('kdkv_______colors', 'apa____clare', 'tok____clare', 'tok____clare'::bytea),
+    ('kdkv_______colors', 'apa____cindy', 'tok____cindy', 'tok____cindy'::bytea),
+    ('kdkv_______colors', 'apa____ciara', 'tok____ciara', 'tok____ciara'::bytea),
+    ('kdkv_______colors', 'apa____carly', 'tok____carly', 'tok____carly'::bytea);
 
   insert into static_host
     (catalog_id, public_id, address)
@@ -224,16 +245,17 @@ begin;
     ('p____rcolors', 't_________cr', 's___1cr-sths'),
     ('p____rcolors', 't_________cr', 's___2cr-sths');
 
-
   insert into credential_vault_store
-    (project_id,     public_id,      name,                description, vault_address, namespace)
+    (project_id,     public_id,       name,                  description, vault_address,         namespace)
   values
-    ('p____bcolors', 'vs_______cvs', 'color vault store', 'None',      'https://vault.color', 'blue');
+    ('p____bcolors', 'vs_______cvs1', 'color vault store 1', 'None',      'https://vault.color', 'blue'),
+    ('p____bcolors', 'vs_______cvs2', 'color vault store 2', 'Some',      'https://vault.color', 'blue'),
+    ('p____bcolors', 'vs_______cvs3', 'color vault store 3', 'Maybe',     'https://vault.color', 'blue');
 
   insert into credential_vault_library
-    (store_id,       public_id,     name,                  description, vault_path, http_method)
+    (store_id,        public_id,     name,                  description, vault_path, http_method)
   values
-    ('vs_______cvs', 'vl______cvl', 'color vault library', 'None',      '/secrets', 'GET');
+    ('vs_______cvs1', 'vl______cvl', 'color vault library', 'None',      '/secrets', 'GET');
 
   insert into target_credential_library
     (project_id,     target_id,      credential_library_id, credential_purpose)

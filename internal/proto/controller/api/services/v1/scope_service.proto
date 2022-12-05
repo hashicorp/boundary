@@ -87,10 +87,57 @@ service ScopeService {
       summary: "Deletes a Scope."
     };
   }
+
+  // ListKeys lists all the keys found in the scope specified. If the scope
+  // is not found an error is returned.
+  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {
+    option (google.api.http) = {
+      get: "/v1/scopes/{id}:list-keys"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "List all keys in a Scope."
+    };
+  }
+
+  // RotateKeys rotates and optionally rewraps all the keys found in the
+  // scope specified. If the scope is not found an error is returned. If
+  // the scope is empty, the global scope is used.
+  rpc RotateKeys(RotateKeysRequest) returns (RotateKeysResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes:rotate-keys"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Rotate all keys in a Scope."
+    };
+  }
+
+  // ListKeyVersionDestructionJobs lists any pending key version destruction jobs in the scope.
+  rpc ListKeyVersionDestructionJobs(ListKeyVersionDestructionJobsRequest) returns (ListKeyVersionDestructionJobsResponse) {
+    option (google.api.http) = {
+      get: "/v1/scopes/{scope_id}:list-key-version-destruction-jobs"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Lists all pending key version destruction jobs in a Scope."
+    };
+  }
+
+  // DestroyKeyVersion destroys the specified key version. If this requires re-encrypting
+  // existing data, it will start an asynchronous process to complete this operation
+  // before destroying the key. Use ListKeyVersionDestructionJobs to monitor pending destruction jobs.
+  rpc DestroyKeyVersion(DestroyKeyVersionRequest) returns (DestroyKeyVersionResponse) {
+    option (google.api.http) = {
+      post: "/v1/scopes:destroy-key-version"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "Destroy the specified key version in a Scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs."
+    };
+  }
 }
 
 message GetScopeRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message GetScopeResponse {
@@ -98,9 +145,9 @@ message GetScopeResponse {
 }
 
 message ListScopesRequest {
-  string scope_id = 1;
-  bool recursive = 20 [json_name = "recursive"];
-  string filter = 30 [json_name = "filter"];
+  string scope_id = 1; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
 message ListScopesResponse {
@@ -108,18 +155,18 @@ message ListScopesResponse {
 }
 
 message CreateScopeRequest {
-  bool skip_admin_role_creation = 1;
-  bool skip_default_role_creation = 2;
+  bool skip_admin_role_creation = 1; // @gotags: `class:"public"`
+  bool skip_default_role_creation = 2; // @gotags: `class:"public"`
   resources.scopes.v1.Scope item = 3;
 }
 
 message CreateScopeResponse {
-  string uri = 1;
+  string uri = 1; // @gotags: `class:"public"`
   resources.scopes.v1.Scope item = 2;
 }
 
 message UpdateScopeRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
   resources.scopes.v1.Scope item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -129,7 +176,42 @@ message UpdateScopeResponse {
 }
 
 message DeleteScopeRequest {
-  string id = 1;
+  string id = 1; // @gotags: `class:"public"`
 }
 
 message DeleteScopeResponse {}
+
+message ListKeysRequest {
+  string id = 1; // @gotags: `class:"public"`
+}
+
+message ListKeysResponse {
+  repeated resources.scopes.v1.Key items = 1;
+}
+
+message RotateKeysRequest {
+  string scope_id = 1; // @gotags: `class:"public"`
+  bool rewrap = 2; // @gotags: `class:"public"`
+}
+
+message RotateKeysResponse {}
+
+message ListKeyVersionDestructionJobsRequest {
+  string scope_id = 1; // @gotags: `class:"public"`
+}
+
+message ListKeyVersionDestructionJobsResponse {
+  repeated resources.scopes.v1.KeyVersionDestructionJob items = 1;
+}
+
+message DestroyKeyVersionRequest {
+  string scope_id = 1; // @gotags: `class:"public"`
+  string key_version_id = 2; // @gotags: `class:"public"`
+}
+
+message DestroyKeyVersionResponse {
+  // Destruction state. One of "pending" or "completed".
+  // Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs
+  // to monitor pending destruction jobs.
+  string state = 1; // @gotags: `class:"public"`
+}

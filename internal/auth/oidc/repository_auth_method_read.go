@@ -98,7 +98,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		}
 	}
 
-	var args []interface{}
+	var args []any
 	var where []string
 	switch {
 	case authMethodId != "":

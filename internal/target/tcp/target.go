@@ -54,6 +54,8 @@ func (h targetHooks) NewTarget(projectId string, opt ...target.Option) (target.T
 			SessionConnectionLimit: opts.WithSessionConnectionLimit,
 			SessionMaxSeconds:      opts.WithSessionMaxSeconds,
 			WorkerFilter:           opts.WithWorkerFilter,
+			EgressWorkerFilter:     opts.WithEgressWorkerFilter,
+			IngressWorkerFilter:    opts.WithIngressWorkerFilter,
 		},
 	}
 	return t, nil
@@ -170,4 +172,12 @@ func (t *Target) SetSessionConnectionLimit(limit int32) {
 
 func (t *Target) SetWorkerFilter(filter string) {
 	t.WorkerFilter = filter
+}
+
+func (t *Target) SetEgressWorkerFilter(filter string) {
+	t.EgressWorkerFilter = filter
+}
+
+func (t *Target) SetIngressWorkerFilter(filter string) {
+	t.IngressWorkerFilter = filter
 }

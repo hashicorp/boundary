@@ -18,7 +18,7 @@ func TestLoopbackPlugin(t *testing.T) {
 	ctx := context.Background()
 
 	plg := NewLoopbackPlugin()
-	secretsMap := map[string]interface{}{
+	secretsMap := map[string]any{
 		"key1": "key2",
 		"baz":  true,
 	}
@@ -38,7 +38,7 @@ func TestLoopbackPlugin(t *testing.T) {
 	require.NotNil(catResp.GetPersisted().GetSecrets())
 	assert.EqualValues(secretsMap, catResp.GetPersisted().GetSecrets().AsMap())
 
-	newSecretsMap := map[string]interface{}{
+	newSecretsMap := map[string]any{
 		"key1": "key2",
 		"baz":  true,
 	}
@@ -63,12 +63,12 @@ func TestLoopbackPlugin(t *testing.T) {
 	assert.EqualValues(newSecretsMap, upResp.GetPersisted().GetSecrets().AsMap())
 
 	// Add data to some sets
-	hostInfo1 := map[string]interface{}{
-		loopbackPluginHostInfoAttrField: map[string]interface{}{
-			"set_ids":      []interface{}{"set1"},
+	hostInfo1 := map[string]any{
+		loopbackPluginHostInfoAttrField: map[string]any{
+			"set_ids":      []any{"set1"},
 			"external_id":  "host1",
-			"ip_addresses": []interface{}{"1.2.3.4", "2.3.4.5"},
-			"dns_names":    []interface{}{"foo.com"},
+			"ip_addresses": []any{"1.2.3.4", "2.3.4.5"},
+			"dns_names":    []any{"foo.com"},
 		},
 	}
 	attrs, err := structpb.NewStruct(hostInfo1)
@@ -82,12 +82,12 @@ func TestLoopbackPlugin(t *testing.T) {
 		},
 	})
 	require.NoError(err)
-	hostInfo2 := map[string]interface{}{
-		loopbackPluginHostInfoAttrField: map[string]interface{}{
-			"set_ids":      []interface{}{"set2"},
+	hostInfo2 := map[string]any{
+		loopbackPluginHostInfoAttrField: map[string]any{
+			"set_ids":      []any{"set2"},
 			"external_id":  "host2",
-			"ip_addresses": []interface{}{"5.6.7.8", "6.7.8.9"},
-			"dns_names":    []interface{}{"bar.com"},
+			"ip_addresses": []any{"5.6.7.8", "6.7.8.9"},
+			"dns_names":    []any{"bar.com"},
 		},
 	}
 	attrs, err = structpb.NewStruct(hostInfo2)
@@ -106,7 +106,7 @@ func TestLoopbackPlugin(t *testing.T) {
 	type testInfo struct {
 		name  string
 		sets  []string
-		found []map[string]interface{}
+		found []map[string]any
 	}
 	validateSets := func(t *testing.T, tt testInfo) {
 		require, assert := tr.New(t), ta.New(t)
@@ -125,20 +125,20 @@ func TestLoopbackPlugin(t *testing.T) {
 
 		require.Greater(len(resp.GetHosts()), 0)
 
-		var found []map[string]interface{}
+		var found []map[string]any
 		for _, host := range resp.GetHosts() {
-			hostMap := map[string]interface{}{
+			hostMap := map[string]any{
 				"external_id": host.GetExternalId(),
 			}
-			var sets []interface{}
+			var sets []any
 			for _, set := range host.SetIds {
 				sets = append(sets, set)
 			}
-			var ips []interface{}
+			var ips []any
 			for _, ip := range host.GetIpAddresses() {
 				ips = append(ips, ip)
 			}
-			var names []interface{}
+			var names []any
 			for _, name := range host.GetDnsNames() {
 				names = append(names, name)
 			}
@@ -162,23 +162,23 @@ func TestLoopbackPlugin(t *testing.T) {
 		{
 			name: "set 1",
 			sets: []string{"set1"},
-			found: []map[string]interface{}{
-				hostInfo1[loopbackPluginHostInfoAttrField].(map[string]interface{}),
+			found: []map[string]any{
+				hostInfo1[loopbackPluginHostInfoAttrField].(map[string]any),
 			},
 		},
 		{
 			name: "set 2",
 			sets: []string{"set2"},
-			found: []map[string]interface{}{
-				hostInfo2[loopbackPluginHostInfoAttrField].(map[string]interface{}),
+			found: []map[string]any{
+				hostInfo2[loopbackPluginHostInfoAttrField].(map[string]any),
 			},
 		},
 		{
 			name: "sets 1 and 2",
 			sets: []string{"set1", "set2"},
-			found: []map[string]interface{}{
-				hostInfo1[loopbackPluginHostInfoAttrField].(map[string]interface{}),
-				hostInfo2[loopbackPluginHostInfoAttrField].(map[string]interface{}),
+			found: []map[string]any{
+				hostInfo1[loopbackPluginHostInfoAttrField].(map[string]any),
+				hostInfo2[loopbackPluginHostInfoAttrField].(map[string]any),
 			},
 		},
 	}
@@ -202,20 +202,20 @@ func TestLoopbackPlugin(t *testing.T) {
 		{
 			name:  "set 1 deleted",
 			sets:  []string{"set1"},
-			found: []map[string]interface{}{},
+			found: []map[string]any{},
 		},
 		{
 			name: "set 2 not deleted",
 			sets: []string{"set2"},
-			found: []map[string]interface{}{
-				hostInfo2[loopbackPluginHostInfoAttrField].(map[string]interface{}),
+			found: []map[string]any{
+				hostInfo2[loopbackPluginHostInfoAttrField].(map[string]any),
 			},
 		},
 		{
 			name: "sets 1 and 2 set 1 deleted",
 			sets: []string{"set1", "set2"},
-			found: []map[string]interface{}{
-				hostInfo2[loopbackPluginHostInfoAttrField].(map[string]interface{}),
+			found: []map[string]any{
+				hostInfo2[loopbackPluginHostInfoAttrField].(map[string]any),
 			},
 		},
 	}
@@ -233,19 +233,19 @@ func TestLoopbackPluginArrays(t *testing.T) {
 	plg := NewLoopbackPlugin()
 
 	// Add data to some sets
-	hostInfo1 := map[string]interface{}{
-		loopbackPluginHostInfoAttrField: []interface{}{
-			map[string]interface{}{
-				"set_ids":      []interface{}{"set1"},
+	hostInfo1 := map[string]any{
+		loopbackPluginHostInfoAttrField: []any{
+			map[string]any{
+				"set_ids":      []any{"set1"},
 				"external_id":  "host1a",
-				"ip_addresses": []interface{}{"1.2.3.4", "2.3.4.5"},
-				"dns_names":    []interface{}{"foo.com"},
+				"ip_addresses": []any{"1.2.3.4", "2.3.4.5"},
+				"dns_names":    []any{"foo.com"},
 			},
-			map[string]interface{}{
-				"set_ids":      []interface{}{"set1"},
+			map[string]any{
+				"set_ids":      []any{"set1"},
 				"external_id":  "host1b",
-				"ip_addresses": []interface{}{"3.4.5.6", "4.5.6.7"},
-				"dns_names":    []interface{}{"bar.com"},
+				"ip_addresses": []any{"3.4.5.6", "4.5.6.7"},
+				"dns_names":    []any{"bar.com"},
 			},
 		},
 	}
@@ -260,19 +260,19 @@ func TestLoopbackPluginArrays(t *testing.T) {
 		},
 	})
 	require.NoError(err)
-	hostInfo2 := map[string]interface{}{
-		loopbackPluginHostInfoAttrField: []interface{}{
-			map[string]interface{}{
-				"set_ids":      []interface{}{"set2"},
+	hostInfo2 := map[string]any{
+		loopbackPluginHostInfoAttrField: []any{
+			map[string]any{
+				"set_ids":      []any{"set2"},
 				"external_id":  "host2a",
-				"ip_addresses": []interface{}{"10.20.30.40", "20.30.40.50"},
-				"dns_names":    []interface{}{"foz.com"},
+				"ip_addresses": []any{"10.20.30.40", "20.30.40.50"},
+				"dns_names":    []any{"foz.com"},
 			},
-			map[string]interface{}{
-				"set_ids":      []interface{}{"set2"},
+			map[string]any{
+				"set_ids":      []any{"set2"},
 				"external_id":  "host2b",
-				"ip_addresses": []interface{}{"30.40.50.60", "40.50.60.70"},
-				"dns_names":    []interface{}{"baz.com"},
+				"ip_addresses": []any{"30.40.50.60", "40.50.60.70"},
+				"dns_names":    []any{"baz.com"},
 			},
 		},
 	}
@@ -292,7 +292,7 @@ func TestLoopbackPluginArrays(t *testing.T) {
 	type testInfo struct {
 		name  string
 		sets  []string
-		found []interface{}
+		found []any
 	}
 	validateSets := func(t *testing.T, tt testInfo) {
 		require, assert := tr.New(t), ta.New(t)
@@ -311,20 +311,20 @@ func TestLoopbackPluginArrays(t *testing.T) {
 
 		require.Greater(len(resp.GetHosts()), 0)
 
-		var found []interface{}
+		var found []any
 		for _, host := range resp.GetHosts() {
-			hostMap := map[string]interface{}{
+			hostMap := map[string]any{
 				"external_id": host.GetExternalId(),
 			}
-			var sets []interface{}
+			var sets []any
 			for _, set := range host.SetIds {
 				sets = append(sets, set)
 			}
-			var ips []interface{}
+			var ips []any
 			for _, ip := range host.GetIpAddresses() {
 				ips = append(ips, ip)
 			}
-			var names []interface{}
+			var names []any
 			for _, name := range host.GetDnsNames() {
 				names = append(names, name)
 			}
@@ -348,18 +348,18 @@ func TestLoopbackPluginArrays(t *testing.T) {
 		{
 			name:  "set 1",
 			sets:  []string{"set1"},
-			found: hostInfo1[loopbackPluginHostInfoAttrField].([]interface{}),
+			found: hostInfo1[loopbackPluginHostInfoAttrField].([]any),
 		},
 		{
 			name:  "set 2",
 			sets:  []string{"set2"},
-			found: hostInfo2[loopbackPluginHostInfoAttrField].([]interface{}),
+			found: hostInfo2[loopbackPluginHostInfoAttrField].([]any),
 		},
 		{
 			name: "sets 1 and 2",
 			sets: []string{"set1", "set2"},
-			found: append(hostInfo1[loopbackPluginHostInfoAttrField].([]interface{}),
-				hostInfo2[loopbackPluginHostInfoAttrField].([]interface{})...),
+			found: append(hostInfo1[loopbackPluginHostInfoAttrField].([]any),
+				hostInfo2[loopbackPluginHostInfoAttrField].([]any)...),
 		},
 	}
 	for _, tt := range setTests {

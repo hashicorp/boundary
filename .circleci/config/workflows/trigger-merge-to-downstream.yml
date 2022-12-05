@@ -1,0 +1,7 @@
+jobs:
+  - trigger-merge-to-downstream:
+      filters:
+        branches:
+          only:
+            - main
+            - /release\/.*/

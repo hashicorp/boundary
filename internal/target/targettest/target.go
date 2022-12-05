@@ -117,6 +117,14 @@ func (t *Target) GetWorkerFilter() string {
 	return t.WorkerFilter
 }
 
+func (t *Target) GetEgressWorkerFilter() string {
+	return t.EgressWorkerFilter
+}
+
+func (t *Target) GetIngressWorkerFilter() string {
+	return t.IngressWorkerFilter
+}
+
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
@@ -165,8 +173,16 @@ func (t *Target) SetSessionConnectionLimit(l int32) {
 	t.SessionConnectionLimit = l
 }
 
-func (t *Target) SetWorkerFilter(f string) {
-	t.WorkerFilter = f
+func (t *Target) SetWorkerFilter(filter string) {
+	t.WorkerFilter = filter
+}
+
+func (t *Target) SetEgressWorkerFilter(filter string) {
+	t.EgressWorkerFilter = filter
+}
+
+func (t *Target) SetIngressWorkerFilter(filter string) {
+	t.IngressWorkerFilter = filter
 }
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
@@ -251,6 +267,8 @@ func New(projectId string, opt ...target.Option) (target.Target, error) {
 			SessionConnectionLimit: opts.WithSessionConnectionLimit,
 			SessionMaxSeconds:      opts.WithSessionMaxSeconds,
 			WorkerFilter:           opts.WithWorkerFilter,
+			EgressWorkerFilter:     opts.WithEgressWorkerFilter,
+			IngressWorkerFilter:    opts.WithIngressWorkerFilter,
 		},
 	}
 	return t, nil
@@ -272,7 +290,7 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 	require.NoError(err)
 
 	if len(opts.WithHostSources) > 0 {
-		newHostSets := make([]interface{}, 0, len(opts.WithHostSources))
+		newHostSets := make([]any, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
 			hostSet, err := target.NewTargetHostSet(tar.GetPublicId(), s)
 			require.NoError(err)
@@ -282,7 +300,7 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 		require.NoError(err)
 	}
 	if len(opts.WithCredentialLibraries) > 0 {
-		newCredLibs := make([]interface{}, 0, len(opts.WithCredentialLibraries))
+		newCredLibs := make([]any, 0, len(opts.WithCredentialLibraries))
 		for _, cl := range opts.WithCredentialLibraries {
 			cl.TargetId = tar.GetPublicId()
 			newCredLibs = append(newCredLibs, cl)

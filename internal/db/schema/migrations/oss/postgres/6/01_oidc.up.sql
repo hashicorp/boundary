@@ -21,7 +21,7 @@ create table auth_oidc_account_claim_map (
   primary key(oidc_method_id, to_claim)
 );
 comment on table auth_oidc_account_claim_map is
-'auth_oidc_account_claim_map entries are the optional claim maps from custom claims to the standard claims of sub, name and email.  There can be 0 or more for each parent oidc auth method.';
+  'auth_oidc_account_claim_map entries are the optional claim maps from custom claims to the standard claims of sub, name and email.  There can be 0 or more for each parent oidc auth method.';
 
 create trigger default_create_time_column before insert on auth_oidc_account_claim_map
   for each row execute procedure default_create_time();
@@ -42,6 +42,7 @@ drop view oidc_auth_method_with_value_obj;
 -- value is part of the primary key and unique.  This view will make things like
 -- recursive listing of oidc auth methods fairly straightforward to implement
 -- for the oidc repo. The view also includes an is_primary_auth_method bool 
+-- Recreated in 58/02_add_data_key_foreign_key_references.up.sql
 create view oidc_auth_method_with_value_obj as 
 select 
   case when s.primary_auth_method_id is not null then
@@ -80,7 +81,7 @@ from
   left outer join auth_oidc_account_claim_map acm   on am.public_id = acm.oidc_method_id
 group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
 comment on view oidc_auth_method_with_value_obj is
-'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
+  'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
 
   
 commit;

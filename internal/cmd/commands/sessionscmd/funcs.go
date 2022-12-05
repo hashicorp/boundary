@@ -2,6 +2,8 @@ package sessionscmd
 
 import (
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -167,7 +169,7 @@ func (c *Command) printListTable(items []*sessions.Session) string {
 }
 
 func printItemTable(item *sessions.Session, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -213,10 +215,10 @@ func printItemTable(item *sessions.Session, resp *api.Response) string {
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
-	var statesMaps []map[string]interface{}
+	var statesMaps []map[string]any
 	if len(item.States) > 0 {
 		for _, state := range item.States {
-			m := map[string]interface{}{
+			m := map[string]any{
 				"Status":     state.Status,
 				"Start Time": state.StartTime.Local().Format(time.RFC1123),
 			}
@@ -228,6 +230,20 @@ func printItemTable(item *sessions.Session, resp *api.Response) string {
 		if l := len("Start Time"); l > maxLength {
 			maxLength = l
 		}
+	}
+
+	var connectionsMaps []map[string]any
+	for _, sc := range item.Connections {
+		cm := map[string]any{
+			"Client Address":   net.JoinHostPort(sc.ClientTcpAddress, strconv.FormatUint(uint64(sc.ClientTcpPort), 10)),
+			"Endpoint Address": net.JoinHostPort(sc.EndpointTcpAddress, strconv.FormatUint(uint64(sc.EndpointTcpPort), 10)),
+			"Bytes Up":         sc.BytesUp,
+			"Bytes Down":       sc.BytesDown,
+		}
+		if len(sc.ClosedReason) != 0 {
+			cm["Closed Reason"] = sc.ClosedReason
+		}
+		connectionsMaps = append(connectionsMaps, cm)
 	}
 
 	ret := []string{
@@ -260,6 +276,19 @@ func printItemTable(item *sessions.Session, resp *api.Response) string {
 		for _, m := range statesMaps {
 			ret = append(ret,
 				base.WrapMap(4, maxLength, m),
+				"",
+			)
+		}
+	}
+
+	if len(item.Connections) > 0 {
+		ret = append(ret,
+			"",
+			"  Connections:",
+		)
+		for _, c := range connectionsMaps {
+			ret = append(ret,
+				base.WrapMap(4, maxLength, c),
 				"",
 			)
 		}

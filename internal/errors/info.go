@@ -272,4 +272,12 @@ var errorCodeInfo = map[Code]Info{
 		Message: "unsupported operation for a kms worker",
 		Kind:    State,
 	},
+	QueueIsFull: {
+		Message: "queue is full",
+		Kind:    State,
+	},
+	RetryLimitExceeded: {
+		Message: "retry limit exceeded",
+		Kind:    State,
+	},
 }

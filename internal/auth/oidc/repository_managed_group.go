@@ -106,7 +106,7 @@ func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId str
 		limit = opts.withLimit
 	}
 	var mgs []*ManagedGroup
-	err := r.reader.SearchWhere(ctx, &mgs, "auth_method_id = ?", []interface{}{withAuthMethodId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &mgs, "auth_method_id = ?", []any{withAuthMethodId}, db.WithLimit(limit))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -198,7 +198,7 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			NameField:        mg.Name,
 			DescriptionField: mg.Description,
 			FilterField:      mg.Filter,

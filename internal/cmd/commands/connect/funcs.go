@@ -13,7 +13,7 @@ import (
 )
 
 func generateSessionInfoTableOutput(in SessionInfo) string {
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Session ID":       in.SessionId,
 		"Protocol":         in.Protocol,
 		"Address":          in.Address,
@@ -52,7 +52,7 @@ func generateCredentialTableOutputSlice(prefixIndent int, creds []*targets.Sessi
 		ret = append(ret, fmt.Sprintf("%sCredentials:", prefixString))
 	}
 	for _, crd := range creds {
-		credMap := map[string]interface{}{
+		credMap := map[string]any{
 			"Credential Store ID":   crd.CredentialSource.CredentialStoreId,
 			"Credential Source ID":  crd.CredentialSource.Id,
 			"Credential Store Type": crd.CredentialSource.Type,
@@ -114,7 +114,7 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 func generateConnectionInfoTableOutput(in ConnectionInfo) string {
 	var ret []string
 
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Connections Left": in.ConnectionsLeft,
 	}
 
@@ -138,7 +138,7 @@ func generateConnectionInfoTableOutput(in ConnectionInfo) string {
 func generateTerminationInfoTableOutput(in TerminationInfo) string {
 	var ret []string
 
-	nonAttributeMap := map[string]interface{}{
+	nonAttributeMap := map[string]any{
 		"Reason": in.Reason,
 	}
 

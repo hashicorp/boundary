@@ -46,7 +46,7 @@ func (r *Repository) ListHostsByCatalogId(ctx context.Context, catalogId string,
 		limit = opts.withLimit
 	}
 	var hostAggs []*hostAgg
-	err := r.reader.SearchWhere(ctx, &hostAggs, "catalog_id = ?", []interface{}{catalogId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &hostAggs, "catalog_id = ?", []any{catalogId}, db.WithLimit(limit))
 
 	switch {
 	case err != nil:
@@ -100,7 +100,7 @@ public_id in
 `
 
 	var hostAggs []*hostAgg
-	err := reader.SearchWhere(ctx, &hostAggs, query, []interface{}{setIds}, db.WithLimit(opts.withLimit))
+	err := reader.SearchWhere(ctx, &hostAggs, query, []any{setIds}, db.WithLimit(opts.withLimit))
 
 	switch {
 	case err != nil:

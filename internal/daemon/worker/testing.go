@@ -12,12 +12,20 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/mr-tron/base58"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestWorker wraps a base.Server and Worker to provide a
@@ -196,7 +204,7 @@ type TestWorkerOpts struct {
 
 	// The amount of time to wait before marking connections as closed when a
 	// connection cannot be made back to the controller
-	StatusGracePeriodDuration time.Duration
+	SuccessfulStatusGracePeriodDuration time.Duration
 
 	// Overrides worker's nonceFn, for cases where we want to have control
 	// over the nonce we send to the Controller
@@ -255,9 +263,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	tw.b.PrometheusRegisterer = opts.PrometheusRegisterer
 
-	// Initialize status grace period
-	tw.b.SetStatusGracePeriodDuration(opts.StatusGracePeriodDuration)
-
 	if opts.Config.Worker == nil {
 		opts.Config.Worker = &config.Worker{
 			Name: opts.Name,
@@ -268,6 +273,10 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		tw.b.DevUsePkiForUpstream = true
 	}
 	tw.name = opts.Config.Worker.Name
+
+	if opts.SuccessfulStatusGracePeriodDuration != 0 {
+		opts.Config.Worker.SuccessfulStatusGracePeriod = opts.SuccessfulStatusGracePeriodDuration
+	}
 
 	serverName, err := os.Hostname()
 	if err != nil {
@@ -349,12 +358,12 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		opts = new(TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
-		WorkerAuthKms:             tw.w.conf.WorkerAuthKms,
-		WorkerAuthStorageKms:      tw.w.conf.WorkerAuthStorageKms,
-		Name:                      opts.Name,
-		InitialUpstreams:          tw.UpstreamAddrs(),
-		Logger:                    tw.w.conf.Logger,
-		StatusGracePeriodDuration: opts.StatusGracePeriodDuration,
+		WorkerAuthKms:                       tw.w.conf.WorkerAuthKms,
+		WorkerAuthStorageKms:                tw.w.conf.WorkerAuthStorageKms,
+		Name:                                opts.Name,
+		InitialUpstreams:                    tw.UpstreamAddrs(),
+		Logger:                              tw.w.conf.Logger,
+		SuccessfulStatusGracePeriodDuration: opts.SuccessfulStatusGracePeriodDuration,
 	}
 	if nextOpts.Name == "" {
 		var err error
@@ -366,4 +375,85 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 		event.WriteSysEvent(context.TODO(), op, "worker name generated", "name", nextOpts.Name)
 	}
 	return NewTestWorker(t, nextOpts)
+}
+
+// NewTestMultihopWorkers creates a KMS and PKI worker with the controller as an upstream, and a
+// child PKI worker as a downstream of the PKI worker connected to the controller.
+// Tags for the PKI and child PKI worker can be passed in, if desired
+func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext context.Context, clusterAddrs []string,
+	workerAuthKms wrapping.Wrapper, serversRepoFn common.ServersRepoFactory, pkiTags,
+	childPkiTags map[string][]string,
+) (kmsWorker *TestWorker, pkiWorker *TestWorker, childPkiWorker *TestWorker) {
+	require := require.New(t)
+	kmsWorker = NewTestWorker(t, &TestWorkerOpts{
+		WorkerAuthKms:    workerAuthKms,
+		InitialUpstreams: clusterAddrs,
+		Logger:           logger.Named("kmsWorker"),
+	})
+
+	// names should not be set when using pki workers
+	pkiWorkerConf, err := config.DevWorker()
+	require.NoError(err)
+	pkiWorkerConf.Worker.Name = ""
+	if pkiTags != nil {
+		pkiWorkerConf.Worker.Tags = pkiTags
+	}
+	pkiWorkerConf.Worker.InitialUpstreams = clusterAddrs
+	pkiWorker = NewTestWorker(t, &TestWorkerOpts{
+		InitialUpstreams: clusterAddrs,
+		Logger:           logger.Named("pkiWorker"),
+		Config:           pkiWorkerConf,
+	})
+	t.Cleanup(pkiWorker.Shutdown)
+
+	// Get a server repo and worker auth repo
+	serversRepo, err := serversRepoFn()
+	require.NoError(err)
+
+	// Perform initial authentication of worker to controller
+	reqBytes, err := base58.FastBase58Decoding(pkiWorker.Worker().WorkerAuthRegistrationRequest)
+	require.NoError(err)
+
+	// Decode the proto into the request and create the worker
+	pkiWorkerReq := new(types.FetchNodeCredentialsRequest)
+	require.NoError(proto.Unmarshal(reqBytes, pkiWorkerReq))
+	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, server.WithFetchNodeCredentialsRequest(pkiWorkerReq))
+	require.NoError(err)
+
+	childPkiWorkerConf, err := config.DevWorker()
+	require.NoError(err)
+	childPkiWorkerConf.Worker.Name = ""
+	if childPkiTags != nil {
+		childPkiWorkerConf.Worker.Tags = childPkiTags
+	}
+	childPkiWorkerConf.Worker.InitialUpstreams = kmsWorker.ProxyAddrs()
+
+	childPkiWorker = NewTestWorker(t, &TestWorkerOpts{
+		InitialUpstreams: kmsWorker.ProxyAddrs(),
+		Logger:           logger.Named("childPkiWorker"),
+		Config:           childPkiWorkerConf,
+	})
+
+	// Perform initial authentication of worker to controller
+	reqBytes, err = base58.FastBase58Decoding(childPkiWorker.Worker().WorkerAuthRegistrationRequest)
+	require.NoError(err)
+
+	// Decode the proto into the request and create the worker
+	childPkiWorkerReq := new(types.FetchNodeCredentialsRequest)
+	require.NoError(proto.Unmarshal(reqBytes, childPkiWorkerReq))
+	_, err = serversRepo.CreateWorker(controllerContext, &server.Worker{
+		Worker: &store.Worker{
+			ScopeId: scope.Global.String(),
+		},
+	}, server.WithFetchNodeCredentialsRequest(childPkiWorkerReq))
+	require.NoError(err)
+
+	// Sleep so that workers can startup and connect.
+	time.Sleep(10 * time.Second)
+
+	return kmsWorker, pkiWorker, childPkiWorker
 }

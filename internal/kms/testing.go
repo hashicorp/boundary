@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/oplog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -26,12 +27,13 @@ func TestKms(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper) *Kms {
 
 // TestKmsDeleteKeyPurpose allows you to delete a KeyPurpose for testing.
 func TestKmsDeleteKeyPurpose(t testing.TB, conn *db.DB, purpose KeyPurpose) {
-	db.TestDeleteWhere(t, conn, func() interface{} { i := dataKey{}; return &i }(), fmt.Sprintf("purpose='%s'", purpose.String()))
+	db.TestDeleteWhere(t, conn, func() any { i := dataKey{}; return &i }(), fmt.Sprintf("purpose='%s'", purpose.String()))
 }
 
 // TestKmsDeleteAllKeys allows you to delete all the keys for testing.
 func TestKmsDeleteAllKeys(t testing.TB, conn *db.DB) {
-	db.TestDeleteWhere(t, conn, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+	oplog.TestOplogDeleteAllEntries(t, db.New(conn).UnderlyingDB()())
+	db.TestDeleteWhere(t, conn, func() any { i := rootKey{}; return &i }(), "1=1")
 }
 
 type dataKey struct{}

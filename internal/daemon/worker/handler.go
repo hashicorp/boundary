@@ -184,7 +184,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		endpointUrl, err := url.Parse(sess.GetEndpoint())
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("worker failed to parse target endpoint", "endpoint", sess.GetEndpoint()))
-			if err = conn.Close(websocket.StatusProtocolError, "unsupported-protocol"); err != nil {
+			if err = conn.Close(websocket.StatusProtocolError, "unable to parse endpoint"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return
@@ -192,7 +192,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		handleProxyFn, err := proxyHandlers.GetHandler(endpointUrl.Scheme)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("worker received request for unsupported protocol", "protocol", endpointUrl.Scheme))
-			if err = conn.Close(websocket.StatusProtocolError, "unsupported-protocol"); err != nil {
+			if err = conn.Close(websocket.StatusProtocolError, fmt.Sprintf("worker does not support %q type", endpointUrl.Scheme)); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return
@@ -218,8 +218,29 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			return
 		}
 		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.Id)
+
+		// Wrapping the client websocket with a `net.Conn` implementation that
+		// records the bytes that go across Read() and Write().
+		cc := &countingConn{Conn: websocket.NetConn(connCtx, conn, websocket.MessageBinary)}
+		err = sess.ApplyConnectionCounterCallbacks(ci.Id, cc.BytesRead, cc.BytesWritten)
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to set counter callbacks for session connection"))
+			err = conn.Close(websocket.StatusInternalError, "unable to set counter callbacks for session connection")
+			if err != nil {
+				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+			}
+			return
+		}
+
 		defer func() {
-			if sessionManager.RequestCloseConnections(ctx, map[string]string{ci.Id: sess.GetId()}) {
+			ccd := map[string]*session.ConnectionCloseData{
+				ci.Id: {
+					SessionId: sess.GetId(),
+					BytesUp:   cc.BytesRead(),
+					BytesDown: cc.BytesWritten(),
+				},
+			}
+			if sessionManager.RequestCloseConnections(ctx, ccd) {
 				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.Id)
 			}
 		}()
@@ -240,7 +261,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		conf := proxyHandlers.Config{
 			UserClientIp:   net.ParseIP(userClientIp),
 			ClientAddress:  clientAddr,
-			ClientConn:     conn,
+			ClientConn:     cc,
 			RemoteEndpoint: sess.GetEndpoint(),
 			Session:        sess,
 			ConnectionId:   ci.Id,

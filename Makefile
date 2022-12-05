@@ -86,11 +86,10 @@ lint-diff:
 	golangci-lint run --timeout 10m --new-from-rev=$(LINT_DIFF_BRANCH)
 
 # Set env for all UI targets.
-UI_TARGETS := update-ui-version build-ui build-ui-ifne
+UI_TARGETS := update-ui-version build-ui build-ui-ifne clean-ui
 # Note the extra .tmp path segment in UI_CLONE_DIR is significant and required.
 $(UI_TARGETS): export UI_CLONE_DIR      := internal/ui/.tmp/boundary-ui
 $(UI_TARGETS): export UI_VERSION_FILE   := internal/ui/VERSION
-$(UI_TARGETS): export UI_ASSETS_FILE    := internal/ui/assets.go
 $(UI_TARGETS): export UI_DEFAULT_BRANCH := main
 $(UI_TARGETS): export UI_CURRENT_COMMIT := $(shell head -n1 < "$(UI_VERSION_FILE)" | cut -d' ' -f1)
 $(UI_TARGETS): export UI_COMMITISH ?=
@@ -113,7 +112,11 @@ build-ui:
 	else \
 		echo "==> Building custom UI version $(UI_COMMITISH)"; \
 	fi; \
-	./scripts/uiclone.sh && ./scripts/uigen.sh
+	./scripts/build-ui.sh
+
+.PHONY: clean-ui
+clean-ui:
+	rm -rf ${UI_CLONE_DIR}
 
 .PHONY: build-ui-ifne
 build-ui-ifne:
@@ -170,6 +173,10 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/token_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/session_key.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/oidc_key.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job_run.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job_progress.pb.go
+	@protoc-go-inject-tag -input=./internal/kms/store/data_key_version_destruction_job_run_allowed_table_name.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/controller.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/worker.pb.go
 	@protoc-go-inject-tag -input=./internal/server/store/root_certificate.pb.go
@@ -188,6 +195,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authmethods/auth_method.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/scopes/scope.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/scope_service.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/session_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/targets/target.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/target_service.pb.go
@@ -288,6 +296,10 @@ test-sdk:
 test-api:
 	$(MAKE) -C api/ test
 
+.PHONY: test-cli
+test-cli:
+	$(MAKE) -C internal/tests/cli test
+
 .PHONY: test-all
 test-all: test-sdk test-api test
 
@@ -347,11 +359,14 @@ DEV_DOCKER_GOARCH ?= amd64
 docker-build-dev: export GOOS=$(DEV_DOCKER_GOOS)
 docker-build-dev: export GOARCH=$(DEV_DOCKER_GOARCH)
 docker-build-dev: build
-	docker build \
+	docker buildx build \
+		--load \
+		--platform $(DEV_DOCKER_GOOS)/$(DEV_DOCKER_GOARCH) \
 		--tag $(IMAGE_TAG_DEV) \
 		--target=dev \
 		--build-arg=boundary \
 		.
+	@echo "Successfully built $(IMAGE_TAG_DEV)"
 
 .NOTPARALLEL:
 

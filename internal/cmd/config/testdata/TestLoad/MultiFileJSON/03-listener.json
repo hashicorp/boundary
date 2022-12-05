@@ -1,0 +1,32 @@
+{
+    "listener": [
+        {
+            "tcp": {
+              "address": "boundary",
+              "purpose": "api",
+              "tls_disable": true
+            }
+        },
+        {
+            "tcp": {
+              "address": "boundary",
+              "purpose": "cluster",
+              "tls_disable": true
+            }
+        },
+        {
+            "tcp": {
+              "address": "boundary",
+              "purpose": "ops",
+              "tls_disable": true
+            }
+        },
+        {
+            "tcp": {
+              "address": "boundary",
+              "purpose": "proxy",
+              "tls_disable": true
+            }
+        }
+    ]
+}

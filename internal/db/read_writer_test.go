@@ -58,6 +58,7 @@ func TestDb_Update(t *testing.T) {
 	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
 	id := testId(t)
+	wrapper := TestDBWrapper(t, conn, "oplog")
 
 	badVersion := uint32(22)
 	versionOne := uint32(1)
@@ -362,7 +363,7 @@ func TestDb_Update(t *testing.T) {
 				}
 				where = fmt.Sprintf("%s and %s is null", where, f)
 			}
-			err = rw.LookupWhere(context.Background(), foundUser, where, []interface{}{tt.args.i.PublicId})
+			err = rw.LookupWhere(context.Background(), foundUser, where, []any{tt.args.i.PublicId})
 			require.NoError(err)
 			assert.Equal(tt.args.i.Id, foundUser.Id)
 			assert.Equal(tt.wantName, foundUser.Name)
@@ -395,10 +396,10 @@ func TestDb_Update(t *testing.T) {
 		user := testUser(t, conn, "foo-"+id, id, id)
 
 		user.Name = "friendly-" + id
-		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
+		rowsUpdated, err := w.Update(testCtx, user, []string{"Name"}, nil,
 			// write oplogs for this update
 			WithOplog(
-				TestWrapper(t),
+				wrapper,
 				oplog.Metadata{
 					"key-only":           nil,
 					"deployment":         []string{"amex"},
@@ -445,7 +446,7 @@ func TestDb_Update(t *testing.T) {
 			user,
 			[]string{"Name"}, nil,
 			NewOplogMsg(&updateMsg),
-			WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}),
+			WithOplog(wrapper, oplog.Metadata{"alice": []string{"bob"}}),
 		)
 		require.Error(err)
 		assert.Equal(0, rowsUpdated)
@@ -488,7 +489,7 @@ func TestDb_Update(t *testing.T) {
 			"resource-public-id": []string{user.PublicId},
 			// "op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
 		}
-		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
+		err = w.WriteOplogEntryWith(context.Background(), wrapper, ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
 		require.NoError(err)
 
 		err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
@@ -568,7 +569,7 @@ func TestDb_Update(t *testing.T) {
 		user.Name = "friendly-" + id
 		rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil,
 			WithOplog(
-				TestWrapper(t),
+				wrapper,
 				nil,
 			),
 		)
@@ -632,6 +633,7 @@ func TestDb_Create(t *testing.T) {
 	// intentionally not run with t.Parallel so we don't need to use DoTx for the Create tests
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
+	wrapper := TestDBWrapper(t, conn, "oplog")
 	t.Run("simple", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := New(conn)
@@ -669,7 +671,7 @@ func TestDb_Create(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				TestWrapper(t),
+				wrapper,
 				oplog.Metadata{
 					"key-only":   nil,
 					"deployment": []string{"amex"},
@@ -700,7 +702,7 @@ func TestDb_Create(t *testing.T) {
 			context.Background(),
 			user,
 			NewOplogMsg(&createMsg),
-			WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}),
+			WithOplog(wrapper, oplog.Metadata{"alice": []string{"bob"}}),
 		)
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.InvalidParameter), err))
@@ -743,7 +745,7 @@ func TestDb_Create(t *testing.T) {
 			"resource-public-id": []string{user.PublicId},
 		}
 
-		err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
+		err = w.WriteOplogEntryWith(context.Background(), wrapper, ticket, metadata, []*oplog.Message{&createMsg, &updateMsg})
 		require.NoError(err)
 
 		err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
@@ -784,7 +786,7 @@ func TestDb_Create(t *testing.T) {
 			context.Background(),
 			user,
 			WithOplog(
-				TestWrapper(t),
+				wrapper,
 				nil,
 			),
 		)
@@ -878,7 +880,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert.NotEmpty(user.PublicId)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{user.PublicId})
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []any{user.PublicId})
 		require.NoError(err)
 		assert.Equal(foundUser.Id, user.Id)
 	})
@@ -886,7 +888,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := Db{}
 		var foundUser db_test.TestUser
-		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{1})
+		err := w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []any{1})
 		require.Error(err)
 		assert.Equal("db.LookupWhere: missing underlying db: parameter violation: error #100", err.Error())
 	})
@@ -897,7 +899,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []interface{}{id})
+		err = w.LookupWhere(context.Background(), &foundUser, "public_id = ?", []any{id})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
 	})
@@ -908,7 +910,7 @@ func TestDb_LookupWhere(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", []interface{}{id})
+		err = w.LookupWhere(context.Background(), &foundUser, "? = ?", []any{id})
 		require.Error(err)
 	})
 }
@@ -941,7 +943,7 @@ func TestDb_LookupNotFoundEvent(t *testing.T) {
 		require.NoError(err)
 
 		var foundUser db_test.TestUser
-		err = w.LookupWhere(ctx, &foundUser, "public_id = ?", []interface{}{id})
+		err = w.LookupWhere(ctx, &foundUser, "public_id = ?", []any{id})
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.RecordNotFound), err))
 
@@ -984,7 +986,7 @@ func TestDb_SearchWhere(t *testing.T) {
 
 	type args struct {
 		where string
-		arg   []interface{}
+		arg   []any
 		opt   []Option
 	}
 	tests := []struct {
@@ -1035,7 +1037,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			createCnt: 1,
 			args: args{
 				where: "public_id = ?",
-				arg:   []interface{}{knownUser.PublicId},
+				arg:   []any{knownUser.PublicId},
 				opt:   []Option{WithLimit(3)},
 			},
 			wantCnt: 1,
@@ -1057,7 +1059,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			db:        New(conn),
 			createCnt: 1,
 			args: args{
-				arg: []interface{}{knownUser.PublicId},
+				arg: []any{knownUser.PublicId},
 				opt: []Option{WithLimit(3)},
 			},
 			wantErr: true,
@@ -1068,7 +1070,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			createCnt: 1,
 			args: args{
 				where: "public_id = ?",
-				arg:   []interface{}{"bad-id"},
+				arg:   []any{"bad-id"},
 				opt:   []Option{WithLimit(3)},
 			},
 			wantCnt: 0,
@@ -1080,7 +1082,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			createCnt: 1,
 			args: args{
 				where: "bad_column_name = ?",
-				arg:   []interface{}{knownUser.PublicId},
+				arg:   []any{knownUser.PublicId},
 				opt:   []Option{WithLimit(3)},
 			},
 			wantCnt: 0,
@@ -1092,7 +1094,7 @@ func TestDb_SearchWhere(t *testing.T) {
 			createCnt: 1,
 			args: args{
 				where: "public_id = ?",
-				arg:   []interface{}{knownUser.PublicId},
+				arg:   []any{knownUser.PublicId},
 				opt:   []Option{WithLimit(3)},
 			},
 			wantCnt: 0,
@@ -1142,7 +1144,7 @@ func TestDb_Exec(t *testing.T) {
 		err = w.Create(context.Background(), user)
 		require.NoError(err)
 		require.NotEmpty(user.Id)
-		rowsAffected, err := w.Exec(context.Background(), "update db_test_user set name = ? where public_id = ?", []interface{}{"updated-" + id, user.PublicId})
+		rowsAffected, err := w.Exec(context.Background(), "update db_test_user set name = ? where public_id = ?", []any{"updated-" + id, user.PublicId})
 		require.NoError(err)
 		require.Equal(1, rowsAffected)
 	})
@@ -1326,6 +1328,7 @@ func TestDb_DoTx(t *testing.T) {
 func TestDb_Delete(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
+	wrapper := TestDBWrapper(t, conn, "oplog")
 	newUser := func() *db_test.TestUser {
 		w := New(conn)
 		u, err := db_test.NewTestUser()
@@ -1373,7 +1376,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "simple-no-oplog",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i: newUser(),
 			},
@@ -1383,7 +1386,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "with-where-no-delete",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i:   newUser(),
 				opt: []Option{WithWhere("1 = ?", 2)},
@@ -1395,7 +1398,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "with-where-and-delete",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i:   newUser(),
 				opt: []Option{WithWhere("1 = ?", 1)},
@@ -1406,7 +1409,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "valid-with-oplog",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i:        newUser(),
 				metadata: newMetadata,
@@ -1444,7 +1447,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "nil-underlying",
 			underlying: nil,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i: newUser(),
 			},
@@ -1455,7 +1458,7 @@ func TestDb_Delete(t *testing.T) {
 		{
 			name:       "not-found",
 			underlying: conn,
-			wrapper:    TestWrapper(t),
+			wrapper:    wrapper,
 			args: args{
 				i: notFoundUser(),
 			},
@@ -1521,7 +1524,7 @@ func TestDb_Delete(t *testing.T) {
 			require.NoError(err)
 
 			deleteMsg := oplog.Message{}
-			rowsDeleted, err := w.Delete(context.Background(), user, NewOplogMsg(&deleteMsg), WithOplog(TestWrapper(t), oplog.Metadata{"alice": []string{"bob"}}))
+			rowsDeleted, err := w.Delete(context.Background(), user, NewOplogMsg(&deleteMsg), WithOplog(wrapper, oplog.Metadata{"alice": []string{"bob"}}))
 			require.Error(err)
 			assert.Equal(0, rowsDeleted)
 			assert.True(errors.Match(errors.T(errors.InvalidParameter), err))
@@ -1562,7 +1565,7 @@ func TestDb_Delete(t *testing.T) {
 			metadata := oplog.Metadata{
 				"resource-public-id": []string{user.PublicId},
 			}
-			err = w.WriteOplogEntryWith(context.Background(), TestWrapper(t), ticket, metadata, []*oplog.Message{&createMsg, &deleteMsg})
+			err = w.WriteOplogEntryWith(context.Background(), wrapper, ticket, metadata, []*oplog.Message{&createMsg, &deleteMsg})
 			require.NoError(err)
 
 			err = TestVerifyOplog(t, w, user.PublicId, WithOperation(oplog.OpType_OP_TYPE_UNSPECIFIED), WithCreateNotBefore(10*time.Second))
@@ -1594,7 +1597,7 @@ func TestDb_ScanRows(t *testing.T) {
 		require.NoError(err)
 		assert.NotEmpty(user.Id)
 		where := "select * from db_test_user where name in (?, ?)"
-		rows, err := w.Query(context.Background(), where, []interface{}{"alice", "bob"})
+		rows, err := w.Query(context.Background(), where, []any{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
 		for rows.Next() {
@@ -1625,7 +1628,7 @@ func TestDb_Query(t *testing.T) {
 		assert.Equal("alice", user.Name)
 
 		where := "select * from db_test_user where name in (?, ?)"
-		rows, err := rw.Query(context.Background(), where, []interface{}{"alice", "bob"})
+		rows, err := rw.Query(context.Background(), where, []any{"alice", "bob"})
 		require.NoError(err)
 		defer func() { err := rows.Close(); assert.NoError(err) }()
 		for rows.Next() {
@@ -1642,10 +1645,11 @@ func TestDb_Query(t *testing.T) {
 func TestDb_CreateItems(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, db)
+	wrapper := TestDBWrapper(t, db, "oplog")
 	testOplogResourceId := testId(t)
 
-	createFn := func() []interface{} {
-		results := []interface{}{}
+	createFn := func() []any {
+		results := []any{}
 		for i := 0; i < 10; i++ {
 			u, err := db_test.NewTestUser()
 			require.NoError(t, err)
@@ -1653,12 +1657,12 @@ func TestDb_CreateItems(t *testing.T) {
 		}
 		return results
 	}
-	createMixedFn := func() []interface{} {
+	createMixedFn := func() []any {
 		u, err := db_test.NewTestUser()
 		require.NoError(t, err)
 		c, err := db_test.NewTestCar()
 		require.NoError(t, err)
-		return []interface{}{
+		return []any{
 			u,
 			c,
 		}
@@ -1667,7 +1671,7 @@ func TestDb_CreateItems(t *testing.T) {
 	returnedMsgs := []*oplog.Message{}
 
 	type args struct {
-		createItems []interface{}
+		createItems []any
 		opt         []Option
 	}
 	tests := []struct {
@@ -1694,7 +1698,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: createFn(),
 				opt: []Option{
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						oplog.Metadata{
 							"resource-public-id": []string{testOplogResourceId},
 							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
@@ -1725,7 +1729,7 @@ func TestDb_CreateItems(t *testing.T) {
 				opt: []Option{
 					NewOplogMsgs(&[]*oplog.Message{}),
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						oplog.Metadata{
 							"resource-public-id": []string{testOplogResourceId},
 							"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
@@ -1752,7 +1756,7 @@ func TestDb_CreateItems(t *testing.T) {
 				createItems: createFn(),
 				opt: []Option{
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						nil,
 					),
 				},
@@ -1801,7 +1805,7 @@ func TestDb_CreateItems(t *testing.T) {
 			name:       "empty items",
 			underlying: db,
 			args: args{
-				createItems: []interface{}{},
+				createItems: []any{},
 			},
 			wantErr:   true,
 			wantErrIs: errors.InvalidParameter,
@@ -1853,10 +1857,11 @@ func TestDb_CreateItems(t *testing.T) {
 func TestDb_DeleteItems(t *testing.T) {
 	db, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, db)
+	wrapper := TestDBWrapper(t, db, "oplog")
 	testOplogResourceId := testId(t)
 
-	createFn := func() []interface{} {
-		results := []interface{}{}
+	createFn := func() []any {
+		results := []any{}
 		for i := 0; i < 10; i++ {
 			u := testUser(t, db, "", "", "")
 			results = append(results, u)
@@ -1867,7 +1872,7 @@ func TestDb_DeleteItems(t *testing.T) {
 	returnedMsgs := []*oplog.Message{}
 
 	type args struct {
-		deleteItems []interface{}
+		deleteItems []any
 		opt         []Option
 	}
 	tests := []struct {
@@ -1909,7 +1914,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				opt: []Option{
 					NewOplogMsgs(&[]*oplog.Message{}),
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						oplog.Metadata{
 							"resource-public-id": []string{testOplogResourceId},
 							"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
@@ -1927,7 +1932,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				deleteItems: createFn(),
 				opt: []Option{
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						oplog.Metadata{
 							"resource-public-id": []string{testOplogResourceId},
 							"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String()},
@@ -1946,7 +1951,7 @@ func TestDb_DeleteItems(t *testing.T) {
 				deleteItems: createFn(),
 				opt: []Option{
 					WithOplog(
-						TestWrapper(t),
+						wrapper,
 						nil,
 					),
 				},
@@ -1995,7 +2000,7 @@ func TestDb_DeleteItems(t *testing.T) {
 			name:       "empty items",
 			underlying: db,
 			args: args{
-				deleteItems: []interface{}{},
+				deleteItems: []any{},
 			},
 			wantErr:   true,
 			wantErrIs: errors.InvalidParameter,
@@ -2152,7 +2157,7 @@ func TestDb_LookupById(t *testing.T) {
 	scooterAccessory := testScooterAccessory(t, conn, scooter.Id, accessory.AccessoryId)
 
 	type args struct {
-		resource interface{}
+		resource any
 		opt      []Option
 	}
 	tests := []struct {
@@ -2203,7 +2208,7 @@ func TestDb_LookupById(t *testing.T) {
 			name:       "compond-with-zero-value-pk",
 			underlying: conn,
 			args: args{
-				resource: func() interface{} {
+				resource: func() any {
 					cp := scooterAccessory.Clone()
 					cp.(*db_test.TestScooterAccessory).ScooterId = 0
 					return cp
@@ -2287,7 +2292,7 @@ func TestDb_GetTicket(t *testing.T) {
 	tests := []struct {
 		name          string
 		underlying    *DB
-		aggregateType interface{}
+		aggregateType any
 		wantErr       bool
 		wantErrIs     errors.Code
 	}{
@@ -2341,6 +2346,7 @@ func TestDb_GetTicket(t *testing.T) {
 func TestDb_WriteOplogEntryWith(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
+	wrapper := TestDBWrapper(t, conn, "oplog")
 	w := New(conn)
 	testCtx := context.Background()
 
@@ -2382,7 +2388,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "valid",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: metadata,
 				msgs:     []*oplog.Message{&createMsg},
@@ -2393,7 +2399,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "valid-multiple",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: metadata,
 				msgs:     []*oplog.Message{&createMsg, &createMsg},
@@ -2404,7 +2410,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "missing-ticket",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   nil,
 				metadata: metadata,
 				msgs:     []*oplog.Message{&createMsg},
@@ -2416,7 +2422,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "missing-db",
 			underlying: nil,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: metadata,
 				msgs:     []*oplog.Message{&createMsg},
@@ -2440,7 +2446,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "nil-metadata",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: nil,
 				msgs:     []*oplog.Message{&createMsg},
@@ -2452,7 +2458,7 @@ func TestDb_WriteOplogEntryWith(t *testing.T) {
 			name:       "empty-metadata",
 			underlying: conn,
 			args: args{
-				wrapper:  TestWrapper(t),
+				wrapper:  wrapper,
 				ticket:   ticket,
 				metadata: oplog.Metadata{},
 				msgs:     []*oplog.Message{&createMsg},
@@ -2971,7 +2977,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 
 	// underlying isn't used at this point, so it can just be nil
 	rw := Db{underlying: nil}
-	var users []interface{}
+	var users []any
 	var wantUsrMsgs []*oplog.Message
 	for i := 0; i < 5; i++ {
 		publicId, err := base62.Random(20)
@@ -2990,7 +2996,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 
 	publicId, err := base62.Random(20)
 	require.NoError(t, err)
-	mixed := []interface{}{
+	mixed := []any{
 		&db_test.TestUser{StoreTestUser: &db_test.StoreTestUser{PublicId: publicId}},
 		&db_test.TestCar{StoreTestCar: &db_test.StoreTestCar{PublicId: publicId}},
 	}
@@ -2998,7 +3004,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 	type args struct {
 		opType OpType
 		opts   Options
-		items  []interface{}
+		items  []any
 	}
 	tests := []struct {
 		name      string
@@ -3029,7 +3035,7 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 			name: "zero items",
 			args: args{
 				opType: CreateOp,
-				items:  []interface{}{},
+				items:  []any{},
 			},
 			wantErr:   true,
 			wantIsErr: errors.InvalidParameter,

@@ -29,7 +29,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, staticProj := iam.TestScopes(t, iamRepo)
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(context.Background(), rw, rw, testKms)
 	require.NoError(t, err)
 
 	csVault := vault.TestCredentialStores(t, conn, wrapper, staticProj.GetPublicId(), 1)[0]
@@ -336,7 +336,7 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, proj := iam.TestScopes(t, iamRepo)
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(context.Background(), rw, rw, testKms)
 	require.NoError(t, err)
 
 	type args struct {
@@ -563,7 +563,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	repo, err := target.NewRepository(rw, rw, testKms)
+	repo, err := target.NewRepository(context.Background(), rw, rw, testKms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)

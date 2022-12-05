@@ -228,7 +228,7 @@ func (c *Command) printListTable(items []*users.User) string {
 }
 
 func printItemTable(item *users.User, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}
@@ -262,10 +262,10 @@ func printItemTable(item *users.User, resp *api.Response) string {
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 
-	var userMaps []map[string]interface{}
+	var userMaps []map[string]any
 	if len(item.Accounts) > 0 {
 		for _, account := range item.Accounts {
-			a := map[string]interface{}{
+			a := map[string]any{
 				"ID":       account.Id,
 				"Scope ID": account.ScopeId,
 			}

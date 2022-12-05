@@ -183,13 +183,13 @@ values
 'Expired', current_timestamp, current_timestamp)
 `
 		for _, a := range addresses {
-			_, err := rw.Exec(ctx, q, []interface{}{a.Address})
+			_, err := rw.Exec(ctx, q, []any{a.Address})
 			require.NoError(t, err)
 		}
 		// Duplicate a few records...
-		_, err := rw.Exec(ctx, q, []interface{}{addresses[1].Address})
+		_, err := rw.Exec(ctx, q, []any{addresses[1].Address})
 		require.NoError(t, err)
-		_, err = rw.Exec(ctx, q, []interface{}{addresses[5].Address})
+		_, err = rw.Exec(ctx, q, []any{addresses[5].Address})
 		require.NoError(t, err)
 	}
 

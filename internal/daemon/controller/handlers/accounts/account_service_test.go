@@ -374,7 +374,7 @@ func TestListPassword(t *testing.T) {
 			if tc.skipAnon {
 				return
 			}
-			got, gErr = s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), requestauth.WithUserId(requestauth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), requestauth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {
@@ -531,7 +531,7 @@ func TestListOidc(t *testing.T) {
 			if tc.skipAnon {
 				return
 			}
-			got, gErr = s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), requestauth.WithUserId(requestauth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), requestauth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, g := range got.GetItems() {

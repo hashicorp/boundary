@@ -2,14 +2,19 @@ package worker
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -271,4 +276,109 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_Worker_getSessionTls(t *testing.T) {
+	conf := &Config{
+		Server: &base.Server{
+			Listeners: []*base.ServerListener{
+				{Config: &listenerutil.ListenerConfig{Purpose: []string{"api"}}},
+				{Config: &listenerutil.ListenerConfig{Purpose: []string{"proxy"}}},
+				{Config: &listenerutil.ListenerConfig{Purpose: []string{"cluster"}}},
+			},
+			Logger: hclog.Default(),
+		},
+	}
+	conf.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}
+	w, err := New(conf)
+	require.NoError(t, err)
+	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: &services.StatusResponse{}, StatusTime: time.Now(), LastCalculatedUpstreams: nil})
+	w.baseContext = context.Background()
+
+	t.Run("success", func(t *testing.T) {
+		m := &fakeManager{
+			session: &fakeSession{
+				cert: &x509.Certificate{
+					Raw: []byte("something"),
+				},
+				privateKey: []byte("something_else"),
+			},
+		}
+		hello := &tls.ClientHelloInfo{ServerName: "s_1234567890"}
+		tlsConf, err := w.getSessionTls(m)(hello)
+		require.NoError(t, err)
+		require.Len(t, tlsConf.Certificates, 1)
+		require.Len(t, tlsConf.Certificates[0].Certificate, 1)
+		assert.Equal(t, m.session.cert.Raw, tlsConf.Certificates[0].Certificate[0])
+		assert.Equal(t, m.session.cert, tlsConf.Certificates[0].Leaf)
+		assert.Equal(t, ed25519.PrivateKey(m.session.privateKey), tlsConf.Certificates[0].PrivateKey)
+		require.Len(t, tlsConf.NextProtos, 1)
+		assert.Equal(t, "http/1.1", tlsConf.NextProtos[0])
+		assert.Equal(t, tls.VersionTLS13, int(tlsConf.MinVersion))
+		assert.Equal(t, tls.RequireAnyClientCert, tlsConf.ClientAuth)
+		assert.Equal(t, true, tlsConf.InsecureSkipVerify)
+		assert.NotNil(t, tlsConf.VerifyConnection)
+	})
+	t.Run("errors-on-empty-cert", func(t *testing.T) {
+		m := &fakeManager{
+			session: &fakeSession{
+				cert:       nil,
+				privateKey: []byte("something_else"),
+			},
+		}
+		hello := &tls.ClientHelloInfo{ServerName: "s_1234567890"}
+		_, err := w.getSessionTls(m)(hello)
+		require.Error(t, err)
+	})
+	t.Run("errors-on-empty-cert-der", func(t *testing.T) {
+		m := &fakeManager{
+			session: &fakeSession{
+				cert: &x509.Certificate{
+					Raw: nil,
+				},
+				privateKey: []byte("something_else"),
+			},
+		}
+		hello := &tls.ClientHelloInfo{ServerName: "s_1234567890"}
+		_, err := w.getSessionTls(m)(hello)
+		require.Error(t, err)
+	})
+	t.Run("errors-on-empty-private-key", func(t *testing.T) {
+		m := &fakeManager{
+			session: &fakeSession{
+				cert: &x509.Certificate{
+					Raw: []byte("something"),
+				},
+				privateKey: nil,
+			},
+		}
+		hello := &tls.ClientHelloInfo{ServerName: "s_1234567890"}
+		_, err := w.getSessionTls(m)(hello)
+		require.Error(t, err)
+	})
+}
+
+type fakeSession struct {
+	cert       *x509.Certificate
+	privateKey []byte
+
+	session.Session
+}
+
+func (f *fakeSession) GetCertificate() *x509.Certificate {
+	return f.cert
+}
+
+func (f *fakeSession) GetPrivateKey() []byte {
+	return f.privateKey
+}
+
+type fakeManager struct {
+	session.Manager
+
+	session *fakeSession
+}
+
+func (f *fakeManager) LoadLocalSession(ctx context.Context, id string, workerId string) (session.Session, error) {
+	return f.session, nil
 }

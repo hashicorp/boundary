@@ -221,7 +221,7 @@ func Test_ACLOutputFields(t *testing.T) {
 				grants = append(grants, grant)
 			}
 			acl := NewACL(grants...)
-			results := acl.Allowed(test.resource, test.action, AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
+			results := acl.Allowed(test.resource, test.action, globals.AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
 			assert.ElementsMatch(t, results.OutputFields.Fields(), test.fields)
 			assert.True(t, test.authorized == results.Authorized)
 		})
@@ -263,7 +263,7 @@ func Test_ACLSelfOrDefault(t *testing.T) {
 				globals.AuthorizedActionsField:           true,
 				globals.AuthorizedCollectionActionsField: true,
 			},
-			userId: AnonymousUserId,
+			userId: globals.AnonymousUserId,
 		},
 		{
 			name:   "not nil",

@@ -29,7 +29,7 @@ func Test_GetOpts(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithDetails("name", "alice"))
 		testOpts := getDefaultOptions()
-		testOpts.withDetails = map[string]interface{}{
+		testOpts.withDetails = map[string]any{
 			"name": "alice",
 		}
 		assert.Equal(opts, testOpts)
@@ -38,7 +38,7 @@ func Test_GetOpts(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithHeader("name", "alice"))
 		testOpts := getDefaultOptions()
-		testOpts.withHeader = map[string]interface{}{
+		testOpts.withHeader = map[string]any{
 			"name": "alice",
 		}
 		assert.Equal(opts, testOpts)
@@ -54,22 +54,22 @@ func Test_GetOpts(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithInfo("name", "alice"))
 		testOpts := getDefaultOptions()
-		testOpts.withInfo = map[string]interface{}{"name": "alice"}
+		testOpts.withInfo = map[string]any{"name": "alice"}
 		assert.Equal(opts, testOpts)
 
 		opts = getOpts(WithInfoMsg("test"), WithInfo("name", "alice"))
-		testOpts.withInfo = map[string]interface{}{"name": "alice"}
+		testOpts.withInfo = map[string]any{"name": "alice"}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithInfoMsg", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithInfoMsg("test", "name", "alice"))
 		testOpts := getDefaultOptions()
-		testOpts.withInfo = map[string]interface{}{msgField: "test", "name": "alice"}
+		testOpts.withInfo = map[string]any{msgField: "test", "name": "alice"}
 		assert.Equal(opts, testOpts)
 
 		opts = getOpts(WithInfo("name", "alice"), WithInfoMsg("test", "name", "eve"))
-		testOpts.withInfo = map[string]interface{}{
+		testOpts.withInfo = map[string]any{
 			"msg":  "test",
 			"name": "eve",
 		}
