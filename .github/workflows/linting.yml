@@ -7,6 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
       - name: Determine Go version
         id: get-go-version
         # We use .go-version as our source of truth for current Go
@@ -25,4 +27,4 @@ jobs:
           make golangci-lint
       - name: Running Linters
         run: |
-          LINT_DIFF_BRANCH=${GITHUB_BASE_REF} make lint-diff
+          LINT_DIFF_BRANCH="origin/${GITHUB_BASE_REF}" make lint-diff
