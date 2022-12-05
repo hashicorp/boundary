@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -303,7 +303,7 @@ func New() *Config {
 
 // LoadFile loads the configuration from the given file.
 func LoadFile(path string, wrapper wrapping.Wrapper) (*Config, error) {
-	d, err := ioutil.ReadFile(path)
+	d, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

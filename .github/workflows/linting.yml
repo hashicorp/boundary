@@ -1,5 +1,5 @@
 name: "golangci-lint"
-on: ["push", "pull_request"]
+on: ["push"]
 
 jobs:
   lint:
@@ -19,8 +19,10 @@ jobs:
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
       - name: Install Dependencies
+        # if we really need to we can update this to run `make tools`
+        # later but its just not necessary to only run linters
         run: |
-          make tools
-      - name: Running Linter
+          make golangci-lint
+      - name: Running Linters
         run: |
           LINT_DIFF_BRANCH=${GITHUB_BASE_REF} make lint-diff

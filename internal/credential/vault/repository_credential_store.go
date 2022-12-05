@@ -323,7 +323,7 @@ func (ps *publicStore) toCredentialStore() *CredentialStore {
 }
 
 // TableName returns the table name for gorm.
-func (_ *publicStore) TableName() string { return "credential_vault_store_public" }
+func (*publicStore) TableName() string { return "credential_vault_store_public" }
 
 // GetPublicId returns the public id.
 func (ps *publicStore) GetPublicId() string { return ps.PublicId }

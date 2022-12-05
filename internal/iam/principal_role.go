@@ -108,12 +108,12 @@ func (r *UserRole) Clone() interface{} {
 }
 
 // VetForWrite implements db.VetForWrite() interface for user roles.
-func (role *UserRole) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
+func (r *UserRole) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "iam.(UserRole).VetForWrite"
-	if role.RoleId == "" {
+	if r.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
-	if role.PrincipalId == "" {
+	if r.PrincipalId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	return nil
@@ -185,12 +185,12 @@ func (r *GroupRole) Clone() interface{} {
 }
 
 // VetForWrite implements db.VetForWrite() interface for group roles.
-func (role *GroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (r *GroupRole) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(GroupRole).VetForWrite"
-	if role.RoleId == "" {
+	if r.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
-	if role.PrincipalId == "" {
+	if r.PrincipalId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing group id")
 	}
 	return nil
@@ -264,12 +264,12 @@ func (r *ManagedGroupRole) Clone() interface{} {
 }
 
 // VetForWrite implements db.VetForWrite() interface for managed group roles.
-func (role ManagedGroupRole) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, opt ...db.Option) error {
+func (r ManagedGroupRole) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType, opt ...db.Option) error {
 	const op = "iam.(ManagedGroupRole).VetForWrite"
-	if role.RoleId == "" {
+	if r.RoleId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
-	if role.PrincipalId == "" {
+	if r.PrincipalId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing managed group id")
 	}
 	return nil

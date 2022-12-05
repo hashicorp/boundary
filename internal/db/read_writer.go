@@ -392,9 +392,9 @@ func (rw *Db) DeleteItems(ctx context.Context, deleteItems []interface{}, opt ..
 // you should ensure that any objects written to the db in your TxHandler are retryable, which
 // means that the object may be sent to the db several times (retried), so things like the primary key must
 // be reset before retry
-func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler TxHandler) (RetryInfo, error) {
+func (rw *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler TxHandler) (RetryInfo, error) {
 	const op = "db.DoTx"
-	if w.underlying == nil {
+	if rw.underlying == nil {
 		return RetryInfo{}, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db")
 	}
 	if backOff == nil {
@@ -410,7 +410,7 @@ func (w *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler Tx
 		}
 
 		// step one of this, start a transaction...
-		beginTx, err := dbw.New(w.underlying.wrapped).Begin(ctx)
+		beginTx, err := dbw.New(rw.underlying.wrapped).Begin(ctx)
 		if err != nil {
 			return info, wrapError(ctx, err, op)
 		}

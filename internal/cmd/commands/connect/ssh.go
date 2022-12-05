@@ -3,7 +3,6 @@ package connect
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -121,7 +120,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, addr string, creds credential
 				delete(cred.raw.Credential, "private_key")
 			}
 
-			pkFile, err := ioutil.TempFile("", "*")
+			pkFile, err := os.CreateTemp("", "*")
 			if err != nil {
 				return nil, nil, credentials{}, fmt.Errorf("Error saving ssh private key to tmp file: %w", err)
 			}

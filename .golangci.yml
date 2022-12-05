@@ -9,3 +9,6 @@ issues:
     - linters:
         - stylecheck
       text: "ST1005:"
+    - linters:
+        - stylecheck
+      text: "ST1003:"

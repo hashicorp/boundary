@@ -405,7 +405,7 @@ func (pl *publicLibrary) toCredentialLibrary() *CredentialLibrary {
 }
 
 // TableName returns the table name for gorm.
-func (_ *publicLibrary) TableName() string { return "credential_vault_library_public" }
+func (*publicLibrary) TableName() string { return "credential_vault_library_public" }
 
 // GetPublicId returns the public id.
 func (pl *publicLibrary) GetPublicId() string { return pl.PublicId }

@@ -55,14 +55,14 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 }
 
 // EventType is required for all event types by the eventlogger broker
-func (i *observation) EventType() string { return string(ObservationType) }
+func (o *observation) EventType() string { return string(ObservationType) }
 
-func (i *observation) validate() error {
+func (o *observation) validate() error {
 	const op = "event.(Observation).validate"
-	if i.ID == "" {
+	if o.ID == "" {
 		return fmt.Errorf("%s: missing id: %w", op, ErrInvalidParameter)
 	}
-	if i.Op == "" {
+	if o.Op == "" {
 		return fmt.Errorf("%s: missing operation: %w", op, ErrInvalidParameter)
 	}
 	return nil

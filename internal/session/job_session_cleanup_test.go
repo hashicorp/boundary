@@ -37,7 +37,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(err)
-	sessionRepo, err := NewRepository(rw, rw, kms)
+	sessionRepo, _ := NewRepository(rw, rw, kms)
 	connectionRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 
