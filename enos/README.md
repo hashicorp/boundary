@@ -138,8 +138,7 @@ state will be managed by Terraform Cloud. Here are the steps to configure the Gi
   for an invite. After receiving an invite to Terraform Cloud, a personal access token can be created
   by clicking `User Settings` --> `Tokens` --> `Create an API token`.
 - Access to the AWS account can be done via Doormat, at: https://doormat.hashicorp.services/.
-    - For the `boundary` repo the account is: `boundary_ci` and for the boundary-enterprise and 
-      boundary-hcp repos, the account is: `boundary-enterprise_ci`.
+    - The account name uses the following pattern: `<repository>-ci`, e.g. `boundary-ci` for the boundary repo.
     - Access can be requested by clicking: `Cloud Access` --> `AWS` --> `Request Account Access`.
 
 1. **Create the Terraform Cloud Workspace** - The name of the workspace to be created depends on the

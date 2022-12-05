@@ -7,7 +7,7 @@ locals {
     boundary-hcp        = "github.com/hashicorp/boundary-hcp@event_name=workflow_dispatch+push:ref=refs/heads/main+refs/heads/release/0.8.x+refs/heads/release/0.10.x+refs/heads/release/0.11.x///event_name=pull_request:base_ref=main+release/0.8.x+release/0.10.x+release/0.11.x",
   }
   github_actions_doormat_assume_policy_name = "AssumeServiceUserPolicy"
-  boundary_enterprise_iam_role_name         = "boundary-enterprise-GHA-ci"
+  boundary_gha_iam_role_name                = "${var.repository}-GHA-ci"
 }
 
 // Doormat Github Actions assume policy
@@ -29,7 +29,7 @@ data "aws_iam_policy_document" "github_actions_doormat_assume" {
 # Doormat Github Actions roles
 resource "aws_iam_role" "github_actions_doormat_role" {
   count = local.is_ent ? 1 : 0
-  name  = local.boundary_enterprise_iam_role_name
+  name  = local.boundary_gha_iam_role_name
   tags = {
     hc-service-uri = local.github_actions_doormat_rwqs[var.repository]
   }

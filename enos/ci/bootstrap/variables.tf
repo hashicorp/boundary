@@ -8,6 +8,6 @@ variable "repository" {
   type        = string
   validation {
     condition     = contains(["boundary", "boundary-enterprise", "boundary-hcp"], var.repository)
-    error_message = "Repository must be one of either 'vault' or 'vault-enterprise'"
+    error_message = "Repository must be one of either 'boundary', 'boundary-enterprise', or 'boundary-hcp'"
   }
 }

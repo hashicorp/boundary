@@ -8,7 +8,7 @@ terraform {
   cloud {
     hostname     = "app.terraform.io"
     organization = "hashicorp-qti"
-    // workspace must be exported in the environment as: TF_WORKSPACE=<boundary|boundary-enterprise>-ci-enos-bootstrap
+    // workspace must be exported in the environment as: TF_WORKSPACE=<boundary|boundary-enterprise|boundary-hcp>-ci-enos-bootstrap
   }
 }
 
