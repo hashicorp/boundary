@@ -47,6 +47,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   Upgrade notice: If the Database purpose DEK for a scope is destroyed, you must use
   the API to cancel any sessions that predate the upgrade.
   ([PR](https://github.com/hashicorp/boundary/pull/2477))
+* session: The amount of bytes received and transmitted over a session
+  is now recorded and persisted. ([PR](https://github.com/hashicorp/boundary/pull/2503))
 
 ### Bug Fixes
 
@@ -108,8 +110,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
-* session: The amount of bytes received and transmitted over a session
-  is now recorded and persisted. ([PR](https://github.com/hashicorp/boundary/pull/2503))
 * vault: (HCP Boundary only): Private Vault clusters can be used with HCP Boundary by using PKI workers
   deployed in the same network as a private cluster. Tags are used to control which PKI workers can manage private Vault
   requests by specifying a `worker_filter` attribute when configuring a Vault credential store.
