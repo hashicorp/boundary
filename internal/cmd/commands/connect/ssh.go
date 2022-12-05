@@ -63,7 +63,16 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 		case "tcp":
 			// SSH detects a host key change when the localhost proxy port changes
 			// This uses the host ID instead of 'localhost:port'.
-			args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthzData.GetHostId()))
+			if len(c.sessionAuthzData.GetHostId()) > 0 {
+				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthzData.GetHostId()))
+			} else {
+				// In cases where the Target has no host sources and has an
+				// address directly attached to it, we have no Host Id. Use
+				// Target Id instead. Only one address can ever be present on a
+				// target, and no other host sources may be present at the same
+				// time, so this is a reasonable alternative.
+				args = append(args, "-o", fmt.Sprintf("HostKeyAlias=%s", c.sessionAuthzData.GetTargetId()))
+			}
 		case "ssh":
 			args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
 		}
