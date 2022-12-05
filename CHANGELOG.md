@@ -9,6 +9,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Custom Response Headers: Adds ability to set api and ui response headers based
   on status code. Includes default secure CSP and other headers.
   ([PR](https://github.com/hashicorp/boundary/pull/2587))
+* metrics: Adds accepted connections and closed connections counters to keep track
+  downstream connections for worker and controller servers.
+  ([PR](https://github.com/hashicorp/boundary/pull/2668))
 
 ## 0.11.1 (2022/11/30)
 
