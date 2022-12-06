@@ -13,6 +13,7 @@ variable "test_package" {
 variable "alb_boundary_api_addr" {
   description = "URL of the Boundary instance"
   type        = string
+  default     = ""
 }
 variable "auth_method_id" {
   description = "Id of Auth Method used to login to Boundary instance"
@@ -22,10 +23,12 @@ variable "auth_method_id" {
 variable "auth_login_name" {
   description = "Name of admin user"
   type        = string
+  default     = ""
 }
 variable "auth_password" {
   description = "Password of admin user"
   type        = string
+  default     = ""
 }
 variable "local_boundary_dir" {
   description = "Local Path to boundary executable"
@@ -34,10 +37,12 @@ variable "local_boundary_dir" {
 variable "target_user" {
   description = "SSH username for target"
   type        = string
+  default     = ""
 }
 variable "aws_ssh_private_key_path" {
   description = "Local Path to key used to SSH onto created hosts"
   type        = string
+  default     = ""
 }
 variable "target_ip" {
   description = "IP address of target"
@@ -111,8 +116,8 @@ resource "enos_local_exec" "run_e2e_test" {
     VAULT_TOKEN                   = var.vault_root_token,
     E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id,
     E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key,
-    E2E_AWS_HOST_SET_FILTER1      = var.aws_host_set_filter1,
-    E2E_AWS_HOST_SET_IPS1         = local.aws_host_set_ips1,
+    E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1,
+    E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1,
     E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2,
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }

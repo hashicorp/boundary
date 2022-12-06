@@ -25,10 +25,11 @@ jobs:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
-          - filter: 'integration test:cli_ui'
-          - filter: 'e2e_aws'
-          - filter: 'e2e_static'
-          - filter: 'e2e_static_with_vault'
+          - filter: 'integration test:cli_ui builder:crt'
+          - filter: 'e2e_aws builder:crt'
+          - filter: 'e2e_database'
+          - filter: 'e2e_static builder:crt'
+          - filter: 'e2e_static_with_vault builder:crt'
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
@@ -86,12 +87,12 @@ jobs:
           mkdir -p /tmp/test-deps
           ls -la /tmp/test-deps
       - name: Set up Node for Bats install
-        if: matrix.filter == 'integration test:cli_ui'
+        if: matrix.filter == 'integration test:cli_ui builder:crt'
         uses: actions/setup-node@v3
         with:
           node-version: 16
       - name: Install Bats via NPM
-        if: matrix.filter == 'integration test:cli_ui'
+        if: matrix.filter == 'integration test:cli_ui builder:crt'
         # Use npm so this workflow is portable on multiple runner distros
         run: npm install --location=global bats
       - name: Download jq for Bats CLI UI tests
@@ -101,7 +102,7 @@ jobs:
           mkdir -p /tmp/test-deps
           wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/test-deps/jq-bin
       - name: Install jq for Bats CLI UI tests
-        if: matrix.filter == 'integration test:cli_ui'
+        if: matrix.filter == 'integration test:cli_ui builder:crt'
         run: |
           chmod +x /tmp/test-deps/jq-bin
           sudo cp /tmp/test-deps/jq-bin /usr/local/bin/jq
@@ -123,7 +124,7 @@ jobs:
         run: |
           wget https://releases.hashicorp.com/vault/1.12.0/vault_1.12.0_linux_amd64.zip -O /tmp/test-deps/vault.zip
       - name: Install Vault for integration testing
-        if: matrix.filter == 'e2e_static_with_vault'
+        if: matrix.filter == 'e2e_static_with_vault builder:crt' || matrix.filter == 'e2e_database'
         run: |
           unzip /tmp/test-deps/vault.zip -d /usr/local/bin
       - name: Download Linux AMD64 Boundary bundle
@@ -150,8 +151,8 @@ jobs:
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario check --chdir ./enos ${{ matrix.filter }} builder:crt && \
-          enos scenario exec --chdir ./enos ${{ matrix.filter }} builder:crt --cmd "version"
+          enos scenario check --chdir ./enos ${{ matrix.filter }} && \
+          enos scenario exec --chdir ./enos ${{ matrix.filter }} --cmd "version"
       - name: Run Enos scenario
         id: run
         # Continue once and retry
@@ -169,7 +170,7 @@ jobs:
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }} builder:crt
+          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Retry Enos scenario
         id: run_retry
         if: steps.run.outcome == 'failure'
@@ -185,7 +186,7 @@ jobs:
           ENOS_VAR_skip_failing_bats_tests: "true"
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }} builder:crt
+          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Destroy Enos scenario
         env:
           ENOS_VAR_aws_region: us-east-1
@@ -199,7 +200,7 @@ jobs:
           ENOS_VAR_skip_failing_bats_tests: "true"
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }} builder:crt
+          enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Output debug information on failure
         if: ${{ failure() }}
         run: |
