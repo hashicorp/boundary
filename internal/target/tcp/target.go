@@ -27,6 +27,8 @@ const (
 // that can be accessed via TCP. It is a subtype of target.Target.
 type Target struct {
 	*store.Target
+	// Network address assigned to the Target.
+	Address   string `json:"address,omitempty" gorm:"-"`
 	tableName string `gorm:"-"`
 }
 
@@ -57,6 +59,7 @@ func (h targetHooks) NewTarget(projectId string, opt ...target.Option) (target.T
 			EgressWorkerFilter:     opts.WithEgressWorkerFilter,
 			IngressWorkerFilter:    opts.WithIngressWorkerFilter,
 		},
+		Address: opts.WithAddress,
 	}
 	return t, nil
 }
@@ -72,7 +75,8 @@ func (h targetHooks) AllocTarget() target.Target {
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
-		Target: cp.(*store.Target),
+		Target:  cp.(*store.Target),
+		Address: t.Address,
 	}
 }
 
@@ -122,6 +126,10 @@ func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 
 func (t *Target) GetType() subtypes.Subtype {
 	return Subtype
+}
+
+func (t *Target) GetAddress() string {
+	return t.Address
 }
 
 func (t *Target) SetPublicId(ctx context.Context, publicId string) error {
@@ -180,4 +188,8 @@ func (t *Target) SetEgressWorkerFilter(filter string) {
 
 func (t *Target) SetIngressWorkerFilter(filter string) {
 	t.IngressWorkerFilter = filter
+}
+
+func (t *Target) SetAddress(address string) {
+	t.Address = address
 }

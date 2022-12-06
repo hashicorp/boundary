@@ -28,6 +28,7 @@ type Target interface {
 	GetWorkerFilter() string
 	GetEgressWorkerFilter() string
 	GetIngressWorkerFilter() string
+	GetAddress() string
 	Clone() Target
 	SetPublicId(context.Context, string) error
 	SetProjectId(string)
@@ -42,6 +43,7 @@ type Target interface {
 	SetWorkerFilter(string)
 	SetEgressWorkerFilter(string)
 	SetIngressWorkerFilter(string)
+	SetAddress(string)
 	Oplog(op oplog.OpType) oplog.Metadata
 }
 
@@ -55,6 +57,8 @@ var _ boundary.AuthzProtectedEntity = (*targetView)(nil)
 // underlying type.
 type targetView struct {
 	*store.TargetView
+	// Network address assigned to the Target.
+	Address   string `json:"address,omitempty" gorm:"-"`
 	tableName string `gorm:"-"`
 }
 
@@ -105,7 +109,7 @@ func (t *targetView) Subtype() subtypes.Subtype {
 }
 
 // targetSubtype converts the target view to the concrete subtype
-func (t *targetView) targetSubtype(ctx context.Context) (Target, error) {
+func (t *targetView) targetSubtype(ctx context.Context, address string) (Target, error) {
 	const op = "target.targetView.targetSubtype"
 
 	alloc, ok := subtypeRegistry.allocFunc(t.Subtype())
@@ -129,5 +133,6 @@ func (t *targetView) targetSubtype(ctx context.Context) (Target, error) {
 	tt.SetWorkerFilter(t.WorkerFilter)
 	tt.SetEgressWorkerFilter(t.EgressWorkerFilter)
 	tt.SetIngressWorkerFilter(t.IngressWorkerFilter)
+	tt.SetAddress(address)
 	return tt, nil
 }

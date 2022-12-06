@@ -41,6 +41,7 @@ type options struct {
 	WithEgressWorkerFilter     string
 	WithIngressWorkerFilter    string
 	WithTargetIds              []string
+	WithAddress                string
 }
 
 func getDefaultOptions() options {
@@ -64,6 +65,7 @@ func getDefaultOptions() options {
 		WithWorkerFilter:           "",
 		WithEgressWorkerFilter:     "",
 		WithIngressWorkerFilter:    "",
+		WithAddress:                "",
 	}
 }
 
@@ -205,5 +207,12 @@ func WithTargetIds(with []string) Option {
 func WithPermissions(perms []perms.Permission) Option {
 	return func(o *options) {
 		o.WithPermissions = perms
+	}
+}
+
+// WithAddress provides an optional network address
+func WithAddress(address string) Option {
+	return func(o *options) {
+		o.WithAddress = address
 	}
 }
