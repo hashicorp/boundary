@@ -26,6 +26,13 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 	err = rw.Create(context.Background(), tar)
 	require.NoError(err)
 
+	if opts.WithAddress != "" {
+		address, err := target.NewAddress(tar.GetPublicId(), opts.WithAddress)
+		require.NoError(err)
+		require.NotNil(address)
+		err = rw.Create(context.Background(), address)
+		require.NoError(err)
+	}
 	if len(opts.WithHostSources) > 0 {
 		newHostSets := make([]interface{}, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {

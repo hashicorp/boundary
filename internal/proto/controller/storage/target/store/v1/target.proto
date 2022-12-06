@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package controller.storage.target.store.v1;
 
+import "controller/custom_options/v1/options.proto";
 import "controller/storage/timestamp/v1/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/target/store;store";
@@ -71,6 +72,19 @@ message TargetHostSet {
   // create_time from the RDBMS
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 30;
+}
+
+message TargetAddress {
+  // target_id of the Target
+  // @inject_tag: gorm:"primary_key"
+  string target_id = 10;
+
+  // address associated to the Target
+  // @inject_tag: `gorm:"not_null"`
+  string address = 20 [(custom_options.v1.mask_mapping) = {
+    this: "address"
+    that: "address"
+  }];
 }
 
 message CredentialLibrary {

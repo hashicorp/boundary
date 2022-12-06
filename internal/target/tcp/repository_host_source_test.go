@@ -50,13 +50,15 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 	type args struct {
 		targetVersion uint32
 		wantTargetIds bool
+		wantAddress   bool
 		opt           []target.Option
 	}
 	tests := []struct {
-		name      string
-		args      args
-		wantErr   bool
-		wantErrIs error
+		name       string
+		args       args
+		wantErr    bool
+		wantErrMsg string
+		wantErrIs  error
 	}{
 		{
 			name: "valid",
@@ -65,6 +67,16 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 				wantTargetIds: true,
 			},
 			wantErr: false,
+		},
+		{
+			name: "address-mutually-exclusive-relationship",
+			args: args{
+				targetVersion: 1,
+				wantAddress:   true,
+				wantTargetIds: true,
+			},
+			wantErr:    true,
+			wantErrMsg: "unable to add host sources because a network address is directly assigned to the given target",
 		},
 		{
 			name: "bad-version",
@@ -99,10 +111,19 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 			ctx := context.Background()
 			projTarget := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, "static-proj")
 
+			var address *target.Address
+			if tt.args.wantAddress {
+				address = target.TestTargetAddress(t, conn, projTarget.GetPublicId(), "8.8.8.8")
+			}
+
 			var hostSourceIds []string
 			origTarget, origHostSet, _, err := repo.LookupTarget(ctx, projTarget.GetPublicId())
 			require.NoError(err)
 			require.Equal(0, len(origHostSet))
+
+			if address != nil {
+				require.Equal(address.GetAddress(), origTarget.GetAddress())
+			}
 
 			if tt.args.wantTargetIds {
 				hostSourceIds = createHostSetsFn([]string{staticProj.PublicId})
@@ -113,6 +134,9 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 				require.Error(err)
 				if tt.wantErrIs != nil {
 					assert.Truef(errors.Is(err, tt.wantErrIs), "unexpected error %s", err.Error())
+				}
+				if tt.wantErrMsg != "" {
+					assert.Contains(err.Error(), tt.wantErrMsg)
 				}
 				// test to see of the target version update oplog was not created
 				err = db.TestVerifyOplog(t, rw, projTarget.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
@@ -448,6 +472,7 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 		setup            func(target.Target) []target.HostSource
 		args             args
 		wantAffectedRows int
+		wantErrMsg       string
 		wantErr          bool
 	}{
 		{
@@ -460,6 +485,17 @@ func TestRepository_SetTargetHostSets(t *testing.T) {
 			},
 			wantErr:          false,
 			wantAffectedRows: 10,
+		},
+		{
+			name: "address-mutually-exclusive-relationship",
+			args: args{
+				target:               tcp.TestTarget(ctx, t, conn, proj.PublicId, "invalid-host-source", target.WithAddress("8.8.8.8")),
+				targetVersion:        2, // yep, since setupFn will increment it to 2
+				hostSourceIds:        []string{testHostSetIds[0], testHostSetIds[1]},
+				addToOrigHostSources: true,
+			},
+			wantErr:    true,
+			wantErrMsg: "unable to set host sources because a network address is directly assigned to the given target",
 		},
 		{
 			name:  "no-change",

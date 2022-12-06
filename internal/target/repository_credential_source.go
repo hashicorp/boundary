@@ -60,7 +60,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 
 	var hostSources []HostSource
 	var credSources []CredentialSource
-	var updatedTarget interface{}
+	var updatedTarget Target
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -72,7 +72,7 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedTarget = target.(Cloneable).Clone()
+			updatedTarget = target.Clone()
 			var targetOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
 			if err != nil {
@@ -120,6 +120,13 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			credSources, err = fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve credential sources after adding"))
+			}
+			address, err := fetchAddress(ctx, reader, targetId)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve target address after adding"))
+			}
+			if address != nil {
+				updatedTarget.SetAddress(address.GetAddress())
 			}
 			return nil
 		},

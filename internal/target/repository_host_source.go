@@ -58,18 +58,27 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 	}
 	var currentHostSources []HostSource
 	var currentCredSources []CredentialSource
-	var updatedTarget interface{}
+	var updatedTarget Target
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
+			address, err := fetchAddress(ctx, reader, targetId)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current target address"))
+			}
+			if address != nil && address.GetAddress() != "" {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add host sources because a network address is directly assigned to the given target"))
+			}
+
 			msgs := make([]*oplog.Message, 0, 2)
 			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
 			}
-			updatedTarget = target.(Cloneable).Clone()
+
+			updatedTarget = target.Clone()
 			var targetOplogMsg oplog.Message
 			rowsUpdated, err := w.Update(ctx, updatedTarget, []string{"Version"}, nil, db.NewOplogMsg(&targetOplogMsg), db.WithVersion(&targetVersion))
 			if err != nil {
@@ -103,7 +112,8 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating sets"))
 	}
-	return updatedTarget.(Target), currentHostSources, currentCredSources, nil
+
+	return updatedTarget, currentHostSources, currentCredSources, nil
 }
 
 // DeleteTargeHostSources deletes host sources from a target (targetId). The
@@ -284,6 +294,14 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
+			address, err := fetchAddress(ctx, reader, targetId)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current target address"))
+			}
+			if address != nil && address.GetAddress() != "" {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to set host sources because a network address is directly assigned to the given target"))
+			}
+
 			msgs := make([]*oplog.Message, 0, 2)
 			targetTicket, err := w.GetTicket(ctx, target)
 			if err != nil {

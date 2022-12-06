@@ -125,6 +125,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 
 	target := allocTargetView()
 	target.PublicId = publicIdOrName
+	var address string
 	var hostSources []HostSource
 	var credSources []CredentialSource
 	_, err := r.writer.DoTx(
@@ -150,6 +151,13 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 			if credSources, err = fetchCredentialSources(ctx, read, target.PublicId); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+			targetAddress, err := fetchAddress(ctx, read, target.PublicId)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			if targetAddress != nil {
+				address = targetAddress.GetAddress()
+			}
 			return nil
 		},
 	)
@@ -159,7 +167,7 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 		}
 		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
-	subtype, err := target.targetSubtype(ctx)
+	subtype, err := target.targetSubtype(ctx, address)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -242,9 +250,28 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
+	var targetIds []string
+	for _, t := range foundTargets {
+		targetIds = append(targetIds, t.GetPublicId())
+	}
+
+	addresses := map[string]string{}
+	var foundAddresses []*Address
+	err = r.reader.SearchWhere(ctx, &foundAddresses, "target_id in (?)", []any{targetIds})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	for _, addr := range foundAddresses {
+		addresses[addr.TargetId()] = addr.Address()
+	}
+
 	targets := make([]Target, 0, len(foundTargets))
 	for _, t := range foundTargets {
-		subtype, err := t.targetSubtype(ctx)
+		var address string
+		if v, ok := addresses[t.GetPublicId()]; ok {
+			address = v
+		}
+		subtype, err := t.targetSubtype(ctx, address)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -336,80 +363,6 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 	return rowsDeleted, nil
 }
 
-// update a target in the db repository with an oplog entry.
-// It currently supports no options.
-func (r *Repository) update(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, setToNullPaths []string, _ ...Option) (Target, []HostSource, []CredentialSource, int, error) {
-	const op = "target.(Repository).update"
-	if version == 0 {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
-	}
-	if target == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil target")
-	}
-	cloner, ok := target.(Cloneable)
-	if !ok {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "target is not cloneable")
-	}
-	dbOpts := []db.Option{
-		db.WithVersion(&version),
-	}
-	projectId := target.GetProjectId()
-	if projectId == "" {
-		t := allocTargetView()
-		t.PublicId = target.GetPublicId()
-		if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-			return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("lookup failed for %s", t.PublicId)))
-		}
-		projectId = t.ProjectId
-	}
-	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)
-	if err != nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
-	}
-	metadata := target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
-	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
-
-	var rowsUpdated int
-	var returnedTarget interface{}
-	var hostSources []HostSource
-	var credSources []CredentialSource
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			returnedTarget = cloner.Clone()
-			rowsUpdated, err = w.Update(
-				ctx,
-				returnedTarget,
-				fieldMaskPaths,
-				setToNullPaths,
-				dbOpts...,
-			)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			if rowsUpdated > 1 {
-				// return err, which will result in a rollback of the update
-				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
-			}
-
-			if hostSources, err = fetchHostSources(ctx, reader, target.GetPublicId()); err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-
-			if credSources, err = fetchCredentialSources(ctx, reader, target.GetPublicId()); err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-	}
-	return returnedTarget.(Target), hostSources, credSources, rowsUpdated, nil
-}
-
 // CreateTarget inserts into the repository and returns the new Target with
 // its list of host sets and credential libraries.
 // WithPublicId is the only supported option.
@@ -455,6 +408,15 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		t.SetPublicId(ctx, id)
 	}
 
+	var address *Address
+	var err error
+	if t.GetAddress() != "" {
+		address, err = NewAddress(t.GetPublicId(), t.GetAddress())
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
@@ -480,6 +442,15 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target"))
 			}
 			msgs = append(msgs, &targetOplogMsg)
+
+			if address != nil {
+				var targetAddressOplogMsg oplog.Message
+				if err := w.Create(ctx, address, db.NewOplogMsg(&targetAddressOplogMsg)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target address"))
+				}
+				msgs = append(msgs, &targetAddressOplogMsg)
+			}
+
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
@@ -504,6 +475,15 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 	if target == nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target")
 	}
+	if target.GetPublicId() == "" {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target public id")
+	}
+	if target.GetProjectId() == "" {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	}
+	if version == 0 {
+		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+	}
 	vet, ok := subtypeRegistry.vetForUpdateFunc(target.GetType())
 	if !ok {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
@@ -512,10 +492,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		return nil, nil, nil, db.NoRowsAffected, err
 	}
 
-	if target.GetPublicId() == "" {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target public id")
-	}
-
+	var addressEndpoint string
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
@@ -524,10 +501,13 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		case strings.EqualFold("sessionmaxseconds", f):
 		case strings.EqualFold("sessionconnectionlimit", f):
 		case strings.EqualFold("workerfilter", f):
+		case strings.EqualFold("address", f):
+			addressEndpoint = target.GetAddress()
 		default:
 			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
+
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]interface{}{
@@ -537,6 +517,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 			"SessionMaxSeconds":      target.GetSessionMaxSeconds(),
 			"SessionConnectionLimit": target.GetSessionConnectionLimit(),
 			"WorkerFilter":           target.GetWorkerFilter(),
+			"Address":                target.GetAddress(),
 		},
 		fieldMaskPaths,
 		[]string{"SessionMaxSeconds", "SessionConnectionLimit"},
@@ -544,21 +525,122 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
-	var returnedTarget Target
+
+	// The Address field is not apart of the target schema in the database.
+	// It is apart of a different table called target_address, which is why
+	// the Address field must be filtered out of the dbMask & nullFields slices.
+	var updateAddress, deleteAddress bool
+	var filteredDbMask, filteredNullFields []string
+	for _, f := range dbMask {
+		switch {
+		case strings.EqualFold("Address", f):
+			updateAddress = true
+		default:
+			filteredDbMask = append(filteredDbMask, f)
+		}
+	}
+	for _, f := range nullFields {
+		switch {
+		case strings.EqualFold("Address", f):
+			deleteAddress = true
+		default:
+			filteredNullFields = append(filteredNullFields, f)
+		}
+	}
+
+	// If the Address field is the only present change, then we must still
+	// update the target's version because a target address is a child object
+	// of the target.
+	if (len(filteredDbMask) == 0 && len(filteredNullFields) == 0) && (updateAddress || deleteAddress) {
+		target.SetVersion(version + 1)
+		filteredDbMask = append(filteredDbMask, "Version")
+	}
+
+	oplogWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeOplog)
+	if err != nil {
+		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+	}
+
 	var rowsUpdated int
+	var returnedTarget Target
 	var hostSources []HostSource
 	var credSources []CredentialSource
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(read db.Reader, w db.Writer) error {
-			var err error
+			var msgs []*oplog.Message
 			t := target.Clone()
-			returnedTarget, hostSources, credSources, rowsUpdated, err = r.update(ctx, t, version, dbMask, nullFields)
+			ticket, err := w.GetTicket(ctx, t)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+			}
+
+			var tOplogMsg oplog.Message
+			rowsUpdated, err = w.Update(ctx, t, filteredDbMask, filteredNullFields, db.NewOplogMsg(&tOplogMsg), db.WithVersion(&version))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+			if rowsUpdated > 1 {
+				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 target resource would have been updated")
+			}
+			msgs = append(msgs, &tOplogMsg)
+
+			if hostSources, err = fetchHostSources(ctx, read, t.GetPublicId()); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			if credSources, err = fetchCredentialSources(ctx, read, t.GetPublicId()); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+
+			var aOplogMsg oplog.Message
+			var address *Address
+			switch {
+			case updateAddress:
+				if len(hostSources) > 0 {
+					return errors.New(ctx, errors.Forbidden, op, "unable to set address because one or more host sources is assigned to the given target")
+				}
+				address, err = NewAddress(t.GetPublicId(), addressEndpoint)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err := w.Create(ctx, address, db.NewOplogMsg(&aOplogMsg),
+					db.WithOnConflict(&db.OnConflict{
+						Target: db.Columns{"target_id"},
+						Action: db.UpdateAll(true),
+					})); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target address"))
+				}
+				msgs = append(msgs, &aOplogMsg)
+			case deleteAddress:
+				var err error
+				address = allocTargetAddress()
+				address.TargetAddress.TargetId = t.GetPublicId()
+				rowsUpdated, err = w.Delete(ctx, address, db.NewOplogMsg(&aOplogMsg))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target address"))
+				}
+				if rowsUpdated > 1 {
+					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 target resource would have been deleted")
+				}
+				msgs = append(msgs, &aOplogMsg)
+			default:
+				address, err = fetchAddress(ctx, read, t.GetPublicId())
+				if err != nil && !errors.IsNotFoundError(err) {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to fetch target address"))
+				}
+			}
+			if address != nil {
+				t.SetAddress(address.GetAddress())
+			}
+			returnedTarget = t.Clone()
+
+			metadata := t.Oplog(oplog.OpType_OP_TYPE_UPDATE)
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+			}
+
 			return nil
 		},
 	)

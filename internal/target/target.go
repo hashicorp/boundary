@@ -26,6 +26,7 @@ type Target interface {
 	GetSessionMaxSeconds() uint32
 	GetSessionConnectionLimit() int32
 	GetWorkerFilter() string
+	GetAddress() string
 	Clone() Target
 	SetPublicId(context.Context, string) error
 	SetProjectId(string)
@@ -38,6 +39,7 @@ type Target interface {
 	SetSessionMaxSeconds(uint32)
 	SetSessionConnectionLimit(int32)
 	SetWorkerFilter(string)
+	SetAddress(string)
 	Oplog(op oplog.OpType) oplog.Metadata
 }
 
@@ -51,6 +53,8 @@ var _ boundary.AuthzProtectedEntity = (*targetView)(nil)
 // underlying type.
 type targetView struct {
 	*store.TargetView
+	// Network address assigned to the Target.
+	Address   string `json:"address,omitempty" gorm:"-"`
 	tableName string `gorm:"-"`
 }
 
@@ -101,7 +105,7 @@ func (t *targetView) Subtype() subtypes.Subtype {
 }
 
 // targetSubtype converts the target view to the concrete subtype
-func (t *targetView) targetSubtype(ctx context.Context) (Target, error) {
+func (t *targetView) targetSubtype(ctx context.Context, address string) (Target, error) {
 	const op = "target.targetView.targetSubtype"
 
 	alloc, ok := subtypeRegistry.allocFunc(t.Subtype())
@@ -123,5 +127,6 @@ func (t *targetView) targetSubtype(ctx context.Context) (Target, error) {
 	tt.SetSessionMaxSeconds(t.SessionMaxSeconds)
 	tt.SetSessionConnectionLimit(t.SessionConnectionLimit)
 	tt.SetWorkerFilter(t.WorkerFilter)
+	tt.SetAddress(address)
 	return tt, nil
 }

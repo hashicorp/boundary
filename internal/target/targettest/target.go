@@ -27,6 +27,7 @@ const (
 // Target is a target.Target used for tests.
 type Target struct {
 	*store.Target
+	Address   string `gorm:"-"`
 	tableName string `gorm:"-"`
 }
 
@@ -117,10 +118,15 @@ func (t *Target) GetWorkerFilter() string {
 	return t.WorkerFilter
 }
 
+func (t *Target) GetAddress() string {
+	return t.Address
+}
+
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
-		Target: cp.(*store.Target),
+		Address: t.Address,
+		Target:  cp.(*store.Target),
 	}
 }
 
@@ -167,6 +173,10 @@ func (t *Target) SetSessionConnectionLimit(l int32) {
 
 func (t *Target) SetWorkerFilter(f string) {
 	t.WorkerFilter = f
+}
+
+func (t *Target) SetAddress(a string) {
+	t.Address = a
 }
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
