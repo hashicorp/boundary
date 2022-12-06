@@ -3,7 +3,10 @@ package external_host_plugins
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 
 	pb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-plugin"
@@ -28,6 +31,15 @@ func ServeHostPlugin(svc pb.HostPluginServiceServer, opt ...Option) error {
 	if err != nil {
 		return err
 	}
+
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGHUP)
+	go func() {
+		for {
+			<-signalCh
+		}
+	}()
+
 	hostServiceServer, err := NewHostPluginServiceServer(svc)
 	if err != nil {
 		return err
