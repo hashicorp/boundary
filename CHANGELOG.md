@@ -13,6 +13,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   downstream connections for worker and controller servers.
   ([PR](https://github.com/hashicorp/boundary/pull/2668))
 
+### Bug Fixes
+
+* plugins: Ignore `SIGHUP` sent to parent process; some init systems, notably
+  `dumb-init`, would pass them along to the child processes and cause the
+  plugin to exit ([PR](https://github.com/hashicorp/boundary/pull/2677))
+
 ## 0.11.1 (2022/11/30)
 
 ### New and Improved
