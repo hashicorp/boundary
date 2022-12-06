@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/api/roles"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/users"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -27,6 +29,12 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
@@ -36,7 +44,21 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	acctName := "e2e-account"
 	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, acctName)
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("users", "delete", "-id", newUserId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 
 	// Try to connect to the target as a user without permissions
@@ -165,6 +187,11 @@ func TestApiCreateGroup(t *testing.T) {
 	ctx := context.Background()
 
 	newOrgId := boundary.CreateNewOrgApi(t, ctx, client)
+	t.Cleanup(func() {
+		scopeClient := scopes.NewClient(client)
+		_, err := scopeClient.Delete(ctx, newOrgId)
+		require.NoError(t, err)
+	})
 	newProjectId := boundary.CreateNewProjectApi(t, ctx, client, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogApi(t, ctx, client, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetApi(t, ctx, client, newHostCatalogId)
@@ -175,7 +202,17 @@ func TestApiCreateGroup(t *testing.T) {
 
 	acctName := "e2e-account"
 	newAcctId, _ := boundary.CreateNewAccountApi(t, ctx, client, acctName)
+	t.Cleanup(func() {
+		aClient := accounts.NewClient(client)
+		_, err := aClient.Delete(ctx, newAcctId)
+		require.NoError(t, err)
+	})
 	newUserId := boundary.CreateNewUserApi(t, ctx, client, "global")
+	t.Cleanup(func() {
+		uClient := users.NewClient(client)
+		_, err := uClient.Delete(ctx, newUserId)
+		require.NoError(t, err)
+	})
 	uClient := users.NewClient(client)
 	uClient.SetAccounts(ctx, newUserId, 0, []string{newAcctId})
 

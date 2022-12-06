@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api/credentiallibraries"
-	"github.com/hashicorp/boundary/api/credentialstores"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
@@ -17,12 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type createTokenResponse struct {
-	Auth struct {
-		Client_Token string
-	}
-}
 
 // TestCliVaultConnectTarget uses the boundary and vault clis to add secrets management
 // for a target. The test sets up vault as a credential store, creates a set of credentials
@@ -36,6 +29,12 @@ func TestCliVaultConnectTarget(t *testing.T) {
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
@@ -46,6 +45,13 @@ func TestCliVaultConnectTarget(t *testing.T) {
 
 	// Configure vault
 	vaultAddr, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	t.Cleanup(func() {
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", boundaryPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
+
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
@@ -60,6 +66,12 @@ func TestCliVaultConnectTarget(t *testing.T) {
 	// Create credential in vault
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
 	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
+	t.Cleanup(func() {
+		output := e2e.RunCommand(ctx, "vault",
+			e2e.WithArgs("policy", "delete", kvPolicyName),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	t.Log("Created Vault Credential")
 
 	// Create vault token for boundary
@@ -76,28 +88,14 @@ func TestCliVaultConnectTarget(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	var tokenCreateResult createTokenResponse
+	var tokenCreateResult vault.CreateTokenResponse
 	err = json.Unmarshal(output.Stdout, &tokenCreateResult)
 	require.NoError(t, err)
 	credStoreToken := tokenCreateResult.Auth.Client_Token
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"credential-stores", "create", "vault",
-			"-scope-id", newProjectId,
-			"-vault-address", vaultAddr,
-			"-vault-token", credStoreToken,
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newCredentialStoreResult credentialstores.CredentialStoreCreateResult
-	err = json.Unmarshal(output.Stdout, &newCredentialStoreResult)
-	require.NoError(t, err)
-	newCredentialStoreId := newCredentialStoreResult.Item.Id
-	t.Logf("Created Credential Store: %s", newCredentialStoreId)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, vaultAddr, credStoreToken)
 
 	// Create a credential library
 	output = e2e.RunCommand(ctx, "boundary",
@@ -118,14 +116,7 @@ func TestCliVaultConnectTarget(t *testing.T) {
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
 
 	// Add brokered credentials to target
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"targets", "add-credential-sources",
-			"-id", newTargetId,
-			"-brokered-credential-source", newCredentialLibraryId,
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
