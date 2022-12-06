@@ -53,8 +53,9 @@ type TargetServiceClient interface {
 	// Host Sources added to the provided Target must be a child of a Catalog that
 	// is a child of the same scope as this Target. If the scope or Target IDs are
 	// missing, malformed, or reference non-existing resources, an error is
-	// returned. An error is returned if a Host Source is attempted to be added to a
-	// target that is already present on the Target.
+	// returned. An error is returned if a Host Source is attempted to be added to
+	// a target that is already present on the Target. If the given target already
+	// has its address field set, a Bad Request error is returned.
 	AddTargetHostSources(ctx context.Context, in *AddTargetHostSourcesRequest, opts ...grpc.CallOption) (*AddTargetHostSourcesResponse, error)
 	// SetTargetHostSources sets the Target's Host Sources. Any existing Host
 	// Sources on the Target are deleted if they are not included in this request.
@@ -62,7 +63,8 @@ type TargetServiceClient interface {
 	// Host Sources will be set. All Host Sources in the request must be a child
 	// of a Catalog that is in the same scope as the provided Target. If any IDs
 	// are missing, malformed, or references a non-existing resource, an error is
-	// returned.
+	// returned. If the given target already has its address field set, a Bad
+	// Request error is returned.
 	SetTargetHostSources(ctx context.Context, in *SetTargetHostSourcesRequest, opts ...grpc.CallOption) (*SetTargetHostSourcesResponse, error)
 	// RemoveTargetHostSources removes the Host Sources from the specified Target.
 	// The provided request must include the Target ID for the Target from which
@@ -252,8 +254,9 @@ type TargetServiceServer interface {
 	// Host Sources added to the provided Target must be a child of a Catalog that
 	// is a child of the same scope as this Target. If the scope or Target IDs are
 	// missing, malformed, or reference non-existing resources, an error is
-	// returned. An error is returned if a Host Source is attempted to be added to a
-	// target that is already present on the Target.
+	// returned. An error is returned if a Host Source is attempted to be added to
+	// a target that is already present on the Target. If the given target already
+	// has its address field set, a Bad Request error is returned.
 	AddTargetHostSources(context.Context, *AddTargetHostSourcesRequest) (*AddTargetHostSourcesResponse, error)
 	// SetTargetHostSources sets the Target's Host Sources. Any existing Host
 	// Sources on the Target are deleted if they are not included in this request.
@@ -261,7 +264,8 @@ type TargetServiceServer interface {
 	// Host Sources will be set. All Host Sources in the request must be a child
 	// of a Catalog that is in the same scope as the provided Target. If any IDs
 	// are missing, malformed, or references a non-existing resource, an error is
-	// returned.
+	// returned. If the given target already has its address field set, a Bad
+	// Request error is returned.
 	SetTargetHostSources(context.Context, *SetTargetHostSourcesRequest) (*SetTargetHostSourcesResponse, error)
 	// RemoveTargetHostSources removes the Host Sources from the specified Target.
 	// The provided request must include the Target ID for the Target from which

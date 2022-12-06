@@ -150,6 +150,22 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) *ApiError {
 	return apiErr
 }
 
+// ConflictErrorf generates an ApiErr when a pre-conditional check is violated.
+// Note, this deliberately doesn't translate to the similarly named '412
+// Precondition Failed' HTTP response status. The ApiErr returned is a 400 bad
+// request because this is how the grpc-gateway mapping is implemented for
+// failed precondition protobuf errors.
+func ConflictErrorf(msg string) *ApiError {
+	const op = "handlers.ConflictErrorf"
+	ctx := context.TODO()
+	err := ApiErrorWithCodeAndMessage(codes.FailedPrecondition, msg)
+	var apiErr *ApiError
+	if !errors.As(err, &apiErr) {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("Unable to build conflict api error."))
+	}
+	return apiErr
+}
+
 var statusRegEx = regexp.MustCompile("Status: ([0-9]+), Kind: \"(.*)\", Error: \"(.*)\"")
 
 // Converts a known errors into an error that can presented to an end user over the API.
@@ -184,6 +200,8 @@ func backendErrorToApiError(inErr error) *ApiError {
 		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
 	case errors.IsUniqueError(inErr):
 		return InvalidArgumentErrorf(genericUniquenessMsg, nil)
+	case errors.IsConflictError(inErr):
+		return ConflictErrorf(inErr.Error())
 	}
 
 	var statusCode int32 = http.StatusInternalServerError

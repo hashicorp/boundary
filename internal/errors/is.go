@@ -94,3 +94,13 @@ func IsNotFoundError(err error) bool {
 
 	return false
 }
+
+// IsConflictError returns a boolean indicating whether the error is known to
+// report a pre-conditional check violation or an aborted transaction.
+func IsConflictError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return Match(T(Conflict), err)
+}

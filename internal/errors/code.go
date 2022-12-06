@@ -79,6 +79,7 @@ const (
 	// client and server error codes
 	Unauthorized Code = 401 // Unauthorized represents the operation is unauthorized
 	Forbidden    Code = 403 // Forbidden represents the operation is forbidden
+	Conflict     Code = 409 // Conflict represents the operation failed due to failed pre-condition or was aborted.
 	Internal     Code = 500 // InternalError represents the system encountered an unexpected condition.
 
 	// DB errors are reserved Codes from 1000-1999
