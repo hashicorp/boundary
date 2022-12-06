@@ -606,6 +606,12 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 			if len(returnedStates) < 1 && returnedStates[0].Status != s {
 				return errors.New(ctx, errors.InvalidSessionState, op, fmt.Sprintf("failed to update %s to a state of %s", sessionId, s.String()))
 			}
+			hostSetHost, err := fetchHostSetHost(ctx, reader, sessionId)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			updatedSession.HostId = hostSetHost.HostId
+			updatedSession.HostSetId = hostSetHost.HostSetId
 			return nil
 		},
 	)
@@ -704,6 +710,15 @@ func fetchConnections(ctx context.Context, r db.Reader, sessionId string, opt ..
 		return nil, nil
 	}
 	return connections, nil
+}
+
+func fetchHostSetHost(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) (*SessionHostSetHost, error) {
+	const op = "session.fetchHostSetHost"
+	var hostSetHost *SessionHostSetHost
+	if err := r.SearchWhere(ctx, &hostSetHost, "session_id = ?", []interface{}{sessionId}, opt...); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return hostSetHost, nil
 }
 
 // decryptAndMaybeUpdateSession switches between the database key and session key based on whether

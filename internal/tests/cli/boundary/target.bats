@@ -100,3 +100,36 @@ load _helpers
   run read_target $id
   [ "$status" -eq 1 ]
 }
+
+@test "boundary/target: create target with a network address" {
+  run create_tcp_target_with_addr $DEFAULT_P_ID "localhost" 22 $TGT_NAME_WITH_ADDR
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: cannot assign an host source to a target with an address" {
+  local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME_WITH_ADDR)
+  run assoc_host_sources $id $DEFAULT_HOST_SET
+  [ "$status" -eq 1 ]
+}
+
+@test "boundary/target: can assign an host source to a target after deleting address" {
+  local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME_WITH_ADDR)
+  run update_address $id "null"
+  [ "$status" -eq 0 ]
+  run assoc_host_sources $id $DEFAULT_HOST_SET
+  [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: cannot assign an address to a target with an host source" {
+  local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME_WITH_ADDR)
+  run update_address $id "localhost"
+  [ "$status" -eq 1 ]
+}
+
+@test "boundary/target: can assign an an address to a target after deleting host source" {
+  local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME_WITH_ADDR)
+  run remove_host_sources $id $DEFAULT_HOST_SET
+  [ "$status" -eq 0 ]
+  run update_address $id "localhost"
+  [ "$status" -eq 0 ]
+}

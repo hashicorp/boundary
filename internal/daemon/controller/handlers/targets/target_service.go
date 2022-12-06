@@ -778,6 +778,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		endpoints = append(endpoints, eps...)
 	}
 
+	if len(endpoints) == 0 && t.GetAddress() == "" {
+		return nil, handlers.NotFoundErrorf("No host sources or address found for given target.")
+	}
+
 	var chosenEndpoint *host.Endpoint
 	if requestedId != "" {
 		for _, ep := range endpoints {
@@ -795,25 +799,32 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		}
 	}
 
-	if chosenEndpoint == nil {
-		if len(endpoints) == 0 {
-			// No hosts were found, error
-			return nil, handlers.NotFoundErrorf("No endpoint found from available target host sources.")
-		}
+	var h, p, hostId, hostSetId string
+	if chosenEndpoint == nil && len(endpoints) > 0 {
 		chosenEndpoint = endpoints[rand.Intn(len(endpoints))]
 	}
 
-	h, p, err := net.SplitHostPort(chosenEndpoint.Address)
-	switch {
-	case err != nil && strings.Contains(err.Error(), missingPortErrStr):
-		if t.GetDefaultPort() == 0 {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("neither the selected host %q nor the target provides a port to use", chosenEndpoint.HostId))
+	if chosenEndpoint != nil {
+		hostId = chosenEndpoint.HostId
+		hostSetId = chosenEndpoint.SetId
+		h, p, err = net.SplitHostPort(chosenEndpoint.Address)
+		switch {
+		case err != nil && strings.Contains(err.Error(), missingPortErrStr):
+			if t.GetDefaultPort() == 0 {
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("neither the selected host %q nor the target provides a port to use", chosenEndpoint.HostId))
+			}
+			h = chosenEndpoint.Address
+			p = strconv.FormatUint(uint64(t.GetDefaultPort()), 10)
+		case err != nil:
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoints host address"))
 		}
-		h = chosenEndpoint.Address
-		p = strconv.FormatUint(uint64(t.GetDefaultPort()), 10)
-	case err != nil:
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoints host address"))
 	}
+
+	if t.GetAddress() != "" && hostId == "" && hostSetId == "" {
+		h = t.GetAddress()
+		p = strconv.FormatUint(uint64(t.GetDefaultPort()), 10)
+	}
+
 	// Generate the endpoint URL
 	endpointUrl := &url.URL{
 		Scheme: t.GetType().String(),
@@ -854,9 +865,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	expTime.Seconds += int64(t.GetSessionMaxSeconds())
 	sessionComposition := session.ComposedOf{
 		UserId:              authResults.UserId,
-		HostId:              chosenEndpoint.HostId,
+		HostId:              hostId,
 		TargetId:            t.GetPublicId(),
-		HostSetId:           chosenEndpoint.SetId,
+		HostSetId:           hostSetId,
 		AuthTokenId:         authResults.AuthTokenId,
 		ProjectId:           authResults.Scope.Id,
 		Endpoint:            endpointUrl.String(),
@@ -868,7 +879,6 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		DynamicCredentials:  dynCreds,
 		StaticCredentials:   staticCreds,
 	}
-
 	sess, err := session.New(sessionComposition)
 	if err != nil {
 		return nil, err
@@ -974,7 +984,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		Type:            t.GetType().String(),
 		Certificate:     sess.Certificate,
 		PrivateKey:      sess.CertificatePrivateKey,
-		HostId:          chosenEndpoint.HostId,
+		HostId:          hostId,
 		Endpoint:        endpointUrl.String(),
 		WorkerInfo:      workerList(selectedWorkers).workerInfos(),
 		ConnectionLimit: t.GetSessionConnectionLimit(),
@@ -993,8 +1003,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		Type:               t.GetType().String(),
 		AuthorizationToken: encodedMarshaledSad,
 		UserId:             authResults.UserId,
-		HostId:             chosenEndpoint.HostId,
-		HostSetId:          chosenEndpoint.SetId,
+		HostId:             hostId,
+		HostSetId:          hostSetId,
 		Endpoint:           endpointUrl.String(),
 		Credentials:        creds,
 	}
@@ -1037,6 +1047,9 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 	if item.GetIngressWorkerFilter() != nil {
 		opts = append(opts, target.WithIngressWorkerFilter(item.GetIngressWorkerFilter().GetValue()))
 	}
+	if item.GetAddress() != nil {
+		opts = append(opts, target.WithAddress(item.GetAddress().GetValue()))
+	}
 
 	attr, err := subtypeRegistry.newAttribute(target.SubtypeFromType(item.GetType()), item.GetAttrs())
 	if err != nil {
@@ -1064,6 +1077,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Target) (target.Target, []target.HostSource, []target.CredentialSource, error) {
 	const op = "targets.(Service).updateInRepo"
+	var dbMask []string
 	var opts []target.Option
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, target.WithDescription(desc.GetValue()))
@@ -1086,6 +1100,10 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	if ingressFilter := item.GetIngressWorkerFilter(); ingressFilter != nil {
 		opts = append(opts, target.WithIngressWorkerFilter(item.GetIngressWorkerFilter().GetValue()))
+	}
+	if item.GetAddress() != nil {
+		dbMask = append(dbMask, "Address")
+		opts = append(opts, target.WithAddress(item.GetAddress().GetValue()))
 	}
 	subtype := target.SubtypeFromId(id)
 
@@ -1110,8 +1128,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update target"))
 	}
-
-	dbMask := maskManager.Translate(mask)
+	dbMask = append(dbMask, maskManager.Translate(mask)...)
 	if len(dbMask) == 0 {
 		return nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid paths provided in the update mask."})
 	}
@@ -1119,7 +1136,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, hs, cl, rowsUpdated, err := repo.UpdateTarget(ctx, u, version, dbMask)
+	out, hs, cl, rowsUpdated, err := repo.UpdateTarget(ctx, u, version, dbMask, opts...)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update target"))
 	}
@@ -1164,8 +1181,14 @@ func (s Service) addHostSourcesInRepo(ctx context.Context, targetId string, host
 	}
 	out, hs, cl, err := repo.AddTargetHostSources(ctx, targetId, version, strutil.RemoveDuplicates(hostSourceIds, false))
 	if err != nil {
+		var internalErr *errors.Err
+		if stderrors.As(err, &internalErr) && internalErr.Code == errors.Conflict {
+			// The conflict error is surfaced directly as it's correctly
+			// converted all the way down to the HTTP status.
+			return nil, nil, nil, err
+		}
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add host sources to target: %v.", err)
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed to add target host sources")
 	}
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sources to it.")
@@ -1181,8 +1204,14 @@ func (s Service) setHostSourcesInRepo(ctx context.Context, targetId string, host
 	}
 	_, _, _, err = repo.SetTargetHostSources(ctx, targetId, version, strutil.RemoveDuplicates(hostSourceIds, false))
 	if err != nil {
+		var internalErr *errors.Err
+		if stderrors.As(err, &internalErr) && internalErr.Code == errors.Conflict {
+			// The conflict error is surfaced directly as it's correctly
+			// converted all the way down to the HTTP status.
+			return nil, nil, nil, err
+		}
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set host sources in target: %v.", err)
+		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed to set target host sources")
 	}
 
 	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
@@ -1421,6 +1450,9 @@ func toProto(ctx context.Context, in target.Target, hostSources []target.HostSou
 			})
 		}
 	}
+	if outputFields.Has(globals.AddressField) {
+		out.Address = wrapperspb.String(in.GetAddress())
+	}
 
 	var brokeredSources, injectedAppSources []*pb.CredentialSource
 	var brokeredSourceIds, injectedAppSourceIds []string
@@ -1522,7 +1554,20 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 				badFields[globals.IngressWorkerFilterField] = err.Error()
 			}
 		}
-
+		if address := req.GetItem().GetAddress(); address != nil {
+			if len(address.GetValue()) < static.MinHostAddressLength ||
+				len(address.GetValue()) > static.MaxHostAddressLength {
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			}
+			_, _, err := net.SplitHostPort(address.GetValue())
+			switch {
+			case err == nil:
+				badFields[globals.AddressField] = "Address does not support a port."
+			case strings.Contains(err.Error(), "missing port in address"):
+			default:
+				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
+			}
+		}
 		subtype := target.SubtypeFromType(req.GetItem().GetType())
 		_, err := subtypeRegistry.get(subtype)
 		if err != nil {
@@ -1583,6 +1628,20 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			err := ValidateIngressWorkerFilterFn(ingressFilter.GetValue())
 			if err != nil {
 				badFields[globals.IngressWorkerFilterField] = err.Error()
+			}
+		}
+		if address := req.GetItem().GetAddress(); address != nil {
+			if len(address.GetValue()) < static.MinHostAddressLength ||
+				len(address.GetValue()) > static.MaxHostAddressLength {
+				badFields[globals.AddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+			}
+			_, _, err := net.SplitHostPort(address.GetValue())
+			switch {
+			case err == nil:
+				badFields[globals.AddressField] = "Address does not support a port."
+			case strings.Contains(err.Error(), "missing port in address"):
+			default:
+				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
 		}
 		subtype := target.SubtypeFromId(req.GetId())

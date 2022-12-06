@@ -5713,7 +5713,7 @@
         },
         "address": {
           "type": "string",
-          "description": "Optionally, a valid network address to connect to for this target. Can not be used alongside host sources."
+          "description": "Optional string value that represents a network resource and is used when establishing a session."
         }
       },
       "title": "Target contains all fields related to a Target resource"
