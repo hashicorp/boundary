@@ -324,7 +324,9 @@ func TestTarget_Clone(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		assert := assert.New(t)
 		_, proj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId))
+		tar := tcp.TestTarget(ctx, t, conn, proj.PublicId, tcp.TestTargetName(t, proj.PublicId),
+			target.WithAddress("8.8.8.8"),
+		)
 		cp := tar.Clone()
 		assert.True(proto.Equal(cp.(*tcp.Target).Target, tar.(*tcp.Target).Target))
 	})

@@ -65,6 +65,21 @@ func TestRepository_CreateTarget(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "with-address",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("with-address"),
+						target.WithDescription("with-address"),
+						target.WithDefaultPort(80),
+						target.WithAddress("8.8.8.8"))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr: false,
+		},
+		{
 			name: "nil-target",
 			args: args{
 				target: nil,
@@ -187,6 +202,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 
 			foundTarget, foundHostSources, foundCredLibs, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 			assert.NoError(err)
+			assert.Equal(tt.args.target.GetAddress(), tar.GetAddress())
 			assert.True(proto.Equal(tar.(*tcp.Target), foundTarget.(*tcp.Target)))
 			assert.Equal(hostSources, foundHostSources)
 			assert.Equal(credSources, foundCredLibs)
@@ -224,6 +240,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 	type args struct {
 		name           string
 		description    string
+		address        string
 		port           uint32
 		fieldMaskPaths []string
 		opt            []target.Option
@@ -231,16 +248,17 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 		PublicId       *string
 	}
 	tests := []struct {
-		name           string
-		newProjectId   string
-		newName        string
-		newTargetOpts  []target.Option
-		args           args
-		wantRowsUpdate int
-		wantErr        bool
-		wantErrMsg     string
-		wantIsError    errors.Code
-		wantDup        bool
+		name            string
+		newProjectId    string
+		newName         string
+		newTargetOpts   []target.Option
+		args            args
+		wantRowsUpdate  int
+		wantErr         bool
+		wantErrMsg      string
+		wantIsError     errors.Code
+		wantDup         bool
+		wantHostSources bool
 	}{
 		{
 			name: "valid",
@@ -249,9 +267,63 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ProjectId:      proj.PublicId,
 			},
-			newProjectId:   proj.PublicId,
-			wantErr:        false,
-			wantRowsUpdate: 1,
+			newProjectId:    proj.PublicId,
+			wantErr:         false,
+			wantRowsUpdate:  1,
+			wantHostSources: true,
+		},
+
+		{
+			name: "valid-address",
+			args: args{
+				name:           "valid-address" + id,
+				fieldMaskPaths: []string{"Name", "Address"},
+				ProjectId:      proj.PublicId,
+				address:        "8.8.8.8",
+			},
+			newProjectId:    proj.PublicId,
+			wantErr:         false,
+			wantRowsUpdate:  1,
+			wantHostSources: false,
+		},
+		{
+			name: "null-address",
+			args: args{
+				fieldMaskPaths: []string{"Address"},
+				ProjectId:      proj.PublicId,
+				address:        "null",
+			},
+			newProjectId:    proj.PublicId,
+			newTargetOpts:   []target.Option{target.WithAddress("8.8.8.8")},
+			wantErr:         false,
+			wantRowsUpdate:  1,
+			wantHostSources: false,
+		},
+		{
+			name: "delete-address",
+			args: args{
+				fieldMaskPaths: []string{"Address"},
+				ProjectId:      proj.PublicId,
+			},
+			newProjectId:    proj.PublicId,
+			newTargetOpts:   []target.Option{target.WithAddress("8.8.8.8")},
+			wantErr:         false,
+			wantRowsUpdate:  1,
+			wantHostSources: false,
+		},
+		{
+			name: "host-source-mutually-exclusive-relationship",
+			args: args{
+				name:           "invalid-address" + id,
+				address:        "8.8.8.8",
+				fieldMaskPaths: []string{"Name", "Address"},
+				ProjectId:      proj.PublicId,
+			},
+			newProjectId:    proj.PublicId,
+			wantErr:         true,
+			wantErrMsg:      "unable to set address because one or more host sources is assigned to the given target",
+			wantRowsUpdate:  0,
+			wantHostSources: true,
 		},
 		{
 			name: "valid-no-op",
@@ -260,10 +332,11 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ProjectId:      proj.PublicId,
 			},
-			newProjectId:   proj.PublicId,
-			newName:        "valid-no-op" + id,
-			wantErr:        false,
-			wantRowsUpdate: 1,
+			newProjectId:    proj.PublicId,
+			newName:         "valid-no-op" + id,
+			wantErr:         false,
+			wantRowsUpdate:  1,
+			wantHostSources: true,
 		},
 		{
 			name: "not-found",
@@ -273,11 +346,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				ProjectId:      proj.PublicId,
 				PublicId:       func() *string { s := "1"; return &s }(),
 			},
-			newProjectId:   proj.PublicId,
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantErrMsg:     "record not found, search issue: error #1100",
-			wantIsError:    errors.RecordNotFound,
+			newProjectId:    proj.PublicId,
+			wantErr:         true,
+			wantRowsUpdate:  0,
+			wantErrMsg:      "record not found, search issue: error #1100",
+			wantIsError:     errors.RecordNotFound,
+			wantHostSources: true,
 		},
 		{
 			name: "null-name",
@@ -286,11 +360,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ProjectId:      proj.PublicId,
 			},
-			newProjectId:   proj.PublicId,
-			newName:        "null-name" + id,
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantErrMsg:     "db.DoTx: target.(Repository).UpdateTarget: target.(Repository).update: db.DoTx: target.(Repository).update: db.Update: name must not be empty: not null constraint violated: integrity violation: error #1001",
+			newProjectId:    proj.PublicId,
+			newName:         "null-name" + id,
+			wantErr:         true,
+			wantRowsUpdate:  0,
+			wantErrMsg:      "db.DoTx: target.(Repository).UpdateTarget: db.Update: name must not be empty: not null constraint violated: integrity violation: error #1001",
+			wantHostSources: true,
 		},
 		{
 			name: "null-description",
@@ -299,10 +374,11 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: []string{"Description"},
 				ProjectId:      proj.PublicId,
 			},
-			newProjectId:   proj.PublicId,
-			newTargetOpts:  []target.Option{target.WithDescription("null-description" + id)},
-			wantErr:        false,
-			wantRowsUpdate: 1,
+			newProjectId:    proj.PublicId,
+			newTargetOpts:   []target.Option{target.WithDescription("null-description" + id)},
+			wantErr:         false,
+			wantRowsUpdate:  1,
+			wantHostSources: true,
 		},
 		{
 			name: "empty-field-mask",
@@ -311,11 +387,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: []string{},
 				ProjectId:      proj.PublicId,
 			},
-			newProjectId:   proj.PublicId,
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantErrMsg:     "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
-			wantIsError:    errors.EmptyFieldMask,
+			newProjectId:    proj.PublicId,
+			wantErr:         true,
+			wantRowsUpdate:  0,
+			wantErrMsg:      "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
+			wantIsError:     errors.EmptyFieldMask,
+			wantHostSources: true,
 		},
 		{
 			name: "nil-fieldmask",
@@ -324,11 +401,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: nil,
 				ProjectId:      proj.PublicId,
 			},
-			newProjectId:   proj.PublicId,
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantErrMsg:     "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
-			wantIsError:    errors.EmptyFieldMask,
+			newProjectId:    proj.PublicId,
+			wantErr:         true,
+			wantRowsUpdate:  0,
+			wantErrMsg:      "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
+			wantIsError:     errors.EmptyFieldMask,
+			wantHostSources: true,
 		},
 		{
 			name: "read-only-fields",
@@ -337,11 +415,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: []string{"CreateTime"},
 				ProjectId:      proj.PublicId,
 			},
-			newProjectId:   proj.PublicId,
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantErrMsg:     "target.(Repository).UpdateTarget: invalid field mask: CreateTime: parameter violation: error #103",
-			wantIsError:    errors.InvalidFieldMask,
+			newProjectId:    proj.PublicId,
+			wantErr:         true,
+			wantRowsUpdate:  0,
+			wantErrMsg:      "target.(Repository).UpdateTarget: invalid field mask: CreateTime: parameter violation: error #103",
+			wantIsError:     errors.InvalidFieldMask,
+			wantHostSources: true,
 		},
 		{
 			name: "unknown-fields",
@@ -350,11 +429,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: []string{"Alice"},
 				ProjectId:      proj.PublicId,
 			},
-			newProjectId:   proj.PublicId,
-			wantErr:        true,
-			wantRowsUpdate: 0,
-			wantErrMsg:     "target.(Repository).UpdateTarget: invalid field mask: Alice: parameter violation: error #103",
-			wantIsError:    errors.InvalidFieldMask,
+			newProjectId:    proj.PublicId,
+			wantErr:         true,
+			wantRowsUpdate:  0,
+			wantErrMsg:      "target.(Repository).UpdateTarget: invalid field mask: Alice: parameter violation: error #103",
+			wantIsError:     errors.InvalidFieldMask,
+			wantHostSources: true,
 		},
 		{
 			name: "no-public-id",
@@ -364,11 +444,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				ProjectId:      proj.PublicId,
 				PublicId:       pubId(""),
 			},
-			newProjectId:   proj.PublicId,
-			wantErr:        true,
-			wantErrMsg:     "target.(Repository).UpdateTarget: missing target public id: parameter violation: error #100",
-			wantIsError:    errors.InvalidParameter,
-			wantRowsUpdate: 0,
+			newProjectId:    proj.PublicId,
+			wantErr:         true,
+			wantErrMsg:      "target.(Repository).UpdateTarget: missing target public id: parameter violation: error #100",
+			wantIsError:     errors.InvalidParameter,
+			wantRowsUpdate:  0,
+			wantHostSources: true,
 		},
 		{
 			name: "project-id-no-mask",
@@ -376,21 +457,11 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				name:      "project-id" + id,
 				ProjectId: proj.PublicId,
 			},
-			newProjectId: proj.PublicId,
-			wantErr:      true,
-			wantErrMsg:   "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
-			wantIsError:  errors.EmptyFieldMask,
-		},
-		{
-			name: "empty-project-id-with-name-mask",
-			args: args{
-				name:           "empty-project-id" + id,
-				fieldMaskPaths: []string{"Name"},
-				ProjectId:      "",
-			},
-			newProjectId:   proj.PublicId,
-			wantErr:        false,
-			wantRowsUpdate: 1,
+			newProjectId:    proj.PublicId,
+			wantErr:         true,
+			wantErrMsg:      "target.(Repository).UpdateTarget: empty field mask: parameter violation: error #104",
+			wantIsError:     errors.EmptyFieldMask,
+			wantHostSources: true,
 		},
 		{
 			name: "dup-name",
@@ -399,11 +470,12 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				fieldMaskPaths: []string{"Name"},
 				ProjectId:      proj.PublicId,
 			},
-			newProjectId: proj.PublicId,
-			wantErr:      true,
-			wantDup:      true,
-			wantErrMsg:   " already exists in project " + proj.PublicId,
-			wantIsError:  errors.NotUnique,
+			newProjectId:    proj.PublicId,
+			wantErr:         true,
+			wantDup:         true,
+			wantErrMsg:      " already exists in project " + proj.PublicId,
+			wantIsError:     errors.NotUnique,
+			wantHostSources: true,
 		},
 	}
 	css := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), len(tests))
@@ -416,11 +488,18 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				_ = tcp.TestTarget(ctx, t, conn, proj.PublicId, tt.args.name)
 			}
 
-			testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
-			hsets := static.TestSets(t, conn, testCats[0].GetPublicId(), 5)
-			testHostSetIds := make([]string, 0, len(hsets))
-			for _, hs := range hsets {
-				testHostSetIds = append(testHostSetIds, hs.PublicId)
+			testHostSetIds := []string{}
+			if tt.wantHostSources {
+				testCats := static.TestCatalogs(t, conn, proj.PublicId, 1)
+				hsets := static.TestSets(t, conn, testCats[0].GetPublicId(), 5)
+				testHostSetIds = make([]string, 0, len(hsets))
+				for _, hs := range hsets {
+					testHostSetIds = append(testHostSetIds, hs.PublicId)
+				}
+				tt.newTargetOpts = append(
+					tt.newTargetOpts,
+					target.WithHostSources(testHostSetIds),
+				)
 			}
 
 			cls := vault.TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 5)
@@ -438,7 +517,6 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 
 			tt.newTargetOpts = append(
 				tt.newTargetOpts,
-				target.WithHostSources(testHostSetIds),
 				target.WithCredentialLibraries(testCredLibs),
 			)
 			name := tt.newName
@@ -451,6 +529,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				target.WithName(tt.args.name),
 				target.WithDescription(tt.args.description),
 				target.WithDefaultPort(tt.args.port),
+				target.WithAddress(tt.args.address),
 			)
 			updateTarget.SetPublicId(ctx, tar.GetPublicId())
 			if tt.args.PublicId != nil {
@@ -464,6 +543,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				assert.True(errors.Match(errors.T(tt.wantIsError), err))
 				assert.Nil(targetAfterUpdate)
 				assert.Equal(0, updatedRows)
+				assert.NotEmpty(err.Error())
 				assert.Contains(err.Error(), tt.wantErrMsg)
 				err = db.TestVerifyOplog(t, rw, tar.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 				assert.Error(err)
@@ -478,6 +558,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				afterUpdateIds = append(afterUpdateIds, hs.Id())
 			}
 			assert.Equal(testHostSetIds, afterUpdateIds)
+			assert.Equal(tt.args.address, targetAfterUpdate.GetAddress())
 
 			afterUpdateIds = make([]string, 0, len(credSources))
 			for _, cl := range credSources {
@@ -487,13 +568,14 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 
 			switch tt.name {
 			case "valid-no-op":
-				assert.Equal(tar.GetUpdateTime(), targetAfterUpdate.GetUpdateTime())
+				assert.Equal(tar.GetUpdateTime().String(), targetAfterUpdate.GetUpdateTime().String())
 			default:
 				assert.NotEqual(tar.GetUpdateTime(), targetAfterUpdate.GetUpdateTime())
 			}
 			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 			assert.NoError(err)
 			assert.True(proto.Equal(targetAfterUpdate.((*tcp.Target)), foundTarget.((*tcp.Target))))
+			assert.Equal(targetAfterUpdate.GetAddress(), foundTarget.GetAddress())
 			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
