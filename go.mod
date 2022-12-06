@@ -21,7 +21,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.2
 	github.com/hashicorp/boundary/api v0.0.30
-	github.com/hashicorp/boundary/sdk v0.0.24
+	github.com/hashicorp/boundary/sdk v0.0.28
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
@@ -35,7 +35,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.5
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.7
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
 	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.5-0.20221130175209-f7789ac19a1f
@@ -134,7 +134,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.2 // indirect
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.3 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
