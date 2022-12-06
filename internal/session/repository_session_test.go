@@ -308,6 +308,29 @@ func TestRepository_CreateSession(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "valid-static-address",
+			args: args{
+				composedOf:      TestSessionStaticAddressParams(t, conn, wrapper, iamRepo),
+				workerAddresses: workerAddresses,
+			},
+			wantErr: false,
+		},
+		{
+			name: "empty-host-source-endpoint",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.HostId = ""
+					c.HostSetId = ""
+					c.Endpoint = ""
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+			wantErr:     true,
+			wantIsError: errors.InvalidParameter,
+		},
+		{
 			name: "empty-userId",
 			args: args{
 				composedOf: func() ComposedOf {
@@ -321,37 +344,11 @@ func TestRepository_CreateSession(t *testing.T) {
 			wantIsError: errors.InvalidParameter,
 		},
 		{
-			name: "empty-hostId",
-			args: args{
-				composedOf: func() ComposedOf {
-					c := TestSessionParams(t, conn, wrapper, iamRepo)
-					c.HostId = ""
-					return c
-				}(),
-				workerAddresses: workerAddresses,
-			},
-			wantErr:     true,
-			wantIsError: errors.InvalidParameter,
-		},
-		{
 			name: "empty-targetId",
 			args: args{
 				composedOf: func() ComposedOf {
 					c := TestSessionParams(t, conn, wrapper, iamRepo)
 					c.TargetId = ""
-					return c
-				}(),
-				workerAddresses: workerAddresses,
-			},
-			wantErr:     true,
-			wantIsError: errors.InvalidParameter,
-		},
-		{
-			name: "empty-hostSetId",
-			args: args{
-				composedOf: func() ComposedOf {
-					c := TestSessionParams(t, conn, wrapper, iamRepo)
-					c.HostSetId = ""
 					return c
 				}(),
 				workerAddresses: workerAddresses,
@@ -440,7 +437,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				HostSetId:          tt.args.composedOf.HostSetId,
 				AuthTokenId:        tt.args.composedOf.AuthTokenId,
 				ProjectId:          tt.args.composedOf.ProjectId,
-				Endpoint:           "tcp://127.0.0.1:22",
+				Endpoint:           tt.args.composedOf.Endpoint,
 				ExpirationTime:     tt.args.composedOf.ExpirationTime,
 				ConnectionLimit:    tt.args.composedOf.ConnectionLimit,
 				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
@@ -1254,19 +1251,19 @@ func TestRepository_CancelSessionViaFKNull(t *testing.T) {
 			name: "canceled-only-once",
 			cancelFk: func() cancelFk {
 				s := setupFn()
-				var err error
-				s, err = repo.CancelSession(context.Background(), s.PublicId, s.Version)
-				require.NoError(t, err)
-				require.Equal(t, StatusCanceling, s.States[0].Status)
-
-				t := &static.Host{
+				h := &static.Host{
 					Host: &staticStore.Host{
 						PublicId: s.HostId,
 					},
 				}
+
+				var err error
+				s, err = repo.CancelSession(context.Background(), s.PublicId, s.Version)
+				require.NoError(t, err)
+				require.Equal(t, StatusCanceling, s.States[0].Status)
 				return cancelFk{
 					s:      s,
-					fkType: t,
+					fkType: h,
 				}
 			}(),
 		},

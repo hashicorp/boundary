@@ -67,6 +67,28 @@ func TestState(t testing.TB, conn *db.DB, sessionId string, state Status) *State
 	return s
 }
 
+// TestSessionHostSetHost creates a test session to host set host association for the sessionId in the repository.
+func TestSessionHostSetHost(t testing.TB, conn *db.DB, sessionId, hostSetId, hostId string) {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	hs, err := NewSessionHostSetHost(sessionId, hostSetId, hostId)
+	require.NoError(err)
+	err = rw.Create(context.Background(), hs)
+	require.NoError(err)
+}
+
+// TestSessionTargetAddress creates a test session to target address association for the sessionId in the repository.
+func TestSessionTargetAddress(t testing.TB, conn *db.DB, sessionId, targetId string) {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	ta, err := NewSessionTargetAddress(sessionId, targetId)
+	require.NoError(err)
+	err = rw.Create(context.Background(), ta)
+	require.NoError(err)
+}
+
 // TestSession creates a test session composed of c in the repository. Options
 // are passed into New, and withServerId is handled locally.
 func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c ComposedOf, opt ...Option) *Session {
@@ -113,11 +135,59 @@ func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c Comp
 		require.NoError(err)
 	}
 
+	if s.HostId != "" && s.HostSetId != "" {
+		TestSessionHostSetHost(t, conn, s.PublicId, s.HostSetId, s.HostId)
+	} else if s.Endpoint != "" {
+		TestSessionTargetAddress(t, conn, s.PublicId, s.TargetId)
+	}
+
 	ss, err := fetchStates(ctx, rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
 	require.NoError(err)
 	s.States = ss
 
 	return s
+}
+
+func TestSessionStaticAddress(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository, opt ...Option) *Session {
+	t.Helper()
+	composedOf := TestSessionStaticAddressParams(t, conn, wrapper, iamRepo)
+	future := timestamppb.New(time.Now().Add(time.Hour))
+	exp := &timestamp.Timestamp{Timestamp: future}
+	return TestSession(t, conn, wrapper, composedOf, append(opt, WithExpirationTime(exp))...)
+}
+
+func TestSessionStaticAddressParams(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamRepo *iam.Repository) ComposedOf {
+	t.Helper()
+	ctx := context.Background()
+
+	require := require.New(t)
+	rw := db.New(conn)
+	org, proj := iam.TestScopes(t, iamRepo)
+
+	tcpTarget := tcp.TestTarget(ctx, t, conn, proj.PublicId, "test target")
+	target.TestTargetAddress(t, conn, tcpTarget.GetPublicId(), "tcp://127.0.0.1:22")
+
+	kms := kms.TestKms(t, conn, wrapper)
+	authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
+	user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
+
+	authTokenRepo, err := authtoken.NewRepository(rw, rw, kms)
+	require.NoError(err)
+	at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
+	require.NoError(err)
+
+	expTime := timestamppb.Now()
+	expTime.Seconds += int64(tcpTarget.GetSessionMaxSeconds())
+	return ComposedOf{
+		UserId:          user.PublicId,
+		TargetId:        tcpTarget.GetPublicId(),
+		AuthTokenId:     at.PublicId,
+		ProjectId:       tcpTarget.GetProjectId(),
+		Endpoint:        "tcp://127.0.0.1:22",
+		ExpirationTime:  &timestamp.Timestamp{Timestamp: expTime},
+		ConnectionLimit: tcpTarget.GetSessionConnectionLimit(),
+	}
 }
 
 // TestDefaultSession creates a test session in the repository using defaults.
