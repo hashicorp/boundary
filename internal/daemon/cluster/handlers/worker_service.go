@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 const ManagedWorkerTagKey = "boundary.cloud.hashicorp.com:managed"
@@ -43,6 +44,13 @@ var (
 	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
 
 	workerFilterSelectionFn = workerFilterSelector
+
+	// getProtocolContext populates the protocol specific context fields
+	// depending on the protocol used to for the boundary connection. Defaults
+	// to noProtocolContext since tcp connections are the only protocol schemes
+	// available in OSS and are a straight forward proxy with no additional
+	// fields needed.
+	getProtocolContext = noProtocolContext
 )
 
 func NewWorkerServiceServer(
@@ -286,6 +294,11 @@ func workerFilterSelector(sessionInfo *session.Session) string {
 	return ""
 }
 
+// noProtocolContext doesn't provide any protocol context since tcp doesn't need any
+func noProtocolContext(context.Context, *session.Repository, *pbs.AuthorizeConnectionRequest) (*anypb.Any, error) {
+	return nil, nil
+}
+
 func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session, ws *workerServiceServer,
 	req *pbs.LookupSessionRequest,
 ) error {
@@ -493,6 +506,11 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		ConnectionId:    connectionInfo.GetPublicId(),
 		Status:          connStates[0].Status.ProtoVal(),
 		ConnectionsLeft: authzSummary.ConnectionLimit,
+	}
+	if pc, err := getProtocolContext(ctx, sessionRepo, req); err != nil {
+		return nil, err
+	} else {
+		ret.ProtocolContext = pc
 	}
 	if ret.ConnectionsLeft != -1 {
 		ret.ConnectionsLeft -= int32(authzSummary.CurrentConnectionCount)

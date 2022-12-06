@@ -6,48 +6,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	"google.golang.org/protobuf/types/known/anypb"
 )
-
-// Config provides the core parameters needed for a worker to create a proxy between
-// a provided ClientConn and the RemoteEndpoint, as well as the parameters to update
-// the connection in the connection repository.
-type Config struct {
-	// UserClientIp is the user's client IP
-	UserClientIp net.IP
-	// ClientAddress is the remote address (IP and port) of the client.  If
-	// there are any load balancers or proxies between the user and the worker,
-	// then it will be the address of the last one before the worker.
-	ClientAddress  *net.TCPAddr
-	ClientConn     net.Conn
-	RemoteEndpoint string
-
-	Session      session.Session
-	ConnectionId string
-}
-
-// Validate checks that the provided config is valid. If invalid, an error is returned
-// specifying the error.
-func (c Config) Validate() error {
-	switch {
-	case c.ClientAddress == nil:
-		return errors.New("missing client address")
-	case c.ClientConn == nil:
-		return errors.New("missing client connection")
-	case c.RemoteEndpoint == "":
-		return errors.New("missing remote endpoint")
-	case c.Session == nil:
-		return errors.New("missing session")
-	case c.ConnectionId == "":
-		return errors.New("missing connection id")
-	default:
-		return nil
-	}
-}
-
-// Handler is the type that all proxies need to implement to be called by the worker
-// when a new client connection is created.
-type Handler func(ctx context.Context, config Config, opt ...Option) error
 
 var (
 	// handlers is the map of registered handlers
@@ -60,8 +20,15 @@ var (
 	ErrProtocolAlreadyRegistered = errors.New("proxy: protocol already registered")
 )
 
-// RegisterHandler registers the handler to call for the protocol. The protocol is
-// negotiated when the connection was established to the worker.
+// ProxyConnFn is called after the call to ConnectConnection on the cluster.
+// ProxyConnFn blocks until the specific request that is being proxied is finished
+type ProxyConnFn func()
+
+// Handler is the type that all proxies need to implement to be called by the worker
+// when a new client connection is created.  If there is an error ProxyConnFn must
+// be nil. If there is no error ProxyConnFn must be set.
+type Handler func(context.Context, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error)
+
 func RegisterHandler(protocol string, handler Handler) error {
 	_, loaded := handlers.LoadOrStore(protocol, handler)
 	if loaded {

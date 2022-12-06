@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh/testdata"
@@ -267,6 +268,158 @@ func TestLookupSession(t *testing.T) {
 	}
 }
 
+func TestAuthorizeConnection(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(rw, rw, kmsCache)
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
+	}
+	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kmsCache, opts...)
+	}
+	connectionRepoFn := func() (*session.ConnectionRepository, error) {
+		return session.NewConnectionRepository(ctx, rw, rw, kmsCache)
+	}
+
+	var workerKeyId string
+	worker := server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&workerKeyId))
+	serverRepo, err := serversRepoFn()
+	require.NoError(t, err)
+
+	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
+	uId := at.GetIamUserId()
+	hc := static.TestCatalogs(t, conn, prj.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+
+	newTestSession := func(connLimit int32) *session.Session {
+		return session.TestSession(t, conn, wrapper, session.ComposedOf{
+			UserId:          uId,
+			HostId:          h.GetPublicId(),
+			TargetId:        tar.GetPublicId(),
+			HostSetId:       hs.GetPublicId(),
+			AuthTokenId:     at.GetPublicId(),
+			ProjectId:       prj.GetPublicId(),
+			Endpoint:        "tcp://127.0.0.1:22",
+			ConnectionLimit: connLimit,
+		})
+	}
+
+	repo, err := sessionRepoFn()
+	require.NoError(t, err)
+
+	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kmsCache, new(atomic.Int64))
+	require.NotNil(t, s)
+
+	cases := []struct {
+		name      string
+		sessionId string
+		want      *pbs.AuthorizeConnectionResponse
+		wantErr   bool
+	}{
+		{
+			name: "no-protocol-context",
+			sessionId: func() string {
+				sess := newTestSession(-1)
+
+				tofuToken, err := base62.Random(20)
+				require.NoError(t, err)
+				_, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte(tofuToken))
+				require.NoError(t, err)
+
+				return sess.GetPublicId()
+			}(),
+			want: &pbs.AuthorizeConnectionResponse{
+				Status:          pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+				ConnectionsLeft: -1,
+			},
+		},
+		{
+			name: "with-credentials",
+			sessionId: func() string {
+				sess := newTestSession(-1)
+
+				data, err := proto.Marshal(&pbs.Credential{Credential: &pbs.Credential_UsernamePassword{
+					UsernamePassword: &pbs.UsernamePassword{
+						Username: "username",
+						Password: "password",
+					},
+				}})
+				require.NoError(t, err)
+				err = repo.AddSessionCredentials(ctx, sess.ProjectId, sess.GetPublicId(), []session.Credential{data})
+				require.NoError(t, err)
+
+				tofuToken, err := base62.Random(20)
+				require.NoError(t, err)
+				_, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte(tofuToken))
+				require.NoError(t, err)
+
+				return sess.GetPublicId()
+			}(),
+			want: &pbs.AuthorizeConnectionResponse{
+				Status:          pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
+				ConnectionsLeft: -1,
+			},
+		},
+		{
+			name: "connection limit reached",
+			sessionId: func() string {
+				sess := newTestSession(1)
+				tofuToken, err := base62.Random(20)
+				require.NoError(t, err)
+				_, _, err = repo.ActivateSession(ctx, sess.GetPublicId(), sess.Version, []byte(tofuToken))
+				require.NoError(t, err)
+
+				// Take up the only connection limit.
+				_, err = s.AuthorizeConnection(ctx,
+					&pbs.AuthorizeConnectionRequest{
+						SessionId: sess.GetPublicId(),
+						WorkerId:  worker.GetPublicId(),
+					})
+				require.NoError(t, err)
+				return sess.GetPublicId()
+			}(),
+			wantErr: true,
+		},
+		{
+			name:      "non activated session",
+			sessionId: newTestSession(-1).GetPublicId(),
+			wantErr:   true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			serverRepo.UpsertWorkerStatus(ctx, worker, server.WithKeyId(workerKeyId))
+
+			resp, err := s.AuthorizeConnection(ctx, &pbs.AuthorizeConnectionRequest{
+				SessionId: tc.sessionId,
+				WorkerId:  worker.GetPublicId(),
+			})
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.NotEmpty(t, resp.GetConnectionId())
+			resp.ConnectionId = ""
+			assert.Empty(t, cmp.Diff(resp, tc.want, protocmp.Transform()))
+		})
+	}
+}
+
 func TestCancelSession(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -307,7 +460,6 @@ func TestCancelSession(t *testing.T) {
 	})
 	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms, new(atomic.Int64))
 	require.NotNil(t, s)
-	_ = sess
 	cases := []struct {
 		name       string
 		wantErr    bool

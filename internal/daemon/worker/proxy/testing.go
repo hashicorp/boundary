@@ -3,12 +3,12 @@ package proxy
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/sdk/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"nhooyr.io/websocket"
@@ -22,14 +22,14 @@ func TestWsConn(t testing.TB, ctx context.Context) (clientConn, proxyConn *webso
 	t.Helper()
 	require, assert := require.New(t), assert.New(t)
 
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(err)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	port := testutil.TestFreePort(t)
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", port), http.HandlerFunc(
+		err := http.Serve(l, http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
 				var err error
-
 				proxyConn, err = websocket.Accept(w, r, nil)
 				require.NoError(err)
 
@@ -43,7 +43,7 @@ func TestWsConn(t testing.TB, ctx context.Context) (clientConn, proxyConn *webso
 	}()
 
 	time.Sleep(time.Duration(1.5 * float64(time.Second)))
-	clientConn, _, err := websocket.Dial(ctx, fmt.Sprintf("ws://localhost:%d", port), nil)
+	clientConn, _, err = websocket.Dial(ctx, fmt.Sprintf("ws://%s", l.Addr().String()), nil)
 	require.NoError(err)
 	wg.Wait()
 	return
