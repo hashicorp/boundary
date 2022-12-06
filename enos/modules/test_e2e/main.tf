@@ -99,7 +99,7 @@ locals {
 
 resource "enos_local_exec" "run_e2e_test" {
   environment = {
-    E2E_TESTS                     = true,
+    E2E_TESTS                     = "true",
     BOUNDARY_ADDR                 = var.alb_boundary_api_addr,
     E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id,
     E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name,
