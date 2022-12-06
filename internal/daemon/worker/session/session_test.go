@@ -157,9 +157,9 @@ func TestSession_RequestAuthorizeConnection(t *testing.T) {
 		status: pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING,
 	}
 	_, cancel := context.WithCancel(context.Background())
-	conn, _, err := sess.RequestAuthorizeConnection(context.Background(), "workerid", cancel)
+	resp, _, err := sess.RequestAuthorizeConnection(context.Background(), "workerid", cancel)
 	require.Error(t, err)
-	assert.Equal(t, ConnInfo{}, conn)
+	assert.Nil(t, resp)
 
 	mockClient.AuthorizeConnectionFn = func(ctx context.Context, request *pbs.AuthorizeConnectionRequest) (*pbs.AuthorizeConnectionResponse, error) {
 		return &pbs.AuthorizeConnectionResponse{
@@ -168,8 +168,11 @@ func TestSession_RequestAuthorizeConnection(t *testing.T) {
 			ConnectionsLeft: -1,
 		}, nil
 	}
-	conn, left, err := sess.RequestAuthorizeConnection(context.Background(), "workerid", cancel)
+	resp, left, err := sess.RequestAuthorizeConnection(context.Background(), "workerid", cancel)
 	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	conn := sess.GetLocalConnections()[resp.GetConnectionId()]
 
 	assert.Equal(t, "conn1", conn.Id)
 	assert.Equal(t, pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED, conn.Status)

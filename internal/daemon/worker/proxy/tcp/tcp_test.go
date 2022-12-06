@@ -5,9 +5,9 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
-	"fmt"
 	"math/big"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,12 +15,87 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
-	"github.com/hashicorp/boundary/sdk/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"nhooyr.io/websocket"
 )
+
+func TestHandleProxy_Errors(t *testing.T) {
+	c, _ := net.Pipe()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		l.Close()
+	})
+	dialer, err := proxy.NewProxyDialer(context.Background(), func() (net.Conn, error) {
+		return net.Dial("tcp", l.Addr().String())
+	})
+	require.NoError(t, err)
+
+	cases := []struct {
+		name        string
+		conn        net.Conn
+		dialer      *proxy.ProxyDialer
+		connId      string
+		protocolCtx *anypb.Any
+		wantError   bool
+	}{
+		{
+			name:        "valid",
+			conn:        c,
+			dialer:      dialer,
+			connId:      "someconnectionid",
+			protocolCtx: nil,
+			wantError:   false,
+		},
+		{
+			name:        "nil connection",
+			dialer:      dialer,
+			connId:      "someconnectionid",
+			protocolCtx: nil,
+			wantError:   true,
+		},
+		{
+			name:        "nil dialer",
+			conn:        c,
+			connId:      "someconnectionid",
+			protocolCtx: nil,
+			wantError:   true,
+		},
+		{
+			name:        "no connection id",
+			conn:        c,
+			dialer:      dialer,
+			protocolCtx: nil,
+			wantError:   true,
+		},
+		{
+			name:   "specified protocol context",
+			conn:   c,
+			dialer: dialer,
+			connId: "someconnectionid",
+			protocolCtx: &anypb.Any{
+				TypeUrl: "some.type.information",
+				Value:   []byte("this is just for this test"),
+			},
+			wantError: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fn, err := handleProxy(context.Background(), tc.conn, tc.dialer, tc.connId, tc.protocolCtx)
+			if tc.wantError {
+				assert.Error(t, err)
+				assert.Nil(t, fn)
+				return
+			}
+			assert.NoError(t, err)
+			assert.NotNil(t, fn)
+		})
+	}
+}
 
 func TestHandleTcpProxyV1(t *testing.T) {
 	t.Parallel()
@@ -31,29 +106,25 @@ func TestHandleTcpProxyV1(t *testing.T) {
 	require.NotNil(clientConn)
 	require.NotNil(proxyConn)
 
-	port := testutil.TestFreePort(t)
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(err)
 	defer l.Close()
 
 	var endpointConn net.Conn
 	var endpointErr error
-	ready := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
 		endpointConn, endpointErr = l.Accept()
-
+		require.NoError(endpointErr)
 		defer endpointConn.Close()
-		ready <- struct{}{}
 
+		wg.Done()
 		// block waiting for test to complete
 		<-ctx.Done()
 	}()
 
 	// Create mock data for session management section of HandleTcpProxyV1
-	clientAddr := &net.TCPAddr{
-		IP:   net.ParseIP("127.0.0.1"),
-		Port: 50000,
-	}
 	sessClient := pbs.NewMockSessionServiceClient()
 	sessClient.LookupSessionFn = func(_ context.Context, request *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 		cert, _, _ := createTestCert(t)
@@ -82,33 +153,28 @@ func TestHandleTcpProxyV1(t *testing.T) {
 	s, err := manager.LoadLocalSession(ctx, "one", "workerid")
 	require.NoError(err)
 	_, connCancelFn := context.WithCancel(context.Background())
-	_, _, err = s.RequestAuthorizeConnection(ctx, "workerid", connCancelFn)
+	resp, _, err := s.RequestAuthorizeConnection(ctx, "workerid", connCancelFn)
 	require.NoError(err)
 
-	conn := websocket.NetConn(ctx, proxyConn, websocket.MessageBinary)
-	conf := proxy.Config{
-		ClientAddress:  clientAddr,
-		ClientConn:     conn,
-		RemoteEndpoint: fmt.Sprintf("tcp://localhost:%d", port),
-		Session:        s,
-		ConnectionId:   "mock-connection",
-		UserClientIp:   net.ParseIP("127.0.0.1"),
-	}
-
-	// Use error channel so that we can use test assertions on the returned error.
-	// It is illegal to call `t.FailNow()` from a goroutine.
-	// https://pkg.go.dev/testing#T.FailNow
-	errChan := make(chan error)
-	go func() {
-		errChan <- handleProxy(ctx, conf)
-	}()
-	t.Cleanup(func() {
-		require.NoError(<-errChan)
+	tDial, err := proxy.NewProxyDialer(ctx, func() (net.Conn, error) {
+		return net.Dial("tcp", l.Addr().String())
 	})
+	require.NoError(err)
+	conn := websocket.NetConn(ctx, proxyConn, websocket.MessageBinary)
+
+	go func() {
+		fn, err := handleProxy(ctx, conn, tDial, resp.GetConnectionId(), resp.GetProtocolContext())
+		t.Cleanup(func() {
+			// Use of the t.Cleanup is so we can check the state of the returned
+			// error since it isn't valid to call `t.FailNow()` from a goroutine.
+			// https://pkg.go.dev/testing#T.FailNow
+			require.NoError(err)
+		})
+		fn()
+	}()
 
 	// wait for HandleTcpProxyV1 to dial endpoint
-	<-ready
-	require.NoError(endpointErr)
+	wg.Wait()
 	netConn := websocket.NetConn(ctx, clientConn, websocket.MessageBinary)
 
 	// Write from endpoint to client

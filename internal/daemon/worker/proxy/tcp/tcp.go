@@ -2,14 +2,13 @@ package tcp
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net"
-	"net/url"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/errors"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func init() {
@@ -27,51 +26,38 @@ func init() {
 // connection.
 //
 // All options are ignored.
-func handleProxy(ctx context.Context, conf proxy.Config, _ ...proxy.Option) error {
-	conn := conf.ClientConn
-	sessionUrl, err := url.Parse(conf.RemoteEndpoint)
+func handleProxy(ctx context.Context, conn net.Conn, out *proxy.ProxyDialer, connId string, pi *anypb.Any) (proxy.ProxyConnFn, error) {
+	const op = "tcp.HandleProxy"
+	switch {
+	case conn == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "conn is nil")
+	case out == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "proxy dialer is nil")
+	case len(connId) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "connection id is empty")
+	case pi != nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "protocol context Any proto is not nil")
+	}
+	remoteConn, err := out.Dial(ctx)
 	if err != nil {
-		return fmt.Errorf("error parsing endpoint information: %w", err)
-	}
-	if sessionUrl.Scheme != "tcp" {
-		return fmt.Errorf("invalid scheme for tcp proxy: %v", sessionUrl.Scheme)
-	}
-	remoteConn, err := net.Dial("tcp", sessionUrl.Host)
-	if err != nil {
-		return fmt.Errorf("error dialing endpoint: %w", err)
-	}
-	// Assert this for better Go 1.11 splice support
-	tcpRemoteConn := remoteConn.(*net.TCPConn)
-
-	endpointAddr := tcpRemoteConn.RemoteAddr().(*net.TCPAddr)
-	connectionInfo := &pbs.ConnectConnectionRequest{
-		ConnectionId:       conf.ConnectionId,
-		ClientTcpAddress:   conf.ClientAddress.IP.String(),
-		ClientTcpPort:      uint32(conf.ClientAddress.Port),
-		EndpointTcpAddress: endpointAddr.IP.String(),
-		EndpointTcpPort:    uint32(endpointAddr.Port),
-		Type:               "tcp",
-		UserClientIp:       conf.UserClientIp.String(),
+		return nil, err
 	}
 
-	if err := conf.Session.RequestConnectConnection(ctx, connectionInfo); err != nil {
-		return fmt.Errorf("error marking connection as connected: %w", err)
-	}
-
-	connWg := new(sync.WaitGroup)
-	connWg.Add(2)
-	go func() {
-		defer connWg.Done()
-		_, _ = io.Copy(conn, tcpRemoteConn)
-		_ = conn.Close()
-		_ = tcpRemoteConn.Close()
-	}()
-	go func() {
-		defer connWg.Done()
-		_, _ = io.Copy(tcpRemoteConn, conn)
-		_ = tcpRemoteConn.Close()
-		_ = conn.Close()
-	}()
-	connWg.Wait()
-	return nil
+	return func() {
+		connWg := new(sync.WaitGroup)
+		connWg.Add(2)
+		go func() {
+			defer connWg.Done()
+			_, _ = io.Copy(conn, remoteConn)
+			_ = conn.Close()
+			_ = remoteConn.Close()
+		}()
+		go func() {
+			defer connWg.Done()
+			_, _ = io.Copy(remoteConn, conn)
+			_ = remoteConn.Close()
+			_ = conn.Close()
+		}()
+		connWg.Wait()
+	}, nil
 }
