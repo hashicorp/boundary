@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/kms/mains/awskms
 go 1.17
 
 require (
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.3
 	github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v2 v2.0.0
 )
 
@@ -15,10 +15,11 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.1.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0 // indirect
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.4 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.6 // indirect
+	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
