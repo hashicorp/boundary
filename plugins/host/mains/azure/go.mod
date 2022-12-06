@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/hashicorp/boundary-plugin-host-azure v0.1.1
-	github.com/hashicorp/boundary/sdk v0.0.20
+	github.com/hashicorp/boundary/sdk v0.0.27-0.20221206195641-69ee55053d33
 )
 
 require (
