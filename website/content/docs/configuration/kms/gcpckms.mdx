@@ -46,10 +46,12 @@ These parameters apply to the `kms` stanza in the Boundary configuration file:
 - `region` `(string: "us-east-1")`: The GCP region/location where the key ring
   lives. May also be specified by the `GOOGLE_REGION` environment variable.
 
-- `key_ring` `(string: <required>)`: The GCP CKMS key ring to use.
+- `key_ring` `(string: <required>)`: The GCP CKMS key ring to use. May also be specified
+  by the `GCPCKMS_WRAPPER_KEY_RING` environment variable.
 
 - `crypto_key` `(string: <required>)`: The GCP CKMS crypto key to use for
-  encryption and decryption.
+  encryption and decryption. May also be specified by the `GCPCKMS_WRAPPER_CRYPTO_KEY`
+  environment variable.
 
 ## Authentication &amp; Permissions
 
