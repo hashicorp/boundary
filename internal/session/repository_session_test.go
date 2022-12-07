@@ -1563,7 +1563,8 @@ func TestRepository_deleteTargetFKey(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
 	ctx := context.Background()
-	repo, _ := NewRepository(ctx, rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
 	targetRepo, err := target.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 

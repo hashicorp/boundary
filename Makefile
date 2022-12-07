@@ -32,7 +32,7 @@ golangci-lint:
 	$(eval GOLINT_INSTALLED := $(shell which golangci-lint))
 
 	if [ "$(GOLINT_INSTALLED)" = "" ]; then \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GO_PATH)/bin v1.50.1; \
+		sh scripts/install-golangci-lint.sh -b $(GO_PATH)/bin v1.50.1; \
 	fi;
 
 .PHONY: cleangen
