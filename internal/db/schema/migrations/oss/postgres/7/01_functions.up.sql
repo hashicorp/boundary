@@ -1,7 +1,7 @@
 begin;
 
   -- Comments for the functions below were incorrectly overridden in
-  -- 12/01_timestamp_sub_funcs.up.sql but fixed in 57/01_fix_comments.up.sql.
+  -- 12/01_timestamp_sub_funcs.up.sql but fixed in 58/01_fix_comments.up.sql.
 
     create function wt_add_seconds(sec integer, ts timestamp with time zone) returns timestamp with time zone
     as $$
