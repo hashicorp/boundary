@@ -122,7 +122,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }
 
-  inline = ["PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package}"]
+  inline = ["PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1"]
 }
 
 output "test_results" {
