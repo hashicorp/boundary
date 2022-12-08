@@ -82,5 +82,7 @@ func InstrumentClusterClient() grpc.UnaryClientInterceptor {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterClientCollectors(r prometheus.Registerer) {
-	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency, services.File_controller_servers_services_v1_session_service_proto, expectedGrpcClientCodes)
+	excludeField := map[string][]string{"controller.servers.services.v1.CommandService": {"SendCommand"}}
+	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency,
+		services.File_controller_servers_services_v1_session_service_proto, expectedGrpcClientCodes, excludeField, nil)
 }

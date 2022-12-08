@@ -33,7 +33,18 @@ var (
 
 /* The following methods are used to initialize Prometheus histogram vectors for gRPC connections. */
 
-func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor) bool {
+func contains(r []string, n string) bool {
+	for _, e := range r {
+		if n == e {
+			return true
+		}
+	}
+	return false
+}
+
+// rangeProtoFiles returns true while there are services with associated methods in the proto package.
+// Fields in the "exclude" parameter are not added to the map.
+func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor, exclude map[string][]string) bool {
 	if fd.Services().Len() == 0 {
 		return true
 	}
@@ -44,11 +55,16 @@ func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor) bool
 			continue
 		}
 
+		serviceName := string(s.FullName())
 		methods := []string{}
 		for j := 0; j < s.Methods().Len(); j++ {
-			methods = append(methods, string(s.Methods().Get(j).Name()))
+			methodName := string(s.Methods().Get(j).Name())
+			if contains(exclude[serviceName], methodName) {
+				continue
+			}
+			methods = append(methods, methodName)
 		}
-		m[string(s.FullName())] = methods
+		m[serviceName] = methods
 	}
 
 	return true
@@ -56,11 +72,10 @@ func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor) bool
 
 // appendServicesAndMethods ranges through all registered files in a specified proto package
 // and appends service and method names to the provided map m.
-// This method is exported for testing purposes.
-func appendServicesAndMethods(m map[string][]string, pkg protoreflect.FileDescriptor) {
+func appendServicesAndMethods(m map[string][]string, pkg protoreflect.FileDescriptor, exclude map[string][]string) {
 	protoregistry.GlobalFiles.RangeFilesByPackage(
 		pkg.Package(),
-		func(fd protoreflect.FileDescriptor) bool { return rangeProtoFiles(m, fd) },
+		func(fd protoreflect.FileDescriptor) bool { return rangeProtoFiles(m, fd, exclude) },
 	)
 }
 
@@ -69,14 +84,20 @@ func appendServicesAndMethods(m map[string][]string, pkg protoreflect.FileDescri
 // the package containing the provided FileDescriptor.
 // Note: inputting a protoreflect.FileDescriptor will populate all services and methods
 // found in its package, not just methods associated with that specific FileDescriptor.
-func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec, pkg protoreflect.FileDescriptor, codes []codes.Code) {
+func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec,
+	pkg protoreflect.FileDescriptor, codes []codes.Code, exclude map[string][]string, include map[string][]string,
+) {
 	if r == nil {
 		return
 	}
 	r.MustRegister(v)
 
 	serviceNamesToMethodNames := make(map[string][]string, 0)
-	appendServicesAndMethods(serviceNamesToMethodNames, pkg)
+	appendServicesAndMethods(serviceNamesToMethodNames, pkg, exclude)
+
+	for k, v := range include {
+		serviceNamesToMethodNames[k] = append(serviceNamesToMethodNames[k], v...)
+	}
 
 	for serviceName, serviceMethods := range serviceNamesToMethodNames {
 		for _, sm := range serviceMethods {
