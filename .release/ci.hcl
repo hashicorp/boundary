@@ -14,6 +14,7 @@ project "boundary" {
     release_branches = [
       "main",
       "release/0.11.x",
+      "release/0.11.2",
     ]
   }
 }
