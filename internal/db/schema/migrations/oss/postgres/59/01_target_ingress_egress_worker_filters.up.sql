@@ -85,7 +85,7 @@ select public_id,
    'tcp' as type
 from target_tcp;
 
--- Replaces view from 58/06_add_session_private_key_column.up.sql
+-- Replaces view from 56/06_add_session_private_key_column.up.sql
 drop view session_list;
 create view session_list as
 select
