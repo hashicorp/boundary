@@ -7,7 +7,6 @@ on:
 
 env:
   PKG_NAME: "boundary"
-  PRODUCT_EDITION: "oss"
 
 jobs:
   set-product-version:
@@ -60,8 +59,8 @@ jobs:
         id: get-product-edition
         # Run make edition twice to ensure that extra go output isn't included
         run: |
-          EDITION=${{ env.PRODUCT_EDITION }}
-          echo "::set-output name=product-edition::$EDITION"
+          make edition
+          echo "::set-output name=product-edition::$(make edition)"
       - name: Determine minor product version
         id: get-product-minor-version
         run: |

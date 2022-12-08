@@ -60,8 +60,18 @@ rm -f bin/*
 mkdir -p bin/
 
 # Build!
-echo "==> Building into bin/ for ${GOOS}_${GOARCH}..."
 BINARY_NAME="boundary${BINARY_SUFFIX}"
+
+if ["${BIN_PATH}" == ""]; then
+    echo "==> Setting binary path to bin/${BINARY_NAME}"
+    BIN_PATH=bin/${BINARY_NAME}
+else
+    echo "==> Binary path set to ${BIN_PATH}"
+fi
+
+# Build!
+BIN_PARENT_DIR=${BIN_PATH%%/*}
+echo "==> Building into ${BIN_PARENT_DIR} for ${GOOS}_${GOARCH}..."
 ${GO_CMD} build \
     -tags="${BUILD_TAGS}" \
     -trimpath \
@@ -78,9 +88,9 @@ ${GO_CMD} build \
 # Copy binary into gopath if desired
 if [ "${BOUNDARY_INSTALL_BINARY}x" != "x" ]; then
     echo "==> Moving binary into GOPATH/bin..."
-    mv -f "bin/${BINARY_NAME}" "${GOPATH}/bin/"
+    mv -f "${BIN_PATH}" "${GOPATH}/bin/"
 fi
 
 # Done!
 echo "==> Results:"
-ls -hl bin/
+ls -hl ${BIN_PARENT_DIR}
