@@ -26,7 +26,7 @@ func Test_AppendServicesAndMethods(t *testing.T) {
 	}
 	for _, tc := range cases {
 		m := make(map[string][]string, 0)
-		appendServicesAndMethods(m, tc.pkg)
+		appendServicesAndMethods(m, tc.pkg, nil)
 		assert.Equal(t, tc.expected, m)
 	}
 }
