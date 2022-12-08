@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliSessionEndWhenUserIsDeleted tests that an active session is canceled when the respective
-// user who started the session is deleted.
-func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
+// TestCliSessionEndWhenHostIsDeleted tests that an active session is canceled when the respective
+// host set for the session is deleted.
+func TestCliSessionEndWhenHostIsDeleted(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -49,6 +49,13 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("users", "delete", "-id", newUserId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
@@ -83,9 +90,9 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	assert.Equal(t, newTargetId, session.TargetId)
 	assert.Equal(t, newHostId, session.HostId)
 
-	// Delete User
-	t.Log("Deleting user...")
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("users", "delete", "-id", newUserId))
+	// Delete Host
+	t.Log("Deleting host...")
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "delete", "-id", newHostId))
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Check if session has terminated
@@ -121,5 +128,5 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	t.Log("Session successfully ended after user was deleted")
+	t.Log("Session successfully ended after host was deleted")
 }
