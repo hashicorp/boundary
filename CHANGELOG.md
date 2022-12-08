@@ -2,12 +2,12 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## 0.11.2 (2022/12/08)
+## 0.11.2 (2022/12/09)
 
 ### Security
 
 * Boundary now uses Go 1.19.4 to address security vulnerability (CVE-2022-41717) See the
-  [Go announcement](https://groups.google.com/g/golang-announce/c/hcmEScgc00k) for
+  [Go announcement](https://groups.google.com/g/golang-announce/c/L_3rmdT0BMU) for
   more details.
 
 ## 0.11.1 (2022/11/30)
