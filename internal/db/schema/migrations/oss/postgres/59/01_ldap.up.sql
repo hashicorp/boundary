@@ -95,9 +95,9 @@ create table auth_ldap_url (
     constraint url_too_short
         check (length(trim(url)) > 3)
     constraint url_too_long
-        check (length(trim(url)) < 4000)
-    constraint wt_url_invalid_protocol
-        check (url ~ 'ldap?:\/\/*'),
+        check (length(trim(url)) < 4000),
+    constraint url_invalid_protocol
+        check (url ~ 'ldaps?:\/\/*'),
   connection_priority int not null
     constraint connection_priority_less_than_zero
       check(connection_priority >= 0),
@@ -167,7 +167,7 @@ create constraint trigger auth_ldap_method_children_tg
 -- being used as the root aggregate for auth_ldap_user_entry_search updates.
 create table auth_ldap_user_entry_search (
   create_time wt_timestamp,
-  auth_ldap_method_id wt_public_id primary key
+  ldap_method_id wt_public_id primary key
     constraint auth_ldap_method_fkey
       references auth_ldap_method(public_id)
       on delete cascade
@@ -203,7 +203,7 @@ comment on table auth_ldap_user_entry_search is
 -- being used as the root aggregate for auth_ldap_user_entry_search updates.
 create table auth_ldap_group_entry_search (
   create_time wt_timestamp,
-  auth_ldap_method_id wt_public_id primary key
+  ldap_method_id wt_public_id primary key
     constraint auth_ldap_method_fkey
       references auth_ldap_method(public_id)
       on delete cascade
@@ -232,7 +232,7 @@ create table auth_ldap_group_entry_search (
 -- (instead of the host system's cert chain).
 create table auth_ldap_certificate (
   create_time wt_timestamp,
-  auth_ldap_method_id wt_public_id not null
+  ldap_method_id wt_public_id not null
     constraint auth_ldap_method_fkey
       references auth_ldap_method(public_id)
       on delete cascade
@@ -240,7 +240,7 @@ create table auth_ldap_certificate (
   certificate bytea not null
     constraint certificate_must_not_be_empty
       check(length(certificate) > 0),
-  primary key(auth_ldap_method_id, certificate)
+  primary key(ldap_method_id, certificate)
 );
 comment on table auth_ldap_certificate is
   'auth_ldap_certificate entries are optional PEM encoded x509 certificates. '
@@ -251,7 +251,7 @@ comment on table auth_ldap_certificate is
 
 create table auth_ldap_client_certificate (
   create_time wt_timestamp,
-  auth_ldap_method_id wt_public_id primary key
+  ldap_method_id wt_public_id primary key
     constraint auth_ldap_method_fkey
       references auth_ldap_method (public_id)
       on delete cascade
@@ -278,11 +278,11 @@ create table auth_ldap_client_certificate (
 
 create table auth_ldap_bind_credential (
   create_time wt_timestamp,
-  auth_ldap_method_id wt_public_id primary key
-      constraint auth_ldap_method_fkey
-        references auth_ldap_method (public_id)
-        on delete cascade
-        on update cascade,
+  ldap_method_id wt_public_id primary key
+    constraint auth_ldap_method_fkey
+      references auth_ldap_method (public_id)
+      on delete cascade
+      on update cascade,
   dn text not null
     constraint dn_too_short
       check (length(trim(dn)) > 0)
@@ -291,9 +291,9 @@ create table auth_ldap_bind_credential (
   password bytea not null
     constraint password_not_empty
     check(length(password) > 0), -- encrypted password0
-  password_hmac text not null
+  password_hmac bytea not null
     constraint password_hmac_not_empty
-    check(length(trim(password_hmac)) > 0),
+    check(length(password_hmac) > 0),
   key_id text not null
     constraint kms_data_key_version_fkey
       references kms_data_key_version (private_id)
