@@ -95,7 +95,7 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("host-sets", "delete", "-id", newHostSetId))
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	// Check is session has terminated
+	// Check if session has terminated
 	t.Log("Waiting for session to be canceling/terminated...")
 	err = backoff.RetryNotify(
 		func() error {
