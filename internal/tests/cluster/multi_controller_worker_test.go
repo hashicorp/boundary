@@ -114,7 +114,7 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	expectWorkers(t, c1, w1)
 
-	//Upstreams should be equivalent to the controller cluster addr after status updates
+	// Upstreams should be equivalent to the controller cluster addr after status updates
 	assert.Equal(c1.ClusterAddrs(), w1.Worker().LastStatusSuccess().LastCalculatedUpstreams)
 
 	// Bring down the controller
