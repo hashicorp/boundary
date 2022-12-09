@@ -6,15 +6,22 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/metric"
-	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	cservices "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 const (
 	clusterClientSubsystem = "cluster_client"
 )
+
+var filterFunc = noopFilter
+
+func noopFilter(serviceName string, methodName string) bool {
+	return false
+}
 
 // grpcRequestLatency collects measurements of how long a gRPC
 // request between a cluster and its clients takes.
@@ -82,7 +89,8 @@ func InstrumentClusterClient() grpc.UnaryClientInterceptor {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterClientCollectors(r prometheus.Registerer) {
-	excludeField := map[string][]string{"controller.servers.services.v1.CommandService": {"SendCommand"}}
 	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency,
-		services.File_controller_servers_services_v1_session_service_proto, expectedGrpcClientCodes, excludeField, nil)
+		[]protoreflect.FileDescriptor{
+			cservices.File_controller_servers_services_v1_session_service_proto,
+		}, expectedGrpcClientCodes, filterFunc)
 }
