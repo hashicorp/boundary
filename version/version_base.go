@@ -9,12 +9,12 @@ var (
 	CgoEnabled bool
 
 	// Version is the base version
-  // Default values - set when building locally (at build time)
+	// Default values - set when building locally (at build time)
 	Version = "0.12.0"
 
 	// VersionPrerelease is also set at compile time, similarly to Version.
 	VersionPrerelease = ""
 
-  // VersionMetadata is also set at compile time.
+	// VersionMetadata is also set at compile time.
 	VersionMetadata = ""
 )
