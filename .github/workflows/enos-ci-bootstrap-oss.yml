@@ -1,13 +1,24 @@
 name: enos-ci-bootstrap-oss
 
 on:
-  workflow_call:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - enos/ci/**
+      - .github/workflows/enos-ci-bootstrap-oss.yml
+  push:
+    branches:
+      - main
+    paths:
+      - enos/ci/**
+      - .github/workflows/enos-ci-bootstrap-oss.yml
 
 jobs:
   bootstrap-ci-oss:
     env:
-      TF_WORKSPACE: "${{ github.event.repository.name }}-ci-enos-bootstrap"
-      TF_VAR_repository: ${{ github.event.repository.name }}
+      TF_WORKSPACE: "boundary-ci-enos-bootstrap"
+      TF_VAR_repository: boundary
       TF_VAR_aws_ssh_public_key: ${{ secrets.SSH_KEY_PUBLIC_CI }}
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
     runs-on: ubuntu-latest
