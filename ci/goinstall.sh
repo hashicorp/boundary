@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-VERSION="1.19.1"
+DIR=$(dirname $(readlink -f "$0"))
+VERSION="$(cat $DIR/../.go-version)"
 
 [ -z "$GOROOT" ] && GOROOT="$HOME/.go"
 [ -z "$GOPATH" ] && GOPATH="$HOME/go"
