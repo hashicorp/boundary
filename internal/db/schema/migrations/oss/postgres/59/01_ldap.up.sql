@@ -189,7 +189,7 @@ create table auth_ldap_user_entry_search (
       check (length(trim(user_filter)) < 2049),
   constraint all_fields_are_not_null
     check (
-      not(user_dn, user_attr, user_filter) IS null
+      not(user_dn, user_attr, user_filter) is null
     )
 );
 comment on table auth_ldap_user_entry_search is 
@@ -224,6 +224,9 @@ create table auth_ldap_group_entry_search (
     constraint group_filter_too_long
       check (length(trim(group_filter)) < 2049)
 );
+comment on table auth_ldap_group_entry_search is 
+'auth_ldap_group_entry_search entries specify the required parameters to find '
+'the groups a user is a member of'
 
 -- auth_ldap_certificate entries are optional PEM encoded x509 certificates.
 -- Each entry is a single certificate.  An ldap auth method may have 0 or more
