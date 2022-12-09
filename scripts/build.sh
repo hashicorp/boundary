@@ -54,23 +54,18 @@ if [ "${CI_BUILD}x" != "x" ]; then
     exit
 fi
 
-# Delete the old dir
-echo "==> Removing old directory..."
-rm -f bin/*
-mkdir -p bin/
-
-# Build!
+# Declare binary paths!
 BINARY_NAME="boundary${BINARY_SUFFIX}"
+BIN_PATH=${BIN_PATH:=bin/${BINARY_NAME}}
+BIN_PARENT_DIR="${BIN_PATH%/*}"
+BIN_PARENT_DIR="${BIN_PARENT_DIR##*/}"
 
-if ["${BIN_PATH}" == ""]; then
-    echo "==> Setting binary path to bin/${BINARY_NAME}"
-    BIN_PATH=bin/${BINARY_NAME}
-else
-    echo "==> Binary path set to ${BIN_PATH}"
-fi
+# Delete the old dir
+echo "==> Removing old directory ${BIN_PARENT_DIR}..."
+rm -rf ${BIN_PARENT_DIR}
+mkdir -p ${BIN_PARENT_DIR}
 
 # Build!
-BIN_PARENT_DIR=${BIN_PATH%%/*}
 echo "==> Building into ${BIN_PARENT_DIR} for ${GOOS}_${GOARCH}..."
 ${GO_CMD} build \
     -tags="${BUILD_TAGS}" \
