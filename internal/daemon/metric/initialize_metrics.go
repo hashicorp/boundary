@@ -34,7 +34,8 @@ var (
 /* The following methods are used to initialize Prometheus histogram vectors for gRPC connections. */
 
 // rangeProtoFiles returns true while there are services with associated methods in the proto package.
-// Fields in the "exclude" parameter are not added to the map.
+// It relies on RangeFilesByPackage to range through the package, and it adds them into map m.
+// Services and methods for which filter() returns true are not added into the map.
 func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor, filter func(string, string) bool) bool {
 	if fd.Services().Len() == 0 {
 		return true
@@ -75,6 +76,8 @@ func appendServicesAndMethods(m map[string][]string, pkg protoreflect.FileDescri
 // InitializeGrpcCollectorsFromPackage registers and zeroes a Prometheus
 // histogram, populating all service and method labels by ranging through
 // the package containing the provided FileDescriptor.
+// The filter function takes in a service name and method name and skips adding them as labels
+// upon returning true.
 // Note: inputting a protoreflect.FileDescriptor will populate all services and methods
 // found in its package, not just methods associated with that specific FileDescriptor.
 func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec,

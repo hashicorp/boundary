@@ -17,7 +17,9 @@ const (
 	clusterClientSubsystem = "cluster_client"
 )
 
-var filterFunc = noopFilter
+// grpcCollectorFilter is currently used to filter the services and methods of the
+// controller.servers.services package upon running InitializeClusterClientCollectors.
+var grpcCollectorFilter = noopFilter
 
 func noopFilter(serviceName string, methodName string) bool {
 	return false
@@ -44,8 +46,7 @@ type requestRecorder struct {
 	start time.Time
 }
 
-// NewRequestRecorder creates a requestRecorder struct which is used to measure gRPC client request latencies.
-// For testing purposes, this method is exported.
+// newRequestRecorder creates a requestRecorder struct which is used to measure gRPC client request latencies.
 func newRequestRecorder(fullMethodName string, reqLatency prometheus.ObserverVec) requestRecorder {
 	service, method := metric.SplitMethodName(fullMethodName)
 	r := requestRecorder{
@@ -92,5 +93,5 @@ func InitializeClusterClientCollectors(r prometheus.Registerer) {
 	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency,
 		[]protoreflect.FileDescriptor{
 			cservices.File_controller_servers_services_v1_session_service_proto,
-		}, expectedGrpcClientCodes, filterFunc)
+		}, expectedGrpcClientCodes, grpcCollectorFilter)
 }
