@@ -221,13 +221,15 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 					addrs = append(addrs, clusterAddress)
 				}
 
-				addrsChanged := w.updateAddrs(cancelCtx, addrs, addressReceivers)
-
-				// If there was a change in upstreams, save it off in last status without changing status time
-				if addrsChanged {
-					lastStatus.LastCalculatedUpstreams = addrs
-					w.lastStatusSuccess.Store(lastStatus)
+				addrs = strutil.RemoveDuplicates(addrs, false)
+				if strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
+					// Nothing to update
+					return
 				}
+
+				w.updateAddresses(cancelCtx, addrs, addressReceivers)
+				lastStatus.LastCalculatedUpstreams = addrs
+				w.lastStatusSuccess.Store(lastStatus)
 			}
 
 			// Exit out of status function; our work here is done and we don't need to create closeConnection requests
@@ -267,7 +269,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		}
 	}
 
-	w.updateAddrs(cancelCtx, addrs, addressReceivers)
+	w.updateAddresses(cancelCtx, addrs, addressReceivers)
 
 	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: addrs})
 
@@ -325,18 +327,16 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	}
 }
 
-// TODO rename this and add doc
-func (w *Worker) updateAddrs(cancelCtx context.Context, addrs []string, addressReceivers *[]addressReceiver) bool {
+// Update address receivers and dialing listeners with new addrs
+func (w *Worker) updateAddresses(cancelCtx context.Context, addrs []string, addressReceivers *[]addressReceiver) {
 	const op = "worker.(Worker).updateAddrs"
 
-	addrsChanged := false
 	if len(addrs) > 0 {
 		lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
 		// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
 		if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
 			upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, addrs)
 			event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
-			addrsChanged = true
 			for _, as := range *addressReceivers {
 				as.SetAddresses(addrs)
 			}
@@ -361,7 +361,6 @@ func (w *Worker) updateAddrs(cancelCtx context.Context, addrs []string, addressR
 			as.SetAddresses(tmpAddrs)
 		}
 	}
-	return addrsChanged
 }
 
 // cleanupConnections walks all sessions and shuts down all proxy connections.
