@@ -111,7 +111,7 @@ type Session interface {
 	// The passed in context.CancelFunc is used to terminate any ongoing local proxy
 	// connections.
 	// The connection status is then viewable in this session's GetLocalConnections() call.
-	RequestAuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (ConnInfo, int32, error)
+	RequestAuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (*pbs.AuthorizeConnectionResponse, int32, error)
 
 	// RequestConnectConnection sends a RequestConnectConnection request to the controller. It
 	// should only be called by the worker handler after a connection has been
@@ -224,8 +224,8 @@ func (s *sess) GetEndpoint() string {
 
 func (s *sess) GetHostKeys() ([]crypto.Signer, error) {
 	s.lock.RLock()
+	defer s.lock.RUnlock()
 	pkcs8Keys := s.resp.GetPkcs8HostKeys()
-	s.lock.RUnlock()
 
 	var hostKeys []crypto.Signer
 	for _, hostKey := range pkcs8Keys {
@@ -296,19 +296,26 @@ func (s *sess) RequestActivate(ctx context.Context, tofu string) error {
 	return nil
 }
 
-func (s *sess) RequestAuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (ConnInfo, int32, error) {
+func (s *sess) RequestAuthorizeConnection(ctx context.Context, workerId string, connCancel context.CancelFunc) (*pbs.AuthorizeConnectionResponse, int32, error) {
 	switch {
 	case connCancel == nil:
-		return ConnInfo{}, 0, errors.New("the provided context.CancelFunc was nil")
+		return nil, 0, errors.New("the provided context.CancelFunc was nil")
 	case workerId == "":
-		return ConnInfo{}, 0, errors.New("worker id is empty")
+		return nil, 0, errors.New("worker id is empty")
 	}
 
-	ci, connsLeft, err := authorizeConnection(ctx, s.client, workerId, s.GetId())
+	resp, err := s.client.AuthorizeConnection(ctx, &pbs.AuthorizeConnectionRequest{
+		SessionId: s.GetId(),
+		WorkerId:  workerId,
+	})
 	if err != nil {
-		return ConnInfo{}, connsLeft, err
+		return nil, 0, fmt.Errorf("error authorizing connection: %w", err)
 	}
-	ci.connCtxCancelFunc = connCancel
+	ci := &ConnInfo{
+		Id:                resp.GetConnectionId(),
+		Status:            resp.GetStatus(),
+		connCtxCancelFunc: connCancel,
+	}
 
 	// Install safe callbacks before connection has been established. These
 	// should be replaced when `ApplyConnectionCounterCallbacks` gets called on
@@ -319,13 +326,7 @@ func (s *sess) RequestAuthorizeConnection(ctx context.Context, workerId string, 
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.connInfoMap[ci.Id] = ci
-	return ConnInfo{
-		Id:        ci.Id,
-		Status:    ci.Status,
-		CloseTime: ci.CloseTime,
-		BytesUp:   ci.BytesUp,
-		BytesDown: ci.BytesDown,
-	}, connsLeft, err
+	return resp, resp.GetConnectionsLeft(), err
 }
 
 func (s *sess) RequestConnectConnection(ctx context.Context, info *pbs.ConnectConnectionRequest) error {
@@ -426,24 +427,6 @@ func cancel(ctx context.Context, sessClient pbs.SessionServiceClient, sessionId 
 		return pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED, fmt.Errorf("error canceling session: %w", err)
 	}
 	return resp.GetStatus(), nil
-}
-
-// authorizeConnection is a helper worker function that sends connection
-// authorization request to the controller. It is called by the worker handler after a
-// connection has been received by the worker, and the session has been validated.
-func authorizeConnection(ctx context.Context, sessClient pbs.SessionServiceClient, workerId, sessionId string) (*ConnInfo, int32, error) {
-	resp, err := sessClient.AuthorizeConnection(ctx, &pbs.AuthorizeConnectionRequest{
-		SessionId: sessionId,
-		WorkerId:  workerId,
-	})
-	if err != nil {
-		return nil, 0, fmt.Errorf("error authorizing connection: %w", err)
-	}
-
-	return &ConnInfo{
-		Id:     resp.ConnectionId,
-		Status: resp.GetStatus(),
-	}, resp.GetConnectionsLeft(), nil
 }
 
 // connectConnection is a helper worker function that sends connection

@@ -519,6 +519,12 @@ func printItemTable(item *targets.Target, resp *api.Response) string {
 	if item.WorkerFilter != "" {
 		nonAttributeMap["Worker Filter"] = item.WorkerFilter
 	}
+	if item.EgressWorkerFilter != "" {
+		nonAttributeMap["Egress Worker Filter"] = item.EgressWorkerFilter
+	}
+	if item.IngressWorkerFilter != "" {
+		nonAttributeMap["Ingress Worker Filter"] = item.IngressWorkerFilter
+	}
 	if resp != nil && resp.Map != nil {
 		if resp.Map[globals.SessionConnectionLimitField] != nil {
 			nonAttributeMap["Session Connection Limit"] = item.SessionConnectionLimit

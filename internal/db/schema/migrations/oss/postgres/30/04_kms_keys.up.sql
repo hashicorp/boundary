@@ -101,7 +101,7 @@ create table kms_data_key_version (
   constraint kms_data_key_version_data_key_id_version_uq
     unique(data_key_id, version)
 );
--- Comment fixed in 57/01_fix_comments.up.sql
+-- Comment fixed in 58/01_fix_comments.up.sql
 comment on table kms_data_key is
   'kms_data_key_version contains versions of a kms_data_key (dek aka data keys)';
 

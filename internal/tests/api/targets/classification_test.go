@@ -64,7 +64,7 @@ func TestTargets(t *testing.T) {
 					},
 					SessionMaxSeconds:           &wrapperspb.UInt32Value{Value: 0},
 					SessionConnectionLimit:      &wrapperspb.Int32Value{Value: 0},
-					WorkerFilter:                &wrapperspb.StringValue{Value: "worker-filter"},
+					EgressWorkerFilter:          &wrapperspb.StringValue{Value: "egress-worker-filter"},
 					BrokeredCredentialSourceIds: []string{"brokered-credential-source-id"},
 					BrokeredCredentialSources: []*pb.CredentialSource{
 						{
@@ -125,7 +125,7 @@ func TestTargets(t *testing.T) {
 					},
 					SessionMaxSeconds:           &wrapperspb.UInt32Value{Value: 0},
 					SessionConnectionLimit:      &wrapperspb.Int32Value{Value: 0},
-					WorkerFilter:                &wrapperspb.StringValue{Value: "worker-filter"},
+					EgressWorkerFilter:          &wrapperspb.StringValue{Value: "egress-worker-filter"},
 					BrokeredCredentialSourceIds: []string{"brokered-credential-source-id"},
 					BrokeredCredentialSources: []*pb.CredentialSource{
 						{

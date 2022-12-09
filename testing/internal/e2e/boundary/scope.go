@@ -19,11 +19,6 @@ func CreateNewOrgApi(t testing.TB, ctx context.Context, client *api.Client) stri
 	require.NoError(t, err)
 
 	newOrgId := newOrgResult.Item.Id
-	t.Cleanup(func() {
-		_, err := scopeClient.Delete(ctx, newOrgId)
-		require.NoError(t, err)
-	})
-
 	t.Logf("Created Org Id: %s", newOrgId)
 	return newOrgId
 }
@@ -59,14 +54,6 @@ func CreateNewOrgCli(t testing.TB, ctx context.Context) string {
 	require.NoError(t, err)
 
 	newOrgId := newOrgResult.Item.Id
-	t.Cleanup(func() {
-		AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("scopes", "delete", "-id", newOrgId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-
 	t.Logf("Created Org Id: %s", newOrgId)
 	return newOrgId
 }

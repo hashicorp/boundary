@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	ct "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-hclog"
@@ -100,29 +101,43 @@ func TestWorkerTagging(t *testing.T) {
 
 	expectWorkers(t, c1, w1, w2, w3)
 
+	// Ensure we are using the OSS filter, which uses egress only for worker selection
+	oldAuthFun := ct.AuthorizeSessionWorkerFilterFn
+	ct.AuthorizeSessionWorkerFilterFn = ct.AuthorizeSessionWithWorkerFilter
+	validateIngressFn := ct.ValidateIngressWorkerFilterFn
+	ct.ValidateIngressWorkerFilterFn = ct.IngressWorkerFilterUnsupported
+
 	cases := []struct {
-		name       string
-		filter     string
-		expWorkers []string
+		name          string
+		egressFilter  string
+		ingressFilter string
+		expWorkers    []string
+		wantErr       bool
 	}{
 		{
 			name:       "base case",
 			expWorkers: []string{w1Addr, w2Addr, w3Addr},
 		},
 		{
-			name:       "name and region",
-			filter:     `"/name" matches "test_worker_[13]" and "west" in "/tags/region"`,
-			expWorkers: []string{w3Addr},
+			name:         "name and region",
+			egressFilter: `"/name" matches "test_worker_[13]" and "west" in "/tags/region"`,
+			expWorkers:   []string{w3Addr},
 		},
 		{
-			name:       "name and az",
-			filter:     `"/name" matches "test_worker_[23]" and "three" in "/tags/az"`,
-			expWorkers: []string{w2Addr, w3Addr},
+			name:         "name and az",
+			egressFilter: `"/name" matches "test_worker_[23]" and "three" in "/tags/az"`,
+			expWorkers:   []string{w2Addr, w3Addr},
 		},
 		{
-			name:       "key not found doesn't error",
-			filter:     `"bar" in "/tags/foo"`,
-			expWorkers: []string{w1Addr},
+			name:         "key not found doesn't error",
+			egressFilter: `"bar" in "/tags/foo"`,
+			expWorkers:   []string{w1Addr},
+		},
+		{
+			name:          "ingress filter invalid",
+			ingressFilter: `"/name" matches "test_worker_[13]" and "west" in "/tags/region"`,
+			expWorkers:    []string{w3Addr},
+			wantErr:       true,
 		},
 	}
 	for _, tc := range cases {
@@ -130,10 +145,17 @@ func TestWorkerTagging(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
 
 			opts := []targets.Option{targets.WithAutomaticVersioning(true), targets.WithDescription(tc.name)}
-			if tc.filter != "" {
-				opts = append(opts, targets.WithWorkerFilter(tc.filter))
+			if tc.egressFilter != "" {
+				opts = append(opts, targets.WithEgressWorkerFilter(tc.egressFilter))
+			}
+			if tc.ingressFilter != "" {
+				opts = append(opts, targets.WithIngressWorkerFilter(tc.ingressFilter))
 			}
 			tgt, err := tcl.Update(ctx, "ttcp_1234567890", 0, opts...)
+			if tc.wantErr {
+				require.Error(err)
+				return
+			}
 			require.NoError(err)
 			require.NotNil(tgt)
 
@@ -153,4 +175,6 @@ func TestWorkerTagging(t *testing.T) {
 			assert.ElementsMatch(tc.expWorkers, addrs)
 		})
 	}
+	ct.AuthorizeSessionWorkerFilterFn = oldAuthFun
+	ct.ValidateIngressWorkerFilterFn = validateIngressFn
 }

@@ -5,6 +5,7 @@ package controller.servers.services.v1;
 import "controller/api/resources/targets/v1/target.proto";
 import "controller/servers/services/v1/credential.proto";
 import "controller/servers/services/v1/server_coordination_service.proto";
+import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
@@ -53,8 +54,12 @@ message LookupSessionResponse {
   string host_set_id = 100; // @gotags: `class:"public"`
   string target_id = 110; // @gotags: `class:"public"`
   string user_id = 120; // @gotags: `class:"public"`
-  repeated Credential credentials = 130; // @gotags: `class:"secret"`
-  repeated bytes pkcs8_host_keys = 140; // @gotags: `class:"secret"`
+
+  // credentials is deprecated on this response message.  Instead use the
+  // credentials field inside the ProtocolContext message.
+  repeated Credential credentials = 130 [deprecated = true]; // @gotags: `class:"secret"`
+  // pkcs8_host_keys is deprecated on this response message.
+  repeated bytes pkcs8_host_keys = 140 [deprecated = true]; // @gotags: `class:"secret"`
 }
 
 message ActivateSessionRequest {
@@ -88,6 +93,10 @@ message AuthorizeConnectionResponse {
   string connection_id = 10; // @gotags: `class:"public"`
   controller.servers.services.v1.CONNECTIONSTATUS status = 20; // @gotags: `class:"public"`
   int32 connections_left = 30; // @gotags: `class:"public"`
+
+  // protocol_context contains information specific to the protocol being
+  // proxied.  This is not needed to be set for tcp sessions.
+  google.protobuf.Any protocol_context = 40; // @gotags: `class:"public"`
 }
 
 message ConnectConnectionRequest {

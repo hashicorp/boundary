@@ -2,6 +2,7 @@ package metric
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/metric"
@@ -27,6 +28,35 @@ var grpcRequestLatency prometheus.ObserverVec = prometheus.NewHistogramVec(
 	},
 	metric.ListGrpcLabels,
 )
+
+type requestRecorder struct {
+	reqLatency prometheus.ObserverVec
+	labels     prometheus.Labels
+
+	// measurements
+	start time.Time
+}
+
+// NewRequestRecorder creates a requestRecorder struct which is used to measure gRPC client request latencies.
+// For testing purposes, this method is exported.
+func newRequestRecorder(fullMethodName string, reqLatency prometheus.ObserverVec) requestRecorder {
+	service, method := metric.SplitMethodName(fullMethodName)
+	r := requestRecorder{
+		reqLatency: reqLatency,
+		labels: prometheus.Labels{
+			metric.LabelGrpcMethod:  method,
+			metric.LabelGrpcService: service,
+		},
+		start: time.Now(),
+	}
+
+	return r
+}
+
+func (r requestRecorder) Record(err error) {
+	r.labels[metric.LabelGrpcCode] = metric.StatusFromError(err).Code().String()
+	r.reqLatency.With(r.labels).Observe(time.Since(r.start).Seconds())
+}
 
 // The expected codes returned by the grpc client calls to cluster services.
 var expectedGrpcClientCodes = []codes.Code{

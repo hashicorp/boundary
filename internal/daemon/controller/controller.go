@@ -71,8 +71,8 @@ type downstreamWorkersTicker interface {
 // Controller.downstreamWorkers field which is far better than allowing any (empty
 // interface)
 type downstreamers interface {
-	// Root returns the root of the downstreamers' graph
-	Root() string
+	// RootId returns the root ID of the downstreamers' graph
+	RootId() string
 }
 
 var (

@@ -26,6 +26,8 @@ type Target interface {
 	GetSessionMaxSeconds() uint32
 	GetSessionConnectionLimit() int32
 	GetWorkerFilter() string
+	GetEgressWorkerFilter() string
+	GetIngressWorkerFilter() string
 	Clone() Target
 	SetPublicId(context.Context, string) error
 	SetProjectId(string)
@@ -38,6 +40,8 @@ type Target interface {
 	SetSessionMaxSeconds(uint32)
 	SetSessionConnectionLimit(int32)
 	SetWorkerFilter(string)
+	SetEgressWorkerFilter(string)
+	SetIngressWorkerFilter(string)
 	Oplog(op oplog.OpType) oplog.Metadata
 }
 
@@ -123,5 +127,7 @@ func (t *targetView) targetSubtype(ctx context.Context) (Target, error) {
 	tt.SetSessionMaxSeconds(t.SessionMaxSeconds)
 	tt.SetSessionConnectionLimit(t.SessionConnectionLimit)
 	tt.SetWorkerFilter(t.WorkerFilter)
+	tt.SetEgressWorkerFilter(t.EgressWorkerFilter)
+	tt.SetIngressWorkerFilter(t.IngressWorkerFilter)
 	return tt, nil
 }

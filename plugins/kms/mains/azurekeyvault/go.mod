@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/plugins/kms/mains/azurekeyvault
 go 1.17
 
 require (
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.3
 	github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.0.1
 )
 
@@ -25,8 +25,9 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.1.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0 // indirect
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.4 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
+	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
@@ -37,7 +38,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
-	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
+	golang.org/x/crypto v0.0.0-20220313003712-b769efc7c000 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/sys v0.0.0-20220204135822-1c1b9b1eba6a // indirect
 	golang.org/x/text v0.3.7 // indirect

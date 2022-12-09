@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/hashicorp/boundary-plugin-host-aws v0.1.3
-	github.com/hashicorp/boundary/sdk v0.0.21
+	github.com/hashicorp/boundary/sdk v0.0.27
 )
 
 require (

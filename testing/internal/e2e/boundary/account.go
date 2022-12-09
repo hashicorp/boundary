@@ -29,11 +29,6 @@ func CreateNewAccountApi(t testing.TB, ctx context.Context, client *api.Client, 
 
 	accountId = newAccountResult.Item.Id
 	t.Logf("Create Account: %s", accountId)
-	t.Cleanup(func() {
-		_, err := aClient.Delete(ctx, accountId)
-		require.NoError(t, err)
-	})
-
 	return
 }
 
@@ -64,15 +59,6 @@ func CreateNewAccountCli(t testing.TB, ctx context.Context, loginName string) (s
 	require.NoError(t, err)
 
 	newAccountId := newAccountResult.Item.Id
-	t.Cleanup(func() {
-		AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-
 	t.Logf("Created Account: %s", newAccountId)
-
 	return newAccountId, password
 }

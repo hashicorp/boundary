@@ -57,6 +57,12 @@ message TargetView {
   // A boolean expression that allows filtering the workers that can handle a session
   // @inject_tag: `gorm:"default:null"`
   string worker_filter = 120;
+
+  // @inject_tag: `gorm:"default:null"`
+  string egress_worker_filter = 130;
+
+  // @inject_tag: `gorm:"default:null"`
+  string ingress_worker_filter = 140;
 }
 
 message TargetHostSet {

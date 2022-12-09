@@ -17,11 +17,11 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe
 	github.com/golang/protobuf v1.5.2
-	github.com/google/go-cmp v0.5.8
+	github.com/google/go-cmp v0.5.9
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.2
 	github.com/hashicorp/boundary/api v0.0.30
-	github.com/hashicorp/boundary/sdk v0.0.24
+	github.com/hashicorp/boundary/sdk v0.0.28
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
@@ -30,15 +30,15 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.2.2
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.6-0.20220722192355-a843f53fa48d
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.6-0.20221122211539-47c893099f13
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.0
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.5
+	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.7
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.1
-	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.4
+	github.com/hashicorp/go-secure-stdlib/listenerutil v0.1.5-0.20221130175209-f7789ac19a1f
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.1
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7
 	github.com/hashicorp/go-secure-stdlib/password v0.1.1
@@ -74,7 +74,7 @@ require (
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
-	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10
+	golang.org/x/sys v0.2.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	golang.org/x/tools v0.1.12
 	google.golang.org/genproto v0.0.0-20220805133916-01dd62135a58
@@ -91,8 +91,9 @@ require github.com/hashicorp/go-dbw v0.0.0-20220910135738-ed4505749995
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/cenkalti/backoff/v4 v4.1.0
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220914160710-1c6d04de2431
+	github.com/cenkalti/backoff/v4 v4.1.3
+	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13
+	github.com/hashicorp/go-version v1.3.0
 	github.com/hashicorp/nodeenrollment v0.1.17
 	github.com/kelseyhightower/envconfig v1.4.0
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870
@@ -133,10 +134,9 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.2 // indirect
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.3 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.1 // indirect
-	github.com/hashicorp/go-version v1.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/vault/sdk v0.3.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect

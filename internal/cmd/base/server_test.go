@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/mitchellh/cli"
@@ -31,7 +34,7 @@ func Test_NewServer(t *testing.T) {
 	})
 }
 
-func TestServer_SetupKMSes(t *testing.T) {
+func TestServer_SetupKMSes_Purposes(t *testing.T) {
 	tests := []struct {
 		name            string
 		purposes        []string
@@ -60,6 +63,41 @@ func TestServer_SetupKMSes(t *testing.T) {
 				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth,
 				globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeConfig,
 			},
+		},
+		{
+			name:            "previous root without root",
+			purposes:        []string{globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("KMS block contains '%s' without '%s'", globals.KmsPurposePreviousRoot, globals.KmsPurposeRoot),
+		},
+		{
+			name:            "root and previous in the same stanza",
+			purposes:        []string{globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("KMS blocks with purposes '%s' and '%s' must have different key IDs", globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot),
+		},
+		{
+			name:            "duplicate root purposes",
+			purposes:        []string{globals.KmsPurposeRoot, globals.KmsPurposeRoot},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeRoot),
+		},
+		{
+			name:            "duplicate previous root purposes",
+			purposes:        []string{globals.KmsPurposePreviousRoot, globals.KmsPurposePreviousRoot},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposePreviousRoot),
+		},
+		{
+			name:            "duplicate worker auth purposes",
+			purposes:        []string{globals.KmsPurposeWorkerAuth, globals.KmsPurposeWorkerAuth},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeWorkerAuth),
+		},
+		{
+			name:            "duplicate worker auth storage purposes",
+			purposes:        []string{globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeWorkerAuthStorage},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeWorkerAuthStorage),
+		},
+		{
+			name:            "duplicate recovery purposes",
+			purposes:        []string{globals.KmsPurposeRecovery, globals.KmsPurposeRecovery},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeRecovery),
 		},
 	}
 	logger := hclog.Default()
@@ -100,6 +138,104 @@ func TestServer_SetupKMSes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServer_SetupKMSes_RootMigration(t *testing.T) {
+	t.Parallel()
+	t.Run("correctly-pools-root-and-previous", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		logger := hclog.Default()
+		serLock := new(sync.Mutex)
+		conf := &configutil.SharedConfig{
+			Seals: []*configutil.KMS{
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposeRoot,
+					},
+					Config: map[string]string{
+						"key_id": "root",
+					},
+				},
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposePreviousRoot,
+					},
+					Config: map[string]string{
+						"key_id": "previous_root",
+					},
+				},
+			},
+		}
+		s := NewServer(&Command{Context: context.Background()})
+		require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
+		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+		require.NoError(err)
+		require.NotNil(s.RootKms)
+		typ, err := s.RootKms.Type(s.Context)
+		require.NoError(err)
+		assert.Equal(wrapping.WrapperTypePooled, typ)
+		// Ensure that the root is the encryptor
+		keyId, err := s.RootKms.KeyId(s.Context)
+		require.NoError(err)
+		assert.Equal("root", keyId)
+		// Ensure that the previous root is in the wrapper too
+		assert.Equal([]string{"previous_root", "root"}, s.RootKms.(*multi.PooledWrapper).AllKeyIds())
+	})
+	t.Run("errors-on-previous-without-root", func(t *testing.T) {
+		t.Parallel()
+		require := require.New(t)
+		logger := hclog.Default()
+		serLock := new(sync.Mutex)
+		conf := &configutil.SharedConfig{
+			Seals: []*configutil.KMS{
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposePreviousRoot,
+					},
+				},
+			},
+		}
+		s := NewServer(&Command{Context: context.Background()})
+		require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
+		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+		require.Error(err)
+	})
+	t.Run("errors-on-previous-and-root-with-same-key-id", func(t *testing.T) {
+		t.Parallel()
+		require := require.New(t)
+		logger := hclog.Default()
+		serLock := new(sync.Mutex)
+		conf := &configutil.SharedConfig{
+			Seals: []*configutil.KMS{
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposeRoot,
+					},
+					Config: map[string]string{
+						"key_id": "root",
+					},
+				},
+				{
+					Type: "aead",
+					Purpose: []string{
+						globals.KmsPurposePreviousRoot,
+					},
+					Config: map[string]string{
+						"key_id": "root",
+					},
+				},
+			},
+		}
+		s := NewServer(&Command{Context: context.Background()})
+		require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
+		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
+		require.Error(err)
+	})
 }
 
 func TestServer_SetupEventing(t *testing.T) {

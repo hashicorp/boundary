@@ -48,7 +48,7 @@ func getOpts(opt ...Option) options {
 	return opts
 }
 
-const EnvToCheckSkip = "E2E_PASSWORD_AUTH_METHOD_ID"
+const EnvToCheckSkip = "E2E_TESTS"
 
 // RunCommand executes external commands on the system. Returns the results
 // of running the provided command.

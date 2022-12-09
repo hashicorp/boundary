@@ -45,6 +45,8 @@ const (
 	SessionConnectionLimitField                 = "session_connection_limit"
 	SessionMaxSecondsField                      = "session_max_seconds"
 	WorkerFilterField                           = "worker_filter"
+	EgressWorkerFilterField                     = "egress_worker_filter"
+	IngressWorkerFilterField                    = "ingress_worker_filter"
 	AccountIdsField                             = "account_ids"
 	AccountsField                               = "accounts"
 	LoginNameField                              = "login_name"
