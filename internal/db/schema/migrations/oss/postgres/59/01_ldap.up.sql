@@ -226,7 +226,7 @@ create table auth_ldap_group_entry_search (
 );
 comment on table auth_ldap_group_entry_search is 
 'auth_ldap_group_entry_search entries specify the required parameters to find '
-'the groups a user is a member of'
+'the groups a user is a member of';
 
 -- auth_ldap_certificate entries are optional PEM encoded x509 certificates.
 -- Each entry is a single certificate.  An ldap auth method may have 0 or more
@@ -324,12 +324,12 @@ create table auth_ldap_account (
       check(lower(trim(login_name)) = login_name)
     constraint login_name_must_not_be_empty
       check(length(trim(login_name)) > 0),
-  constraint auth_ldap_method_scope_id_public_id_fk
+  constraint auth_ldap_method_fkey
     foreign key (scope_id, auth_method_id)
       references auth_ldap_method (scope_id, public_id)
       on delete cascade
       on update cascade,
-  constraint auth_account_scope_id_auth_method_id_public_id_fk
+  constraint auth_account_fkey
     foreign key (scope_id, auth_method_id, public_id)
       references auth_account (scope_id, auth_method_id, public_id)
       on delete cascade
