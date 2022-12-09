@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"google.golang.org/grpc/connectivity"
 )
 
 var firstStatusCheckPostHooks []func(context.Context, *Worker) error
@@ -206,6 +207,29 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 				return true
 			})
 
+			// In the case that the control plane has gone down and come up with different IPs,
+			// append initial upstreams/ cluster addr to the resolver to try
+			if w.GrpcClientConn.GetState() == connectivity.TransientFailure {
+				lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
+				addrs := lastStatus.LastCalculatedUpstreams
+
+				if len(w.conf.RawConfig.Worker.InitialUpstreams) > 0 {
+					addrs = append(addrs, w.conf.RawConfig.Worker.InitialUpstreams...)
+				}
+				if len(w.conf.RawConfig.HcpbClusterId) > 0 {
+					clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HcpbClusterId, hcpbUrlSuffix)
+					addrs = append(addrs, clusterAddress)
+				}
+
+				addrsChanged := w.updateAddrs(cancelCtx, addrs, addressReceivers)
+
+				// If there was a change in upstreams, save it off in last status without changing status time
+				if addrsChanged {
+					lastStatus.LastCalculatedUpstreams = addrs
+					w.lastStatusSuccess.Store(lastStatus)
+				}
+			}
+
 			// Exit out of status function; our work here is done and we don't need to create closeConnection requests
 			return
 		}
@@ -243,36 +267,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		}
 	}
 
-	if len(addrs) > 0 {
-		lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
-		// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
-		if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
-			upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, addrs)
-			event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
-			for _, as := range *addressReceivers {
-				as.SetAddresses(addrs)
-			}
-		} else if lastStatus == nil {
-			for _, as := range *addressReceivers {
-				as.SetAddresses(addrs)
-			}
-			event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", addrs))
-		}
-	}
-
-	// regardless of whether or not it's a new address, we need to set
-	// them for dialingListeners
-	for _, as := range *addressReceivers {
-		switch {
-		case as.Type() == dialingListenerReceiverType:
-			tmpAddrs := make([]string, len(addrs))
-			copy(tmpAddrs, addrs)
-			if len(tmpAddrs) == 0 {
-				tmpAddrs = append(tmpAddrs, w.conf.RawConfig.Worker.InitialUpstreams...)
-			}
-			as.SetAddresses(tmpAddrs)
-		}
-	}
+	w.updateAddrs(cancelCtx, addrs, addressReceivers)
 
 	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: addrs})
 
@@ -328,6 +323,45 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			}
 		}
 	}
+}
+
+// TODO rename this and add doc
+func (w *Worker) updateAddrs(cancelCtx context.Context, addrs []string, addressReceivers *[]addressReceiver) bool {
+	const op = "worker.(Worker).updateAddrs"
+
+	addrsChanged := false
+	if len(addrs) > 0 {
+		lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
+		// Compare upstreams; update resolver if there is a difference, and emit an event with old and new addresses
+		if lastStatus != nil && !strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
+			upstreamsMessage := fmt.Sprintf("Upstreams has changed; old upstreams were: %s, new upstreams are: %s", lastStatus.LastCalculatedUpstreams, addrs)
+			event.WriteSysEvent(cancelCtx, op, upstreamsMessage)
+			addrsChanged = true
+			for _, as := range *addressReceivers {
+				as.SetAddresses(addrs)
+			}
+		} else if lastStatus == nil {
+			for _, as := range *addressReceivers {
+				as.SetAddresses(addrs)
+			}
+			event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", addrs))
+		}
+	}
+
+	// regardless of whether or not it's a new address, we need to set
+	// them for dialingListeners
+	for _, as := range *addressReceivers {
+		switch {
+		case as.Type() == dialingListenerReceiverType:
+			tmpAddrs := make([]string, len(addrs))
+			copy(tmpAddrs, addrs)
+			if len(tmpAddrs) == 0 {
+				tmpAddrs = append(tmpAddrs, w.conf.RawConfig.Worker.InitialUpstreams...)
+			}
+			as.SetAddresses(tmpAddrs)
+		}
+	}
+	return addrsChanged
 }
 
 // cleanupConnections walks all sessions and shuts down all proxy connections.
