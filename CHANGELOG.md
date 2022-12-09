@@ -19,6 +19,14 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   `dumb-init`, would pass them along to the child processes and cause the
   plugin to exit ([PR](https://github.com/hashicorp/boundary/pull/2677))
 
+## 0.11.2 (2022/12/09)
+
+### Security
+
+* Boundary now uses Go 1.19.4 to address security vulnerability (CVE-2022-41717) See the
+  [Go announcement](https://groups.google.com/g/golang-announce/c/L_3rmdT0BMU) for
+  more details.
+
 ## 0.11.1 (2022/11/30)
 
 ### New and Improved
