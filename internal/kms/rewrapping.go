@@ -5,10 +5,18 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/db"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"golang.org/x/exp/maps"
 )
 
-type RewrapFn func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error
+// GetWrapperer defines (and constrains) the kms features required by the
+// RewrapFn
+type GetWrapperer interface {
+	// GetWrapper returns a wrapper for the given scope and purpose.
+	GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error)
+}
+
+type RewrapFn func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms GetWrapperer) error
 
 var tableNameToRewrapFn = map[string]RewrapFn{}
 

@@ -15,7 +15,7 @@ func init() {
 	kms.RegisterTableRewrapFn("credential_static_json_credential", credStaticJsonRewrapFn)
 }
 
-func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) string {
+func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) string {
 	if dataKeyVersionId == "" {
 		return "missing data key version id"
 	}
@@ -34,7 +34,7 @@ func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId
 	return ""
 }
 
-func credStaticUsernamePasswordRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func credStaticUsernamePasswordRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "static.credStaticUsernamePasswordRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)
@@ -79,7 +79,7 @@ func credStaticUsernamePasswordRewrapFn(ctx context.Context, dataKeyVersionId, s
 	return nil
 }
 
-func credStaticSshPrivKeyRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func credStaticSshPrivKeyRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "static.credStaticSshPrivKeyRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)
@@ -125,7 +125,7 @@ func credStaticSshPrivKeyRewrapFn(ctx context.Context, dataKeyVersionId, scopeId
 	return nil
 }
 
-func credStaticJsonRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func credStaticJsonRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "static.credStaticJsonRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)

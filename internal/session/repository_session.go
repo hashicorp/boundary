@@ -686,9 +686,9 @@ func fetchConnections(ctx context.Context, r db.Reader, sessionId string, opt ..
 // the session uses a legacy private key or not. It also updates the encrypted session
 // in the database (if necessary). Eventually we should be able to remove this function
 // and use the session key unconditionally.
-func decryptAndMaybeUpdateSession(ctx context.Context, kmsRepo *kms.Kms, session *Session, writer db.Writer) error {
+func decryptAndMaybeUpdateSession(ctx context.Context, kmsRepo kms.GetWrapperer, session *Session, writer db.Writer) error {
 	const op = "session.decryptAndMaybeUpdateSession"
-	if kmsRepo == nil {
+	if util.IsNil(kmsRepo) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing kms repo")
 	}
 	if session == nil {

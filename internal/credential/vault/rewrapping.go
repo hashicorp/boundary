@@ -14,7 +14,7 @@ func init() {
 	kms.RegisterTableRewrapFn("credential_vault_token", credVaultTokenRewrapFn)
 }
 
-func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) string {
+func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) string {
 	if dataKeyVersionId == "" {
 		return "missing data key version id"
 	}
@@ -33,7 +33,7 @@ func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId
 	return ""
 }
 
-func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "vault.credVaultClientCertificateRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)
@@ -62,7 +62,7 @@ func credVaultClientCertificateRewrapFn(ctx context.Context, dataKeyVersionId, s
 	return nil
 }
 
-func credVaultTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func credVaultTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "vault.credVaultTokenRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)

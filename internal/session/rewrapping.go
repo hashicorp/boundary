@@ -14,7 +14,7 @@ func init() {
 	kms.RegisterTableRewrapFn("session_credential", sessionCredentialRewrapFn)
 }
 
-func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) string {
+func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) string {
 	if dataKeyVersionId == "" {
 		return "missing data key version id"
 	}
@@ -33,7 +33,7 @@ func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId
 	return ""
 }
 
-func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "session.sessionCredentialRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)
@@ -84,7 +84,7 @@ func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId st
 	return nil
 }
 
-func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "session.sessionRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)

@@ -439,7 +439,7 @@ func TestMonitorTableRewrappingRuns(t *testing.T) {
 
 	t.Run("does-nothing-when-no-run-available", func(t *testing.T) {
 		callbackCalled := false
-		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms GetWrapperer) error {
 			callbackCalled = true
 			return nil
 		}
@@ -476,7 +476,7 @@ func TestMonitorTableRewrappingRuns(t *testing.T) {
 			require.NoError(t, err)
 		})
 		callbackCalled := false
-		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms GetWrapperer) error {
 			callbackCalled = true
 			return nil
 		}
@@ -501,7 +501,7 @@ func TestMonitorTableRewrappingRuns(t *testing.T) {
 		})
 		callbackCalled := make(chan struct{})
 		returnFromCallback := make(chan struct{})
-		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms GetWrapperer) error {
 			close(callbackCalled)
 			assert.Equal(t, "global", scopeId)
 			// Block here until we want it to return
@@ -568,7 +568,7 @@ func TestMonitorTableRewrappingRuns(t *testing.T) {
 			require.NoError(t, err)
 		})
 		rewrappedKeyVersion := ""
-		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms GetWrapperer) error {
 			rewrappedKeyVersion = dataKeyVersionId
 			return nil
 		}
@@ -600,7 +600,7 @@ func TestMonitorTableRewrappingRuns(t *testing.T) {
 			require.NoError(t, err)
 		})
 		rewrappedKeyVersion := ""
-		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms GetWrapperer) error {
 			rewrappedKeyVersion = dataKeyVersionId
 			return nil
 		}
@@ -624,7 +624,7 @@ func TestMonitorTableRewrappingRuns(t *testing.T) {
 			require.NoError(t, err)
 		})
 		callbackCalled := make(chan struct{})
-		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+		tableNameToRewrapFn["auth_token"] = func(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kms GetWrapperer) error {
 			close(callbackCalled)
 			// Block here until we want it to return
 			<-ctx.Done()
@@ -909,7 +909,7 @@ func TestDestroyKeyVersion(t *testing.T) {
 }
 
 func Test_RegisterTableRewrapFn(t *testing.T) {
-	rewrapFn := func(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+	rewrapFn := func(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kms GetWrapperer) error {
 		return nil
 	}
 	RegisterTableRewrapFn("a_table", rewrapFn)
@@ -923,7 +923,7 @@ func Test_RegisterTableRewrapFn(t *testing.T) {
 
 func Test_ListTablesSupportingRewrap(t *testing.T) {
 	assert.Empty(t, ListTablesSupportingRewrap())
-	rewrapFn := func(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kms *Kms) error {
+	rewrapFn := func(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kms GetWrapperer) error {
 		return nil
 	}
 	RegisterTableRewrapFn("a_table", rewrapFn)

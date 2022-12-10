@@ -13,7 +13,7 @@ func init() {
 	kms.RegisterTableRewrapFn(defaultAuthTokenTableName, authTokenRewrapFn)
 }
 
-func authTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func authTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "authtoken.authTokenRewrapFn"
 	if dataKeyVersionId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing data key version id")

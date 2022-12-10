@@ -13,7 +13,7 @@ func init() {
 	kms.RegisterTableRewrapFn("auth_password_argon2_cred", argon2ConfigRewrapFn)
 }
 
-func argon2ConfigRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func argon2ConfigRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "password.argon2ConfigRewrapFn"
 	if dataKeyVersionId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing data key version id")
