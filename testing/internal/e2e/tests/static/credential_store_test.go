@@ -85,7 +85,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 				return fmt.Errorf("Deleted credential can still be read: '%s'", output.Stdout)
 			}
 
-			var response e2e.CliError
+			var response boundary.CliError
 			err := json.Unmarshal(output.Stderr, &response)
 			require.NoError(t, err)
 			statusCode := response.Status

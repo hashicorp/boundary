@@ -39,6 +39,11 @@ type DbInitInfo struct {
 	AuthMethod AuthMethodInfo `json:"auth_method"`
 }
 
+// CliError parses the Stderr from running a boundary command
+type CliError struct {
+	Status int `json:"status"`
+}
+
 func loadConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)

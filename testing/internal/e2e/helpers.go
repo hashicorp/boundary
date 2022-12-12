@@ -18,11 +18,6 @@ type CommandResult struct {
 	Err      error
 }
 
-// CliError parses the Stderr from running a boundary command
-type CliError struct {
-	Status int `json:"status"`
-}
-
 // Option is a func that sets optional attributes for a call. This does not need
 // to be used directly, but instead option arguments are built from the
 // functions in this package. WithX options set a value to that given in the
