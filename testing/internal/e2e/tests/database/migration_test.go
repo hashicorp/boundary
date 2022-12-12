@@ -225,7 +225,7 @@ func TestDatabaseMigration(t *testing.T) {
 
 	// Create a session. Uses Boundary in a docker container to do the connect in order to avoid
 	// modifying the runner's /etc/hosts file. Otherwise, you would need to add a `127.0.0.1
-	// localhost boundary` entry `into /etc/hosts.
+	// localhost boundary` entry into /etc/hosts.
 	buf = bytes.NewBuffer(nil)
 	ebuf = bytes.NewBuffer(nil)
 	_, err = b.Resource.Exec(
